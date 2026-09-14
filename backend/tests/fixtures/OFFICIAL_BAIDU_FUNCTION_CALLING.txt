@@ -1,0 +1,22 @@
+Official excerpt used as a fixture, copied from:
+https://cloud.baidu.com/doc/SPEECH/s/nmcytnwei (updated 2026-09-04, retrieved 2026-09-14)
+
+ConversationItem type parameter:
+  type | string | 类型。允许的值：message
+
+Documented client events on that page:
+  session.update
+  input_audio_buffer.append
+
+Returned Session examples include:
+  tool_choice: "auto"
+  tools: []
+
+UpdateSession documented fields do not include tools or tool_choice.
+Those Session fields therefore cannot be configured or used to return tool results.
+
+No documented custom Function Calling protocol for this exact E2E API:
+  no function_call item type
+  no conversation.item.create
+  no function_call_output
+  UpdateSession documented fields do not include tools
