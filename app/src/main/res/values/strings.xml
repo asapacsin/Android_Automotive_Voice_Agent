@@ -20,11 +20,12 @@
     <string name="bottom_bar_next">⏭</string>
     <string name="bottom_bar_temp_down">−</string>
     <string name="bottom_bar_temp_up">+</string>
-    <string name="bottom_bar_climate_on">空调 %1$s°C 风%2$d</string>
-    <string name="bottom_bar_climate_off">空调关 %1$s°C</string>
+    <string name="bottom_bar_climate_on">%1$s° 风%2$d</string>
+    <string name="bottom_bar_climate_off">关 %1$s°</string>
     <string name="bottom_bar_climate_failed">空调操作失败</string>
     <string name="camera_button">📷</string>
     <string name="camera_close">关闭相机</string>
+    <string name="camera_ask_ai">问AI</string>
     <string name="nav_choice_cancel">取消</string>
     <string name="nav_choice_pick_destination">选择目的地</string>
     <string name="nav_choice_pick_route">选择路线</string>

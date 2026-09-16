@@ -42,7 +42,7 @@ class BottomBarView(context: Context) : LinearLayout(context) {
         setBackgroundColor(Color.parseColor("#E6121820"))
         isClickable = true
 
-        addView(label(context.getString(R.string.bottom_bar_music), 16f))
+        // No separate 「音乐」 label: the bar is phone-width and the climate readout needs the room.
         addView(control(context.getString(R.string.bottom_bar_prev)) { BundledMusicPlayer.restart(context) })
         playPause = control(context.getString(R.string.bottom_bar_play)) { BundledMusicPlayer.toggle(context) }
         addView(playPause)
@@ -56,8 +56,12 @@ class BottomBarView(context: Context) : LinearLayout(context) {
         )
         addView(control(context.getString(R.string.bottom_bar_temp_down)) { adjustTemperature(-ClimateLimits.DEFAULT_TEMPERATURE_STEP_C) })
         climateLabel =
-            label("", 15f).apply {
+            label("", 14f).apply {
                 gravity = Gravity.CENTER
+                // One line: wrapping split "24°C" into "2" / "4°C" on a phone-width bar.
+                maxLines = 1
+                isSingleLine = true
+                setPadding(dp(2), dp(4), dp(2), dp(4))
                 setOnClickListener { togglePower() }
             }
         addView(climateLabel, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))

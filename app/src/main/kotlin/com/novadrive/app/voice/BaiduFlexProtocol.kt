@@ -75,6 +75,18 @@ object BaiduFlexProtocol {
                 ),
             required = "action",
         )
+        val describeCamera = functionTool(
+            name = "describe_camera_view",
+            description = "看摄像头画面并回答问题。用户说「看看前面有什么」「摄像头里是什么」「画面里有几个人」「这是什么东西」等询问镜头画面的问题时调用，" +
+                "question 填用户的原问题。会自动打开摄像头并把当前画面发给视觉模型，需要几秒钟。" +
+                "只根据返回的 answer 回答；ok=false 时只转述 message，绝对不要猜测画面内容。" +
+                "Look at the camera image and answer the driver's question about it.",
+            properties = JSONObject().put(
+                "question",
+                JSONObject().put("type", "string").put("minLength", 1).put("maxLength", 200),
+            ),
+            required = "question",
+        )
         val exitNavigationMode = functionToolNoArgs(
             name = "exit_navigation_mode",
             description = "退出小诺的导航模式，让小诺恢复正常说话。用户说「结束导航」「导航结束了」「退出导航」「不用导航了」时调用。注意：这只会让小诺恢复说话，并不会关闭高德地图的导航，高德需要用户自己退出。Exit the assistant's navigation quiet mode; this does NOT stop the Amap app's navigation.",
@@ -99,7 +111,7 @@ object BaiduFlexProtocol {
                     .put("create_response", true)
                     .put("interrupt_response", true),
             )
-            .put("tools", JSONArray().put(navigate).put(openApp).put(controlMusic).put(controlClimate).put(exitNavigationMode))
+            .put("tools", JSONArray().put(navigate).put(openApp).put(controlMusic).put(controlClimate).put(describeCamera).put(exitNavigationMode))
             .put("tool_choice", "auto")
         return JSONObject().put("type", "session.update").put("session", session).toString()
     }
@@ -287,6 +299,13 @@ class FlexFunctionCallAssembler {
                 json.optString("action") !in CLIMATE_ACTIONS -> "ACTION_NOT_ALLOWED"
                 keys.contains("value") && json.opt("value") !is Number -> "INVALID_FIELD_TYPE"
                 json.optString("action") in setOf("set_temperature", "set_fan") && !keys.contains("value") -> "MISSING_VALUE"
+                else -> null
+            }
+            "describe_camera_view" -> when {
+                keys != setOf("question") -> "INVALID_FIELDS"
+                json.opt("question") !is String -> "INVALID_FIELD_TYPE"
+                json.optString("question").isBlank() -> "BLANK_QUESTION"
+                json.optString("question").length > 200 -> "QUESTION_TOO_LONG"
                 else -> null
             }
             "exit_navigation_mode" -> when {

@@ -7,6 +7,7 @@ import com.novadrive.app.nav.EmbeddedNavigation
 import com.novadrive.app.nav.EmbeddedNavigationController
 import com.novadrive.app.nav.NavigationHostGateway
 import com.novadrive.app.vehicle.ClimateToolHandler
+import com.novadrive.app.vision.CameraQuestionHandler
 import com.novadrive.ingress.realtime.DomainVoiceEvent
 import com.novadrive.ingress.realtime.ToolDispatchResult
 import kotlinx.coroutines.runBlocking
@@ -31,10 +32,26 @@ interface AndroidActionExecutor {
 class AndroidToolDispatcher(
     private val executor: AndroidActionExecutor,
     private val climate: ClimateToolHandler,
+    private val camera: CameraQuestionHandler,
 ) {
     fun dispatch(call: DomainVoiceEvent.ToolCall): ToolDispatchResult {
         call.arguments["_validation_error"]?.let { return failed(call, it) }
         return when (call.name) {
+            CameraQuestionHandler.TOOL -> {
+                val question = call.arguments["question"]
+                // A vision request takes seconds: hand it to the session as async work instead of
+                // blocking the event loop. The answer is spoken when it arrives.
+                ToolDispatchResult(
+                    null,
+                    null,
+                    successChip = "📷 正在看",
+                    deferredOutput = {
+                        val outcome = camera.ask(question)
+                        NavigationState.allowConfirmation()
+                        outcome.output
+                    },
+                )
+            }
             ClimateToolHandler.TOOL -> {
                 val outcome = runBlocking { climate.handle(call.arguments) }
                 // Failures are worth hearing too, even while navigating: the driver must not

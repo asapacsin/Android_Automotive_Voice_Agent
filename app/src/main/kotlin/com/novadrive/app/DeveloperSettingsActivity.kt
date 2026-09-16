@@ -23,6 +23,8 @@ import com.novadrive.app.voice.BaiduFlexClient
 import com.novadrive.app.voice.PcmAudioCapture
 import com.novadrive.app.voice.StartResult
 import com.novadrive.app.voice.VoiceSessionGateway
+import com.novadrive.app.vision.QianfanVisionClient
+import com.novadrive.app.vision.VisionSettings
 import com.novadrive.app.wake.WakeWordController
 import com.novadrive.app.wake.WakeWordSettings
 import com.novadrive.contracts.CoordinateSystem
@@ -143,6 +145,33 @@ class DeveloperSettingsActivity : Activity() {
                 iflytekAppId.text.clear()
                 // Never echo the value back to the screen or the log.
                 result.text = "IFLYTEK_APPID_SAVED\nStored in Android Keystore. Toggle Wake Word to re-initialise."
+            }
+        }
+        // Camera → vision model. Optional dedicated Qianfan API key (Keystore); when blank the
+        // Baidu voice credential is tried. The value is never echoed back.
+        val visionSettings = VisionSettings.from(this)
+        val visionKey = secretField(
+            if (visionSettings.hasDedicatedKey()) "视觉 API Key（已保存；留空保留）" else "视觉 API Key（千帆 bce-v3…，可选）",
+        )
+        val visionModel = EditText(this).apply {
+            setText(visionSettings.model())
+            hint = QianfanVisionClient.DEFAULT_MODEL
+        }
+        val saveVision = Button(this).apply {
+            text = "保存看图设置"
+            setOnClickListener {
+                val key = visionKey.text.toString().trim()
+                if (key.isNotEmpty()) visionSettings.saveDedicatedKey(key)
+                visionSettings.saveModel(visionModel.text.toString().ifBlank { QianfanVisionClient.DEFAULT_MODEL })
+                visionKey.text.clear()
+                result.text = "VISION_SETTINGS_SAVED\nmodel=${visionSettings.model()} dedicatedKey=${visionSettings.hasDedicatedKey()}"
+            }
+        }
+        val clearVisionKey = Button(this).apply {
+            text = "清除视觉 API Key"
+            setOnClickListener {
+                visionSettings.clearDedicatedKey()
+                result.text = "VISION_KEY_CLEARED\nThe Baidu voice credential will be tried instead."
             }
         }
         val micTest = Button(this).apply {
@@ -266,6 +295,12 @@ class DeveloperSettingsActivity : Activity() {
             addView(iflytekAppId)
             addView(saveWakeAppId)
             addView(wakeToggle)
+            addView("摄像头看图（问AI）：图片只在你提问时发送到百度千帆视觉模型".label())
+            addView(visionKey)
+            addView("视觉模型".label())
+            addView(visionModel)
+            addView(saveVision)
+            addView(clearVisionKey)
             addView(micTest)
             addView(demo)
             addView(testTiananmen)

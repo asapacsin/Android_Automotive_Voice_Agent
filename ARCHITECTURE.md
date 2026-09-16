@@ -120,6 +120,7 @@ Outbound only, to three hosts: `aip.baidubce.com` (WSS + OAuth) and `restapi.ama
 | Qwen direct (`QwenSettings`, providers, protocol) | DORMANT — unreachable from production UI |
 | PC backend (`BackendRealtimeProvider`, `backend/`) | DORMANT — empty packaged URL |
 | GPT-Live | DORMANT — catalog metadata only, no adapter |
+| Camera question (`describe_camera_view`, 「问AI」) | **ACTIVE — live-call NOT YET VERIFIED** (Baidu Qianfan vision; paid) |
 | Cabin climate (`control_climate` tool → `VehicleControlPort`) | **ACTIVE — SIMULATED BACKEND.** `SimulatedVehicleControl` on the phone; not real vehicle control |
 | `simulator` `InMemoryVehicleSimulator`, Fake/Mock providers | TEST ONLY (its climate state is the shared `SimulatedVehicleControl`) |
 | `demo` module | TEST/DEMO ONLY — JVM structured-command demo |
@@ -147,6 +148,23 @@ VehicleControlProvider        ← the only production file naming a backend
 - The legacy synchronous `VehiclePort` (orchestration) routes its HVAC commands through the same port; `HvacController` was removed.
 - The bottom bar reads and changes climate through the port too.
 - **Swapping to a real vehicle** = one new `VehicleControlPort` implementation selected in `VehicleControlProvider`. A guard test (`DependencyBoundaryTest`) fails if another production file names a concrete backend.
+
+## Camera question (看图)
+
+```text
+「看看前面有什么」 → describe_camera_view {question}
+      ↓  AndroidToolDispatcher returns deferredOutput (never blocks the session event loop)
+VoiceSessionController → WorkCoordinator (async) → result delivered to the model once, at a safe point
+      ↓
+CameraQuestionHandler         ← depends on CameraVisionSurface + VisionPort only
+      ├── CameraVisionGateway → CameraPreviewView (opens camera, waits 8 frames, JPEG ≤768 px)
+      └── VisionProvider → QianfanVisionClient (Qianfan v2 chat/completions, image as data URL)
+```
+
+- The 「问AI」 button on the camera view calls the same handler; the answer is shown on the camera view.
+- The image leaves the phone only when the driver asks. Neither the image nor the answer is logged.
+- Credential: an optional dedicated vision API key (Keystore, 开发者设置); otherwise the Baidu voice credential. **UNVERIFIED** whether Qianfan v2 accepts the legacy OAuth access token; an auth failure tells the driver to add a vision key.
+- Every failure (no camera, no permission, no frame, not configured, auth, request) reaches the model as `ok=false` with an instruction never to describe the image.
 
 ## Test boundaries
 

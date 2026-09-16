@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import com.novadrive.app.vehicle.ClimateToolHandler
 import com.novadrive.app.vehicle.VehicleControlProvider
+import com.novadrive.app.vision.VisionProvider
 import android.os.Handler
 import android.os.Looper
 import com.novadrive.app.ui.AssistantNavigationScreen
@@ -33,6 +34,7 @@ class MainActivity : Activity() {
         val toolDispatcher = AndroidToolDispatcher(
             SafeAndroidActionExecutor(this),
             ClimateToolHandler(VehicleControlProvider.port),
+            VisionProvider.handler(this),
         )
         controller =
             VoiceSessionController(

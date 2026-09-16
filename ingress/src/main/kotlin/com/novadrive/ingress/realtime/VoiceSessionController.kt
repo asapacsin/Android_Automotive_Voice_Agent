@@ -284,6 +284,14 @@ class VoiceSessionController(
         workCoordinator.submit(call.callId, call.name)
         val dispatcher = callbacks.onToolCall ?: return
         val result = dispatcher(call)
+        val deferred = result.deferredOutput
+        if (deferred != null) {
+            // Never block the event loop on a slow tool: audio and turn-taking keep running,
+            // and the result is delivered once, at a safe point, via onTerminal.
+            workCoordinator.submit(scope, call.callId, call.name) { deferred() }
+            log.info("tool_deferred", mapOf("id" to call.callId, "name" to call.name))
+            return
+        }
         val output = result.output ?: result.orchestration?.feedbackZhCn ?: result.blockedReason ?: ""
         workCoordinator.complete(call.callId, output)
     }

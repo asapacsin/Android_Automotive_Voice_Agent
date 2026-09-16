@@ -224,6 +224,42 @@ class VoiceSessionControllerTest {
         }
 
     @Test
+    fun deferredToolOutputDoesNotBlockEventsAndIsDeliveredOnceWhenReady() =
+        runTest(UnconfinedTestDispatcher()) {
+            val provider = FakeRealtimeVoiceProvider()
+            val gate = CompletableDeferred<String>()
+            val transcripts = mutableListOf<String>()
+            val controller =
+                VoiceSessionController(
+                    provider = provider,
+                    microphone = InMemoryMicrophonePort(),
+                    playback = InMemoryPlaybackPort(),
+                    scope = this,
+                    config = RealtimeSessionConfig(VoiceProviderId.FAKE, VoiceCatalog.FAKE_MODEL),
+                    callbacks = VoiceSessionCallbacks(
+                        onTranscript = { transcripts += it },
+                        onToolCall = { ToolDispatchResult(null, null, deferredOutput = { gate.await() }) },
+                    ),
+                )
+            controller.start()
+            provider.emit(DomainVoiceEvent.ToolCall("cam1", "describe_camera_view", mapOf("question" to "前面有什么")))
+            provider.emit(DomainVoiceEvent.ResponseDone("completed"))
+            // The slow tool is still running: nothing delivered, and the event loop keeps working.
+            assertEquals(0, provider.workInjections.size)
+            provider.emit(DomainVoiceEvent.UserTranscript("还在吗", final = true))
+            assertTrue(transcripts.any { it.contains("还在吗") })
+
+            gate.complete("""{"ok":true,"answer":"前方是一条道路"}""")
+            provider.emit(DomainVoiceEvent.ResponseDone("completed"))
+            assertEquals(1, provider.workInjections.size)
+            assertEquals("cam1", provider.workInjections.single().callId)
+            assertTrue(provider.workInjections.single().output.contains("前方是一条道路"))
+            provider.emit(DomainVoiceEvent.ResponseDone("completed"))
+            assertEquals(1, provider.workInjections.size)
+            controller.stop()
+        }
+
+    @Test
     fun workResultInjectionRetriesAfterFailureAndAcknowledgesOnce() =
         runTest(UnconfinedTestDispatcher()) {
             val provider = FakeRealtimeVoiceProvider()

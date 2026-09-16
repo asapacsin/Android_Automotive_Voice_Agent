@@ -10,6 +10,11 @@ data class ToolDispatchResult(
     val blockedReason: String? = null,
     val successChip: String? = null,
     val output: String? = null,
+    /**
+     * Slow tools (e.g. a vision request) return this instead of blocking the event loop. The
+     * session runs it as async work and delivers its result to the model when it completes.
+     */
+    val deferredOutput: (suspend () -> String)? = null,
 )
 
 /**

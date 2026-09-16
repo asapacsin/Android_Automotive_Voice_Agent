@@ -13,7 +13,7 @@ class AndroidToolDispatcherTest {
     @Test
     fun navigateValidatesThenMapsSuccessfulAndFailedResults() {
         val executor = FakeExecutor()
-        val dispatcher = AndroidToolDispatcher(executor, ClimateToolHandler(SimulatedVehicleControl()))
+        val dispatcher = AndroidToolDispatcher(executor, ClimateToolHandler(SimulatedVehicleControl()), noCamera())
         val success = dispatcher.dispatch(call("navigate_to", mapOf("destination" to "Macau Tower")))
         assertTrue(JSONObject(success.output!!).getBoolean("ok"))
         assertEquals("Macau Tower", executor.destination)
@@ -27,7 +27,7 @@ class AndroidToolDispatcherTest {
     @Test
     fun malformedUnknownAndBlankCallsExecuteNothing() {
         val executor = FakeExecutor()
-        val dispatcher = AndroidToolDispatcher(executor, ClimateToolHandler(SimulatedVehicleControl()))
+        val dispatcher = AndroidToolDispatcher(executor, ClimateToolHandler(SimulatedVehicleControl()), noCamera())
         dispatcher.dispatch(call("navigate_to", mapOf("_validation_error" to "MALFORMED_JSON")))
         dispatcher.dispatch(call("unknown", emptyMap()))
         dispatcher.dispatch(call("navigate_to", mapOf("destination" to " ")))
@@ -37,7 +37,7 @@ class AndroidToolDispatcherTest {
     @Test
     fun openAppAcceptsOnlyTheFixedAllowlist() {
         val executor = FakeExecutor()
-        val dispatcher = AndroidToolDispatcher(executor, ClimateToolHandler(SimulatedVehicleControl()))
+        val dispatcher = AndroidToolDispatcher(executor, ClimateToolHandler(SimulatedVehicleControl()), noCamera())
         listOf("maps", "settings").forEach { dispatcher.dispatch(call("open_app", mapOf("app" to it))) }
         assertEquals(listOf(AllowedApp.MAPS, AllowedApp.SETTINGS), executor.apps)
         val rejected = dispatcher.dispatch(call("open_app", mapOf("app" to "com.example.raw")))
@@ -48,7 +48,7 @@ class AndroidToolDispatcherTest {
     @Test
     fun controlMusicPlayAndStopAreAccepted() {
         val executor = FakeExecutor()
-        val dispatcher = AndroidToolDispatcher(executor, ClimateToolHandler(SimulatedVehicleControl()))
+        val dispatcher = AndroidToolDispatcher(executor, ClimateToolHandler(SimulatedVehicleControl()), noCamera())
         val play = dispatcher.dispatch(call("control_music", mapOf("action" to "play")))
         assertTrue(JSONObject(play.output!!).getBoolean("ok"))
         assertTrue(play.output!!.contains("music_playing"))
@@ -61,7 +61,7 @@ class AndroidToolDispatcherTest {
     @Test
     fun exitNavigationModeReturnsAcceptedWithNavigationModeExited() {
         val executor = FakeExecutor()
-        val dispatcher = AndroidToolDispatcher(executor, ClimateToolHandler(SimulatedVehicleControl()))
+        val dispatcher = AndroidToolDispatcher(executor, ClimateToolHandler(SimulatedVehicleControl()), noCamera())
         val result = dispatcher.dispatch(call("exit_navigation_mode", emptyMap()))
         assertTrue(JSONObject(result.output!!).getBoolean("ok"))
         assertTrue(result.output!!.contains("navigation_mode_exited"))
@@ -71,7 +71,7 @@ class AndroidToolDispatcherTest {
     @Test
     fun openAppMusicAndUnknownControlActionAreBlocked() {
         val executor = FakeExecutor()
-        val dispatcher = AndroidToolDispatcher(executor, ClimateToolHandler(SimulatedVehicleControl()))
+        val dispatcher = AndroidToolDispatcher(executor, ClimateToolHandler(SimulatedVehicleControl()), noCamera())
         val music = dispatcher.dispatch(call("open_app", mapOf("app" to "music")))
         assertEquals("APP_NOT_ALLOWED", JSONObject(music.output!!).getString("error"))
         val unknown = dispatcher.dispatch(call("control_music", mapOf("action" to "pause")))

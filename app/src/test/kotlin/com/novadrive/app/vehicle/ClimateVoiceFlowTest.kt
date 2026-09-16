@@ -43,7 +43,7 @@ class ClimateVoiceFlowTest {
     )
 
     private val vehicle = SimulatedVehicleControl()
-    private val dispatcher = AndroidToolDispatcher(NoopExecutor, ClimateToolHandler(vehicle))
+    private val dispatcher = AndroidToolDispatcher(NoopExecutor, ClimateToolHandler(vehicle), com.novadrive.app.noCamera())
     private val assembler = FlexFunctionCallAssembler()
     private var seq = 0
 

@@ -8,6 +8,13 @@ import com.novadrive.app.nav.EmbeddedNavigation
 import com.novadrive.app.nav.NavigationHostGateway
 import com.novadrive.app.nav.amap.AmapNaviViewHost
 import com.novadrive.app.vehicle.VehicleControlProvider
+import com.novadrive.app.vision.CameraVisionGateway
+import com.novadrive.app.vision.VisionProvider
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import com.novadrive.ingress.realtime.VoiceUiState
 
 class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
@@ -23,6 +30,7 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
     private val choiceOverlay = NavigationChoiceOverlay(context)
     private val bottomBar = BottomBarView(context)
     private val camera = CameraPreviewView(context)
+    private val uiScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     val cameraShowing: Boolean
         get() = camera.isShowing
@@ -49,6 +57,10 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
         camera.visibility = GONE
         bottomBar.onCameraClick = { onCameraToggleRequested?.invoke() }
         bottomBar.bindClimate(VehicleControlProvider.port)
+        camera.onAskAi = {
+            // Same handler the voice tool uses; the answer is shown on the camera view.
+            uiScope.launch { VisionProvider.handler(context).ask(null) }
+        }
         overlay.onOpenDeveloperSettings = { onOpenDeveloperSettings?.invoke() }
         choiceOverlay.bind(EmbeddedNavigation.shared(context))
     }
@@ -56,6 +68,7 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
     fun onCreate(savedInstanceState: Bundle?) {
         mapHost.onCreate(savedInstanceState)
         NavigationHostGateway.attach(this, mapHost)
+        CameraVisionGateway.attach(this, camera)
     }
 
     fun onResume() {
@@ -67,7 +80,9 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
     }
 
     fun onDestroy() {
+        uiScope.cancel()
         camera.hide()
+        CameraVisionGateway.detach(this)
         NavigationHostGateway.detach(this)
         mapHost.onDestroy()
     }
