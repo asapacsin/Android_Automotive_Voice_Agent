@@ -46,6 +46,7 @@ class BaiduFlexClient(
     @Volatile private var voiceFallbackUsed = false
     @Volatile private var vadThreshold: Double = BaiduFlexProtocol.DEFAULT_VAD_THRESHOLD
     @Volatile private var navigatingListener: ((Boolean) -> Unit)? = null
+    private val emptyRetry = EmptyResponseRetryPolicy()
 
     fun events(): Flow<RealtimeEvent> = eventFlow.asSharedFlow()
 
@@ -69,6 +70,7 @@ class BaiduFlexClient(
         sessionCreated = false
         assistantSpeaking = false
         assembler.clear()
+        emptyRetry.reset()
         instructions = PersonaProfiles.sanitize(effective.settings.instructions)
         voice = effective.settings.voice
         speed = effective.settings.speed
@@ -143,17 +145,24 @@ class BaiduFlexClient(
      * Diagnoses silent turns (THINKING -> LISTENING with no tool call and no reply): records how
      * the response ended and which kinds of output it held. Never the content.
      */
-    private fun logResponseDone(text: String) {
+    private fun onResponseDone(text: String): Boolean =
         runCatching {
-            val response = JSONObject(text).optJSONObject("response") ?: return
+            val response = JSONObject(text).optJSONObject("response") ?: return false
+            val status = response.optString("status")
             val details = response.optJSONObject("status_details")
             val outputs = response.optJSONArray("output")
             val kinds = (0 until (outputs?.length() ?: 0)).map { outputs!!.optJSONObject(it)?.optString("type").orEmpty() }
             DebugVoiceLog.log(
-                "flex_response_done status=${response.optString("status")} " +
+                "flex_response_done status=$status " +
                     "reason=${details?.optString("reason").orEmpty().ifBlank { "-" }} outputs=$kinds",
             )
-        }
+            emptyRetry.onResponseDone(status, kinds.size)
+        }.getOrDefault(false)
+
+    /** One extra response.create for a turn Baidu completed with no output (see EmptyResponseRetryPolicy). */
+    private fun requestReplyAfterEmptyResponse() {
+        DebugVoiceLog.log("flex_empty_response_retry")
+        trySend(BaiduFlexProtocol.responseCreate())
     }
 
     private fun listener(current: Long, pending: CompletableDeferred<Unit>) = object : WebSocketListener() {
@@ -176,7 +185,11 @@ class BaiduFlexClient(
             if (type == "session.updated" && sessionCreated) pending.complete(Unit)
             if (type == "response.audio.delta") assistantSpeaking = true
             if (type == "response.audio.done" || type == "response.done") assistantSpeaking = false
-            if (type == "response.done") logResponseDone(text)
+            if (type == "input_audio_buffer.speech_started") emptyRetry.onSpeechStarted()
+            if (type == "conversation.item.input_audio_transcription.completed" && emptyRetry.onUserTranscriptCompleted()) {
+                requestReplyAfterEmptyResponse()
+            }
+            if (type == "response.done" && onResponseDone(text)) requestReplyAfterEmptyResponse()
             events.forEach { event ->
                 if (event is DomainVoiceEvent.Error && !pending.isCompleted) {
                     if (!voiceFallbackUsed && sentVoice != BaiduAppSettings.DEFAULT_VOICE) {

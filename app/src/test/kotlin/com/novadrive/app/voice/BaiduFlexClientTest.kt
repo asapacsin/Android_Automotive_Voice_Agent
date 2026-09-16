@@ -163,6 +163,34 @@ class BaiduFlexClientTest {
     }
 
     @Test
+    fun emptyCompletedResponseAfterUtteranceRequestsExactlyOneReply() = runBlocking {
+        val received = Collections.synchronizedList(mutableListOf<String>())
+        server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
+                webSocket.send("""{"type":"session.created","session":{"model":"qianfan-realtime-flex-v1"}}""")
+            }
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                received += text
+                if (JSONObject(text).optString("type") == "session.update") {
+                    webSocket.send("""{"type":"session.updated","session":{"model":"qianfan-realtime-flex-v1"}}""")
+                    // Measured on device: utterance transcribed, then a completed response with no output — twice.
+                    webSocket.send("""{"type":"input_audio_buffer.speech_started"}""")
+                    webSocket.send("""{"type":"conversation.item.input_audio_transcription.completed","item_id":"i1","transcript":"温度调高一点。"}""")
+                    webSocket.send("""{"type":"response.done","response":{"status":"completed","output":[]}}""")
+                    webSocket.send("""{"type":"response.done","response":{"status":"completed","output":[]}}""")
+                }
+            }
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
+        }))
+        val client = BaiduFlexClient(OkHttpClient(), 3_000, requireTls = false)
+        client.connect(config())
+        Thread.sleep(800)
+        val creates = received.map(::JSONObject).count { it.getString("type") == "response.create" }
+        assertEquals(1, creates)
+        client.disconnect()
+    }
+
+    @Test
     fun sendAudioOnClosedSocketEmitsErrorWithoutThrowing() = runBlocking {
         val client = BaiduFlexClient(OkHttpClient(), 3_000, requireTls = false)
         val pending = async(start = CoroutineStart.UNDISPATCHED) { client.events().first() }
