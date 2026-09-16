@@ -139,6 +139,23 @@ class BaiduFlexClient(
 
     fun close() = disconnect()
 
+    /**
+     * Diagnoses silent turns (THINKING -> LISTENING with no tool call and no reply): records how
+     * the response ended and which kinds of output it held. Never the content.
+     */
+    private fun logResponseDone(text: String) {
+        runCatching {
+            val response = JSONObject(text).optJSONObject("response") ?: return
+            val details = response.optJSONObject("status_details")
+            val outputs = response.optJSONArray("output")
+            val kinds = (0 until (outputs?.length() ?: 0)).map { outputs!!.optJSONObject(it)?.optString("type").orEmpty() }
+            DebugVoiceLog.log(
+                "flex_response_done status=${response.optString("status")} " +
+                    "reason=${details?.optString("reason").orEmpty().ifBlank { "-" }} outputs=$kinds",
+            )
+        }
+    }
+
     private fun listener(current: Long, pending: CompletableDeferred<Unit>) = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) = Unit
 
@@ -159,6 +176,7 @@ class BaiduFlexClient(
             if (type == "session.updated" && sessionCreated) pending.complete(Unit)
             if (type == "response.audio.delta") assistantSpeaking = true
             if (type == "response.audio.done" || type == "response.done") assistantSpeaking = false
+            if (type == "response.done") logResponseDone(text)
             events.forEach { event ->
                 if (event is DomainVoiceEvent.Error && !pending.isCompleted) {
                     if (!voiceFallbackUsed && sentVoice != BaiduAppSettings.DEFAULT_VOICE) {
