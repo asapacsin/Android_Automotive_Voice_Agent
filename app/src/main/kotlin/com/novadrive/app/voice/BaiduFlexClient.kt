@@ -156,6 +156,10 @@ class BaiduFlexClient(
                 "flex_response_done status=$status " +
                     "reason=${details?.optString("reason").orEmpty().ifBlank { "-" }} outputs=$kinds",
             )
+            if (kinds.isEmpty()) {
+                // An empty response carries no user or assistant content, only ids and usage.
+                DebugVoiceLog.log("flex_empty_response_raw ${text.take(800)}")
+            }
             emptyRetry.onResponseDone(status, kinds.size)
         }.getOrDefault(false)
 
@@ -185,6 +189,7 @@ class BaiduFlexClient(
             if (type == "session.updated" && sessionCreated) pending.complete(Unit)
             if (type == "response.audio.delta") assistantSpeaking = true
             if (type == "response.audio.done" || type == "response.done") assistantSpeaking = false
+            if (type !in NOISY_EVENT_TYPES) DebugVoiceLog.log("flex_event type=$type")
             if (type == "input_audio_buffer.speech_started") emptyRetry.onSpeechStarted()
             if (type == "conversation.item.input_audio_transcription.completed" && emptyRetry.onUserTranscriptCompleted()) {
                 requestReplyAfterEmptyResponse()
@@ -265,3 +270,12 @@ internal fun releaseNavigatingListenerIfOwned(installed: ((Boolean) -> Unit)?) {
         NavigationState.onNavigatingChanged = null
     }
 }
+
+/** Streaming chunks: logging every one would flood logcat and could carry content. */
+private val NOISY_EVENT_TYPES = setOf(
+    "response.audio.delta",
+    "response.audio_transcript.delta",
+    "response.text.delta",
+    "response.function_call_arguments.delta",
+    "conversation.item.input_audio_transcription.delta",
+)
