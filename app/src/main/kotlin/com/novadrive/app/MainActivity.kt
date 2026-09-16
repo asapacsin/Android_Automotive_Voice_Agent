@@ -6,6 +6,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import com.novadrive.app.vehicle.ClimateToolHandler
+import com.novadrive.app.vehicle.VehicleControlProvider
 import android.os.Handler
 import android.os.Looper
 import com.novadrive.app.ui.AssistantNavigationScreen
@@ -28,7 +30,10 @@ class MainActivity : Activity() {
         DebugVoiceLog.init(this)
         settingsRepository = BaiduSettingsRepository(this)
         val player = PcmAudioPlayer { code -> mainHandler.post { showError(code, "playback failed") } }
-        val toolDispatcher = AndroidToolDispatcher(SafeAndroidActionExecutor(this))
+        val toolDispatcher = AndroidToolDispatcher(
+            SafeAndroidActionExecutor(this),
+            ClimateToolHandler(VehicleControlProvider.port),
+        )
         controller =
             VoiceSessionController(
                 context = this,

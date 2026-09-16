@@ -7,10 +7,33 @@ import android.view.Gravity
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import com.novadrive.app.BundledMusicPlayer
+import com.novadrive.app.DebugVoiceLog
 import com.novadrive.app.R
+import com.novadrive.app.vehicle.ClimateToolHandler
+import com.novadrive.vehicle.ClimateLimits
+import com.novadrive.vehicle.ClimateState
+import com.novadrive.vehicle.VehicleActionResult
+import com.novadrive.vehicle.VehicleControlPort
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
+/**
+ * Media + climate bar. Every control does real work: music buttons drive [BundledMusicPlayer]
+ * and reflect its actual state; climate controls go through [VehicleControlPort] (a simulated
+ * backend on the phone build) and the label shows the state read back from it.
+ */
 class BottomBarView(context: Context) : LinearLayout(context) {
     var onCameraClick: (() -> Unit)? = null
+
+    private var scope: CoroutineScope? = null
+    private var climate: VehicleControlPort? = null
+
+    private val playPause: TextView
+    private val climateLabel: TextView
 
     init {
         orientation = HORIZONTAL
@@ -19,14 +42,26 @@ class BottomBarView(context: Context) : LinearLayout(context) {
         setBackgroundColor(Color.parseColor("#E6121820"))
         isClickable = true
 
-        addView(inertLabel(context.getString(R.string.bottom_bar_music), 16f))
-        addView(inertControl(context.getString(R.string.bottom_bar_prev)))
-        addView(inertControl(context.getString(R.string.bottom_bar_pause)))
-        addView(inertControl(context.getString(R.string.bottom_bar_next)))
+        addView(label(context.getString(R.string.bottom_bar_music), 16f))
+        addView(control(context.getString(R.string.bottom_bar_prev)) { BundledMusicPlayer.restart(context) })
+        playPause = control(context.getString(R.string.bottom_bar_play)) { BundledMusicPlayer.toggle(context) }
+        addView(playPause)
+        // One bundled track: there is no "next". Shown disabled rather than as a button that does nothing.
         addView(
-            inertLabel(context.getString(R.string.bottom_bar_climate), 16f),
-            LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f),
+            control(context.getString(R.string.bottom_bar_next)) {}.apply {
+                isEnabled = false
+                isClickable = false
+                alpha = DISABLED_ALPHA
+            },
         )
+        addView(control(context.getString(R.string.bottom_bar_temp_down)) { adjustTemperature(-ClimateLimits.DEFAULT_TEMPERATURE_STEP_C) })
+        climateLabel =
+            label("", 15f).apply {
+                gravity = Gravity.CENTER
+                setOnClickListener { togglePower() }
+            }
+        addView(climateLabel, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        addView(control(context.getString(R.string.bottom_bar_temp_up)) { adjustTemperature(ClimateLimits.DEFAULT_TEMPERATURE_STEP_C) })
         val camera =
             Button(context).apply {
                 text = context.getString(R.string.camera_button)
@@ -36,9 +71,67 @@ class BottomBarView(context: Context) : LinearLayout(context) {
         addView(camera, LayoutParams(dp(72), LayoutParams.WRAP_CONTENT))
     }
 
-    private fun inertLabel(label: String, size: Float): TextView =
+    /** UI depends on the port only — never on the simulator. */
+    fun bindClimate(port: VehicleControlPort) {
+        climate = port
+        renderClimate(port.climateState.value)
+        if (isAttachedToWindow) startCollecting()
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        startCollecting()
+    }
+
+    override fun onDetachedFromWindow() {
+        scope?.cancel()
+        scope = null
+        super.onDetachedFromWindow()
+    }
+
+    private fun startCollecting() {
+        scope?.cancel()
+        val created = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+        scope = created
+        created.launch {
+            BundledMusicPlayer.playing.collect { playing ->
+                playPause.text = context.getString(if (playing) R.string.bottom_bar_pause else R.string.bottom_bar_play)
+            }
+        }
+        val port = climate ?: return
+        created.launch { port.climateState.collect(::renderClimate) }
+    }
+
+    private fun togglePower() {
+        val port = climate ?: return
+        scope?.launch { report(port.setHvacPower(!port.getClimateState().powerOn)) }
+    }
+
+    private fun adjustTemperature(delta: Double) {
+        val port = climate ?: return
+        scope?.launch { report(port.changeCabinTemperature(delta)) }
+    }
+
+    private fun report(result: VehicleActionResult) {
+        DebugVoiceLog.log("climate_ui result=${result::class.simpleName}")
+        if (result !is VehicleActionResult.Success) {
+            climateLabel.text = context.getString(R.string.bottom_bar_climate_failed)
+        }
+    }
+
+    private fun renderClimate(state: ClimateState) {
+        val temperature = ClimateToolHandler.formatTemperature(state.targetTemperatureCelsius)
+        climateLabel.text =
+            if (state.powerOn) {
+                context.getString(R.string.bottom_bar_climate_on, temperature, state.fanLevel)
+            } else {
+                context.getString(R.string.bottom_bar_climate_off, temperature)
+            }
+    }
+
+    private fun label(text: String, size: Float): TextView =
         TextView(context).apply {
-            text = label
+            this.text = text
             textSize = size
             setTextColor(Color.WHITE)
             setPadding(dp(8), dp(4), dp(8), dp(4))
@@ -46,9 +139,9 @@ class BottomBarView(context: Context) : LinearLayout(context) {
             isFocusable = true
         }
 
-    private fun inertControl(label: String): TextView =
+    private fun control(text: String, onClick: () -> Unit): TextView =
         TextView(context).apply {
-            text = label
+            this.text = text
             textSize = 18f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
@@ -60,7 +153,15 @@ class BottomBarView(context: Context) : LinearLayout(context) {
                 }
             isClickable = true
             isFocusable = true
+            setOnClickListener { onClick() }
+            layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+                marginStart = dp(4)
+            }
         }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private companion object {
+        const val DISABLED_ALPHA = 0.35f
+    }
 }

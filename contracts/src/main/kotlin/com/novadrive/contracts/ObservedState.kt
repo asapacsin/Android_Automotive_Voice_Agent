@@ -21,6 +21,7 @@ data class PhoneObservedState(
 data class HvacObservedState(
     val cabinTemperatureCelsius: Double,
     val fanLevel: Int,
+    val powerOn: Boolean = false,
 )
 
 data class ObservedVehicleState(

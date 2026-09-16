@@ -120,8 +120,33 @@ Outbound only, to three hosts: `aip.baidubce.com` (WSS + OAuth) and `restapi.ama
 | Qwen direct (`QwenSettings`, providers, protocol) | DORMANT — unreachable from production UI |
 | PC backend (`BackendRealtimeProvider`, `backend/`) | DORMANT — empty packaged URL |
 | GPT-Live | DORMANT — catalog metadata only, no adapter |
-| `simulator`, Fake/Mock providers | TEST ONLY |
+| Cabin climate (`control_climate` tool → `VehicleControlPort`) | **ACTIVE — SIMULATED BACKEND.** `SimulatedVehicleControl` on the phone; not real vehicle control |
+| `simulator` `InMemoryVehicleSimulator`, Fake/Mock providers | TEST ONLY (its climate state is the shared `SimulatedVehicleControl`) |
 | `demo` module | TEST/DEMO ONLY — JVM structured-command demo |
+
+## Vehicle control (cabin climate)
+
+```text
+Baidu Flex tool call: control_climate {action, value}
+      ↓  FlexFunctionCallAssembler (schema validation)
+AndroidToolDispatcher
+      ↓
+ClimateToolHandler            ← depends only on the interface
+      ↓
+VehicleControlPort            ← module `vehicle`; the ONE climate abstraction
+      ↓
+VehicleControlProvider        ← the only production file naming a backend
+      ├── SimulatedVehicleControl        ← phone build (module `simulator`)
+      └── (later) AndroidAutomotive / CAN / OEM / remote adapter
+```
+
+- `ClimateState(powerOn, targetTemperatureCelsius, fanLevel)`; limits 16–32 °C and fan 0–7 from `CommandBounds` (docs/MVP_SPEC.md).
+- Absolute out-of-range values are **rejected**; relative changes are **clamped** and report `limitReached`.
+- Power off keeps setpoints. Setpoints may change while off; every result carries the power state.
+- `VehicleActionResult`: `Success(state, limitReached)`, `InvalidArgument`, `Unsupported`, `Unavailable`, `PermissionDenied`, `Failure`. Every non-success reaches the model as `ok=false` with an instruction not to claim completion.
+- The legacy synchronous `VehiclePort` (orchestration) routes its HVAC commands through the same port; `HvacController` was removed.
+- The bottom bar reads and changes climate through the port too.
+- **Swapping to a real vehicle** = one new `VehicleControlPort` implementation selected in `VehicleControlProvider`. A guard test (`DependencyBoundaryTest`) fails if another production file names a concrete backend.
 
 ## Test boundaries
 

@@ -7,6 +7,7 @@ import android.widget.FrameLayout
 import com.novadrive.app.nav.EmbeddedNavigation
 import com.novadrive.app.nav.NavigationHostGateway
 import com.novadrive.app.nav.amap.AmapNaviViewHost
+import com.novadrive.app.vehicle.VehicleControlProvider
 import com.novadrive.ingress.realtime.VoiceUiState
 
 class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
@@ -47,6 +48,7 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
         addView(camera, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         camera.visibility = GONE
         bottomBar.onCameraClick = { onCameraToggleRequested?.invoke() }
+        bottomBar.bindClimate(VehicleControlProvider.port)
         overlay.onOpenDeveloperSettings = { onOpenDeveloperSettings?.invoke() }
         choiceOverlay.bind(EmbeddedNavigation.shared(context))
     }

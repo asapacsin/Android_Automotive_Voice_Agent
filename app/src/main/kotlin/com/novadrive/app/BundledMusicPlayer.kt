@@ -5,6 +5,9 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 object BundledMusicPlayer {
     @Volatile
@@ -12,8 +15,24 @@ object BundledMusicPlayer {
     private var audioManager: AudioManager? = null
     private var focusRequest: AudioFocusRequest? = null
 
+    private val playingState = MutableStateFlow(false)
+
+    /** Real playback state, so the bottom bar reflects voice-started music too. */
+    val playing: StateFlow<Boolean> = playingState.asStateFlow()
+
     val isPlaying: Boolean
         get() = synchronized(this) { player?.isPlaying == true }
+
+    /** ⏮ — there is one bundled track, so "previous" restarts it from the beginning. */
+    fun restart(context: Context): Boolean =
+        synchronized(this) {
+            val current = player
+            if (current != null) {
+                runCatching { current.seekTo(0) }.isSuccess
+            } else {
+                play(context)
+            }
+        }
 
     fun play(context: Context): Boolean =
         synchronized(this) {
@@ -37,6 +56,7 @@ object BundledMusicPlayer {
                     requestMediaFocus(context)
                     created.start()
                     player = created
+                    playingState.value = true
                     true
                 } catch (failure: Exception) {
                     try {
@@ -92,6 +112,7 @@ object BundledMusicPlayer {
         }
         focusRequest = null
         audioManager = null
+        playingState.value = false
         val current = player
         player = null
         if (current == null) return

@@ -20,6 +20,7 @@ class DebugToolReceiver : BroadcastReceiver() {
                 "nav_route" -> navRoute(context, arg)
                 "nav_start" -> navStart(arg)
                 "nav_stop" -> navStop()
+                "climate" -> climate(arg)
                 else -> "unknown tool"
             }
             Log.d("NovaVoice", "debug_tool tool=$tool arg=$arg result=$result")
@@ -104,6 +105,25 @@ class DebugToolReceiver : BroadcastReceiver() {
         val host = NavigationHostGateway.current() ?: return "no live map host"
         val stopped = host.stopNavigation("manual")
         return if (stopped) "stopped" else "already inactive"
+    }
+
+    /**
+     * LLM-bypassed climate check through the SAME handler and port the voice tool uses.
+     * arg: "power_on" | "set_temperature:22" | "adjust_fan:1" | "get_state" ...
+     * "fail:<KIND>" is not offered: failure injection is covered by unit tests, and the
+     * production provider exposes only the port interface.
+     */
+    private fun climate(arg: String): String {
+        val action = arg.substringBefore(':')
+        val value = arg.substringAfter(':', "").takeIf { it.isNotBlank() }
+        val args = buildMap {
+            put("action", action)
+            if (value != null) put("value", value)
+        }
+        val outcome = kotlinx.coroutines.runBlocking {
+            com.novadrive.app.vehicle.ClimateToolHandler(com.novadrive.app.vehicle.VehicleControlProvider.port).handle(args)
+        }
+        return outcome.output
     }
 
     private fun format(action: AndroidActionResult): String = when (action) {

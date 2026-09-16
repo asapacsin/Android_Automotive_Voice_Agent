@@ -12,12 +12,14 @@ import com.novadrive.contracts.ObservedVehicleState
 import com.novadrive.contracts.PhoneObservedState
 import com.novadrive.contracts.ResolvedContact
 import com.novadrive.contracts.VehicleSafetySnapshot
-import com.novadrive.vehicle.HvacController
+import com.novadrive.vehicle.ClimateState
 import com.novadrive.vehicle.MediaProvider
 import com.novadrive.vehicle.NavigationProvider
 import com.novadrive.vehicle.PhoneProvider
+import com.novadrive.vehicle.VehicleActionResult
 import com.novadrive.vehicle.VehicleCommand
 import com.novadrive.vehicle.VehiclePort
+import com.novadrive.vehicle.toAdapterOutcome
 
 data class SimulatorFaults(
     var failNextExecution: Boolean = false,
@@ -28,13 +30,16 @@ class InMemoryVehicleSimulator(
     private val faults: SimulatorFaults = SimulatorFaults(),
     contacts: List<ResolvedContact> = defaultContacts(),
     var callsBlocked: Boolean = false,
-) : VehiclePort, NavigationProvider, MediaProvider, PhoneProvider, HvacController {
+    /** Climate lives in the shared simulated climate backend, so there is one source of truth. */
+    val climate: SimulatedVehicleControl = SimulatedVehicleControl(
+        ClimateState(powerOn = false, targetTemperatureCelsius = 24.0, fanLevel = 3),
+    ),
+) : VehiclePort, NavigationProvider, MediaProvider, PhoneProvider {
     override val kind: NavigationProviderKind = NavigationProviderKind.FAKE
 
     private var navigation = NavigationObservedState(active = false)
     private var media = MediaObservedState(playing = false, title = null, volumePercent = 40)
     private var phone = PhoneObservedState(inCall = false)
-    private var hvac = HvacObservedState(cabinTemperatureCelsius = 24.0, fanLevel = 3)
     private var published = snapshot()
     private val directory = contacts
 
@@ -67,9 +72,9 @@ class InMemoryVehicleSimulator(
             is VehicleCommand.HangUp ->
                 phone = PhoneObservedState(inCall = false)
             is VehicleCommand.SetCabinTemperature ->
-                hvac = hvac.copy(cabinTemperatureCelsius = command.celsius)
+                climate.applySetTemperature(command.celsius).failureOrNull()?.let { return it }
             is VehicleCommand.SetFanLevel ->
-                hvac = hvac.copy(fanLevel = command.level)
+                climate.applySetFan(command.level).failureOrNull()?.let { return it }
         }
         if (!faults.desyncNextObservation) {
             published = snapshot()
@@ -90,7 +95,7 @@ class InMemoryVehicleSimulator(
 
     override fun observePhone(): PhoneObservedState = published.phone
 
-    override fun observeHvac(): HvacObservedState = published.hvac
+    fun observeHvac(): HvacObservedState = published.hvac
 
     override fun resolveContact(query: ContactQuery): ContactResolution = resolve(query)
 
@@ -110,7 +115,11 @@ class InMemoryVehicleSimulator(
         }
     }
 
-    private fun snapshot() = ObservedVehicleState(navigation, media, phone, hvac)
+    private fun snapshot() =
+        ObservedVehicleState(navigation, media, phone, climate.climateState.value.toObserved())
+
+    private fun VehicleActionResult.failureOrNull(): AdapterOutcome? =
+        toAdapterOutcome().takeIf { it is AdapterOutcome.Failed }
 
     companion object {
         fun defaultContacts(): List<ResolvedContact> = listOf(

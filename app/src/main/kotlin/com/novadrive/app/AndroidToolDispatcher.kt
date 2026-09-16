@@ -6,6 +6,7 @@ import android.provider.Settings
 import com.novadrive.app.nav.EmbeddedNavigation
 import com.novadrive.app.nav.EmbeddedNavigationController
 import com.novadrive.app.nav.NavigationHostGateway
+import com.novadrive.app.vehicle.ClimateToolHandler
 import com.novadrive.ingress.realtime.DomainVoiceEvent
 import com.novadrive.ingress.realtime.ToolDispatchResult
 import kotlinx.coroutines.runBlocking
@@ -27,10 +28,26 @@ interface AndroidActionExecutor {
 }
 
 /** Validates untrusted model output before calling the narrow Android executor. */
-class AndroidToolDispatcher(private val executor: AndroidActionExecutor) {
+class AndroidToolDispatcher(
+    private val executor: AndroidActionExecutor,
+    private val climate: ClimateToolHandler,
+) {
     fun dispatch(call: DomainVoiceEvent.ToolCall): ToolDispatchResult {
         call.arguments["_validation_error"]?.let { return failed(call, it) }
         return when (call.name) {
+            ClimateToolHandler.TOOL -> {
+                val outcome = runBlocking { climate.handle(call.arguments) }
+                // Failures are worth hearing too, even while navigating: the driver must not
+                // assume the climate changed when it did not.
+                NavigationState.allowConfirmation()
+                ToolDispatchResult(
+                    null,
+                    null,
+                    blockedReason = outcome.errorCode,
+                    successChip = outcome.chip,
+                    output = outcome.output,
+                )
+            }
             "navigate_to" -> {
                 val destination = call.arguments["destination"]?.trim().orEmpty()
                 if (destination.isBlank()) return failed(call, "BLANK_DESTINATION")

@@ -2,9 +2,13 @@ package com.novadrive.app.voice
 
 import com.novadrive.app.BaiduAppSettings
 import com.novadrive.app.PersonaProfiles
+import com.novadrive.app.vehicle.ClimateToolHandler
 import com.novadrive.ingress.realtime.DomainVoiceEvent
 import org.json.JSONArray
 import org.json.JSONObject
+
+/** Single source of truth for the climate tool's action enum: the handler defines it. */
+internal val CLIMATE_ACTIONS: List<String> = ClimateToolHandler.ACTIONS
 
 object BaiduFlexProtocol {
     const val MODEL = "qianfan-realtime-flex-v1"
@@ -48,6 +52,29 @@ object BaiduFlexProtocol {
             ),
             required = "action",
         )
+        val controlClimate = functionTool(
+            name = "control_climate",
+            description = "控制车内空调（当前为模拟空调）。「打开空调」action=power_on；「关闭空调」action=power_off；" +
+                "「空调调到22度」action=set_temperature,value=22；「温度调高一点」action=adjust_temperature,value=1；" +
+                "「温度调低一点」action=adjust_temperature,value=-1；「风量调到3档」action=set_fan,value=3；" +
+                "「风量调大」action=adjust_fan,value=1；「风量调小」action=adjust_fan,value=-1；「现在空调多少度」action=get_state。" +
+                "相对调节必须用 adjust_*，不要自己推算原来的温度。只根据工具返回的 temperature_c/fan_level/power_on 确认结果；" +
+                "ok=false 时必须如实说没有成功。Control the cabin climate (simulated backend).",
+            properties = JSONObject()
+                .put(
+                    "action",
+                    JSONObject()
+                        .put("type", "string")
+                        .put("enum", JSONArray(CLIMATE_ACTIONS)),
+                )
+                .put(
+                    "value",
+                    JSONObject()
+                        .put("type", "number")
+                        .put("description", "set_temperature: 16-32 摄氏度；set_fan: 0-7 档；adjust_*: 变化量，默认 1"),
+                ),
+            required = "action",
+        )
         val exitNavigationMode = functionToolNoArgs(
             name = "exit_navigation_mode",
             description = "退出小诺的导航模式，让小诺恢复正常说话。用户说「结束导航」「导航结束了」「退出导航」「不用导航了」时调用。注意：这只会让小诺恢复说话，并不会关闭高德地图的导航，高德需要用户自己退出。Exit the assistant's navigation quiet mode; this does NOT stop the Amap app's navigation.",
@@ -72,7 +99,7 @@ object BaiduFlexProtocol {
                     .put("create_response", true)
                     .put("interrupt_response", true),
             )
-            .put("tools", JSONArray().put(navigate).put(openApp).put(controlMusic).put(exitNavigationMode))
+            .put("tools", JSONArray().put(navigate).put(openApp).put(controlMusic).put(controlClimate).put(exitNavigationMode))
             .put("tool_choice", "auto")
         return JSONObject().put("type", "session.update").put("session", session).toString()
     }
@@ -222,7 +249,10 @@ class FlexFunctionCallAssembler {
             val keys = parsed.keys()
             while (keys.hasNext()) {
                 val key = keys.next()
-                put(key, parsed.getString(key))
+                // get().toString(), not getString(): numeric tool arguments (control_climate value)
+                // must stringify identically on Android's org.json and the JVM test artifact,
+                // which throws from getString() on a number.
+                put(key, parsed.get(key).toString())
             }
         }
         return listOf(DomainVoiceEvent.ToolCall(callId, name, args))
@@ -248,6 +278,15 @@ class FlexFunctionCallAssembler {
                 keys != setOf("action") -> "INVALID_FIELDS"
                 json.opt("action") !is String -> "INVALID_FIELD_TYPE"
                 json.optString("action") !in setOf("play", "stop") -> "ACTION_NOT_ALLOWED"
+                else -> null
+            }
+            "control_climate" -> when {
+                !keys.contains("action") -> "INVALID_FIELDS"
+                !setOf("action", "value").containsAll(keys) -> "INVALID_FIELDS"
+                json.opt("action") !is String -> "INVALID_FIELD_TYPE"
+                json.optString("action") !in CLIMATE_ACTIONS -> "ACTION_NOT_ALLOWED"
+                keys.contains("value") && json.opt("value") !is Number -> "INVALID_FIELD_TYPE"
+                json.optString("action") in setOf("set_temperature", "set_fan") && !keys.contains("value") -> "MISSING_VALUE"
                 else -> null
             }
             "exit_navigation_mode" -> when {
