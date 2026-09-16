@@ -202,6 +202,16 @@ class BaiduFlexProtocolTest {
     }
 
     @Test
+    fun refusedSessionUpdateIsNotSessionFatal() {
+        // Verbatim from the device log, 2026-09-16.
+        val events = BaiduFlexProtocol.parseCommonEvent(
+            """{"type":"error","error":{"code":"invalid_value","message":"Invalid value: 0.750000. Cannot update a session's turn detection threshold while input audio is in progress, current value is 0.620000."}}""",
+            speaking = false,
+        )
+        assertTrue(events.none { it is DomainVoiceEvent.Error })
+    }
+
+    @Test
     fun genuineQuotaAndAccessDeniedErrorsStillMapAsBefore() {
         val quota = BaiduFlexProtocol.parseCommonEvent(
             """{"type":"error","error":{"code":"quota_exceeded","message":"quota exceeded"}}""",

@@ -457,3 +457,32 @@ Not a fault of the migration: the task scoped `PcmAudioCapture` as untouchable, 
 **Also to revisit:** `WakeWordController.bind()` is invoked from `DebugVoiceLog.init` — a workaround for `MainActivity` being off-limits. It functions, but a wake-word owner does not belong in a logging initialiser.
 
 **Still unverified (L5):** MSC initialisation on device, real detection of 你好小诺, entry into the session pipeline, repeated cycles without leaked or duplicated listeners, whether `KEEP_ALIVE=1` truly continues listening, and the false-accept rate.
+
+---
+
+## P7 — Voice session dies right after a spoken `navigate_to`
+
+**Status:** FIXED 2026-09-16 — tests + ADB device check; **human-voice re-test pending**
+**Found:** 2026-09-16, first human-voice run of wake word → 「帮我导航到拱北口岸」
+
+```
+tool=navigate_to ... ✓
+error=BAIDU_FLEX_API_REJECTED Invalid value: 0.750000. Cannot update a session's turn
+      detection threshold while input audio is in progress, current value is 0.620000.
+state=ERROR  (x25)
+```
+
+**Cause:** the P3 Option C VAD mitigation resent `session.update` with a raised threshold the
+moment `NavigationState` flipped. Baidu Flex refuses that while audio is flowing (always, in a
+live session), and the client treated the refusal as fatal. Every later utterance was lost —
+which is also why saying a new destination "did not change the list".
+
+**Fix:**
+1. No mid-session `session.update`; the navigation threshold applies at the next connect.
+2. A refused `session.update` ("cannot update a session") is no longer a session-fatal error.
+3. `navigate_to` now returns `awaiting_route_selection_on_screen`, and its description tells the
+   model not to claim navigation has started and to call again when the driver changes destination.
+4. `requestDestination` while already `NAVIGATING` stops the old guidance first.
+
+Device (ADB): 万达 → 4 candidates, then 拱北口岸 → list replaced with 5. Wake engine re-initialised
+after install (`MSPLogin ret:0`, `sessionBegin ErrCode:0`, `recording`).

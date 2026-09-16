@@ -102,7 +102,9 @@ class SafeAndroidActionExecutor(
             runBlocking { navigationFlow.requestDestination(destination) }
         }.start()
 
-        return AndroidActionResult.Accepted("navigation_starting")
+        // The driver must still pick a destination (if ambiguous) and always a route on screen,
+        // so the model must not announce that navigation has started.
+        return AndroidActionResult.Accepted("awaiting_route_selection_on_screen")
     }
 
     override fun openApp(app: AllowedApp): AndroidActionResult {

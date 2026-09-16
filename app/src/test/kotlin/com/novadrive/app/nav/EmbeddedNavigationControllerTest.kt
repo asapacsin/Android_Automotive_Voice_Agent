@@ -196,6 +196,39 @@ class EmbeddedNavigationControllerTest {
     }
 
     @Test
+    fun newDestinationWhileNavigatingStopsOldRouteAndShowsNewCandidates() = runBlocking {
+        val engine = FakeNaviEngine()
+        engine.routes = threeRoutes()
+        val controller = controller(engine, listOf(candidate("a", 22.20, 113.54)))
+        controller.requestDestination("珠海站")
+        engine.emitSuccess(intArrayOf(10, 20, 30))
+        controller.selectRoute(10)
+        assertEquals(NavigationPhase.NAVIGATING, controller.state().value)
+
+        engine.results = threeCandidates()
+        controller.requestDestination("万达")
+        assertEquals(1, engine.stopNaviCount)
+        assertEquals(NavigationPhase.AWAITING_DESTINATION_SELECTION, controller.state().value)
+        assertEquals(listOf("a", "b", "c"), controller.destinationCandidates.value.map { it.id })
+    }
+
+    @Test
+    fun repeatedRequestWhilePickingReplacesTheList() = runBlocking {
+        val engine = FakeNaviEngine()
+        val controller = controller(engine, threeCandidates())
+        controller.requestDestination("万达")
+        engine.results = listOf(
+            candidate("x", 22.10, 113.50, name = "拱北口岸"),
+            candidate("y", 22.11, 113.51, name = "拱北口岸停车场"),
+        )
+        controller.requestDestination("拱北口岸")
+        assertEquals(NavigationPhase.AWAITING_DESTINATION_SELECTION, controller.state().value)
+        assertEquals(listOf("x", "y"), controller.destinationCandidates.value.map { it.id })
+        assertEquals(0, engine.stopNaviCount)
+        assertTrue(engine.calculateCalls.isEmpty())
+    }
+
+    @Test
     fun newRequestDestinationReplacesStaleCandidates() = runBlocking {
         val engine = FakeNaviEngine()
         val controller = controller(engine, threeCandidates())

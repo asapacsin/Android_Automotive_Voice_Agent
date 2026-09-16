@@ -108,9 +108,9 @@ class BaiduFlexClientTest {
     }
 
     @Test
-    fun navigationFlipResendsSessionUpdateWithRaisedVadThreshold() = runBlocking {
+    fun navigationFlipDoesNotResendSessionUpdateMidSession() = runBlocking {
         val received = Collections.synchronizedList(mutableListOf<String>())
-        val updates = CountDownLatch(2)
+        val first = CountDownLatch(1)
         server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
                 webSocket.send("""{"type":"session.created","session":{"model":"qianfan-realtime-flex-v1"}}""")
@@ -118,7 +118,7 @@ class BaiduFlexClientTest {
             override fun onMessage(webSocket: WebSocket, text: String) {
                 received += text
                 if (JSONObject(text).optString("type") == "session.update") {
-                    updates.countDown()
+                    first.countDown()
                     webSocket.send("""{"type":"session.updated","session":{"model":"qianfan-realtime-flex-v1"}}""")
                 }
             }
@@ -126,12 +126,39 @@ class BaiduFlexClientTest {
         }))
         val client = BaiduFlexClient(OkHttpClient(), 3_000, requireTls = false)
         client.connect(config())
+        assertTrue(first.await(3, TimeUnit.SECONDS))
         NavigationState.begin()
-        assertTrue(updates.await(3, TimeUnit.SECONDS))
+        Thread.sleep(500)
         val payloads = received.map(::JSONObject).filter { it.getString("type") == "session.update" }
-        assertEquals(2, payloads.size)
+        // Baidu rejects a mid-session threshold change while audio flows; only the connect-time update is sent.
+        assertEquals(1, payloads.size)
         assertEquals(0.62, payloads[0].getJSONObject("session").getJSONObject("turn_detection").getDouble("threshold"))
-        assertEquals(0.75, payloads[1].getJSONObject("session").getJSONObject("turn_detection").getDouble("threshold"))
+        client.disconnect()
+    }
+
+    @Test
+    fun connectWhileNavigatingUsesRaisedVadThreshold() = runBlocking {
+        val received = Collections.synchronizedList(mutableListOf<String>())
+        val first = CountDownLatch(1)
+        server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
+                webSocket.send("""{"type":"session.created","session":{"model":"qianfan-realtime-flex-v1"}}""")
+            }
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                received += text
+                if (JSONObject(text).optString("type") == "session.update") {
+                    first.countDown()
+                    webSocket.send("""{"type":"session.updated","session":{"model":"qianfan-realtime-flex-v1"}}""")
+                }
+            }
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
+        }))
+        NavigationState.begin()
+        val client = BaiduFlexClient(OkHttpClient(), 3_000, requireTls = false)
+        client.connect(config())
+        assertTrue(first.await(3, TimeUnit.SECONDS))
+        val payload = received.map(::JSONObject).first { it.getString("type") == "session.update" }
+        assertEquals(0.75, payload.getJSONObject("session").getJSONObject("turn_detection").getDouble("threshold"))
         client.disconnect()
     }
 

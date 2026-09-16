@@ -20,7 +20,7 @@ object BaiduFlexProtocol {
     ): String {
         val navigate = functionTool(
             name = "navigate_to",
-            description = "导航到指定地点。用户说「导航到X」「带我去X」「去X」时调用。Open navigation to a named destination.",
+            description = "导航到指定地点。用户说「导航到X」「带我去X」「去X」时调用。调用成功后屏幕会列出候选地点和路线，由用户点选后才开始导航：只回答「请在屏幕上选择路线」，不要说已经开始导航。用户换目的地或说「不是这个」「换成X」时，必须用新的目的地再次调用本工具，屏幕上的候选会被替换。Shows destination and route choices on screen; navigation starts only after the driver picks a route, so never claim it has started. Call again with the new destination whenever the driver changes it; the on-screen list is replaced.",
             properties = JSONObject().put(
                 "destination",
                 JSONObject().put("type", "string").put("minLength", 1).put("maxLength", 120),
@@ -112,6 +112,13 @@ object BaiduFlexProtocol {
                 val blob = "$providerCode $message".lowercase()
                 // A refused cancel is benign: nothing was playing, so emit nothing instead of Error.
                 if (listOf("no active response", "cancellation failed", "没有可取消", "无可取消").any { it in blob }) {
+                    return emptyList()
+                }
+                // A refused session.update is not session-fatal either: the session keeps its
+                // previous settings and the conversation can continue. Measured 2026-09-16 —
+                // treating "Cannot update a session's turn detection threshold while input audio
+                // is in progress" as an Error put the live session into ERROR.
+                if ("cannot update a session" in blob) {
                     return emptyList()
                 }
                 val code = if (listOf("permission", "forbidden", "access denied", "not entitled", "public beta", "无权限").any { it in blob }) {

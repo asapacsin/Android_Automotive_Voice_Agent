@@ -3,6 +3,7 @@ package com.novadrive.app.voice
 import com.novadrive.app.BaiduApiConfig
 import com.novadrive.app.BaiduAppSettings
 import com.novadrive.app.BaiduAuthMode
+import com.novadrive.app.DebugVoiceLog
 import com.novadrive.app.NavigationState
 import com.novadrive.app.PersonaProfiles
 import com.novadrive.ingress.realtime.DomainVoiceEvent
@@ -84,16 +85,14 @@ class BaiduFlexClient(
         } else {
             BaiduFlexProtocol.DEFAULT_VAD_THRESHOLD
         }
+        // Deliberately does NOT resend session.update. Measured on device 2026-09-16: Baidu
+        // Flex rejects a turn-detection threshold change while input audio is in progress
+        // ("Cannot update a session's turn detection threshold ..."), which is always the
+        // case mid-conversation, and the rejection took the whole session down right after
+        // navigate_to succeeded. The navigation threshold is applied at the next connect
+        // instead (see the vadThreshold assignment above).
         val listener: (Boolean) -> Unit = { navigating ->
-            val next = if (navigating) {
-                BaiduFlexProtocol.NAVIGATION_VAD_THRESHOLD
-            } else {
-                BaiduFlexProtocol.DEFAULT_VAD_THRESHOLD
-            }
-            if (next != vadThreshold) {
-                vadThreshold = next
-                trySend(BaiduFlexProtocol.sessionUpdate(instructions, sentVoice, speed, vadThreshold))
-            }
+            DebugVoiceLog.log("vad_threshold_deferred navigating=$navigating")
         }
         navigatingListener = listener
         // Test Connection constructs a throwaway BaiduFlexClient; disconnect() must not

@@ -38,6 +38,12 @@ class EmbeddedNavigationController(
     }
 
     suspend fun requestDestination(query: String) {
+        // Changing destination while driving: end the current guidance first, otherwise the
+        // old route keeps navigating underneath the new picker. Done outside the lock because
+        // the host's ended-callback re-enters onNavigationEnded.
+        if (store.phase.value == NavigationPhase.NAVIGATING) {
+            engine.stopNavigation("replaced")
+        }
         val seq = synchronized(lock) {
             generation += 1
             clearCandidatesLocked()
