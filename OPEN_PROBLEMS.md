@@ -462,7 +462,7 @@ Not a fault of the migration: the task scoped `PcmAudioCapture` as untouchable, 
 
 ## P7 — Voice session dies right after a spoken `navigate_to`
 
-**Status:** FIXED 2026-09-16 — tests + ADB device check; **human-voice re-test pending**
+**Status:** ✅ RESOLVED 2026-09-16 — verified by human voice on device (product owner confirmed)
 **Found:** 2026-09-16, first human-voice run of wake word → 「帮我导航到拱北口岸」
 
 ```
@@ -486,3 +486,14 @@ which is also why saying a new destination "did not change the list".
 
 Device (ADB): 万达 → 4 candidates, then 拱北口岸 → list replaced with 5. Wake engine re-initialised
 after install (`MSPLogin ret:0`, `sessionBegin ErrCode:0`, `recording`).
+
+**Human-voice verification 2026-09-16 21:13–21:14** (0 `state=ERROR` lines in the session):
+
+```
+wake_detection
+你: 到万达。            → navigate_to ✓ → 4 candidates → 小诺: 请在屏幕上选择路线。
+tap → route 13 → nav_active_route meters=20269 → navigation started
+你: 不是这个换成拱北口岸。 → navigate_to ✓ → 5 candidates (list replaced while navigating)
+你: 来威力商场          → navigate_to ✓ → 5 candidates
+tap → route 13 → nav_active_route meters=16009 → navigation started
+```
