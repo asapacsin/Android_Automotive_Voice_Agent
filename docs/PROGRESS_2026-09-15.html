@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小诺车载语音进展报告</title><style>
+  :root {
+    --ground: #EEF1F4;
+    --surface: #FFFFFF;
+    --ink: #121920;
+    --ink-soft: #55616D;
+    --line: #D3DBE2;
+    --line-soft: #E3E9EE;
+    --accent: #B87514;
+    --accent-soft: #F3E6D0;
+    --ok: #0F7A5E;
+    --ok-soft: #DCEFE8;
+    --pend: #9A6A12;
+    --pend-soft: #F6EBD6;
+    --mono-ink: #2A3642;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0F1419;
+      --surface: #161D24;
+      --ink: #E4EAF0;
+      --ink-soft: #9AA7B4;
+      --line: #2A343E;
+      --line-soft: #212A33;
+      --accent: #E0A551;
+      --accent-soft: #2E2417;
+      --ok: #55BB98;
+      --ok-soft: #14291F;
+      --pend: #D6A44B;
+      --pend-soft: #2B2314;
+      --mono-ink: #C3CFDB;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0F1419;
+    --surface: #161D24;
+    --ink: #E4EAF0;
+    --ink-soft: #9AA7B4;
+    --line: #2A343E;
+    --line-soft: #212A33;
+    --accent: #E0A551;
+    --accent-soft: #2E2417;
+    --ok: #55BB98;
+    --ok-soft: #14291F;
+    --pend: #D6A44B;
+    --pend-soft: #2B2314;
+    --mono-ink: #C3CFDB;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 860px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 48px 72px;
+    display: flex;
+    flex-direction: column;
+    gap: 44px;
+  }
+
+  .eyebrow {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  h1 {
+    font-family: "Songti SC", "SimSun", Georgia, serif;
+    font-weight: 700;
+    font-size: clamp(27px, 5vw, 36px);
+    line-height: 1.3;
+    margin: 10px 0 0;
+    text-wrap: balance;
+  }
+  .lede { color: var(--ink-soft); margin: 12px 0 0; max-width: 62ch; }
+
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 8px 22px;
+    margin-top: 20px; padding-top: 18px;
+    border-top: 1px solid var(--line);
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 12px; color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+  }
+  .meta b { color: var(--ink); font-weight: 500; }
+
+  section { display: flex; flex-direction: column; gap: 16px; }
+  h2 {
+    font-family: "Songti SC", "SimSun", Georgia, serif;
+    font-weight: 600; font-size: 19px; line-height: 1.4;
+    margin: 0; padding-bottom: 9px;
+    border-bottom: 2px solid var(--accent);
+    display: inline-block; align-self: flex-start;
+  }
+  h3 {
+    font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 14px; font-weight: 700; margin: 0;
+    letter-spacing: 0.02em;
+  }
+  p { margin: 0; max-width: 66ch; }
+
+  .flow {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 7px;
+    padding: 18px; border: 1px solid var(--line);
+    background: var(--surface); border-radius: 3px;
+  }
+  .node {
+    font-size: 12.5px; padding: 5px 11px;
+    border: 1px solid var(--line); border-radius: 2px;
+    background: var(--ground);
+  }
+  .node.mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 11.5px; color: var(--mono-ink); }
+  .node.key { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); font-weight: 500; }
+  .arr { color: var(--ink-soft); font-size: 13px; }
+
+  ul.plain { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 13px; }
+  ul.plain > li { display: grid; grid-template-columns: 22px 1fr; gap: 12px; align-items: start; }
+  .idx {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 11px;
+    color: var(--accent); padding-top: 4px; font-variant-numeric: tabular-nums;
+  }
+
+  .status-group { border-left: 3px solid var(--ok); padding-left: 17px; display: flex; flex-direction: column; gap: 11px; }
+  .status-group.pending { border-left-color: var(--pend); }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 10.5px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 3px 9px; border-radius: 2px;
+    background: var(--ok-soft); color: var(--ok); align-self: flex-start;
+  }
+  .chip.pending { background: var(--pend-soft); color: var(--pend); }
+  .status-group ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+  .status-group li { position: relative; padding-left: 15px; }
+  .status-group li::before {
+    content: ""; position: absolute; left: 0; top: 11px;
+    width: 5px; height: 5px; border-radius: 50%; background: var(--ok);
+  }
+  .status-group.pending li::before { background: var(--pend); }
+
+  .issue { display: flex; flex-direction: column; gap: 7px; padding-block: 15px; border-bottom: 1px solid var(--line-soft); }
+  .issue:last-child { border-bottom: none; padding-bottom: 0; }
+  .issue .label {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 10.5px;
+    letter-spacing: 0.1em; color: var(--ink-soft); text-transform: uppercase;
+  }
+  .issue .fix { color: var(--ink-soft); }
+
+  dl.data {
+    display: grid; grid-template-columns: max-content 1fr; gap: 11px 26px;
+    margin: 0; padding: 20px; background: var(--surface);
+    border: 1px solid var(--line); border-radius: 3px;
+  }
+  dl.data dt { font-size: 13px; color: var(--ink-soft); }
+  dl.data dd {
+    margin: 0; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12px;
+    color: var(--mono-ink); font-variant-numeric: tabular-nums; word-break: break-all;
+  }
+
+  code {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 0.88em;
+    color: var(--mono-ink); background: var(--line-soft);
+    padding: 1px 5px; border-radius: 2px;
+  }
+  strong { font-weight: 700; }
+  footer { color: var(--ink-soft); font-size: 12.5px; border-top: 1px solid var(--line); padding-top: 18px; }
+
+  @media (max-width: 560px) {
+    dl.data { grid-template-columns: 1fr; gap: 4px 0; }
+    dl.data dd { margin-bottom: 10px; }
+    .wrap { padding-block: 34px 52px; gap: 36px; }
+  }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">阶段进展报告</div>
+    <h1>小诺 · Android 车载语音助手</h1>
+    <p class="lede">基于百度端到端语音语言大模型的车载语音代理。本阶段目标：让手机在输入凭证后独立运行完整语音链路，不依赖 PC、局域网或调试工具。</p>
+    <div class="meta">
+      <span>日期 <b>2026-09-15</b></span>
+      <span>版本 <b>0.6.0-baidu-flex</b></span>
+      <span>测试 <b>129 项 / 0 失败</b></span>
+      <span>真机 <b>小米 24069RA21C · Android 36</b></span>
+    </div>
+  </header>
+
+  <section>
+    <h2>一、系统架构</h2>
+    <p>采用<strong>端到端语音模型</strong>，模型直接接收原始音频并直接输出结构化函数调用，不经过「语音识别 → 文本大模型 → 语音合成」的传统三段式流水线。界面上显示的文字是百度随音频下发的字幕旁路，仅供显示，不参与决策。</p>
+    <div class="flow">
+      <span class="node">手机麦克风</span>
+      <span class="arr">→</span>
+      <span class="node mono">16 kHz 单声道 PCM16</span>
+      <span class="arr">→</span>
+      <span class="node key">百度 Flex 实时模型</span>
+      <span class="arr">→</span>
+      <span class="node mono">function_call</span>
+      <span class="arr">→</span>
+      <span class="node">车机动作执行</span>
+      <span class="arr">→</span>
+      <span class="node">语音回复</span>
+    </div>
+    <p>模型为 <code>qianfan-realtime-flex-v1</code>，经 WebSocket 直连 <code>aip.baidubce.com</code>。会话通过 <code>session.update</code> 下发人设、音色与工具定义；语音上行使用 <code>input_audio_buffer.append</code>；服务端语音活动检测负责断句与打断。</p>
+  </section>
+
+  <section>
+    <h2>二、本阶段完成的工作</h2>
+    <ul class="plain">
+      <li><span class="idx">01</span><div><h3>手机独立运行</h3>正常语音流程不再需要 PC 后端、局域网或 ADB。构建产物中不含任何后端地址。</div></li>
+      <li><span class="idx">02</span><div><h3>凭证安全</h3>App ID、API Key、Secret Key 与高德 Key 全部经 Android Keystore 加密存储，支持保留／替换／显式清除。源码与安装包扫描均未发现明文密钥。</div></li>
+      <li><span class="idx">03</span><div><h3>函数调用能力</h3>实现 <code>navigate_to</code> 与 <code>open_app</code>。模型输出的参数先经字段白名单、长度与枚举校验，未通过则拒绝执行，不直接信任模型输出。</div></li>
+      <li><span class="idx">04</span><div><h3>导航落地</h3>语音说出目的地后，应用先将名称解析为坐标，再以坐标深链唤起高德地图，<strong>零点击</strong>直接进入实时导航。支持按当前位置就近检索。</div></li>
+      <li><span class="idx">05</span><div><h3>后台存活</h3>引入麦克风类型前台服务，解决地图占据前台后语音会话被系统切断的问题。</div></li>
+      <li><span class="idx">06</span><div><h3>人格与音色</h3>人设经会话 <code>instructions</code> 下发，可在开发者设置中修改；音色与语速可配置，并在服务端拒绝时自动回退默认值，避免会话建立失败。</div></li>
+      <li><span class="idx">07</span><div><h3>音频质量</h3>修正回放采样率（Flex 默认 24 kHz，可切换 16 kHz），增大播放缓冲，启用回声消除与噪声抑制。</div></li>
+      <li><span class="idx">08</span><div><h3>字幕显示</h3>改为仅显示完整语句。此前逐字增量显示，视觉上容易被误认为语音识别流。</div></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>三、真机验证结果</h2>
+    <p>以下区分「已在真机测得」与「尚未验证」，未验证项不作任何性能或效果结论。</p>
+
+    <div class="status-group">
+      <span class="chip">已验证</span>
+      <ul>
+        <li>百度 Flex 鉴权与会话建立成功，包含新增的人设、音色、语速字段。</li>
+        <li>实时语音对话可用，模型正确触发 <code>navigate_to</code> 函数调用。</li>
+        <li>导航零点击进入实时导航：转向卡、路线、预计到达时间均正常。</li>
+        <li>后台存活：地图占据前台 40 秒期间，本应用录音状态保持 <code>silenced:false</code>，前台服务存活，网络连接未被系统销毁。</li>
+        <li><code>open_app</code> 唤起系统设置与地图应用成功。</li>
+        <li>后台执行工具：地图占据前台时，<code>open_app</code> 音乐与设置均返回 Accepted，系统以 <code>BAL_ALLOW_FOREGROUND</code> 放行界面启动，无需悬浮窗权限。</li>
+        <li>自激抑制：提高服务端语音活动检测阈值并降低内置音乐音量后，播放音乐 18 秒期间语音活动检测事件为 0，此前为持续误触发。</li>
+      </ul>
+    </div>
+
+    <div class="status-group pending">
+      <span class="chip pending">待验证</span>
+      <ul>
+        <li>回复语音的音质与音调，需人工听测确认采样率设置正确。</li>
+        <li>人设语气是否符合预期风格。</li>
+        <li>就近兴趣点检索的实际召回效果。</li>
+        <li>完整驾驶场景下的连续多轮交互。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>四、关键技术问题与解决</h2>
+
+    <div class="issue">
+      <span class="label">问题 · 导航停在选择列表</span>
+      <p>高德地图仅在深链中<strong>带有经纬度</strong>时才会自动开始导航；仅传目的地名称的深链一律停在「输入终点」候选列表，需要人工点选，不满足驾驶场景。</p>
+      <p class="fix">解决：应用内先调用高德 Web 服务接口把名称解析为坐标，再以坐标深链唤起导航。已在真机验证可零点击进入导航。</p>
+    </div>
+
+    <div class="issue">
+      <span class="label">问题 · 后台连接被系统切断</span>
+      <p>应用退到后台约 5 秒后，系统销毁其 TCP 连接（日志可见 <code>Destroyed live tcp sockets</code>），语音会话随即以 <code>BAIDU_FLEX_DNS_FAILED</code> 中断。</p>
+      <p class="fix">解决：改用麦克风类型前台服务并保持常驻通知。实测地图前台运行期间会话与录音均保持正常。</p>
+    </div>
+
+    <div class="issue">
+      <span class="label">认知澄清 · 并非语音识别方案</span>
+      <p>界面上逐字出现的文字曾使人误认为系统退化为「识别 + 文本模型」架构。</p>
+      <p class="fix">澄清：模型直接消费音频并直接产出函数调用，文字仅为服务端下发的字幕旁路。为避免歧义，界面已改为只显示完整语句。</p>
+    </div>
+
+    <div class="issue">
+      <span class="label">问题 · 方言回复与自激</span>
+      <p>实测发现两项缺陷：其一，模型曾以<strong>粤语</strong>回复，尽管人设已要求只用简体中文；其二，应用自身播放的音乐经扬声器被麦克风拾取，服务端语音活动检测持续判定为「用户正在说话」，模型因而应答自己播放的声音。</p>
+      <p class="fix">自激问题<strong>已修复并实测通过</strong>：提高服务端语音活动检测阈值、降低内置音乐音量后，播放音乐 18 秒期间误触发次数为 0。系统自带的回声消除仅作用于通话下行、不覆盖媒体播放，因此从阈值与音量两侧抑制。方言问题已按同一版本修改人设（强制普通话、禁止粤语与方言），<strong>待人工语音复核</strong>。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>五、验证数据</h2>
+    <dl class="data">
+      <dt>自动化测试</dt>
+      <dd>129 项通过，0 失败 · app 60 / ingress 44 / behavior-test 19 / contracts 2 / safety 2 / simulator 2</dd>
+      <dt>构建结果</dt>
+      <dd>BUILD SUCCESSFUL（退出码 0）</dd>
+      <dt>安装包</dt>
+      <dd>13,263,138 字节 · SHA-256 73F79FC5…D4DBB697</dd>
+      <dt>测试设备</dt>
+      <dd>小米 24069RA21C · Android SDK 36 · 真机安装运行</dd>
+      <dt>密钥扫描</dt>
+      <dd>源码与安装包均未发现密钥字符串</dd>
+    </dl>
+  </section>
+
+  <section>
+    <h2>六、下一步</h2>
+    <ul class="plain">
+      <li><span class="idx">01</span><div>人工听测回复音质与人设语气，据此调整采样率、音色与人设文本。</div></li>
+      <li><span class="idx">02</span><div>测量后台启动限制的实际影响，确定是否需要悬浮窗权限以支持地图前台时的连续指令。</div></li>
+      <li><span class="idx">03</span><div>完整驾驶场景测试：连续多轮对话、打断、导航中追加指令。</div></li>
+      <li><span class="idx">04</span><div>评估是否内嵌地图导航 SDK，以摆脱对第三方地图应用界面的依赖。</div></li>
+    </ul>
+  </section>
+
+  <footer>本报告仅记录已实际执行与实测的内容；标注为「待验证」的项目尚无结论，不代表功能已具备或已达成效果。</footer>
+
+</div>
+
+</body>
+</html>

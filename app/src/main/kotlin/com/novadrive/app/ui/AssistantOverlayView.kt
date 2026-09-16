@@ -1,0 +1,193 @@
+package com.novadrive.app.ui
+
+import android.content.Context
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.view.Gravity
+import android.view.MotionEvent
+import android.widget.FrameLayout
+import android.widget.LinearLayout
+import android.widget.TextView
+import com.novadrive.app.R
+import com.novadrive.ingress.realtime.VoiceUiState
+
+class AssistantOverlayView(context: Context) : FrameLayout(context) {
+    var onOpenDeveloperSettings: (() -> Unit)? = null
+
+    private val avatar: TextView
+    private val stateDot: TextView
+    private val stateLabel: TextView
+    private val bubble: TextView
+    private val actionCard: TextView
+    private val settingsEntry: TextView
+
+    init {
+        isClickable = false
+        isFocusable = false
+
+        avatar =
+            TextView(context).apply {
+                text = context.getString(R.string.assistant_avatar)
+                textSize = 22f
+                setTextColor(Color.WHITE)
+                gravity = Gravity.CENTER
+                typeface = Typeface.DEFAULT_BOLD
+                background =
+                    GradientDrawable().apply {
+                        shape = GradientDrawable.OVAL
+                        setColor(Color.parseColor("#FF1565C0"))
+                    }
+                isClickable = true
+                setOnClickListener { onOpenDeveloperSettings?.invoke() }
+            }
+        stateDot =
+            TextView(context).apply {
+                text = "●"
+                textSize = 14f
+                setTextColor(Color.parseColor("#B0BEC5"))
+                isClickable = false
+            }
+        stateLabel =
+            TextView(context).apply {
+                text = context.getString(R.string.assistant_state_idle)
+                textSize = 13f
+                setTextColor(Color.WHITE)
+                setPadding(dp(6), 0, 0, 0)
+                isClickable = false
+            }
+        bubble =
+            TextView(context).apply {
+                text = context.getString(R.string.assistant_speech_placeholder)
+                textSize = 15f
+                setTextColor(Color.WHITE)
+                setPadding(dp(16), dp(12), dp(16), dp(12))
+                background =
+                    GradientDrawable().apply {
+                        setColor(Color.parseColor("#CC263238"))
+                        cornerRadius = dp(12).toFloat()
+                    }
+                isClickable = true
+            }
+        actionCard =
+            TextView(context).apply {
+                textSize = 15f
+                setTextColor(Color.WHITE)
+                setPadding(dp(16), dp(12), dp(16), dp(12))
+                background =
+                    GradientDrawable().apply {
+                        setColor(Color.parseColor("#DD1B5E20"))
+                        cornerRadius = dp(12).toFloat()
+                    }
+                visibility = GONE
+                isClickable = true
+            }
+        settingsEntry =
+            TextView(context).apply {
+                text = context.getString(R.string.developer_settings)
+                textSize = 12f
+                setTextColor(Color.WHITE)
+                setPadding(dp(10), dp(8), dp(10), dp(8))
+                background =
+                    GradientDrawable().apply {
+                        setColor(Color.parseColor("#99000000"))
+                        cornerRadius = dp(8).toFloat()
+                    }
+                isClickable = true
+                setOnClickListener { onOpenDeveloperSettings?.invoke() }
+            }
+
+        val stateRow =
+            LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(stateDot)
+                addView(stateLabel)
+                isClickable = false
+            }
+        val avatarColumn =
+            LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(avatar, LinearLayout.LayoutParams(dp(64), dp(64)))
+                addView(
+                    stateRow,
+                    LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                        topMargin = dp(6)
+                    },
+                )
+                isClickable = false
+            }
+        val topRow =
+            LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.TOP
+                setPadding(dp(16), dp(16), dp(16), 0)
+                addView(avatarColumn)
+                addView(
+                    bubble,
+                    LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                        leftMargin = dp(12)
+                    },
+                )
+                isClickable = false
+            }
+        addView(
+            topRow,
+            LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
+                gravity = Gravity.TOP or Gravity.START
+            },
+        )
+        addView(
+            actionCard,
+            LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+                gravity = Gravity.CENTER_HORIZONTAL or Gravity.BOTTOM
+                bottomMargin = dp(96)
+            },
+        )
+        addView(
+            settingsEntry,
+            LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+                gravity = Gravity.TOP or Gravity.END
+                topMargin = dp(16)
+                rightMargin = dp(16)
+            },
+        )
+    }
+
+    fun bindState(state: VoiceUiState, error: String?) {
+        val ui = AssistantUiStateMapper.from(state)
+        stateLabel.text = AssistantUiStateMapper.displayLabel(ui)
+        stateDot.setTextColor(
+            when (ui) {
+                AssistantUiState.LISTENING -> Color.parseColor("#FF4CAF50")
+                AssistantUiState.PROCESSING -> Color.parseColor("#FFFFC107")
+                AssistantUiState.RESPONDING -> Color.parseColor("#FF42A5F5")
+                AssistantUiState.ERROR -> Color.parseColor("#FFEF5350")
+                else -> Color.parseColor("#B0BEC5")
+            },
+        )
+        if (ui == AssistantUiState.ERROR && !error.isNullOrBlank()) {
+            bubble.text = error
+        }
+        actionCard.visibility = GONE
+    }
+
+    fun appendTranscript(line: String) {
+        val current = bubble.text?.toString().orEmpty()
+        bubble.text = if (current.isBlank() || current == context.getString(R.string.assistant_speech_placeholder)) {
+            line
+        } else {
+            "$current\n$line"
+        }
+    }
+
+    fun showError(code: String, message: String) {
+        bubble.text = "$code\n$message"
+        stateLabel.text = context.getString(R.string.assistant_state_error)
+        stateDot.setTextColor(Color.parseColor("#FFEF5350"))
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean = false
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+}

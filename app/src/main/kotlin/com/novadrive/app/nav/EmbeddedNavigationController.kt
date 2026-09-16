@@ -1,0 +1,303 @@
+package com.novadrive.app.nav
+
+import android.content.Context
+import com.novadrive.app.DebugVoiceLog
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
+/**
+ * Live [NavigationController] binding. Voice and UI both call [requestDestination] /
+ * [selectDestination] / [selectRoute] / [cancel]; selection state does not live in a View.
+ */
+class EmbeddedNavigationController(
+    private val store: NavigationStateStore = NavigationStateStore(),
+    private val resolver: DestinationCandidateSource,
+    private val engine: NaviEngine,
+) : NavigationController {
+    private val lock = Any()
+
+    @Volatile
+    private var generation = 0L
+
+    @Volatile
+    private var selectedDestination: DestinationCandidate? = null
+
+    @Volatile
+    private var startNaviIssuedForSelection = false
+
+    private val _destinationCandidates = MutableStateFlow<List<DestinationCandidate>>(emptyList())
+    val destinationCandidates: StateFlow<List<DestinationCandidate>> = _destinationCandidates.asStateFlow()
+
+    private val _routeCandidates = MutableStateFlow<List<RouteCandidate>>(emptyList())
+    val routeCandidates: StateFlow<List<RouteCandidate>> = _routeCandidates.asStateFlow()
+
+    init {
+        engine.attachRouteCallbacks(::onCalculateRouteSuccess, ::onCalculateRouteFailure)
+        engine.attachNavigationEndedCallback(::onNavigationEnded)
+    }
+
+    suspend fun requestDestination(query: String) {
+        val seq = synchronized(lock) {
+            generation += 1
+            clearCandidatesLocked()
+            selectedDestination = null
+            startNaviIssuedForSelection = false
+            store.update(NavigationPhase.RESOLVING_DESTINATION)
+            generation
+        }
+        DebugVoiceLog.log("nav_resolve_start")
+        val resolved = resolver.resolve(query)
+        val autoCalculate = synchronized(lock) {
+            if (seq != generation) return
+            DebugVoiceLog.log("nav_resolve_candidates count=${resolved.size}")
+            when {
+                resolved.isEmpty() -> {
+                    failLocked("no_candidates")
+                    null
+                }
+                resolved.size == 1 -> {
+                    _destinationCandidates.value = emptyList()
+                    prepareCalculationLocked(resolved.first())
+                    resolved.first()
+                }
+                else -> {
+                    _destinationCandidates.value = resolved
+                    store.update(NavigationPhase.AWAITING_DESTINATION_SELECTION)
+                    null
+                }
+            }
+        }
+        if (autoCalculate != null) {
+            requestCalculation(autoCalculate, seq)
+        }
+    }
+
+    fun selectDestination(candidateId: String) {
+        // seq is captured under the lock: reading `generation` after releasing it would
+        // hand requestCalculation a newer flow's sequence and mis-attribute a failure.
+        var seq = 0L
+        val candidate = synchronized(lock) {
+            if (store.phase.value != NavigationPhase.AWAITING_DESTINATION_SELECTION) return
+            val match = _destinationCandidates.value.firstOrNull { it.id == candidateId }
+            if (match == null) {
+                failLocked("unknown_candidate")
+                return
+            }
+            DebugVoiceLog.log("nav_destination_selected candidateId=$candidateId")
+            _destinationCandidates.value = emptyList()
+            prepareCalculationLocked(match)
+            seq = generation
+            match
+        }
+        requestCalculation(candidate, seq)
+    }
+
+    fun selectRoute(routeId: Int) {
+        val accepted = synchronized(lock) {
+            if (store.phase.value != NavigationPhase.AWAITING_ROUTE_SELECTION) return
+            if (startNaviIssuedForSelection) return
+            if (_routeCandidates.value.none { it.routeId == routeId }) {
+                failLocked("unknown_route")
+                return
+            }
+            startNaviIssuedForSelection = true
+            DebugVoiceLog.log("nav_route_selected routeId=$routeId")
+            true
+        }
+        if (!accepted) return
+        val selected = engine.selectRoute(routeId)
+        if (!selected) {
+            synchronized(lock) {
+                startNaviIssuedForSelection = false
+                failLocked("select_route_rejected")
+            }
+            return
+        }
+        val started = engine.startNavigation(emulator = false)
+        synchronized(lock) {
+            if (started) {
+                _routeCandidates.value = emptyList()
+                store.update(NavigationPhase.NAVIGATING, selectedDestination?.toDestination())
+                DebugVoiceLog.log("nav_navigation_started routeId=$routeId")
+            } else {
+                startNaviIssuedForSelection = false
+                failLocked("start_navi_rejected")
+            }
+        }
+    }
+
+    fun cancel() {
+        synchronized(lock) {
+            val phase = store.phase.value
+            if (phase != NavigationPhase.AWAITING_DESTINATION_SELECTION &&
+                phase != NavigationPhase.AWAITING_ROUTE_SELECTION
+            ) {
+                return
+            }
+            generation += 1
+            clearCandidatesLocked()
+            selectedDestination = null
+            startNaviIssuedForSelection = false
+            store.reset()
+            DebugVoiceLog.log("nav_flow_cancelled")
+        }
+    }
+
+    override suspend fun resolveDestination(query: String): DestinationResult {
+        requestDestination(query)
+        val dests = _destinationCandidates.value
+        return when (store.phase.value) {
+            NavigationPhase.AWAITING_DESTINATION_SELECTION ->
+                DestinationResult.Ambiguous(dests.map { it.toDestination() })
+            NavigationPhase.CALCULATING_ROUTE,
+            NavigationPhase.AWAITING_ROUTE_SELECTION,
+            NavigationPhase.NAVIGATING,
+            -> selectedDestination?.let { DestinationResult.Resolved(it.toDestination()) }
+                ?: DestinationResult.Failed("NO_DESTINATION")
+            NavigationPhase.ERROR -> DestinationResult.Failed("NO_CANDIDATES")
+            else -> DestinationResult.Failed("NO_DESTINATION")
+        }
+    }
+
+    override suspend fun planRoute(destination: Destination): RoutePlanResult =
+        RoutePlanResult.Failed("USE_SELECT_DESTINATION")
+
+    override suspend fun startNavigation(routeId: Int?): NavigationResult {
+        if (routeId == null) return NavigationResult.Failed("ROUTE_REQUIRED")
+        selectRoute(routeId)
+        return if (store.phase.value == NavigationPhase.NAVIGATING) {
+            NavigationResult.Started
+        } else {
+            NavigationResult.Failed("START_FAILED")
+        }
+    }
+
+    override suspend fun stopNavigation() {
+        engine.stopNavigation("manual")
+        synchronized(lock) {
+            generation += 1
+            clearCandidatesLocked()
+            selectedDestination = null
+            startNaviIssuedForSelection = false
+            store.update(NavigationPhase.STOPPED)
+        }
+    }
+
+    override suspend fun cancelRoute() {
+        cancel()
+    }
+
+    override suspend fun reroute(): NavigationResult = NavigationResult.Failed("REROUTE_NOT_IMPLEMENTED")
+
+    override fun state(): StateFlow<NavigationPhase> = store.phase
+
+    /**
+     * The SDK session ended. Arrival, emulator end and the manual `nav_stop` fallback all
+     * stop the host directly and never call [stopNavigation], so without this the phase
+     * stayed NAVIGATING for the life of the process and
+     * [NavigationPhase.isNavigationSessionActive] kept reporting a live session to
+     * VoicePolicy long after the drive was over.
+     *
+     * Ignored unless we are actually navigating, so a stale stop cannot clobber a picker
+     * the driver is in the middle of using.
+     */
+    private fun onNavigationEnded(reason: String) {
+        synchronized(lock) {
+            if (store.phase.value != NavigationPhase.NAVIGATING) return
+            val ended = if (reason == "arrived" || reason == "emulator_end") {
+                NavigationPhase.ARRIVED
+            } else {
+                NavigationPhase.STOPPED
+            }
+            generation += 1
+            clearCandidatesLocked()
+            startNaviIssuedForSelection = false
+            store.update(ended, selectedDestination?.toDestination())
+            selectedDestination = null
+            DebugVoiceLog.log("nav_flow_ended reason=$reason phase=$ended")
+        }
+    }
+
+    private fun prepareCalculationLocked(candidate: DestinationCandidate) {
+        selectedDestination = candidate
+        startNaviIssuedForSelection = false
+        store.update(NavigationPhase.CALCULATING_ROUTE, candidate.toDestination())
+        DebugVoiceLog.log("nav_route_calc_start")
+    }
+
+    private fun requestCalculation(candidate: DestinationCandidate, seq: Long) {
+        val accepted = engine.calculateDriveRoute(
+            candidate.latitude,
+            candidate.longitude,
+            candidate.name,
+            DRIVING_MULTIPLE_ROUTES_DEFAULT,
+        )
+        if (!accepted) {
+            synchronized(lock) {
+                if (seq == generation) failLocked("calc_not_accepted")
+            }
+        }
+    }
+
+    private fun onCalculateRouteSuccess(routeIds: IntArray) {
+        val built: List<RouteCandidate> =
+            if (routeIds.isEmpty()) {
+                emptyList()
+            } else {
+                val byId = engine.routeCandidates().associateBy { candidate -> candidate.routeId }
+                buildList {
+                    for (id in routeIds) {
+                        byId[id]?.let { add(it) }
+                    }
+                }
+            }
+        synchronized(lock) {
+            if (store.phase.value != NavigationPhase.CALCULATING_ROUTE) return
+            if (built.isEmpty()) {
+                failLocked("no_routes")
+                return
+            }
+            DebugVoiceLog.log("nav_route_candidates count=${built.size}")
+            built.forEach { route ->
+                DebugVoiceLog.log(
+                    "nav_route_candidate routeId=${route.routeId} meters=${route.distanceMeters} seconds=${route.durationSeconds}",
+                )
+            }
+            _routeCandidates.value = built
+            store.update(NavigationPhase.AWAITING_ROUTE_SELECTION, selectedDestination?.toDestination())
+        }
+    }
+
+    private fun onCalculateRouteFailure(errorCode: Int) {
+        synchronized(lock) {
+            if (store.phase.value != NavigationPhase.CALCULATING_ROUTE) return
+            failLocked("calc_failure_$errorCode")
+        }
+    }
+
+    private fun failLocked(reason: String) {
+        DebugVoiceLog.log("nav_flow_error reason=$reason")
+        clearCandidatesLocked()
+        store.update(NavigationPhase.ERROR, selectedDestination?.toDestination())
+    }
+
+    private fun clearCandidatesLocked() {
+        _destinationCandidates.value = emptyList()
+        _routeCandidates.value = emptyList()
+    }
+}
+
+object EmbeddedNavigation {
+    private val lock = Any()
+
+    @Volatile
+    private var instance: EmbeddedNavigationController? = null
+
+    fun shared(context: Context): EmbeddedNavigationController = synchronized(lock) {
+        instance ?: EmbeddedNavigationController(
+            resolver = LiveDestinationCandidateSource(context.applicationContext),
+            engine = GatewayNaviEngine(),
+        ).also { instance = it }
+    }
+}

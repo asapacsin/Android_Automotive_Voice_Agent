@@ -181,9 +181,10 @@ class VoiceSessionController(
             provider.connect(config)
             diagnostics.markConnected()
             resumeCaptureOnce()
+        } catch (ex: VoiceProviderException) {
+            handleFailure(ex.code, ex.safeMessage)
         } catch (ex: Exception) {
-            val code = ex.message?.takeIf { it.contains("_") } ?: "SERVER_DISCONNECT"
-            handleFailure(code, ex.message ?: "connect failed")
+            handleFailure("SERVER_DISCONNECT", ex.message ?: "connect failed")
         }
     }
 
@@ -238,10 +239,10 @@ class VoiceSessionController(
                     return@withLock
                 }
                 is DomainVoiceEvent.UserTranscript -> {
-                    if (event.text.isNotBlank()) callbacks.onTranscript("你: ${event.text}")
+                    if (event.final && event.text.isNotBlank()) callbacks.onTranscript("你: ${event.text}")
                 }
                 is DomainVoiceEvent.AssistantTranscript -> {
-                    if (event.text.isNotBlank()) callbacks.onTranscript("小诺: ${event.text}")
+                    if (event.final && event.text.isNotBlank()) callbacks.onTranscript("小诺: ${event.text}")
                 }
                 is DomainVoiceEvent.ToolCall -> dispatchTool(event)
                 is DomainVoiceEvent.WorkResult -> {
@@ -279,10 +280,11 @@ class VoiceSessionController(
     }
 
     private fun dispatchTool(call: DomainVoiceEvent.ToolCall) {
+        if (workCoordinator.snapshot(call.callId) != null) return
         workCoordinator.submit(call.callId, call.name)
         val dispatcher = callbacks.onToolCall ?: return
         val result = dispatcher(call)
-        val output = result.orchestration?.feedbackZhCn ?: result.blockedReason ?: ""
+        val output = result.output ?: result.orchestration?.feedbackZhCn ?: result.blockedReason ?: ""
         workCoordinator.complete(call.callId, output)
     }
 
@@ -324,8 +326,10 @@ class VoiceSessionController(
             provider.connect(config)
             mutex.withLock { diagnostics.markReconnected() }
             resumeCaptureOnce()
+        } catch (ex: VoiceProviderException) {
+            handleFailure(ex.code, ex.safeMessage)
         } catch (ex: Exception) {
-            handleFailure(ex.message ?: "SERVER_DISCONNECT", ex.message ?: message)
+            handleFailure("SERVER_DISCONNECT", ex.message ?: message)
         }
     }
 

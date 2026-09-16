@@ -25,9 +25,9 @@ class MockRealtimeVoiceProviderTest {
     }
 
     @Test
-    fun defaultModelIsQwenFlashAndBaiduLiteNearRemainsSelectable() {
-        assertEquals("qwen-audio-3.0-realtime-flash", VoiceModels.DEFAULT)
-        assertEquals(VoiceProviderId.QWEN, VoiceCatalog.DEFAULT_PROVIDER)
+    fun defaultModelIsBaiduFlexAndLiteRemainsSelectable() {
+        assertEquals("qianfan-realtime-flex-v1", VoiceModels.DEFAULT)
+        assertEquals(VoiceProviderId.BAIDU_FLEX, VoiceCatalog.DEFAULT_PROVIDER)
         assertEquals("audio-mini-realtime-near", VoiceCatalog.defaultModel(VoiceProviderId.BAIDU))
         assertEquals("Lite Near", VoiceCatalog.baiduModels[VoiceModels.LITE_NEAR])
         assertEquals("Lite Far", VoiceCatalog.baiduModels[VoiceModels.LITE_FAR])
@@ -38,6 +38,7 @@ class MockRealtimeVoiceProviderTest {
         VoiceModels.requireAllowed(VoiceCatalog.QWEN_PLUS)
         VoiceModels.requireAllowed(VoiceCatalog.GPT_LIVE_1)
         VoiceModels.requireAllowed(VoiceCatalog.FAKE_MODEL)
+        VoiceModels.requireAllowed(VoiceCatalog.BAIDU_FLEX)
     }
 
     @Test
@@ -48,5 +49,13 @@ class MockRealtimeVoiceProviderTest {
         assertTrue(BaiduRealtimeCapabilities.EVIDENCE.contains("UpdateSession"))
         assertTrue(BaiduRealtimeCapabilities.EVIDENCE.contains("tool_choice"))
         assertEquals("BLOCKED_BAIDU_FUNCTION_CALLING", BaiduRealtimeCapabilities.BLOCKED_CODE)
+    }
+
+    @Test
+    fun flexAndLiteExposeDifferentFunctionCallingCapabilities() {
+        assertTrue(VoiceCatalog.capabilities(VoiceProviderId.BAIDU_FLEX).realtimeAudio)
+        assertTrue(VoiceCatalog.capabilities(VoiceProviderId.BAIDU_FLEX).functionCalling)
+        assertTrue(VoiceCatalog.capabilities(VoiceProviderId.BAIDU).realtimeAudio)
+        assertFalse(VoiceCatalog.capabilities(VoiceProviderId.BAIDU).functionCalling)
     }
 }

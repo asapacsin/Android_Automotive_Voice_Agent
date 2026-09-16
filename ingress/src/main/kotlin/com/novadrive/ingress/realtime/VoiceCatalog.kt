@@ -8,6 +8,7 @@ enum class VoiceProviderId {
     QWEN,
     GPT_LIVE,
     BAIDU,
+    BAIDU_FLEX,
     FAKE,
     ;
 
@@ -17,6 +18,7 @@ enum class VoiceProviderId {
                 QWEN -> "qwen"
                 GPT_LIVE -> "gpt_live"
                 BAIDU -> "baidu"
+                BAIDU_FLEX -> "baidu_flex"
                 FAKE -> "fake"
             }
 
@@ -27,6 +29,7 @@ enum class VoiceProviderId {
                 "qwen" -> QWEN
                 "gpt_live", "gptlive", "openai_live" -> GPT_LIVE
                 "baidu" -> BAIDU
+                "baidu_flex", "flex" -> BAIDU_FLEX
                 "fake", "mock" -> FAKE
                 else -> error("UNKNOWN_VOICE_PROVIDER")
             }
@@ -68,7 +71,10 @@ data class ProviderCapabilities(
     val workResultInjection: Boolean,
     val unknownEventTolerance: Boolean,
     val requiresCredentials: Boolean,
-)
+    val realtimeAudio: Boolean = true,
+) {
+    val functionCalling: Boolean get() = customTools
+}
 
 enum class RealtimeConnectionState {
     IDLE,
@@ -80,9 +86,9 @@ enum class RealtimeConnectionState {
 }
 
 object VoiceCatalog {
-    const val DEFAULT_PROVIDER_WIRE = "qwen"
-    val DEFAULT_PROVIDER: VoiceProviderId = VoiceProviderId.QWEN
-    const val DEFAULT_MODEL = "qwen-audio-3.0-realtime-flash"
+    const val DEFAULT_PROVIDER_WIRE = "baidu_flex"
+    val DEFAULT_PROVIDER: VoiceProviderId = VoiceProviderId.BAIDU_FLEX
+    const val DEFAULT_MODEL = "qianfan-realtime-flex-v1"
     const val QWEN_FLASH = "qwen-audio-3.0-realtime-flash"
     const val QWEN_PLUS = "qwen-audio-3.0-realtime-plus"
     const val GPT_LIVE_1 = "gpt-live-1"
@@ -90,6 +96,7 @@ object VoiceCatalog {
     const val BAIDU_LITE_FAR = "audio-mini-realtime-far"
     const val BAIDU_PRO_NEAR = "audio-realtime-near"
     const val BAIDU_PRO_FAR = "audio-realtime-far"
+    const val BAIDU_FLEX = "qianfan-realtime-flex-v1"
     const val FAKE_MODEL = "fake-realtime"
 
     val qwenModels: Map<String, String> =
@@ -106,17 +113,19 @@ object VoiceCatalog {
             BAIDU_PRO_NEAR to "Pro Near",
             BAIDU_PRO_FAR to "Pro Far",
         )
+    val baiduFlexModels: Map<String, String> = mapOf(BAIDU_FLEX to "Flex")
     val fakeModels: Map<String, String> =
         mapOf(FAKE_MODEL to "Fake")
 
     val selectableLabels: Map<String, String> =
-        qwenModels + gptLiveModels + baiduModels + fakeModels
+        qwenModels + gptLiveModels + baiduModels + baiduFlexModels + fakeModels
 
     fun defaultModel(provider: VoiceProviderId): String =
         when (provider) {
             VoiceProviderId.QWEN -> QWEN_FLASH
             VoiceProviderId.GPT_LIVE -> GPT_LIVE_1
             VoiceProviderId.BAIDU -> BAIDU_LITE_NEAR
+            VoiceProviderId.BAIDU_FLEX -> BAIDU_FLEX
             VoiceProviderId.FAKE -> FAKE_MODEL
         }
 
@@ -125,6 +134,7 @@ object VoiceCatalog {
             VoiceProviderId.QWEN -> qwenModels
             VoiceProviderId.GPT_LIVE -> gptLiveModels
             VoiceProviderId.BAIDU -> baiduModels
+            VoiceProviderId.BAIDU_FLEX -> baiduFlexModels
             VoiceProviderId.FAKE -> fakeModels
         }
 
@@ -133,6 +143,7 @@ object VoiceCatalog {
             in qwenModels -> VoiceProviderId.QWEN
             in gptLiveModels -> VoiceProviderId.GPT_LIVE
             in baiduModels -> VoiceProviderId.BAIDU
+            in baiduFlexModels -> VoiceProviderId.BAIDU_FLEX
             in fakeModels -> VoiceProviderId.FAKE
             else -> error("UNKNOWN_MODEL")
         }
@@ -153,6 +164,7 @@ object VoiceCatalog {
             VoiceProviderId.QWEN -> "QWEN_INVALID_MODEL"
             VoiceProviderId.GPT_LIVE -> "GPT_LIVE_INVALID_MODEL"
             VoiceProviderId.BAIDU -> "BAIDU_INVALID_MODEL"
+            VoiceProviderId.BAIDU_FLEX -> "BAIDU_FLEX_INVALID_MODEL"
             VoiceProviderId.FAKE -> "FAKE_INVALID_MODEL"
         }
 
@@ -191,6 +203,17 @@ object VoiceCatalog {
                     unknownEventTolerance = true,
                     requiresCredentials = true,
                 )
+            VoiceProviderId.BAIDU_FLEX ->
+                ProviderCapabilities(
+                    provider = provider,
+                    customTools = true,
+                    serverVadInterrupt = true,
+                    clientResponseCancel = true,
+                    optionalInputCommit = true,
+                    workResultInjection = true,
+                    unknownEventTolerance = true,
+                    requiresCredentials = true,
+                )
             VoiceProviderId.FAKE ->
                 ProviderCapabilities(
                     provider = provider,
@@ -216,6 +239,7 @@ object VoiceModels {
     const val QWEN_PLUS = VoiceCatalog.QWEN_PLUS
     const val GPT_LIVE_1 = VoiceCatalog.GPT_LIVE_1
     const val FAKE = VoiceCatalog.FAKE_MODEL
+    const val FLEX = VoiceCatalog.BAIDU_FLEX
 
     val labels: Map<String, String>
         get() = VoiceCatalog.selectableLabels

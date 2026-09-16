@@ -7,6 +7,8 @@
 *.hprof
 .DS_Store
 local.properties
+*.jks
+*.keystore
 captures/
 .cxx/
 *.apk
@@ -22,3 +24,4 @@ backend/.pytest_cache/
 *.pyc
 .venv/
 agent/demo-strict-exit.txt
+.claude/settings.local.json

@@ -12,6 +12,13 @@ object BaiduRealtimeCapabilities {
             "ConversationItem.type allows message only. $OFFICIAL_DOC"
 }
 
+object BaiduFlexRealtimeCapabilities {
+    const val CUSTOM_FUNCTION_CALLING = true
+    const val MODEL = "qianfan-realtime-flex-v1"
+    const val OFFICIAL_DOC = "https://cloud.baidu.com/doc/SPEECH/s/Wmtlcgi7c"
+    const val PUBLIC_BETA = true
+}
+
 object QwenRealtimeCapabilities {
     const val CUSTOM_FUNCTION_CALLING = true
     const val OFFICIAL_DOC = "https://docs.qwencloud.com/api-reference/qwen-audio-realtime/websocket-api"

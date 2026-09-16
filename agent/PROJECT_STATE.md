@@ -1,57 +1,58 @@
 # Project state — Nova Drive / 小诺
 
 ## Milestone
-REALTIME PROVIDER RECONCILIATION — **final source-of-truth wording sweep** (2026-09-14). Qwen Flash is the default realtime provider. Qwen Plus is selectable. GPT-Live is optional. Baidu is an optional compatibility adapter (Lite Near is the Baidu-family default when Baidu is selected). Fake is quota-free and test-only, never the product default. Live provider microphone/playback is **not** done. No Qwen/Baidu source-of-truth conflict remains.
 
-## Completed work (this checkpoint)
-- Official protocol from QwenCloud/DashScope and OpenAI Live docs (retrieved 2026-09-14); Baidu docs preserved as optional compatibility.
-- Kotlin provider-independent contract, `VoiceSessionController`, async `WorkCoordinator`, bounded reconnect, fake clock, latency diagnostics, Fake provider.
-- Corrective lifecycle (prior pass): deterministic disconnect outside cancelled caller scope; mic resume-once after reconnect; work inject ack-after-success without holding the session mutex; Android audio invalid-buffer / permission / bounded thread cleanup.
-- Supervisor follow-up: `WorkCoordinator.cancelAll()` on `stop()`/`release()` cancels running jobs and marks non-terminal snapshots `CANCELLED` without rewriting already-terminal snapshots; `takeDeliverable()` removed so no public path acks before successful inject.
-- Final wording sweep (this pass): listed docs and the Android developer-settings explanatory label now state Qwen Flash as product default; Baidu remains optional with Lite Near as its provider-family default when selected; Fake is explicitly test-only. No architecture or provider-behavior change.
-- Backend `QwenRealtimeProvider`, `GPTLiveProvider`, `FakeRealtimeVoiceProvider`; Baidu adapter kept.
-- Central catalog: `QWEN` / `GPT_LIVE` / `BAIDU` / `FAKE`. Default `qwen-audio-3.0-realtime-flash` (Kotlin + Python).
-- Android debug shell delegates to the JVM controller. Developer settings select provider+model. No provider secrets in the app.
-- Docs: `README.md`, `docs/ARCHITECTURE.md`, `docs/PROVIDER_SETUP.md`, `docs/REALTIME_PROTOCOL_REFERENCES.md`, `docs/DECISIONS.md` D13, `docs/CHECKPOINTS.md`, `docs/BAIDU_E2E_SETUP.md`.
-- Secrets: `.env.example` placeholders, gitignored `.env`.
+BAIDU FLEX ON-DEVICE, LIVE-VERIFIED (2026-09-15): function calling, navigation handoff, bundled music, foreground keep-alive
 
-## Blockers
-- **WAITING_FOR_LIVE_PROVIDER_CREDENTIALS** — live Qwen needs `DASHSCOPE_API_KEY`; GPT-Live needs `OPENAI_API_KEY`; Baidu still needs AppID/API Key/Secret Key. Fill `backend/.env` then resume. Do not paste keys into chat.
-- **BLOCKED_BAIDU_FUNCTION_CALLING** — unchanged. Qwen/GPT-Live tools follow their official events; typed orchestrator path still used.
-- Emulator/device UI, RECORD_AUDIO grant, Bluetooth SCO, and hardware AEC were not exercised.
+## Completed
 
-Non-fatal: AGP SDK XML v4 vs v3 warning; `android.overridePathCheck=true`.
+- Phone settings for legacy App ID/API Key/Secret Key auth or Bearer API Key auth, all credential fields Android-Keystore protected with independent keep/replace/clear semantics. Schema v2 migration preserves Lite for installs that previously had schema 1 or a Lite/Pro model saved.
+- Real Test Connection: uses `BaiduFlexClient` or `BaiduRealtimeClient` according to the selected model, waits for `session.updated`, then closes; microphone is not started.
+- Foreground service: `app/src/main/kotlin/com/novadrive/app/VoiceSessionService.kt` (`foregroundServiceType="microphone"`, channel `voice_session`, notification "小诺语音会话进行中"), started by `MainActivity` right after `startBaidu` succeeds and stopped on every session-end path. Permissions: `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MICROPHONE`, `POST_NOTIFICATIONS` (requested once at startup; denial does not block voice).
+- Flex provider (default): 16 kHz mono PCM16 capture, documented Flex client events, server-VAD, Function Calling via `AndroidToolDispatcher` (`SafeAndroidActionExecutor`) and `NavigationAdapter`, generation-based stale callback rejection, and close/reconnect cleanup. `sendAudio` / `cancelResponse` no-op on a closed socket (`BAIDU_FLEX_CONNECTION_CLOSED`); `sendFunctionResult` still throws so the core controller can release the delivery claim. Regression: `BaiduFlexClientTest.sendAudioOnClosedSocketEmitsErrorWithoutThrowing`.
+- Navigation: with an optional Amap Web-service key (Keystore credential `amap_web_key`, `AmapSettingsRepository`, entered in Developer Settings) `NavigationAdapter` resolves the destination via GET `https://restapi.amap.com/v3/place/text` (`AmapPoiClient`, off the main thread, 4 s timeouts, key never logged) and launches `androidamap://navi?sourceApplication=NovaDrive&poiname=<name>&lat=<lat>&lon=<lon>&dev=0&style=2`; without the key it launches `keywordNavi` (one tap) and falls back to `geo:`. Nominatim (OSM) is unreachable from the phone, so no keyless geocoder is used.
+- `open_app`: MAPS -> `geo:` intent; SETTINGS -> `Settings.ACTION_SETTINGS`; MUSIC -> `BundledMusicPlayer` toggles an in-app looping `MediaPlayer` of `app/src/main/res/raw/bach_air_usaf.mp3` (J.S. Bach, Air; The United States Air Force Band; public domain; source Wikimedia Commons; credited in `docs/THIRD_PARTY_AUDIO.md`), volume 0.35, tool output status `music_playing` / `music_stopped`; external players (`CATEGORY_APP_MUSIC`, then `com.miui.player` / netease / qqmusic / kugou / kuwo / spotify launch intents) only as fallback. `resolveActivity` pre-checks were removed (Android 11+ package visibility); `<queries>` declares Amap, those music packages and the `geo:` VIEW intent.
+- Transcript display: the core controller now forwards only final (`event.final == true`) user/assistant transcript sentences to the UI. Test: `VoiceSessionControllerTest.transcriptCallbackShowsOnlyFinalUtterances`.
+- Reply audio: `BaiduAppSettings.outputSampleRate` (AUTO / 16000 / 24000; prefs key `output_sample_rate`; AUTO resolves Flex -> 24 kHz, Lite/Pro -> 16 kHz via `resolvedOutputSampleRateHz()`), selectable in Developer Settings ("回复音频采样率"). `PcmAudioPlayer` buffer >= 320 ms with a `LinkedBlockingQueue`; `PcmAudioCapture` attaches `AcousticEchoCanceler` and `NoiseSuppressor` when available. Whether 24 kHz is correct is NOT yet confirmed by listening; it is the default pending the user's ear test.
+- Lite Near / Lite Far / Pro Near / Pro Far remain selectable in Developer Settings and use `BaiduDirectRealtimeProvider` with no Function Calling.
+- Main defaults to Baidu Flex (`qianfan-realtime-flex-v1`; `BaiduRuntimeProvider.fromWire` / `VoiceCatalog.DEFAULT_PROVIDER` = FLEX). Qwen/GPT/backend compatibility remains frozen and is not selected by the production UI.
 
-## Key decisions
-See `docs/DECISIONS.md` (D1–D13). Pins unchanged: JDK Temurin 17.0.20.1+1, Gradle 8.11.1, Kotlin 2.0.21, AGP 8.7.3, compileSdk 34. Default realtime provider Qwen Flash. Credentials backend-only. True E2E audio; no ASR+LLM+TTS fallback.
+## Flex boundary
 
-## Toolchain evidence (wording sweep session)
-| Item | Path / command | Evidence |
-| --- | --- | --- |
-| Stale Baidu-default rg | listed docs + `DeveloperSettingsActivity.kt` | 0 matches (rg exit 1) |
-| Catalog + secret tests + APK | `.\gradlew.bat :ingress:test --tests MockRealtimeVoiceProviderTest … :behavior-test:test --tests SecretScanTest :app:assembleDebug --no-daemon --no-parallel --console=plain` | exit 0; BUILD SUCCESSFUL in 26s; MockRealtimeVoiceProviderTest 3/3; SecretScanTest 2/2 |
-| Catalog method (correct name) | `.\gradlew.bat :ingress:test --tests …VoiceSessionControllerTest.catalogDefaultsAreQwenFlashAndAllProvidersSelectable --no-daemon --no-parallel --console=plain` | exit 0; BUILD SUCCESSFUL in 14s; 1/1 |
-| APK | `C:\Users\Administrator\tools\nova-drive-build\app\outputs\apk\debug\app-debug.apk` | **5256995 bytes**, SHA-256 `789CDF7D6A1C73F03FD609802F1C5E5CC2819D464F6E86B047CBDAD608F2D20F`, version `0.3.1-qwen-realtime` |
-| Assignment scans | source + APK `BAIDU_API_KEY=` / `DASHSCOPE_API_KEY=` / `OPENAI_API_KEY=` / `client_secret=` | 0 hits |
+Official Flex doc: https://cloud.baidu.com/doc/SPEECH/s/Wmtlcgi7c — endpoint `wss://aip.baidubce.com/ws/2.0/speech/v1/realtime?model=qianfan-realtime-flex-v1`. Auth is access_token query (legacy App ID/API Key/Secret Key OAuth) or `Authorization: Bearer <bce-v3 API key>`. Handshake: server sends `session.created` + `conversation.created`, then client sends `session.update`. Input/output is pcm16.
 
-This wording sweep did not rerun backend pytest, fake demo, the full 67-test Gradle suite, or the strict demo. Prior supervisor follow-up evidence: targeted ingress BUILD SUCCESSFUL in 24s; full Gradle **67** tests, 0 failures, 38s; pytest **55 passed, 2 skipped**; fake 28 / 9000 events; strict demo `VERIFIED`.
+Documented client events used by the app: `session.update`, `input_audio_buffer.append`, `response.cancel`, `conversation.item.create` (`function_call_output`), `response.create`. Function-call server events: `response.output_item.added` (`item.type=function_call`), `response.function_call_arguments.delta` / `.done`.
 
-## Exact commands (verified this session)
+Flex is in PUBLIC BETA (本接口处于公测阶段); access may require Baidu enablement — access denial is surfaced as `BAIDU_FLEX_ACCESS_DENIED`.
 
-```powershell
-cd D:\桌面\Android_Automotive_Voice_Agent
-.\gradlew.bat :ingress:test --tests "com.novadrive.ingress.realtime.MockRealtimeVoiceProviderTest" :behavior-test:test --tests "com.novadrive.architecture.SecretScanTest" :app:assembleDebug --no-daemon --no-parallel --console=plain
-.\gradlew.bat :ingress:test --tests "com.novadrive.ingress.realtime.VoiceSessionControllerTest.catalogDefaultsAreQwenFlashAndAllProvidersSelectable" --no-daemon --no-parallel --console=plain
-```
+Tools declared in `session.update`: `navigate_to(destination: string 1..120)` and `open_app(app: enum maps|music|settings)`, `tool_choice` auto, modalities text+audio, server_vad with `create_response=true` and `interrupt_response=true`. Arguments are validated (bounded size, exact fields, enum) before dispatch; unknown tools return `UNKNOWN_TOOL` without executing; `navigate_to` hands off via `NavigationAdapter` (Amap `navi` with Web-service key, else `keywordNavi` / `geo:`), `open_app` launches maps/settings intents or toggles `BundledMusicPlayer`; results are returned as `function_call_output` followed by `response.create`. Assistant prose is not parsed as commands.
 
-Start backend after choosing a provider in `backend/.env`:
+Baidu docs do not state the output sample rate; the Flex `session.created` example shows model `qwen3-omni-safe` (Qwen3-Omni backend, whose realtime output is 24 kHz). AUTO therefore maps Flex -> 24 kHz. Whether 24 kHz is correct is NOT yet confirmed by listening.
 
-```powershell
-cd D:\桌面\Android_Automotive_Voice_Agent\backend
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
+## Verified on device
 
-Empty-environ default is Qwen Flash (`VOICE_PROVIDER=qwen`). Optional: `VOICE_PROVIDER=gpt_live`, `baidu`, or `fake` (test-only).
+Xiaomi 24069RA21C, serial 2391ff70, Android SDK 36 (2026-09-15).
 
-## Next
-Live audio only after `backend/.env` has the selected provider’s real key(s) and free quota. Then one short controlled phrase test (no long loops, no paid upgrade). Device Bluetooth/AEC remains a later manual test. Baidu function calling stays blocked unless official E2E docs add custom tools.
+- Live Baidu Flex Test Connection succeeded with the user's Keystore-stored credentials ("Connection successful / Authentication successful / Model: qianfan-realtime-flex-v1"); a live voice session produced user/assistant transcripts and a `navigate_to` function call that launched Amap (`com.autonavi.minimap`).
+- Foreground keep-alive: with another app in front for 15 s the session stayed Listening and MIUI did not destroy the app's sockets (previously `InetDiagMessage: Destroyed live tcp sockets` after ~5 s in background led to `BAIDU_FLEX_DNS_FAILED`).
+- Hands-free navigation (2026-09-15, 17:07): with a user-supplied Amap Web-service key stored as Keystore credential `amap_web_key`, pressing the in-app "测试导航到天安门广场（走真实工具路径）" button (exactly the `navigate_to` tool path) launched `androidamap://navi/...` and Amap entered live turn-by-turn guidance with ZERO taps: turn card "216m 无名道路", route line, speed gauge, ETA "23小时18分 2265公里 明天下午4:26到达". No destination pick-list appeared. Without a key the same path still degrades to `keywordNavi` + pick-list.
+- `open_app` SETTINGS and MAPS intents open on this phone; nothing on this phone handles `CATEGORY_APP_MUSIC`, hence the bundled track.
+
+Still pending: user ear-test of reply audio at the new 24 kHz Flex default (flip the sample-rate switch if wrong); entering an Amap Web-service key for hands-free navigation on a given install; a full drive test. Also not yet verified by listening/speaking: the 端庄傲气 persona tone, whether the realtime model accepts numeric `voice` ids such as 4157 (the app falls back to `"default"` automatically), the bundled-music tool by voice, and location-biased nearby POI search.
+
+## Evidence
+
+| Check | Result |
+| --- | --- |
+| Final Gradle | `.\gradlew.bat test :app:assembleDebug` — BUILD SUCCESSFUL, exit code 0 (2026-09-15) |
+| Test XML reports | 129 tests total, 0 failures, 0 errors, 0 skipped — app 60 (`testDebugUnitTest`), ingress 44, behavior-test 19, contracts 2, safety 2, simulator 2 |
+| APK | `C:\Users\Administrator\tools\nova-drive-build\app\outputs\apk\debug\app-debug.apk` — 13,263,138 bytes; SHA-256 `73F79FC557C2A43DD4395DA54701136A01E317129CEBC4B738029CAAD4DBB697` |
+| Physical device | Installed on Xiaomi 24069RA21C, serial 2391ff70, Android SDK 36. Persona was reset on-device via 开发者设置 -> 恢复默认傲娇人设 -> SAVE, because `BaiduSettingsRepository` prefers a previously saved `instructions` value over the new code default; the stored persona now contains the new 端庄 text and no longer the earlier 傲娇 wording. |
+| VERIFIED on device | live Baidu Flex Test Connection with the user's Keystore credentials; a live voice session with transcripts and a `navigate_to` function call; hands-free turn-by-turn navigation through the real tool path with an Amap Web key (see Verified on device); `open_app` settings and maps intents |
+| NOT VERIFIED | reply-audio pitch at the new 24 kHz Flex default, the 端庄傲气 persona tone, whether the realtime model accepts numeric `voice` ids such as 4157 (the app falls back to `"default"` automatically), the bundled-music tool by voice, and location-biased nearby POI search — requires the user to listen/speak |
+
+## Notes
+
+- Frozen backend compatibility string `http://10.0.2.2:8000` and an UNREFERENCED `res/xml/network_security_config.xml` (localhost/10.0.2.2 only) remain packaged; Qwen/GPT/backend code remains frozen compatibility code, not selectable from the production UI.
+- `BaiduRealtimeClientTest` is pinned to the Lite provider/model because the settings default moved to Flex. Regression: `BaiduFlexClientTest.sendAudioOnClosedSocketEmitsErrorWithoutThrowing`.
+- No commit or push was performed. No credentials exist in the repository.

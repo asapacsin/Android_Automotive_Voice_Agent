@@ -5,13 +5,12 @@ plugins {
     alias(libs.plugins.kotlin.android)
 }
 
-val localProperties = Properties().apply {
-    val file = rootProject.file("local.properties")
-    if (file.isFile) {
-        file.inputStream().use { load(it) }
-    }
+val amapApiKey: String = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.isFile }?.inputStream()?.use { load(it) }
+}.getProperty("AMAP_API_KEY")?.trim().orEmpty()
+if (amapApiKey.isEmpty()) {
+    logger.warn("AMAP_API_KEY missing from local.properties — the navigation view will not authorise")
 }
-val novaBackendUrl = (localProperties.getProperty("NOVA_BACKEND_URL") ?: "http://10.0.2.2:8000").trim()
 
 android {
     namespace = "com.novadrive.app"
@@ -21,9 +20,14 @@ android {
         applicationId = "com.novadrive.app"
         minSdk = 28
         targetSdk = 34
-        versionCode = 3
-        versionName = "0.3.1-qwen-realtime"
-        resValue("string", "nova_backend_url", novaBackendUrl)
+        versionCode = 7
+        versionName = "0.6.0-baidu-flex"
+        // Frozen backend compatibility receives no packaged host in the direct build.
+        resValue("string", "nova_backend_url", "")
+        manifestPlaceholders["AMAP_API_KEY"] = amapApiKey
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
     }
 
     buildTypes {
@@ -51,6 +55,12 @@ android {
     buildFeatures {
         buildConfig = false
     }
+
+    testOptions {
+        unitTests.all {
+            it.useJUnitPlatform()
+        }
+    }
 }
 
 dependencies {
@@ -62,6 +72,12 @@ dependencies {
     implementation(project(":feedback"))
     implementation(project(":orchestration"))
     implementation(project(":simulator"))
+    implementation(files("libs/Msc.jar"))
+    implementation(libs.amap.navi.sdk)
     implementation(libs.okhttp)
     implementation(libs.kotlinx.coroutines.android)
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.mockwebserver)
+    testImplementation(libs.json)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }

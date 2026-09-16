@@ -15,6 +15,10 @@ interface RealtimeVoiceProvider {
 
     val supportsCustomTools: Boolean
         get() = capabilities.customTools
+    val supportsFunctionCalling: Boolean
+        get() = capabilities.functionCalling
+    val supportsRealtimeAudio: Boolean
+        get() = capabilities.realtimeAudio
     val supportsServerVadInterrupt: Boolean
         get() = capabilities.serverVadInterrupt
 
@@ -47,6 +51,12 @@ interface RealtimeVoiceProvider {
     fun close()
 }
 
+class VoiceProviderException(
+    val code: String,
+    val safeMessage: String,
+    cause: Throwable? = null,
+) : Exception(safeMessage, cause)
+
 data class WorkInjection(
     val callId: String,
     val ok: Boolean,
@@ -71,6 +81,8 @@ fun classifyVoiceError(code: String): ErrorClass {
         normalized.contains("QUOTA") || normalized.contains("RATE") -> ErrorClass.RATE_LIMIT
         normalized.contains("INVALID_MODEL") || normalized.contains("MALFORMED") -> ErrorClass.MALFORMED
         normalized.contains("DISCONNECT") ||
+            normalized.contains("CONNECTION") ||
+            normalized.contains("DNS") ||
             normalized.contains("TIMEOUT") ||
             normalized.contains("WS_FAILED") ||
             normalized.contains("UNAVAILABLE") -> ErrorClass.RETRYABLE

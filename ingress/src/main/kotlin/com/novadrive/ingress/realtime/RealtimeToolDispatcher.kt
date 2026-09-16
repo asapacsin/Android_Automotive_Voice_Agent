@@ -9,6 +9,7 @@ data class ToolDispatchResult(
     val orchestration: OrchestrationResult?,
     val blockedReason: String? = null,
     val successChip: String? = null,
+    val output: String? = null,
 )
 
 /**

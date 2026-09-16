@@ -3,6 +3,7 @@ package com.novadrive.app.voice
 import android.os.Handler
 import android.os.Looper
 import android.util.Base64
+import com.novadrive.app.LocalConnectivity
 import com.novadrive.ingress.realtime.DomainVoiceEvent
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -55,8 +56,9 @@ class BackendVoiceClient(
 
                     override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                         main.post {
-                            onRawError("BACKEND_WS_FAILED", "backend unreachable")
-                            listener(DomainVoiceEvent.Error("BACKEND_WS_FAILED", "backend unreachable"))
+                            val message = LocalConnectivity.backendWsFailedMessage(backendHttpUrl)
+                            onRawError("BACKEND_WS_FAILED", message)
+                            listener(DomainVoiceEvent.Error("BACKEND_WS_FAILED", message))
                         }
                     }
 

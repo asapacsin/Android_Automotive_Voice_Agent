@@ -15,20 +15,24 @@ class AudioFocusController(
 ) {
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private var request: AudioFocusRequest? = null
+    @Volatile private var held = false
     var lastFocusState: Int = AudioManager.AUDIOFOCUS_NONE
         private set
+    var onFocusChanged: ((Int) -> Unit)? = null
 
+    @Synchronized
     fun requestSpeechFocus() {
+        if (held) return
         val attrs =
             AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                .setUsage(AudioAttributes.USAGE_ASSISTANT)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                 .build()
         if (Build.VERSION.SDK_INT >= 26) {
             val focusRequest =
                 AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
                     .setAudioAttributes(attrs)
-                    .setOnAudioFocusChangeListener { lastFocusState = it }
+                    .setOnAudioFocusChangeListener { handleFocusChange(it) }
                     .build()
             request = focusRequest
             lastFocusState = audioManager.requestAudioFocus(focusRequest)
@@ -36,22 +40,31 @@ class AudioFocusController(
             @Suppress("DEPRECATION")
             lastFocusState =
                 audioManager.requestAudioFocus(
-                    { lastFocusState = it },
+                    { handleFocusChange(it) },
                     AudioManager.STREAM_VOICE_CALL,
                     AudioManager.AUDIOFOCUS_GAIN_TRANSIENT,
                 )
         }
+        held = true
     }
 
+    private fun handleFocusChange(change: Int) {
+        lastFocusState = change
+        onFocusChanged?.invoke(change)
+    }
+
+    @Synchronized
     fun abandon() {
-        val held = request
-        if (held != null && Build.VERSION.SDK_INT >= 26) {
-            audioManager.abandonAudioFocusRequest(held)
+        if (!held) return
+        val heldRequest = request
+        if (heldRequest != null && Build.VERSION.SDK_INT >= 26) {
+            audioManager.abandonAudioFocusRequest(heldRequest)
         } else {
             @Suppress("DEPRECATION")
             audioManager.abandonAudioFocus(null)
         }
         request = null
+        held = false
     }
 
     fun communicationDeviceLabel(): String {

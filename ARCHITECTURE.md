@@ -1,0 +1,135 @@
+# Architecture — Nova Drive / 小诺
+
+> The **currently approved** architecture. This file is authoritative.
+> `docs/ARCHITECTURE.md` is the older Checkpoint-1 document and is retained for history.
+
+## Shape of the system
+
+```text
+                         ANDROID PHONE
+ ┌──────────────────────────────────────────────────────────────┐
+ │  MainActivity (UI)          DeveloperSettingsActivity        │
+ │        │                            │                        │
+ │        │                     BaiduSettingsRepository ──┐      │
+ │        │                     AmapSettingsRepository ───┤      │
+ │        │                                               ▼      │
+ │        │                            AndroidKeystoreCredentialStore
+ │        │                                     (AES/GCM, on device)
+ │        ▼                                                      │
+ │  VoiceSessionController (app)                                 │
+ │    ├── PcmAudioCapture ──── 16 kHz mono PCM16 ────┐           │
+ │    │     (VOICE_COMMUNICATION source, AEC + NS)   │           │
+ │    │     gated while the assistant speaks         │           │
+ │    │                                              │           │
+ │    ├── BaiduFlexProvider  (DEFAULT)               │           │
+ │    │     └── BaiduFlexClient ── WSS ──────────────┼──────────────► Baidu Flex
+ │    │           BaiduFlexProtocol                  │           │    aip.baidubce.com
+ │    │           BaiduAccessTokenClient ────────────┼──────────────► Baidu OAuth
+ │    │                                              │           │
+ │    ├── BaiduDirectRealtimeProvider (selectable, no tools)     │
+ │    │                                              │           │
+ │    └── PcmAudioPlayer ◄── PCM16 reply audio ──────┘           │
+ │          (USAGE_ASSISTANT → media stream)                     │
+ │                                                                │
+ │  VoiceSessionController (ingress, provider-neutral core)       │
+ │    state machine · reconnect · work coordinator · diagnostics  │
+ │                                                                │
+ │  AndroidToolDispatcher  (validates model output)               │
+ │    ├── NavigationAdapter ──► AmapPoiClient ───────────────────────► Amap Web API
+ │    │        └── androidamap://navi?lat&lon ──────────────────────► Amap app
+ │    ├── BundledMusicPlayer (in-app, res/raw)                    │
+ │    └── Settings intent                                         │
+ │                                                                │
+ │  VoiceSessionService — microphone foreground service            │
+ └──────────────────────────────────────────────────────────────┘
+```
+
+## Components
+
+### MainActivity
+The only production entry point. Starts and stops the voice session, renders state and transcripts, and routes tool calls to `AndroidToolDispatcher`. It calls `startBaidu(...)` exclusively — no other provider path is reachable from the UI.
+
+### DeveloperSettingsActivity
+Where the user enters credentials and tuning: Baidu auth mode and keys, provider/model, Amap Web key, persona text, voice id, speed, reply-audio sample rate. Also hosts **Test Connection**, which opens the provider WebSocket, waits for `session.updated`, and closes — deliberately **without** starting the microphone.
+
+### Credential storage
+`AndroidKeystoreCredentialStore` encrypts each field with AES/GCM under a Keystore key. Fields are independently keep / replace / clear. Non-secret configuration lives in private SharedPreferences.
+
+> **Lifecycle trap:** `BaiduSettingsRepository.loadSettings()` prefers a *saved* `instructions` value over the code default. Changing `PersonaProfiles` does **not** reach a device that has ever pressed Save until **恢复默认人设 → SAVE** is pressed. Any automation that taps that button by text must use this exact label.
+
+### Audio capture — `PcmAudioCapture` / `AndroidMicrophonePort`
+16 kHz mono PCM16 from `MediaRecorder.AudioSource.VOICE_COMMUNICATION`, with `AcousticEchoCanceler` and `NoiseSuppressor` attached when available. Exposes `gated`: while true, frames are dropped but the recorder keeps running, so resuming is instant.
+
+### Realtime provider — `BaiduFlexProvider` → `BaiduFlexClient` → `BaiduFlexProtocol`
+Owns the vendor protocol. Handshake: the server sends `session.created`, then the client sends `session.update` carrying persona instructions, voice, speed, server-VAD settings and the tool declarations. Audio goes up as base64 `input_audio_buffer.append`.
+
+Key behaviours:
+- **Voice fallback** — if the server errors before readiness and a non-default voice was sent, `session.update` is resent once with `"default"`, so a bad voice id cannot cost the whole session.
+- **Benign cancel** — a refused `response.cancel` ("no active response") is swallowed, never escalated to a session error. `response.cancel` is only sent while the assistant is actually speaking.
+- **Generation guarding** — callbacks from a superseded connection are rejected.
+- `sendAudio` and `cancelResponse` never throw on a closed socket; `sendFunctionResult` still does, so the core can release its delivery claim and retry.
+
+`BaiduDirectRealtimeProvider` / `BaiduRealtimeClient` / `BaiduProtocol` serve Pro/Lite: same transport, different handshake (`session.update` on open), and **no** function calling.
+
+### Provider-neutral core — `ingress`
+`VoiceSessionController` in `ingress` holds the state machine, reconnect policy, work coordinator, latency diagnostics and audio ports. It knows nothing about any vendor. Vendor JSON never escapes the Android adapters. Enforced by `behavior-test/DependencyBoundaryTest`.
+
+### Audio playback — `PcmAudioPlayer` / `AndroidPlaybackPort`
+AudioTrack with `USAGE_ASSISTANT` + `CONTENT_TYPE_SPEECH`, so replies land on the **media stream** and obey the volume rocker. Buffer ≥ 320 ms, blocking queue worker. Audio focus is requested when speech begins and abandoned when it ends — per utterance, not per session.
+
+Focus changes are acted on, not merely requested: `LOSS_TRANSIENT_CAN_DUCK` ducks, `LOSS_TRANSIENT` pauses, `LOSS` pauses and flushes, `GAIN` unducks and resumes. `AudioFocusController.onFocusChanged` has exactly one owner (`AndroidPlaybackPort`); it is a single slot, not a listener list.
+
+> **Known trade-off:** moving off `USAGE_VOICE_COMMUNICATION` made replies audible but removed the platform echo-cancellation reference for our own output. The mic is therefore gated while the assistant speaks (350 ms release delay). **This disables barge-in** — the user cannot interrupt mid-reply.
+
+### Navigation mute rule — `NavigationState`
+
+A product rule, not an audio-policy trick: **while navigation is running, 小诺's reply audio is muted**, except for a short window after a tool action succeeded.
+
+- `navigate_to` succeeding calls `NavigationState.begin()`.
+- Any Accepted tool dispatch calls `allowConfirmation()`, opening a 10 s window in which speech is permitted — so "music stopped" is still spoken.
+- `AndroidPlaybackPort.enqueue` drops frames while `shouldMuteSpeech()` is true.
+- The flag is cleared by `reset()` on session stop and release.
+
+The audio-focus ducking described in the previous section remains underneath, but this rule is the primary mechanism for not talking over Amap.
+
+> **Known limitation:** nothing detects when navigation *ends*. The flag clears when the voice session stops, so a driver who finishes navigating but keeps the session open stays muted until the session ends. A `stop_navigation` tool would resolve this; not yet specced.
+
+### Tool dispatch — `AndroidToolDispatcher`
+The only bridge from model output to device action. Every call is validated before execution: exact field sets, length bounds, enum membership. Unknown tools return `UNKNOWN_TOOL` without executing. Tools: `navigate_to`, `open_app(maps|settings)`, `control_music(play|stop)`.
+
+### Navigation — `NavigationAdapter` + `AmapPoiClient`
+With an Amap Web key: resolve the destination to coordinates (`place/around` biased by coarse location, falling back to `place/text`), then launch `androidamap://navi?...&lat=&lon=&dev=0` for zero-tap turn-by-turn. Without a key: `keywordNavi` (one tap), then `geo:`. See `ADR-003`.
+
+### Background behaviour — `VoiceSessionService`
+A `foregroundServiceType="microphone"` service started when a session starts and stopped on every session-end path. It is what keeps the session alive when another app takes the screen, and it also earns the background-activity-start exemption (`BAL_ALLOW_FOREGROUND`) that lets tools launch apps from the background.
+
+### Network boundary
+Outbound only, to three hosts: `aip.baidubce.com` (WSS + OAuth) and `restapi.amap.com`. Release builds set `usesCleartextTraffic="false"`; the debug source set overrides it for local experimentation. The packaged backend URL resource is empty.
+
+## Status of every path
+
+| Path | Status |
+| --- | --- |
+| Baidu Flex direct (function calling) | **ACTIVE — default** |
+| Baidu Pro/Lite direct (conversation only) | **ACTIVE — user-selectable** |
+| Amap coordinate deep link navigation | **ACTIVE** |
+| Bundled in-app music | **ACTIVE** |
+| Microphone foreground service | **ACTIVE** |
+| Navigation mute rule (`NavigationState`) | **ACTIVE** — speech muted while navigating, except post-tool confirmations |
+| `AmapAutoPickService` accessibility auto-tap | OPTIONAL FALLBACK — off by default |
+| Qwen direct (`QwenSettings`, providers, protocol) | DORMANT — unreachable from production UI |
+| PC backend (`BackendRealtimeProvider`, `backend/`) | DORMANT — empty packaged URL |
+| GPT-Live | DORMANT — catalog metadata only, no adapter |
+| `simulator`, Fake/Mock providers | TEST ONLY |
+| `demo` module | TEST/DEMO ONLY — JVM structured-command demo |
+
+## Test boundaries
+
+| Suite | Proves |
+| --- | --- |
+| `app` unit tests | Protocol JSON shape, settings semantics, URI construction, tool validation. MockWebServer proves **protocol shape, not connectivity**. |
+| `ingress` tests | Provider-neutral state machine, reconnect, work coordination, protocol fixtures |
+| `behavior-test` | Module dependency boundaries, secret scanning, orchestration behaviour |
+| Not covered by any automated test | Audio routing, mic gating, foreground-service survival, real provider connectivity, anything requiring a phone |
+
+See `ACCEPTANCE_TESTS.md` for what each level is allowed to claim.

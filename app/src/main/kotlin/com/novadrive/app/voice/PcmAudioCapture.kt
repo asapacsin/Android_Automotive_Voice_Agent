@@ -3,6 +3,8 @@ package com.novadrive.app.voice
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.media.audiofx.AcousticEchoCanceler
+import android.media.audiofx.NoiseSuppressor
 import com.novadrive.ingress.realtime.AudioBufferGuard
 import com.novadrive.ingress.realtime.BoundedThreadCleanup
 import com.novadrive.ingress.realtime.MicrophonePort
@@ -20,6 +22,8 @@ class PcmAudioCapture(
     private val running = AtomicBoolean(false)
     private var record: AudioRecord? = null
     private var worker: Thread? = null
+    private var echoCanceler: AcousticEchoCanceler? = null
+    private var noiseSuppressor: NoiseSuppressor? = null
 
     fun start() {
         if (!running.compareAndSet(false, true)) return
@@ -62,9 +66,22 @@ class PcmAudioCapture(
             onError("AUDIO_CAPTURE_FAILED")
             return
         }
+        echoCanceler =
+            if (AcousticEchoCanceler.isAvailable()) {
+                runCatching { AcousticEchoCanceler.create(recorder.audioSessionId)?.also { it.enabled = true } }.getOrNull()
+            } else {
+                null
+            }
+        noiseSuppressor =
+            if (NoiseSuppressor.isAvailable()) {
+                runCatching { NoiseSuppressor.create(recorder.audioSessionId)?.also { it.enabled = true } }.getOrNull()
+            } else {
+                null
+            }
         try {
             recorder.startRecording()
         } catch (_: Exception) {
+            releaseCaptureEffects()
             recorder.release()
             running.set(false)
             onError("AUDIO_CAPTURE_FAILED")
@@ -88,6 +105,7 @@ class PcmAudioCapture(
 
     fun stop() {
         running.set(false)
+        releaseCaptureEffects()
         record?.run {
             try {
                 stop()
@@ -104,6 +122,19 @@ class PcmAudioCapture(
         BoundedThreadCleanup.terminate(toJoin)
     }
 
+    private fun releaseCaptureEffects() {
+        try {
+            echoCanceler?.release()
+        } catch (_: Exception) {
+        }
+        echoCanceler = null
+        try {
+            noiseSuppressor?.release()
+        } catch (_: Exception) {
+        }
+        noiseSuppressor = null
+    }
+
     companion object {
         const val SAMPLE_RATE = 16000
         const val FRAME_BYTES = 3200
@@ -115,12 +146,13 @@ class AndroidMicrophonePort(
 ) : MicrophonePort {
     private var capture: PcmAudioCapture? = null
     override var muted: Boolean = false
+    @Volatile var gated: Boolean = false
 
     override fun start(onFrame: (ByteArray) -> Unit) {
         stop()
         capture =
             PcmAudioCapture(
-                onFrame = { bytes -> if (!muted) onFrame(bytes) },
+                onFrame = { bytes -> if (!muted && !gated) onFrame(bytes) },
                 onError = onError,
             )
         capture?.start()

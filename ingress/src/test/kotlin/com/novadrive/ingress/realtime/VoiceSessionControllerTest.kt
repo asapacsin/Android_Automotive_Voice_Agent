@@ -21,10 +21,10 @@ import java.util.concurrent.atomic.AtomicBoolean
 @OptIn(ExperimentalCoroutinesApi::class)
 class VoiceSessionControllerTest {
     @Test
-    fun catalogDefaultsAreQwenFlashAndAllProvidersSelectable() {
-        assertEquals(VoiceProviderId.QWEN, VoiceCatalog.DEFAULT_PROVIDER)
-        assertEquals("qwen", VoiceCatalog.DEFAULT_PROVIDER_WIRE)
-        assertEquals("qwen-audio-3.0-realtime-flash", VoiceCatalog.DEFAULT_MODEL)
+    fun catalogDefaultsAreBaiduFlexAndAllProvidersSelectable() {
+        assertEquals(VoiceProviderId.BAIDU_FLEX, VoiceCatalog.DEFAULT_PROVIDER)
+        assertEquals("baidu_flex", VoiceCatalog.DEFAULT_PROVIDER_WIRE)
+        assertEquals("qianfan-realtime-flex-v1", VoiceCatalog.DEFAULT_MODEL)
         assertEquals("audio-mini-realtime-near", VoiceCatalog.defaultModel(VoiceProviderId.BAIDU))
         assertEquals("Lite Near", VoiceCatalog.baiduModels[VoiceCatalog.BAIDU_LITE_NEAR])
         assertEquals("Lite Far", VoiceCatalog.baiduModels[VoiceCatalog.BAIDU_LITE_FAR])
@@ -34,6 +34,7 @@ class VoiceSessionControllerTest {
         assertTrue(VoiceCatalog.capabilities(VoiceProviderId.GPT_LIVE).customTools)
         assertFalse(VoiceCatalog.capabilities(VoiceProviderId.BAIDU).customTools)
         assertFalse(VoiceCatalog.capabilities(VoiceProviderId.BAIDU).clientResponseCancel)
+        assertTrue(VoiceCatalog.capabilities(VoiceProviderId.BAIDU_FLEX).customTools)
         assertFalse(VoiceCatalog.capabilities(VoiceProviderId.FAKE).requiresCredentials)
         assertFalse(VoiceCatalog.capabilities(VoiceProviderId.GPT_LIVE).clientResponseCancel)
         assertEquals("gpt-live-1", VoiceCatalog.defaultModel(VoiceProviderId.GPT_LIVE))
@@ -460,6 +461,33 @@ class VoiceSessionControllerTest {
         assertEquals("Thinking or working", VoiceUiState.THINKING.label)
         assertEquals("Idle", VoiceUiState.DISCONNECTED.label)
     }
+
+    @Test
+    fun transcriptCallbackShowsOnlyFinalUtterances() =
+        runTest(UnconfinedTestDispatcher()) {
+            val provider = FakeRealtimeVoiceProvider()
+            val transcripts = mutableListOf<String>()
+            val controller =
+                VoiceSessionController(
+                    provider = provider,
+                    microphone = InMemoryMicrophonePort(),
+                    playback = InMemoryPlaybackPort(),
+                    scope = this,
+                    config = RealtimeSessionConfig(VoiceProviderId.FAKE, VoiceCatalog.FAKE_MODEL),
+                    callbacks = VoiceSessionCallbacks(onTranscript = { transcripts += it }),
+                )
+            controller.start()
+            provider.emit(DomainVoiceEvent.UserTranscript("哎帮", false))
+            provider.emit(DomainVoiceEvent.UserTranscript("哎帮我导航", false))
+            provider.emit(DomainVoiceEvent.UserTranscript("帮我导航到天安门广场。", true))
+            provider.emit(DomainVoiceEvent.AssistantTranscript("好的", false))
+            provider.emit(DomainVoiceEvent.AssistantTranscript("好的，已为您导航。", true))
+            assertEquals(
+                listOf("你: 帮我导航到天安门广场。", "小诺: 好的，已为您导航。"),
+                transcripts,
+            )
+            controller.stop()
+        }
 
     @Test
     fun gptLiveAbsenceDoesNotBlockFakeStartup() =

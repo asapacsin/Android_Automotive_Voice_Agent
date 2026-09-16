@@ -20,18 +20,21 @@ microphone
 
 Checkpoint 1 implements the **structured-command → policy → adapter → verify → zh-CN feedback** slice.
 
-The active CURRENT_TASK keeps Checkpoint 1, Qwen Flash as the product default, and optional Qwen Plus / GPT-Live / Baidu / Fake adapters:
+The active Android runtime keeps Checkpoint 1 and makes Baidu Flex the direct on-device default. Qwen/GPT/backend adapters are frozen compatibility code:
 
 ```
 Android microphone
-  → Nova Drive backend (no secrets on device)
-  → selected realtime provider (Qwen Flash default; Qwen Plus / GPT-Live / Baidu / Fake optional)
+  → VoiceSessionService (microphone FGS keep-alive)
+  → BaiduFlexProvider (default, Function Calling) | BaiduDirectRealtimeProvider (Lite/Pro, conversation only)
+  → Baidu Flex / Pro / Lite realtime WSS (Flex default)
   → domain events
   → VoiceSessionController (JVM core)
+  → AndroidToolDispatcher -> NavigationAdapter (Amap navi/keywordNavi) | BundledMusicPlayer | Settings intent
   → Android playback / UI states
 ```
 
-Wake-word hardware tuning remains later. Baidu custom Function Calling stays blocked. Qwen and GPT-Live tools follow their official docs. Bluetooth SCO / hardware AEC are **manual-test-only**.
+Credentials are Android-Keystore encrypted. The PC backend is not part of the production runtime. Wake-word hardware tuning remains later. Pro/Lite has no Function Calling; Flex provides it through `AndroidToolDispatcher`. Bluetooth SCO / hardware AEC are **manual-test-only**.
+
 
 ## Decision split
 
@@ -91,6 +94,6 @@ Success is never taken from the execute return value alone.
 
 ## Android Automotive
 
-`app` is a thin Activity shell that runs the same structured-command path **and** a backend-proxied realtime voice session. `android.hardware.type.automotive` is declared `required=false` until Checkpoint 7. The module is included only when `platforms/android-34` exists so JVM tests remain runnable on a cmdline-tools-only SDK.
+`app` is a thin Activity shell around direct Baidu WSS, Android audio, and encrypted phone settings. `android.hardware.type.automotive` is declared `required=false` until Checkpoint 7. The module is included only when `platforms/android-34` exists so JVM tests remain runnable on a cmdline-tools-only SDK.
 
-Permanent provider keys are backend-only (`backend/.env`). The Android client speaks a provider-neutral JSON session to `ws://<backend>/v1/voice/realtime`. Core Kotlin modules still must not import `com.baidu`, `com.openai`, DashScope SDKs, simulator types, AAOS, or VHAL. UI code consumes `VoiceSessionController` + `DomainVoiceEvent` only.
+Vendor JSON is confined to the Android Baidu adapter. Core Kotlin modules still do not import Baidu SDK types, simulator types, AAOS, or VHAL. UI code consumes `VoiceSessionController` + `DomainVoiceEvent` only. See `BAIDU_DIRECT_ANDROID.md` for the exact protocol and Function Call boundary.
