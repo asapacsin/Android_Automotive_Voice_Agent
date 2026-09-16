@@ -16,6 +16,6 @@ object PersonaProfiles {
 语音风格：年轻女性，音调偏高但不幼稚，吐字清晰紧凑，平稳克制；不耐烦时语调略微上扬，但很快回到平稳。
 """.trimIndent()
     // Tool-usage rule appended for Flex only, after the persona text.
-    const val FLEX_TOOL_RULE = "只能通过提供的工具执行导航或打开支持的应用；不要假装已经执行。"
+    const val FLEX_TOOL_RULE = "只能通过提供的工具执行导航、音乐或打开支持的应用；不要假装已经执行。导航进行中「保持安静」只表示不闲聊，用户提出的每个指令（例如「播放音乐」「关闭音乐」「换目的地」）仍然必须立即调用对应工具，绝不能不回应。"
     fun sanitize(raw: String?): String = raw?.trim().orEmpty().ifBlank { DEFAULT_INSTRUCTIONS }.take(MAX_INSTRUCTIONS_CHARS)
 }

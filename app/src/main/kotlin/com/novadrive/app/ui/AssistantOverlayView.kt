@@ -174,11 +174,8 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
 
     fun appendTranscript(line: String) {
         val current = bubble.text?.toString().orEmpty()
-        bubble.text = if (current.isBlank() || current == context.getString(R.string.assistant_speech_placeholder)) {
-            line
-        } else {
-            "$current\n$line"
-        }
+        val previous = if (current == context.getString(R.string.assistant_speech_placeholder)) "" else current
+        bubble.text = recentTranscript(previous, line)
     }
 
     fun showError(code: String, message: String) {
@@ -191,3 +188,10 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 }
+
+/** Number of transcript lines the bubble keeps: the latest exchange only (driver + 小诺). */
+internal const val TRANSCRIPT_MAX_LINES = 2
+
+/** Appends [line] and keeps only the last [TRANSCRIPT_MAX_LINES] lines, so the bubble never grows. */
+internal fun recentTranscript(current: String, line: String, maxLines: Int = TRANSCRIPT_MAX_LINES): String =
+    (current.lines().filter { it.isNotBlank() } + line).takeLast(maxLines).joinToString("\n")

@@ -497,3 +497,17 @@ tap → route 13 → nav_active_route meters=20269 → navigation started
 你: 来威力商场          → navigate_to ✓ → 5 candidates
 tap → route 13 → nav_active_route meters=16009 → navigation started
 ```
+
+---
+
+## P8 — 「帮我播放音乐」 ignored during navigation; on-screen history grows without bound
+
+**Status:** FIXED 2026-09-16 — tests + build + installed; **human-voice re-test pending**
+
+- **Music:** device log 21:18:30 shows `你: 帮我播放音乐。` → `THINKING` → `LISTENING` with **no tool call and no
+  reply**. The execution path was proven fine the same minute (`control_music play` over ADB during active
+  navigation → `MediaPlayer state:started`). Cause: persona rule 4 says 「导航进行中…保持安静」, which the model
+  applied to commands too. The persona is stored on the device, so the fix went into `FLEX_TOOL_RULE`, which is
+  appended to every session: "quiet" means no chit-chat; every command must still call its tool.
+- **History:** the transcript bubble appended every line forever. It now keeps only the latest exchange
+  (2 lines) — `recentTranscript`, unit-tested.
