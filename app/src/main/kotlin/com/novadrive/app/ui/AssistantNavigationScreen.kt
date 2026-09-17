@@ -19,6 +19,13 @@ import com.novadrive.ingress.realtime.VoiceUiState
 
 class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
     var onCameraToggleRequested: (() -> Unit)? = null
+
+    /** Asked by the camera when a vision request finds no camera permission. */
+    var onCameraPermissionNeeded: (() -> Unit)?
+        get() = camera.onPermissionNeeded
+        set(value) {
+            camera.onPermissionNeeded = value
+        }
     var onOpenDeveloperSettings: (() -> Unit)? = null
         set(value) {
             field = value

@@ -20,7 +20,8 @@ class CameraQuestionHandler(
         val question = rawQuestion?.trim()?.takeIf { it.isNotEmpty() }?.take(MAX_QUESTION_CHARS) ?: DEFAULT_QUESTION
         val camera = surface() ?: return failure("CAMERA_UNAVAILABLE", "摄像头不可用。")
         if (!camera.cameraPermitted()) {
-            return failure("CAMERA_PERMISSION_DENIED", "小诺还没有相机权限，请点右下角相机按钮并允许使用相机。")
+            camera.requestCameraPermission()
+            return failure("CAMERA_PERMISSION_DENIED", "需要相机权限，已经弹出授权，请允许后再问我一次。")
         }
         camera.showVisionText(LOOKING)
         val jpeg = camera.captureJpeg(MAX_EDGE_PX)

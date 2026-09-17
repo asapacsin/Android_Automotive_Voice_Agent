@@ -86,6 +86,7 @@ class MainActivity : Activity() {
                     startActivity(Intent(this@MainActivity, DeveloperSettingsActivity::class.java))
                 }
                 onCameraToggleRequested = { toggleCamera() }
+                onCameraPermissionNeeded = { runOnUiThread { requestCameraPermission() } }
             }
         setContentView(screen)
         screen.onCreate(savedInstanceState)
@@ -97,14 +98,15 @@ class MainActivity : Activity() {
         }
         // P5: the Amap SDK uses GNSS and needs FINE. Requesting only COARSE left FINE
         // declared-but-never-granted, so the SDK threw from addNmeaListener on every install.
-        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION,
-                ),
-                REQ_LOCATION,
-            )
+        // Camera is asked for up front too (「看看前面有什么」), in the SAME request: Android shows
+        // one permission dialog at a time and cancels a competing request.
+        val startupPermissions = listOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.CAMERA,
+        ).filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
+        if (startupPermissions.isNotEmpty()) {
+            requestPermissions(startupPermissions.toTypedArray(), REQ_LOCATION)
         }
     }
 
@@ -136,6 +138,8 @@ class MainActivity : Activity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQ_NOTIF) return
         if (requestCode == REQ_LOCATION) {
+            // The startup request may carry only CAMERA when location was already granted.
+            if (Manifest.permission.ACCESS_FINE_LOCATION !in permissions) return
             // onResume has already run and skipped the start, so kick it here on grant.
             val granted =
                 permissions.indexOf(Manifest.permission.ACCESS_FINE_LOCATION).let { i ->
@@ -152,6 +156,20 @@ class MainActivity : Activity() {
         if (requestCode == REQ_CAMERA) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 screen.showCamera()
+            } else if (!shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)) {
+                // Measured 2026-09-17: after an earlier refusal Android (MIUI) denies instantly and
+                // shows no dialog, so tapping 📷 appeared to do nothing. Send the driver to the one
+                // place the permission can still be granted.
+                DebugVoiceLog.log("camera_permission denied_without_dialog=true")
+                android.widget.Toast.makeText(this, "请在设置中允许小诺使用相机", android.widget.Toast.LENGTH_LONG).show()
+                startActivity(
+                    android.content.Intent(
+                        android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        android.net.Uri.fromParts("package", packageName, null),
+                    ),
+                )
+            } else {
+                DebugVoiceLog.log("camera_permission denied=true")
             }
         }
     }
@@ -162,10 +180,20 @@ class MainActivity : Activity() {
             return
         }
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.CAMERA), REQ_CAMERA)
+            requestCameraPermission()
             return
         }
         screen.showCamera()
+    }
+
+    /**
+     * Pops the camera permission up without the driver hunting for it: the system dialog when
+     * Android still allows one, otherwise (handled in onRequestPermissionsResult) the app's
+     * settings page, which is the only place a permanently refused permission can be granted.
+     */
+    private fun requestCameraPermission() {
+        if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) return
+        requestPermissions(arrayOf(Manifest.permission.CAMERA), REQ_CAMERA)
     }
 
     private fun renderState(state: VoiceUiState, error: String?) {

@@ -25,6 +25,10 @@ class CameraQuestionHandlerTest {
         val shown = mutableListOf<String>()
         var captures = 0
         override fun cameraPermitted() = permitted
+        var permissionRequests = 0
+        override fun requestCameraPermission() {
+            permissionRequests++
+        }
         override suspend fun captureJpeg(maxEdgePx: Int): ByteArray? {
             captures++
             assertEquals(CameraQuestionHandler.MAX_EDGE_PX, maxEdgePx)
@@ -85,9 +89,15 @@ class CameraQuestionHandlerTest {
         val vision = FakeVision()
         val outcome = CameraQuestionHandler({ surface }, vision).ask("前面有什么")
         assertEquals("CAMERA_PERMISSION_DENIED", outcome.errorCode)
+        assertEquals(1, surface.permissionRequests, "the permission prompt must pop up by itself")
         assertEquals(0, surface.captures)
         assertTrue(vision.questions.isEmpty())
         assertTrue(JSONObject(outcome.output).getString("message").contains("相机权限"))
+        // With permission, no prompt is raised. (The block must end in Unit: JUnit 5 silently
+        // skips a test whose runBlocking returns a value — this test was skipped once that way.)
+        val permitted = FakeSurface()
+        CameraQuestionHandler({ permitted }, FakeVision()).ask("前面有什么")
+        assertEquals(0, permitted.permissionRequests)
     }
 
     @Test

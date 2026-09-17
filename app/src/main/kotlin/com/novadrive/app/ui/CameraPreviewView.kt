@@ -32,6 +32,9 @@ import java.io.ByteArrayOutputStream
 class CameraPreviewView(context: Context) : FrameLayout(context), CameraVisionSurface {
     var onClose: (() -> Unit)? = null
 
+    /** Raised when a vision request needs the camera permission; the Activity pops it up. */
+    var onPermissionNeeded: (() -> Unit)? = null
+
     /** 「问AI」: ask the vision model about the current frame without using voice. */
     var onAskAi: (() -> Unit)? = null
 
@@ -139,6 +142,10 @@ class CameraPreviewView(context: Context) : FrameLayout(context), CameraVisionSu
     override fun cameraPermitted(): Boolean =
         context.checkSelfPermission(android.Manifest.permission.CAMERA) ==
             android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    override fun requestCameraPermission() {
+        onPermissionNeeded?.invoke()
+    }
 
     override suspend fun captureJpeg(maxEdgePx: Int): ByteArray? {
         if (!cameraPermitted()) return null

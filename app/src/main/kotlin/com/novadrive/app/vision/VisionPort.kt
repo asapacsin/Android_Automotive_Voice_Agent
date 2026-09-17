@@ -30,6 +30,9 @@ interface CameraVisionSurface {
     /** False when the app may not use the camera; checked before anything is opened or sent. */
     fun cameraPermitted(): Boolean
 
+    /** Pops the permission request up (system dialog, or the settings page if Android refuses one). */
+    fun requestCameraPermission()
+
     /** Opens the camera if needed, waits for a settled frame and returns it as JPEG, or null. */
     suspend fun captureJpeg(maxEdgePx: Int): ByteArray?
 
