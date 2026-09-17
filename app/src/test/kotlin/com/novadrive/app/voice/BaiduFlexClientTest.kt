@@ -191,6 +191,63 @@ class BaiduFlexClientTest {
     }
 
     @Test
+    fun completedToolTurnStartsAFreshConversationAndHeldAudioReachesIt() = runBlocking {
+        val secondUpdateSeen = CountDownLatch(1)
+        val releaseSecond = CountDownLatch(1)
+        val audioOnSecond = CountDownLatch(1)
+        val firstSocket = arrayOfNulls<WebSocket>(1)
+        server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
+                firstSocket[0] = webSocket
+                webSocket.send("""{"type":"session.created","session":{"model":"qianfan-realtime-flex-v1"}}""")
+            }
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                when (JSONObject(text).optString("type")) {
+                    "session.update" ->
+                        webSocket.send("""{"type":"session.updated","session":{"model":"qianfan-realtime-flex-v1"}}""")
+                    "response.create" ->
+                        // The spoken reply after the tool result: this completes the tool turn.
+                        webSocket.send("""{"type":"response.done","response":{"status":"completed","output":[{"type":"message"}]}}""")
+                }
+            }
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
+        }))
+        server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
+                webSocket.send("""{"type":"session.created","session":{"model":"qianfan-realtime-flex-v1"}}""")
+            }
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                when (JSONObject(text).optString("type")) {
+                    "session.update" -> {
+                        secondUpdateSeen.countDown()
+                        releaseSecond.await(3, TimeUnit.SECONDS)
+                        webSocket.send("""{"type":"session.updated","session":{"model":"qianfan-realtime-flex-v1"}}""")
+                    }
+                    "input_audio_buffer.append" -> audioOnSecond.countDown()
+                }
+            }
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
+        }))
+        val client = BaiduFlexClient(OkHttpClient(), 3_000, requireTls = false)
+        client.connect(config())
+
+        // A tool turn: the model calls a tool, the result goes back, the model replies.
+        val first = requireNotNull(firstSocket[0])
+        first.send("""{"type":"response.output_item.added","item":{"id":"i1","type":"function_call","call_id":"call_1","name":"control_climate"}}""")
+        first.send("""{"type":"response.function_call_arguments.done","call_id":"call_1","arguments":"{\"action\":\"power_on\"}"}""")
+        first.send("""{"type":"response.done","response":{"status":"completed","output":[{"type":"function_call"}]}}""")
+        Thread.sleep(300)
+        client.sendFunctionResult("call_1", "{\"ok\":true}")
+
+        // The reset has opened a second conversation and is waiting for it to be ready.
+        assertTrue(secondUpdateSeen.await(3, TimeUnit.SECONDS), "a fresh conversation was opened")
+        client.sendAudio(ByteArray(3200)) // spoken during the reset: must be held, not dropped
+        releaseSecond.countDown()
+        assertTrue(audioOnSecond.await(3, TimeUnit.SECONDS), "held audio reached the new conversation")
+        client.disconnect()
+    }
+
+    @Test
     fun sendAudioOnClosedSocketEmitsErrorWithoutThrowing() = runBlocking {
         val client = BaiduFlexClient(OkHttpClient(), 3_000, requireTls = false)
         val pending = async(start = CoroutineStart.UNDISPATCHED) { client.events().first() }

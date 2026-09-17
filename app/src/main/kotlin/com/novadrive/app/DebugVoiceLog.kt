@@ -15,6 +15,8 @@ object DebugVoiceLog {
         WakeWordController.bind(context)
     }
 
+    val isEnabled: Boolean get() = enabled
+
     fun log(message: String) {
         if (enabled) android.util.Log.d("NovaVoice", message)
     }

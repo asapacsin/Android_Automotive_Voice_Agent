@@ -148,11 +148,47 @@ class AndroidMicrophonePort(
     override var muted: Boolean = false
     @Volatile var gated: Boolean = false
 
+    /** Debug speech harness: drop live frames while synthetic speech is being injected. */
+    @Volatile var suppressLive: Boolean = false
+
+    /** Diagnostics only: frames seen and frames dropped, never audio content. */
+    val capturedFrames = java.util.concurrent.atomic.AtomicLong()
+    val droppedGated = java.util.concurrent.atomic.AtomicLong()
+    val droppedMuted = java.util.concurrent.atomic.AtomicLong()
+
+    /** Loudest live sample since the last read (0 = the platform delivered pure silence). */
+    val peakSinceLastRead = java.util.concurrent.atomic.AtomicInteger()
+
+    fun takePeak(): Int = peakSinceLastRead.getAndSet(0)
+
+    /** Lifts quiet speech above Baidu's VAD floor before it is sent (see [MicInputGain]). */
+    private val inputGain = MicInputGain()
+
+    /** The processing every outgoing microphone frame gets; the speech harness uses it too. */
+    fun processForSend(frame: ByteArray): ByteArray =
+        if (inputGainEnabled) inputGain.process(frame) else frame
+
+    /** Debug A/B switch for the speech harness; always on in normal use. */
+    @Volatile var inputGainEnabled: Boolean = true
+
+    val currentGain: Double get() = inputGain.gain
+
     override fun start(onFrame: (ByteArray) -> Unit) {
         stop()
+        inputGain.reset()
         capture =
             PcmAudioCapture(
-                onFrame = { bytes -> if (!muted && !gated) onFrame(bytes) },
+                onFrame = { bytes ->
+                    capturedFrames.incrementAndGet()
+                    val peak = peakAbs(bytes)
+                    peakSinceLastRead.accumulateAndGet(peak) { a, b -> maxOf(a, b) }
+                    when {
+                        suppressLive -> Unit
+                        muted -> droppedMuted.incrementAndGet()
+                        gated -> droppedGated.incrementAndGet()
+                        else -> onFrame(processForSend(bytes))
+                    }
+                },
                 onError = onError,
             )
         capture?.start()
@@ -162,4 +198,17 @@ class AndroidMicrophonePort(
         capture?.stop()
         capture = null
     }
+}
+
+/** Largest absolute PCM16LE sample in [bytes]; diagnostics only. */
+internal fun peakAbs(bytes: ByteArray): Int {
+    var max = 0
+    var i = 0
+    while (i + 1 < bytes.size) {
+        val sample = (bytes[i].toInt() and 0xff) or (bytes[i + 1].toInt() shl 8)
+        val abs = kotlin.math.abs(sample.toShort().toInt())
+        if (abs > max) max = abs
+        i += 2
+    }
+    return max
 }

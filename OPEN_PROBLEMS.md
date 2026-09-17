@@ -511,3 +511,51 @@ tap → route 13 → nav_active_route meters=16009 → navigation started
   appended to every session: "quiet" means no chit-chat; every command must still call its tool.
 - **History:** the transcript bubble appended every line forever. It now keeps only the latest exchange
   (2 lines) — `recentTranscript`, unit-tested.
+
+---
+
+## P9 — Quiet speech got no response (Baidu VAD floor)
+
+**Status:** FIXED 2026-09-17 — speech harness on device; **real-room human test pending**
+
+Measured with injected speech at controlled levels: Baidu Flex server VAD (threshold 0.62) hears a
+peak of ~3800 and ignores ~2700 and below. The VOICE_COMMUNICATION + noise-suppression path delivers
+normal speech at arm's length at ~1300–1900, so ordinary turns sometimes got no response at all
+(the "no response after opening the camera" reports).
+
+Fix: `MicInputGain` — adaptive, max 3x, starts at full gain, never clips, recovers during silence.
+Quiet speech at 1905 and 2690 is now heard. 4x was rejected: it lifted moderate noise over the floor
+and produced phantom turns in a normal room.
+
+**Residual risk:** people talking near the phone are picked up (open-mic session) and can produce
+made-up replies. Needs a real cabin test with passengers / road noise.
+
+## P10 — Model answered one turn late in long sessions
+
+**Status:** FIXED 2026-09-17 — speech harness on device (3 runs, mixed commands)
+
+Same 8 spoken commands, one session: from about the 3rd tool turn Baidu returned empty responses
+(`output=[]`, 1 token) and then executed the *previous* request (「关闭空调」 raised the temperature;
+AC stayed on). Not timing (client-created replies), not sampling temperature (0.6), not prompt size
+(compact prompt), not fixed by an anchored transcript turn. One conversation per command: 8/8.
+
+Fix: `ConversationResetPolicy` + `BaiduFlexClient.resetConversation()` — a fresh conversation after
+every completed tool turn (and every 3 plain replies), never while a tool result is owed; audio and
+text sent during the ~0.5 s reset are held and flushed. `VoiceContextHints` tells each new
+conversation what is on screen (picker, navigation, camera) so 「算了」 still works.
+Result: 8/8 and 10/10 in single long sessions.
+
+## P11 — Navigation could not be ended by voice
+
+**Status:** FIXED 2026-09-17 — speech harness on device
+
+`exit_navigation_mode` predated the embedded SDK and only un-muted the assistant; 「结束导航」 left
+guidance running and 「算了」 left the picker open. It now calls `EmbeddedNavigationController.endByVoice()`
+(stop guidance once, or cancel the picker) and returns the real outcome as `status`.
+
+## P12 — Camera stayed open in the background
+
+**Status:** FIXED 2026-09-17 — device (`dumpsys media.camera`)
+
+After HOME the camera device stayed open. The screen now releases it in `onPause` and reopens it in
+`onResume` if the window was open.

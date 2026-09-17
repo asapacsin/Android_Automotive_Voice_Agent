@@ -90,9 +90,11 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
 
     fun onResume() {
         mapHost.onResume()
+        camera.onHostResume()
     }
 
     fun onPause() {
+        camera.onHostPause()
         mapHost.onPause()
     }
 

@@ -77,7 +77,9 @@ class BaiduFlexProtocolTest {
             .single { it.getString("name") == "exit_navigation_mode" }
         val description = exit.getString("description")
         assertTrue(description.contains("结束导航"))
-        assertTrue(description.contains("并不会关闭高德"))
+        assertTrue(description.contains("算了"))
+        assertTrue(description.contains("真正停止"))
+        assertFalse(description.contains("并不会关闭高德"), "the embedded SDK makes the old disclaimer false")
         assertEquals(0.62, session.getJSONObject("turn_detection").getDouble("threshold"))
         val parameters = exit.getJSONObject("parameters")
         assertEquals(0, parameters.getJSONObject("properties").length())

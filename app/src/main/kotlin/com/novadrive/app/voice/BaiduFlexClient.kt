@@ -15,6 +15,7 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -31,6 +32,7 @@ class BaiduFlexClient(
     private val readyTimeoutMs: Long = 10_000,
     private val requireTls: Boolean = true,
     private val tokenClient: BaiduAccessTokenClient = BaiduAccessTokenClient(http),
+    private val contextHint: () -> String? = { VoiceContextHints.current() },
 ) {
     private val eventFlow = MutableSharedFlow<RealtimeEvent>(replay = 0, extraBufferCapacity = 64)
     private val generation = AtomicLong(0)
@@ -47,11 +49,27 @@ class BaiduFlexClient(
     @Volatile private var vadThreshold: Double = BaiduFlexProtocol.DEFAULT_VAD_THRESHOLD
     @Volatile private var navigatingListener: ((Boolean) -> Unit)? = null
     private val emptyRetry = EmptyResponseRetryPolicy()
+    private val resetPolicy = ConversationResetPolicy()
+    private val resetScope = kotlinx.coroutines.CoroutineScope(
+        kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO,
+    )
+    @Volatile private var lastConfig: BaiduApiConfig? = null
+    @Volatile private var resetting = false
+    @Volatile private var resetJob: kotlinx.coroutines.Job? = null
+
+    /** Outbound messages held while the conversation is being reset; flushed to the new one. */
+    private val heldOutbound = java.util.concurrent.ConcurrentLinkedQueue<String>()
 
     fun events(): Flow<RealtimeEvent> = eventFlow.asSharedFlow()
 
     suspend fun connect(config: BaiduApiConfig) {
-        disconnect()
+        lastConfig = config
+        cancelReset()
+        openSession(config)
+    }
+
+    private suspend fun openSession(config: BaiduApiConfig) {
+        closeSocket()
         val effective = config.copy(settings = config.settings.copy(model = BaiduFlexProtocol.MODEL))
         val validationSettings = if (requireTls) effective.settings else effective.settings.copy(
             endpoint = effective.settings.endpoint.replaceFirst("ws://", "wss://"),
@@ -71,6 +89,7 @@ class BaiduFlexClient(
         assistantSpeaking = false
         assembler.clear()
         emptyRetry.reset()
+        resetPolicy.reset()
         instructions = PersonaProfiles.sanitize(effective.settings.instructions)
         voice = effective.settings.voice
         speed = effective.settings.speed
@@ -103,16 +122,57 @@ class BaiduFlexClient(
         try {
             withTimeout(readyTimeoutMs) { pending.await() }
         } catch (_: TimeoutCancellationException) {
-            disconnect()
+            closeSocket()
             throw VoiceProviderException("BAIDU_FLEX_TIMEOUT", "Baidu Flex session readiness timed out")
         } catch (failure: VoiceProviderException) {
-            disconnect()
+            closeSocket()
             throw failure
         }
     }
 
+    /**
+     * Starts a fresh conversation on a new socket without the session layer noticing: audio and
+     * text sent meanwhile are held and flushed afterwards. See [ConversationResetPolicy].
+     */
+    private fun resetConversation() {
+        val config = lastConfig ?: return
+        if (resetting) return
+        resetting = true
+        val started = System.currentTimeMillis()
+        DebugVoiceLog.log("flex_context_reset")
+        resetJob = resetScope.launch {
+            try {
+                openSession(config)
+                DebugVoiceLog.log("flex_context_reset_done ms=${System.currentTimeMillis() - started} held=${heldOutbound.size}")
+            } catch (failure: VoiceProviderException) {
+                DebugVoiceLog.log("flex_context_reset_failed code=${failure.code}")
+                emit(DomainVoiceEvent.Error(failure.code, failure.safeMessage))
+            } catch (_: kotlinx.coroutines.CancellationException) {
+                return@launch
+            } finally {
+                resetting = false
+            }
+            while (true) {
+                val message = heldOutbound.poll() ?: break
+                if (!trySend(message)) break
+            }
+        }
+    }
+
+    private fun cancelReset() {
+        resetJob?.cancel()
+        resetJob = null
+        resetting = false
+        heldOutbound.clear()
+    }
+
     fun sendAudio(pcm16le: ByteArray) {
-        if (!trySend(BaiduFlexProtocol.audioAppend(Base64.getEncoder().encodeToString(pcm16le)))) {
+        val message = BaiduFlexProtocol.audioAppend(Base64.getEncoder().encodeToString(pcm16le))
+        if (resetting) {
+            if (heldOutbound.size < MAX_HELD_OUTBOUND) heldOutbound += message
+            return
+        }
+        if (!trySend(message)) {
             emit(DomainVoiceEvent.Error("BAIDU_FLEX_CONNECTION_CLOSED", "Baidu Flex WebSocket is not connected"))
         }
     }
@@ -123,16 +183,27 @@ class BaiduFlexClient(
 
     fun sendUserText(text: String) {
         DebugVoiceLog.log("flex_user_text chars=${text.length}")
+        if (resetting) {
+            heldOutbound += BaiduFlexProtocol.userTextMessage(text)
+            heldOutbound += BaiduFlexProtocol.responseCreate()
+            return
+        }
         sendControl(BaiduFlexProtocol.userTextMessage(text))
         sendControl(BaiduFlexProtocol.responseCreate())
     }
 
     fun sendFunctionResult(callId: String, output: String) {
         sendControl(BaiduFlexProtocol.functionCallOutput(callId, output))
+        resetPolicy.onToolResultSent()
         sendControl(BaiduFlexProtocol.responseCreate())
     }
 
     fun disconnect() {
+        cancelReset()
+        closeSocket()
+    }
+
+    private fun closeSocket() {
         generation.incrementAndGet()
         ready?.cancel(); ready = null
         sessionCreated = false
@@ -146,6 +217,13 @@ class BaiduFlexClient(
     }
 
     fun close() = disconnect()
+
+    /** Persona plus a one-line description of what is on screen (see [VoiceContextHints]). */
+    private fun instructionsWithContext(): String {
+        val hint = contextHint()
+        if (hint != null) DebugVoiceLog.log("flex_context_hint chars=${hint.length}")
+        return if (hint == null) instructions else instructions.trim() + "\n" + hint
+    }
 
     /**
      * Diagnoses silent turns (THINKING -> LISTENING with no tool call and no reply): records how
@@ -166,6 +244,7 @@ class BaiduFlexClient(
                 // An empty response carries no user or assistant content, only ids and usage.
                 DebugVoiceLog.log("flex_empty_response_raw ${text.take(800)}")
             }
+            if (resetPolicy.onResponseDone(kinds)) resetConversation()
             emptyRetry.onResponseDone(status, kinds.size)
         }.getOrDefault(false)
 
@@ -185,7 +264,7 @@ class BaiduFlexClient(
             }
             if (type == "session.created") {
                 sessionCreated = true
-                if (!webSocket.send(BaiduFlexProtocol.sessionUpdate(instructions, voice, speed, vadThreshold))) {
+                if (!webSocket.send(BaiduFlexProtocol.sessionUpdate(instructionsWithContext(), voice, speed, vadThreshold))) {
                     pending.completeExceptionally(VoiceProviderException("BAIDU_FLEX_SESSION_FAILED", "failed to configure Baidu Flex session"))
                 }
             }
@@ -206,7 +285,7 @@ class BaiduFlexClient(
                     if (!voiceFallbackUsed && sentVoice != BaiduAppSettings.DEFAULT_VOICE) {
                         voiceFallbackUsed = true
                         sentVoice = BaiduAppSettings.DEFAULT_VOICE
-                        webSocket.send(BaiduFlexProtocol.sessionUpdate(instructions, BaiduAppSettings.DEFAULT_VOICE, speed, vadThreshold))
+                        webSocket.send(BaiduFlexProtocol.sessionUpdate(instructionsWithContext(), BaiduAppSettings.DEFAULT_VOICE, speed, vadThreshold))
                         return
                     }
                     pending.completeExceptionally(VoiceProviderException(event.code, event.message))
@@ -278,6 +357,9 @@ internal fun releaseNavigatingListenerIfOwned(installed: ((Boolean) -> Unit)?) {
 }
 
 /** Streaming chunks: logging every one would flood logcat and could carry content. */
+/** About 10 s of 100 ms audio frames. */
+private const val MAX_HELD_OUTBOUND = 100
+
 private val NOISY_EVENT_TYPES = setOf(
     "response.audio.delta",
     "response.audio_transcript.delta",

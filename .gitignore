@@ -25,3 +25,5 @@ backend/.pytest_cache/
 .venv/
 agent/demo-strict-exit.txt
 .claude/settings.local.json
+
+tools/speech-harness/speech/

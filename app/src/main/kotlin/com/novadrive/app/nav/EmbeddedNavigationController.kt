@@ -133,6 +133,27 @@ class EmbeddedNavigationController(
         }
     }
 
+    enum class VoiceEndResult { STOPPED_NAVIGATION, CANCELLED_SELECTION, NOTHING_ACTIVE }
+
+    /**
+     * 「结束导航」/「算了」 by voice: stops embedded guidance if it is running, otherwise closes an
+     * open destination/route picker. Reports what actually happened so the reply can be truthful.
+     */
+    suspend fun endByVoice(): VoiceEndResult =
+        when (store.phase.value) {
+            NavigationPhase.NAVIGATING -> {
+                stopNavigation()
+                VoiceEndResult.STOPPED_NAVIGATION
+            }
+            NavigationPhase.AWAITING_DESTINATION_SELECTION,
+            NavigationPhase.AWAITING_ROUTE_SELECTION,
+            -> {
+                cancel()
+                VoiceEndResult.CANCELLED_SELECTION
+            }
+            else -> VoiceEndResult.NOTHING_ACTIVE
+        }
+
     fun cancel() {
         synchronized(lock) {
             val phase = store.phase.value
@@ -299,6 +320,9 @@ object EmbeddedNavigation {
 
     @Volatile
     private var instance: EmbeddedNavigationController? = null
+
+    /** The shared controller if it exists yet; never creates one. */
+    fun currentOrNull(): EmbeddedNavigationController? = instance
 
     fun shared(context: Context): EmbeddedNavigationController = synchronized(lock) {
         instance ?: EmbeddedNavigationController(

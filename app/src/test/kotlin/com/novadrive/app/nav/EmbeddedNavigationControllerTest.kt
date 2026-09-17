@@ -229,6 +229,59 @@ class EmbeddedNavigationControllerTest {
     }
 
     @Test
+    fun endByVoiceStopsActiveNavigationOnce() = runBlocking {
+        val engine = FakeNaviEngine()
+        engine.routes = threeRoutes()
+        val controller = controller(engine, listOf(candidate("a", 22.20, 113.54)))
+        controller.requestDestination("珠海站")
+        engine.emitSuccess(intArrayOf(10, 20, 30))
+        controller.selectRoute(10)
+        assertEquals(EmbeddedNavigationController.VoiceEndResult.STOPPED_NAVIGATION, controller.endByVoice())
+        assertEquals(1, engine.stopNaviCount)
+        assertEquals(NavigationPhase.STOPPED, controller.state().value)
+        assertEquals(EmbeddedNavigationController.VoiceEndResult.NOTHING_ACTIVE, controller.endByVoice())
+        assertEquals(1, engine.stopNaviCount)
+    }
+
+    @Test
+    fun endByVoiceClosesAnOpenPickerWithoutTouchingTheEngine() = runBlocking {
+        val engine = FakeNaviEngine()
+        val controller = controller(engine, threeCandidates())
+        controller.requestDestination("万达")
+        assertEquals(EmbeddedNavigationController.VoiceEndResult.CANCELLED_SELECTION, controller.endByVoice())
+        assertEquals(NavigationPhase.IDLE, controller.state().value)
+        assertTrue(controller.destinationCandidates.value.isEmpty())
+        assertEquals(0, engine.stopNaviCount)
+    }
+
+    @Test
+    fun endByVoiceWithNothingActiveChangesNothing() = runBlocking {
+        val engine = FakeNaviEngine()
+        val controller = controller(engine, emptyList())
+        assertEquals(EmbeddedNavigationController.VoiceEndResult.NOTHING_ACTIVE, controller.endByVoice())
+        assertEquals(NavigationPhase.IDLE, controller.state().value)
+        assertEquals(0, engine.stopNaviCount)
+    }
+
+    @Test
+    fun secondNavigationAfterArrivalWorks() = runBlocking {
+        val engine = FakeNaviEngine()
+        engine.routes = threeRoutes()
+        val controller = controller(engine, listOf(candidate("a", 22.20, 113.54)))
+        controller.requestDestination("珠海站")
+        engine.emitSuccess(intArrayOf(10, 20, 30))
+        controller.selectRoute(10)
+        engine.emitNavigationEnded("arrived")
+        assertEquals(NavigationPhase.ARRIVED, controller.state().value)
+        controller.requestDestination("珠海站")
+        engine.emitSuccess(intArrayOf(10, 20, 30))
+        controller.selectRoute(20)
+        assertEquals(NavigationPhase.NAVIGATING, controller.state().value)
+        assertEquals(2, engine.startNaviCount)
+        assertEquals(0, engine.stopNaviCount, "arrival already stopped the SDK; no extra stopNavi")
+    }
+
+    @Test
     fun newRequestDestinationReplacesStaleCandidates() = runBlocking {
         val engine = FakeNaviEngine()
         val controller = controller(engine, threeCandidates())

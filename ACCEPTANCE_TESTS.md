@@ -134,3 +134,25 @@ Run on the physical device against build 18:51:57. The trigger was an ADB broadc
 > The pre-start sample is now named **`nav_route_info_prestart`** so it cannot be mistaken for
 > the active route. The authoritative line is **`nav_active_route`**, logged after `startNavi`.
 > Measured 2026-09-16: `selectRouteId` accepted=true, pre-start 19507 m, post-start 21410 m.
+
+### L5-harness evidence — speech pipeline without a human, 2026-09-17
+
+`tools/speech-harness` injects synthetic Mandarin into the live Baidu Flex session (debug builds).
+It proves the software path end to end on the phone; it does **not** prove acoustics.
+
+| Flow (by injected speech) | Result |
+| --- | --- |
+| 空调打开 / 调到24度 / 温度调高一点 / 风量调大 / 关闭空调 — simulated climate state read back | ✅ one long session, all correct |
+| 播放音乐 / 关闭音乐 / 音量调大 (unsupported → honest refusal) | ✅ |
+| 导航去珠海站 → candidates; 不对，换成拱北口岸 → list replaced; tap → routes; tap → navigating | ✅ |
+| 结束导航 → guidance stopped once, state resynced | ✅ |
+| 算了 with destination list / route list open → picker cancelled | ✅ |
+| 看看前面有什么 → camera frame → Qianfan vision → spoken answer | ✅ |
+| Text turn then speech still heard | ✅ |
+| Quiet speech (peak 1905 / 2690) | ✅ with `MicInputGain`; ❌ before |
+
+Device checks without speech: camera permission permanently refused → App Settings opens; return →
+camera opens; camera released on HOME and on ✕; wake engine initialises after install.
+
+Automated: **334 declared = 334 executed, 0 failed, 0 skipped** (app 232 debug variant, behavior-test 37,
+ingress 46, simulator 15, contracts 2, safety 2).

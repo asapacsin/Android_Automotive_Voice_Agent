@@ -161,9 +161,20 @@ class SafeAndroidActionExecutor(
         return AndroidActionResult.Accepted("music_stopped")
     }
 
+    /**
+     * Ends navigation for real: stops embedded guidance or closes the picker (the tool predates
+     * the embedded SDK, when it could only un-mute the assistant). Also clears the speech mute.
+     */
     override fun exitNavigationMode(): AndroidActionResult {
+        val outcome = runBlocking { navigationFlow.endByVoice() }
         NavigationState.reset()
-        return AndroidActionResult.Accepted("navigation_mode_exited")
+        return AndroidActionResult.Accepted(
+            when (outcome) {
+                EmbeddedNavigationController.VoiceEndResult.STOPPED_NAVIGATION -> "navigation_stopped"
+                EmbeddedNavigationController.VoiceEndResult.CANCELLED_SELECTION -> "navigation_selection_cancelled"
+                EmbeddedNavigationController.VoiceEndResult.NOTHING_ACTIVE -> "no_navigation_active"
+            },
+        )
     }
 
     private fun tryStart(intent: Intent): Boolean =

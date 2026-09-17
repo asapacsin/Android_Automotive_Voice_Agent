@@ -83,6 +83,29 @@ class VoiceSessionController(
             ),
         )
         active.start()
+        startSessionDiagnostics()
+    }
+
+    private var diagJob: Job? = null
+
+    /**
+     * Every 5 s while a session runs: is the mic producing frames, are they dropped (gated by
+     * our own playback, or muted), and does the session think it is streaming. Counts only.
+     */
+    private fun startSessionDiagnostics() {
+        diagJob?.cancel()
+        diagJob = scope.launch {
+            while (active.sessionActiveNow) {
+                delay(SESSION_DIAG_INTERVAL_MS)
+                com.novadrive.app.DebugVoiceLog.log(
+                    "session_diag state=${active.machine.state} streaming=${active.machine.streamingAudio} " +
+                        "gated=${microphone.gated} muted=${microphone.muted} " +
+                        "captured=${microphone.capturedFrames.get()} droppedGated=${microphone.droppedGated.get()} " +
+                        "droppedMuted=${microphone.droppedMuted.get()} peak=${microphone.takePeak()} " +
+                        "gain=${"%.2f".format(microphone.currentGain)}",
+                )
+            }
+        }
     }
 
     fun start(settings: VoiceAppSettings, qwenConfig: QwenApiConfig? = null) {
@@ -122,6 +145,43 @@ class VoiceSessionController(
     fun stop() {
         NavigationState.reset()
         active.stop()
+    }
+
+    /**
+     * Debug speech harness (SPEC-004 A-live): streams 16 kHz mono PCM16 into the live session in
+     * real time, as if spoken into the microphone, then trailing silence so server VAD ends the
+     * turn. Live microphone frames are suppressed meanwhile. Debuggable builds only.
+     */
+    fun injectTestSpeech(pcm16le: ByteArray) {
+        if (!com.novadrive.app.DebugVoiceLog.isEnabled) return
+        scope.launch {
+            microphone.suppressLive = true
+            try {
+                val frame = TEST_FRAME_BYTES
+                var offset = 0
+                val silence = ByteArray(frame)
+                val padded = pcm16le.size + TEST_TRAILING_SILENCE_FRAMES * frame
+                com.novadrive.app.DebugVoiceLog.log("test_speech_start bytes=${pcm16le.size}")
+                while (offset < padded) {
+                    val chunk = if (offset < pcm16le.size) {
+                        pcm16le.copyOfRange(offset, minOf(offset + frame, pcm16le.size))
+                    } else {
+                        silence
+                    }
+                    active.injectAudioFrame(microphone.processForSend(chunk))
+                    offset += frame
+                    delay(TEST_FRAME_MS)
+                }
+                com.novadrive.app.DebugVoiceLog.log("test_speech_end")
+            } finally {
+                microphone.suppressLive = false
+            }
+        }
+    }
+
+    /** Debug A/B switch for the input gain (speech harness only). */
+    fun setInputGainEnabled(enabled: Boolean) {
+        if (com.novadrive.app.DebugVoiceLog.isEnabled) microphone.inputGainEnabled = enabled
     }
 
     /** Asks the model to respond to [text]; queued until the session is connected. */
@@ -176,6 +236,10 @@ class VoiceSessionController(
         private const val QWEN_OUTPUT_SAMPLE_RATE = 24_000
         private const val BACKEND_OUTPUT_SAMPLE_RATE = 16_000
         private const val PLAYBACK_UNGATE_DELAY_MS = 350L
+        private const val SESSION_DIAG_INTERVAL_MS = 5_000L
+        private const val TEST_FRAME_BYTES = 3_200 // 100 ms at 16 kHz mono PCM16
+        private const val TEST_FRAME_MS = 100L
+        private const val TEST_TRAILING_SILENCE_FRAMES = 15
     }
 }
 

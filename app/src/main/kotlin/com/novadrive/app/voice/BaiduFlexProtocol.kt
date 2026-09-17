@@ -89,7 +89,10 @@ object BaiduFlexProtocol {
         )
         val exitNavigationMode = functionToolNoArgs(
             name = "exit_navigation_mode",
-            description = "退出小诺的导航模式，让小诺恢复正常说话。用户说「结束导航」「导航结束了」「退出导航」「不用导航了」时调用。注意：这只会让小诺恢复说话，并不会关闭高德地图的导航，高德需要用户自己退出。Exit the assistant's navigation quiet mode; this does NOT stop the Amap app's navigation.",
+            description = "结束或取消导航。用户说「结束导航」「停止导航」「取消导航」「退出导航」「不去了」，或在导航、选择地点/路线时说「算了」时调用。" +
+                "会真正停止屏幕上的导航，或关闭候选列表；根据返回的 status 如实回答：navigation_stopped=导航已结束，" +
+                "navigation_selection_cancelled=已取消选择，no_navigation_active=当前没有导航。" +
+                "Ends the on-screen navigation or closes the picker; answer from the returned status.",
         )
         val session = JSONObject()
             .put("model", MODEL)

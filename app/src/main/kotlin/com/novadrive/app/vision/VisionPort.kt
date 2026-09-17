@@ -38,6 +38,9 @@ interface CameraVisionSurface {
 
     /** Shows a short status or answer on the camera view. */
     fun showVisionText(text: String)
+
+    /** True while the camera window is visible. */
+    val isOpen: Boolean get() = false
 }
 
 /** Process-scoped handle on the visible camera surface; identity-guarded like NavigationHostGateway. */

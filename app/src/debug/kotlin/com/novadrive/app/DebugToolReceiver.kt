@@ -21,6 +21,7 @@ class DebugToolReceiver : BroadcastReceiver() {
                 "nav_start" -> navStart(arg)
                 "nav_stop" -> navStop()
                 "climate" -> climate(arg)
+                "voice" -> voice(context, arg)
                 else -> "unknown tool"
             }
             Log.d("NovaVoice", "debug_tool tool=$tool arg=$arg result=$result")
@@ -124,6 +125,34 @@ class DebugToolReceiver : BroadcastReceiver() {
             com.novadrive.app.vehicle.ClimateToolHandler(com.novadrive.app.vehicle.VehicleControlProvider.port).handle(args)
         }
         return outcome.output
+    }
+
+    /**
+     * Speech harness. arg:
+     *  - "start" / "stop"             : voice session via the same gateway as the wake word
+     *  - "say:<name>"                 : inject files/test_speech/<name>.pcm (16 kHz mono PCM16)
+     *  - "speak:<text>"               : a text turn, as the camera auto-look sends
+     *  - "camera"                     : open the camera through the real UI path is not reachable
+     *                                   from here; use a tap on 📷 instead
+     */
+    private fun voice(context: Context, arg: String): String {
+        val gateway = com.novadrive.app.voice.VoiceSessionGateway
+        return when {
+            arg == "start" -> gateway.start().toString()
+            arg == "stop" -> { gateway.stop(); "stopped" }
+            arg.startsWith("say:") -> {
+                val name = arg.removePrefix("say:").filter { it.isLetterOrDigit() || it == '_' }
+                val file = java.io.File(context.getExternalFilesDir(null), "test_speech/$name.pcm")
+                if (!file.isFile) return "missing ${file.name}"
+                "injected=" + gateway.injectTestSpeech(file.readBytes())
+            }
+            arg.startsWith("speak:") -> gateway.speak(arg.removePrefix("speak:")).toString()
+            arg == "gain:on" || arg == "gain:off" -> {
+                gateway.setInputGainEnabled(arg == "gain:on")
+                arg
+            }
+            else -> "unknown voice arg"
+        }
     }
 
     private fun format(action: AndroidActionResult): String = when (action) {

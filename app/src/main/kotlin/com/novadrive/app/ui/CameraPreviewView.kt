@@ -105,6 +105,27 @@ class CameraPreviewView(context: Context) : FrameLayout(context), CameraVisionSu
         if (textureView.isAvailable) openCamera()
     }
 
+    /**
+     * The screen went to the background. Measured 2026-09-17: the camera device stayed open
+     * behind the home screen. Release it, but keep the window state so it comes back on return.
+     */
+    fun onHostPause() {
+        if (!isShowing) return
+        pendingOpen = false
+        closeCamera()
+        stopBackgroundThread()
+    }
+
+    /** The screen is visible again: reopen the camera if the window was left open. */
+    fun onHostResume() {
+        if (!isShowing) return
+        framesSeen = 0
+        framesReady = CompletableDeferred()
+        startBackgroundThread()
+        pendingOpen = true
+        if (textureView.isAvailable) openCamera()
+    }
+
     fun hide() {
         pendingOpen = false
         closeCamera()
@@ -112,6 +133,8 @@ class CameraPreviewView(context: Context) : FrameLayout(context), CameraVisionSu
         visibility = GONE
         onClose?.invoke()
     }
+
+    override val isOpen: Boolean get() = isShowing
 
     override fun cameraPermitted(): Boolean =
         context.checkSelfPermission(android.Manifest.permission.CAMERA) ==

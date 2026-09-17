@@ -50,6 +50,19 @@ object VoiceSessionGateway {
      * Has the assistant say something in its own voice: starts the session if it is not running,
      * then sends [prompt] as a text turn (queued until connected). Returns why it could not, if so.
      */
+    /** Debug speech harness entry; no-op unless a session is active on a debuggable build. */
+    fun injectTestSpeech(pcm16le: ByteArray): Boolean {
+        val session = starter ?: return false
+        if (!session.isActive) return false
+        session.injectTestSpeech(pcm16le)
+        return true
+    }
+
+    /** Debug A/B switch for the microphone input gain. */
+    fun setInputGainEnabled(enabled: Boolean) {
+        starter?.setInputGainEnabled(enabled)
+    }
+
     fun speak(prompt: String): StartResult {
         val session = starter ?: return StartResult.NotAttached
         val started = if (session.isActive) StartResult.AlreadyActive else start()
@@ -96,6 +109,8 @@ internal interface GatewaySession {
     fun startBaidu()
     fun stop()
     fun sendText(text: String) {}
+    fun injectTestSpeech(pcm16le: ByteArray) {}
+    fun setInputGainEnabled(enabled: Boolean) {}
 }
 
 private class ControllerGatewaySession(
@@ -117,5 +132,13 @@ private class ControllerGatewaySession(
 
     override fun sendText(text: String) {
         controller.sendText(text)
+    }
+
+    override fun injectTestSpeech(pcm16le: ByteArray) {
+        controller.injectTestSpeech(pcm16le)
+    }
+
+    override fun setInputGainEnabled(enabled: Boolean) {
+        controller.setInputGainEnabled(enabled)
     }
 }
