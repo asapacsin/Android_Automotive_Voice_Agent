@@ -5,8 +5,6 @@ import com.novadrive.app.AndroidKeystoreCredentialStore
 import com.novadrive.app.BaiduAuthMode
 import com.novadrive.app.BaiduSettingsRepository
 import com.novadrive.app.CredentialStore
-import com.novadrive.app.voice.BaiduAccessTokenClient
-import okhttp3.OkHttpClient
 
 /**
  * Vision model settings. The optional dedicated key is a Qianfan API key stored in the Android
@@ -47,32 +45,22 @@ class VisionSettings(
 }
 
 /**
- * Credential order: the dedicated vision key if set; otherwise the Baidu voice credential —
- * a Bearer API key directly, or an OAuth access token obtained from the API Key + Secret Key.
+ * Credential order: the dedicated vision key if set; otherwise the Baidu voice key, but only
+ * when it is already a Qianfan API key (BEARER_API_KEY mode).
  *
- * UNVERIFIED: whether Qianfan v2 accepts the legacy OAuth access token as a Bearer value. If it
- * does not, the request fails with an auth error and the UI says to enter a vision API key.
+ * MEASURED 2026-09-17: Qianfan v2 REJECTS the legacy OAuth access token
+ * (`HTTP 401 invalid_iam_token`). So with LEGACY_ACCESS_TOKEN voice credentials this returns
+ * null and no request is made — the camera image is never uploaded just to be refused.
  */
-class LiveVisionAuth(
-    context: Context,
-    private val http: OkHttpClient = OkHttpClient(),
-) : VisionAuth {
+class LiveVisionAuth(context: Context) : VisionAuth {
     private val app = context.applicationContext
-    private val tokens = BaiduAccessTokenClient(http)
 
     override suspend fun bearer(): String? {
         VisionSettings.from(app).dedicatedKey()?.let { return it }
         val repository = BaiduSettingsRepository(app)
-        val settings = repository.loadSettings()
-        val credentials = repository.loadCredentials()
-        return when (settings.authMode) {
-            BaiduAuthMode.BEARER_API_KEY -> credentials.apiKey.takeIf { it.isNotBlank() }
-            BaiduAuthMode.LEGACY_ACCESS_TOKEN ->
-                if (credentials.apiKey.isBlank() || credentials.secretKey.isBlank()) {
-                    null
-                } else {
-                    tokens.getToken(settings.tokenEndpoint, credentials)
-                }
+        return when (repository.loadSettings().authMode) {
+            BaiduAuthMode.BEARER_API_KEY -> repository.loadCredentials().apiKey.takeIf { it.isNotBlank() }
+            BaiduAuthMode.LEGACY_ACCESS_TOKEN -> null
         }
     }
 }

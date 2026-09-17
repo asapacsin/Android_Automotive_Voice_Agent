@@ -41,8 +41,8 @@ class CameraQuestionHandler(
                 spokenText = result.text,
                 errorCode = null,
             )
-            is VisionResult.NotConfigured -> failure("VISION_NOT_CONFIGURED", "看图功能还没有配置好。", result.reason)
-            is VisionResult.AuthFailed -> failure("VISION_AUTH_FAILED", "看图服务的密钥无效，需要在开发者设置里配置视觉 API Key。", result.detail)
+            is VisionResult.NotConfigured -> failure("VISION_NOT_CONFIGURED", "看图还没有配置密钥，请在开发者设置里填写千帆视觉 API Key。", result.reason)
+            is VisionResult.AuthFailed -> failure("VISION_AUTH_FAILED", "看图服务的密钥不能用，请在开发者设置里填写千帆视觉 API Key。", result.detail)
             is VisionResult.Failed -> failure("VISION_REQUEST_FAILED", "看图服务暂时不可用。", result.detail)
         }
         DebugVoiceLog.log("vision_result ok=${outcome.ok} code=${outcome.errorCode ?: "-"}")
@@ -59,7 +59,7 @@ class CameraQuestionHandler(
                 .put("tool", TOOL)
                 .put("error", code)
                 .put("message", userMessage)
-                .put("instruction", "没有看到画面。只把 message 告诉用户，绝对不要描述或猜测画面内容。")
+                .put("instruction", "看图没有成功。把 message 原样告诉用户，不要改写成别的原因，绝对不要描述或猜测画面内容。")
                 .toString(),
             spokenText = userMessage,
             errorCode = code,

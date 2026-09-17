@@ -163,7 +163,7 @@ CameraQuestionHandler         ← depends on CameraVisionSurface + VisionPort on
 
 - The 「问AI」 button on the camera view calls the same handler; the answer is shown on the camera view.
 - The image leaves the phone only when the driver asks. Neither the image nor the answer is logged.
-- Credential: an optional dedicated vision API key (Keystore, 开发者设置); otherwise the Baidu voice credential. **UNVERIFIED** whether Qianfan v2 accepts the legacy OAuth access token; an auth failure tells the driver to add a vision key.
+- Credential: an optional dedicated vision API key (Keystore, 开发者设置); otherwise the Baidu voice credential. **Measured 2026-09-17: Qianfan v2 rejects the legacy OAuth access token (`HTTP 401 invalid_iam_token`)** — with legacy voice credentials a dedicated Qianfan API key is required. Camera capture itself verified on device (18–26 KB frames sent).
 - Every failure (no camera, no permission, no frame, not configured, auth, request) reaches the model as `ok=false` with an instruction never to describe the image.
 
 ## Test boundaries
