@@ -26,6 +26,7 @@ class ToolCoverageTest {
         "control_climate" to """{"action":"get_state"}""",
         "describe_camera_view" to """{"question":"前面有什么"}""",
         "exit_navigation_mode" to """{}""",
+        "choose_navigation_option" to """{"index":2}""",
     )
 
     private fun declaredTools(): List<String> {
@@ -52,7 +53,7 @@ class ToolCoverageTest {
             val result = dispatcher.dispatch(call)
             assertNotEquals("UNKNOWN_TOOL", result.blockedReason, "$name is declared but not dispatched")
         }
-        assertEquals(setOf("navigate", "openApp", "stopMusic", "exitNavigationMode"), executor.calls)
+        assertEquals(setOf("navigate", "openApp", "stopMusic", "exitNavigationMode", "chooseNavigationOption"), executor.calls)
     }
 
     @Test
@@ -69,5 +70,8 @@ class ToolCoverageTest {
         override fun playMusic(): AndroidActionResult { calls += "playMusic"; return AndroidActionResult.Accepted() }
         override fun stopMusic(): AndroidActionResult { calls += "stopMusic"; return AndroidActionResult.Accepted() }
         override fun exitNavigationMode(): AndroidActionResult { calls += "exitNavigationMode"; return AndroidActionResult.Accepted() }
+        override fun chooseNavigationOption(choice: com.novadrive.app.nav.NavigationChoice): AndroidActionResult {
+            calls += "chooseNavigationOption"; return AndroidActionResult.Accepted()
+        }
     }
 }

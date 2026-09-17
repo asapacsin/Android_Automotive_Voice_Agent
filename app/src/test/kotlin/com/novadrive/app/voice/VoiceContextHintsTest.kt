@@ -24,6 +24,19 @@ class VoiceContextHintsTest {
     }
 
     @Test
+    fun openPickersListTheOptionsAndPointAtTheChoiceTool() {
+        val hint = VoiceContextHints.compose(
+            NavigationPhase.AWAITING_ROUTE_SELECTION,
+            cameraOpen = false,
+            options = "1. 46.0公里，约44分钟，推荐；2. 42.6公里，约47分钟，常规",
+        )!!
+        assertTrue(hint.contains("2. 42.6公里"))
+        assertTrue(hint.contains("choose_navigation_option"))
+        assertTrue(hint.contains("最快"))
+        assertTrue(hint.contains("开始导航") && hint.contains("recommended"), "a plain go-ahead picks the recommended route")
+    }
+
+    @Test
     fun activeNavigationIsDescribed() {
         val hint = VoiceContextHints.compose(NavigationPhase.NAVIGATING, cameraOpen = false)!!
         assertTrue(hint.contains("正在导航"))

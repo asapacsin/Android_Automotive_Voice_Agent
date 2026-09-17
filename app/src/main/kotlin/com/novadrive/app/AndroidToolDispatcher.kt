@@ -5,6 +5,8 @@ import android.content.Intent
 import android.provider.Settings
 import com.novadrive.app.nav.EmbeddedNavigation
 import com.novadrive.app.nav.EmbeddedNavigationController
+import com.novadrive.app.nav.NavigationChoice
+import com.novadrive.app.nav.NavigationVoiceOutput
 import com.novadrive.app.nav.NavigationHostGateway
 import com.novadrive.app.vehicle.ClimateToolHandler
 import com.novadrive.app.vision.CameraQuestionHandler
@@ -26,6 +28,13 @@ interface AndroidActionExecutor {
     fun playMusic(): AndroidActionResult
     fun stopMusic(): AndroidActionResult
     fun exitNavigationMode(): AndroidActionResult
+
+    /** 「第二个」「选最快的」: picks from the on-screen destination or route list. */
+    fun chooseNavigationOption(choice: NavigationChoice): AndroidActionResult =
+        AndroidActionResult.Rejected("NAVIGATION_CHOICE_UNAVAILABLE")
+
+    /** What the navigation screen shows once the latest request has settled (bounded wait). */
+    suspend fun awaitNavigationOptions(): EmbeddedNavigationController.OptionsSnapshot? = null
 }
 
 /** Validates untrusted model output before calling the narrow Android executor. */
@@ -70,8 +79,15 @@ class AndroidToolDispatcher(
                 if (destination.isBlank()) return failed(call, "BLANK_DESTINATION")
                 if (destination.length > 120) return failed(call, "DESTINATION_TOO_LONG")
                 val action = executor.navigate(destination)
-                if (action is AndroidActionResult.Accepted) NavigationState.begin()
-                result(call, action)
+                if (action !is AndroidActionResult.Accepted) return result(call, action)
+                NavigationState.begin()
+                navigationResult(call, action)
+            }
+            CHOOSE_NAVIGATION_OPTION -> {
+                val choice = parseChoice(call.arguments) ?: return failed(call, "INVALID_CHOICE")
+                val action = executor.chooseNavigationOption(choice)
+                if (action !is AndroidActionResult.Accepted) return result(call, action)
+                navigationResult(call, action)
             }
             "open_app" -> {
                 val app = when (call.arguments["app"]) {
@@ -91,6 +107,31 @@ class AndroidToolDispatcher(
             "exit_navigation_mode" -> result(call, executor.exitNavigationMode())
             else -> failed(call, "UNKNOWN_TOOL")
         }
+    }
+
+    /** Waits for the list to load, so the model can read the options out. */
+    private fun navigationResult(call: DomainVoiceEvent.ToolCall, action: AndroidActionResult.Accepted) =
+        ToolDispatchResult(
+            null,
+            null,
+            successChip = "✓ ${call.name}",
+            deferredOutput = {
+                val snapshot = executor.awaitNavigationOptions()
+                NavigationState.allowConfirmation()
+                NavigationVoiceOutput.build(call.name, action.status, snapshot)
+            },
+        )
+
+    private fun parseChoice(args: Map<String, String>): NavigationChoice? {
+        // Numbers arrive stringified by the assembler: "2", or "2.0" from some JSON encoders.
+        args["index"]?.let { raw -> return raw.trim().toDoubleOrNull()?.toInt()?.let { NavigationChoice.Index(it) } }
+        args["preference"]?.let { raw -> return NavigationChoice.Kind.fromWire(raw)?.let { NavigationChoice.Preference(it) } }
+        args["name"]?.let { raw -> return raw.trim().takeIf { it.isNotEmpty() }?.let { NavigationChoice.Name(it) } }
+        return null
+    }
+
+    companion object {
+        const val CHOOSE_NAVIGATION_OPTION = com.novadrive.app.voice.BaiduFlexProtocol.CHOOSE_NAVIGATION_OPTION
     }
 
     private fun result(call: DomainVoiceEvent.ToolCall, action: AndroidActionResult): ToolDispatchResult =
@@ -132,13 +173,43 @@ class SafeAndroidActionExecutor(
         val key = AmapSettingsRepository(appContext).loadWebKey()
         if (key.isNullOrBlank()) return AndroidActionResult.Rejected("AMAP_WEB_KEY_MISSING")
 
+        val done = kotlinx.coroutines.CompletableDeferred<Unit>()
+        lastRequest = done
         Thread {
-            runBlocking { navigationFlow.requestDestination(destination) }
+            try {
+                runBlocking { navigationFlow.requestDestination(destination) }
+            } finally {
+                done.complete(Unit)
+            }
         }.start()
 
         // The driver must still pick a destination (if ambiguous) and always a route on screen,
         // so the model must not announce that navigation has started.
         return AndroidActionResult.Accepted("awaiting_route_selection_on_screen")
+    }
+
+    /** The latest destination request; the options report must not read the previous list. */
+    @Volatile
+    private var lastRequest: kotlinx.coroutines.CompletableDeferred<Unit>? = null
+
+    override fun chooseNavigationOption(choice: NavigationChoice): AndroidActionResult =
+        when (val outcome = navigationFlow.chooseByVoice(choice)) {
+            is EmbeddedNavigationController.VoiceChoiceResult.DestinationChosen ->
+                AndroidActionResult.Accepted("destination_selected")
+            is EmbeddedNavigationController.VoiceChoiceResult.RouteChosen ->
+                AndroidActionResult.Accepted("navigation_started")
+            is EmbeddedNavigationController.VoiceChoiceResult.Rejected ->
+                AndroidActionResult.Rejected(outcome.code)
+        }
+
+    override suspend fun awaitNavigationOptions(): EmbeddedNavigationController.OptionsSnapshot {
+        lastRequest?.let { kotlinx.coroutines.withTimeoutOrNull(REQUEST_WAIT_MS) { it.await() } }
+        return navigationFlow.awaitOptions(OPTIONS_WAIT_MS)
+    }
+
+    private companion object {
+        const val REQUEST_WAIT_MS = 10_000L
+        const val OPTIONS_WAIT_MS = 8_000L
     }
 
     override fun openApp(app: AllowedApp): AndroidActionResult {

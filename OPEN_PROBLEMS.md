@@ -631,3 +631,25 @@ Device evidence:
 
 Limits: the false sentence is already spoken before the correction; detection is keyword-based
 (Chinese), so unusual phrasings can slip through; one follow-up per utterance.
+
+## P16 — Destination and route could only be chosen by tapping
+
+**Status:** IMPLEMENTED 2026-09-17 — unit/client tests; speech harness on device
+
+New tool `choose_navigation_option` (exactly one of `index` / `preference` / `name`) picks from
+the list on screen through the same `selectDestination` / `selectRoute` paths as a tap.
+Preferences: fastest, shortest, recommended (「开始导航」「好的」 on the route list), no_toll,
+fewest_lights, nearest (destinations). `navigate_to` and the new tool now return after the list has
+loaded, with the count and the list for matching; the on-screen hint carries the list too, because
+the conversation resets after tool turns.
+
+Owner feedback the same day: reading every option aloud was far too long. The reply is now one
+sentence (「找到5个地点，请说第几个。」 / 「有三条路线，推荐的约27分钟，说开始导航走推荐路线……」).
+
+Device (injected speech): 第二个 → destination 2; 选最快的那条 → route 12 (1500 s, the fastest)
+started, `nav_active_route` matched; 去最近的那个 → destination 1; 第一条路线 → route 12;
+开始导航 on the route list → recommended route started.
+
+Known: for 「开始导航」 the model twice first said 「导航已开始。」 without the tool; `ActionClaimGuard`
+caught it and the follow-up started the route, so the driver hears the sentence twice. 「开始导航」
+while the *destination* list is showing gets an honest failure instead of 「请先选地点」.

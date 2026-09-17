@@ -5,6 +5,7 @@ import com.novadrive.app.DebugVoiceLog
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 
 /**
  * Live [NavigationController] binding. Voice and UI both call [requestDestination] /
@@ -130,6 +131,70 @@ class EmbeddedNavigationController(
                 startNaviIssuedForSelection = false
                 failLocked("start_navi_rejected")
             }
+        }
+    }
+
+    sealed interface VoiceChoiceResult {
+        data class DestinationChosen(val name: String, val position: Int) : VoiceChoiceResult
+        data class RouteChosen(val position: Int, val started: Boolean) : VoiceChoiceResult
+        data class Rejected(val code: String) : VoiceChoiceResult
+    }
+
+    /**
+     * 「第二个」「选最快的」「就去拱北口岸」: picks from whichever list is on screen, through the same
+     * [selectDestination] / [selectRoute] paths a tap uses.
+     */
+    fun chooseByVoice(choice: NavigationChoice): VoiceChoiceResult =
+        when (store.phase.value) {
+            NavigationPhase.AWAITING_DESTINATION_SELECTION ->
+                when (val match = NavigationChoiceResolver.pickDestination(_destinationCandidates.value, choice)) {
+                    is ChoiceMatch.Rejected -> VoiceChoiceResult.Rejected(match.code)
+                    is ChoiceMatch.Picked -> {
+                        DebugVoiceLog.log("nav_voice_choice kind=destination position=${match.position}")
+                        selectDestination(match.item.id)
+                        if (store.phase.value == NavigationPhase.ERROR) {
+                            VoiceChoiceResult.Rejected("ROUTE_CALCULATION_FAILED")
+                        } else {
+                            VoiceChoiceResult.DestinationChosen(match.item.name, match.position)
+                        }
+                    }
+                }
+            NavigationPhase.AWAITING_ROUTE_SELECTION ->
+                when (val match = NavigationChoiceResolver.pickRoute(_routeCandidates.value, choice)) {
+                    is ChoiceMatch.Rejected -> VoiceChoiceResult.Rejected(match.code)
+                    is ChoiceMatch.Picked -> {
+                        DebugVoiceLog.log("nav_voice_choice kind=route position=${match.position} routeId=${match.item.routeId}")
+                        selectRoute(match.item.routeId)
+                        val started = store.phase.value == NavigationPhase.NAVIGATING
+                        if (started) VoiceChoiceResult.RouteChosen(match.position, true)
+                        else VoiceChoiceResult.Rejected("START_FAILED")
+                    }
+                }
+            NavigationPhase.RESOLVING_DESTINATION,
+            NavigationPhase.CALCULATING_ROUTE,
+            -> VoiceChoiceResult.Rejected("OPTIONS_NOT_READY")
+            else -> VoiceChoiceResult.Rejected("NO_OPTIONS_ON_SCREEN")
+        }
+
+    data class OptionsSnapshot(
+        val phase: NavigationPhase,
+        val destinations: List<DestinationCandidate>,
+        val routes: List<RouteCandidate>,
+        val destinationName: String?,
+    )
+
+    /** Waits (bounded) until destinations or routes are no longer being computed, then reports them. */
+    suspend fun awaitOptions(timeoutMs: Long): OptionsSnapshot {
+        kotlinx.coroutines.withTimeoutOrNull(timeoutMs) {
+            store.phase.first { it != NavigationPhase.RESOLVING_DESTINATION && it != NavigationPhase.CALCULATING_ROUTE }
+        }
+        return synchronized(lock) {
+            OptionsSnapshot(
+                phase = store.phase.value,
+                destinations = _destinationCandidates.value,
+                routes = _routeCandidates.value,
+                destinationName = selectedDestination?.name,
+            )
         }
     }
 

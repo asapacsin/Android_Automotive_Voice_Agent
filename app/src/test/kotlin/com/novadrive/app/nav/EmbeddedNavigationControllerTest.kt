@@ -1,5 +1,7 @@
 package com.novadrive.app.nav
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -304,6 +306,74 @@ class EmbeddedNavigationControllerTest {
         assertEquals(NavigationPhase.ERROR, controller.state().value)
         assertFalse(controller.state().value == NavigationPhase.AWAITING_ROUTE_SELECTION)
         assertEquals(0, engine.startNaviCount)
+    }
+
+    @Test
+    fun voiceChoiceWalksDestinationThenRouteThroughTheTapPaths() = runBlocking {
+        val engine = FakeNaviEngine()
+        engine.routes = threeRoutes()
+        val controller = controller(engine, threeCandidates())
+        controller.requestDestination("万达")
+        val first = controller.chooseByVoice(NavigationChoice.Index(2))
+        assertEquals(EmbeddedNavigationController.VoiceChoiceResult.DestinationChosen("万达影城", 2), first)
+        assertEquals("万达影城", engine.calculateCalls.single().endName)
+        assertEquals(
+            EmbeddedNavigationController.VoiceChoiceResult.Rejected("OPTIONS_NOT_READY"),
+            controller.chooseByVoice(NavigationChoice.Index(1)),
+            "routes are still being calculated",
+        )
+        engine.emitSuccess(intArrayOf(10, 20, 30))
+        val second = controller.chooseByVoice(NavigationChoice.Preference(NavigationChoice.Kind.FASTEST))
+        assertEquals(EmbeddedNavigationController.VoiceChoiceResult.RouteChosen(3, true), second)
+        assertEquals(listOf(30), engine.selectRouteCalls, "the fastest route (27 min) is the one driven")
+        assertEquals(1, engine.startNaviCount)
+        assertEquals(NavigationPhase.NAVIGATING, controller.state().value)
+    }
+
+    @Test
+    fun voiceChoiceWithNothingOnScreenOrOutOfRangeChangesNothing() = runBlocking {
+        val engine = FakeNaviEngine()
+        val controller = controller(engine, threeCandidates())
+        assertEquals(
+            EmbeddedNavigationController.VoiceChoiceResult.Rejected("NO_OPTIONS_ON_SCREEN"),
+            controller.chooseByVoice(NavigationChoice.Index(1)),
+        )
+        controller.requestDestination("万达")
+        assertEquals(
+            EmbeddedNavigationController.VoiceChoiceResult.Rejected("OUT_OF_RANGE"),
+            controller.chooseByVoice(NavigationChoice.Index(4)),
+        )
+        assertEquals(NavigationPhase.AWAITING_DESTINATION_SELECTION, controller.state().value)
+        assertTrue(engine.calculateCalls.isEmpty())
+    }
+
+    @Test
+    fun aFailedStartIsReportedNotClaimed() = runBlocking {
+        val engine = FakeNaviEngine()
+        engine.routes = threeRoutes()
+        engine.startAccepted = false
+        val controller = controller(engine, listOf(candidate("a", 22.20, 113.54)))
+        controller.requestDestination("珠海站")
+        engine.emitSuccess(intArrayOf(10, 20, 30))
+        assertEquals(
+            EmbeddedNavigationController.VoiceChoiceResult.Rejected("START_FAILED"),
+            controller.chooseByVoice(NavigationChoice.Index(1)),
+        )
+    }
+
+    @Test
+    fun awaitOptionsReportsRoutesOnceCalculated() = runBlocking {
+        val engine = FakeNaviEngine()
+        engine.routes = threeRoutes()
+        val controller = controller(engine, listOf(candidate("a", 22.20, 113.54)))
+        controller.requestDestination("珠海站")
+        val pending = async(Dispatchers.Default) { controller.awaitOptions(3_000) }
+        Thread.sleep(100)
+        engine.emitSuccess(intArrayOf(10, 20, 30))
+        val snapshot = pending.await()
+        assertEquals(NavigationPhase.AWAITING_ROUTE_SELECTION, snapshot.phase)
+        assertEquals(3, snapshot.routes.size)
+        assertEquals("珠海站", snapshot.destinationName)
     }
 
     private fun controller(

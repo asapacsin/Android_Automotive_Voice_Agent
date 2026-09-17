@@ -82,6 +82,15 @@ class ActionClaimGuardTest {
     }
 
     @Test
+    fun aSpokenPickThatWasNotExecutedIsCaught() {
+        guard.onUserTranscript("第二个。")
+        assertNotNull(guard.onResponseDone(message, "好的，已选择第二个。"))
+        guard.onUserTranscript("选最快的路线。")
+        assertNull(guard.onResponseDone(call, ""))
+        assertNull(guard.onResponseDone(message, "导航已开始。"))
+    }
+
+    @Test
     fun claimDetectionCoversTheOtherTools() {
         assertTrue(ActionClaimGuard.claimsDone("已为你播放音乐。"))
         assertTrue(ActionClaimGuard.claimsDone("现在导航已退出。"))
