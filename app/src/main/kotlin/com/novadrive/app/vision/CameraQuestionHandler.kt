@@ -73,7 +73,15 @@ class CameraQuestionHandler(
         const val MAX_EDGE_PX = 768
         const val LOOKING = "正在看…"
 
-        /** Turn for the voice model when the 问AI button (not speech) produced the text. */
+        /**
+         * Turn sent when the driver opens the camera: read the first look aloud, and establish
+         * that follow-up questions (「这是什么」) are about the live camera view.
+         */
+        fun cameraOpenedPrompt(text: String): String =
+            "摄像头已经打开，你现在能看到镜头画面。请直接用你的声音把下面的画面描述读给用户，不要添加内容，也不要调用工具：$text。" +
+                "之后用户问「这是什么」「前面有什么」「有几个人」等和画面有关的问题时，调用 describe_camera_view 看最新画面再回答。"
+
+        /** Turn for the voice model when an automatic look (not speech) produced the text, e.g. a failure message. */
         fun readAloudPrompt(text: String): String =
             "这是摄像头看图的结果。请直接用你的声音把下面这段话读给用户，不要添加任何内容，也不要调用工具：$text"
     }

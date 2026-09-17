@@ -120,7 +120,7 @@ Outbound only, to three hosts: `aip.baidubce.com` (WSS + OAuth) and `restapi.ama
 | Qwen direct (`QwenSettings`, providers, protocol) | DORMANT — unreachable from production UI |
 | PC backend (`BackendRealtimeProvider`, `backend/`) | DORMANT — empty packaged URL |
 | GPT-Live | DORMANT — catalog metadata only, no adapter |
-| Camera question (`describe_camera_view`, 「问AI」) | **ACTIVE — live-call NOT YET VERIFIED** (Baidu Qianfan vision; paid) |
+| Camera question (`describe_camera_view`; automatic look when the camera opens) | **ACTIVE** — vision call verified on device 2026-09-17 with a Qianfan API key (paid) |
 | Cabin climate (`control_climate` tool → `VehicleControlPort`) | **ACTIVE — SIMULATED BACKEND.** `SimulatedVehicleControl` on the phone; not real vehicle control |
 | `simulator` `InMemoryVehicleSimulator`, Fake/Mock providers | TEST ONLY (its climate state is the shared `SimulatedVehicleControl`) |
 | `demo` module | TEST/DEMO ONLY — JVM structured-command demo |
@@ -161,8 +161,9 @@ CameraQuestionHandler         ← depends on CameraVisionSurface + VisionPort on
       └── VisionProvider → QianfanVisionClient (Qianfan v2 chat/completions, image as data URL)
 ```
 
-- The 「问AI」 button on the camera view calls the same handler; the answer is shown on the camera view.
-- The image leaves the phone only when the driver asks. Neither the image nor the answer is logged.
+- Opening the camera (📷) looks once automatically; the answer shows in the speech bubble and the assistant reads it aloud via a session text turn (the phone has no default system TTS). There is no ask button.
+- The camera is a small 9:16 picture-in-picture window, bottom right.
+- The image leaves the phone only when the camera is opened or the driver asks about it; never continuously. Neither the image nor the answer is logged.
 - Credential: an optional dedicated vision API key (Keystore, 开发者设置); otherwise the Baidu voice credential. **Measured 2026-09-17: Qianfan v2 rejects the legacy OAuth access token (`HTTP 401 invalid_iam_token`)** — with legacy voice credentials a dedicated Qianfan API key is required. Camera capture itself verified on device (18–26 KB frames sent).
 - Every failure (no camera, no permission, no frame, not configured, auth, request) reaches the model as `ok=false` with an instruction never to describe the image.
 

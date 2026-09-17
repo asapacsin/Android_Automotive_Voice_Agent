@@ -13,9 +13,7 @@ import android.os.HandlerThread
 import android.view.Gravity
 import android.view.Surface
 import android.view.TextureView
-import android.widget.Button
 import android.widget.FrameLayout
-import android.widget.LinearLayout
 import android.widget.TextView
 import com.novadrive.app.R
 import com.novadrive.app.vision.CameraVisionSurface
@@ -34,9 +32,6 @@ class CameraPreviewView(context: Context) : FrameLayout(context), CameraVisionSu
 
     /** Raised when a vision request needs the camera permission; the Activity pops it up. */
     var onPermissionNeeded: (() -> Unit)? = null
-
-    /** 「问AI」: ask the vision model about the current frame without using voice. */
-    var onAskAi: (() -> Unit)? = null
 
     /** Answers and status go to the assistant's speech bubble: the small window has no room for text. */
     var onVisionText: ((String) -> Unit)? = null
@@ -70,7 +65,6 @@ class CameraPreviewView(context: Context) : FrameLayout(context), CameraVisionSu
         elevation = dp(8).toFloat()
         addView(textureView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         val close = chip(context.getString(R.string.camera_close_short)) { hide() }
-        val ask = chip(context.getString(R.string.camera_ask_ai)) { onAskAi?.invoke() }
         addView(
             close,
             LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
@@ -79,13 +73,7 @@ class CameraPreviewView(context: Context) : FrameLayout(context), CameraVisionSu
                 rightMargin = dp(4)
             },
         )
-        addView(
-            ask,
-            LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
-                gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-                bottomMargin = dp(6)
-            },
-        )
+
         textureView.surfaceTextureListener =
             object : TextureView.SurfaceTextureListener {
                 override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {

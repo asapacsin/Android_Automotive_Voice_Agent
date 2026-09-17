@@ -295,7 +295,7 @@ class DeveloperSettingsActivity : Activity() {
             addView(iflytekAppId)
             addView(saveWakeAppId)
             addView(wakeToggle)
-            addView("摄像头看图（问AI）：图片只在你提问时发送到百度千帆视觉模型".label())
+            addView("摄像头看图：打开相机时看一次、之后你问画面问题时再看；图片只在这两种情况下发送到百度千帆视觉模型".label())
             addView(visionKey)
             addView("视觉模型".label())
             addView(visionModel)

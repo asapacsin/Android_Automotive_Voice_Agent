@@ -78,16 +78,6 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
         camera.visibility = GONE
         bottomBar.onCameraClick = { onCameraToggleRequested?.invoke() }
         bottomBar.bindClimate(VehicleControlProvider.port)
-        camera.onAskAi = {
-            // Same handler the voice tool uses; the answer shows in the speech bubble and is spoken.
-            uiScope.launch {
-                val outcome = VisionProvider.handler(context).ask(null)
-                // Read it aloud in the assistant's own voice (the phone has no default system TTS).
-                NavigationState.allowConfirmation()
-                val result = VoiceSessionGateway.speak(CameraQuestionHandler.readAloudPrompt(outcome.spokenText))
-                DebugVoiceLog.log("vision_speak result=${result::class.simpleName}")
-            }
-        }
         overlay.onOpenDeveloperSettings = { onOpenDeveloperSettings?.invoke() }
         choiceOverlay.bind(EmbeddedNavigation.shared(context))
     }
@@ -158,8 +148,34 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
         overlay.showError(code, message)
     }
 
+    /** Driver opened the camera: show it and have the assistant look once, without a button. */
     fun showCamera() {
+        val wasShowing = camera.isShowing
         camera.show()
+        if (!wasShowing) lookAndSpeak()
+    }
+
+    private var lookJob: kotlinx.coroutines.Job? = null
+
+    /**
+     * Captures the current view, asks the vision model, shows the answer in the bubble and has
+     * the assistant say it in its own voice (the phone has no default system TTS engine).
+     * One look at a time. Each look is a paid vision call, so this runs once per opening, not
+     * continuously; later questions go through the describe_camera_view voice tool.
+     */
+    private fun lookAndSpeak() {
+        if (lookJob?.isActive == true) return
+        lookJob = uiScope.launch {
+            val outcome = VisionProvider.handler(context).ask(null)
+            NavigationState.allowConfirmation()
+            val prompt = if (outcome.ok) {
+                CameraQuestionHandler.cameraOpenedPrompt(outcome.spokenText)
+            } else {
+                CameraQuestionHandler.readAloudPrompt(outcome.spokenText)
+            }
+            val result = VoiceSessionGateway.speak(prompt)
+            DebugVoiceLog.log("vision_speak ok=${outcome.ok} result=${result::class.simpleName}")
+        }
     }
 
     fun hideCamera() {
@@ -167,7 +183,7 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
     }
 
     fun toggleCamera() {
-        camera.toggle()
+        if (camera.isShowing) hideCamera() else showCamera()
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
