@@ -32,6 +32,7 @@ include(
     ":feedback",
     ":orchestration",
     ":simulator",
+    ":evaluation",
     ":behavior-test",
     ":demo",
 )

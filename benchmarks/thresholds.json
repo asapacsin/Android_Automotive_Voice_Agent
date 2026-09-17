@@ -1,0 +1,11 @@
+{
+  "_comment": "Regression thresholds for Baselines.compare. Initial values proposed by the product owner on 2026-09-17. Change a value only with a reason recorded in docs/EVALUATION.md.",
+  "taskSuccessDropFailPp": 1.0,
+  "taskSuccessDropWarnPp": 0.5,
+  "p95IncreaseWarnPct": 20.0,
+  "p95IncreaseFailPct": 50.0,
+  "failOnNewCrash": true,
+  "failOnNewFalseSuccess": true,
+  "failOnNewUnexpectedToolCall": true,
+  "minLatencySamples": 20
+}
