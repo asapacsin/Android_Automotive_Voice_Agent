@@ -37,8 +37,8 @@ interface RealtimeVoiceProvider {
     /** Drops microphone audio queued but not yet sent (listening was just stopped). */
     fun discardPendingAudio() {}
 
-    /** The next turn should start without the earlier conversation (after a standby). */
-    fun startFreshConversation() {}
+    /** Listening resumed after a sleep; the conversation continues where it was. */
+    fun resumeListening() {}
 
     /** Cancels a reply that is in progress even if its audio has not started yet. */
     suspend fun cancelActiveResponse(): DomainVoiceEvent = cancelAssistantResponse()

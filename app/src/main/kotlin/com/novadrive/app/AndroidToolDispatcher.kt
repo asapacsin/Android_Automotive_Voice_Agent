@@ -36,10 +36,10 @@ interface AndroidActionExecutor {
     fun chooseNavigationOption(choice: NavigationChoice): AndroidActionResult =
         AndroidActionResult.Rejected("NAVIGATION_CHOICE_UNAVAILABLE")
 
-    /** Silent mode on (true) or off (false), chosen by the model. */
+    /** true: stop talking and wait for the next command (SILENT_WAIT); false: talk normally again. */
     fun setSpeechSilent(silent: Boolean): AndroidActionResult = AndroidActionResult.Rejected("SPEECH_OUTPUT_UNAVAILABLE")
 
-    /** TERMINATE_LISTENING chosen by the model: stop listening once the goodbye has played. */
+    /** GO_TO_SLEEP chosen by the model: stop listening once the goodbye has played. */
     fun endConversation(): AndroidActionResult = AndroidActionResult.Rejected("LISTENING_CONTROL_UNAVAILABLE")
 
     /** What the navigation screen shows once the latest request has settled (bounded wait). */
@@ -207,7 +207,7 @@ open class CoreActionExecutor(
     /** Why navigation cannot run right now (no map host, no web key), or null. */
     private val navigationBlocker: () -> String? = { null },
     private val endConversationRequest: () -> Boolean = { false },
-    private val speechSilent: (Boolean) -> Unit = { com.novadrive.app.voice.SpeechOutput.setSilent(it, "tool") },
+    private val speechSilent: (Boolean) -> Unit = {},
 ) : AndroidActionExecutor {
     /**
      * Voice path into the EMBEDDED navigation. Resolves candidates and waits for the
@@ -242,7 +242,7 @@ open class CoreActionExecutor(
 
     override fun setSpeechSilent(silent: Boolean): AndroidActionResult {
         speechSilent(silent)
-        return AndroidActionResult.Accepted(if (silent) "replies_are_text_only_now" else "replies_are_spoken_again")
+        return AndroidActionResult.Accepted(if (silent) "stopped_talking_still_listening" else "talking_normally")
     }
 
     override fun endConversation(): AndroidActionResult =
@@ -307,8 +307,10 @@ class SafeAndroidActionExecutor(
     navigationFlow = navigationFlow,
     music = { MusicBackends.current(context.applicationContext) },
     navigationBlocker = { liveNavigationBlocker(context.applicationContext) },
-    endConversationRequest = { com.novadrive.app.voice.VoiceSessionGateway.standbyAfterReply("end_conversation") },
-    speechSilent = { com.novadrive.app.voice.VoiceSessionGateway.setSpeechSilent(it, "tool") },
+    endConversationRequest = { com.novadrive.app.voice.VoiceSessionGateway.sleepAfterReply("end_conversation") },
+    speechSilent = { silent ->
+        if (silent) com.novadrive.app.voice.VoiceSessionGateway.shutUp("tool") else com.novadrive.app.voice.VoiceSessionGateway.start("tool")
+    },
 ) {
     private val appContext = context.applicationContext
 

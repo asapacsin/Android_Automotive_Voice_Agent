@@ -146,10 +146,6 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
         overlay.bindListening(state)
     }
 
-    fun bindSilent(silent: Boolean) {
-        overlay.bindSilent(silent)
-    }
-
     var onListeningToggle: (() -> Unit)?
         get() = overlay.onListeningToggle
         set(value) {

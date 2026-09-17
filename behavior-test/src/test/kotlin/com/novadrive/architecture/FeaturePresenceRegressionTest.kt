@@ -51,23 +51,23 @@ class FeaturePresenceRegressionTest {
         )
     }
 
-    // ---- listening lifecycle: ACTIVE / STANDBY / DEEP_IDLE ----
+    // ---- listening lifecycle: ACTIVE / SILENT_WAIT / SLEEP / DEEP_IDLE ----
 
     @Test
     fun listeningLifecycleIsTheSwitchForCloudAudio() {
         val controller = "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt"
         assertContains(controller, "active.setCaptureSuspended(!enabled)", "standby must really stop capture and upload")
-        assertContains(controller, "ListeningIntent.classify(text, context)", "「关闭小诺」 is handled locally")
+        assertContains(controller, "commandRouter.onUserUtterance(text)", "「闭嘴」/「休眠」 are handled locally")
         assertContains(controller, "lifecycle.onBusyChanged(busy)", "the inactivity timer must see user turns")
         assertContains(
             "ingress/src/main/kotlin/com/novadrive/ingress/realtime/VoiceSessionController.kt",
             "if (captureSuspended.get()) return",
-            "nothing may re-arm capture during standby",
+            "nothing may re-arm capture during sleep",
         )
         assertContains(
             "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionGateway.kt",
             "session.activate(reason)",
-            "wake word and UI resume a standby session",
+            "wake word and UI resume a sleeping or silent session",
         )
         assertContains(
             "app/src/main/kotlin/com/novadrive/app/ui/AssistantOverlayView.kt",
@@ -77,11 +77,15 @@ class FeaturePresenceRegressionTest {
     }
 
     @Test
-    fun silentModeMutesRepliesButNotListening() {
+    fun shutUpCutsTheReplyWithoutEndingTheConversation() {
         val controller = "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt"
-        assertContains(controller, "&& !SpeechOutput.silent", "silent mode must stop reply audio")
-        assertContains(controller, "ListeningIntent.Decision.SILENCE_SPEECH ->", "「闭嘴」 is handled locally")
+        assertContains(controller, "AndroidPlaybackPort(player, audioFocus) { lifecycle.speaks }", "replies are spoken only in ACTIVE")
         assertContains(controller, "if (reason == \"wake_word\" && playbackSpeaking)", "the wake word must be able to cut off a reply")
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/voice/VoiceCommandRouter.kt",
+            "ListeningIntent.Decision.SHUT_UP ->",
+            "「闭嘴」 is its own intent, not sleep",
+        )
     }
 
     @Test

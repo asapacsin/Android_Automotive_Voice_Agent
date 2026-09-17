@@ -210,8 +210,8 @@ class BaiduFlexClient(
     }
 
     /**
-     * Listening stopped (standby): held microphone audio is dropped, and the client sends no turns
-     * of its own (false-claim follow-ups, queued replies) until listening resumes.
+     * Listening stopped (sleep): held microphone audio is dropped, and the client sends no turns of
+     * its own (false-claim follow-ups, queued replies) until listening resumes.
      */
     fun discardPendingAudio() {
         listeningSuspended = true
@@ -219,11 +219,9 @@ class BaiduFlexClient(
         turnGate.clear()
     }
 
-    /** Listening resumed after a standby: the next command starts with no earlier conversation. */
-    fun requestFreshConversation() {
+    /** Listening resumed after a sleep. The conversation (and its context) simply continues. */
+    fun resumeListening() {
         listeningSuspended = false
-        if (socket == null || resetting) return
-        resetConversation()
     }
 
     @Volatile private var listeningSuspended = false

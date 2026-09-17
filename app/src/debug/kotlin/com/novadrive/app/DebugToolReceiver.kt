@@ -143,13 +143,9 @@ class DebugToolReceiver : BroadcastReceiver() {
             arg == "activate" -> gateway.start("debug").toString()
             // Same path as a wake-word detection (the MSC engine cannot be fed audio from here).
             arg == "wake" -> gateway.start("wake_word").toString()
-            arg == "standby" -> { gateway.standby("debug"); "standby" }
-            arg == "state" -> gateway.listeningState.toString() +
-                if (com.novadrive.app.voice.SpeechOutput.silent) " silent" else " spoken"
-            arg == "silent:on" || arg == "silent:off" -> {
-                gateway.setSpeechSilent(arg == "silent:on", "debug")
-                arg
-            }
+            arg == "sleep" -> { gateway.sleep("debug"); "sleep" }
+            arg == "shutup" -> gateway.shutUp("debug").toString()
+            arg == "state" -> gateway.listeningState.toString()
             arg.startsWith("say:") -> {
                 val name = arg.removePrefix("say:").filter { it.isLetterOrDigit() || it == '_' }
                 val file = java.io.File(context.getExternalFilesDir(null), "test_speech/$name.pcm")

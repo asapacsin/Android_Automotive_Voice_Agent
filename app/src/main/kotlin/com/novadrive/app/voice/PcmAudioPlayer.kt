@@ -233,7 +233,7 @@ class PcmAudioPlayer(
 class AndroidPlaybackPort(
     private val player: PcmAudioPlayer,
     private val focus: AudioFocusController? = null,
-    /** False while listening is not ACTIVE: a reply to a cancelled turn is not played. */
+    /** False unless the lifecycle is ACTIVE: a reply after 「闭嘴」 or 「休眠」 is not played. */
     private val playbackAllowed: () -> Boolean = { true },
 ) : PlaybackPort {
     override val queuedFrames: Int
@@ -280,7 +280,7 @@ class AndroidPlaybackPort(
         if (!playbackAllowed()) {
             if (!droppingReply) {
                 droppingReply = true
-                com.novadrive.app.DebugVoiceLog.log("reply_audio_not_played reason=${if (SpeechOutput.silent) "silent" else "not_listening"}")
+                com.novadrive.app.DebugVoiceLog.log("reply_audio_not_played reason=not_active")
             }
             return
         }

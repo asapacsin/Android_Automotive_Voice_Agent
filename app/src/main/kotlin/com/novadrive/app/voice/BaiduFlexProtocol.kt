@@ -132,9 +132,9 @@ object BaiduFlexProtocol {
         )
         val setSpeechOutput = functionTool(
             name = SET_SPEECH_OUTPUT,
-            description = "切换小诺是否用语音回答。用户让小诺别出声、别吵、保持安静时用 mode=silent（之后只显示文字，仍然听指令、执行操作）；" +
-                "用户说可以说话了、恢复语音时用 mode=spoken。不要用于音乐、导航播报或车辆音量。" +
-                "Turns the assistant's spoken replies off (silent: text only, still listening and acting) or back on.",
+            description = "用户让小诺别说了、别吵、保持安静时用 mode=silent：小诺立刻停止说话，但继续听，下一句指令照常执行，不需要再唤醒；" +
+                "这不是休眠（休眠用 end_conversation）。mode=spoken 表示恢复正常对话。不要用于音乐、导航播报或车辆音量。" +
+                "silent: stop talking now and wait for the next command (not sleep); spoken: talk normally.",
             properties = JSONObject().put(
                 "mode",
                 JSONObject().put("type", "string").put("enum", JSONArray(listOf("silent", "spoken"))),

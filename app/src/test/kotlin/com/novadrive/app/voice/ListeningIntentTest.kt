@@ -1,7 +1,8 @@
 package com.novadrive.app.voice
 
 import com.novadrive.app.voice.ListeningIntent.Decision.PASS_TO_MODEL
-import com.novadrive.app.voice.ListeningIntent.Decision.TERMINATE_LISTENING
+import com.novadrive.app.voice.ListeningIntent.Decision.GO_TO_SLEEP
+import com.novadrive.app.voice.ListeningIntent.Decision.SHUT_UP
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -20,16 +21,16 @@ class ListeningIntentTest {
             "stop listening", "Stop listening.", "go to sleep", "That's all.", "that is all",
             "关闭小诺", "关闭小诺。", "小诺，别听了", "别听了吧", "停止监听", "休息吧", "小诺休息吧", "好的，关闭小诺吧",
         )) {
-            assertEquals(TERMINATE_LISTENING, classify(text), text)
+            assertEquals(GO_TO_SLEEP, classify(text), text)
             // They name the assistant itself, so even an open list does not change their meaning.
-            assertEquals(TERMINATE_LISTENING, classify(text, picker), "$text with picker")
+            assertEquals(GO_TO_SLEEP, classify(text, picker), "$text with picker")
         }
     }
 
     @Test
     fun standaloneCloseTerminates() {
-        assertEquals(TERMINATE_LISTENING, classify("close"))
-        assertEquals(TERMINATE_LISTENING, classify("Close."))
+        assertEquals(GO_TO_SLEEP, classify("close"))
+        assertEquals(GO_TO_SLEEP, classify("Close."))
     }
 
     @Test
@@ -53,7 +54,7 @@ class ListeningIntentTest {
     @Test
     fun contextualPhrasesDeferToAnOpenTask() {
         for (text in listOf("不用了", "never mind", "Never mind.", "没事了", "close")) {
-            assertEquals(TERMINATE_LISTENING, classify(text), "$text with nothing going on")
+            assertEquals(GO_TO_SLEEP, classify(text), "$text with nothing going on")
             assertEquals(PASS_TO_MODEL, classify(text, picker), "$text with a list on screen")
             assertEquals(PASS_TO_MODEL, classify(text, working), "$text while a tool is running")
         }
@@ -70,18 +71,30 @@ class ListeningIntentTest {
     fun silencePhrasesTurnVoiceOffButKeepListening() {
         for (text in listOf(
             "闭嘴", "闭嘴！", "小诺，闭嘴", "安静", "安静点", "安静一点", "保持安静", "别说话", "别说话了", "不要说话",
-            "别出声", "别吵了", "静音", "shut up", "Shut up!", "be quiet", "keep silent", "Keep quiet.", "stop talking",
+            "别出声", "别吵了", "别说了", "shut up", "Shut up!", "be quiet", "keep silent", "Keep quiet.", "stop talking",
         )) {
-            assertEquals(ListeningIntent.Decision.SILENCE_SPEECH, classify(text), text)
-            assertEquals(ListeningIntent.Decision.SILENCE_SPEECH, classify(text, picker), "$text with a list open")
+            assertEquals(SHUT_UP, classify(text), text)
+            assertEquals(SHUT_UP, classify(text, picker), "$text with a list open")
         }
     }
 
     @Test
-    fun restorePhrasesTurnVoiceBackOn() {
-        for (text in listOf("可以说话了", "你可以说话了", "小诺，可以说话了", "恢复语音", "取消静音", "说话吧", "you can talk now", "unmute", "speak again")) {
-            assertEquals(ListeningIntent.Decision.RESTORE_SPEECH, classify(text), text)
+    fun sleepPhrasesAreExplicit() {
+        for (text in listOf("sleep", "Go to sleep.", "stop listening", "休眠", "进入休眠", "睡觉", "去睡觉吧", "小诺，睡吧", "停止监听")) {
+            assertEquals(GO_TO_SLEEP, classify(text), text)
         }
+    }
+
+    @Test
+    fun shutUpAndSleepAreNeverSynonyms() {
+        assertEquals(SHUT_UP, classify("shut up"))
+        assertEquals(SHUT_UP, classify("闭嘴"))
+        assertEquals(SHUT_UP, classify("别说了"))
+        assertEquals(GO_TO_SLEEP, classify("go to sleep"))
+        assertEquals(GO_TO_SLEEP, classify("休眠"))
+        // A request after 「闭嘴」 is an ordinary command, not a wake-up phrase.
+        assertEquals(PASS_TO_MODEL, classify("选最快的那条"))
+        assertEquals(PASS_TO_MODEL, classify("可以说话了"))
     }
 
     @Test

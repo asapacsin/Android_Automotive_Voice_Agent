@@ -107,28 +107,55 @@ Telemetry events (`com.novadrive.evaluation.Telemetry`, monotonic time): `LISTEN
   unmeasured).
 - Very long drives: battery/thermal effect of the wake-word engine alone.
 
-## Silent mode (「闭嘴」) — added 2026-09-17
+## Update 2026-09-17: 「闭嘴」 and 「休眠」 are different states
 
-Separate from the listening states: 小诺 **keeps listening and carrying out commands**, but its
-replies are shown as text only (`SpeechOutput.silent`, checked by the playback port together with
-ACTIVE). The reply in progress is cut off when silent mode starts. Process-wide, not persisted
-(an app restart speaks again). Navigation guidance is not affected.
+The earlier persistent text-only "silent mode" is replaced. State machine (`ListeningLifecycle`):
 
-| Turns voice off (whole utterance, handled locally) | Turns voice back on |
-| --- | --- |
-| 闭嘴 · 小诺闭嘴 · 安静(点/一点) · 保持安静 · 别说话 · 不要说话 · 别出声 · 不要出声 · 别吵(了) · 少说话 · 静音 · 小诺静音 · 别说了 · 不要说了 · shut up · be quiet · keep quiet · keep silent · stay silent · stop talking · silence · mute | 可以说话了 · 你可以说话了 · 说话吧 · 恢复语音 · 恢复说话 · 取消静音 · 开口吧 · 出声吧 · 可以出声了 · you can talk (now) · you can speak · speak again · unmute · talk to me |
+```
+ACTIVE ──「闭嘴」/shut up/stop talking/be quiet ──► SILENT_WAIT
+SILENT_WAIT ── any real command ──► ACTIVE (command runs, its answer is spoken)
+SILENT_WAIT ── 20 s without real speech ──► SLEEP
+ACTIVE / SILENT_WAIT ──「休眠」「睡觉」「停止监听」sleep/go to sleep/stop listening ──► SLEEP
+ACTIVE ── 30 s without a meaningful turn ──► SLEEP
+SLEEP ── wake word / status-row tap ──► ACTIVE (same connection, context kept)
+SLEEP ── 5 min ──► DEEP_IDLE (connection closed) ── wake word / tap ──► ACTIVE (new session)
+```
 
-Other wordings go to the model's `set_speech_output` tool (`silent` / `spoken`). The UI shows
-「🔇 静音」 on the status row; tapping it while silent restores voice. Precedence: stop-listening
-phrases first, then silence / restore, then contextual cancellation, then the model. Phrases that
-only contain these words (「导航到安静的咖啡馆」「关闭音乐」) go to the model.
+(STANDBY was renamed SLEEP; tables above that say STANDBY describe the same state.)
 
-**Interrupting a reply.** While 小诺 speaks the microphone is closed to its own voice (echo
-protection), so 「闭嘴」 said over a reply is not heard. The wake word is: 「你好小诺」 during a reply
-now cuts the reply off, and the following 「闭嘴」 is heard.
+| State | Microphone capture | Upload to Baidu | Replies spoken | Connection | Context |
+| --- | --- | --- | --- | --- | --- |
+| ACTIVE | on | on (minus temporary reply/guidance gates) | yes | open | kept |
+| SILENT_WAIT | on | on (same gates) | **no** (reply in progress cut off) | open | kept |
+| SLEEP | **released** | **none**; held audio dropped; ordinary speech ignored | no | open while Baidu keeps it | kept |
+| DEEP_IDLE | off | none | no | **closed**, no reconnect | lost |
 
-Device (synthetic speech, 2026-09-17): 「闭嘴」 → silent 2 ms after the transcript, its reply cancelled
-before any audio; 「温度调高一点」 while silent → executed, text only (`reply_audio_not_played
-reason=silent`); 「可以说话了」 → spoken again; "keep quiet" → silent; wake path during a ~20 s reply →
-playback stopped and the microphone reopened 0.35 s later (the real spoken wake word was not used:
-the MSC engine cannot be fed injected audio).
+Timeouts, all in `ListeningTimeouts` (app/voice/ListeningLifecycle.kt):
+`SILENT_WAIT_TIMEOUT_MS = 20_000`, `SLEEP_AFTER_INACTIVITY_MS = 30_000`,
+`DEEP_IDLE_AFTER_SLEEP_MS = 300_000`, `IDLE_GRACE_MS = 1_500`.
+
+- 「闭嘴」 cancels only the reply (local playback flushed, `response.cancel` sent) and never
+  suspends capture or ends the conversation. Repeating it re-arms the one timer.
+- Speech that starts during SILENT_WAIT pauses the sleep timer; a meaningful transcript returns to
+  ACTIVE before the model's answer arrives, so the answer is spoken. VAD noise does not extend it.
+- Routing: `VoiceCommandRouter` → `ListeningIntent` (decisions `SHUT_UP`, `GO_TO_SLEEP`,
+  `PASS_TO_MODEL`; precedence unchanged). Model paraphrases: `set_speech_output` (silent →
+  SILENT_WAIT, spoken → ACTIVE) and `end_conversation` (→ SLEEP after the goodbye).
+- 「可以说话了」 is no longer a special phrase: in SILENT_WAIT it is simply the next command.
+- The status row shows 🎙 聆听中 / 🤫 静默中，仍在听 / 💤 休眠中 / 💤 休眠中（已断开）; a tap sleeps from
+  ACTIVE and wakes from every other state.
+- While 小诺 talks the microphone is closed to its own voice, so 「闭嘴」 said over a reply is not
+  heard; the wake word cuts a reply off (`wake_interrupts_reply`), after which 「闭嘴」 is heard.
+
+Device (synthetic speech, 2026-09-17): 导航去珠海站 → 「闭嘴」 → SILENT_WAIT → 「第二个」 → ACTIVE, the
+choice executed and was answered, no wake word; 「闭嘴」 + 20 s → SLEEP (`silent_wait_timeout`);
+「温度调高一点」 in SLEEP → no transcript, no tool; wake path → ACTIVE; 「休眠」 → SLEEP in 60 ms.
+
+### Limits of sleep
+
+- The wake word is the iFlytek MSC engine running inside the app process on the main CPU with its
+  own continuous `AudioRecord` — not a DSP / hardware hotword. SLEEP stops cloud audio and our
+  capture, but the phone still records for the wake word, the app must stay alive (foreground
+  service) and the realtime socket stays open until DEEP_IDLE.
+- The spoken wake word itself cannot be injected by the test harness; the wake path was exercised
+  through the same `VoiceSessionGateway.start("wake_word")` call.

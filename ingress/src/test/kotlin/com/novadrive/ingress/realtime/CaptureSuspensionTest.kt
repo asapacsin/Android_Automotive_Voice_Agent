@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
-/** The listening lifecycle's single capture switch (standby), separate from temporary gates. */
+/** The listening lifecycle's single capture switch (sleep), separate from temporary gates. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CaptureSuspensionTest {
     private class Rig(scope: TestScope) {
@@ -71,6 +71,7 @@ class CaptureSuspensionTest {
         }
         assertEquals(6, rig.mic.startCount, "one start per resume, plus the session start")
         assertEquals(5, rig.provider.discardAudioCount)
+        assertEquals(5, rig.provider.resumeCount)
         assertEquals(1, rig.provider.connectCount, "switching never reconnects")
         rig.controller.stop()
     }

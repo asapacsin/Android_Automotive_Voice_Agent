@@ -92,8 +92,6 @@ class MainActivity : Activity() {
             }
         setContentView(screen)
         screen.onCreate(savedInstanceState)
-        com.novadrive.app.voice.SpeechOutput.addListener(silentListener)
-        screen.bindSilent(com.novadrive.app.voice.SpeechOutput.silent)
         renderState(VoiceUiState.DISCONNECTED, null)
         if (Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
@@ -131,7 +129,6 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         if (::controller.isInitialized) VoiceSessionGateway.detach(controller)
-        com.novadrive.app.voice.SpeechOutput.removeListener(silentListener)
         BundledMusicPlayer.stop()
         VoiceSessionService.stop(this)
         if (::controller.isInitialized) controller.release()
@@ -185,22 +182,14 @@ class MainActivity : Activity() {
 
     /**
      * The listening indicator doubles as push-to-talk: while streaming it stops listening
-     * (STANDBY); otherwise it resumes or starts a session exactly like the wake word.
+     * (SLEEP); otherwise it resumes or starts a session exactly like the wake word.
      */
-    private val silentListener: (Boolean) -> Unit = { silent ->
-        mainHandler.post { if (::screen.isInitialized) screen.bindSilent(silent) }
-    }
-
     private fun toggleListening() {
-        // While silent, a tap first gives 小诺 its voice back.
-        if (com.novadrive.app.voice.SpeechOutput.silent) {
-            com.novadrive.app.voice.SpeechOutput.setSilent(false, "ui")
-            return
-        }
         if (VoiceSessionGateway.listeningState == com.novadrive.app.voice.ListeningState.ACTIVE) {
-            VoiceSessionGateway.standby("ui")
+            VoiceSessionGateway.sleep("ui")
             return
         }
+        // SILENT_WAIT, SLEEP, DEEP_IDLE: the tap wakes 小诺 like the wake word (push-to-talk).
         when (val result = VoiceSessionGateway.start("ui")) {
             com.novadrive.app.voice.StartResult.MicPermissionMissing ->
                 requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC)

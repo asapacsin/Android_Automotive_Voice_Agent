@@ -36,7 +36,7 @@ class BaiduFlexProvider(
     }
     override suspend fun sendText(text: String) = client.sendUserText(text)
     override fun discardPendingAudio() = client.discardPendingAudio()
-    override fun startFreshConversation() = client.requestFreshConversation()
+    override fun resumeListening() = client.resumeListening()
     override suspend fun cancelActiveResponse(): DomainVoiceEvent {
         client.cancelActiveResponse(); return DomainVoiceEvent.Interrupted("client_cancelled")
     }

@@ -20,13 +20,7 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
     var onListeningToggle: (() -> Unit)? = null
 
     private var listening: ListeningState = ListeningState.DEEP_IDLE
-    private var silent = false
 
-    /** Silent mode: replies are text only. Shown as 🔇 on the status row. */
-    fun bindSilent(value: Boolean) {
-        silent = value
-        bindState(lastVoiceState, null)
-    }
     private var lastVoiceState: VoiceUiState = VoiceUiState.DISCONNECTED
 
     private val avatar: TextView
@@ -171,8 +165,8 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
     }
 
     /**
-     * Whether microphone audio goes to the cloud. STANDBY and DEEP_IDLE replace the turn-state
-     * label so the driver can always tell "streaming" from "not streaming".
+     * Whether microphone audio goes to the cloud. SILENT_WAIT, SLEEP and DEEP_IDLE replace the
+     * turn-state label so the driver can always tell "listening" from "asleep".
      */
     fun bindListening(state: ListeningState) {
         listening = state
@@ -184,17 +178,29 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
         val ui = AssistantUiStateMapper.from(state)
         if (listening != ListeningState.ACTIVE && ui != AssistantUiState.ERROR) {
             stateLabel.text = context.getString(
-                if (listening == ListeningState.STANDBY) R.string.assistant_listening_standby else R.string.assistant_listening_deep_idle,
-            ) + if (silent) " " + context.getString(R.string.assistant_silent_suffix) else ""
-            stateDot.setTextColor(Color.parseColor(if (listening == ListeningState.STANDBY) "#FF78909C" else "#FF455A64"))
+                when (listening) {
+                    ListeningState.SILENT_WAIT -> R.string.assistant_listening_silent
+                    ListeningState.SLEEP -> R.string.assistant_listening_sleep
+                    else -> R.string.assistant_listening_deep_idle
+                },
+            )
+            stateDot.setTextColor(
+                Color.parseColor(
+                    when (listening) {
+                        ListeningState.SILENT_WAIT -> "#FF66BB6A"
+                        ListeningState.SLEEP -> "#FF78909C"
+                        else -> "#FF455A64"
+                    },
+                ),
+            )
             actionCard.visibility = GONE
             return
         }
-        stateLabel.text = (if (ui == AssistantUiState.LISTENING) {
+        stateLabel.text = if (ui == AssistantUiState.LISTENING) {
             context.getString(R.string.assistant_listening_active)
         } else {
             AssistantUiStateMapper.displayLabel(ui)
-        }) + if (silent) " " + context.getString(R.string.assistant_silent_suffix) else ""
+        }
         stateDot.setTextColor(
             when (ui) {
                 AssistantUiState.LISTENING -> Color.parseColor("#FF4CAF50")

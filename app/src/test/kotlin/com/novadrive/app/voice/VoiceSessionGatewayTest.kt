@@ -82,8 +82,8 @@ class VoiceSessionGatewayTest {
         val session = FakeGatewaySession()
         VoiceSessionGateway.attachInternal(identity, session, FakeServiceControl())
         VoiceSessionGateway.start("wake_word")
-        VoiceSessionGateway.standby("ui")
-        assertEquals(ListeningState.STANDBY, VoiceSessionGateway.listeningState)
+        VoiceSessionGateway.sleep("ui")
+        assertEquals(ListeningState.SLEEP, VoiceSessionGateway.listeningState)
         assertEquals(StartResult.AlreadyActive, VoiceSessionGateway.start("wake_word"))
         assertEquals(listOf("wake_word"), session.activations)
         assertEquals(1, session.startCalls, "the same session is resumed")
@@ -96,7 +96,7 @@ class VoiceSessionGatewayTest {
         val session = FakeGatewaySession()
         VoiceSessionGateway.attachInternal(identity, session, FakeServiceControl())
         VoiceSessionGateway.start()
-        VoiceSessionGateway.standby("ui")
+        VoiceSessionGateway.sleep("ui")
         VoiceSessionGateway.speak("读一下")
         assertEquals(listOf("app_prompt"), session.activations)
         assertEquals(listOf("读一下"), session.texts)
@@ -107,10 +107,10 @@ class VoiceSessionGatewayTest {
         val identity = Any().also { identities += it }
         val session = FakeGatewaySession()
         VoiceSessionGateway.attachInternal(identity, session, FakeServiceControl())
-        assertFalse(VoiceSessionGateway.standbyAfterReply("end_conversation"))
+        assertFalse(VoiceSessionGateway.sleepAfterReply("end_conversation"))
         VoiceSessionGateway.start()
-        assertTrue(VoiceSessionGateway.standbyAfterReply("end_conversation"))
-        assertEquals(listOf("after:end_conversation"), session.standbys)
+        assertTrue(VoiceSessionGateway.sleepAfterReply("end_conversation"))
+        assertEquals(listOf("after:end_conversation"), session.sleeps)
         assertEquals(ListeningState.DEEP_IDLE, run {
             VoiceSessionGateway.stop()
             VoiceSessionGateway.listeningState
@@ -118,20 +118,20 @@ class VoiceSessionGatewayTest {
     }
 
     @Test
-    fun silentModeGoesThroughTheRunningSessionSoTheReplyIsCutOff() {
+    fun shutUpNeedsARunningSessionAndDoesNotEndIt() {
         val identity = Any().also { identities += it }
         val session = FakeGatewaySession()
         VoiceSessionGateway.attachInternal(identity, session, FakeServiceControl())
-        try {
-            VoiceSessionGateway.start()
-            VoiceSessionGateway.setSpeechSilent(true, "tool")
-            assertEquals(listOf("tool"), session.silences)
-            assertTrue(SpeechOutput.silent)
-            VoiceSessionGateway.setSpeechSilent(false, "tool")
-            assertFalse(SpeechOutput.silent)
-        } finally {
-            SpeechOutput.setSilent(false, "test")
-        }
+        assertFalse(VoiceSessionGateway.shutUp("tool"))
+        VoiceSessionGateway.start()
+        assertTrue(VoiceSessionGateway.shutUp("tool"))
+        assertEquals(listOf("tool"), session.silences)
+        assertEquals(ListeningState.SILENT_WAIT, VoiceSessionGateway.listeningState)
+        assertEquals(0, session.stopCalls)
+        // The wake word / UI from SILENT_WAIT resumes the same session.
+        assertEquals(StartResult.AlreadyActive, VoiceSessionGateway.start("wake_word"))
+        assertEquals(ListeningState.ACTIVE, VoiceSessionGateway.listeningState)
+        assertEquals(1, session.startCalls)
     }
 
     @Test
@@ -169,7 +169,7 @@ class VoiceSessionGatewayTest {
             texts += text
         }
         val activations = mutableListOf<String>()
-        val standbys = mutableListOf<String>()
+        val sleeps = mutableListOf<String>()
         override var listeningState: ListeningState = ListeningState.DEEP_IDLE
         override fun startBaidu(reason: String) {
             startCalls += 1
@@ -180,17 +180,17 @@ class VoiceSessionGatewayTest {
             activations += reason
             listeningState = ListeningState.ACTIVE
         }
-        override fun standby(reason: String) {
-            standbys += reason
-            listeningState = ListeningState.STANDBY
+        override fun sleep(reason: String) {
+            sleeps += reason
+            listeningState = ListeningState.SLEEP
         }
-        override fun standbyAfterReply(reason: String) {
-            standbys += "after:$reason"
+        override fun sleepAfterReply(reason: String) {
+            sleeps += "after:$reason"
         }
         val silences = mutableListOf<String>()
-        override fun silenceSpeech(reason: String) {
+        override fun shutUp(reason: String) {
             silences += reason
-            SpeechOutput.setSilent(true, reason)
+            listeningState = ListeningState.SILENT_WAIT
         }
         override fun stop() {
             stopCalls += 1

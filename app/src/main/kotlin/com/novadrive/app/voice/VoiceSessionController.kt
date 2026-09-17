@@ -46,9 +46,8 @@ class VoiceSessionController(
     private val audioFocus = AudioFocusController(context)
     // Reply audio is only played while listening is ACTIVE: after 「关闭小诺」 the cancelled reply
     // must not start talking.
-    private val playback = AndroidPlaybackPort(player, audioFocus) {
-        lifecycle.state.value == ListeningState.ACTIVE && !SpeechOutput.silent
-    }
+    // Replies are spoken only in ACTIVE: after 「闭嘴」 or 「休眠」 the cancelled reply stays silent.
+    private val playback = AndroidPlaybackPort(player, audioFocus) { lifecycle.speaks }
     private var ungateJob: Job? = null
     private var ungateGeneration = 0
     @Volatile private var lastUiState: VoiceUiState = VoiceUiState.DISCONNECTED
@@ -70,15 +69,15 @@ class VoiceSessionController(
         )
 
     /**
-     * The listening lifecycle (ACTIVE / STANDBY / DEEP_IDLE): the one authority on whether
-     * microphone audio may go to the cloud. See [ListeningLifecycle].
+     * The listening lifecycle (ACTIVE / SILENT_WAIT / SLEEP / DEEP_IDLE): the one authority on
+     * whether microphone audio may go to the cloud and whether replies are spoken.
+     * See [ListeningLifecycle].
      */
     val lifecycle: ListeningLifecycle = ListeningLifecycle(
         scope = scope,
         controls = object : ListeningControls {
             override fun setCloudUpload(enabled: Boolean) = active.setCaptureSuspended(!enabled)
             override fun cancelAssistantReply() = active.cancelCurrentResponse()
-            override fun startFreshConversation() = active.requestFreshConversation()
             override fun closeCloudSession() = closeSession()
             override fun openCloudSession(): Boolean {
                 val config = lastConfig ?: return false
@@ -92,12 +91,14 @@ class VoiceSessionController(
             Telemetry.record(
                 when (to) {
                     ListeningState.ACTIVE -> EventType.LISTENING_ACTIVE
-                    ListeningState.STANDBY -> EventType.LISTENING_STANDBY
+                    ListeningState.SILENT_WAIT -> EventType.LISTENING_SILENT_WAIT
+                    ListeningState.SLEEP -> EventType.LISTENING_SLEEP
                     ListeningState.DEEP_IDLE -> EventType.LISTENING_DEEP_IDLE
                 },
                 detail = "from=$from reason=$reason cloudStreamingMs=$streamedMs",
             )
             if (reason == "inactivity_timeout") Telemetry.record(EventType.INACTIVITY_TIMEOUT)
+            if (reason == "silent_wait_timeout") Telemetry.record(EventType.SILENT_WAIT_TIMEOUT)
             onListeningState(to)
         },
     )
@@ -144,20 +145,20 @@ class VoiceSessionController(
         return lifecycle.activate(reason)
     }
 
-    /** Silent mode on: the reply in progress stops now; later replies are shown, not spoken. */
-    fun silenceSpeech(reason: String) {
-        SpeechOutput.setSilent(true, reason)
-        active.cancelCurrentResponse()
+    /** 「闭嘴」: the reply stops now; the conversation and listening continue (SILENT_WAIT). */
+    fun shutUp(reason: String) {
+        Telemetry.record(EventType.SHUT_UP, detail = reason)
+        lifecycle.silence(reason)
     }
 
-    /** UI: stop listening now (STANDBY). */
-    fun standby(reason: String) {
-        Telemetry.record(EventType.TERMINATE_LISTENING, detail = reason)
-        lifecycle.terminate(reason)
+    /** 「休眠」 / UI: stop listening now (SLEEP). */
+    fun sleep(reason: String) {
+        Telemetry.record(EventType.SLEEP_REQUESTED, detail = reason)
+        lifecycle.sleep(reason)
     }
 
-    /** The model ended the conversation: STANDBY once its short goodbye has played. */
-    fun standbyAfterReply(reason: String) = lifecycle.standbyAfterReply(reason)
+    /** The model ended the conversation: SLEEP once its short goodbye has played. */
+    fun sleepAfterReply(reason: String) = lifecycle.sleepAfterReply(reason)
 
     private fun openSession(apiConfig: BaiduApiConfig) {
         lastConfig = apiConfig
@@ -265,36 +266,24 @@ class VoiceSessionController(
         lifecycle.onBusyChanged(busy)
     }
 
-    /**
-     * The driver's finished utterance. Listening-control phrases are handled here, before the
-     * model's reply matters (precedence in [ListeningIntent]).
-     */
-    private fun onUserUtterance(text: String) {
-        val phase = com.novadrive.app.nav.EmbeddedNavigation.currentOrNull()?.state()?.value
-        val context = ListeningIntent.Context(
-            pickerOpen = phase == com.novadrive.app.nav.NavigationPhase.AWAITING_DESTINATION_SELECTION ||
-                phase == com.novadrive.app.nav.NavigationPhase.AWAITING_ROUTE_SELECTION,
-            taskPending = active.hasPendingWork(),
+    private val commandRouter by lazy {
+        VoiceCommandRouter(
+            lifecycle = lifecycle,
+            context = {
+                val phase = com.novadrive.app.nav.EmbeddedNavigation.currentOrNull()?.state()?.value
+                ListeningIntent.Context(
+                    pickerOpen = phase == com.novadrive.app.nav.NavigationPhase.AWAITING_DESTINATION_SELECTION ||
+                        phase == com.novadrive.app.nav.NavigationPhase.AWAITING_ROUTE_SELECTION,
+                    taskPending = active.hasPendingWork(),
+                )
+            },
+            log = { com.novadrive.app.DebugVoiceLog.log(it) },
         )
-        when (ListeningIntent.classify(text, context)) {
-            ListeningIntent.Decision.TERMINATE_LISTENING -> {
-                com.novadrive.app.DebugVoiceLog.log("listening_terminate source=voice")
-                Telemetry.record(EventType.TERMINATE_LISTENING, detail = "voice")
-                lifecycle.terminate("voice_command")
-            }
-            ListeningIntent.Decision.SILENCE_SPEECH -> {
-                silenceSpeech("voice_command")
-                onTranscript("小诺: （已静音，只显示文字。说「可以说话了」恢复语音）")
-                lifecycle.onMeaningfulUserTurn()
-            }
-            ListeningIntent.Decision.RESTORE_SPEECH -> {
-                // The model's own short answer to this utterance is spoken again.
-                SpeechOutput.setSilent(false, "voice_command")
-                lifecycle.onMeaningfulUserTurn()
-            }
-            ListeningIntent.Decision.PASS_TO_MODEL ->
-                if (ListeningIntent.isMeaningful(text)) lifecycle.onMeaningfulUserTurn()
-        }
+    }
+
+    /** The driver's finished utterance: listening-control phrases first (see [VoiceCommandRouter]). */
+    private fun onUserUtterance(text: String) {
+        commandRouter.onUserUtterance(text)
     }
 
     /**

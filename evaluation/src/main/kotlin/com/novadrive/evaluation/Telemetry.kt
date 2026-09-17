@@ -38,20 +38,21 @@ enum class EventType {
     TASK_COMPLETE,
     ERROR,
 
-    // Listening lifecycle (ACTIVE / STANDBY / DEEP_IDLE). detail carries the reason and, on
-    // leaving ACTIVE, the cumulative cloud-streaming time.
+    // Listening lifecycle (ACTIVE / SILENT_WAIT / SLEEP / DEEP_IDLE). detail carries the reason and
+    // the cumulative cloud-streaming time.
     LISTENING_ACTIVE,
-    LISTENING_STANDBY,
+    LISTENING_SILENT_WAIT,
+    LISTENING_SLEEP,
     LISTENING_DEEP_IDLE,
     INACTIVITY_TIMEOUT,
-    TERMINATE_LISTENING,
+    SILENT_WAIT_TIMEOUT,
+    /** 「休眠」/「停止监听」/ UI sleep. */
+    SLEEP_REQUESTED,
+    /** 「闭嘴」: reply cut off. */
+    SHUT_UP,
     RESPONSE_COMPLETED,
     SOCKET_CONNECTED,
     SOCKET_DISCONNECTED,
-
-    // Silent mode: replies are shown, not spoken.
-    SPEECH_OUTPUT_SILENCED,
-    SPEECH_OUTPUT_RESTORED,
 }
 
 data class TelemetryEvent(

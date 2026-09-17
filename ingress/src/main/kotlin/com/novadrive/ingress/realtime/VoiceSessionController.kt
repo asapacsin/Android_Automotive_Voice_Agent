@@ -47,7 +47,7 @@ class VoiceSessionController(
     private val captureArmed = AtomicBoolean(false)
 
     /**
-     * Listening lifecycle switch (standby): no capture, no upload, and nothing re-arms capture —
+     * Listening lifecycle switch (sleep): no capture, no upload, and nothing re-arms capture —
      * not a reconnect, not a SessionReady. Separate from the temporary playback/guidance gates.
      */
     private val captureSuspended = AtomicBoolean(false)
@@ -170,6 +170,7 @@ class VoiceSessionController(
         } else {
             if (!captureSuspended.compareAndSet(true, false)) return
             log.info("capture_resumed")
+            provider.resumeListening()
             if (providerConnected.get()) resumeCaptureOnce()
         }
     }
@@ -203,11 +204,6 @@ class VoiceSessionController(
                 log.warn("cancel_failed", mapOf("error" to (ex.message ?: "cancel")))
             }
         }
-    }
-
-    /** The next turn starts a fresh provider conversation (no earlier context). */
-    fun requestFreshConversation() {
-        provider.startFreshConversation()
     }
 
     fun injectAudioFrame(frame: ByteArray) {
