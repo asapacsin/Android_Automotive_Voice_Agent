@@ -148,6 +148,9 @@ class AndroidMicrophonePort(
     override var muted: Boolean = false
     @Volatile var gated: Boolean = false
 
+    /** Navigation guidance is being spoken (P3); see [GuidanceMicGate]. */
+    @Volatile var guidanceGated: Boolean = false
+
     /** Debug speech harness: drop live frames while synthetic speech is being injected. */
     @Volatile var suppressLive: Boolean = false
 
@@ -155,6 +158,7 @@ class AndroidMicrophonePort(
     val capturedFrames = java.util.concurrent.atomic.AtomicLong()
     val droppedGated = java.util.concurrent.atomic.AtomicLong()
     val droppedMuted = java.util.concurrent.atomic.AtomicLong()
+    val droppedGuidance = java.util.concurrent.atomic.AtomicLong()
 
     /** Loudest live sample since the last read (0 = the platform delivered pure silence). */
     val peakSinceLastRead = java.util.concurrent.atomic.AtomicInteger()
@@ -186,6 +190,7 @@ class AndroidMicrophonePort(
                         suppressLive -> Unit
                         muted -> droppedMuted.incrementAndGet()
                         gated -> droppedGated.incrementAndGet()
+                        guidanceGated -> droppedGuidance.incrementAndGet()
                         else -> onFrame(processForSend(bytes))
                     }
                 },

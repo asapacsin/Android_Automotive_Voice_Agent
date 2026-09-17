@@ -9,10 +9,12 @@ import com.amap.api.maps.model.LatLng
 import com.amap.api.maps.model.MyLocationStyle
 import com.amap.api.navi.AMapNavi
 import com.amap.api.navi.AMapNaviView
+import com.amap.api.navi.TTSPlayListener
 import com.amap.api.navi.enums.NaviType
 import com.amap.api.navi.enums.PathPlanningStrategy
 import com.amap.api.navi.model.NaviPoi
 import com.novadrive.app.DebugVoiceLog
+import com.novadrive.app.nav.NavigationGuidanceVoice
 import com.novadrive.app.nav.RouteCandidate
 
 /**
@@ -38,11 +40,47 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
 
     init {
         AmapPrivacyCompliance.ensure(context)
+        AMapNavi.addTTSInitializeListener { code, _ -> DebugVoiceLog.log("nav_guidance_tts_init code=$code") }
         navi = AMapNavi.getInstance(context.applicationContext)
+        enableGuidanceVoice()
         naviView = AMapNaviView(context)
         naviView.setAMapNaviViewListener(NoOpNaviViewListener)
         addView(naviView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     }
+
+    /**
+     * Spoken turn-by-turn guidance. Never enabled before 2026-09-17: navigation ran silently
+     * because the SDK's own voice is off unless asked for, and the guidance text callback was
+     * discarded. The SDK ships an offline Mandarin voice (assets/tts), so no extra service.
+     *
+     * The play listener is what keeps guidance out of the assistant's ears (P3): see
+     * [NavigationGuidanceVoice]. Logs never carry the guidance text (it names places).
+     */
+    private object GuidancePlayListener : TTSPlayListener {
+        override fun onPlayStart(text: String?) {
+            DebugVoiceLog.log("nav_guidance_play_start chars=${text?.length ?: 0}")
+            NavigationGuidanceVoice.onPlayStart()
+        }
+
+        override fun onPlayEnd(text: String?) {
+            DebugVoiceLog.log("nav_guidance_play_end")
+            NavigationGuidanceVoice.onPlayEnd()
+        }
+    }
+
+    private fun enableGuidanceVoice() {
+        val navi = navi ?: return
+        runCatching {
+            navi.setUseInnerVoice(true, false)
+            navi.addTTSPlayListener(GuidancePlayListener)
+        }.onSuccess {
+            DebugVoiceLog.log("nav_guidance_voice enabled=${navi.isUseInnerVoiceSafe()}")
+        }.onFailure {
+            DebugVoiceLog.log("nav_guidance_voice enabled=false exception=${it.javaClass.simpleName}")
+        }
+    }
+
+    private fun AMapNavi.isUseInnerVoiceSafe(): Boolean = runCatching { getIsUseInnerVoice() }.getOrDefault(false)
 
     /** True once FINE location is held; the SDK cannot use GNSS without it. */
     private fun hasFineLocation(): Boolean =
@@ -259,6 +297,8 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         runCatching { navi.stopNavi() }
             .onSuccess { DebugVoiceLog.log("nav_stopped reached=true reason=$reason") }
             .onFailure { DebugVoiceLog.log("nav_stopped reached=false reason=$reason exception=true") }
+        // Guidance cut off mid-sentence may never report its end; do not leave the mic gated.
+        if (NavigationGuidanceVoice.speaking) NavigationGuidanceVoice.onPlayEnd()
         // Every termination path funnels through here -- arrival, emulator end, and the
         // manual nav_stop fallback -- so this one call is what keeps the state machine in
         // sync. The navigationActive guard above means it fires exactly once per session.
@@ -328,6 +368,8 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
     fun onDestroy() {
         stopLocation()
         naviView.onDestroy()
+        runCatching { navi?.removeTTSPlayListener(GuidancePlayListener) }
+        if (NavigationGuidanceVoice.speaking) NavigationGuidanceVoice.onPlayEnd()
         navi = null
         AMapNavi.destroy()
     }

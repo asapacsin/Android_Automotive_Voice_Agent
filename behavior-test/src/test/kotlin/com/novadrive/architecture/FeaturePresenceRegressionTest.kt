@@ -74,6 +74,26 @@ class FeaturePresenceRegressionTest {
         )
     }
 
+    // ---- spoken navigation guidance, kept out of the assistant's ears ----
+
+    @Test
+    fun navigationGuidanceIsSpokenAndGatesTheMicrophone() {
+        val host = "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapNaviViewHost.kt"
+        assertContains(host, "setUseInnerVoice(true", "the SDK is silent unless its own voice is enabled")
+        assertContains(host, "enableGuidanceVoice()", "must be called when the engine is created")
+        assertContains(host, "addTTSPlayListener(GuidancePlayListener)", "the speaking signal drives the mic gate (P3)")
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt",
+            "NavigationGuidanceVoice.addListener(guidanceListener)",
+            "guidance must not be sent to Baidu as the driver's speech",
+        )
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/voice/PcmAudioCapture.kt",
+            "guidanceGated -> droppedGuidance.incrementAndGet()",
+            "gated frames must actually be dropped",
+        )
+    }
+
     // ---- permissions every main feature depends on ----
 
     @Test

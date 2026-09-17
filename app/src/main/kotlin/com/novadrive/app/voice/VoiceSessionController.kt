@@ -55,10 +55,18 @@ class VoiceSessionController(
 
     val sessionActiveNow: Boolean get() = active.sessionActiveNow
 
+    private val guidanceGate =
+        GuidanceMicGate(scope, onGateChanged = { closed ->
+            microphone.guidanceGated = closed
+            com.novadrive.app.DebugVoiceLog.log("nav_guidance_mic_gate closed=$closed")
+        })
+    private val guidanceListener: (Boolean) -> Unit = { speaking -> guidanceGate.onGuidanceSpeaking(speaking) }
+
     init {
         player.setOnPlaybackStateChanged { speaking ->
             onPlaybackSpeaking(speaking)
         }
+        com.novadrive.app.nav.NavigationGuidanceVoice.addListener(guidanceListener)
     }
 
     fun startBaidu(apiConfig: BaiduApiConfig) {
@@ -99,9 +107,9 @@ class VoiceSessionController(
                 delay(SESSION_DIAG_INTERVAL_MS)
                 com.novadrive.app.DebugVoiceLog.log(
                     "session_diag state=${active.machine.state} streaming=${active.machine.streamingAudio} " +
-                        "gated=${microphone.gated} muted=${microphone.muted} " +
+                        "gated=${microphone.gated} guidanceGated=${microphone.guidanceGated} muted=${microphone.muted} " +
                         "captured=${microphone.capturedFrames.get()} droppedGated=${microphone.droppedGated.get()} " +
-                        "droppedMuted=${microphone.droppedMuted.get()} peak=${microphone.takePeak()} " +
+                        "droppedMuted=${microphone.droppedMuted.get()} droppedGuidance=${microphone.droppedGuidance.get()} peak=${microphone.takePeak()} " +
                         "gain=${"%.2f".format(microphone.currentGain)}",
                 )
             }
@@ -197,6 +205,8 @@ class VoiceSessionController(
         ungateJob?.cancel()
         ungateJob = null
         microphone.gated = false
+        com.novadrive.app.nav.NavigationGuidanceVoice.removeListener(guidanceListener)
+        guidanceGate.reset()
         scope.cancel()
     }
 
