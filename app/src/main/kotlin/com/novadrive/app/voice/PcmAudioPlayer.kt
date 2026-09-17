@@ -281,6 +281,7 @@ class AndroidPlaybackPort(
 
     override fun flush() {
         player.flush()
+        com.novadrive.evaluation.Telemetry.record(com.novadrive.evaluation.EventType.AUDIO_STOPPED)
     }
 
     override fun stop() {

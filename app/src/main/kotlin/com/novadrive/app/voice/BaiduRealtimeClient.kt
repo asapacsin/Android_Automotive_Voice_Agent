@@ -136,6 +136,11 @@ class BaiduRealtimeClient(
                 if (!pending.completeExceptionally(mapped)) emit(DomainVoiceEvent.Error(mapped.code, mapped.safeMessage))
             }
 
+            /** Answer a server close so [onClosed] fires and the session can recover. */
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                webSocket.close(1000, null)
+            }
+
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                 if (!isCurrent(currentGeneration)) return
                 val failure = VoiceProviderException("BAIDU_CONNECTION_CLOSED", "Baidu WebSocket closed (status=$code)")

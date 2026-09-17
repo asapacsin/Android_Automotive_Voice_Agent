@@ -114,7 +114,13 @@ class VoiceSessionStateMachine {
             is DomainVoiceEvent.Error -> onError(event.code)
             DomainVoiceEvent.Reconnecting -> onReconnecting()
             DomainVoiceEvent.Closed -> {
-                if (state != VoiceUiState.ERROR) {
+                // The old connection's Closed arrives after its Error already started a reconnect.
+                // Stopping here left the reconnected session DISCONNECTED: SessionReady was ignored,
+                // audio was dropped and tool results never delivered (simulation benchmark,
+                // 2026-09-17, server-side close).
+                if (state == VoiceUiState.RECONNECTING) {
+                    streamingAudio = false
+                } else if (state != VoiceUiState.ERROR) {
                     userStopSession()
                 } else {
                     streamingAudio = false

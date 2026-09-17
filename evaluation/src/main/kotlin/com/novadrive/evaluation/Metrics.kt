@@ -17,8 +17,14 @@ data class LatencyStats(
 
     companion object {
         /**
+         * P99 needs a large sample: with ~100 samples it is just the maximum. Only STRESS runs
+         * (explicit repetitions) reach this.
+         */
+        const val P99_MIN_SAMPLES = 1_000
+
+        /**
          * Nearest-rank percentiles. A percentile is only reported when the sample can support it:
-         * p90 needs 10 samples, p95 20, p99 100 — otherwise it would just be the maximum.
+         * p90 needs 10 samples, p95 20, p99 [P99_MIN_SAMPLES].
          */
         fun of(samples: List<Double>): LatencyStats {
             if (samples.isEmpty()) return LatencyStats(0, null, null, null, null, null, null)
@@ -34,7 +40,7 @@ data class LatencyStats(
                 p50 = pct(50.0, 1),
                 p90 = pct(90.0, 10),
                 p95 = pct(95.0, 20),
-                p99 = pct(99.0, 100),
+                p99 = pct(99.0, P99_MIN_SAMPLES),
                 max = sorted.last(),
             )
         }
@@ -89,6 +95,14 @@ data class BenchmarkSummary(
     val unexpectedCallCases: Set<String>,
     val crashCases: Set<String>,
     val failures: List<FailureRecord>,
+    /** Simulation/test execution wall time for the whole run (no Gradle, build or configuration). */
+    val executionMs: Long = 0,
+    /** Wall-time distributions: scenario, turn, settle wait, setup, teardown. */
+    val timing: Map<String, LatencyStats> = emptyMap(),
+    val intentionalDelayMs: Long = 0,
+    val waitStepMs: Long = 0,
+    /** Slowest scenarios by mean wall time, slowest first (id to ms). */
+    val slowest: List<Pair<String, Long>> = emptyList(),
 ) {
     fun toMap(): Map<String, Any?> = linkedMapOf(
         "suite" to suite, "mode" to mode.name, "level" to mode.level.name, "runId" to runId, "build" to build,
@@ -114,6 +128,11 @@ data class BenchmarkSummary(
         "failures" to failures.map {
             linkedMapOf("scenarioId" to it.scenarioId, "iteration" to it.iteration, "variant" to it.variant, "seed" to it.seed, "reasons" to it.reasons)
         },
+        "executionMs" to executionMs,
+        "timing" to timing.mapValues { it.value.toMap() },
+        "intentionalDelayMs" to intentionalDelayMs,
+        "waitStepMs" to waitStepMs,
+        "slowest" to slowest.map { linkedMapOf("scenarioId" to it.first, "ms" to it.second) },
     )
 
     fun toJson(): String = Json.write(toMap())
@@ -149,6 +168,14 @@ data class BenchmarkSummary(
                         (f["seed"] as Number).toLong(), (f["reasons"] as List<Any?>).map { it.toString() },
                     )
                 },
+                executionMs = (m["executionMs"] as? Number)?.toLong() ?: 0,
+                timing = (m["timing"] as? Map<String, Any?>).orEmpty().mapValues { LatencyStats.fromMap(it.value as Map<String, Any?>) },
+                intentionalDelayMs = (m["intentionalDelayMs"] as? Number)?.toLong() ?: 0,
+                waitStepMs = (m["waitStepMs"] as? Number)?.toLong() ?: 0,
+                slowest = (m["slowest"] as? List<Any?>).orEmpty().map { e ->
+                    e as Map<String, Any?>
+                    (e["scenarioId"] as String) to (e["ms"] as Number).toLong()
+                },
             )
         }
     }
@@ -164,6 +191,7 @@ object Metrics {
         device: String,
         date: String,
         seed: Long,
+        executionMs: Long = 0,
     ): BenchmarkSummary {
         val ran = results.filter { it.skipped == null }
         val turns = ran.flatMap { r -> r.turns.filter { it.kind != "check" } }
@@ -202,15 +230,36 @@ object Metrics {
             unexpectedCallCases = ran.filter { r -> r.turns.any { it.verdict.unexpectedToolCalls > 0 } }.map { it.scenarioId }.toSet(),
             crashCases = ran.filter { it.crashed }.map { it.scenarioId }.toSet(),
             failures = ran.filter { !it.taskSuccess }.map { FailureRecord(it.scenarioId, it.iteration, it.variant, it.seed, it.failures) },
+            executionMs = executionMs,
+            timing = linkedMapOf(
+                TIMING_SCENARIO to LatencyStats.of(ran.map { it.durationMs.toDouble() }),
+                TIMING_TURN to LatencyStats.of(ran.flatMap { r -> r.turns.filter { it.wallMs > 0 }.map { it.wallMs.toDouble() } }),
+                TIMING_SETTLE to LatencyStats.of(ran.flatMap { r -> r.turns.filter { it.kind == "say" || it.kind == "barge_in" }.map { it.settleWaitMs.toDouble() } }),
+                TIMING_SETUP to LatencyStats.of(ran.map { it.setupMs.toDouble() }),
+                TIMING_TEARDOWN to LatencyStats.of(ran.map { it.teardownMs.toDouble() }),
+            ),
+            intentionalDelayMs = ran.sumOf { it.intentionalDelayMs },
+            waitStepMs = ran.sumOf { it.waitStepMs },
+            slowest = ran.groupBy { it.scenarioId }
+                .map { (id, rs) -> id to rs.map { it.durationMs }.average().toLong() }
+                .sortedByDescending { it.second }
+                .take(10),
         )
     }
+
+    const val TIMING_SCENARIO = "scenarioWallMs"
+    const val TIMING_TURN = "turnWallMs"
+    const val TIMING_SETTLE = "turnSettleWaitMs"
+    const val TIMING_SETUP = "scenarioSetupMs"
+    const val TIMING_TEARDOWN = "scenarioTeardownMs"
 
     fun csv(results: List<ScenarioResult>): String {
         val header = listOf(
             "runId", "scenarioId", "mode", "seed", "iteration", "variant", "turn", "kind", "utterance",
             "expectedTools", "actualCalls", "toolSelectionCorrect", "parametersCorrect", "executionSucceeded",
             "finalStateCorrect", "falseSuccess", "prematureClaim", "unexpectedToolCalls", "duplicateExecutions",
-            "passed", "taskSuccess",
+            "passed", "taskSuccess", "scenarioWallMs", "scenarioSetupMs", "scenarioTeardownMs",
+            "scenarioWaitStepMs", "scenarioIntentionalDelayMs", "turnWallMs", "turnSettleWaitMs",
         ) + LatencyMetric.entries.map { it.key } + listOf("failures")
         val rows = results.flatMap { r ->
             r.turns.map { t ->
@@ -220,6 +269,7 @@ object Metrics {
                     t.verdict.toolSelectionCorrect, t.verdict.parametersCorrect, t.verdict.executionSucceeded,
                     t.verdict.finalStateCorrect, t.verdict.falseSuccess, t.verdict.prematureClaim,
                     t.verdict.unexpectedToolCalls, t.verdict.duplicateExecutions, t.verdict.passed, r.taskSuccess,
+                    r.durationMs, r.setupMs, r.teardownMs, r.waitStepMs, r.intentionalDelayMs, t.wallMs, t.settleWaitMs,
                 ) + LatencyMetric.entries.map { t.latency.toMap()[it.key]?.let { v -> String.format(java.util.Locale.US, "%.1f", v) } } +
                     listOf(t.verdict.failures.joinToString(" | "))
             }
@@ -367,12 +417,32 @@ object BenchmarkReport {
         if (s.interruptDetection.total > 0) appendLine("INTERRUPT DETECTED   ${s.interruptDetection.pct()}   (${s.interruptDetection.hits}/${s.interruptDetection.total})")
         appendLine("CRASHES              ${s.crashCount}")
         appendLine()
-        appendLine("LATENCY")
+        appendLine("LATENCY (app pipeline, per turn)")
         for (metric in LatencyMetric.entries) {
             val st = s.latency[metric.key] ?: continue
             if (st.n == 0) continue
             appendLine("  ${metric.label}  (n=${st.n})")
-            appendLine("    P50 ${Baselines.ms(st.p50)}   P90 ${Baselines.ms(st.p90)}   P95 ${Baselines.ms(st.p95)}   P99 ${Baselines.ms(st.p99)}   max ${Baselines.ms(st.max)}   mean ${Baselines.ms(st.mean)}")
+            val p99 = st.p99?.let { Baselines.ms(it) } ?: "n/a (needs ≥${LatencyStats.P99_MIN_SAMPLES} samples: STRESS)"
+            appendLine("    P50 ${Baselines.ms(st.p50)}   P90 ${Baselines.ms(st.p90)}   P95 ${Baselines.ms(st.p95)}   max ${Baselines.ms(st.max)}   mean ${Baselines.ms(st.mean)}")
+            appendLine("    P99 $p99")
+        }
+        appendLine()
+        appendLine("TEST EXECUTION TIME (simulation only — excludes Gradle configuration, compilation and JVM start)")
+        appendLine("  total ${Baselines.ms(s.executionMs.toDouble())}   of which explicit wait steps ${Baselines.ms(s.waitStepMs.toDouble())}, deliberate simulated delays ${Baselines.ms(s.intentionalDelayMs.toDouble())}")
+        for ((key, label) in listOf(
+            Metrics.TIMING_SCENARIO to "Scenario wall",
+            Metrics.TIMING_TURN to "Turn wall",
+            Metrics.TIMING_SETTLE to "Turn settle wait",
+            Metrics.TIMING_SETUP to "Scenario setup",
+            Metrics.TIMING_TEARDOWN to "Scenario teardown",
+        )) {
+            val st = s.timing[key] ?: continue
+            if (st.n == 0) continue
+            appendLine("  $label (n=${st.n}): P50 ${Baselines.ms(st.p50)}   P95 ${Baselines.ms(st.p95)}   max ${Baselines.ms(st.max)}")
+        }
+        if (s.slowest.isNotEmpty()) {
+            appendLine("  Slowest scenarios:")
+            s.slowest.take(5).forEach { (id, ms) -> appendLine("    ${Baselines.ms(ms.toDouble()).padStart(9)}  $id") }
         }
         appendLine()
         appendLine("FAILURES (${s.failures.size})")

@@ -65,6 +65,15 @@ class SimulatedVehicleControl(
 
     override suspend fun getClimateState(): ClimateState = state.value
 
+    /** Benchmark reset: a known state and no pending faults. */
+    fun reset(to: ClimateState) {
+        synchronized(lock) {
+            state.value = to
+            faults.failNext = null
+            faults.failAlways.clear()
+        }
+    }
+
     // Non-suspending entry points, used by the legacy synchronous InMemoryVehicleSimulator path.
 
     fun applyPower(on: Boolean): VehicleActionResult =

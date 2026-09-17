@@ -276,6 +276,33 @@ class BaiduFlexClientTest {
     }
 
     @Test
+    fun aServerCloseIsReportedSoTheSessionCanRecover() = runBlocking {
+        // Without answering the close frame OkHttp never reported it: the session died silently.
+        var serverSocket: WebSocket? = null
+        server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
+                serverSocket = webSocket
+                webSocket.send("""{"type":"session.created","session":{"model":"qianfan-realtime-flex-v1"}}""")
+            }
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                if (JSONObject(text).optString("type") == "session.update") {
+                    webSocket.send("""{"type":"session.updated","session":{"model":"qianfan-realtime-flex-v1"}}""")
+                }
+            }
+        }))
+        val client = BaiduFlexClient(OkHttpClient(), 3_000, requireTls = false)
+        val closed = async(start = CoroutineStart.UNDISPATCHED) {
+            kotlinx.coroutines.withTimeout(3_000) {
+                client.events().first { (it.payload as? DomainVoiceEvent.Error)?.code == "BAIDU_FLEX_CONNECTION_CLOSED" }
+            }
+        }
+        client.connect(config())
+        serverSocket!!.close(1011, "server going away")
+        assertEquals("BAIDU_FLEX_CONNECTION_CLOSED", (closed.await().payload as DomainVoiceEvent.Error).code)
+        client.disconnect()
+    }
+
+    @Test
     fun afterStandbyTheClientSendsNoTurnsOfItsOwn() = runBlocking {
         // 「关闭小诺」: the reply to it is cancelled and must not trigger a false-claim follow-up.
         val received = Collections.synchronizedList(mutableListOf<String>())

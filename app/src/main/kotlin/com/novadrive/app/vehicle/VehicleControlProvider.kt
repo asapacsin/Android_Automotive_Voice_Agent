@@ -14,5 +14,13 @@ import com.novadrive.vehicle.VehicleControlPort
 object VehicleControlProvider {
     const val BACKEND_LABEL = "simulated"
 
-    val port: VehicleControlPort by lazy { SimulatedVehicleControl() }
+    private val simulatedBackend by lazy { SimulatedVehicleControl() }
+
+    val port: VehicleControlPort get() = simulatedBackend
+
+    /**
+     * The simulated backend for the debug benchmark (state reset, fault injection). Null once a
+     * real vehicle backend is returned by [port].
+     */
+    val simulated: SimulatedVehicleControl? get() = simulatedBackend
 }

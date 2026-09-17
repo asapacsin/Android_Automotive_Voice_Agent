@@ -7,9 +7,12 @@ import com.novadrive.app.nav.EmbeddedNavigation
 import com.novadrive.app.nav.EmbeddedNavigationController
 import com.novadrive.app.nav.NavigationChoice
 import com.novadrive.app.nav.NavigationVoiceOutput
+import com.novadrive.app.nav.NavigationBackends
 import com.novadrive.app.nav.NavigationHostGateway
 import com.novadrive.app.vehicle.ClimateToolHandler
 import com.novadrive.app.vision.CameraQuestionHandler
+import com.novadrive.evaluation.EventType
+import com.novadrive.evaluation.Telemetry
 import com.novadrive.ingress.realtime.DomainVoiceEvent
 import com.novadrive.ingress.realtime.ToolDispatchResult
 import kotlinx.coroutines.runBlocking
@@ -46,7 +49,35 @@ class AndroidToolDispatcher(
     private val climate: ClimateToolHandler,
     private val camera: CameraQuestionHandler,
 ) {
+    /**
+     * Records the call, runs it and records the outcome (including deferred work). Arguments are
+     * only stored by telemetry during benchmark runs.
+     */
     fun dispatch(call: DomainVoiceEvent.ToolCall): ToolDispatchResult {
+        Telemetry.record(EventType.TOOL_CALL_RECEIVED, toolType = call.name, detail = call.callId) {
+            com.novadrive.evaluation.Json.write(call.arguments.filterKeys { it != "_validation_error" })
+        }
+        Telemetry.record(EventType.TOOL_EXECUTION_START, toolType = call.name, detail = call.callId)
+        val result = dispatchUnrecorded(call)
+        val deferred = result.deferredOutput
+        if (deferred == null) {
+            recordEnd(call, result.output, result.blockedReason)
+            return result
+        }
+        return result.copy(deferredOutput = {
+            val output = deferred()
+            recordEnd(call, output, null)
+            output
+        })
+    }
+
+    private fun recordEnd(call: DomainVoiceEvent.ToolCall, output: String?, blocked: String?) {
+        val failed = blocked != null || output?.contains("\"ok\":false") == true
+        val code = blocked ?: output?.let { Regex("\"error\":\"([^\"]+)\"").find(it)?.groupValues?.get(1) }
+        Telemetry.record(EventType.TOOL_EXECUTION_END, toolType = call.name, success = !failed, errorCode = if (failed) code else null, detail = call.callId)
+    }
+
+    private fun dispatchUnrecorded(call: DomainVoiceEvent.ToolCall): ToolDispatchResult {
         call.arguments["_validation_error"]?.let { return failed(call, it) }
         return when (call.name) {
             CameraQuestionHandler.TOOL -> {
@@ -81,9 +112,10 @@ class AndroidToolDispatcher(
                 val destination = call.arguments["destination"]?.trim().orEmpty()
                 if (destination.isBlank()) return failed(call, "BLANK_DESTINATION")
                 if (destination.length > 120) return failed(call, "DESTINATION_TOO_LONG")
+                // The executor sets the navigation speech mute before the search starts, so a
+                // search that fails at once cannot leave it on.
                 val action = executor.navigate(destination)
                 if (action !is AndroidActionResult.Accepted) return result(call, action)
-                NavigationState.begin()
                 navigationResult(call, action)
             }
             CHOOSE_NAVIGATION_OPTION -> {
@@ -156,27 +188,30 @@ class AndroidToolDispatcher(
     )
 }
 
-class SafeAndroidActionExecutor(
-    context: Context,
-    private val navigationFlow: EmbeddedNavigationController = EmbeddedNavigation.shared(context),
+/**
+ * The tool actions without Android: navigation flow, music backend and listening control are
+ * injected. The app wraps it in [SafeAndroidActionExecutor]; the JVM simulation benchmark uses it
+ * directly, so both run the same code.
+ */
+open class CoreActionExecutor(
+    private val navigationFlow: EmbeddedNavigationController,
+    private val music: () -> MusicBackend,
+    /** Why navigation cannot run right now (no map host, no web key), or null. */
+    private val navigationBlocker: () -> String? = { null },
+    private val endConversationRequest: () -> Boolean = { false },
 ) : AndroidActionExecutor {
-    private val appContext = context.applicationContext
-
     /**
      * Voice path into the EMBEDDED navigation. Resolves candidates and waits for the
      * driver to pick a destination and a route — it does not jump straight to startNavi.
      *
-     * Returns `Accepted` so [AndroidToolDispatcher]'s [NavigationState.begin] speech-mute
-     * behaviour is unchanged. The authoritative outcome arrives asynchronously
+     * Sets the [NavigationState] speech mute before the search starts; the controller clears it
+     * whenever the flow ends. The authoritative outcome arrives asynchronously
      * (`nav_resolve_candidates` / `nav_route_candidates` / `nav_flow_error`).
      */
     override fun navigate(destination: String): AndroidActionResult {
-        if (NavigationHostGateway.current() == null) {
-            return AndroidActionResult.Rejected("NAVIGATION_HOST_UNAVAILABLE")
-        }
-        val key = AmapSettingsRepository(appContext).loadWebKey()
-        if (key.isNullOrBlank()) return AndroidActionResult.Rejected("AMAP_WEB_KEY_MISSING")
+        navigationBlocker()?.let { return AndroidActionResult.Rejected(it) }
 
+        NavigationState.begin()
         val done = kotlinx.coroutines.CompletableDeferred<Unit>()
         lastRequest = done
         Thread {
@@ -197,7 +232,7 @@ class SafeAndroidActionExecutor(
     private var lastRequest: kotlinx.coroutines.CompletableDeferred<Unit>? = null
 
     override fun endConversation(): AndroidActionResult =
-        if (com.novadrive.app.voice.VoiceSessionGateway.standbyAfterReply("end_conversation")) {
+        if (endConversationRequest()) {
             AndroidActionResult.Accepted("listening_will_stop_after_this_reply")
         } else {
             AndroidActionResult.Rejected("NO_ACTIVE_SESSION")
@@ -223,23 +258,14 @@ class SafeAndroidActionExecutor(
         const val OPTIONS_WAIT_MS = 8_000L
     }
 
-    override fun openApp(app: AllowedApp): AndroidActionResult {
-        val candidates = when (app) {
-            AllowedApp.MAPS -> listOf(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("geo:0,0?q=")))
-            AllowedApp.SETTINGS -> listOf(Intent(Settings.ACTION_SETTINGS))
-        }
-        for (candidate in candidates) {
-            if (tryStart(candidate)) return AndroidActionResult.Accepted()
-        }
-        return AndroidActionResult.Rejected("APP_UNAVAILABLE")
-    }
+    override fun openApp(app: AllowedApp): AndroidActionResult = AndroidActionResult.Rejected("APP_UNAVAILABLE")
 
     override fun playMusic(): AndroidActionResult =
-        if (BundledMusicPlayer.play(appContext)) AndroidActionResult.Accepted("music_playing")
+        if (music().play()) AndroidActionResult.Accepted("music_playing")
         else AndroidActionResult.Rejected("MUSIC_UNAVAILABLE")
 
     override fun stopMusic(): AndroidActionResult {
-        BundledMusicPlayer.stop()
+        music().stop()
         return AndroidActionResult.Accepted("music_stopped")
     }
 
@@ -258,6 +284,29 @@ class SafeAndroidActionExecutor(
             },
         )
     }
+}
+
+class SafeAndroidActionExecutor(
+    context: Context,
+    navigationFlow: EmbeddedNavigationController = EmbeddedNavigation.shared(context),
+) : CoreActionExecutor(
+    navigationFlow = navigationFlow,
+    music = { MusicBackends.current(context.applicationContext) },
+    navigationBlocker = { liveNavigationBlocker(context.applicationContext) },
+    endConversationRequest = { com.novadrive.app.voice.VoiceSessionGateway.standbyAfterReply("end_conversation") },
+) {
+    private val appContext = context.applicationContext
+
+    override fun openApp(app: AllowedApp): AndroidActionResult {
+        val candidates = when (app) {
+            AllowedApp.MAPS -> listOf(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("geo:0,0?q=")))
+            AllowedApp.SETTINGS -> listOf(Intent(Settings.ACTION_SETTINGS))
+        }
+        for (candidate in candidates) {
+            if (tryStart(candidate)) return AndroidActionResult.Accepted()
+        }
+        return AndroidActionResult.Rejected("APP_UNAVAILABLE")
+    }
 
     private fun tryStart(intent: Intent): Boolean =
         try {
@@ -266,4 +315,14 @@ class SafeAndroidActionExecutor(
         } catch (_: Exception) {
             false
         }
+
+    private companion object {
+        /** A simulated navigation world needs neither the map view nor the Amap web key. */
+        fun liveNavigationBlocker(context: Context): String? {
+            if (NavigationBackends.simulated != null) return null
+            if (NavigationHostGateway.current() == null) return "NAVIGATION_HOST_UNAVAILABLE"
+            val key = AmapSettingsRepository(context).loadWebKey()
+            return if (key.isNullOrBlank()) "AMAP_WEB_KEY_MISSING" else null
+        }
+    }
 }

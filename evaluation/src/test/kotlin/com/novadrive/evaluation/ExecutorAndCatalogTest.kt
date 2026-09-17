@@ -107,6 +107,7 @@ class ExecutorAndCatalogTest {
                 val keys = when (step) {
                     is Step.Say -> step.expect.state.keys
                     is Step.Check -> step.state.keys
+                    is Step.WaitFor -> step.state.keys
                     else -> emptySet()
                 }
                 assertTrue(known.containsAll(keys), "${s.id} uses unknown state keys ${keys - known}")

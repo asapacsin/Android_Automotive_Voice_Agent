@@ -24,6 +24,26 @@ class ConversationResetPolicyTest {
     }
 
     @Test
+    fun aResultSentBeforeItsResponseDoneIsNotOwedForever() {
+        val policy = ConversationResetPolicy()
+        policy.onToolResultSent("call_1")
+        assertFalse(policy.onResponseDone(listOf("function_call"), listOf("call_1")))
+        assertTrue(policy.onResponseDone(listOf("message")), "nothing is owed, so the turn resets")
+    }
+
+    @Test
+    fun resultsAreMatchedByCallId() {
+        val policy = ConversationResetPolicy()
+        policy.onResponseDone(listOf("function_call", "function_call"), listOf("a", "b"))
+        policy.onToolResultSent("a")
+        assertFalse(policy.onResponseDone(listOf("message")), "b is still owed")
+        policy.onToolResultSent("unknown")
+        assertFalse(policy.onResponseDone(listOf("message")))
+        policy.onToolResultSent("b")
+        assertTrue(policy.onResponseDone(listOf("message")))
+    }
+
+    @Test
     fun plainConversationResetsOnlyAfterSeveralTurns() {
         val policy = ConversationResetPolicy(maxPlainTurns = 3)
         assertFalse(policy.onResponseDone(listOf("message")))

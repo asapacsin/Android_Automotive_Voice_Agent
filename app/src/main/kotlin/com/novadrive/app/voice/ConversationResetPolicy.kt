@@ -18,25 +18,41 @@ class ConversationResetPolicy(private val maxPlainTurns: Int = 3) {
     private var toolTurnSinceReset = false
     private var plainTurns = 0
 
-    /** A response finished; [outputKinds] are its `output[].type` values. Returns true to reset now. */
+    /**
+     * Results are matched by call id when the response names them: a fast tool's result can be
+     * sent before the response.done that announces its call (found by the simulation benchmark,
+     * 2026-09-17), which with plain counting left a result "owed" forever and stopped resets.
+     */
+    private val owed = mutableSetOf<String>()
+    private val answeredEarly = mutableSetOf<String>()
+
+    /**
+     * A response finished; [outputKinds] are its `output[].type` values and [callIds] the call ids
+     * of its function calls, where known. Returns true to reset now.
+     */
     @Synchronized
-    fun onResponseDone(outputKinds: List<String>): Boolean {
+    fun onResponseDone(outputKinds: List<String>, callIds: List<String> = emptyList()): Boolean {
         val calls = outputKinds.count { it == "function_call" }
         if (calls > 0) {
-            pendingToolResults += calls
+            callIds.forEach { id -> if (!answeredEarly.remove(id)) owed += id }
+            pendingToolResults += (calls - callIds.size).coerceAtLeast(0)
             toolTurnSinceReset = true
             return false
         }
         if ("message" !in outputKinds) return false
-        if (pendingToolResults > 0) return false
+        if (pendingToolResults > 0 || owed.isNotEmpty()) return false
         if (toolTurnSinceReset) return true
         plainTurns += 1
         return plainTurns >= maxPlainTurns
     }
 
     @Synchronized
-    fun onToolResultSent() {
-        if (pendingToolResults > 0) pendingToolResults -= 1
+    fun onToolResultSent(callId: String? = null) {
+        when {
+            callId != null && owed.remove(callId) -> Unit
+            pendingToolResults > 0 -> pendingToolResults -= 1
+            callId != null -> answeredEarly += callId
+        }
     }
 
     @Synchronized
@@ -44,5 +60,7 @@ class ConversationResetPolicy(private val maxPlainTurns: Int = 3) {
         pendingToolResults = 0
         toolTurnSinceReset = false
         plainTurns = 0
+        owed.clear()
+        answeredEarly.clear()
     }
 }

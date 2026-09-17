@@ -119,6 +119,7 @@ class BaiduFlexClient(
             }
         }.build()
         socket = http.newWebSocket(request, listener(current, pending))
+        NetworkFaults.dropConnection = { socket?.cancel() }
         vadThreshold = if (NavigationState.navigating) {
             BaiduFlexProtocol.NAVIGATION_VAD_THRESHOLD
         } else {
@@ -227,6 +228,14 @@ class BaiduFlexClient(
 
     @Volatile private var listeningSuspended = false
 
+    /**
+     * Diagnostics (read-only): work the client still has of its own — queued reply turns, messages
+     * held during a conversation reset, a reset in progress. Used by the simulation benchmark to
+     * know a turn has settled; changes nothing.
+     */
+    internal val ownWorkInFlight: Int
+        get() = turnGate.pending() + heldOutbound.size + (if (resetting) 1 else 0)
+
     fun sendUserText(text: String) {
         DebugVoiceLog.log("flex_user_text chars=${text.length}")
         listeningSuspended = false
@@ -242,9 +251,34 @@ class BaiduFlexClient(
         messages.forEach(::sendControl)
     }
 
+    /**
+     * Calls already emitted in the current response, by name and arguments. Found by the
+     * simulation benchmark (2026-09-17): the same call emitted twice in one response was executed
+     * twice — harmless for 「播放」, wrong for 「调高一点」.
+     */
+    private val callsThisResponse = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+
+    /** Filters a repeated identical call and answers it without executing it. */
+    private fun dropDuplicateCall(event: DomainVoiceEvent): Boolean {
+        if (event !is DomainVoiceEvent.ToolCall || event.arguments.containsKey("_validation_error")) return false
+        val signature = event.name + "|" + event.arguments.toSortedMap()
+        if (callsThisResponse.add(signature)) return false
+        DebugVoiceLog.log("flex_duplicate_call_ignored tool=${event.name}")
+        trySend(
+            BaiduFlexProtocol.functionCallOutput(
+                event.callId,
+                JSONObject().put("ok", true).put("tool", event.name).put("status", "duplicate_call_ignored")
+                    .put("instruction", "同一个操作刚才已经执行过一次，这次没有重复执行。").toString(),
+            ),
+        )
+        resetPolicy.onToolResultSent(event.callId)
+        return true
+    }
+
     fun sendFunctionResult(callId: String, output: String) {
         sendControl(BaiduFlexProtocol.functionCallOutput(callId, output))
-        resetPolicy.onToolResultSent()
+        resetPolicy.onToolResultSent(callId)
+        actionGuard.onToolResult(output)
         // The call id belongs to this conversation: after a reset there is nothing to answer.
         val reply = ResponseTurnGate.Turn(listOf(BaiduFlexProtocol.responseCreate()), emptyList(), conversationEpoch)
         if (!turnGate.submit(reply)) {
@@ -319,7 +353,10 @@ class BaiduFlexClient(
                 // An empty response carries no user or assistant content, only ids and usage.
                 DebugVoiceLog.log("flex_empty_response_raw ${text.take(800)}")
             }
-            if (resetPolicy.onResponseDone(kinds)) resetConversation()
+            val callIds = (0 until (outputs?.length() ?: 0)).mapNotNull { i ->
+                outputs!!.optJSONObject(i)?.takeIf { it.optString("type") == "function_call" }?.optString("call_id")?.takeIf { it.isNotEmpty() }
+            }
+            if (resetPolicy.onResponseDone(kinds, callIds)) resetConversation()
             val spoken = assistantText.toString()
             assistantText.setLength(0)
             actionGuard.onResponseDone(kinds, spoken)?.takeIf { !listeningSuspended }?.let { nudge ->
@@ -341,6 +378,7 @@ class BaiduFlexClient(
 
         override fun onMessage(webSocket: WebSocket, text: String) {
             if (generation.get() != current) return
+            NetworkFaults.inboundDelayMs.takeIf { it > 0 }?.let { Thread.sleep(it) }
             val type = runCatching { JSONObject(text).optString("type") }.getOrElse {
                 failProtocol(pending, it); return
             }
@@ -398,6 +436,7 @@ class BaiduFlexClient(
                 if (onResponseDone(text)) requestReplyAfterEmptyResponse() else flushDeferredTurns()
             }
             events.forEach { event ->
+                if (dropDuplicateCall(event)) return@forEach
                 if (event is DomainVoiceEvent.Error && !pending.isCompleted) {
                     if (!voiceFallbackUsed && sentVoice != BaiduAppSettings.DEFAULT_VOICE) {
                         voiceFallbackUsed = true
@@ -418,6 +457,15 @@ class BaiduFlexClient(
             if (!pending.completeExceptionally(mapped)) emit(DomainVoiceEvent.Error(mapped.code, mapped.safeMessage))
         }
 
+        /**
+         * The server closed the connection. OkHttp only reports [onClosed] once we answer the close;
+         * without this a server-side close left the session silently dead (found by the simulation
+         * benchmark, 2026-09-17): nothing failed, nothing reconnected, audio went nowhere.
+         */
+        override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+            webSocket.close(1000, null)
+        }
+
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
             if (generation.get() != current) return
             Telemetry.record(EventType.SOCKET_DISCONNECTED, detail = "server_closed code=$code")
@@ -436,12 +484,18 @@ class BaiduFlexClient(
     /** Interaction telemetry. Text is only kept by the recorder during benchmark runs. */
     private fun recordTelemetry(type: String, text: String) {
         when (type) {
-            "input_audio_buffer.speech_started" -> Telemetry.record(EventType.SPEECH_START)
+            "input_audio_buffer.speech_started" -> {
+                // Speech over a reply in progress is an interruption (server VAD barge-in).
+                val interrupting = responseInProgress || assistantSpeaking
+                Telemetry.record(EventType.SPEECH_START)
+                if (interrupting) Telemetry.record(EventType.INTERRUPT_DETECTED)
+            }
             "input_audio_buffer.speech_stopped" -> Telemetry.record(EventType.SPEECH_END)
             "conversation.item.input_audio_transcription.completed" ->
                 Telemetry.record(EventType.ASR_RESULT) { JSONObject(text).optString("transcript") }
             "response.created" -> {
                 responseInProgress = true
+                callsThisResponse.clear()
                 ttsStartedForResponse = false
                 Telemetry.record(EventType.AGENT_REQUEST_START)
             }

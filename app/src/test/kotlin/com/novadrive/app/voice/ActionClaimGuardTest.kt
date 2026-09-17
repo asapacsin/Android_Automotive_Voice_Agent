@@ -91,6 +91,29 @@ class ActionClaimGuardTest {
     }
 
     @Test
+    fun aSuccessClaimAfterAFailedToolIsCorrected() {
+        guard.onUserTranscript("空调调到21度。")
+        assertNull(guard.onResponseDone(call, ""))
+        guard.onToolResult("""{"ok":false,"tool":"control_climate","error":"VEHICLE_UNAVAILABLE","message":"空调系统暂时不可用"}""")
+        val correction = guard.onResponseDone(message, "好的，已经为你调好了。")
+        assertNotNull(correction)
+        assertTrue(correction!!.contains("空调系统暂时不可用"))
+        assertTrue(correction.contains("不要调用任何工具"))
+        // Once only, and an honest reply needs nothing.
+        assertNull(guard.onResponseDone(message, "好的，已经为你调好了。"))
+    }
+
+    @Test
+    fun anHonestReplyAfterAFailedToolNeedsNothing() {
+        guard.onUserTranscript("空调调到21度。")
+        guard.onResponseDone(call, "")
+        guard.onToolResult("""{"ok":false,"error":"X"}""")
+        assertNull(guard.onResponseDone(message, "抱歉，空调调节失败了。"))
+        guard.onToolResult("""{"ok":true}""")
+        assertNull(guard.onResponseDone(message, "已调到21度。"), "a later success clears the failure")
+    }
+
+    @Test
     fun aCancelThatWasOnlySpokenIsCaught() {
         // Measured 2026-09-17 with the destination list open: 「不用了。」 → 「已取消导航。」, no tool call.
         guard.onUserTranscript("不用了。")

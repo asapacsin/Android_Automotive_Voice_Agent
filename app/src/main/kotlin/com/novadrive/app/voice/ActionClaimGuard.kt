@@ -17,11 +17,32 @@ class ActionClaimGuard {
     private var toolCalledThisTurn = false
     private var nudged = false
 
+    /** The latest tool result of this turn said ok=false (and why). */
+    private var lastToolFailure: String? = null
+    private var failureCorrected = false
+
     @Synchronized
     fun onUserTranscript(text: String) {
         userText = text.trim().takeIf { it.isNotEmpty() }
         toolCalledThisTurn = false
         nudged = false
+        lastToolFailure = null
+        failureCorrected = false
+    }
+
+    /**
+     * A tool result is being returned to the model. Found by the simulation benchmark
+     * (2026-09-17): when a tool fails and the model still says 「已经调好了」, nothing corrected it.
+     */
+    @Synchronized
+    fun onToolResult(output: String) {
+        lastToolFailure = if (output.contains("\"ok\":false")) {
+            Regex("\"message\":\"([^\"]+)\"").find(output)?.groupValues?.get(1)
+                ?: Regex("\"error\":\"([^\"]+)\"").find(output)?.groupValues?.get(1)
+                ?: "操作失败"
+        } else {
+            null
+        }
     }
 
     /** A response finished. Returns the follow-up text to send, or null. */
@@ -32,6 +53,11 @@ class ActionClaimGuard {
             return null
         }
         if ("message" !in outputKinds) return null
+        val failure = lastToolFailure
+        if (failure != null && !failureCorrected && claimsDone(assistantText.trim())) {
+            failureCorrected = true
+            return correctionForFailure(failure)
+        }
         val request = userText ?: return null
         userText = null
         if (toolCalledThisTurn || nudged) return null
@@ -52,6 +78,8 @@ class ActionClaimGuard {
         userText = null
         toolCalledThisTurn = false
         nudged = false
+        lastToolFailure = null
+        failureCorrected = false
     }
 
     companion object {
@@ -91,6 +119,11 @@ class ActionClaimGuard {
 
         fun claimsDone(reply: String): Boolean =
             !declines(reply) && DONE_WORDS.any { it in reply } && ACTION_WORDS.any { it in reply }
+
+        /** The tool said it failed; the reply said it worked. */
+        fun correctionForFailure(reason: String): String =
+            "工具返回的结果是失败（$reason），你上一句说已经完成是错误的。" +
+                "不要调用任何工具，只用一句话如实告诉用户：这个操作没有成功，并简单说明原因。"
 
         /** Self-contained: it may land in a fresh conversation after a reset. */
         fun nudgeFor(request: String): String =

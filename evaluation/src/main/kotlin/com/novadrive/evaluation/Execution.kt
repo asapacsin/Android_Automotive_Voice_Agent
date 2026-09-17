@@ -47,6 +47,10 @@ data class TurnResult(
     val latency: TurnLatency,
     val interruptDetected: Boolean? = null,
     val outcome: Outcome = Outcome.SUCCESS,
+    /** Wall time of the whole turn: input to verdict. */
+    val wallMs: Long = 0,
+    /** Part of [wallMs] spent waiting for the app to settle after the input was delivered. */
+    val settleWaitMs: Long = 0,
 ) {
     fun toMap(): Map<String, Any?> = linkedMapOf(
         "index" to index,
@@ -69,6 +73,8 @@ data class TurnResult(
         "duplicateExecutions" to verdict.duplicateExecutions,
         "interruptDetected" to interruptDetected,
         "outcome" to outcome.name,
+        "wallMs" to wallMs,
+        "settleWaitMs" to settleWaitMs,
         "passed" to verdict.passed,
         "failures" to verdict.failures,
         "latency" to latency.toMap(),
@@ -88,6 +94,12 @@ data class ScenarioResult(
     val skipped: String?,
     val errors: List<String>,
     val durationMs: Long,
+    val setupMs: Long = 0,
+    val teardownMs: Long = 0,
+    /** Time spent in explicit Pause / WaitFor steps. */
+    val waitStepMs: Long = 0,
+    /** Deliberate simulated delays (latency, slow search, slow vision, interruption timing). */
+    val intentionalDelayMs: Long = 0,
 ) {
     val taskSuccess: Boolean
         get() = skipped == null && !sessionFailed && !crashed && errors.isEmpty() && turns.all { it.verdict.passed }
@@ -125,6 +137,10 @@ data class ScenarioResult(
             "speechEndToStateConfirmedMs" to p?.latency?.speechEndToStateConfirmed,
             "speechEndToTtsMs" to p?.latency?.speechEndToTts,
             "durationMs" to durationMs,
+            "setupMs" to setupMs,
+            "teardownMs" to teardownMs,
+            "waitStepMs" to waitStepMs,
+            "intentionalDelayMs" to intentionalDelayMs,
             "failures" to failures,
             "turns" to turns.map { it.toMap() },
         )
@@ -165,6 +181,9 @@ interface ScenarioDriver {
     fun sessionFailed(): Boolean
 
     suspend fun finish(scenario: Scenario)
+
+    /** Deliberate simulated delay since [prepare], in ms (where the driver can tell). */
+    fun intentionalDelayMs(): Long = 0
 }
 
 class ScenarioExecutor(
@@ -184,8 +203,14 @@ class ScenarioExecutor(
         recorder.captureText = true
         val turns = mutableListOf<TurnResult>()
         val errors = mutableListOf<String>()
+        var setupMs = 0L
+        var teardownMs = 0L
+        var waitStepMs = 0L
+        var intentional = 0L
         try {
+            val setupStart = System.nanoTime()
             driver.prepare(scenario, scenarioSeed(seed, scenario.id, iteration))
+            setupMs = (System.nanoTime() - setupStart) / 1_000_000
             for (step in scenario.steps) {
                 when (step) {
                     is Step.Say -> turns += runTurn(turns.size, step.utterance, step.expect, step.timeoutMs, if (step.expect.awaitSettle) "say" else "overlap") {
@@ -210,15 +235,43 @@ class ScenarioExecutor(
                         recorder.record(EventType.FAULT_INJECTED, detail = step.fault.toString())
                         driver.apply(step)
                     }
+                    is Step.WaitFor -> {
+                        val t0 = System.nanoTime()
+                        val met = waitFor(step.state, step.timeoutMs)
+                        waitStepMs += (System.nanoTime() - t0) / 1_000_000
+                        if (!met) {
+                            val snap = driver.snapshot()
+                            turns += TurnResult(
+                                index = turns.size, kind = "wait", utterance = "(wait for ${step.state})",
+                                expectedTools = emptyList(), actualCalls = emptyList(),
+                                expectedState = step.state, actualState = snap, replies = emptyList(),
+                                verdict = TurnVerdict(true, true, null, false, false, false, 0, 0, true,
+                                    listOf("condition not reached within ${step.timeoutMs} ms: " +
+                                        Oracle.stateMismatches(step.state, snap).joinToString())),
+                                latency = TurnLatency(),
+                            )
+                        }
+                    }
+                    is Step.Pause -> {
+                        val t0 = System.nanoTime()
+                        driver.apply(step)
+                        val spent = (System.nanoTime() - t0) / 1_000_000
+                        waitStepMs += spent
+                        intentional += spent
+                    }
                     else -> driver.apply(step)
                 }
                 if (driver.sessionFailed()) break
             }
         } catch (failure: Throwable) {
             if (failure is kotlinx.coroutines.CancellationException) throw failure
-            errors += "exception: ${failure.javaClass.simpleName}: ${failure.message}"
+            val where = failure.stackTrace.take(4).joinToString(" < ") { "${it.className.substringAfterLast('.')}.${it.methodName}:${it.lineNumber}" }
+            errors += "exception: ${failure.javaClass.simpleName}: ${failure.message} at $where"
         } finally {
+            intentional += runCatching { driver.intentionalDelayMs() }.getOrDefault(0)
+            val teardownStart = System.nanoTime()
             runCatching { driver.finish(scenario) }
+            teardownMs = (System.nanoTime() - teardownStart) / 1_000_000
             recorder.context = null
             recorder.captureText = false
         }
@@ -227,7 +280,23 @@ class ScenarioExecutor(
             variant = variant, turns = turns, sessionFailed = driver.sessionFailed(),
             crashed = errors.any { it.startsWith("exception") }, skipped = null, errors = errors,
             durationMs = (System.nanoTime() - started) / 1_000_000,
+            setupMs = setupMs, teardownMs = teardownMs, waitStepMs = waitStepMs, intentionalDelayMs = intentional,
         )
+    }
+
+    /** Polls the state until it matches; the condition must hold on two consecutive polls. */
+    private suspend fun waitFor(state: Map<String, String>, timeoutMs: Long): Boolean {
+        val deadline = System.nanoTime() + timeoutMs * 1_000_000
+        var streak = 0
+        while (System.nanoTime() < deadline) {
+            if (Oracle.stateMismatches(state, driver.snapshot()).isEmpty()) {
+                if (++streak >= 2) return true
+            } else {
+                streak = 0
+            }
+            delay(5)
+        }
+        return false
     }
 
     private suspend fun runTurn(
@@ -239,6 +308,8 @@ class ScenarioExecutor(
         deliver: suspend () -> Unit,
     ): TurnResult {
         val startSeq = recorder.lastSeq
+        val turnStart = System.nanoTime()
+        var settleStart = 0L
         recorder.record(EventType.INPUT_SENT, expectedValue = expect.tools.joinToString(" → "), text = { utterance })
         var settled = false
         coroutineScope {
@@ -252,8 +323,17 @@ class ScenarioExecutor(
                 }
             }
             deliver()
+            settleStart = System.nanoTime()
             settled = if (kind == "overlap") {
-                delay(timeoutMs)
+                // Overlap: move on as soon as this turn's tool call has been dispatched (its slow work
+                // keeps running), bounded by the turn's timeout.
+                val wanted = expect.tools.size.coerceAtLeast(1)
+                val deadline = System.nanoTime() + timeoutMs * 1_000_000
+                while (System.nanoTime() < deadline &&
+                    recorder.eventsAfter(startSeq).count { it.type == EventType.TOOL_CALL_RECEIVED } < wanted
+                ) {
+                    delay(2)
+                }
                 true
             } else {
                 driver.awaitSettled(timeoutMs)
@@ -268,6 +348,7 @@ class ScenarioExecutor(
                 }
             }
         }
+        val settleWaitMs = (System.nanoTime() - settleStart) / 1_000_000
         val all = recorder.eventsAfter(startSeq)
         // A barge-in is judged from the interruption on: the driver records a second INPUT_SENT when
         // it delivers the interrupting speech, and the primer's own reply is not part of the verdict.
@@ -293,6 +374,8 @@ class ScenarioExecutor(
             replies = replies.map { it.text }, verdict = verdict, latency = TelemetryReader.latency(events),
             interruptDetected = if (kind == "barge_in") events.any { it.type == EventType.INTERRUPT_DETECTED } else null,
             outcome = expect.outcome,
+            wallMs = (System.nanoTime() - turnStart) / 1_000_000,
+            settleWaitMs = settleWaitMs,
         )
     }
 
@@ -304,13 +387,35 @@ class ScenarioExecutor(
         fun scenarioSeed(seed: Long, scenarioId: String, iteration: Int): Long =
             Random(seed xor scenarioId.hashCode().toLong() xor (iteration.toLong() shl 32)).nextLong()
 
-        /** Polls [idle] until it holds for [quietMs] of telemetry silence, or [timeoutMs] passes. */
-        suspend fun awaitQuiet(recorder: TelemetryRecorder, quietMs: Long, timeoutMs: Long, idle: () -> Boolean): Boolean {
+        /**
+         * Settled = [idle] has held continuously for [quietMs] AND no telemetry event arrived in that
+         * window. Any change restarts the window; [timeoutMs] bounds the wait so a broken scenario
+         * fails instead of hanging.
+         */
+        suspend fun awaitQuiet(
+            recorder: TelemetryRecorder,
+            quietMs: Long,
+            timeoutMs: Long,
+            pollMs: Long = 5,
+            idle: () -> Boolean,
+        ): Boolean {
             val deadline = System.nanoTime() + timeoutMs * 1_000_000
+            var idleSince = -1L
+            var seqAtIdle = -1L
             while (System.nanoTime() < deadline) {
-                val quietFor = (recorder.clock.nanos() - recorder.lastEventNanos) / 1_000_000
-                if (idle() && quietFor >= quietMs) return true
-                delay(minOf(20L, quietMs))
+                val now = System.nanoTime()
+                if (idle()) {
+                    val seq = recorder.lastSeq
+                    if (idleSince < 0 || seq != seqAtIdle) {
+                        idleSince = now
+                        seqAtIdle = seq
+                    } else if ((now - idleSince) / 1_000_000 >= quietMs) {
+                        return true
+                    }
+                } else {
+                    idleSince = -1
+                }
+                delay(pollMs)
             }
             return false
         }

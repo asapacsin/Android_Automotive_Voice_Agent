@@ -16,9 +16,11 @@ class MetricsAndBaselineTest {
         assertEquals(50.0, many.p50)
         assertEquals(90.0, many.p90)
         assertEquals(95.0, many.p95)
-        assertEquals(99.0, many.p99)
+        assertNull(many.p99, "100 samples are not a P99 measurement")
         assertEquals(100.0, many.max)
         assertEquals(50.5, many.mean)
+        val stress = LatencyStats.of((1..1000).map { it.toDouble() })
+        assertEquals(990.0, stress.p99)
     }
 
     @Test

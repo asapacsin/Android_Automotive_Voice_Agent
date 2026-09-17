@@ -376,6 +376,44 @@ class EmbeddedNavigationControllerTest {
         assertEquals("珠海站", snapshot.destinationName)
     }
 
+    @Test
+    fun everyEndOfAFlowClearsTheSpeechMuteExceptAReplacement() = runBlocking {
+        // Found by the simulation benchmark: after arrival (or a failed search) the mute stayed on.
+        val ended = mutableListOf<NavigationPhase>()
+        var started = 0
+        val engine = FakeNaviEngine().apply { routes = threeRoutes(); results = listOf(candidate("a", 22.20, 113.54)) }
+        lateinit var controller: EmbeddedNavigationController
+        controller = EmbeddedNavigationController(
+            resolver = engine, engine = engine,
+            onFlowEnded = { ended += controller.state().value },
+            onGuidanceStarted = { started++ },
+        )
+        controller.requestDestination("珠海站")
+        engine.emitSuccess(intArrayOf(10, 20, 30))
+        controller.selectRoute(10)
+        assertEquals(1, started)
+        controller.requestDestination("珠海站") // replacement while driving
+        assertTrue(ended.isEmpty(), "replacing the destination keeps the flow (and its mute)")
+        engine.emitSuccess(intArrayOf(10, 20, 30))
+        controller.selectRoute(20)
+        engine.emitNavigationEnded("arrived")
+        assertEquals(listOf(NavigationPhase.ARRIVED), ended)
+
+        controller.requestDestination("珠海站")
+        engine.emitFailure(12)
+        controller.requestDestination("珠海站")
+        engine.emitSuccess(intArrayOf(10, 20, 30))
+        controller.cancel()
+        controller.requestDestination("珠海站")
+        engine.emitSuccess(intArrayOf(10, 20, 30))
+        controller.selectRoute(30)
+        controller.stopNavigation()
+        assertEquals(
+            listOf(NavigationPhase.ARRIVED, NavigationPhase.ERROR, NavigationPhase.IDLE, NavigationPhase.STOPPED),
+            ended.distinct(),
+        )
+    }
+
     private fun controller(
         engine: FakeNaviEngine,
         results: List<DestinationCandidate>,

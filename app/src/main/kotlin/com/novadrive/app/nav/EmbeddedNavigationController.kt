@@ -15,6 +15,14 @@ class EmbeddedNavigationController(
     private val store: NavigationStateStore = NavigationStateStore(),
     private val resolver: DestinationCandidateSource,
     private val engine: NaviEngine,
+    /**
+     * Called whenever a flow ends (arrived, stopped, cancelled, failed). Clears the legacy
+     * navigation speech mute: found by the simulation benchmark 2026-09-17 — after arrival or a
+     * failed search the mute stayed on and 小诺's replies were dropped 10 s later.
+     */
+    private val onFlowEnded: () -> Unit = { com.novadrive.app.NavigationState.reset() },
+    /** Guidance started (by voice or tap): the speech mute applies from here. */
+    private val onGuidanceStarted: () -> Unit = { com.novadrive.app.NavigationState.begin() },
 ) : NavigationController {
     private val lock = Any()
 
@@ -29,6 +37,9 @@ class EmbeddedNavigationController(
 
     private val _destinationCandidates = MutableStateFlow<List<DestinationCandidate>>(emptyList())
     val destinationCandidates: StateFlow<List<DestinationCandidate>> = _destinationCandidates.asStateFlow()
+
+    /** The destination the flow is working on (selected, calculated, driven or just reached). */
+    val destination: StateFlow<Destination?> get() = store.destination
 
     private val _routeCandidates = MutableStateFlow<List<RouteCandidate>>(emptyList())
     val routeCandidates: StateFlow<List<RouteCandidate>> = _routeCandidates.asStateFlow()
@@ -127,6 +138,7 @@ class EmbeddedNavigationController(
                 _routeCandidates.value = emptyList()
                 store.update(NavigationPhase.NAVIGATING, selectedDestination?.toDestination())
                 DebugVoiceLog.log("nav_navigation_started routeId=$routeId")
+                onGuidanceStarted()
             } else {
                 startNaviIssuedForSelection = false
                 failLocked("start_navi_rejected")
@@ -233,6 +245,7 @@ class EmbeddedNavigationController(
             startNaviIssuedForSelection = false
             store.reset()
             DebugVoiceLog.log("nav_flow_cancelled")
+            onFlowEnded()
         }
     }
 
@@ -273,6 +286,7 @@ class EmbeddedNavigationController(
             selectedDestination = null
             startNaviIssuedForSelection = false
             store.update(NavigationPhase.STOPPED)
+            onFlowEnded()
         }
     }
 
@@ -308,6 +322,8 @@ class EmbeddedNavigationController(
             store.update(ended, selectedDestination?.toDestination())
             selectedDestination = null
             DebugVoiceLog.log("nav_flow_ended reason=$reason phase=$ended")
+            // A replaced destination ends the old guidance only; the new flow is already running.
+            if (reason != "replaced") onFlowEnded()
         }
     }
 
@@ -372,6 +388,7 @@ class EmbeddedNavigationController(
         DebugVoiceLog.log("nav_flow_error reason=$reason")
         clearCandidatesLocked()
         store.update(NavigationPhase.ERROR, selectedDestination?.toDestination())
+        onFlowEnded()
     }
 
     private fun clearCandidatesLocked() {
@@ -390,9 +407,11 @@ object EmbeddedNavigation {
     fun currentOrNull(): EmbeddedNavigationController? = instance
 
     fun shared(context: Context): EmbeddedNavigationController = synchronized(lock) {
-        instance ?: EmbeddedNavigationController(
-            resolver = LiveDestinationCandidateSource(context.applicationContext),
-            engine = GatewayNaviEngine(),
-        ).also { instance = it }
+        instance ?: SwitchingNavigationBackend(
+            liveSource = LiveDestinationCandidateSource(context.applicationContext),
+            liveEngine = GatewayNaviEngine(),
+        ).let { backend ->
+            EmbeddedNavigationController(resolver = backend, engine = backend)
+        }.also { instance = it }
     }
 }

@@ -59,6 +59,14 @@ android {
     testOptions {
         unitTests.all {
             it.useJUnitPlatform()
+            // Simulation benchmark (docs/EVALUATION.md). Defaults run the fast SMOKE suite once, in the
+            // debug unit tests only: the release variant would repeat the same simulation.
+            if (it.name.contains("Release")) it.exclude("**/app/sim/**")
+            it.systemProperty("nova.repo.root", rootProject.projectDir.absolutePath)
+            it.systemProperty("nova.bench.out", layout.buildDirectory.dir("bench").get().asFile.absolutePath)
+            listOf("benchSuite", "benchRepeat", "benchSeed", "benchScenario", "benchUpdateBaseline").forEach { key ->
+                providers.gradleProperty(key).orNull?.let { value -> it.systemProperty("nova.$key", value) }
+            }
         }
     }
 }

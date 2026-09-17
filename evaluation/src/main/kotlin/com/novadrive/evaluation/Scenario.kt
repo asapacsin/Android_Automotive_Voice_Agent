@@ -33,6 +33,12 @@ enum class Suite {
     /** Vision against the real Qianfan API with fixture images (phone, costs quota). */
     VISION_REAL,
     RELEASE,
+
+    /**
+     * RELEASE repeated an explicit number of times, for flakiness and latency distributions. Never
+     * part of normal test runs.
+     */
+    STRESS,
 }
 
 /** A tool call as expected by the oracle, or as emitted by the scripted model. */
@@ -74,7 +80,10 @@ data class TurnExpectation(
     val forbiddenReplyWords: List<String> = emptyList(),
     /** At least one of these must appear in the final reply (loose content check, real-API suites). */
     val replyMentionsAny: List<String> = emptyList(),
-    /** False: deliver and move on after [Step.Say.timeoutMs] without judging state or reply (overlap tests). */
+    /**
+     * False: an overlapping turn — move on once its tool call has been dispatched (at most
+     * [Step.Say.timeoutMs]) without judging state or reply; the following steps check the outcome.
+     */
     val awaitSettle: Boolean = true,
 )
 
@@ -127,7 +136,14 @@ sealed interface Step {
     /** A state check without a turn. */
     data class Check(val state: Map<String, String>) : Step
 
+    /** A fixed wait. Only for scenarios where the duration itself is what is tested. */
     data class Pause(val ms: Long) : Step
+
+    /**
+     * Waits until [state] holds (checked continuously), failing the scenario after [timeoutMs].
+     * Use instead of [Pause] whenever the scenario only needs something to have happened.
+     */
+    data class WaitFor(val state: Map<String, String>, val timeoutMs: Long = 10_000) : Step
 
     /** Interrupts the assistant [afterTtsMs] after it starts speaking with [utterance]. */
     data class BargeIn(
@@ -205,6 +221,10 @@ object StateKeys {
     const val CAMERA_OPEN = "camera.open" // true | false
     const val VISION_REQUESTS = "vision.requests" // count
     const val SESSION_ALIVE = "session.alive" // true | false
+    const val SESSION_CONNECTED = "session.connected" // realtime connection up: true | false
+    const val SESSION_CONNECTS = "session.connects" // successful connections so far (resets included)
+    const val NAV_SEARCHES_IN_FLIGHT = "nav.searchesInFlight" // destination searches still running
+    const val VISION_COMPLETED = "vision.completed" // vision requests that have returned
 
     fun num(value: Double): String = String.format(java.util.Locale.US, "%.1f", value)
 }

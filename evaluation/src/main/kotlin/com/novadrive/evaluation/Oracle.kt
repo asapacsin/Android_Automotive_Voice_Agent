@@ -73,7 +73,8 @@ object Oracle {
         if (unexpected > 0 && selectionCorrect) failures += "unexpected tool calls ×$unexpected"
 
         val executed = considered.filter { c -> bestSequence.any { it.name == c.name } }
-        val executionSucceeded: Boolean? = if (executed.isEmpty()) null else executed.last().success == true
+        // null while still running (an overlapping turn judged before its tool finished).
+        val executionSucceeded: Boolean? = executed.lastOrNull()?.success
         if (expect.outcome == Outcome.SUCCESS && expect.tools.isNotEmpty() && executionSucceeded == false) {
             failures += "tool execution failed: ${executed.last().errorCode ?: "unknown"}"
         }
@@ -170,6 +171,10 @@ object Oracle {
      */
     fun valueMatches(want: String, got: String?): Boolean {
         if (want == "*") return got != null
+        if (want.startsWith(">=")) {
+            val limit = want.substring(2).toDoubleOrNull() ?: return false
+            return (got?.toDoubleOrNull() ?: return false) >= limit
+        }
         if (want.startsWith("!")) return got != null && !valueMatches(want.substring(1), got)
         if (got == null) return false
         if (want.startsWith("~")) {

@@ -33,8 +33,11 @@ object VoiceContextHints {
 
     /** Live state, read when a session (or a reset conversation) is configured. */
     fun current(): String? =
+        describe(EmbeddedNavigation.currentOrNull(), CameraVisionGateway.current()?.isOpen == true)
+
+    /** The hint for a given navigation flow and camera state (also used by the simulation). */
+    fun describe(navigation: com.novadrive.app.nav.EmbeddedNavigationController?, cameraOpen: Boolean): String? =
         runCatching {
-            val navigation = EmbeddedNavigation.currentOrNull()
             val phase = navigation?.state()?.value
             val options = when (phase) {
                 NavigationPhase.AWAITING_DESTINATION_SELECTION ->
@@ -45,7 +48,7 @@ object VoiceContextHints {
             }
             compose(
                 phase = phase,
-                cameraOpen = CameraVisionGateway.current()?.isOpen == true,
+                cameraOpen = cameraOpen,
                 options = options,
             )
         }.getOrNull()

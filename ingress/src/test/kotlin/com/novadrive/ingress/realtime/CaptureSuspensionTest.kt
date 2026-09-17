@@ -3,6 +3,8 @@ package com.novadrive.ingress.realtime
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -94,6 +96,32 @@ class CaptureSuspensionTest {
         assertEquals(1, rig.provider.cancelCount)
         assertEquals(VoiceUiState.LISTENING, rig.controller.machine.state)
         rig.controller.stop()
+    }
+
+    @Test
+    fun aServerCloseDuringASessionReconnectsAndKeepsWorking() = runTest(UnconfinedTestDispatcher()) {
+        // Error then Closed, as the Baidu clients report a server-side close.
+        val rig = Rig(this)
+        rig.controller.start()
+        rig.provider.emit(DomainVoiceEvent.Error("BAIDU_FLEX_CONNECTION_CLOSED", "closed"))
+        rig.provider.emit(DomainVoiceEvent.Closed)
+        advanceTimeBy(1_000)
+        runCurrent()
+        assertEquals(2, rig.provider.connectCount, "one reconnect")
+        assertEquals(VoiceUiState.LISTENING, rig.controller.machine.state, "the stale Closed must not stop the new session")
+        assertTrue(rig.controller.machine.streamingAudio)
+        rig.mic.emit(ByteArray(4))
+        assertEquals(1, rig.provider.sentChunks.size, "audio flows again")
+        rig.controller.stop()
+    }
+
+    @Test
+    fun aClosedOutsideAReconnectStillEndsTheSession() {
+        val machine = VoiceSessionStateMachine()
+        machine.userStartSession()
+        machine.onSessionReady()
+        machine.apply(DomainVoiceEvent.Closed)
+        assertEquals(VoiceUiState.DISCONNECTED, machine.state)
     }
 
     @Test

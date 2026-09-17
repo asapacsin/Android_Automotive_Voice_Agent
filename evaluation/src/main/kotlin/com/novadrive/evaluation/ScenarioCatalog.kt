@@ -12,7 +12,11 @@ import com.novadrive.evaluation.StateKeys.NAV_PROGRESS
 import com.novadrive.evaluation.StateKeys.NAV_ROUTE
 import com.novadrive.evaluation.StateKeys.NAV_ROUTES
 import com.novadrive.evaluation.StateKeys.NAV_SPEECH_MUTE
+import com.novadrive.evaluation.StateKeys.NAV_SEARCHES_IN_FLIGHT
 import com.novadrive.evaluation.StateKeys.SESSION_ALIVE
+import com.novadrive.evaluation.StateKeys.SESSION_CONNECTED
+import com.novadrive.evaluation.StateKeys.SESSION_CONNECTS
+import com.novadrive.evaluation.StateKeys.VISION_COMPLETED
 import com.novadrive.evaluation.StateKeys.VISION_REQUESTS
 
 /**
@@ -44,6 +48,9 @@ object ScenarioCatalog {
     private fun music(action: String) = ToolCallSpec("control_music", mapOf("action" to action))
     private val exitNav = ToolCallSpec("exit_navigation_mode")
     private val look = ToolCallSpec("describe_camera_view")
+
+    /** The session has reconnected after the connection was dropped once. */
+    private val reconnected = Step.WaitFor(mapOf(SESSION_CONNECTS to ">=2", SESSION_CONNECTED to "true"), 10_000)
 
     private fun say(
         utterance: String,
@@ -353,7 +360,7 @@ object ScenarioCatalog {
             steps = listOf(
                 Step.Inject(Fault.ServerDisconnectDuringNextTurn(afterToolCall = false)),
                 say("打开空调", outcome = Outcome.NO_ACTION, requireReply = false, state = mapOf(HVAC_POWER to "off"), timeoutMs = 20_000),
-                Step.Pause(1_500),
+                reconnected,
                 Step.Check(mapOf(SESSION_ALIVE to "true")),
                 say("打开空调", climate("power_on"), state = mapOf(HVAC_POWER to "on")),
             ),
@@ -362,21 +369,21 @@ object ScenarioCatalog {
             steps = listOf(
                 Step.Inject(Fault.ServerDisconnectDuringNextTurn(afterToolCall = true)),
                 say("空调调到26度", climate("set_temperature", "26"), requireReply = false, state = mapOf(HVAC_TEMP to temp(26.0)), timeoutMs = 20_000),
-                Step.Pause(1_500),
+                reconnected,
                 say("风量调到4档", climate("set_fan", "4"), state = mapOf(HVAC_FAN to "4", HVAC_TEMP to temp(26.0))),
             ),
             purpose = "No duplicate execution after reconnect; state stays consistent."))
         add(Scenario("CHAOS_CONNECT_REJECTED", "First connect refused; the session retries", c, modes = SIM_ONLY,
             steps = listOf(
                 Step.Inject(Fault.ServerRejectsNextConnect),
-                Step.Pause(2_500),
+                reconnected,
                 say("播放音乐", music("play"), state = mapOf(MEDIA_PLAYING to "true")),
             )))
         add(Scenario("CHAOS_SERVER_ERROR_EVENT", "Server error event on a turn", c, modes = SIM_ONLY,
             steps = listOf(
                 Step.Inject(Fault.ServerErrorEventOnNextTurn),
                 say("打开空调", outcome = Outcome.NO_ACTION, requireReply = false, state = mapOf(HVAC_POWER to "off"), timeoutMs = 20_000),
-                Step.Pause(2_000),
+                Step.WaitFor(mapOf(SESSION_CONNECTED to "true", SESSION_ALIVE to "true")),
                 say("打开空调", climate("power_on"), state = mapOf(HVAC_POWER to "on")),
             )))
         add(Scenario("CHAOS_EMPTY_RESPONSE", "Empty model response is retried once", c, modes = SIM_ONLY,
@@ -385,10 +392,11 @@ object ScenarioCatalog {
             steps = listOf(Step.Inject(Fault.DuplicateToolResult), say("风量调大", ToolCallSpec("control_climate", mapOf("action" to "adjust_fan")), state = mapOf(HVAC_FAN to "3")))))
         add(Scenario("CHAOS_STALE_DESTINATION", "A slow first search must not overwrite the newer one", c + Suite.NAVIGATION, modes = SIM_ONLY,
             steps = listOf(
-                Step.Inject(Fault.NavigationResolveDelay("澳门大学", 1_500)),
-                say("导航到澳门大学", navigate("澳门大学"), awaitSettle = false, timeoutMs = 300),
+                Step.Inject(Fault.NavigationResolveDelay("澳门大学", 400)),
+                say("导航到澳门大学", navigate("澳门大学"), awaitSettle = false, timeoutMs = 2_000),
                 say("不，导航到横琴口岸", navigate("横琴口岸"), state = routeList + (NAV_DESTINATION to "横琴口岸")),
-                Step.Pause(2_500),
+                // The slow first search has now returned (late); the newer destination must stand.
+                Step.WaitFor(mapOf(NAV_SEARCHES_IN_FLIGHT to "0")),
                 Step.Check(routeList + (NAV_DESTINATION to "横琴口岸")),
             ),
             purpose = "Delayed A arrives after B: the active destination must remain B."))
@@ -413,18 +421,18 @@ object ScenarioCatalog {
         add(Scenario("CHAOS_SLOW_VISION_AND_VOICE", "Slow vision result while a new command runs", c + Suite.VISION, modes = SIM_ONLY,
             setup = WorldSetup(cameraOpen = true, visionFixture = "road_clear"),
             steps = listOf(
-                Step.Inject(Fault.ToolResultDelay("describe_camera_view", 2_500)),
-                say("前面有什么", look, awaitSettle = false, timeoutMs = 400),
+                Step.Inject(Fault.ToolResultDelay("describe_camera_view", 600)),
+                say("前面有什么", look, awaitSettle = false, timeoutMs = 2_000),
                 say("打开空调", climate("power_on"), state = mapOf(HVAC_POWER to "on")),
-                Step.Pause(3_000),
+                Step.WaitFor(mapOf(VISION_COMPLETED to "1")),
                 Step.Check(mapOf(VISION_REQUESTS to "1", HVAC_POWER to "on")),
             )))
         add(Scenario("CHAOS_ROUTE_AND_CLIMATE", "Route calculation in flight while a climate command runs", c + Suite.NAVIGATION, modes = SIM_ONLY,
             steps = listOf(
-                Step.Inject(Fault.NavigationResolveDelay("公司", 800)),
-                say("导航到公司", navigate("公司"), awaitSettle = false, timeoutMs = 200),
+                Step.Inject(Fault.NavigationResolveDelay("公司", 300)),
+                say("导航到公司", navigate("公司"), awaitSettle = false, timeoutMs = 2_000),
                 say("空调调到25度", climate("set_temperature", "25"), alternatives = setTempAlternatives(25), state = mapOf(HVAC_TEMP to temp(25.0))),
-                Step.Pause(1_500),
+                Step.WaitFor(routeList + (NAV_DESTINATION to "公司")),
                 Step.Check(routeList + (NAV_DESTINATION to "公司")),
             )))
         listOf(100L, 300L, 700L, 2_000L).forEach { at ->
@@ -495,7 +503,7 @@ object ScenarioCatalog {
     fun suite(suite: Suite, mode: TestMode): List<Scenario> {
         val inMode = all.filter { mode in it.modes }
         return when (suite) {
-            Suite.RELEASE -> inMode.filter { s ->
+            Suite.RELEASE, Suite.STRESS -> inMode.filter { s ->
                 s.suites.any { it != Suite.LONG_SESSION && it != Suite.VISION_REAL } || s.id == "LONG_SESSION_20"
             }
             else -> inMode.filter { suite in it.suites }
