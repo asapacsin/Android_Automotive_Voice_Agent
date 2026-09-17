@@ -202,6 +202,18 @@ class BaiduFlexProtocolTest {
     }
 
     @Test
+    fun userTextMessageIsAUserInputTextItem() {
+        val json = JSONObject(BaiduFlexProtocol.userTextMessage("请读出：前方有车"))
+        assertEquals("conversation.item.create", json.getString("type"))
+        val item = json.getJSONObject("item")
+        assertEquals("message", item.getString("type"))
+        assertEquals("user", item.getString("role"))
+        val part = item.getJSONArray("content").getJSONObject(0)
+        assertEquals("input_text", part.getString("type"))
+        assertEquals("请读出：前方有车", part.getString("text"))
+    }
+
+    @Test
     fun refusedSessionUpdateIsNotSessionFatal() {
         // Verbatim from the device log, 2026-09-16.
         val events = BaiduFlexProtocol.parseCommonEvent(

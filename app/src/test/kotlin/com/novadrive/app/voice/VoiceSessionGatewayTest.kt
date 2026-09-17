@@ -48,6 +48,35 @@ class VoiceSessionGatewayTest {
     }
 
     @Test
+    fun speakStartsTheSessionWhenIdleThenSendsTheText() {
+        val identity = Any().also { identities += it }
+        val session = FakeGatewaySession()
+        val service = FakeServiceControl()
+        VoiceSessionGateway.attachInternal(identity, session, service)
+
+        assertEquals(StartResult.Started, VoiceSessionGateway.speak("读一下"))
+        assertEquals(1, session.startCalls)
+        assertEquals(listOf("读一下"), session.texts)
+
+        assertEquals(StartResult.AlreadyActive, VoiceSessionGateway.speak("再读一下"))
+        assertEquals(1, session.startCalls)
+        assertEquals(listOf("读一下", "再读一下"), session.texts)
+    }
+
+    @Test
+    fun speakSendsNothingWhenTheSessionCannotStart() {
+        val identity = Any().also { identities += it }
+        val session = FakeGatewaySession(hasMic = false)
+        VoiceSessionGateway.attachInternal(identity, session, FakeServiceControl())
+        assertEquals(StartResult.MicPermissionMissing, VoiceSessionGateway.speak("读一下"))
+        assertTrue(session.texts.isEmpty())
+        assertEquals(StartResult.NotAttached, run {
+            VoiceSessionGateway.detachInternal(identity)
+            VoiceSessionGateway.speak("读一下")
+        })
+    }
+
+    @Test
     fun startReturnsNotAttachedWhenEmpty() {
         assertEquals(StartResult.NotAttached, VoiceSessionGateway.start())
     }
@@ -75,8 +104,12 @@ class VoiceSessionGatewayTest {
     ) : GatewaySession {
         var startCalls = 0
         var stopCalls = 0
+        val texts = mutableListOf<String>()
         override var isActive: Boolean = false
         override fun hasMicPermission(): Boolean = hasMic
+        override fun sendText(text: String) {
+            texts += text
+        }
         override fun startBaidu() {
             startCalls += 1
             isActive = true

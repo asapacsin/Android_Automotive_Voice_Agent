@@ -8,7 +8,11 @@ import com.novadrive.app.nav.EmbeddedNavigation
 import com.novadrive.app.nav.NavigationHostGateway
 import com.novadrive.app.nav.amap.AmapNaviViewHost
 import com.novadrive.app.vehicle.VehicleControlProvider
+import com.novadrive.app.DebugVoiceLog
+import com.novadrive.app.NavigationState
+import com.novadrive.app.vision.CameraQuestionHandler
 import com.novadrive.app.vision.CameraVisionGateway
+import com.novadrive.app.voice.VoiceSessionGateway
 import com.novadrive.app.vision.VisionProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -66,7 +70,13 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
         bottomBar.bindClimate(VehicleControlProvider.port)
         camera.onAskAi = {
             // Same handler the voice tool uses; the answer is shown on the camera view.
-            uiScope.launch { VisionProvider.handler(context).ask(null) }
+            uiScope.launch {
+                val outcome = VisionProvider.handler(context).ask(null)
+                // Read it aloud in the assistant's own voice (the phone has no default system TTS).
+                NavigationState.allowConfirmation()
+                val result = VoiceSessionGateway.speak(CameraQuestionHandler.readAloudPrompt(outcome.spokenText))
+                DebugVoiceLog.log("vision_speak result=${result::class.simpleName}")
+            }
         }
         overlay.onOpenDeveloperSettings = { onOpenDeveloperSettings?.invoke() }
         choiceOverlay.bind(EmbeddedNavigation.shared(context))

@@ -77,7 +77,7 @@ object BaiduFlexProtocol {
         )
         val describeCamera = functionTool(
             name = "describe_camera_view",
-            description = "看摄像头画面并回答问题。用户说「看看前面有什么」「摄像头里是什么」「画面里有几个人」「这是什么东西」等询问镜头画面的问题时调用，" +
+            description = "看摄像头画面并回答问题。用户说「看看前面有什么」「摄像头里是什么」「画面里有几个人」「这是什么东西」「这是什么」「这个是什么」「看一下这个」等询问眼前或镜头画面的问题时调用（没有其他上下文时，「这是什么」一律当作问镜头画面），" +
                 "question 填用户的原问题。会自动打开摄像头并把当前画面发给视觉模型，需要几秒钟。" +
                 "只根据返回的 answer 回答；ok=false 时只转述 message，绝对不要猜测画面内容。" +
                 "Look at the camera image and answer the driver's question about it.",
@@ -132,6 +132,20 @@ object BaiduFlexProtocol {
                     .put("type", "function_call_output")
                     .put("call_id", callId)
                     .put("output", output),
+            ).toString()
+    }
+
+    /** A user text turn (OpenAI-realtime-compatible `conversation.item.create` message). */
+    fun userTextMessage(text: String): String {
+        require(text.length <= MAX_ARGUMENT_BYTES) { "FLEX_TEXT_TOO_LARGE" }
+        return JSONObject()
+            .put("type", "conversation.item.create")
+            .put(
+                "item",
+                JSONObject()
+                    .put("type", "message")
+                    .put("role", "user")
+                    .put("content", JSONArray().put(JSONObject().put("type", "input_text").put("text", text))),
             ).toString()
     }
 

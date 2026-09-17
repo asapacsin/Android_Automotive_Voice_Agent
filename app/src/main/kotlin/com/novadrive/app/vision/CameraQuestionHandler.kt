@@ -72,5 +72,9 @@ class CameraQuestionHandler(
         const val MAX_QUESTION_CHARS = 200
         const val MAX_EDGE_PX = 768
         const val LOOKING = "正在看…"
+
+        /** Turn for the voice model when the 问AI button (not speech) produced the text. */
+        fun readAloudPrompt(text: String): String =
+            "这是摄像头看图的结果。请直接用你的声音把下面这段话读给用户，不要添加任何内容，也不要调用工具：$text"
     }
 }

@@ -124,6 +124,11 @@ class VoiceSessionController(
         active.stop()
     }
 
+    /** Asks the model to respond to [text]; queued until the session is connected. */
+    fun sendText(text: String) {
+        active.sendText(text)
+    }
+
     fun release() {
         NavigationState.reset()
         active.release()

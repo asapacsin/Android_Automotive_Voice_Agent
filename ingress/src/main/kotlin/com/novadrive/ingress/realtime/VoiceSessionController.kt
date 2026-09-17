@@ -40,6 +40,8 @@ class VoiceSessionController(
 ) {
     val machine = VoiceSessionStateMachine()
     private val sessionActive = AtomicBoolean(false)
+    private val providerConnected = AtomicBoolean(false)
+    private val pendingTexts = java.util.concurrent.ConcurrentLinkedQueue<String>()
     private val captureArmed = AtomicBoolean(false)
     private val collectorGeneration = AtomicInteger(0)
     private val mutex = Mutex()
@@ -82,6 +84,8 @@ class VoiceSessionController(
     }
 
     fun stop() {
+        providerConnected.set(false)
+        pendingTexts.clear()
         if (!sessionActive.compareAndSet(true, false)) return
         captureArmed.set(false)
         reconnectPolicy.cancel()
@@ -150,6 +154,36 @@ class VoiceSessionController(
         }
     }
 
+    /**
+     * Sends a text turn to the model (for example a finished camera answer to be read aloud).
+     * Queued until the provider is connected, so a caller may start the session and send at once.
+     * Ignored when no session is active.
+     */
+    fun sendText(text: String) {
+        if (!sessionActive.get() || text.isBlank()) return
+        pendingTexts += text
+        if (providerConnected.get()) flushTexts()
+        log.info("text_queued", mapOf("chars" to text.length))
+    }
+
+    private fun markConnectedAndFlushTexts() {
+        providerConnected.set(true)
+        flushTexts()
+    }
+
+    private fun flushTexts() {
+        while (true) {
+            val text = pendingTexts.poll() ?: return
+            scope.launch {
+                try {
+                    provider.sendText(text)
+                } catch (ex: Exception) {
+                    log.warn("text_send_failed", mapOf("error" to (ex.message ?: "send")))
+                }
+            }
+        }
+    }
+
     private fun launchDetached(block: suspend CoroutineScope.() -> Unit): Job {
         val oneShot = SupervisorJob()
         val dispatcher = scope.coroutineContext[ContinuationInterceptor]
@@ -180,6 +214,7 @@ class VoiceSessionController(
         try {
             provider.connect(config)
             diagnostics.markConnected()
+            markConnectedAndFlushTexts()
             resumeCaptureOnce()
         } catch (ex: VoiceProviderException) {
             handleFailure(ex.code, ex.safeMessage)
@@ -333,6 +368,7 @@ class VoiceSessionController(
         try {
             provider.connect(config)
             mutex.withLock { diagnostics.markReconnected() }
+            markConnectedAndFlushTexts()
             resumeCaptureOnce()
         } catch (ex: VoiceProviderException) {
             handleFailure(ex.code, ex.safeMessage)
@@ -342,6 +378,7 @@ class VoiceSessionController(
     }
 
     private fun beginReconnectOrTerminal(code: String, message: String): Long? {
+        providerConnected.set(false)
         val errorClass = reconnectPolicy.classify(code)
         log.warn("session_error", mapOf("code" to code, "class" to errorClass.name))
         if (reconnectPolicy.shouldRetry(code) && sessionActive.get()) {

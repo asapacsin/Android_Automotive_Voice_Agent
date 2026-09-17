@@ -121,6 +121,12 @@ class BaiduFlexClient(
         if (assistantSpeaking) trySend(BaiduFlexProtocol.responseCancel())
     }
 
+    fun sendUserText(text: String) {
+        DebugVoiceLog.log("flex_user_text chars=${text.length}")
+        sendControl(BaiduFlexProtocol.userTextMessage(text))
+        sendControl(BaiduFlexProtocol.responseCreate())
+    }
+
     fun sendFunctionResult(callId: String, output: String) {
         sendControl(BaiduFlexProtocol.functionCallOutput(callId, output))
         sendControl(BaiduFlexProtocol.responseCreate())

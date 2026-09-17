@@ -260,6 +260,35 @@ class VoiceSessionControllerTest {
         }
 
     @Test
+    fun sendTextIsDeliveredAfterConnectAndIgnoredWhenIdle() =
+        runTest(UnconfinedTestDispatcher()) {
+            val provider = FakeRealtimeVoiceProvider()
+            val controller =
+                VoiceSessionController(
+                    provider = provider,
+                    microphone = InMemoryMicrophonePort(),
+                    playback = InMemoryPlaybackPort(),
+                    scope = this,
+                    config = RealtimeSessionConfig(VoiceProviderId.FAKE, VoiceCatalog.FAKE_MODEL),
+                )
+            fun sentTexts() = provider.receiveEvents()
+                .filterIsInstance<DomainVoiceEvent.UserTranscript>()
+                .map { it.text }
+
+            controller.sendText("idle, dropped")
+            assertTrue(sentTexts().isEmpty())
+
+            // Start and send immediately: queued until connect, then delivered exactly once.
+            controller.start()
+            controller.sendText("读出看图结果")
+            assertEquals(listOf("读出看图结果"), sentTexts())
+
+            controller.stop()
+            controller.sendText("after stop")
+            assertTrue(sentTexts().isEmpty())
+        }
+
+    @Test
     fun workResultInjectionRetriesAfterFailureAndAcknowledgesOnce() =
         runTest(UnconfinedTestDispatcher()) {
             val provider = FakeRealtimeVoiceProvider()
