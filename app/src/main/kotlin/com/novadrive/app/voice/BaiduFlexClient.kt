@@ -63,6 +63,10 @@ class BaiduFlexClient(
     /** App-requested replies wait for Baidu's current reply and the driver's speech (see [ResponseTurnGate]). */
     private val turnGate = ResponseTurnGate()
 
+    /** Replies that claim an action without a tool call get one corrective follow-up. */
+    private val actionGuard = ActionClaimGuard()
+    private val assistantText = StringBuffer()
+
     /** Incremented on every conversation reset; a queued turn from an older one may be stale. */
     @Volatile private var conversationEpoch = 0
 
@@ -72,6 +76,7 @@ class BaiduFlexClient(
         lastConfig = config
         cancelReset()
         turnGate.clear()
+        actionGuard.reset()
         openSession(config)
     }
 
@@ -279,6 +284,12 @@ class BaiduFlexClient(
                 DebugVoiceLog.log("flex_empty_response_raw ${text.take(800)}")
             }
             if (resetPolicy.onResponseDone(kinds)) resetConversation()
+            val spoken = assistantText.toString()
+            assistantText.setLength(0)
+            actionGuard.onResponseDone(kinds, spoken)?.let { nudge ->
+                DebugVoiceLog.log("flex_action_claim_unverified follow_up=true")
+                sendUserText(nudge)
+            }
             emptyRetry.onResponseDone(status, kinds.size)
         }.getOrDefault(false)
 
@@ -321,7 +332,17 @@ class BaiduFlexClient(
                     if (generation.get() == current) flushDeferredTurns()
                 }
             }
-            if (type == "response.created") turnGate.onResponseCreated()
+            if (type == "response.created") {
+                turnGate.onResponseCreated()
+                assistantText.setLength(0)
+            }
+            if (type == "response.audio_transcript.done" || type == "response.text.done") {
+                val raw = JSONObject(text)
+                assistantText.append(raw.optString("transcript").ifEmpty { raw.optString("text") })
+            }
+            if (type == "conversation.item.input_audio_transcription.completed") {
+                actionGuard.onUserTranscript(JSONObject(text).optString("transcript"))
+            }
             if (type == "error" && BaiduFlexProtocol.isResponseAlreadyActive(text)) {
                 DebugVoiceLog.log("flex_turn_rejected_busy retry=true")
                 turnGate.onBusyRejected(

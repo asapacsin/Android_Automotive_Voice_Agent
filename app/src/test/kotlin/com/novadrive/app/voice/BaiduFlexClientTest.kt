@@ -244,6 +244,38 @@ class BaiduFlexClientTest {
     }
 
     @Test
+    fun aClaimedActionWithoutAToolCallGetsOneCorrectiveTurn() = runBlocking {
+        // Event order and wording as measured on device 2026-09-17.
+        val received = Collections.synchronizedList(mutableListOf<String>())
+        server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
+                webSocket.send("""{"type":"session.created","session":{"model":"qianfan-realtime-flex-v1"}}""")
+            }
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                received += text
+                if (JSONObject(text).optString("type") != "session.update") return
+                webSocket.send("""{"type":"session.updated","session":{"model":"qianfan-realtime-flex-v1"}}""")
+                webSocket.send("""{"type":"input_audio_buffer.speech_started"}""")
+                webSocket.send("""{"type":"input_audio_buffer.speech_stopped"}""")
+                webSocket.send("""{"type":"response.created","response":{"id":"r1"}}""")
+                webSocket.send("""{"type":"conversation.item.input_audio_transcription.completed","item_id":"i1","transcript":"温度调高一点。"}""")
+                webSocket.send("""{"type":"response.audio_transcript.done","transcript":"调高温度了。"}""")
+                webSocket.send("""{"type":"response.done","response":{"status":"completed","output":[{"type":"message"}]}}""")
+            }
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
+        }))
+        val client = BaiduFlexClient(OkHttpClient(), 3_000, requireTls = false)
+        client.connect(config())
+        Thread.sleep(800)
+        val sent = received.map(::JSONObject)
+        val followUp = sent.filter { it.getString("type") == "conversation.item.create" }
+        assertEquals(1, followUp.size)
+        assertTrue(followUp.single().toString().contains("温度调高一点"))
+        assertEquals(1, sent.count { it.getString("type") == "response.create" })
+        client.disconnect()
+    }
+
+    @Test
     fun completedToolTurnStartsAFreshConversationAndHeldAudioReachesIt() = runBlocking {
         val secondUpdateSeen = CountDownLatch(1)
         val releaseSecond = CountDownLatch(1)

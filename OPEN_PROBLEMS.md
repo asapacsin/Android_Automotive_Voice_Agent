@@ -606,7 +606,28 @@ Baidu cancelled it (`turn_detected`), question answered, no error; (b) look fini
 `flex_turn_deferred`, released after the driver's turn, both answers spoken, no error; a later
 command still worked.
 
-Still open (model behaviour, not this fix): once in 4 climate commands with the camera open, a
-fresh conversation answered 「调高温度了。」 **without** calling `control_climate` — a false claim.
-The other 3 were correct. Same class as the phantom-turn false claims in the audit; needs a
-decision on a guard before release.
+Also seen in that run: once in 4 climate commands with the camera open, a fresh conversation
+answered 「调高温度了。」 **without** calling `control_climate` — a false claim. See P15.
+
+## P15 — Replies claiming an action that never ran
+
+**Status:** MITIGATED 2026-09-17 — unit + client tests; device evidence for each half (see below)
+
+`ActionClaimGuard`: when the driver asked for a control action or about the camera picture and the
+reply finished with no tool call and without declining, the client sends one self-contained
+follow-up turn (`flex_action_claim_unverified`) telling the model the action did not run and to
+call the matching tool now. Requests with no tool (音量, 车窗, …) get a correction instead —
+measured: the generic follow-up for 「音量调大。」 made the model raise the **fan**.
+
+Device evidence:
+- No false positives in 10 real commands (climate ×6, music ×2, camera, volume refusal, chat) and
+  3 bait phrases (the model refused honestly; the guard stayed quiet).
+- The follow-up texts, sent through the same text-turn path: climate → `control_climate` called
+  and answered from the result (×2); camera → `describe_camera_view` (×1); volume correction →
+  「这个操作没有执行，暂时不支持。」 with no tool (×2).
+- Not observed end to end: a natural false claim did not recur during these runs, so the chain
+  "false claim → guard fires → action" is proven by the client test with the measured event order,
+  not by a live occurrence.
+
+Limits: the false sentence is already spoken before the correction; detection is keyword-based
+(Chinese), so unusual phrasings can slip through; one follow-up per utterance.
