@@ -226,6 +226,15 @@ class BaiduFlexProtocolTest {
     }
 
     @Test
+    fun overlappingResponseIsNotSessionFatalAndIsRecognised() {
+        // Verbatim from the device log, 2026-09-17 (camera question).
+        val raw = """{"type":"error","error":{"code":"invalid_request_error","message":"Conversation already has an active response in progress: resp_pMY3PLE4irXHxZHwCOcS_001. Wait until the response is finished before creating a new one."}}"""
+        assertTrue(BaiduFlexProtocol.parseCommonEvent(raw, speaking = false).none { it is DomainVoiceEvent.Error })
+        assertTrue(BaiduFlexProtocol.isResponseAlreadyActive(raw))
+        assertTrue(!BaiduFlexProtocol.isResponseAlreadyActive("""{"type":"error","error":{"code":"quota_exceeded","message":"quota exceeded"}}"""))
+    }
+
+    @Test
     fun genuineQuotaAndAccessDeniedErrorsStillMapAsBefore() {
         val quota = BaiduFlexProtocol.parseCommonEvent(
             """{"type":"error","error":{"code":"quota_exceeded","message":"quota exceeded"}}""",

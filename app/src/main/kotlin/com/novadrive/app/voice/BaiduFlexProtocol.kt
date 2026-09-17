@@ -152,6 +152,14 @@ object BaiduFlexProtocol {
             ).toString()
     }
 
+    private const val ACTIVE_RESPONSE_PHRASE = "already has an active response"
+
+    fun isResponseAlreadyActive(text: String): Boolean = runCatching {
+        val raw = JSONObject(text)
+        val error = raw.optJSONObject("error") ?: raw
+        ACTIVE_RESPONSE_PHRASE in "${error.optString("code")} ${error.optString("message")}".lowercase()
+    }.getOrDefault(false)
+
     fun responseCreate(): String = JSONObject().put("type", "response.create").toString()
 
     fun parseCommonEvent(text: String, speaking: Boolean): List<DomainVoiceEvent> {
@@ -175,6 +183,12 @@ object BaiduFlexProtocol {
                 // treating "Cannot update a session's turn detection threshold while input audio
                 // is in progress" as an Error put the live session into ERROR.
                 if ("cannot update a session" in blob) {
+                    return emptyList()
+                }
+                // Two replies overlapped. Not session-fatal: the running reply continues and the
+                // client asks again when it ends (see ResponseTurnGate). Measured 2026-09-17 —
+                // this refusal put the session into ERROR mid camera question.
+                if (ACTIVE_RESPONSE_PHRASE in blob) {
                     return emptyList()
                 }
                 val code = if (listOf("permission", "forbidden", "access denied", "not entitled", "public beta", "无权限").any { it in blob }) {

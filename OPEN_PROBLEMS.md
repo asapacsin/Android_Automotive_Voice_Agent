@@ -586,3 +586,27 @@ driver for that time. Real driving speaks far less; judge in the car.
 Voice quality: the SDK's offline voice (`xiaoyun`, 16 kHz, Alibaba NUI embedded) is what the SDK
 offers; its only option is the audio stream. The phone has **no** system TTS engine
 (`TTS_SERVICE`: no services found), so Android `TextToSpeech` is not an alternative here.
+
+## P14 — Camera question put the session into ERROR
+
+**Status:** FIXED 2026-09-17 — unit + client tests; speech harness on device
+
+Owner report: asking who is in front of the camera showed an error and no reply. Log: the
+camera's automatic look finished while the driver was still speaking and sent its read-aloud turn
+(`response.create`). Baidu then refused the driver's turn — "Conversation already has an active
+response in progress" — and every Baidu refusal was session-fatal, so the session sat in ERROR.
+
+Fix: `ResponseTurnGate` holds app-requested replies (read-aloud, typed turns, tool results) while a
+reply runs, while the driver speaks, and for 1.5 s after; they go out one at a time after
+`response.done`. The overlap refusal is no longer an error; the refused reply is asked for again
+once the running one ends. Busy marks expire after 30 s.
+
+Device (harness, camera opened just before the question): (a) read-aloud sent just before speech —
+Baidu cancelled it (`turn_detected`), question answered, no error; (b) look finished mid-question —
+`flex_turn_deferred`, released after the driver's turn, both answers spoken, no error; a later
+command still worked.
+
+Still open (model behaviour, not this fix): once in 4 climate commands with the camera open, a
+fresh conversation answered 「调高温度了。」 **without** calling `control_climate` — a false claim.
+The other 3 were correct. Same class as the phantom-turn false claims in the audit; needs a
+decision on a guard before release.

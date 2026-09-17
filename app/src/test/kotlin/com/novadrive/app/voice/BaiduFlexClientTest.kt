@@ -11,6 +11,7 @@ import com.novadrive.ingress.realtime.VoiceProviderException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.WebSocket
@@ -187,6 +188,58 @@ class BaiduFlexClientTest {
         Thread.sleep(800)
         val creates = received.map(::JSONObject).count { it.getString("type") == "response.create" }
         assertEquals(1, creates)
+        client.disconnect()
+    }
+
+    @Test
+    fun appReplyRequestedWhileTheDriverSpeaksWaitsAndAnOverlapIsNotFatal() = runBlocking {
+        // Measured 2026-09-17: the camera's read-aloud turn was sent mid-question, Baidu refused
+        // the driver's turn ("already has an active response") and the session went to ERROR.
+        val received = Collections.synchronizedList(mutableListOf<String>())
+        var serverSocket: WebSocket? = null
+        server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
+                serverSocket = webSocket
+                webSocket.send("""{"type":"session.created","session":{"model":"qianfan-realtime-flex-v1"}}""")
+            }
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                received += text
+                if (JSONObject(text).optString("type") == "session.update") {
+                    webSocket.send("""{"type":"session.updated","session":{"model":"qianfan-realtime-flex-v1"}}""")
+                }
+            }
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
+        }))
+        val client = BaiduFlexClient(OkHttpClient(), 3_000, requireTls = false)
+        val errors = Collections.synchronizedList(mutableListOf<DomainVoiceEvent.Error>())
+        val collector = launch(kotlinx.coroutines.Dispatchers.IO) {
+            client.events().collect { (it.payload as? DomainVoiceEvent.Error)?.let(errors::add) }
+        }
+        client.connect(config())
+        fun creates() = received.map(::JSONObject).count { it.getString("type") == "response.create" }
+        fun textItems() = received.map(::JSONObject).count { it.getString("type") == "conversation.item.create" }
+        val socket = serverSocket!!
+
+        socket.send("""{"type":"input_audio_buffer.speech_started"}""")
+        Thread.sleep(200)
+        client.sendUserText("请把刚才的画面描述读出来")
+        socket.send("""{"type":"input_audio_buffer.speech_stopped"}""")
+        socket.send("""{"type":"response.created","response":{"id":"r1"}}""")
+        socket.send("""{"type":"error","error":{"code":"invalid_request","message":"Conversation already has an active response in progress: r1. Wait until the response is finished before creating a new one."}}""")
+        Thread.sleep(2_000)
+        assertEquals(0, creates(), "nothing may be requested while the driver's reply runs")
+        assertEquals(0, textItems())
+
+        socket.send("""{"type":"response.done","response":{"status":"completed","output":[{"type":"message"}]}}""")
+        Thread.sleep(400)
+        assertEquals(1, creates(), "the refused reply is retried first, once")
+        socket.send("""{"type":"response.created","response":{"id":"r2"}}""")
+        socket.send("""{"type":"response.done","response":{"status":"completed","output":[{"type":"message"}]}}""")
+        Thread.sleep(400)
+        assertEquals(1, textItems(), "then the app's own turn goes out")
+        assertEquals(2, creates())
+        assertTrue(errors.isEmpty(), "an overlap must not surface as a session error: $errors")
+        collector.cancel()
         client.disconnect()
     }
 

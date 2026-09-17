@@ -60,11 +60,18 @@ class BaiduFlexClient(
     /** Outbound messages held while the conversation is being reset; flushed to the new one. */
     private val heldOutbound = java.util.concurrent.ConcurrentLinkedQueue<String>()
 
+    /** App-requested replies wait for Baidu's current reply and the driver's speech (see [ResponseTurnGate]). */
+    private val turnGate = ResponseTurnGate()
+
+    /** Incremented on every conversation reset; a queued turn from an older one may be stale. */
+    @Volatile private var conversationEpoch = 0
+
     fun events(): Flow<RealtimeEvent> = eventFlow.asSharedFlow()
 
     suspend fun connect(config: BaiduApiConfig) {
         lastConfig = config
         cancelReset()
+        turnGate.clear()
         openSession(config)
     }
 
@@ -138,6 +145,7 @@ class BaiduFlexClient(
         val config = lastConfig ?: return
         if (resetting) return
         resetting = true
+        conversationEpoch++
         val started = System.currentTimeMillis()
         DebugVoiceLog.log("flex_context_reset")
         resetJob = resetScope.launch {
@@ -183,19 +191,44 @@ class BaiduFlexClient(
 
     fun sendUserText(text: String) {
         DebugVoiceLog.log("flex_user_text chars=${text.length}")
+        val messages = listOf(BaiduFlexProtocol.userTextMessage(text), BaiduFlexProtocol.responseCreate())
         if (resetting) {
-            heldOutbound += BaiduFlexProtocol.userTextMessage(text)
-            heldOutbound += BaiduFlexProtocol.responseCreate()
+            heldOutbound += messages
             return
         }
-        sendControl(BaiduFlexProtocol.userTextMessage(text))
-        sendControl(BaiduFlexProtocol.responseCreate())
+        if (!turnGate.submit(ResponseTurnGate.Turn(messages, epoch = conversationEpoch))) {
+            DebugVoiceLog.log("flex_turn_deferred kind=text pending=${turnGate.pending()}")
+            return
+        }
+        messages.forEach(::sendControl)
     }
 
     fun sendFunctionResult(callId: String, output: String) {
         sendControl(BaiduFlexProtocol.functionCallOutput(callId, output))
         resetPolicy.onToolResultSent()
+        // The call id belongs to this conversation: after a reset there is nothing to answer.
+        val reply = ResponseTurnGate.Turn(listOf(BaiduFlexProtocol.responseCreate()), emptyList(), conversationEpoch)
+        if (!turnGate.submit(reply)) {
+            DebugVoiceLog.log("flex_turn_deferred kind=tool_result pending=${turnGate.pending()}")
+            return
+        }
         sendControl(BaiduFlexProtocol.responseCreate())
+    }
+
+    /** Sends queued app replies once Baidu is free; one at a time, each after the previous reply. */
+    private fun flushDeferredTurns() {
+        while (true) {
+            val turn = turnGate.next() ?: return
+            val messages = if (turn.epoch == conversationEpoch) turn.messages else turn.afterReset
+            if (messages.isEmpty()) {
+                DebugVoiceLog.log("flex_turn_dropped reason=conversation_reset")
+                turnGate.onResponseDone()
+                continue
+            }
+            DebugVoiceLog.log("flex_turn_released messages=${messages.size} held=$resetting")
+            if (resetting) heldOutbound += messages else messages.forEach { trySend(it) }
+            return
+        }
     }
 
     fun disconnect() {
@@ -208,6 +241,7 @@ class BaiduFlexClient(
         ready?.cancel(); ready = null
         sessionCreated = false
         assistantSpeaking = false
+        turnGate.onConnectionReset()
         assembler.clear()
         val owned = navigatingListener
         navigatingListener = null
@@ -275,11 +309,32 @@ class BaiduFlexClient(
             if (type == "response.audio.delta") assistantSpeaking = true
             if (type == "response.audio.done" || type == "response.done") assistantSpeaking = false
             if (type !in NOISY_EVENT_TYPES) DebugVoiceLog.log("flex_event type=$type")
-            if (type == "input_audio_buffer.speech_started") emptyRetry.onSpeechStarted()
+            if (type == "input_audio_buffer.speech_started") {
+                emptyRetry.onSpeechStarted()
+                turnGate.onSpeechStarted()
+            }
+            if (type == "input_audio_buffer.speech_stopped") {
+                turnGate.onSpeechStopped()
+                // If the speech gets no reply (noise), queued turns must still go out.
+                resetScope.launch {
+                    kotlinx.coroutines.delay(SPEECH_STOPPED_FLUSH_MS)
+                    if (generation.get() == current) flushDeferredTurns()
+                }
+            }
+            if (type == "response.created") turnGate.onResponseCreated()
+            if (type == "error" && BaiduFlexProtocol.isResponseAlreadyActive(text)) {
+                DebugVoiceLog.log("flex_turn_rejected_busy retry=true")
+                turnGate.onBusyRejected(
+                    ResponseTurnGate.Turn(listOf(BaiduFlexProtocol.responseCreate()), emptyList(), conversationEpoch),
+                )
+            }
             if (type == "conversation.item.input_audio_transcription.completed" && emptyRetry.onUserTranscriptCompleted()) {
                 requestReplyAfterEmptyResponse()
             }
-            if (type == "response.done" && onResponseDone(text)) requestReplyAfterEmptyResponse()
+            if (type == "response.done") {
+                turnGate.onResponseDone()
+                if (onResponseDone(text)) requestReplyAfterEmptyResponse() else flushDeferredTurns()
+            }
             events.forEach { event ->
                 if (event is DomainVoiceEvent.Error && !pending.isCompleted) {
                     if (!voiceFallbackUsed && sentVoice != BaiduAppSettings.DEFAULT_VOICE) {
@@ -327,6 +382,7 @@ class BaiduFlexClient(
     }
 
     companion object {
+        private const val SPEECH_STOPPED_FLUSH_MS = 1_600L
         private fun defaultHttp() = OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS).readTimeout(0, TimeUnit.MILLISECONDS)
             .pingInterval(20, TimeUnit.SECONDS).build()
