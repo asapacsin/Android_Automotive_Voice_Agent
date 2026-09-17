@@ -562,8 +562,8 @@ After HOME the camera device stayed open. The screen now releases it in `onPause
 
 ## P13 — Navigation gave no spoken guidance
 
-**Status:** FIXED IN CODE 2026-09-17 — unit + structural tests, APK built. **NOT YET VERIFIED ON DEVICE**
-(the phone dropped off ADB before install).
+**Status:** FIXED 2026-09-17 — device logs (emulator drive, live Baidu session, no injected speech).
+Sound quality and loudness: human ear only, still owed.
 
 The embedded SDK is silent unless `AMapNavi.setUseInnerVoice(true, …)` is called, and it never was;
 the guidance text callback was discarded. `AmapNaviViewHost` now enables the SDK's own offline voice
@@ -574,7 +574,15 @@ The SDK's `TTSPlayListener` reports start/end, so `NavigationGuidanceVoice` → 
 microphone frames reaching Baidu while guidance plays, plus 500 ms of echo, and reopens after 20 s if
 the end is never reported. Frames dropped this way are counted as `droppedGuidance` in `session_diag`.
 
-Device check still owed: `nav_guidance_tts_init`, `nav_guidance_voice enabled=true`,
-`nav_guidance_play_start/end` during an emulator drive, `nav_guidance_mic_gate closed=true/false`,
-`droppedGuidance` rising, no guidance words in `transcript=你:`; and by ear: guidance audible, and
-audible over music.
+Device evidence (emulator drive to 横琴口岸, ~2.5 min): `nav_guidance_voice enabled=true`; 21
+`nav_guidance_play_start` each paired with `play_end`; the gate closed and reopened around each;
+mic peaks while closed reached 7505 (guidance clearly reaches the mic — the gate is needed);
+`droppedGuidance` 690 of 1092 frames; **zero** `transcript=` / tool lines, i.e. no guidance was taken
+as the driver; gate open again after `nav_stop`.
+
+Known cost: at the emulator's 120 km/h guidance talks ~60% of the time, and 小诺 cannot hear the
+driver for that time. Real driving speaks far less; judge in the car.
+
+Voice quality: the SDK's offline voice (`xiaoyun`, 16 kHz, Alibaba NUI embedded) is what the SDK
+offers; its only option is the audio stream. The phone has **no** system TTS engine
+(`TTS_SERVICE`: no services found), so Android `TextToSpeech` is not an alternative here.
