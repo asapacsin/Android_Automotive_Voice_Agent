@@ -93,3 +93,14 @@ The JVM demo submits a typed `StartNavigation` to 人民广场 (GCJ-02), runs po
 ## License / deployment
 
 Not published. Checkpoint 1 is a local foundation only.
+
+## Local binaries (not in git)
+
+Large third-party files are kept out of the repository. A fresh clone needs them copied in before `:app` builds:
+
+| Path | What | Source |
+| --- | --- | --- |
+| `app/libs/Msc.jar` | iFlytek MSC SDK | iFlytek console, SDK download for your App ID |
+| `app/src/main/jniLibs/{arm64-v8a,armeabi-v7a}/libmsc.so`, `libw_ivw.so` | iFlytek native libraries (wake word) | same SDK package |
+| `app/src/main/assets/ivw/wakeword.jet` | 「你好小诺」 wake-word resource | iFlytek console, bound to the App ID |
+| `app/src/main/res/raw/bach_air_usaf.mp3` | Bundled public-domain music track | US Air Force Band public-domain recording |

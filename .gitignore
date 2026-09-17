@@ -27,3 +27,9 @@ agent/demo-strict-exit.txt
 .claude/settings.local.json
 
 tools/speech-harness/speech/
+
+# Large third-party binaries: kept locally, never pushed (see README "Local binaries")
+app/src/main/jniLibs/
+app/libs/*.jar
+app/src/main/assets/ivw/
+app/src/main/res/raw/*.mp3
