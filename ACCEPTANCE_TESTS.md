@@ -96,9 +96,10 @@ adb shell dumpsys activity services com.novadrive.app   # foreground service sta
 
 ## Current build status
 
-Build `0.6.0-baidu-flex` (versionCode 7) — counts refreshed 2026-09-16 from a forced `--rerun-tasks` run, read out of the JUnit XML:
+Build `0.6.0-baidu-flex` (versionCode 7) — counts refreshed 2026-09-17 from a forced `--rerun-tasks` run, read out of the JUnit XML:
 
-- **L1–L4: PASSED** — **240 distinct tests, 0 failures** (`:app:testDebugUnitTest` 160; JVM modules 80 across 17 suites). `testReleaseUnitTest` re-runs the same 160 app tests and is deliberately **not** added in. Clean `assembleDebug`.
+- **L1–L4: PASSED** — **334 distinct tests, 0 failures, 0 skipped** (`:app:testDebugUnitTest` 232; JVM modules 102). `testReleaseUnitTest` re-runs the same app tests and is deliberately **not** added in. Clean `assembleDebug`.
+  - Growth 240 → 334: vehicle control, camera vision, conversation reset, mic gain, tool coverage and feature-presence regression tests (2026-09-16/17).
   - Growth 196 → 240: the destination/route selection flow (`EmbeddedNavigationControllerTest` 14, `NavigationCandidatesTest` 7) plus the navigation-ended resync tests added 2026-09-16.
   - Growth since the 135-test baseline: app 66 → 116 (navigation-exit tool, VAD mitigation, and the SDK-independent domain layer), JVM modules 69 → 80 (11 new secret-scan tests).
   - The APK is now **~26 MB** (was ~13 MB) after the iFlytek AIKit native libraries; an ABI-filter decision is open with the product owner.
