@@ -273,9 +273,18 @@ class AndroidPlaybackPort(
         player.start()
     }
 
+    @Volatile private var droppingReply = false
+
     override fun enqueue(pcm16le: ByteArray) {
         if (NavigationState.shouldMuteSpeech()) return
-        if (!playbackAllowed()) return
+        if (!playbackAllowed()) {
+            if (!droppingReply) {
+                droppingReply = true
+                com.novadrive.app.DebugVoiceLog.log("reply_audio_not_played reason=${if (SpeechOutput.silent) "silent" else "not_listening"}")
+            }
+            return
+        }
+        droppingReply = false
         player.enqueue(pcm16le)
     }
 

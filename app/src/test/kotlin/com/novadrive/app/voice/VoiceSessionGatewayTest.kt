@@ -118,6 +118,23 @@ class VoiceSessionGatewayTest {
     }
 
     @Test
+    fun silentModeGoesThroughTheRunningSessionSoTheReplyIsCutOff() {
+        val identity = Any().also { identities += it }
+        val session = FakeGatewaySession()
+        VoiceSessionGateway.attachInternal(identity, session, FakeServiceControl())
+        try {
+            VoiceSessionGateway.start()
+            VoiceSessionGateway.setSpeechSilent(true, "tool")
+            assertEquals(listOf("tool"), session.silences)
+            assertTrue(SpeechOutput.silent)
+            VoiceSessionGateway.setSpeechSilent(false, "tool")
+            assertFalse(SpeechOutput.silent)
+        } finally {
+            SpeechOutput.setSilent(false, "test")
+        }
+    }
+
+    @Test
     fun startReturnsNotAttachedWhenEmpty() {
         assertEquals(StartResult.NotAttached, VoiceSessionGateway.start())
     }
@@ -169,6 +186,11 @@ class VoiceSessionGatewayTest {
         }
         override fun standbyAfterReply(reason: String) {
             standbys += "after:$reason"
+        }
+        val silences = mutableListOf<String>()
+        override fun silenceSpeech(reason: String) {
+            silences += reason
+            SpeechOutput.setSilent(true, reason)
         }
         override fun stop() {
             stopCalls += 1

@@ -15,6 +15,7 @@
     <string name="assistant_listening_active">🎙 聆听中</string>
     <string name="assistant_listening_standby">小诺已待命</string>
     <string name="assistant_listening_deep_idle">休眠中</string>
+    <string name="assistant_silent_suffix">🔇 静音</string>
     <string name="assistant_listening_hint">说「你好小诺」或点这里唤醒</string>
     <string name="assistant_speech_placeholder">小诺</string>
     <string name="bottom_bar_music">音乐</string>

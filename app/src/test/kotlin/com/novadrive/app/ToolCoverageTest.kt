@@ -28,6 +28,7 @@ class ToolCoverageTest {
         "exit_navigation_mode" to """{}""",
         "choose_navigation_option" to """{"index":2}""",
         "end_conversation" to """{}""",
+        "set_speech_output" to """{"mode":"silent"}""",
     )
 
     private fun declaredTools(): List<String> {
@@ -54,7 +55,7 @@ class ToolCoverageTest {
             val result = dispatcher.dispatch(call)
             assertNotEquals("UNKNOWN_TOOL", result.blockedReason, "$name is declared but not dispatched")
         }
-        assertEquals(setOf("navigate", "openApp", "stopMusic", "exitNavigationMode", "chooseNavigationOption", "endConversation"), executor.calls)
+        assertEquals(setOf("navigate", "openApp", "stopMusic", "exitNavigationMode", "chooseNavigationOption", "endConversation", "setSpeechSilent"), executor.calls)
     }
 
     @Test
@@ -72,6 +73,7 @@ class ToolCoverageTest {
         override fun stopMusic(): AndroidActionResult { calls += "stopMusic"; return AndroidActionResult.Accepted() }
         override fun exitNavigationMode(): AndroidActionResult { calls += "exitNavigationMode"; return AndroidActionResult.Accepted() }
         override fun endConversation(): AndroidActionResult { calls += "endConversation"; return AndroidActionResult.Accepted() }
+        override fun setSpeechSilent(silent: Boolean): AndroidActionResult { calls += "setSpeechSilent"; return AndroidActionResult.Accepted() }
         override fun chooseNavigationOption(choice: com.novadrive.app.nav.NavigationChoice): AndroidActionResult {
             calls += "chooseNavigationOption"; return AndroidActionResult.Accepted()
         }

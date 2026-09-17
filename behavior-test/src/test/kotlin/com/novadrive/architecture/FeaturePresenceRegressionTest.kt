@@ -77,6 +77,14 @@ class FeaturePresenceRegressionTest {
     }
 
     @Test
+    fun silentModeMutesRepliesButNotListening() {
+        val controller = "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt"
+        assertContains(controller, "&& !SpeechOutput.silent", "silent mode must stop reply audio")
+        assertContains(controller, "ListeningIntent.Decision.SILENCE_SPEECH ->", "「闭嘴」 is handled locally")
+        assertContains(controller, "if (reason == \"wake_word\" && playbackSpeaking)", "the wake word must be able to cut off a reply")
+    }
+
+    @Test
     fun wakeWordEngineArtifactsArePackaged() {
         assertContains("app/build.gradle.kts", "files(\"libs/Msc.jar\")", "iFlytek MSC classes")
         for (path in listOf(

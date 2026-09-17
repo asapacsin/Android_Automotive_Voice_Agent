@@ -113,6 +113,30 @@ class AndroidToolDispatcherTest {
         assertEquals(null, out.deferredOutput, "a refused pick must not wait for a list")
     }
 
+    @Test
+    fun setSpeechOutputSwitchesSilentModeAndRejectsOtherModes() {
+        val executor = FakeExecutor()
+        val dispatcher = AndroidToolDispatcher(executor, ClimateToolHandler(SimulatedVehicleControl()), noCamera())
+        assertTrue(JSONObject(dispatcher.dispatch(call("set_speech_output", mapOf("mode" to "silent"))).output!!).getBoolean("ok"))
+        dispatcher.dispatch(call("set_speech_output", mapOf("mode" to "spoken")))
+        assertEquals(listOf(true, false), executor.silentRequests)
+        val bad = dispatcher.dispatch(call("set_speech_output", mapOf("mode" to "loud")))
+        assertEquals("MODE_NOT_ALLOWED", JSONObject(bad.output!!).getString("error"))
+    }
+
+    @Test
+    fun theCoreExecutorForwardsSilentMode() {
+        val seen = mutableListOf<Boolean>()
+        val engine = com.novadrive.app.nav.FakeNaviEngine()
+        val core = CoreActionExecutor(
+            navigationFlow = EmbeddedNavigationController(resolver = engine, engine = engine),
+            music = { error("unused") },
+            speechSilent = { seen += it },
+        )
+        assertTrue(core.setSpeechSilent(true) is AndroidActionResult.Accepted)
+        assertEquals(listOf(true), seen)
+    }
+
     private fun call(name: String, args: Map<String, String>) = DomainVoiceEvent.ToolCall("call_1", name, args)
 
     private class FakeExecutor : AndroidActionExecutor {
@@ -125,6 +149,8 @@ class AndroidToolDispatcherTest {
         override fun playMusic(): AndroidActionResult { executions++; return AndroidActionResult.Accepted("music_playing") }
         override fun stopMusic(): AndroidActionResult { executions++; return AndroidActionResult.Accepted("music_stopped") }
         override fun exitNavigationMode(): AndroidActionResult { executions++; return AndroidActionResult.Accepted("navigation_mode_exited") }
+        val silentRequests = mutableListOf<Boolean>()
+        override fun setSpeechSilent(silent: Boolean): AndroidActionResult { silentRequests += silent; return AndroidActionResult.Accepted() }
         val choices = mutableListOf<NavigationChoice>()
         override fun chooseNavigationOption(choice: NavigationChoice): AndroidActionResult { choices += choice; return next }
         override suspend fun awaitNavigationOptions() = EmbeddedNavigationController.OptionsSnapshot(

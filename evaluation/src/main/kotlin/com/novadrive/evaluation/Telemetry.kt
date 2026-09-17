@@ -48,6 +48,10 @@ enum class EventType {
     RESPONSE_COMPLETED,
     SOCKET_CONNECTED,
     SOCKET_DISCONNECTED,
+
+    // Silent mode: replies are shown, not spoken.
+    SPEECH_OUTPUT_SILENCED,
+    SPEECH_OUTPUT_RESTORED,
 }
 
 data class TelemetryEvent(

@@ -83,6 +83,16 @@ object VoiceSessionGateway {
         starter?.standby(reason)
     }
 
+    /** Silent mode from the model's set_speech_output tool or the UI. */
+    fun setSpeechSilent(silent: Boolean, reason: String) {
+        if (silent) {
+            val session = starter
+            if (session != null && session.isActive) session.silenceSpeech(reason) else SpeechOutput.setSilent(true, reason)
+        } else {
+            SpeechOutput.setSilent(false, reason)
+        }
+    }
+
     /** The model's end_conversation tool: stop listening after the goodbye. */
     fun standbyAfterReply(reason: String): Boolean {
         val session = starter ?: return false
@@ -134,6 +144,9 @@ internal interface GatewaySession {
     fun activate(reason: String) {}
     fun standby(reason: String) {}
     fun standbyAfterReply(reason: String) {}
+    fun silenceSpeech(reason: String) {
+        SpeechOutput.setSilent(true, reason)
+    }
     val listeningState: ListeningState get() = if (isActive) ListeningState.ACTIVE else ListeningState.DEEP_IDLE
     fun sendText(text: String) {}
     fun injectTestSpeech(pcm16le: ByteArray) {}
@@ -163,6 +176,10 @@ private class ControllerGatewaySession(
 
     override fun standbyAfterReply(reason: String) {
         controller.standbyAfterReply(reason)
+    }
+
+    override fun silenceSpeech(reason: String) {
+        controller.silenceSpeech(reason)
     }
 
     override val listeningState: ListeningState

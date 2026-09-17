@@ -36,6 +36,9 @@ interface AndroidActionExecutor {
     fun chooseNavigationOption(choice: NavigationChoice): AndroidActionResult =
         AndroidActionResult.Rejected("NAVIGATION_CHOICE_UNAVAILABLE")
 
+    /** Silent mode on (true) or off (false), chosen by the model. */
+    fun setSpeechSilent(silent: Boolean): AndroidActionResult = AndroidActionResult.Rejected("SPEECH_OUTPUT_UNAVAILABLE")
+
     /** TERMINATE_LISTENING chosen by the model: stop listening once the goodbye has played. */
     fun endConversation(): AndroidActionResult = AndroidActionResult.Rejected("LISTENING_CONTROL_UNAVAILABLE")
 
@@ -141,6 +144,11 @@ class AndroidToolDispatcher(
             }
             "exit_navigation_mode" -> result(call, executor.exitNavigationMode())
             com.novadrive.app.voice.BaiduFlexProtocol.END_CONVERSATION -> result(call, executor.endConversation())
+            com.novadrive.app.voice.BaiduFlexProtocol.SET_SPEECH_OUTPUT -> when (call.arguments["mode"]) {
+                "silent" -> result(call, executor.setSpeechSilent(true))
+                "spoken" -> result(call, executor.setSpeechSilent(false))
+                else -> failed(call, "MODE_NOT_ALLOWED")
+            }
             else -> failed(call, "UNKNOWN_TOOL")
         }
     }
@@ -199,6 +207,7 @@ open class CoreActionExecutor(
     /** Why navigation cannot run right now (no map host, no web key), or null. */
     private val navigationBlocker: () -> String? = { null },
     private val endConversationRequest: () -> Boolean = { false },
+    private val speechSilent: (Boolean) -> Unit = { com.novadrive.app.voice.SpeechOutput.setSilent(it, "tool") },
 ) : AndroidActionExecutor {
     /**
      * Voice path into the EMBEDDED navigation. Resolves candidates and waits for the
@@ -230,6 +239,11 @@ open class CoreActionExecutor(
     /** The latest destination request; the options report must not read the previous list. */
     @Volatile
     private var lastRequest: kotlinx.coroutines.CompletableDeferred<Unit>? = null
+
+    override fun setSpeechSilent(silent: Boolean): AndroidActionResult {
+        speechSilent(silent)
+        return AndroidActionResult.Accepted(if (silent) "replies_are_text_only_now" else "replies_are_spoken_again")
+    }
 
     override fun endConversation(): AndroidActionResult =
         if (endConversationRequest()) {
@@ -294,6 +308,7 @@ class SafeAndroidActionExecutor(
     music = { MusicBackends.current(context.applicationContext) },
     navigationBlocker = { liveNavigationBlocker(context.applicationContext) },
     endConversationRequest = { com.novadrive.app.voice.VoiceSessionGateway.standbyAfterReply("end_conversation") },
+    speechSilent = { com.novadrive.app.voice.VoiceSessionGateway.setSpeechSilent(it, "tool") },
 ) {
     private val appContext = context.applicationContext
 

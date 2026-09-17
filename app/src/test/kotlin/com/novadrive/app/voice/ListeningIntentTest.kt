@@ -67,6 +67,31 @@ class ListeningIntentTest {
     }
 
     @Test
+    fun silencePhrasesTurnVoiceOffButKeepListening() {
+        for (text in listOf(
+            "闭嘴", "闭嘴！", "小诺，闭嘴", "安静", "安静点", "安静一点", "保持安静", "别说话", "别说话了", "不要说话",
+            "别出声", "别吵了", "静音", "shut up", "Shut up!", "be quiet", "keep silent", "Keep quiet.", "stop talking",
+        )) {
+            assertEquals(ListeningIntent.Decision.SILENCE_SPEECH, classify(text), text)
+            assertEquals(ListeningIntent.Decision.SILENCE_SPEECH, classify(text, picker), "$text with a list open")
+        }
+    }
+
+    @Test
+    fun restorePhrasesTurnVoiceBackOn() {
+        for (text in listOf("可以说话了", "你可以说话了", "小诺，可以说话了", "恢复语音", "取消静音", "说话吧", "you can talk now", "unmute", "speak again")) {
+            assertEquals(ListeningIntent.Decision.RESTORE_SPEECH, classify(text), text)
+        }
+    }
+
+    @Test
+    fun commandsMerelyContainingQuietWordsGoToTheModel() {
+        for (text in listOf("导航到安静的咖啡馆", "音乐小声一点", "关闭音乐", "暂停音乐", "你说话太快了", "说个笑话")) {
+            assertEquals(PASS_TO_MODEL, classify(text), text)
+        }
+    }
+
+    @Test
     fun meaningfulTurnsExcludeVadNoise() {
         assertFalse(ListeningIntent.isMeaningful(""))
         assertFalse(ListeningIntent.isMeaningful("嗯。"))

@@ -106,3 +106,29 @@ Telemetry events (`com.novadrive.evaluation.Telemetry`, monotonic time): `LISTEN
 - Whether Baidu closes an idle STANDBY socket before 5 min (handled: → DEEP_IDLE, but the timing is
   unmeasured).
 - Very long drives: battery/thermal effect of the wake-word engine alone.
+
+## Silent mode (「闭嘴」) — added 2026-09-17
+
+Separate from the listening states: 小诺 **keeps listening and carrying out commands**, but its
+replies are shown as text only (`SpeechOutput.silent`, checked by the playback port together with
+ACTIVE). The reply in progress is cut off when silent mode starts. Process-wide, not persisted
+(an app restart speaks again). Navigation guidance is not affected.
+
+| Turns voice off (whole utterance, handled locally) | Turns voice back on |
+| --- | --- |
+| 闭嘴 · 小诺闭嘴 · 安静(点/一点) · 保持安静 · 别说话 · 不要说话 · 别出声 · 不要出声 · 别吵(了) · 少说话 · 静音 · 小诺静音 · 别说了 · 不要说了 · shut up · be quiet · keep quiet · keep silent · stay silent · stop talking · silence · mute | 可以说话了 · 你可以说话了 · 说话吧 · 恢复语音 · 恢复说话 · 取消静音 · 开口吧 · 出声吧 · 可以出声了 · you can talk (now) · you can speak · speak again · unmute · talk to me |
+
+Other wordings go to the model's `set_speech_output` tool (`silent` / `spoken`). The UI shows
+「🔇 静音」 on the status row; tapping it while silent restores voice. Precedence: stop-listening
+phrases first, then silence / restore, then contextual cancellation, then the model. Phrases that
+only contain these words (「导航到安静的咖啡馆」「关闭音乐」) go to the model.
+
+**Interrupting a reply.** While 小诺 speaks the microphone is closed to its own voice (echo
+protection), so 「闭嘴」 said over a reply is not heard. The wake word is: 「你好小诺」 during a reply
+now cuts the reply off, and the following 「闭嘴」 is heard.
+
+Device (synthetic speech, 2026-09-17): 「闭嘴」 → silent 2 ms after the transcript, its reply cancelled
+before any audio; 「温度调高一点」 while silent → executed, text only (`reply_audio_not_played
+reason=silent`); 「可以说话了」 → spoken again; "keep quiet" → silent; wake path during a ~20 s reply →
+playback stopped and the microphone reopened 0.35 s later (the real spoken wake word was not used:
+the MSC engine cannot be fed injected audio).

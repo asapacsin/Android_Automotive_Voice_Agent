@@ -15,7 +15,16 @@ package com.novadrive.app.voice
  * 4. Everything else → model.
  */
 object ListeningIntent {
-    enum class Decision { TERMINATE_LISTENING, PASS_TO_MODEL }
+    enum class Decision {
+        TERMINATE_LISTENING,
+
+        /** 「闭嘴」: stop talking now and stay silent (keep listening). */
+        SILENCE_SPEECH,
+
+        /** 「可以说话了」: speak replies again. */
+        RESTORE_SPEECH,
+        PASS_TO_MODEL,
+    }
 
     /** What is going on that a cancel-like phrase could refer to. */
     data class Context(
@@ -32,16 +41,31 @@ object ListeningIntent {
         "休息吧", "小诺休息吧", "你休息吧", "去休息吧", "小诺休息",
     )
 
+    /** Silent mode: stop speaking, keep listening and working. */
+    private val SILENCE = setOf(
+        "shutup", "bequiet", "keepquiet", "keepsilent", "staysilent", "stoptalking", "silence", "mute",
+        "闭嘴", "小诺闭嘴", "安静", "安静点", "安静一点", "保持安静", "别说话", "不要说话", "别出声", "不要出声",
+        "别吵", "别吵了", "少说话", "静音", "小诺静音", "别说了", "不要说了",
+    )
+
+    /** Leave silent mode. */
+    private val RESTORE = setOf(
+        "youcantalk", "youcantalknow", "youcanspeak", "speakagain", "unmute", "talktome",
+        "可以说话了", "你可以说话了", "说话吧", "恢复语音", "恢复说话", "取消静音", "开口吧", "出声吧", "可以出声了",
+    )
+
     /** Could also mean "cancel this task"; only terminate when no task could consume them. */
     private val CONTEXTUAL = setOf("close", "nevermind", "不用了", "不需要了", "没事了")
 
-    private val POLITE_SUFFIXES = listOf("谢谢你", "谢谢", "thanks", "thankyou", "please", "吧", "啦", "了", "啊")
+    private val POLITE_SUFFIXES = listOf("谢谢你", "谢谢", "thanks", "thankyou", "please", "now", "吧", "啦", "了", "啊", "一下")
     private val POLITE_PREFIXES = listOf("你好小诺", "小诺", "好的", "好", "ok", "okay", "hey")
 
     fun classify(utterance: String, context: Context): Decision {
         val phrase = normalise(utterance)
         if (phrase.isEmpty()) return Decision.PASS_TO_MODEL
         if (matches(phrase, ALWAYS)) return Decision.TERMINATE_LISTENING
+        if (matches(phrase, SILENCE)) return Decision.SILENCE_SPEECH
+        if (matches(phrase, RESTORE)) return Decision.RESTORE_SPEECH
         if (matches(phrase, CONTEXTUAL)) {
             return if (context.pickerOpen || context.taskPending) Decision.PASS_TO_MODEL else Decision.TERMINATE_LISTENING
         }

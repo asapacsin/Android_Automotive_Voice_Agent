@@ -46,7 +46,9 @@ class VoiceSessionController(
     private val audioFocus = AudioFocusController(context)
     // Reply audio is only played while listening is ACTIVE: after 「关闭小诺」 the cancelled reply
     // must not start talking.
-    private val playback = AndroidPlaybackPort(player, audioFocus) { lifecycle.state.value == ListeningState.ACTIVE }
+    private val playback = AndroidPlaybackPort(player, audioFocus) {
+        lifecycle.state.value == ListeningState.ACTIVE && !SpeechOutput.silent
+    }
     private var ungateJob: Job? = null
     private var ungateGeneration = 0
     @Volatile private var lastUiState: VoiceUiState = VoiceUiState.DISCONNECTED
@@ -128,8 +130,25 @@ class VoiceSessionController(
         lifecycle.onSessionStarted(reason)
     }
 
-    /** Wake word, UI or an app prompt: resume listening (or restart the countdown). */
-    fun activateListening(reason: String): Boolean = lifecycle.activate(reason)
+    /**
+     * Wake word, UI or an app prompt: resume listening (or restart the countdown). The wake word
+     * also cuts off a reply in progress: while 小诺 talks the microphone is closed to its own
+     * voice, so the wake word is the only way to interrupt it (「你好小诺」…「闭嘴」).
+     */
+    fun activateListening(reason: String): Boolean {
+        if (reason == "wake_word" && playbackSpeaking) {
+            com.novadrive.app.DebugVoiceLog.log("wake_interrupts_reply")
+            Telemetry.record(EventType.INTERRUPT_DETECTED, detail = "wake_word")
+            active.cancelCurrentResponse()
+        }
+        return lifecycle.activate(reason)
+    }
+
+    /** Silent mode on: the reply in progress stops now; later replies are shown, not spoken. */
+    fun silenceSpeech(reason: String) {
+        SpeechOutput.setSilent(true, reason)
+        active.cancelCurrentResponse()
+    }
 
     /** UI: stop listening now (STANDBY). */
     fun standby(reason: String) {
@@ -262,6 +281,16 @@ class VoiceSessionController(
                 com.novadrive.app.DebugVoiceLog.log("listening_terminate source=voice")
                 Telemetry.record(EventType.TERMINATE_LISTENING, detail = "voice")
                 lifecycle.terminate("voice_command")
+            }
+            ListeningIntent.Decision.SILENCE_SPEECH -> {
+                silenceSpeech("voice_command")
+                onTranscript("小诺: （已静音，只显示文字。说「可以说话了」恢复语音）")
+                lifecycle.onMeaningfulUserTurn()
+            }
+            ListeningIntent.Decision.RESTORE_SPEECH -> {
+                // The model's own short answer to this utterance is spoken again.
+                SpeechOutput.setSilent(false, "voice_command")
+                lifecycle.onMeaningfulUserTurn()
             }
             ListeningIntent.Decision.PASS_TO_MODEL ->
                 if (ListeningIntent.isMeaningful(text)) lifecycle.onMeaningfulUserTurn()
