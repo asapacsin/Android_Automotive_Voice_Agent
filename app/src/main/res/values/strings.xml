@@ -25,6 +25,7 @@
     <string name="bottom_bar_climate_failed">空调操作失败</string>
     <string name="camera_button">📷</string>
     <string name="camera_close">关闭相机</string>
+    <string name="camera_close_short">✕</string>
     <string name="camera_ask_ai">问AI</string>
     <string name="nav_choice_cancel">取消</string>
     <string name="nav_choice_pick_destination">选择目的地</string>

@@ -38,7 +38,8 @@ class CameraPreviewView(context: Context) : FrameLayout(context), CameraVisionSu
     /** 「问AI」: ask the vision model about the current frame without using voice. */
     var onAskAi: (() -> Unit)? = null
 
-    private val answer = TextView(context)
+    /** Answers and status go to the assistant's speech bubble: the small window has no room for text. */
+    var onVisionText: ((String) -> Unit)? = null
 
     /** Completed once the preview has delivered enough frames for exposure to settle. */
     @Volatile
@@ -58,45 +59,31 @@ class CameraPreviewView(context: Context) : FrameLayout(context), CameraVisionSu
 
     init {
         visibility = GONE
+        // Small picture-in-picture window: rounded, lifted above the map.
+        background =
+            android.graphics.drawable.GradientDrawable().apply {
+                setColor(Color.BLACK)
+                cornerRadius = dp(12).toFloat()
+                setStroke(dp(2), Color.parseColor("#CCFFFFFF"))
+            }
+        clipToOutline = true
+        elevation = dp(8).toFloat()
         addView(textureView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-        val close =
-            Button(context).apply {
-                text = context.getString(R.string.camera_close)
-                setOnClickListener { hide() }
-            }
-        val ask =
-            Button(context).apply {
-                text = context.getString(R.string.camera_ask_ai)
-                setOnClickListener { onAskAi?.invoke() }
-            }
-        val buttons =
-            LinearLayout(context).apply {
-                orientation = LinearLayout.HORIZONTAL
-                addView(ask)
-                addView(close)
-            }
+        val close = chip(context.getString(R.string.camera_close_short)) { hide() }
+        val ask = chip(context.getString(R.string.camera_ask_ai)) { onAskAi?.invoke() }
         addView(
-            buttons,
+            close,
             LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
                 gravity = Gravity.TOP or Gravity.END
-                topMargin = dp(16)
-                rightMargin = dp(16)
+                topMargin = dp(4)
+                rightMargin = dp(4)
             },
         )
-        answer.apply {
-            textSize = 17f
-            setTextColor(Color.WHITE)
-            setBackgroundColor(Color.parseColor("#CC000000"))
-            setPadding(dp(16), dp(12), dp(16), dp(12))
-            visibility = GONE
-        }
         addView(
-            answer,
-            LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
-                gravity = Gravity.BOTTOM
-                bottomMargin = dp(80)
-                leftMargin = dp(12)
-                rightMargin = dp(12)
+            ask,
+            LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+                gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+                bottomMargin = dp(6)
             },
         )
         textureView.surfaceTextureListener =
@@ -123,7 +110,6 @@ class CameraPreviewView(context: Context) : FrameLayout(context), CameraVisionSu
         if (!isShowing) {
             framesSeen = 0
             framesReady = CompletableDeferred()
-            answer.visibility = GONE
         }
         visibility = VISIBLE
         startBackgroundThread()
@@ -174,11 +160,26 @@ class CameraPreviewView(context: Context) : FrameLayout(context), CameraVisionSu
     }
 
     override fun showVisionText(text: String) {
-        post {
-            answer.text = text
-            answer.visibility = if (text.isBlank()) GONE else VISIBLE
-        }
+        if (text.isBlank()) return
+        post { onVisionText?.invoke(text) }
     }
+
+    private fun chip(label: String, onClick: () -> Unit): TextView =
+        TextView(context).apply {
+            text = label
+            textSize = 13f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            setPadding(dp(10), dp(4), dp(10), dp(4))
+            background =
+                android.graphics.drawable.GradientDrawable().apply {
+                    setColor(Color.parseColor("#B3000000"))
+                    cornerRadius = dp(14).toFloat()
+                }
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { onClick() }
+        }
 
     fun toggle() {
         if (isShowing) hide() else show()

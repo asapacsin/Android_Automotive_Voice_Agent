@@ -64,12 +64,22 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
                 gravity = Gravity.BOTTOM
             },
         )
-        addView(camera, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        // Picture-in-picture, bottom right above the bar. 9:16 matches the portrait preview,
+        // so the image is not squashed.
+        addView(
+            camera,
+            LayoutParams(dp(CAMERA_PIP_WIDTH_DP), dp(CAMERA_PIP_WIDTH_DP * 16 / 9)).apply {
+                gravity = Gravity.BOTTOM or Gravity.END
+                bottomMargin = dp(CAMERA_PIP_BOTTOM_DP)
+                rightMargin = dp(12)
+            },
+        )
+        camera.onVisionText = { text -> overlay.appendTranscript("📷 $text") }
         camera.visibility = GONE
         bottomBar.onCameraClick = { onCameraToggleRequested?.invoke() }
         bottomBar.bindClimate(VehicleControlProvider.port)
         camera.onAskAi = {
-            // Same handler the voice tool uses; the answer is shown on the camera view.
+            // Same handler the voice tool uses; the answer shows in the speech bubble and is spoken.
             uiScope.launch {
                 val outcome = VisionProvider.handler(context).ask(null)
                 // Read it aloud in the assistant's own voice (the phone has no default system TTS).
@@ -161,4 +171,9 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private companion object {
+        const val CAMERA_PIP_WIDTH_DP = 135
+        const val CAMERA_PIP_BOTTOM_DP = 76
+    }
 }
