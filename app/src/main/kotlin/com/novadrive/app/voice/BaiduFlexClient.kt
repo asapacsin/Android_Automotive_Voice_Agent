@@ -2,6 +2,8 @@ package com.novadrive.app.voice
 
 import com.novadrive.app.BaiduApiConfig
 import com.novadrive.app.BaiduAppSettings
+import com.novadrive.evaluation.EventType
+import com.novadrive.evaluation.Telemetry
 import com.novadrive.app.BaiduAuthMode
 import com.novadrive.app.DebugVoiceLog
 import com.novadrive.app.NavigationState
@@ -62,6 +64,10 @@ class BaiduFlexClient(
 
     /** App-requested replies wait for Baidu's current reply and the driver's speech (see [ResponseTurnGate]). */
     private val turnGate = ResponseTurnGate()
+
+    /** A reply is in progress on the server (response.created .. response.done). */
+    @Volatile private var responseInProgress = false
+    @Volatile private var ttsStartedForResponse = false
 
     /** Replies that claim an action without a tool call get one corrective follow-up. */
     private val actionGuard = ActionClaimGuard()
@@ -194,8 +200,36 @@ class BaiduFlexClient(
         if (assistantSpeaking) trySend(BaiduFlexProtocol.responseCancel())
     }
 
+    /**
+     * Listening was ended by the driver: cancel the reply to that utterance even if no audio has
+     * arrived yet (cancelResponse only acts once audio plays, to keep barge-in behaviour as is).
+     */
+    fun cancelActiveResponse() {
+        if (responseInProgress || assistantSpeaking) trySend(BaiduFlexProtocol.responseCancel())
+    }
+
+    /**
+     * Listening stopped (standby): held microphone audio is dropped, and the client sends no turns
+     * of its own (false-claim follow-ups, queued replies) until listening resumes.
+     */
+    fun discardPendingAudio() {
+        listeningSuspended = true
+        heldOutbound.removeIf { it.contains("\"input_audio_buffer.append\"") }
+        turnGate.clear()
+    }
+
+    /** Listening resumed after a standby: the next command starts with no earlier conversation. */
+    fun requestFreshConversation() {
+        listeningSuspended = false
+        if (socket == null || resetting) return
+        resetConversation()
+    }
+
+    @Volatile private var listeningSuspended = false
+
     fun sendUserText(text: String) {
         DebugVoiceLog.log("flex_user_text chars=${text.length}")
+        listeningSuspended = false
         val messages = listOf(BaiduFlexProtocol.userTextMessage(text), BaiduFlexProtocol.responseCreate())
         if (resetting) {
             heldOutbound += messages
@@ -244,8 +278,10 @@ class BaiduFlexClient(
     private fun closeSocket() {
         generation.incrementAndGet()
         ready?.cancel(); ready = null
+        if (socket != null) Telemetry.record(EventType.SOCKET_DISCONNECTED, detail = "client_close")
         sessionCreated = false
         assistantSpeaking = false
+        responseInProgress = false
         turnGate.onConnectionReset()
         assembler.clear()
         val owned = navigatingListener
@@ -286,8 +322,9 @@ class BaiduFlexClient(
             if (resetPolicy.onResponseDone(kinds)) resetConversation()
             val spoken = assistantText.toString()
             assistantText.setLength(0)
-            actionGuard.onResponseDone(kinds, spoken)?.let { nudge ->
+            actionGuard.onResponseDone(kinds, spoken)?.takeIf { !listeningSuspended }?.let { nudge ->
                 DebugVoiceLog.log("flex_action_claim_unverified follow_up=true")
+                Telemetry.record(EventType.GUARD_FOLLOW_UP)
                 sendUserText(nudge)
             }
             emptyRetry.onResponseDone(status, kinds.size)
@@ -316,6 +353,10 @@ class BaiduFlexClient(
             val events = runCatching {
                 assembler.consume(text) + BaiduFlexProtocol.parseCommonEvent(text, assistantSpeaking)
             }.getOrElse { failProtocol(pending, it); return }
+            if (type == "session.updated" && sessionCreated && !pending.isCompleted) {
+                Telemetry.record(EventType.SOCKET_CONNECTED)
+            }
+            recordTelemetry(type, text)
             if (type == "session.updated" && sessionCreated) pending.complete(Unit)
             if (type == "response.audio.delta") assistantSpeaking = true
             if (type == "response.audio.done" || type == "response.done") assistantSpeaking = false
@@ -372,12 +413,14 @@ class BaiduFlexClient(
 
         override fun onFailure(webSocket: WebSocket, failure: Throwable, response: Response?) {
             if (generation.get() != current) return
+            Telemetry.record(EventType.SOCKET_DISCONNECTED, detail = "failure")
             val mapped = mapFailure(failure, response)
             if (!pending.completeExceptionally(mapped)) emit(DomainVoiceEvent.Error(mapped.code, mapped.safeMessage))
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
             if (generation.get() != current) return
+            Telemetry.record(EventType.SOCKET_DISCONNECTED, detail = "server_closed code=$code")
             val failure = VoiceProviderException("BAIDU_FLEX_CONNECTION_CLOSED", "Baidu Flex WebSocket closed (status=$code)")
             if (!pending.completeExceptionally(failure)) {
                 emit(DomainVoiceEvent.Error(failure.code, failure.safeMessage)); emit(DomainVoiceEvent.Closed)
@@ -387,6 +430,36 @@ class BaiduFlexClient(
         private fun failProtocol(pending: CompletableDeferred<Unit>, failure: Throwable) {
             val mapped = VoiceProviderException("BAIDU_FLEX_PROTOCOL_ERROR", "invalid Baidu Flex realtime event", failure)
             if (!pending.completeExceptionally(mapped)) emit(DomainVoiceEvent.Error(mapped.code, mapped.safeMessage))
+        }
+    }
+
+    /** Interaction telemetry. Text is only kept by the recorder during benchmark runs. */
+    private fun recordTelemetry(type: String, text: String) {
+        when (type) {
+            "input_audio_buffer.speech_started" -> Telemetry.record(EventType.SPEECH_START)
+            "input_audio_buffer.speech_stopped" -> Telemetry.record(EventType.SPEECH_END)
+            "conversation.item.input_audio_transcription.completed" ->
+                Telemetry.record(EventType.ASR_RESULT) { JSONObject(text).optString("transcript") }
+            "response.created" -> {
+                responseInProgress = true
+                ttsStartedForResponse = false
+                Telemetry.record(EventType.AGENT_REQUEST_START)
+            }
+            "response.audio.delta" -> if (!ttsStartedForResponse) {
+                ttsStartedForResponse = true
+                Telemetry.record(EventType.TTS_START)
+            }
+            "response.audio.done" -> Telemetry.record(EventType.TTS_END)
+            "response.audio_transcript.done", "response.text.done" -> Telemetry.record(EventType.ASSISTANT_REPLY) {
+                JSONObject(text).let { it.optString("transcript").ifEmpty { it.optString("text") } }
+            }
+            "response.done" -> {
+                responseInProgress = false
+                Telemetry.record(EventType.RESPONSE_COMPLETED, detail = JSONObject(text).optJSONObject("response")?.optString("status"))
+            }
+            "error" -> Telemetry.record(EventType.ERROR, errorCode = runCatching {
+                JSONObject(text).optJSONObject("error")?.optString("code")
+            }.getOrNull())
         }
     }
 

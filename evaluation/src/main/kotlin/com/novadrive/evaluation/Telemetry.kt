@@ -37,6 +37,17 @@ enum class EventType {
     NAVIGATION_EVENT,
     TASK_COMPLETE,
     ERROR,
+
+    // Listening lifecycle (ACTIVE / STANDBY / DEEP_IDLE). detail carries the reason and, on
+    // leaving ACTIVE, the cumulative cloud-streaming time.
+    LISTENING_ACTIVE,
+    LISTENING_STANDBY,
+    LISTENING_DEEP_IDLE,
+    INACTIVITY_TIMEOUT,
+    TERMINATE_LISTENING,
+    RESPONSE_COMPLETED,
+    SOCKET_CONNECTED,
+    SOCKET_DISCONNECTED,
 }
 
 data class TelemetryEvent(

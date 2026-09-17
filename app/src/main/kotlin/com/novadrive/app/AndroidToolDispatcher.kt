@@ -33,6 +33,9 @@ interface AndroidActionExecutor {
     fun chooseNavigationOption(choice: NavigationChoice): AndroidActionResult =
         AndroidActionResult.Rejected("NAVIGATION_CHOICE_UNAVAILABLE")
 
+    /** TERMINATE_LISTENING chosen by the model: stop listening once the goodbye has played. */
+    fun endConversation(): AndroidActionResult = AndroidActionResult.Rejected("LISTENING_CONTROL_UNAVAILABLE")
+
     /** What the navigation screen shows once the latest request has settled (bounded wait). */
     suspend fun awaitNavigationOptions(): EmbeddedNavigationController.OptionsSnapshot? = null
 }
@@ -105,6 +108,7 @@ class AndroidToolDispatcher(
                 }
             }
             "exit_navigation_mode" -> result(call, executor.exitNavigationMode())
+            com.novadrive.app.voice.BaiduFlexProtocol.END_CONVERSATION -> result(call, executor.endConversation())
             else -> failed(call, "UNKNOWN_TOOL")
         }
     }
@@ -191,6 +195,13 @@ class SafeAndroidActionExecutor(
     /** The latest destination request; the options report must not read the previous list. */
     @Volatile
     private var lastRequest: kotlinx.coroutines.CompletableDeferred<Unit>? = null
+
+    override fun endConversation(): AndroidActionResult =
+        if (com.novadrive.app.voice.VoiceSessionGateway.standbyAfterReply("end_conversation")) {
+            AndroidActionResult.Accepted("listening_will_stop_after_this_reply")
+        } else {
+            AndroidActionResult.Rejected("NO_ACTIVE_SESSION")
+        }
 
     override fun chooseNavigationOption(choice: NavigationChoice): AndroidActionResult =
         when (val outcome = navigationFlow.chooseByVoice(choice)) {

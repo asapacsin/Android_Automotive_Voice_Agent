@@ -72,6 +72,7 @@ dependencies {
     implementation(project(":feedback"))
     implementation(project(":orchestration"))
     implementation(project(":simulator"))
+    implementation(project(":evaluation"))
     implementation(files("libs/Msc.jar"))
     implementation(libs.amap.navi.sdk)
     implementation(libs.okhttp)

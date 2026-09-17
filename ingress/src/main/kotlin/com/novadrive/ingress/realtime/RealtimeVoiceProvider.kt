@@ -34,6 +34,15 @@ interface RealtimeVoiceProvider {
 
     suspend fun sendText(text: String) {}
 
+    /** Drops microphone audio queued but not yet sent (listening was just stopped). */
+    fun discardPendingAudio() {}
+
+    /** The next turn should start without the earlier conversation (after a standby). */
+    fun startFreshConversation() {}
+
+    /** Cancels a reply that is in progress even if its audio has not started yet. */
+    suspend fun cancelActiveResponse(): DomainVoiceEvent = cancelAssistantResponse()
+
     suspend fun injectWorkResult(result: WorkInjection): DomainVoiceEvent
 
     fun events(): Flow<RealtimeEvent> = emptyFlow()

@@ -19,9 +19,9 @@ object VoiceContextHints {
         val parts = buildList {
             when (phase) {
                 NavigationPhase.AWAITING_DESTINATION_SELECTION ->
-                    add("屏幕上正在显示导航目的地候选列表$listed；用户说「第几个」或地点名称时调用 choose_navigation_option；说「算了」「不去了」「取消」时调用 exit_navigation_mode。")
+                    add("屏幕上正在显示导航目的地候选列表$listed；用户说「第几个」或地点名称时调用 choose_navigation_option；说「算了」「不用了」「不去了」「取消」「返回」时必须调用 exit_navigation_mode（只口头答应不会关闭列表）。")
                 NavigationPhase.AWAITING_ROUTE_SELECTION ->
-                    add("屏幕上正在显示路线选择列表$listed；导航还没有开始；用户说「第几条」「最快的」「最短的」「免费的」时调用 choose_navigation_option，说「开始导航」「好的」「就这条」时用 preference=recommended；说「算了」「不去了」「取消」时调用 exit_navigation_mode。")
+                    add("屏幕上正在显示路线选择列表$listed；导航还没有开始；用户说「第几条」「最快的」「最短的」「免费的」时调用 choose_navigation_option，说「开始导航」「好的」「就这条」时用 preference=recommended；说「算了」「不用了」「不去了」「取消」「返回」时必须调用 exit_navigation_mode（只口头答应不会关闭列表）。")
                 NavigationPhase.NAVIGATING ->
                     add("当前正在导航；用户说「结束导航」「算了」「不去了」时调用 exit_navigation_mode。")
                 else -> Unit

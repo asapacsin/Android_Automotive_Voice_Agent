@@ -19,6 +19,8 @@ data class VoiceSessionCallbacks(
     val onTranscript: (String) -> Unit = {},
     val onError: (String, String) -> Unit = { _, _ -> },
     val onToolCall: ((DomainVoiceEvent.ToolCall) -> ToolDispatchResult)? = null,
+    /** The driver's finished utterance, before the model's reply to it. */
+    val onUserFinalTranscript: (String) -> Unit = {},
 )
 
 /**
@@ -43,6 +45,12 @@ class VoiceSessionController(
     private val providerConnected = AtomicBoolean(false)
     private val pendingTexts = java.util.concurrent.ConcurrentLinkedQueue<String>()
     private val captureArmed = AtomicBoolean(false)
+
+    /**
+     * Listening lifecycle switch (standby): no capture, no upload, and nothing re-arms capture —
+     * not a reconnect, not a SessionReady. Separate from the temporary playback/guidance gates.
+     */
+    private val captureSuspended = AtomicBoolean(false)
     private val collectorGeneration = AtomicInteger(0)
     private val mutex = Mutex()
     private var eventJob: Job? = null
@@ -148,7 +156,62 @@ class VoiceSessionController(
         log.info("work_cancel", mapOf("id" to id))
     }
 
+    /**
+     * Stops (true) or resumes (false) microphone capture and upload for the listening lifecycle.
+     * Stopping takes effect before this returns: capture is released and queued audio dropped.
+     */
+    fun setCaptureSuspended(suspended: Boolean) {
+        if (suspended) {
+            if (!captureSuspended.compareAndSet(false, true)) return
+            captureArmed.set(false)
+            microphone.stop()
+            provider.discardPendingAudio()
+            log.info("capture_suspended")
+        } else {
+            if (!captureSuspended.compareAndSet(true, false)) return
+            log.info("capture_resumed")
+            if (providerConnected.get()) resumeCaptureOnce()
+        }
+    }
+
+    val captureSuspendedNow: Boolean get() = captureSuspended.get()
+
+    /** Whether the provider connection is up (independent of capture). */
+    val connectedNow: Boolean get() = providerConnected.get()
+
+    /** Tool work that has not yet been answered (running, or finished but not delivered). */
+    fun hasPendingWork(): Boolean = workCoordinator.all().any { w ->
+        when (w.status) {
+            WorkStatus.QUEUED, WorkStatus.RUNNING, WorkStatus.PROGRESS -> true
+            WorkStatus.COMPLETED, WorkStatus.FAILED -> !w.delivered
+            WorkStatus.CANCELLED -> false
+        }
+    }
+
+    /** Stops the assistant's current reply: local playback now, and the reply on the server. */
+    fun cancelCurrentResponse() {
+        if (!sessionActive.get()) return
+        playback.flush()
+        scope.launch {
+            mutex.withLock {
+                machine.onInterrupted()
+                publish()
+            }
+            try {
+                provider.cancelActiveResponse()
+            } catch (ex: Exception) {
+                log.warn("cancel_failed", mapOf("error" to (ex.message ?: "cancel")))
+            }
+        }
+    }
+
+    /** The next turn starts a fresh provider conversation (no earlier context). */
+    fun requestFreshConversation() {
+        provider.startFreshConversation()
+    }
+
     fun injectAudioFrame(frame: ByteArray) {
+        if (captureSuspended.get()) return
         if (sessionActive.get() && machine.streamingAudio && !microphone.muted) {
             provider.sendAudio(frame)
         }
@@ -200,6 +263,7 @@ class VoiceSessionController(
     private fun resumeCaptureOnce() {
         if (!sessionActive.get()) return
         if (config.interactionMode == InteractionMode.MUTED) return
+        if (captureSuspended.get()) return
         if (!captureArmed.compareAndSet(false, true)) return
         microphone.muted = config.interactionMode == InteractionMode.PTT
         microphone.start { frame -> injectAudioFrame(frame) }
@@ -274,7 +338,10 @@ class VoiceSessionController(
                     return@withLock
                 }
                 is DomainVoiceEvent.UserTranscript -> {
-                    if (event.final && event.text.isNotBlank()) callbacks.onTranscript("你: ${event.text}")
+                    if (event.final && event.text.isNotBlank()) {
+                        callbacks.onTranscript("你: ${event.text}")
+                        callbacks.onUserFinalTranscript(event.text)
+                    }
                 }
                 is DomainVoiceEvent.AssistantTranscript -> {
                     if (event.final && event.text.isNotBlank()) callbacks.onTranscript("小诺: ${event.text}")

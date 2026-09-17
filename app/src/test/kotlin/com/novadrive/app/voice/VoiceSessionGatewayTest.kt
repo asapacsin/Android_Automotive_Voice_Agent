@@ -77,6 +77,47 @@ class VoiceSessionGatewayTest {
     }
 
     @Test
+    fun wakeOrUiResumesAStandbySessionWithoutANewConnection() {
+        val identity = Any().also { identities += it }
+        val session = FakeGatewaySession()
+        VoiceSessionGateway.attachInternal(identity, session, FakeServiceControl())
+        VoiceSessionGateway.start("wake_word")
+        VoiceSessionGateway.standby("ui")
+        assertEquals(ListeningState.STANDBY, VoiceSessionGateway.listeningState)
+        assertEquals(StartResult.AlreadyActive, VoiceSessionGateway.start("wake_word"))
+        assertEquals(listOf("wake_word"), session.activations)
+        assertEquals(1, session.startCalls, "the same session is resumed")
+        assertEquals(ListeningState.ACTIVE, VoiceSessionGateway.listeningState)
+    }
+
+    @Test
+    fun appPromptsResumeListeningBeforeSpeaking() {
+        val identity = Any().also { identities += it }
+        val session = FakeGatewaySession()
+        VoiceSessionGateway.attachInternal(identity, session, FakeServiceControl())
+        VoiceSessionGateway.start()
+        VoiceSessionGateway.standby("ui")
+        VoiceSessionGateway.speak("读一下")
+        assertEquals(listOf("app_prompt"), session.activations)
+        assertEquals(listOf("读一下"), session.texts)
+    }
+
+    @Test
+    fun endConversationNeedsARunningSession() {
+        val identity = Any().also { identities += it }
+        val session = FakeGatewaySession()
+        VoiceSessionGateway.attachInternal(identity, session, FakeServiceControl())
+        assertFalse(VoiceSessionGateway.standbyAfterReply("end_conversation"))
+        VoiceSessionGateway.start()
+        assertTrue(VoiceSessionGateway.standbyAfterReply("end_conversation"))
+        assertEquals(listOf("after:end_conversation"), session.standbys)
+        assertEquals(ListeningState.DEEP_IDLE, run {
+            VoiceSessionGateway.stop()
+            VoiceSessionGateway.listeningState
+        })
+    }
+
+    @Test
     fun startReturnsNotAttachedWhenEmpty() {
         assertEquals(StartResult.NotAttached, VoiceSessionGateway.start())
     }
@@ -110,9 +151,24 @@ class VoiceSessionGatewayTest {
         override fun sendText(text: String) {
             texts += text
         }
-        override fun startBaidu() {
+        val activations = mutableListOf<String>()
+        val standbys = mutableListOf<String>()
+        override var listeningState: ListeningState = ListeningState.DEEP_IDLE
+        override fun startBaidu(reason: String) {
             startCalls += 1
             isActive = true
+            listeningState = ListeningState.ACTIVE
+        }
+        override fun activate(reason: String) {
+            activations += reason
+            listeningState = ListeningState.ACTIVE
+        }
+        override fun standby(reason: String) {
+            standbys += reason
+            listeningState = ListeningState.STANDBY
+        }
+        override fun standbyAfterReply(reason: String) {
+            standbys += "after:$reason"
         }
         override fun stop() {
             stopCalls += 1

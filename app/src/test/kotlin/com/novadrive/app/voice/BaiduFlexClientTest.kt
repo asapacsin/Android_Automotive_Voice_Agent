@@ -63,7 +63,7 @@ class BaiduFlexClientTest {
         assertEquals("Bearer placeholder-flex-key", request.getHeader("Authorization"))
         assertEquals(BaiduFlexProtocol.MODEL, request.requestUrl?.queryParameter("model"))
         assertEquals("session.update", JSONObject(received[0]).getString("type"))
-        assertEquals(7, JSONObject(received[0]).getJSONObject("session").getJSONArray("tools").length())
+        assertEquals(8, JSONObject(received[0]).getJSONObject("session").getJSONArray("tools").length())
         val output = received.map(::JSONObject).single { it.getString("type") == "conversation.item.create" }
         assertEquals("call_9", output.getJSONObject("item").getString("call_id"))
         assertTrue(received.map(::JSONObject).any { it.getString("type") == "response.create" })
@@ -272,6 +272,42 @@ class BaiduFlexClientTest {
         assertEquals(1, followUp.size)
         assertTrue(followUp.single().toString().contains("温度调高一点"))
         assertEquals(1, sent.count { it.getString("type") == "response.create" })
+        client.disconnect()
+    }
+
+    @Test
+    fun afterStandbyTheClientSendsNoTurnsOfItsOwn() = runBlocking {
+        // 「关闭小诺」: the reply to it is cancelled and must not trigger a false-claim follow-up.
+        val received = Collections.synchronizedList(mutableListOf<String>())
+        var serverSocket: WebSocket? = null
+        server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
+                serverSocket = webSocket
+                webSocket.send("""{"type":"session.created","session":{"model":"qianfan-realtime-flex-v1"}}""")
+            }
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                received += text
+                if (JSONObject(text).optString("type") == "session.update") {
+                    webSocket.send("""{"type":"session.updated","session":{"model":"qianfan-realtime-flex-v1"}}""")
+                }
+            }
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
+        }))
+        val client = BaiduFlexClient(OkHttpClient(), 3_000, requireTls = false)
+        client.connect(config())
+        val socket = serverSocket!!
+        socket.send("""{"type":"response.created","response":{"id":"r1"}}""")
+        socket.send("""{"type":"conversation.item.input_audio_transcription.completed","item_id":"i1","transcript":"空调关闭小诺"}""")
+        Thread.sleep(200)
+        client.discardPendingAudio()
+        client.cancelActiveResponse()
+        socket.send("""{"type":"response.audio_transcript.done","transcript":"好的，已关闭。"}""")
+        socket.send("""{"type":"response.done","response":{"status":"cancelled","output":[{"type":"message"}]}}""")
+        Thread.sleep(500)
+        val types = received.map { JSONObject(it).getString("type") }
+        assertTrue("response.cancel" in types, "the reply in progress is cancelled before any audio: $types")
+        assertEquals(0, types.count { it == "conversation.item.create" }, "no follow-up turn in standby")
+        assertEquals(0, types.count { it == "response.create" })
         client.disconnect()
     }
 

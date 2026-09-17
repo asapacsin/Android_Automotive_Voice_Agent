@@ -653,3 +653,18 @@ started, `nav_active_route` matched; 去最近的那个 → destination 1; 第�
 Known: for 「开始导航」 the model twice first said 「导航已开始。」 without the tool; `ActionClaimGuard`
 caught it and the follow-up started the route, so the driver hears the sentence twice. 「开始导航」
 while the *destination* list is showing gets an honest failure instead of 「请先选地点」.
+
+## P17 — The microphone streamed to Baidu for the whole session
+
+**Status:** FIXED 2026-09-17 — unit tests (virtual time) and device (synthetic speech). See
+[docs/LISTENING_LIFECYCLE.md](docs/LISTENING_LIFECYCLE.md).
+
+A session, once started, uploaded audio until it was stopped in settings — including through long
+navigation. Now: ACTIVE → STANDBY after 30 s without a meaningful user turn (capture released),
+STANDBY → DEEP_IDLE after 5 min (socket closed, no reconnect); 「关闭小诺」-type phrases end listening
+at once (local, context-aware), the model can call `end_conversation`; wake word, UI and app prompts
+resume. Temporary suppression (reply / guidance audio) is unchanged and separate.
+
+Found on the way: with the destination list open, the model answered 「不用了」 with 「已取消导航」 and no
+tool call, leaving the list open. The false-claim guard now covers 「不用了/没事了/返回」 and the tool
+description / list hint say an unspoken cancel changes nothing; device re-test cancelled the list.

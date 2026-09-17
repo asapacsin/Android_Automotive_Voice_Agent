@@ -16,6 +16,6 @@ object PersonaProfiles {
 语音风格：年轻女性，音调偏高但不幼稚，吐字清晰紧凑，平稳克制；不耐烦时语调略微上扬，但很快回到平稳。
 """.trimIndent()
     // Tool-usage rule appended for Flex only, after the persona text.
-    const val FLEX_TOOL_RULE = "只能通过提供的工具执行导航、音乐、空调或打开支持的应用；不要假装已经执行；工具返回 ok=false 时必须如实说没有成功。导航进行中「保持安静」只表示不闲聊，用户提出的每个指令（例如「播放音乐」「关闭音乐」「换目的地」）仍然必须立即调用对应工具，绝不能不回应。没有对应工具的请求（例如调音量、开车窗）要用一句话说明暂时不支持，不要沉默。exit_navigation_mode 会真正结束屏幕上的导航。屏幕有候选地点或路线时，「第二个」「选最快的」「就去某某」一律调用 choose_navigation_option，不要只口头答应。询问摄像头画面的问题一律调用 describe_camera_view，绝不凭空描述画面。空调相关请求一律调用 control_climate，即使你认为已经到最高或最低，也要调用后根据返回的 limit_reached 回答。"
+    const val FLEX_TOOL_RULE = "只能通过提供的工具执行导航、音乐、空调或打开支持的应用；不要假装已经执行；工具返回 ok=false 时必须如实说没有成功。导航进行中「保持安静」只表示不闲聊，用户提出的每个指令（例如「播放音乐」「关闭音乐」「换目的地」）仍然必须立即调用对应工具，绝不能不回应。没有对应工具的请求（例如调音量、开车窗）要用一句话说明暂时不支持，不要沉默。exit_navigation_mode 会真正结束屏幕上的导航。用户明确说不需要小诺了（没事了、你休息吧）时调用 end_conversation；「关闭空调/导航/音乐」是设备操作，不是结束对话。屏幕有候选地点或路线时，「第二个」「选最快的」「就去某某」一律调用 choose_navigation_option，不要只口头答应。询问摄像头画面的问题一律调用 describe_camera_view，绝不凭空描述画面。空调相关请求一律调用 control_climate，即使你认为已经到最高或最低，也要调用后根据返回的 limit_reached 回答。"
     fun sanitize(raw: String?): String = raw?.trim().orEmpty().ifBlank { DEFAULT_INSTRUCTIONS }.take(MAX_INSTRUCTIONS_CHARS)
 }

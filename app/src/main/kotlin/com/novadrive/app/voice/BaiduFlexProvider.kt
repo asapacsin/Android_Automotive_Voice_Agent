@@ -35,6 +35,11 @@ class BaiduFlexProvider(
         return DomainVoiceEvent.WorkResult(result.callId, result.output)
     }
     override suspend fun sendText(text: String) = client.sendUserText(text)
+    override fun discardPendingAudio() = client.discardPendingAudio()
+    override fun startFreshConversation() = client.requestFreshConversation()
+    override suspend fun cancelActiveResponse(): DomainVoiceEvent {
+        client.cancelActiveResponse(); return DomainVoiceEvent.Interrupted("client_cancelled")
+    }
     override fun interrupt() = runBlocking { cancelAssistantResponse() }
     override fun sendToolResult(result: ToolResult) = runBlocking {
         injectWorkResult(WorkInjection(result.callId, result.ok, result.output))

@@ -89,7 +89,7 @@ object BaiduFlexProtocol {
         )
         val exitNavigationMode = functionToolNoArgs(
             name = "exit_navigation_mode",
-            description = "结束或取消导航。用户说「结束导航」「停止导航」「取消导航」「退出导航」「不去了」，或在导航、选择地点/路线时说「算了」时调用。" +
+            description = "结束或取消导航。用户说「结束导航」「停止导航」「取消导航」「退出导航」「不去了」，或在导航、选择地点/路线时说「算了」「不用了」「返回」时调用；只口头答应而不调用本工具，屏幕上的导航或列表不会有任何变化。" +
                 "会真正停止屏幕上的导航，或关闭候选列表；根据返回的 status 如实回答：navigation_stopped=导航已结束，" +
                 "navigation_selection_cancelled=已取消选择，no_navigation_active=当前没有导航。" +
                 "Ends the on-screen navigation or closes the picker; answer from the returned status.",
@@ -123,6 +123,13 @@ object BaiduFlexProtocol {
                     )
                     .put("additionalProperties", false),
             )
+        val endConversation = functionToolNoArgs(
+            name = END_CONVERSATION,
+            description = "结束这次对话，小诺停止聆听（进入待命，说「你好小诺」可再唤醒）。只在用户明确表示不需要小诺了时调用，" +
+                "例如「没事了，你休息吧」「先这样吧，不聊了」「that's all」。调用后只说一句很短的道别，例如「好的，有需要再叫我」。" +
+                "不要用于关闭空调、音乐、导航或车窗等设备，也不要用于「算了」取消导航选择。" +
+                "Ends the conversation: the assistant stops listening until woken again. Not for turning devices off.",
+        )
         val session = JSONObject()
             .put("model", MODEL)
             .put("modalities", JSONArray(listOf("text", "audio")))
@@ -143,7 +150,7 @@ object BaiduFlexProtocol {
                     .put("create_response", true)
                     .put("interrupt_response", true),
             )
-            .put("tools", JSONArray().put(navigate).put(openApp).put(controlMusic).put(controlClimate).put(describeCamera).put(exitNavigationMode).put(chooseNavigationOption))
+            .put("tools", JSONArray().put(navigate).put(openApp).put(controlMusic).put(controlClimate).put(describeCamera).put(exitNavigationMode).put(chooseNavigationOption).put(endConversation))
             .put("tool_choice", "auto")
         return JSONObject().put("type", "session.update").put("session", session).toString()
     }
@@ -182,6 +189,7 @@ object BaiduFlexProtocol {
     }
 
     const val CHOOSE_NAVIGATION_OPTION = "choose_navigation_option"
+    const val END_CONVERSATION = "end_conversation"
     const val MAX_CHOICE_INDEX = 10
     val CHOICE_PREFERENCES = setOf("fastest", "shortest", "recommended", "no_toll", "fewest_lights", "nearest")
 
@@ -372,7 +380,7 @@ class FlexFunctionCallAssembler {
                 json.optString("question").length > 200 -> "QUESTION_TOO_LONG"
                 else -> null
             }
-            "exit_navigation_mode" -> when {
+            "exit_navigation_mode", BaiduFlexProtocol.END_CONVERSATION -> when {
                 keys.isNotEmpty() -> "INVALID_FIELDS"
                 else -> null
             }

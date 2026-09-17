@@ -86,6 +86,19 @@ class FakeRealtimeVoiceProvider(
 
     override fun interrupt(): DomainVoiceEvent = runBlocking { cancelAssistantResponse() }
 
+    var discardAudioCount: Int = 0
+        private set
+    var freshConversationCount: Int = 0
+        private set
+
+    override fun discardPendingAudio() {
+        discardAudioCount += 1
+    }
+
+    override fun startFreshConversation() {
+        freshConversationCount += 1
+    }
+
     override suspend fun sendText(text: String) {
         emit(DomainVoiceEvent.UserTranscript(text, final = true))
     }

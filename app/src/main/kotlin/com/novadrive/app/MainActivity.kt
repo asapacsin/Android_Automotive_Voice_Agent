@@ -67,6 +67,7 @@ class MainActivity : Activity() {
                     )
                     dispatched
                 },
+                onListeningState = { state -> mainHandler.post { if (::screen.isInitialized) screen.bindListening(state) } },
             )
 
         VoiceSessionGateway.attach(
@@ -87,6 +88,7 @@ class MainActivity : Activity() {
                 }
                 onCameraToggleRequested = { toggleCamera() }
                 onCameraPermissionNeeded = { runOnUiThread { requestCameraPermission() } }
+                onListeningToggle = { toggleListening() }
             }
         setContentView(screen)
         screen.onCreate(savedInstanceState)
@@ -137,6 +139,10 @@ class MainActivity : Activity() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQ_NOTIF) return
+        if (requestCode == REQ_MIC) {
+            if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) VoiceSessionGateway.start("ui")
+            return
+        }
         if (requestCode == REQ_LOCATION) {
             // The startup request may carry only CAMERA when location was already granted.
             if (Manifest.permission.ACCESS_FINE_LOCATION !in permissions) return
@@ -171,6 +177,23 @@ class MainActivity : Activity() {
             } else {
                 DebugVoiceLog.log("camera_permission denied=true")
             }
+        }
+    }
+
+    /**
+     * The listening indicator doubles as push-to-talk: while streaming it stops listening
+     * (STANDBY); otherwise it resumes or starts a session exactly like the wake word.
+     */
+    private fun toggleListening() {
+        if (VoiceSessionGateway.listeningState == com.novadrive.app.voice.ListeningState.ACTIVE) {
+            VoiceSessionGateway.standby("ui")
+            return
+        }
+        when (val result = VoiceSessionGateway.start("ui")) {
+            com.novadrive.app.voice.StartResult.MicPermissionMissing ->
+                requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC)
+            is com.novadrive.app.voice.StartResult.ConfigInvalid -> showError("CONFIG", result.message)
+            else -> Unit
         }
     }
 
@@ -213,5 +236,6 @@ class MainActivity : Activity() {
         private const val REQ_NOTIF = 23
         private const val REQ_LOCATION = 24
         private const val REQ_CAMERA = 25
+        private const val REQ_MIC = 26
     }
 }

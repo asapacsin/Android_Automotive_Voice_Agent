@@ -142,6 +142,16 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
         overlay.bindState(state, error)
     }
 
+    fun bindListening(state: com.novadrive.app.voice.ListeningState) {
+        overlay.bindListening(state)
+    }
+
+    var onListeningToggle: (() -> Unit)?
+        get() = overlay.onListeningToggle
+        set(value) {
+            overlay.onListeningToggle = value
+        }
+
     fun appendTranscript(line: String) {
         overlay.appendTranscript(line)
     }

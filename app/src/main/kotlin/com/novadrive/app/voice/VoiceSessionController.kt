@@ -8,6 +8,8 @@ import com.novadrive.app.ConnectionMode
 import com.novadrive.app.QwenApiConfig
 import com.novadrive.app.VoiceAppSettings
 import com.novadrive.app.resolvedOutputSampleRateHz
+import com.novadrive.evaluation.EventType
+import com.novadrive.evaluation.Telemetry
 import com.novadrive.ingress.realtime.DomainVoiceEvent
 import com.novadrive.ingress.realtime.ProviderCapabilities
 import com.novadrive.ingress.realtime.RealtimeAudioConfig
@@ -35,21 +37,70 @@ class VoiceSessionController(
     private val onTranscript: (String) -> Unit,
     private val onError: (String, String) -> Unit,
     private val onToolCall: ((DomainVoiceEvent.ToolCall) -> ToolDispatchResult)? = null,
+    private val onListeningState: (ListeningState) -> Unit = {},
+    timeouts: ListeningTimeouts = ListeningTimeouts(),
 ) {
     private val job = SupervisorJob()
     private val scope = CoroutineScope(job + Dispatchers.Main.immediate)
     private val microphone = AndroidMicrophonePort(onError = { code -> onError(code, "microphone failed") })
     private val audioFocus = AudioFocusController(context)
-    private val playback = AndroidPlaybackPort(player, audioFocus)
+    // Reply audio is only played while listening is ACTIVE: after 「关闭小诺」 the cancelled reply
+    // must not start talking.
+    private val playback = AndroidPlaybackPort(player, audioFocus) { lifecycle.state.value == ListeningState.ACTIVE }
     private var ungateJob: Job? = null
     private var ungateGeneration = 0
+    @Volatile private var lastUiState: VoiceUiState = VoiceUiState.DISCONNECTED
+    @Volatile private var playbackSpeaking = false
+    @Volatile private var lastConfig: BaiduApiConfig? = null
+
     private val callbacks =
         VoiceSessionCallbacks(
-            onUiState = onUiState,
+            onUiState = { state, error ->
+                lastUiState = state
+                onUiState(state, error)
+                if (state == VoiceUiState.RECONNECTING || state == VoiceUiState.ERROR) lifecycle.onConnectionLost()
+                updateBusy()
+            },
             onTranscript = onTranscript,
             onError = onError,
             onToolCall = onToolCall,
+            onUserFinalTranscript = { text -> onUserUtterance(text) },
         )
+
+    /**
+     * The listening lifecycle (ACTIVE / STANDBY / DEEP_IDLE): the one authority on whether
+     * microphone audio may go to the cloud. See [ListeningLifecycle].
+     */
+    val lifecycle: ListeningLifecycle = ListeningLifecycle(
+        scope = scope,
+        controls = object : ListeningControls {
+            override fun setCloudUpload(enabled: Boolean) = active.setCaptureSuspended(!enabled)
+            override fun cancelAssistantReply() = active.cancelCurrentResponse()
+            override fun startFreshConversation() = active.requestFreshConversation()
+            override fun closeCloudSession() = closeSession()
+            override fun openCloudSession(): Boolean {
+                val config = lastConfig ?: return false
+                return runCatching { openSession(config) }.isSuccess
+            }
+        },
+        timeouts = timeouts,
+        nowMs = { android.os.SystemClock.elapsedRealtime() },
+        onTransition = { from, to, reason, streamedMs ->
+            com.novadrive.app.DebugVoiceLog.log("listening $from->$to reason=$reason cloudStreamingMs=$streamedMs")
+            Telemetry.record(
+                when (to) {
+                    ListeningState.ACTIVE -> EventType.LISTENING_ACTIVE
+                    ListeningState.STANDBY -> EventType.LISTENING_STANDBY
+                    ListeningState.DEEP_IDLE -> EventType.LISTENING_DEEP_IDLE
+                },
+                detail = "from=$from reason=$reason cloudStreamingMs=$streamedMs",
+            )
+            if (reason == "inactivity_timeout") Telemetry.record(EventType.INACTIVITY_TIMEOUT)
+            onListeningState(to)
+        },
+    )
+
+    val listeningState: ListeningState get() = lifecycle.state.value
     private var provider: RealtimeVoiceProvider? = null
     private var active = newCore(IdleRealtimeProvider, RealtimeSessionConfig())
 
@@ -65,11 +116,32 @@ class VoiceSessionController(
     init {
         player.setOnPlaybackStateChanged { speaking ->
             onPlaybackSpeaking(speaking)
+            playbackSpeaking = speaking
+            updateBusy()
         }
         com.novadrive.app.nav.NavigationGuidanceVoice.addListener(guidanceListener)
     }
 
-    fun startBaidu(apiConfig: BaiduApiConfig) {
+    /** Starts a new realtime session and makes listening ACTIVE. */
+    fun startBaidu(apiConfig: BaiduApiConfig, reason: String = "start") {
+        openSession(apiConfig)
+        lifecycle.onSessionStarted(reason)
+    }
+
+    /** Wake word, UI or an app prompt: resume listening (or restart the countdown). */
+    fun activateListening(reason: String): Boolean = lifecycle.activate(reason)
+
+    /** UI: stop listening now (STANDBY). */
+    fun standby(reason: String) {
+        Telemetry.record(EventType.TERMINATE_LISTENING, detail = reason)
+        lifecycle.terminate(reason)
+    }
+
+    /** The model ended the conversation: STANDBY once its short goodbye has played. */
+    fun standbyAfterReply(reason: String) = lifecycle.standbyAfterReply(reason)
+
+    private fun openSession(apiConfig: BaiduApiConfig) {
+        lastConfig = apiConfig
         active.stop()
         provider?.close()
         val outputRate = apiConfig.settings.resolvedOutputSampleRateHz()
@@ -106,7 +178,7 @@ class VoiceSessionController(
             while (active.sessionActiveNow) {
                 delay(SESSION_DIAG_INTERVAL_MS)
                 com.novadrive.app.DebugVoiceLog.log(
-                    "session_diag state=${active.machine.state} streaming=${active.machine.streamingAudio} " +
+                    "session_diag state=${active.machine.state} listening=${lifecycle.state.value} captureSuspended=${active.captureSuspendedNow} " +
                         "gated=${microphone.gated} guidanceGated=${microphone.guidanceGated} muted=${microphone.muted} " +
                         "captured=${microphone.capturedFrames.get()} droppedGated=${microphone.droppedGated.get()} " +
                         "droppedMuted=${microphone.droppedMuted.get()} droppedGuidance=${microphone.droppedGuidance.get()} peak=${microphone.takePeak()} " +
@@ -153,6 +225,47 @@ class VoiceSessionController(
     fun stop() {
         NavigationState.reset()
         active.stop()
+        lifecycle.onSessionStopped("stopped")
+    }
+
+    /** DEEP_IDLE: close the connection; nothing reconnects until the next start. */
+    private fun closeSession() {
+        active.stop()
+        provider?.close()
+        provider = null
+        playbackSpeaking = false
+    }
+
+    /**
+     * Busy = a user turn or its answer is in progress. Assistant speech counts only as the answer
+     * to a turn; navigation guidance, UI and vehicle events never reach here.
+     */
+    private fun updateBusy() {
+        val state = lastUiState
+        val busy = playbackSpeaking || active.hasPendingWork() || state in BUSY_STATES
+        lifecycle.onBusyChanged(busy)
+    }
+
+    /**
+     * The driver's finished utterance. Listening-control phrases are handled here, before the
+     * model's reply matters (precedence in [ListeningIntent]).
+     */
+    private fun onUserUtterance(text: String) {
+        val phase = com.novadrive.app.nav.EmbeddedNavigation.currentOrNull()?.state()?.value
+        val context = ListeningIntent.Context(
+            pickerOpen = phase == com.novadrive.app.nav.NavigationPhase.AWAITING_DESTINATION_SELECTION ||
+                phase == com.novadrive.app.nav.NavigationPhase.AWAITING_ROUTE_SELECTION,
+            taskPending = active.hasPendingWork(),
+        )
+        when (ListeningIntent.classify(text, context)) {
+            ListeningIntent.Decision.TERMINATE_LISTENING -> {
+                com.novadrive.app.DebugVoiceLog.log("listening_terminate source=voice")
+                Telemetry.record(EventType.TERMINATE_LISTENING, detail = "voice")
+                lifecycle.terminate("voice_command")
+            }
+            ListeningIntent.Decision.PASS_TO_MODEL ->
+                if (ListeningIntent.isMeaningful(text)) lifecycle.onMeaningfulUserTurn()
+        }
     }
 
     /**
@@ -198,6 +311,7 @@ class VoiceSessionController(
     }
 
     fun release() {
+        lifecycle.onSessionStopped("released")
         NavigationState.reset()
         active.release()
         provider?.close()
@@ -243,6 +357,13 @@ class VoiceSessionController(
         )
 
     companion object {
+        private val BUSY_STATES = setOf(
+            VoiceUiState.USER_SPEAKING,
+            VoiceUiState.THINKING,
+            VoiceUiState.SPEAKING,
+            VoiceUiState.CONNECTING,
+            VoiceUiState.RECONNECTING,
+        )
         private const val QWEN_OUTPUT_SAMPLE_RATE = 24_000
         private const val BACKEND_OUTPUT_SAMPLE_RATE = 16_000
         private const val PLAYBACK_UNGATE_DELAY_MS = 350L

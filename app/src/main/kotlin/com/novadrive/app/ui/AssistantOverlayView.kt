@@ -10,10 +10,17 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.novadrive.app.R
+import com.novadrive.app.voice.ListeningState
 import com.novadrive.ingress.realtime.VoiceUiState
 
 class AssistantOverlayView(context: Context) : FrameLayout(context) {
     var onOpenDeveloperSettings: (() -> Unit)? = null
+
+    /** Tap on the listening indicator: stop listening when active, otherwise start. */
+    var onListeningToggle: (() -> Unit)? = null
+
+    private var listening: ListeningState = ListeningState.DEEP_IDLE
+    private var lastVoiceState: VoiceUiState = VoiceUiState.DISCONNECTED
 
     private val avatar: TextView
     private val stateDot: TextView
@@ -103,7 +110,9 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
                 gravity = Gravity.CENTER_VERTICAL
                 addView(stateDot)
                 addView(stateLabel)
-                isClickable = false
+                isClickable = true
+                setPadding(0, dp(4), dp(4), dp(4))
+                setOnClickListener { onListeningToggle?.invoke() }
             }
         val avatarColumn =
             LinearLayout(context).apply {
@@ -154,9 +163,31 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
         )
     }
 
+    /**
+     * Whether microphone audio goes to the cloud. STANDBY and DEEP_IDLE replace the turn-state
+     * label so the driver can always tell "streaming" from "not streaming".
+     */
+    fun bindListening(state: ListeningState) {
+        listening = state
+        bindState(lastVoiceState, null)
+    }
+
     fun bindState(state: VoiceUiState, error: String?) {
+        lastVoiceState = state
         val ui = AssistantUiStateMapper.from(state)
-        stateLabel.text = AssistantUiStateMapper.displayLabel(ui)
+        if (listening != ListeningState.ACTIVE && ui != AssistantUiState.ERROR) {
+            stateLabel.text = context.getString(
+                if (listening == ListeningState.STANDBY) R.string.assistant_listening_standby else R.string.assistant_listening_deep_idle,
+            )
+            stateDot.setTextColor(Color.parseColor(if (listening == ListeningState.STANDBY) "#FF78909C" else "#FF455A64"))
+            actionCard.visibility = GONE
+            return
+        }
+        stateLabel.text = if (ui == AssistantUiState.LISTENING) {
+            context.getString(R.string.assistant_listening_active)
+        } else {
+            AssistantUiStateMapper.displayLabel(ui)
+        }
         stateDot.setTextColor(
             when (ui) {
                 AssistantUiState.LISTENING -> Color.parseColor("#FF4CAF50")

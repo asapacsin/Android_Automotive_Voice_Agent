@@ -233,6 +233,8 @@ class PcmAudioPlayer(
 class AndroidPlaybackPort(
     private val player: PcmAudioPlayer,
     private val focus: AudioFocusController? = null,
+    /** False while listening is not ACTIVE: a reply to a cancelled turn is not played. */
+    private val playbackAllowed: () -> Boolean = { true },
 ) : PlaybackPort {
     override val queuedFrames: Int
         get() = 0
@@ -273,6 +275,7 @@ class AndroidPlaybackPort(
 
     override fun enqueue(pcm16le: ByteArray) {
         if (NavigationState.shouldMuteSpeech()) return
+        if (!playbackAllowed()) return
         player.enqueue(pcm16le)
     }
 

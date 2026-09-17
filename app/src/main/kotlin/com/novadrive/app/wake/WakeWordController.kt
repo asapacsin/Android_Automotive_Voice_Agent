@@ -69,7 +69,8 @@ object WakeWordController {
     }
 
     private fun onDetected() {
-        logForStartResult(VoiceSessionGateway.start())?.let(DebugVoiceLog::log)
+        com.novadrive.evaluation.Telemetry.record(com.novadrive.evaluation.EventType.WAKE_DETECTED)
+        logForStartResult(VoiceSessionGateway.start("wake_word"))?.let(DebugVoiceLog::log)
     }
 }
 

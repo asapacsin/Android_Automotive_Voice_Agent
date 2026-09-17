@@ -46,8 +46,33 @@ class FeaturePresenceRegressionTest {
         )
         assertContains(
             "app/src/main/kotlin/com/novadrive/app/wake/WakeWordController.kt",
-            "VoiceSessionGateway.start()",
-            "a detection must open the same session as every other entry point",
+            "VoiceSessionGateway.start(\"wake_word\")",
+            "a detection must open (or resume) the same session as every other entry point",
+        )
+    }
+
+    // ---- listening lifecycle: ACTIVE / STANDBY / DEEP_IDLE ----
+
+    @Test
+    fun listeningLifecycleIsTheSwitchForCloudAudio() {
+        val controller = "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt"
+        assertContains(controller, "active.setCaptureSuspended(!enabled)", "standby must really stop capture and upload")
+        assertContains(controller, "ListeningIntent.classify(text, context)", "「关闭小诺」 is handled locally")
+        assertContains(controller, "lifecycle.onBusyChanged(busy)", "the inactivity timer must see user turns")
+        assertContains(
+            "ingress/src/main/kotlin/com/novadrive/ingress/realtime/VoiceSessionController.kt",
+            "if (captureSuspended.get()) return",
+            "nothing may re-arm capture during standby",
+        )
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionGateway.kt",
+            "session.activate(reason)",
+            "wake word and UI resume a standby session",
+        )
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/ui/AssistantOverlayView.kt",
+            "fun bindListening(state: ListeningState)",
+            "the driver must see whether audio goes to the cloud",
         )
     }
 

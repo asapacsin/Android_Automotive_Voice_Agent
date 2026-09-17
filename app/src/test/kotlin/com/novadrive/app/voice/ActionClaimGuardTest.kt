@@ -91,6 +91,13 @@ class ActionClaimGuardTest {
     }
 
     @Test
+    fun aCancelThatWasOnlySpokenIsCaught() {
+        // Measured 2026-09-17 with the destination list open: 「不用了。」 → 「已取消导航。」, no tool call.
+        guard.onUserTranscript("不用了。")
+        assertNotNull(guard.onResponseDone(message, "已取消导航。"))
+    }
+
+    @Test
     fun claimDetectionCoversTheOtherTools() {
         assertTrue(ActionClaimGuard.claimsDone("已为你播放音乐。"))
         assertTrue(ActionClaimGuard.claimsDone("现在导航已退出。"))

@@ -140,6 +140,9 @@ class DebugToolReceiver : BroadcastReceiver() {
         return when {
             arg == "start" -> gateway.start().toString()
             arg == "stop" -> { gateway.stop(); "stopped" }
+            arg == "activate" -> gateway.start("debug").toString()
+            arg == "standby" -> { gateway.standby("debug"); "standby" }
+            arg == "state" -> gateway.listeningState.toString()
             arg.startsWith("say:") -> {
                 val name = arg.removePrefix("say:").filter { it.isLetterOrDigit() || it == '_' }
                 val file = java.io.File(context.getExternalFilesDir(null), "test_speech/$name.pcm")
