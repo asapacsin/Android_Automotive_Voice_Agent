@@ -274,9 +274,18 @@ class AndroidPlaybackPort(
     }
 
     @Volatile private var droppingReply = false
+    @Volatile private var droppingForNavigation = false
 
     override fun enqueue(pcm16le: ByteArray) {
-        if (NavigationState.shouldMuteSpeech()) return
+        if (NavigationState.shouldMuteSpeech()) {
+            if (!droppingForNavigation) {
+                droppingForNavigation = true
+                com.novadrive.app.DebugVoiceLog.log("reply_audio_not_played reason=navigation_unprompted")
+            }
+            return
+        }
+        droppingForNavigation = false
+        NavigationState.extendWhileSpeaking()
         if (!playbackAllowed()) {
             if (!droppingReply) {
                 droppingReply = true

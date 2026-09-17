@@ -21,6 +21,17 @@ object NavigationState {
 
     fun allowConfirmation(nowMs: Long = System.currentTimeMillis()) { confirmUntilMs = nowMs + CONFIRM_WINDOW_MS }
 
+    /**
+     * The driver asked something: its answer may be spoken during navigation. Only unprompted
+     * speech stays muted (product rule P1); an answer the driver asked for never is.
+     */
+    fun allowReply(nowMs: Long = System.currentTimeMillis()) = allowConfirmation(nowMs)
+
+    /** A permitted reply is playing: keep the window open until it has finished. */
+    fun extendWhileSpeaking(nowMs: Long = System.currentTimeMillis()) {
+        if (nowMs <= confirmUntilMs) confirmUntilMs = maxOf(confirmUntilMs, nowMs + CONFIRM_WINDOW_MS)
+    }
+
     fun shouldMuteSpeech(nowMs: Long = System.currentTimeMillis()): Boolean = navigating && nowMs > confirmUntilMs
 
     fun reset() {

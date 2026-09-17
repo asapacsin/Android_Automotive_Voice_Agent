@@ -46,6 +46,34 @@ class NavigationStateTest {
     }
 
     @Test
+    fun theAnswerToTheDriversQuestionIsSpokenDuringNavigation() {
+        NavigationState.begin()
+        assertTrue(NavigationState.shouldMuteSpeech(20_000L), "unprompted speech stays muted")
+        NavigationState.allowReply(20_000L)
+        assertFalse(NavigationState.shouldMuteSpeech(20_500L))
+    }
+
+    @Test
+    fun aPermittedReplyIsNeverCutOffMidSentence() {
+        NavigationState.begin()
+        NavigationState.allowReply(0L)
+        // A long reply: frames keep arriving past the original 10 s window.
+        for (t in 0L..25_000L step 500L) {
+            assertFalse(NavigationState.shouldMuteSpeech(t), "t=$t")
+            NavigationState.extendWhileSpeaking(t)
+        }
+        // After it ends, the window closes and unprompted speech is muted again.
+        assertTrue(NavigationState.shouldMuteSpeech(36_000L))
+    }
+
+    @Test
+    fun speakingCannotOpenAClosedWindow() {
+        NavigationState.begin()
+        NavigationState.extendWhileSpeaking(20_000L)
+        assertTrue(NavigationState.shouldMuteSpeech(20_001L))
+    }
+
+    @Test
     fun beginThenResetUnmutesSpeech() {
         NavigationState.begin()
         NavigationState.reset()

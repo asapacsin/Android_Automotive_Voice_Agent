@@ -12,6 +12,8 @@ class VoiceCommandRouter(
     private val lifecycle: ListeningLifecycle,
     private val context: () -> ListeningIntent.Context,
     private val log: (String) -> Unit = {},
+    /** A real request the model will answer (not a listening-control phrase, not VAD noise). */
+    private val onDriverRequest: () -> Unit = {},
 ) {
     fun onUserUtterance(text: String): ListeningIntent.Decision {
         val decision = ListeningIntent.classify(text, context())
@@ -27,7 +29,10 @@ class VoiceCommandRouter(
                 lifecycle.silence("voice_command")
             }
             ListeningIntent.Decision.PASS_TO_MODEL ->
-                if (ListeningIntent.isMeaningful(text)) lifecycle.onMeaningfulUserTurn()
+                if (ListeningIntent.isMeaningful(text)) {
+                    onDriverRequest()
+                    lifecycle.onMeaningfulUserTurn()
+                }
         }
         return decision
     }

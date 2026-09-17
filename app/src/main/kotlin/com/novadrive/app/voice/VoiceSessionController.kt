@@ -114,7 +114,11 @@ class VoiceSessionController(
             microphone.guidanceGated = closed
             com.novadrive.app.DebugVoiceLog.log("nav_guidance_mic_gate closed=$closed")
         })
-    private val guidanceListener: (Boolean) -> Unit = { speaking -> guidanceGate.onGuidanceSpeaking(speaking) }
+    private val guidanceListener: (Boolean) -> Unit = { speaking ->
+        guidanceGate.onGuidanceSpeaking(speaking)
+        // Never two voices at once: 小诺's reply waits (queued, not dropped) while Amap speaks.
+        if (speaking) player.pausePlayback() else player.resumePlayback()
+    }
 
     init {
         player.setOnPlaybackStateChanged { speaking ->
@@ -278,6 +282,7 @@ class VoiceSessionController(
                 )
             },
             log = { com.novadrive.app.DebugVoiceLog.log(it) },
+            onDriverRequest = { com.novadrive.app.NavigationState.allowReply() },
         )
     }
 

@@ -87,7 +87,9 @@ A product rule, not an audio-policy trick: **while navigation is running, 小诺
 
 - `navigate_to` succeeding calls `NavigationState.begin()`.
 - Any Accepted tool dispatch calls `allowConfirmation()`, opening a 10 s window in which speech is permitted — so "music stopped" is still spoken.
-- `AndroidPlaybackPort.enqueue` drops frames while `shouldMuteSpeech()` is true.
+- **Update 2026-09-17:** the driver's own question opens the same window (`allowReply()`, from `VoiceCommandRouter` on a meaningful, non-control utterance), and every played frame extends it (`extendWhileSpeaking()`), so an answer the driver asked for is always spoken in full. Only unprompted speech stays muted. Previously the answer to a question asked more than 10 s after the last tool was dropped silently.
+- While Amap guidance is playing, 小诺's reply is paused (held in the queue, not dropped) and resumes when guidance ends.
+- `AndroidPlaybackPort.enqueue` drops frames while `shouldMuteSpeech()` is true and logs `reply_audio_not_played reason=navigation_unprompted` once.
 - The flag is cleared by `reset()` on session stop and release.
 
 The audio-focus ducking described in the previous section remains underneath, but this rule is the primary mechanism for not talking over Amap.
@@ -115,7 +117,7 @@ Outbound only, to three hosts: `aip.baidubce.com` (WSS + OAuth) and `restapi.ama
 | Amap coordinate deep link navigation | **ACTIVE** |
 | Bundled in-app music | **ACTIVE** |
 | Microphone foreground service | **ACTIVE** |
-| Navigation mute rule (`NavigationState`) | **ACTIVE** — speech muted while navigating, except post-tool confirmations |
+| Navigation mute rule (`NavigationState`) | **ACTIVE** — unprompted speech muted while navigating; post-tool confirmations and answers to the driver's questions are spoken, never over Amap guidance |
 | `AmapAutoPickService` accessibility auto-tap | OPTIONAL FALLBACK — off by default |
 | Qwen direct (`QwenSettings`, providers, protocol) | DORMANT — unreachable from production UI |
 | PC backend (`BackendRealtimeProvider`, `backend/`) | DORMANT — empty packaged URL |
