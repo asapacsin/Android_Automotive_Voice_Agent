@@ -1,0 +1,130 @@
+# Technical debt
+
+Found by auditing this repository on 2026-09-18. Real, specific, and each one observed — not
+generic advice. Ordered by priority.
+
+---
+
+## D-1 — `BaiduFlexClient` owns too much (790 lines) — **HIGH**
+
+**Problem.** One class holds the WebSocket, the vendor protocol, the turn gate, the conversation
+reset policy, the empty-response retry, the claim guard wiring, the phantom-turn hold, the
+unsupported-request hold and the real-time-info hold. Per-turn state lives in eight `@Volatile`
+fields whose interactions are only understandable by reading the whole file — the "turn" boundary
+bug (state reset per response instead of per driver utterance) was caused exactly by that, and
+silenced a real confirmation.
+
+**Affected.** `app/voice/BaiduFlexClient.kt`, and every test that scripts a realtime server.
+
+**Risk.** The next per-turn feature will interact with the existing holds in a way nobody predicts.
+This is the most likely source of a future regression in the voice path.
+
+**Recommendation.** Extract a `DriverTurn` value object owning the per-utterance state
+(`userSpoke`, `toolCalled`, `unsupported`, `realtimeInfo`, `segment`, held events) with the hold
+decision as methods on it. The client keeps the socket and the protocol. Do this before adding any
+further per-turn policy.
+
+---
+
+## D-2 — The same policy is stated in the prompt and enforced in code — **HIGH**
+
+**Problem.** Persona rules 2–4 and `FLEX_TOOL_RULE` tell the model: always call the tool, never
+claim success without one, call `control_music` for stop, call `choose_navigation_option` rather
+than answering verbally. Every one of those is *also* enforced deterministically
+(`ActionClaimGuard`, `PhantomTurnGate`, `AndroidToolDispatcher`). The prompt text is now a
+restatement, not a mechanism — but it reads like one, so a future agent may "fix" behaviour by
+editing the prompt and believe the job is done.
+
+**Affected.** `PersonaProfiles.kt`, `ActionClaimGuard`, `PhantomTurnGate`, `BaiduFlexClient`.
+
+**Risk.** Policy drifts between the two statements; the prompt grows; the deterministic owner is
+bypassed.
+
+**Recommendation.** Keep the prompt for *tone and phrasing*. For every safety-relevant rule, add a
+one-line comment in `PersonaProfiles` naming the deterministic owner, so the reader knows the prompt
+is advisory. Do not add a new prompt rule for anything that can be checked in code
+([INVARIANTS.md](INVARIANTS.md) I-11).
+
+---
+
+## D-3 — The UI executes vehicle and media actions directly — **MEDIUM**
+
+**Problem.** `BottomBarView` calls `BundledMusicPlayer` and `VehicleControlPort` straight from the
+click listeners, so the screen path and the voice path reach the executors by different routes. The
+voice path gets validation, claim-guarding and result-based confirmation; the screen path does not.
+
+**Affected.** `app/ui/BottomBarView.kt`, `app/ui/AssistantNavigationScreen.kt`.
+
+**Risk.** A future change to how actions are validated or confirmed silently misses the UI.
+Contradicts [INVARIANTS.md](INVARIANTS.md) I-6, which is why that invariant currently records two
+allowed exceptions.
+
+**Recommendation.** Route both through the same executor the dispatcher uses, so the ports have one
+entry point. Small change; deferred only because it touches working UI.
+
+---
+
+## D-4 — Two navigation state machines — **MEDIUM**
+
+**Problem.** `NavigationState` (legacy: the speech-mute flag, cleared on session stop) and
+`NavigationPhase` / `NavigationStateStore` (current: IDLE → RESOLVING → CHOOSING → NAVIGATING →
+ARRIVED/STOPPED) both describe "are we navigating". The arrival fix updated the new one; the mute
+still follows the old one, so a driver who arrives but keeps the session open stays muted.
+
+**Affected.** `app/NavigationState.kt`, `app/nav/NavigationPhase.kt`, `NavigationStateStore`,
+`AndroidPlaybackPort`, `AndroidToolDispatcher`.
+
+**Risk.** Two answers to one question; already visible as the known P1 limitation.
+
+**Recommendation.** Make `NavigationState`'s mute read `NavigationPhase`, then delete the duplicate
+flag. Planned as SPEC-005 Phase 4; still open.
+
+---
+
+## D-5 — Dormant providers and paths still compile — **LOW, but costly to a fresh agent**
+
+**Problem.** Qwen, GPT-Live, the PC backend (`backend/`, `BackendRealtimeProvider`,
+`BackendVoiceClient`), `NavigationAdapter`'s Amap deep link and `AmapAutoPickService` are all
+present and buildable, and none is part of the product. `README.md` still describes Qwen Flash as
+the default provider, which is false.
+
+**Affected.** `app/voice/Qwen*`, `app/voice/Backend*`, `backend/`, `app/NavigationAdapter.kt`,
+`app/AmapAutoPickService.kt`, `README.md`.
+
+**Risk.** A fresh agent infers the wrong architecture from filenames — the exact failure
+`AGENTS.md` warns about.
+
+**Recommendation.** Delete the PC backend and GPT-Live metadata; keep Qwen only if a second
+provider is still wanted, and say so in one line. Fix the README's provider claim now.
+
+---
+
+## D-6 — `agent/*.md` is stale and contradicts the current state — **LOW**
+
+**Problem.** `agent/CURRENT_TASK.md`, `agent/PROJECT_STATE.md` and `agent/WORKER_REPORT.md` are
+dated 2026-09-15 and describe the deep-link navigation architecture, a 129-test suite and a
+milestone that has since closed. They are wrong, and they are linked from the old entry point.
+
+**Affected.** `agent/`.
+
+**Risk.** A fresh agent reads them as current and rebuilds the wrong mental model.
+
+**Recommendation.** Keep `agent/` for role instructions only (BUILDER/REVIEWER/INTAKE). Delete the
+three state files; live state belongs in `CURRENT_MILESTONE.md` and `OPEN_PROBLEMS.md`.
+
+---
+
+## D-7 — A false claim can still be spoken for *supported* actions — **MEDIUM**
+
+**Problem.** The hold that prevents a false claim covers requests with **no** tool. For a supported
+action the model can still say 「导航已开始。」 before the tool runs; `ActionClaimGuard` then makes it
+true and the driver hears the sentence twice. Measured on device 2026-09-18 during 「开始导航」.
+
+**Affected.** `BaiduFlexClient`, `ActionClaimGuard`, `PhantomTurnGate`.
+
+**Risk.** The driver hears a claim before it is true — a weaker form of exactly what
+[INVARIANTS.md](INVARIANTS.md) I-1 exists to prevent.
+
+**Recommendation.** Extend the hold to control requests, releasing on the tool call (which usually
+arrives within a few hundred milliseconds) instead of on the reply text. Needs a latency measurement
+first: every control turn would be delayed by the hold.

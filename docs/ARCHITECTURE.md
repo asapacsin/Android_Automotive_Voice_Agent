@@ -1,99 +1,125 @@
 # Architecture — Nova Drive / 小诺
 
-## Required runtime flow
+**This file is the canonical architecture.** `/ARCHITECTURE.md` at the repository root points here.
+Rules that must never be broken are in [INVARIANTS.md](INVARIANTS.md); what the product can and
+cannot do is in [CAPABILITIES.md](CAPABILITIES.md); known problems are in [TECH_DEBT.md](TECH_DEBT.md).
+
+## What this is
+
+An Android voice assistant for driving. Speech goes to Baidu Qianfan Flex as **end-to-end
+speech-to-speech with function calling** — there is no separate ASR or TTS in this product, by
+decision ([ADR-002](../DECISIONS/ADR-002-baidu-flex-default-provider.md)). The map and turn-by-turn
+navigation are the Amap Navigation SDK embedded in our own Activity
+([ADR-007](../DECISIONS/ADR-007-embedded-amap-navigation-sdk.md)).
+
+## The one trace that matters
 
 ```
 microphone
-  → audio preprocessing
-  → configurable Chinese wake word / PTT / VAD
-  → provider-neutral speech-native S2S
-  → typed structured function call
-  → task manager
-  → deterministic safety policy
-  → skill / tool router
-  → provider / vehicle abstraction
-  → simulator or real AAOS adapter
-  → observed-state verification
-  → typed result
-  → concise zh-CN spoken / visual feedback
+  → PcmAudioCapture (16 kHz PCM16, AEC + NS)
+  → AndroidMicrophonePort         gates: muted / assistant speaking / guidance / sleep
+  → SpeechUplinkGate              200 ms of voice before anything is uploaded
+  → BaiduFlexClient (WSS)         input_audio_buffer.append
+        ↑ server VAD decides where a turn starts and ends
+  → response.created / function_call / audio deltas
+  → FlexFunctionCallAssembler     validates name, fields, bounds, enums
+  → AndroidToolDispatcher         the ONLY bridge from model output to device action
+  → SafeAndroidActionExecutor / EmbeddedNavigationController / ClimateToolHandler / …
+  → ToolDispatchResult            {ok, status|error, next}  ← the truth about what happened
+  → BaiduFlexClient.sendFunctionResult → the model answers from the result
+  → PhantomTurnGate               may hold or drop the reply audio + subtitle
+  → AndroidPlaybackPort → PcmAudioPlayer (USAGE_ASSISTANT, media stream)
+  → AssistantOverlayView          subtitle
 ```
 
-Checkpoint 1 implements the **structured-command → policy → adapter → verify → zh-CN feedback** slice.
+Read that top to bottom before changing anything in the voice path.
 
-The active Android runtime keeps Checkpoint 1 and makes Baidu Flex the direct on-device default. Qwen/GPT/backend adapters are frozen compatibility code:
+## Who owns what
 
-```
-Android microphone
-  → VoiceSessionService (microphone FGS keep-alive)
-  → BaiduFlexProvider (default, Function Calling) | BaiduDirectRealtimeProvider (Lite/Pro, conversation only)
-  → Baidu Flex / Pro / Lite realtime WSS (Flex default)
-  → domain events
-  → VoiceSessionController (JVM core)
-  → AndroidToolDispatcher -> NavigationAdapter (Amap navi/keywordNavi) | BundledMusicPlayer | Settings intent
-  → Android playback / UI states
-```
+One behaviour, one owner. If you need to change one of these, change it **here** and nowhere else.
 
-Credentials are Android-Keystore encrypted. The PC backend is not part of the production runtime. Wake-word hardware tuning remains later. Pro/Lite has no Function Calling; Flex provides it through `AndroidToolDispatcher`. Bluetooth SCO / hardware AEC are **manual-test-only**.
-
-
-## Decision split
-
-| Layer | Decides | Checkpoint 1 type |
+| Behaviour | Canonical owner | Not owned by |
 | --- | --- | --- |
-| S2S / NLU | *What* the driver meant | `StructuredCommand` only. No NL parser. |
-| `VoiceSessionOrchestrator` | *Whether / when / how* to run | validation → contact resolution → policy → optional confirm → router |
-| `SafetyPolicy` | `ALLOW` / `CONFIRM` / `DENY` | pure function of command + `VehicleSafetySnapshot` |
-| `VehiclePort` | Hardware / provider I/O | Fake simulator now; AMap / Baidu / OEM / VHAL later |
-| `ObservedStateVerifier` | *Whether it worked* | compares requested change to independently observed state |
-| `ZhCnFeedbackRenderer` | What the driver hears / sees | short Simplified Chinese |
+| Whether a capability exists at all | the tool list in `BaiduFlexProtocol.sessionUpdate` + [CAPABILITIES.md](CAPABILITIES.md) | the persona prompt, the UI |
+| Whether a tool call is well-formed | `FlexFunctionCallAssembler` (schema, bounds, enums) | the model, the dispatcher |
+| Whether an action may execute | `AndroidToolDispatcher` (+ `SafetyPolicy` in `orchestration` for the JVM path) | the model |
+| Whether an action **did** execute | the `ToolDispatchResult` / `AndroidActionResult` returned by the executor | any sentence the model produced |
+| What may be claimed to the driver | `ActionClaimGuard` (after the fact) and `PhantomTurnGate` (before the audio plays) | the persona prompt alone |
+| Navigation execution | `EmbeddedNavigationController` → `AmapNaviViewHost` (the only file that may import `com.amap`) | `NavigationAdapter` (legacy deep link, dormant) |
+| Which candidate the driver picked | `NavigationChoiceResolver` | the model |
+| Turn-taking / interruption | server VAD for turn ends; `ListeningLifecycle` for ACTIVE / SILENT_WAIT / SLEEP / DEEP_IDLE; `VoiceCommandRouter` for 「闭嘴」「休眠」 | ad-hoc checks in the client |
+| Whether reply audio is heard | `AndroidPlaybackPort` (navigation mute, lifecycle) + `PhantomTurnGate` (phantom/false-claim holds) | the UI |
+| Conversation lifetime | `ConversationResetPolicy` (reset after tool turns) + `ResponseTurnGate` (one reply at a time) | the model |
+| Credentials | `AndroidKeystoreCredentialStore` | source, Gradle files, logs |
 
-LLM output cannot call `VehiclePort.execute`. The only public ingress is `StructuredCommandIngress.submit`.
-
-## Module direction
+## Modules and allowed dependencies
 
 ```
-ingress --------→ contracts
-safety ---------→ contracts
-vehicle --------→ contracts
-verification --> contracts, vehicle
-feedback ------→ contracts
-orchestration → contracts, ingress, safety, vehicle, verification, feedback
-simulator -----→ contracts, vehicle
-demo / app ----→ orchestration + simulator (wiring only)
+contracts ← safety, vehicle, verification, feedback, ingress, orchestration
+ingress   ← app            (provider-neutral realtime core: state machine, reconnect, ports)
+vehicle   ← app, simulator (VehicleControlPort: the one climate abstraction)
+app       → everything above; nothing depends on app
+simulator → contracts, vehicle          TEST/SIM ONLY
+evaluation→ nothing product-facing      Level A simulation harness
 ```
 
-Forbidden edges (enforced by Gradle `implementation`/`api` plus `DependencyBoundaryTest`):
+**Forbidden, and enforced by `behavior-test/DependencyBoundaryTest`:** `contracts`, `ingress`,
+`safety`, `vehicle`, `verification`, `feedback` and `orchestration` must not import
+`com.novadrive.simulator`, `android.car`, `com.amap`, `com.baidu`, GMS, OpenAI or DashScope. Vendor
+JSON never escapes the Android adapters.
 
-- `ingress` ↛ `simulator`, `vehicle` implementations, AAOS, VHAL, AMap, Baidu, GMS
-- `orchestration` ↛ `simulator`
-- `safety` ↛ adapters
-- core ↛ provider SDK types
+**Also forbidden** (enforced by `ArchitectureRulesTest`): the UI package must not execute vehicle or
+navigation actions directly, and `com.amap` may be imported by exactly one file.
 
-`SkillRouter` is `internal` to `orchestration`. Tests and the demo talk to `VoiceSessionOrchestrator`, not to adapters, for policy-gated actions.
+## Subsystems
 
-## China-first location and navigation
+### Audio capture — `app/voice/PcmAudioCapture.kt`
+`VOICE_COMMUNICATION` at 16 kHz with AEC and noise suppression. `AndroidMicrophonePort` owns every
+reason a frame may not be sent: `muted`, `gated` (the assistant is speaking), `guidanceGated` (Amap
+is speaking), `suppressLive` (the debug harness is injecting), and the `SpeechUplinkGate`.
+`MicInputGain` lifts quiet speech above the server's VAD floor (max 3×, measured).
 
-`GeoCoordinate` always carries `CoordinateSystem` (`WGS84`, `GCJ02`, `PROVIDER_DEFINED`).
+### Open-mic defence — `SpeechUplinkGate`, `PhantomTurnGate`
+Because the server decides what a turn is, every sustained cabin sound is a candidate turn. The
+uplink gate refuses to upload anything shorter than 200 ms of voice-like energy; the phantom gate
+holds a doubtful turn's reply and drops it when the model asked for no action, nothing on screen was
+waiting, the audio produced no words, and the reply carries no content. See
+[INVARIANTS.md](INVARIANTS.md) I-4 and I-5.
 
-Conversion is **not** implemented in core. Future AMap / Baidu / OEM adapters own transforms at their boundary. `NavigationProviderKind` is a seam identifier, not an imported SDK class.
+### Realtime provider — `app/voice/BaiduFlexClient.kt`
+Owns the vendor protocol and the per-turn machinery: `ResponseTurnGate` (one reply at a time),
+`ConversationResetPolicy` (a fresh conversation after tool turns), `EmptyResponseRetryPolicy`,
+`ActionClaimGuard` wiring, and the phantom/false-claim holds. **This file is oversized** — see
+[TECH_DEBT.md](TECH_DEBT.md) D-1.
 
-Default preferred system for Chinese POIs in this product is GCJ-02. Core still accepts WGS-84 as metadata; it does not silently convert.
+### Provider-neutral core — `ingress`
+`VoiceSessionController` holds the state machine, reconnect policy, work coordinator and the audio
+ports. It knows nothing about any vendor and must stay that way.
 
-## Phone identity
+### Tool dispatch — `app/AndroidToolDispatcher.kt`
+The only bridge from model output to device action. Every call is validated before execution: exact
+field sets, length bounds, enum membership. Unknown tools return `UNKNOWN_TOOL` without executing.
+Failures carry `ToolFailureAdvice` so the model is told what to say without relying on the tool
+description surviving a conversation reset.
 
-`ContactQuery` accepts spoken name, pinyin, alias, and number. `PhoneProvider.resolve` returns `UNIQUE`, `AMBIGUOUS`, or `NONE`. Ambiguous Chinese names (e.g. two 张伟 entries) stop before policy execution and return `CLARIFICATION_NEEDED`.
+### Navigation — `app/nav/`
+`EmbeddedNavigationController` owns the flow (resolve → candidates → route list → start → end) and
+`NavigationPhase`/`NavigationStateStore` the state. `AmapNaviViewHost` is the only file permitted to
+import `com.amap`; it also owns the map camera, including the startup recentre
+(`InitialLocationRecenter`). `DestinationQuery` turns what the driver said into a POI keyword;
+`NavigationChoiceResolver` turns 「第二个」/「就去某某」 into a candidate.
 
-## Simulator
+### Vehicle control — `vehicle` module
+`VehicleControlPort` is the one climate abstraction. `VehicleControlProvider` is the only production
+file naming a concrete backend; today that is `SimulatedVehicleControl`. Swapping to a real vehicle
+is one new implementation selected there.
 
-`InMemoryVehicleSimulator` implements `VehiclePort` plus the four domain ports. It keeps canonical state and a separately published observed snapshot so tests can inject:
+### Background survival — `app/VoiceSessionService.kt`
+A `foregroundServiceType="microphone"` service, started when a session starts and stopped on every
+session-end path. It is what keeps the socket alive when another app takes the screen, and what
+earns the background-activity-start exemption that lets tools launch apps.
 
-- `failNextExecution`
-- `desyncNextObservation` (mutate internally, leave observed state stale)
-
-Success is never taken from the execute return value alone.
-
-## Android Automotive
-
-`app` is a thin Activity shell around direct Baidu WSS, Android audio, and encrypted phone settings. `android.hardware.type.automotive` is declared `required=false` until Checkpoint 7. The module is included only when `platforms/android-34` exists so JVM tests remain runnable on a cmdline-tools-only SDK.
-
-Vendor JSON is confined to the Android Baidu adapter. Core Kotlin modules still do not import Baidu SDK types, simulator types, AAOS, or VHAL. UI code consumes `VoiceSessionController` + `DomainVoiceEvent` only. See `BAIDU_DIRECT_ANDROID.md` for the exact protocol and Function Call boundary.
+### Dormant, deliberately kept
+Qwen, GPT-Live, the PC backend (`backend/`, `BackendRealtimeProvider`), `NavigationAdapter`'s deep
+link and `AmapAutoPickService` all still compile and are **not** part of the product. Do not infer
+the architecture from their existence — see [TECH_DEBT.md](TECH_DEBT.md) D-4.

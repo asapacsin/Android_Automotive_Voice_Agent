@@ -4,17 +4,17 @@
 
 Minimal Kotlin/Gradle foundation: documents, module boundaries, typed nav/media/phone/HVAC commands, deterministic policy, Fake simulator, observed-state verification, JVM demo, automated behavior tests. Optional Android debug APK when platform 34 is installed.
 
-**Done when:** every acceptance criterion in `agent/CURRENT_TASK.md` is PASS with command evidence.
+**Done when:** every acceptance criterion in `CURRENT_MILESTONE.md` is PASS with command evidence.
 
 ## Checkpoint 2 — Voice ingress / optional Baidu E2E vertical slice
 
 Provider-neutral realtime voice: Android mic → backend → selected official provider WebSocket → native audio back to Android. The Baidu E2E slice remains as an optional compatibility adapter (Lite Near is the Baidu-family default when Baidu is selected). Product default is Qwen Flash.
 
-## Checkpoint 2b — Realtime provider reconciliation (CURRENT_TASK)
+## Checkpoint 2b — Realtime provider reconciliation
 
 Qwen Flash (`qwen-audio-3.0-realtime-flash`) is the default realtime provider. Qwen Plus is selectable. GPT-Live is optional. Baidu is an optional compatibility provider (Lite Near is the Baidu-family default when Baidu is selected). Fake is quota-free and test-only, never the product default. Shared Kotlin contract, `VoiceSessionController`, work coordinator, bounded reconnect, latency diagnostics, and official-fixture adapters.
 
-**Done when:** every acceptance criterion in `agent/CURRENT_TASK.md` is assessed with evidence (PASS / FAIL / BLOCKED).
+**Done when:** every acceptance criterion in `CURRENT_MILESTONE.md` is assessed with evidence (PASS / FAIL / BLOCKED).
 
 ## Checkpoint 3 — Provider-neutral S2S
 
@@ -36,4 +36,4 @@ Richer observed-state models, failure copy, visual/spoken feedback in the app sh
 
 Real Android Automotive adapter behind the same `VehiclePort`. VHAL / `Car` APIs isolated in an `adapters:aaos` module that **core must not compile against**. Simulator remains the default for tests.
 
-Each later checkpoint must preserve Checkpoint 1 boundaries. Do not weaken `CURRENT_TASK` acceptance criteria when a new task file is issued; add criteria instead.
+Each later checkpoint must preserve Checkpoint 1 boundaries. Do not weaken acceptance criteria when a new milestone opens; add criteria instead. This file is history — live state is in `CURRENT_MILESTONE.md`.

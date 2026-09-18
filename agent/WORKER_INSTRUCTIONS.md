@@ -1,10 +1,10 @@
 # Worker instructions — Nova Drive / 小诺
 
-You are an implementation worker in this workspace. `agent/CURRENT_TASK.md` is authoritative for the active checkpoint. Do not weaken or overwrite its acceptance criteria.
+You are an implementation worker in this workspace. `CURRENT_MILESTONE.md` is authoritative for the active milestone and `ACCEPTANCE_TESTS.md` for what counts as done. Do not weaken either.
 
 ## Always
 
-1. Read `agent/CURRENT_TASK.md`, `agent/PROJECT_STATE.md`, and `docs/ARCHITECTURE.md` before editing.
+1. Read [AGENTS.md](../AGENTS.md) first; it maps the architecture, invariants and capability documents.
 2. Stay inside the structured-command → policy → adapter → observe → verify → zh-CN feedback path.
 3. Keep China-first defaults: `zh-CN`, 小诺 / 你好小诺, metric, provider-neutral navigation, coordinate-system metadata.
 4. Do not add NL parsing as a substitute for typed commands.
@@ -12,7 +12,7 @@ You are an implementation worker in this workspace. `agent/CURRENT_TASK.md` is a
 6. Do not return `VERIFIED` without observed-state verification when verification exists.
 7. Do not add windows, sunroof, charging, parking, cameras, video, seats, or smart scenes.
 8. Do not commit secrets or call paid APIs.
-9. After work, update `agent/WORKER_REPORT.md` (every criterion PASS/FAIL/BLOCKED with files + exact commands) and `agent/PROJECT_STATE.md` (truthful milestone, blockers, commands).
+9. After work, record the outcome where it belongs: a defect and its evidence in `OPEN_PROBLEMS.md`, milestone state in `CURRENT_MILESTONE.md`, and device evidence in `ACCEPTANCE_TESTS.md`.
 10. Preserve existing work. No destructive git resets.
 
 ## Toolchain

@@ -1,5 +1,7 @@
 # Android_Automotive_Voice_Agent — Nova Drive / 小诺
 
+> Coding agents start at **[AGENTS.md](AGENTS.md)**.
+
 China-first Android / Android Automotive voice assistant foundation.
 
 Checkpoint 1 establishes a buildable Kotlin/Gradle tree, typed structured-command contracts, deterministic safety, a provider/vehicle adapter boundary, an in-memory simulator, observed-state verification, and concise `zh-CN` feedback. Later checkpoints add microphone ingress, realtime S2S, production skills, and optional AAOS/VHAL.
@@ -40,7 +42,7 @@ Pinned because they are what this machine actually has or can extract:
 - Android SDK root: `C:\Users\Administrator\Android\Sdk` (cmdline-tools 22.0; platform 34 is installed by `scripts/dev.ps1` when missing)
 - Kotlin **2.0.21**, Android Gradle Plugin **8.7.3**, `compileSdk` / `targetSdk` **34**, `minSdk` **28**
 
-No secrets, GMS, or paid network APIs are required for Checkpoint 1 tests. Realtime voice credentials stay in `backend/.env` only. Default provider is Qwen Flash (`qwen-audio-3.0-realtime-flash`); Qwen Plus, GPT-Live, and Baidu remain optional. Fake is a quota-free local test provider, never the product default. See `docs/PROVIDER_SETUP.md`.
+**The product runs Baidu Qianfan Flex end-to-end speech-to-speech on the phone** (`qianfan-realtime-flex-v1`), with credentials in the Android Keystore. Qwen, GPT-Live and the PC backend below are dormant compatibility code and are not reachable from the production UI — see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/TECH_DEBT.md](docs/TECH_DEBT.md) D-5.
 
 ## Realtime voice credentials
 
