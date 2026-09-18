@@ -207,3 +207,34 @@ camera opens; camera released on HOME and on ✕; wake engine initialises after 
 
 Automated: **334 declared = 334 executed, 0 failed, 0 skipped** (app 232 debug variant, behavior-test 37,
 ingress 46, simulator 15, contracts 2, safety 2).
+
+---
+
+## Execution guards on device — 2026-09-19, `2391ff70`
+
+Build of 2026-09-19. Driven through the **real `AndroidToolDispatcher`** with `debug_tool
+tool=dispatch`, which crosses the same bridge the model's output crosses. The driver's words were
+set with `debug_tool tool=turn`, because the guards read the transcript and the turn epoch.
+
+**No live model was involved: the phone had no network** (Wi-Fi enabled, supplicant DISCONNECTED,
+no route; `BAIDU_DNS_FAILED` on every session attempt). So this proves the guards, not the
+assistant's wording, and not that the model acts on the injected context.
+
+| What must hold | Evidence | Result |
+| --- | --- | --- |
+| A named song never starts the bundled track | 「放一下周杰伦那首讲晴天的歌。」 → `ok:false MEDIA_LIBRARY_UNSUPPORTED` with the honest `next`; nothing played | **VERIFIED** |
+| A generic request is not over-blocked | 「播放音乐。」 → `ok:true status:music_playing`, then `music_stopped` | **VERIFIED** |
+| An ambiguous relative change is refused, not guessed | temperature set to 24 **and** fan set to 3, then 「再低一点。」 → `ok:false AMBIGUOUS_REFERENT` | **VERIFIED** |
+| …and nothing moves while the question is open | `get_state` immediately after: `temperature_c:24` — unchanged | **VERIFIED** |
+| The driver's one-word answer resolves | 「温度。」 → `ok:true`, `temperature_c` 24 → **23** | **VERIFIED** |
+| An identical call twice in one turn applies once | 「再凉一点。」 → 23 → **22**; second identical call `ok:false DUPLICATE_IN_TURN`; `get_state` → **22**, not 21 | **VERIFIED** |
+
+The last row is the one worth keeping: the refusal is not the evidence, the **unchanged state** is.
+A guard that returned an error while the temperature still moved would have passed a test that only
+read the tool result.
+
+### Not verified here
+
+- `ctx_hint` / the referent line reaching the model: the hint is composed when a conversation is
+  configured, which needs the network. Unproven on device.
+- Every human-voice row: still L5 outstanding, as recorded above.

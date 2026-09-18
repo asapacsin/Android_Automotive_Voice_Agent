@@ -21,6 +21,8 @@ class DebugToolReceiver : BroadcastReceiver() {
                 "nav_start" -> navStart(arg)
                 "nav_stop" -> navStop()
                 "climate" -> climate(arg)
+                "turn" -> beginTurn(arg)
+                "dispatch" -> dispatch(context, arg)
                 "voice" -> voice(context, arg)
                 else -> "unknown tool"
             }
@@ -125,6 +127,48 @@ class DebugToolReceiver : BroadcastReceiver() {
             com.novadrive.app.vehicle.ClimateToolHandler(com.novadrive.app.vehicle.VehicleControlProvider.port).handle(args)
         }
         return outcome.output
+    }
+
+    /**
+     * Starts a driver turn with [arg] as the transcript, without a model or a network.
+     *
+     * The guards that decide whether a call may run read the driver's words and the turn epoch
+     * from `DriverContext`, so proving them on the device needs a way to set those two facts that
+     * does not depend on Baidu being reachable.
+     */
+    private fun beginTurn(arg: String): String {
+        val context = com.novadrive.app.voice.DriverContext.currentOrNull()
+            ?: com.novadrive.app.voice.DriverContext().also { com.novadrive.app.voice.DriverContext.install(it) }
+        context.onDriverUtterance(arg, context.currentEpoch() + 1)
+        return "turn epoch=${context.currentEpoch()}"
+    }
+
+    /**
+     * Runs a tool call through the **real** [AndroidToolDispatcher] — the same bridge the model's
+     * output crosses, with the same validation and the same guards.
+     *
+     * `climate` above goes straight to the handler, which is deliberate for checking the port, but
+     * it therefore proves nothing about the dispatcher. A debug path that skips the layer under
+     * test reads like evidence and is not.
+     *
+     * arg: `control_music:action=play` / `control_climate:action=adjust_temperature,value=-1`.
+     * No spaces — `am broadcast --es` is re-parsed by the device shell, which splits on them.
+     */
+    private fun dispatch(context: Context, arg: String): String {
+        val name = arg.substringBefore(':')
+        val arguments = arg.substringAfter(':', "")
+            .split(',')
+            .filter { it.contains('=') }
+            .associate { it.substringBefore('=').trim() to it.substringAfter('=').trim() }
+        val dispatcher = AndroidToolDispatcher(
+            SafeAndroidActionExecutor(context),
+            com.novadrive.app.vehicle.ClimateToolHandler(com.novadrive.app.vehicle.VehicleControlProvider.port),
+            com.novadrive.app.vision.VisionProvider.handler(context),
+        )
+        val result = dispatcher.dispatch(
+            com.novadrive.ingress.realtime.DomainVoiceEvent.ToolCall("debug", name, arguments),
+        )
+        return result.output ?: "blocked=${result.blockedReason ?: "-"}"
     }
 
     /**

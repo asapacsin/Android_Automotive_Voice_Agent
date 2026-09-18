@@ -155,6 +155,65 @@ class FalseCapabilityClaimTest {
         )
     }
 
+    // ---- and not guessing when the driver did not say what to change ---------
+
+    @Test
+    fun anAmbiguousRelativeAdjustmentIsRefusedRatherThanGuessed() {
+        val vehicle = SimulatedVehicleControl()
+        val context = DriverContext()
+        val before = vehicle.climateState.value.targetTemperatureCelsius
+        // Both dimensions adjusted, so 「再低一点」 could mean either.
+        context.onClimateResult(ClimateToolActions.ADJUST_TEMPERATURE, -1.0, okClimate(), epoch = 1)
+        context.onClimateResult(ClimateToolActions.ADJUST_FAN, 1.0, okClimate(), epoch = 1)
+        context.onDriverUtterance("再低一点。", epoch = 2)
+
+        val dispatcher = AndroidToolDispatcher(WillingExecutor(), ClimateToolHandler(vehicle), noCamera()) { context }
+        val result = dispatcher.dispatch(
+            call("control_climate", mapOf("action" to ClimateToolActions.ADJUST_TEMPERATURE, "value" to "-1")),
+        )
+        val output = JSONObject(result.output!!)
+
+        assertFalse(output.getBoolean("ok"), "guessing right is still guessing")
+        assertEquals("AMBIGUOUS_REFERENT", output.getString("error"))
+        assertEquals(
+            before,
+            vehicle.climateState.value.targetTemperatureCelsius,
+            "nothing may change while the question is unanswered",
+        )
+        // And the question is recorded, so the driver's one-word answer resolves next turn.
+        assertEquals(2, context.pendingClarification(3)?.options?.size)
+    }
+
+    @Test
+    fun anUnambiguousRelativeAdjustmentStillRuns() {
+        val vehicle = SimulatedVehicleControl()
+        val context = DriverContext()
+        context.onClimateResult(ClimateToolActions.ADJUST_TEMPERATURE, -1.0, okClimate(), epoch = 1)
+        context.onDriverUtterance("再低一点。", epoch = 2)
+
+        val dispatcher = AndroidToolDispatcher(WillingExecutor(), ClimateToolHandler(vehicle), noCamera()) { context }
+        val result = dispatcher.dispatch(
+            call("control_climate", mapOf("action" to ClimateToolActions.ADJUST_TEMPERATURE, "value" to "-1")),
+        )
+        assertTrue(JSONObject(result.output!!).getBoolean("ok"), "one referent is not ambiguous")
+    }
+
+    @Test
+    fun anExplicitCommandIsNeverBlockedByTheAmbiguityGuard() {
+        val vehicle = SimulatedVehicleControl()
+        val context = DriverContext()
+        context.onDriverUtterance("空调调到二十二度。", epoch = 1)
+        val dispatcher = AndroidToolDispatcher(WillingExecutor(), ClimateToolHandler(vehicle), noCamera()) { context }
+        val result = dispatcher.dispatch(
+            call("control_climate", mapOf("action" to ClimateToolActions.SET_TEMPERATURE, "value" to "22")),
+        )
+        assertTrue(JSONObject(result.output!!).getBoolean("ok"))
+    }
+
+    private fun okClimate(): String =
+        """{"ok":true,"tool":"control_climate","power_on":true,"temperature_c":24.0,""" +
+            """"fan_level":3,"limit_reached":false}"""
+
     // ---- the context record only trusts proven execution --------------------
 
     @Test

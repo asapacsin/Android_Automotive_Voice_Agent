@@ -929,9 +929,14 @@ both 「音量调大」 and 「今天天气怎么样」 (the model declined hone
 
 ## P22 — A song we cannot play would have been "played"
 
-**Status:** FIXED 2026-09-19 — unit tests (33 new). **Not device-verified, and not observed with the
-live model**: found by reading the code while writing [SPEC-006](SPECS/SPEC-006-complex-voice-commands.md),
-not from a failed run. Recorded at the level it was actually established.
+**Status:** FIXED 2026-09-19 — unit tests, **and verified on device** (`2391ff70`, same day):
+「放一下周杰伦那首讲晴天的歌。」 → `ok:false MEDIA_LIBRARY_UNSUPPORTED`, nothing played, while
+「播放音乐。」 still returned `music_playing`. Driven through the real `AndroidToolDispatcher`;
+see [ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md).
+
+**Still not observed with the live model.** The defect was found by reading the code while writing
+[SPEC-006](SPECS/SPEC-006-complex-voice-commands.md), not from a failed run, and the phone had no
+network during verification, so what the assistant *says* when it refuses is unproven.
 
 ### The problem
 
@@ -969,7 +974,10 @@ asked for**.
 
 ### Found in the same pass
 
-- **A relative adjustment could be applied twice.** `adjust_temperature{-2}` dispatched twice is
+- **A relative adjustment could be applied twice.** Device-verified 2026-09-19: 「再凉一点。」 moved
+  23 → 22, the identical second call returned `DUPLICATE_IN_TURN`, and `get_state` still read 22. The original note follows.
+
+- **The same, as first recorded.** `adjust_temperature{-2}` dispatched twice is
   −4 °C. Nothing prevented a duplicated function call from doubling a physical change; now refused
   with `DUPLICATE_IN_TURN` when the tool, the arguments *and* the driver turn are identical. A
   driver who asks twice speaks twice, which is two epochs, so a real second request still runs.

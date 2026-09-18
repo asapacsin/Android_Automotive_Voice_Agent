@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-09-19T01:42:45",
+  "generated_at": "2026-09-19T02:12:30",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "e6fda67",
+    "commit": "6773b11",
     "branch": "main",
-    "subject": "D-3: a button and a spoken command now take the same route",
+    "subject": "Canonical state said three things that were no longer true",
     "working_tree_clean": false,
-    "uncommitted_files": 3
+    "uncommitted_files": 8
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-19T01:39:20",
+    "collected_at": "2026-09-19T02:01:49",
     "total": {
-      "tests": 631,
+      "tests": 634,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "app": {
-        "tests": 475,
+        "tests": 478,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -66,14 +66,14 @@
   "apk": {
     "built": true,
     "bytes": 228822892,
-    "built_at": "2026-09-19T01:35:38"
+    "built_at": "2026-09-19T02:10:40"
   },
   "capabilities": {
     "available": true,
     "by_level": {
-      "device": 20,
+      "device": 21,
       "unsupported": 7,
-      "unit": 2
+      "unit": 1
     },
     "human_verification_pending": [
       "speech.wake_word",

@@ -11,6 +11,8 @@ import com.novadrive.app.nav.NavigationBackends
 import com.novadrive.app.nav.NavigationHostGateway
 import com.novadrive.app.vehicle.ClimateToolHandler
 import com.novadrive.app.voice.ActionClaimGuard
+import com.novadrive.app.voice.ClimateToolActions
+import com.novadrive.app.voice.ContextResolver
 import com.novadrive.app.voice.DriverContext
 import com.novadrive.app.vision.CameraQuestionHandler
 import com.novadrive.evaluation.EventType
@@ -110,6 +112,7 @@ class AndroidToolDispatcher(
                 )
             }
             ClimateToolHandler.TOOL -> {
+                refuseAmbiguousAdjustment(call)?.let { return it }
                 val outcome = runBlocking { climate.handle(call.arguments) }
                 driverContext()?.let { context ->
                     context.onClimateResult(
@@ -249,6 +252,29 @@ class AndroidToolDispatcher(
         }
     }
 
+    /**
+     * Refuses a relative climate change when the driver's words do not say *what* to change and the
+     * history cannot say either — 「再低一点」 after both the temperature and the fan were adjusted,
+     * or after nothing was.
+     *
+     * The hint asks the model to ask. This makes it hold: a prompt rule is not an enforcement
+     * mechanism ([I-11](../../../../../../docs/INVARIANTS.md)), and guessing right is still wrong
+     * — it is the same coin toss the next time. Recording the clarification here is what lets the
+     * driver's one-word answer resolve on the following turn.
+     */
+    private fun refuseAmbiguousAdjustment(call: DomainVoiceEvent.ToolCall): ToolDispatchResult? {
+        val action = call.arguments["action"] ?: return null
+        if (action != ClimateToolActions.ADJUST_TEMPERATURE && action != ClimateToolActions.ADJUST_FAN) return null
+        val context = driverContext() ?: return null
+        val epoch = context.currentEpoch()
+        if (epoch <= 0) return null
+        val resolution = ContextResolver.resolve(context.currentRequestText(), context, epoch)
+        if (resolution !is ContextResolver.Resolution.Clarify) return null
+        if (resolution.reason == ContextResolver.REASON_NOTHING_TO_REVERSE) return null
+        context.recordClarification(resolution.options, resolution.delta, epoch)
+        return failed(call, "AMBIGUOUS_REFERENT")
+    }
+
     private fun failed(call: DomainVoiceEvent.ToolCall, code: String) = ToolDispatchResult(
         null, null, blockedReason = code,
         output = JSONObject().put("ok", false).put("tool", call.name).put("error", code)
@@ -276,6 +302,9 @@ object ToolFailureAdvice {
         "PREFERENCE_NOT_FOR_DESTINATIONS" to "这个偏好只能用于路线，不能用于地点。请用户说第几个。",
         "PREFERENCE_NOT_FOR_ROUTES" to "这个偏好只能用于地点，不能用于路线。请用户说第几条。",
         "NO_OPTIONS" to "现在没有可选的内容。请如实说明。",
+        "AMBIGUOUS_REFERENT" to
+            "用户这句话没有说明要调的是温度还是风量，之前的记录也无法确定，所以没有执行。" +
+            "请只用一句话反问用户是温度还是风量，不要再调用任何工具，也不要说已经调好了。",
         "DUPLICATE_IN_TURN" to
             "这个操作在本轮已经执行过一次，没有重复执行。请根据上一次的结果回答，不要说又调了一次。",
         "MEDIA_LIBRARY_UNSUPPORTED" to

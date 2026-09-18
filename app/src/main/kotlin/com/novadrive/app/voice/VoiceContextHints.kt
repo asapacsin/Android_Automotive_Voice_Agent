@@ -27,7 +27,8 @@ object VoiceContextHints {
         cameraOpen: Boolean,
         options: String? = null,
         climate: DriverContext.Climate? = null,
-        resolution: ContextResolver.Resolution? = null,
+        referents: List<DriverContext.Dimension> = emptyList(),
+        pendingClarification: List<DriverContext.Dimension>? = null,
     ): String? {
         val listed = options?.takeIf { it.isNotBlank() }?.let { "（已显示，不要念出：$it）" }.orEmpty()
         val parts = buildList {
@@ -53,7 +54,8 @@ object VoiceContextHints {
             }
             if (cameraOpen) add("摄像头画面已打开；「这是什么」「前面有什么」等问题调用 describe_camera_view。")
             climate?.let { add(describeClimate(it)) }
-            resolution?.let { describeResolution(it)?.let(::add) }
+            describeReferents(referents)?.let(::add)
+            pendingClarification?.let { add(describePending(it)) }
         }
         return if (parts.isEmpty()) null else "当前状态：" + parts.joinToString("")
     }
@@ -65,40 +67,36 @@ object VoiceContextHints {
     }
 
     /**
-     * The app has already worked out what a context-dependent sentence refers to. Saying so keeps
-     * the decision in deterministic code: the model is told which dimension and which step, not
-     * asked to remember a conversation it never saw.
+     * What a sentence with no stated object would refer to **next**.
+     *
+     * This is state, not a decision about something already said. The hint is composed when a
+     * conversation is created — which is *before* the next utterance arrives — so anything phrased
+     * as "this sentence means X" would be describing the previous turn.
+     *
+     * The rule stated here is the same one `ContextResolver` enforces at the dispatcher. Saying it
+     * to the model is advice; the dispatcher is what makes it hold ([I-11](../../../../../../../docs/INVARIANTS.md)).
      */
-    private fun describeResolution(resolution: ContextResolver.Resolution): String? = when (resolution) {
-        is ContextResolver.Resolution.Adjust -> buildString {
-            val action = if (resolution.dimension == DriverContext.Dimension.FAN) {
-                ClimateToolActions.ADJUST_FAN
-            } else {
-                ClimateToolActions.ADJUST_TEMPERATURE
-            }
-            val what = if (resolution.dimension == DriverContext.Dimension.FAN) "风量" else "温度"
-            if (resolution.powerOnFirst) {
-                append("空调现在是关着的，用户不会有任何感觉：必须先调用 control_climate{action=power_on}，")
-                append("确认返回 ok=true 之后，再调用 control_climate{action=$action, value=${plain(resolution.delta)}}。")
-            } else {
-                append("用户这句话指的是$what：调用 control_climate{action=$action, value=${plain(resolution.delta)}}。")
-            }
-            if (resolution.atLimit) {
-                append("上一次同方向的调节已经到达可调范围的极限；如果这次返回 limit_reached=true，")
-                append("必须如实说已经到头了，不要说又调了一档。")
-            }
+    private fun describeReferents(referents: List<DriverContext.Dimension>): String? = when (referents.size) {
+        // Nothing adjusted yet: say nothing. A line on every fresh conversation explaining what
+        // would happen if the driver said something they have not said is noise on every turn, and
+        // the no-referent case is refused at the dispatcher — which is where it actually holds.
+        0 -> null
+        1 -> {
+            val what = readable(referents.first())
+            "刚才调整的是$what；用户接下来说「再高一点」「再低一点」「再大一点」这类没有说明对象的话，" +
+                "指的就是$what，用 adjust_${referents.first().wire} 调节。"
         }
-        is ContextResolver.Resolution.Clarify ->
-            "无法确定用户指的是" + resolution.options.joinToString("还是") { readable(it) } +
-                "：必须只用一句话反问用户，不要调用任何工具，也不要自己选一个。"
-        ContextResolver.Resolution.NotContextual -> null
+        else ->
+            "刚才温度和风量都调过；如果用户说「再低一点」这类没有说明对象的话，" +
+                "必须用一句话反问是温度还是风量，不要自己选一个。"
     }
+
+    private fun describePending(options: List<DriverContext.Dimension>): String =
+        "你刚才已经问过用户是" + options.joinToString("还是") { readable(it) } +
+            "；如果用户这句话回答的是其中一项，就按上一次的方向调节那一项，不要再问一遍。"
 
     private fun readable(dimension: DriverContext.Dimension): String =
         if (dimension == DriverContext.Dimension.FAN) "风量" else "温度"
-
-    private fun plain(value: Double): String =
-        if (value == value.toLong().toDouble()) value.toLong().toString() else value.toString()
 
     /** Live state, read when a session (or a reset conversation) is configured. */
     fun current(): String? =
@@ -116,20 +114,22 @@ object VoiceContextHints {
                 else -> null
             }
             val context = DriverContext.currentOrNull()
-            val resolution = context?.let {
-                ContextResolver.resolve(it.currentRequestText(), it, it.currentEpoch())
-            }
-            // Deciding to ask is a decision the app owns, so it is recorded here: the driver's
-            // answer next turn would otherwise have nothing to attach to.
-            if (context != null && resolution is ContextResolver.Resolution.Clarify) {
-                context.recordClarification(resolution.options, resolution.delta, context.currentEpoch())
+            val referents = context?.validReferents().orEmpty().map { it.dimension }
+            val pending = context?.pendingClarification(context.currentEpoch() + 1)?.options
+            if (context != null) {
+                com.novadrive.app.DebugVoiceLog.log(
+                    "ctx_hint epoch=${context.currentEpoch()} " +
+                        "referents=${referents.joinToString("+") { it.wire }.ifEmpty { "none" }} " +
+                        "pending=${pending?.size ?: 0}",
+                )
             }
             compose(
                 phase = phase,
                 cameraOpen = cameraOpen,
                 options = options,
                 climate = context?.climateState(),
-                resolution = resolution,
+                referents = referents,
+                pendingClarification = pending,
             )
         }.getOrNull()
 }

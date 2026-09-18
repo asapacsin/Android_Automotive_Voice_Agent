@@ -95,8 +95,11 @@ climate:
       AUDIO_E2E on the phone. Do not raise this to device on simulation evidence.
   ambiguous_relative_request:
     tool: null
-    verified: unit
-    evidence: "ContextResolverTest CVC-11, CVC-12, CVC-13"
+    verified: device
+    evidence: >
+      ContextResolverTest CVC-11/12/13, and on 2391ff70 2026-09-19: temperature set to 24 and fan to
+      3, then the neutral request was refused with AMBIGUOUS_REFERENT and get_state still read
+      temperature_c:24. The unchanged state is the evidence, not the error code.
     required_behaviour: >
       When two dimensions were recently adjusted, or none was, 「再低一点」 must be asked about in one
       sentence and no tool called. Guessing correctly is still wrong.
@@ -161,7 +164,9 @@ unsupported:
     tool: null
     verified: unsupported
     recognised_by: ActionClaimGuard.isSpecificMediaRequest
-    evidence: "FalseCapabilityClaimTest, 10 cases"
+    evidence: >
+      FalseCapabilityClaimTest, and on 2391ff70 2026-09-19: the named-song request returned
+      MEDIA_LIBRARY_UNSUPPORTED and nothing played, while 「播放音乐」 still returned music_playing.
     required_behaviour: >
       A request naming a song, an artist or a style is refused in one sentence. It must never start
       the bundled track: something would play, the result would be ok=true, and the driver would be
