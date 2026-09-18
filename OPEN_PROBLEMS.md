@@ -770,3 +770,47 @@ few kilometres is enough) and confirm the map opens on the new place. Everything
 without moving the phone, so the "does it follow me when I actually move" question is the one
 piece no ADB command can answer honestly — the Amap SDK reads its own location stack and ignores
 `cmd location` test providers, which was verified: injected Beijing fixes never reached the map.
+
+## P19 — A session that lost the network never came back
+
+**Status:** FIXED 2026-09-18 — unit test + **verified on device** (same failure reproduced, then
+recovered through the wake path alone)
+
+Found while working the product owner's 82-row pre-drive checklist (rows "Disable network",
+"Network loss mid-speech", "Restore network").
+
+### Symptom
+
+Cut the network mid-session and the session ends in `state=ERROR err=BAIDU_FLEX_DNS_FAILED` — which
+is correct and honest. But when the network comes back, **nothing recovers it**. The wake word, a
+tap on the status row and an app prompt all leave it in ERROR with capture frozen
+(`captured` stops rising, `peak=0`). Measured: still ERROR 40 s after the network returned.
+
+### Root cause
+
+`VoiceSessionController.failTerminal` (ingress) stops capture and playback and sets the state
+machine to ERROR, but does **not** clear `sessionActive`. So `VoiceSessionGateway.start()` saw
+`session.isActive == true`, took the "already running" branch and called `activate(reason)`, which
+only re-arms the listening lifecycle. It never reconnects a socket that is gone. The only escape
+was the Start/Stop toggle in 开发者设置 — which a driver has no reason to know about, and which the
+product UI deliberately does not expose.
+
+### Fix
+
+`GatewaySession.hasFailed` (from `VoiceSessionController.sessionFailedNow`, i.e. the core machine
+in `ERROR`). `VoiceSessionGateway.start` now treats a failed session as not running: it tears the
+dead one down, then opens a fresh connection. The core's semantics are untouched — the change is at
+the app seam, so the wake word, the status-row tap and app prompts all recover by the same path.
+
+Regression: `VoiceSessionGatewayTest.startRestartsASessionThatEndedInATerminalError` and
+`aHealthyActiveSessionStillOnlyActivates` (a healthy session must still only activate, not restart).
+
+### Device evidence (2026-09-18, `2391ff70`)
+
+Before: network off → `state=ERROR err=BAIDU_FLEX_DNS_FAILED`; network back; `start` → still
+`state=ERROR`, `captured` frozen at 161.
+After: same sequence → `listening DEEP_IDLE->ACTIVE reason=start`, `state=LISTENING`, then
+「播放音乐」 → `control_music` ✓ and 「关闭音乐」 → `control_music` ✓.
+
+Not a regression from the map work — this is pre-existing behaviour in the session state machine,
+and the checklist is what surfaced it.

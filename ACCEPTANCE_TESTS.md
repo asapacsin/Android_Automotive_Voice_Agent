@@ -155,6 +155,37 @@ behaviour on a real phone; it says nothing about speech.
 | Navigation unaffected | routes=3, `nav_start accepted=true`, guidance spoken, **0** recentre attempts while navigating | **VERIFIED** |
 | The map opens on a **new** place after the driver travels | — | **NOT VERIFIED — needs the owner to move the phone.** `cmd location` test providers do not reach the Amap SDK's location stack (injected Beijing fixes never reached the map), so this cannot be simulated |
 
+### L5-harness evidence — product-owner pre-drive checklist, 2026-09-18
+
+The owner's 82-row checklist (`android_doc/voice_agent_human_test_checklist.html`) run as far as a
+machine can take it: `tools/speech-harness` for the voice rows, ADB for lifecycle and failure rows.
+Synthetic speech, so acoustics are **not** covered.
+
+| Checklist area | Rows covered | Result |
+| --- | --- | --- |
+| Basic session | cold launch, connection, first command, long idle, background/foreground, screen off/on | ✅ 6/6 |
+| Speech recognition | normal Mandarin, short command, correction phrasing (the rows reachable with the fixed phrase set) | ✅ as far as the corpus reaches |
+| Turn-taking / VAD | no-speech timeout (`SLEEP reason=inactivity_timeout` at 30 s), barge-in (`cancelled reason=turn_detected`) | ✅ 2 rows; accidental-noise produced one phantom turn (see below) |
+| Silence / sleep | 闭嘴 → SILENT_WAIT, command while silent executes and is answered, 休眠 → SLEEP, ignored while asleep, tap wakes, distinction visible | ✅ 6/6 |
+| Multi-turn context | destination correction, topic switch, cancel | ✅ 3 rows |
+| Navigation | clear destination, choose by voice, route choice, cancel, repeated request, end navigation | ✅ 6/6 |
+| Music | play, stop, interrupt during TTS | ✅ 3 rows |
+| Failure recovery | network off, loss mid-turn, restore, permission denied, permission restored | ✅ 5/5 — **restore was a real FAIL, fixed as P19** |
+| Latency | speech end → tool ≈ 0.2–0.5 s; tool → spoken reply ≈ 0.5–1.0 s | ✅ measured |
+| Calling (5 rows) | — | **N/A — no calling tool exists in this product** |
+| Audio robustness (7), TTS naturalness, emotion, eyes-free, one-shot success, 20-minute session | — | **HUMAN ONLY** — needs a real voice, ears and a cabin |
+
+Findings that are not regressions but are worth the owner's eye:
+
+- **Honesty is inconsistent on out-of-scope questions.** 「今天天气怎么样」 was answered correctly once
+  (「抱歉，我无法获取实时天气信息。」) and, in a later session, with an invented forecast for **Beijing**
+  (「今天北京天气晴转多云，气温20到28度」). There is no weather tool; the second answer is a fabrication.
+- **`ActionClaimGuard` works, and you hear both sentences.** 「音量调大」 → 「音量调大设置中，正在调整。」
+  then the correction 「这个操作没有执行，暂时不支持。」 Same pattern on a climate turn. The false claim is
+  spoken before it is corrected.
+- **Open-mic picks up stray sound.** One phantom turn (「怎么回事。」 → 「没听清，再说一遍。」) appeared
+  between commands. No nonsense command executed. Matches the residual risk recorded under P9.
+
 ### L5-harness evidence — speech pipeline without a human, 2026-09-17
 
 `tools/speech-harness` injects synthetic Mandarin into the live Baidu Flex session (debug builds).

@@ -31,12 +31,24 @@ object VoiceSessionGateway {
     /**
      * Wake word / UI / app entry. A running session in SILENT_WAIT or SLEEP resumes; one in ACTIVE
      * restarts its inactivity countdown; with no session (DEEP_IDLE) a new one is opened.
+     *
+     * A session that ended in a terminal error is **not** running, whatever its active flag says.
+     * Measured on device 2026-09-18: losing the network gave `BAIDU_FLEX_DNS_FAILED`, and because
+     * the core leaves `sessionActive` set after `failTerminal`, every later start took the
+     * `isActive` branch and only re-armed the listening lifecycle — capture stayed frozen and the
+     * session sat in ERROR even after the network came back. Recovery needed an explicit stop from
+     * the settings screen, which the driver has no reason to know about. Here the failed session is
+     * torn down first so the wake word, the status-row tap and an app prompt all reconnect.
      */
     fun start(reason: String = "start"): StartResult {
         val session = starter ?: return StartResult.NotAttached
-        if (session.isActive) {
+        if (session.isActive && !session.hasFailed) {
             session.activate(reason)
             return StartResult.AlreadyActive
+        }
+        if (session.hasFailed) {
+            session.stop()
+            service?.stop()
         }
         if (!session.hasMicPermission()) return StartResult.MicPermissionMissing
         return try {
@@ -136,6 +148,9 @@ sealed interface StartResult {
 
 internal interface GatewaySession {
     val isActive: Boolean
+
+    /** True when the session ended in a terminal error and can only be recovered by restarting. */
+    val hasFailed: Boolean get() = false
     fun hasMicPermission(): Boolean
     fun startBaidu(reason: String = "start")
     fun stop()
@@ -155,6 +170,9 @@ private class ControllerGatewaySession(
 ) : GatewaySession {
     override val isActive: Boolean
         get() = controller.sessionActiveNow
+
+    override val hasFailed: Boolean
+        get() = controller.sessionFailedNow
 
     override fun hasMicPermission(): Boolean = service.hasMicPermission()
 

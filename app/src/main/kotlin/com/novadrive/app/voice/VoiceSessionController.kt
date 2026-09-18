@@ -109,6 +109,13 @@ class VoiceSessionController(
 
     val sessionActiveNow: Boolean get() = active.sessionActiveNow
 
+    /**
+     * A session the core gave up on. It still reports itself active — `failTerminal` stops capture
+     * and playback but does not clear the flag — so callers that only check [sessionActiveNow]
+     * would keep talking to a dead session. See `VoiceSessionGateway.start`.
+     */
+    val sessionFailedNow: Boolean get() = active.machine.state == VoiceUiState.ERROR
+
     private val guidanceGate =
         GuidanceMicGate(scope, onGateChanged = { closed ->
             microphone.guidanceGated = closed

@@ -38,6 +38,39 @@ class VoiceSessionGatewayTest {
         assertEquals(1, service.stopCalls)
     }
 
+    /**
+     * Device, 2026-09-18: the network dropped, the core called `failTerminal`, and because it
+     * leaves `sessionActive` set every later start only re-armed the listening lifecycle. The
+     * session stayed in ERROR with capture frozen even after the network returned.
+     */
+    @Test
+    fun startRestartsASessionThatEndedInATerminalError() {
+        val identity = Any().also { identities += it }
+        val session = FakeGatewaySession()
+        val service = FakeServiceControl()
+        VoiceSessionGateway.attachInternal(identity, session, service)
+        assertEquals(StartResult.Started, VoiceSessionGateway.start())
+        assertEquals(1, session.startCalls)
+
+        session.hasFailed = true
+        // The wake word, or a tap on the status row, after the network comes back.
+        assertEquals(StartResult.Started, VoiceSessionGateway.start("wake_word"))
+        assertEquals(1, session.stopCalls, "the dead session must be torn down first")
+        assertEquals(2, session.startCalls, "a fresh connection, not an activate")
+        assertTrue(session.activations.isEmpty(), "activate would only re-arm a dead session")
+    }
+
+    @Test
+    fun aHealthyActiveSessionStillOnlyActivates() {
+        val identity = Any().also { identities += it }
+        val session = FakeGatewaySession()
+        VoiceSessionGateway.attachInternal(identity, session, FakeServiceControl())
+        VoiceSessionGateway.start()
+        assertEquals(StartResult.AlreadyActive, VoiceSessionGateway.start("wake_word"))
+        assertEquals(1, session.startCalls)
+        assertEquals(listOf("wake_word"), session.activations)
+    }
+
     @Test
     fun startReturnsMicPermissionMissingWithoutStarting() {
         val identity = Any().also { identities += it }
@@ -162,6 +195,7 @@ class VoiceSessionGatewayTest {
     ) : GatewaySession {
         var startCalls = 0
         var stopCalls = 0
+        override var hasFailed: Boolean = false
         val texts = mutableListOf<String>()
         override var isActive: Boolean = false
         override fun hasMicPermission(): Boolean = hasMic
