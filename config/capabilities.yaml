@@ -15,7 +15,7 @@
 # tool: the function name declared in BaiduFlexProtocol.sessionUpdate, or null when there is none.
 
 meta:
-  updated: 2026-09-18
+  updated: 2026-09-19
   commit_at_update: 89c9338
   device: "Xiaomi 24069RA21C (2391ff70), Android SDK 36"
 
@@ -66,6 +66,7 @@ media:
   next_track:
     tool: null
     verified: unsupported
+    recognised_by: ActionClaimGuard.UNSUPPORTED_WORDS
     notes: "One bundled track. The bottom-bar control is shown disabled."
 
 climate:
@@ -82,6 +83,23 @@ climate:
     tool: control_climate
     verified: device
     backend: SimulatedVehicleControl
+  relative_adjustment_from_context:
+    tool: control_climate
+    verified: unit
+    evidence: "ContextResolverTest, 23 cases (SPEC-006 CVC-04..46)"
+    notes: >
+      「再凉一点」「有点热」「刚才那个调回来一点」. The model has no cross-turn memory here
+      (ConversationResetPolicy), so DriverContext holds the record and VoiceContextHints carries one
+      resolved instruction into each fresh conversation. The resolution is deterministic and
+      unit-proven; whether the LIVE model acts on that hint is NOT proven and needs TEXT_LIVE or
+      AUDIO_E2E on the phone. Do not raise this to device on simulation evidence.
+  ambiguous_relative_request:
+    tool: null
+    verified: unit
+    evidence: "ContextResolverTest CVC-11, CVC-12, CVC-13"
+    required_behaviour: >
+      When two dimensions were recently adjusted, or none was, 「再低一点」 must be asked about in one
+      sentence and no tool called. Guessing correctly is still wrong.
 
 vision:
   describe_camera_view:
@@ -139,6 +157,16 @@ unsupported:
     tool: null
     verified: unsupported
     recognised_by: ActionClaimGuard.UNSUPPORTED_WORDS
+  media_library:
+    tool: null
+    verified: unsupported
+    recognised_by: ActionClaimGuard.isSpecificMediaRequest
+    evidence: "FalseCapabilityClaimTest, 10 cases"
+    required_behaviour: >
+      A request naming a song, an artist or a style is refused in one sentence. It must never start
+      the bundled track: something would play, the result would be ok=true, and the driver would be
+      told they got what they asked for. Refused at AndroidToolDispatcher with
+      MEDIA_LIBRARY_UNSUPPORTED, so a prompt rule is not the only thing preventing it (I-11).
   realtime_weather_traffic_news:
     tool: null
     verified: unsupported

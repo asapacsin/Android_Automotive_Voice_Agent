@@ -920,3 +920,61 @@ other turn is untouched.
 both 「音量调大」 and 「今天天气怎么样」 (the model declined honestly on all three attempts), then
 「播放音乐」 → `control_music` ✓ with its confirmation spoken. The drop paths are proven by
 `PhantomTurnSuppressionTest`, not by the device, because a fabrication cannot be produced on demand.
+
+---
+
+## P22 — A song we cannot play would have been "played"
+
+**Status:** FIXED 2026-09-19 — unit tests (33 new). **Not device-verified, and not observed with the
+live model**: found by reading the code while writing [SPEC-006](SPECS/SPEC-006-complex-voice-commands.md),
+not from a failed run. Recorded at the level it was actually established.
+
+### The problem
+
+`media` is **one bundled track** with play/stop — no library, no search, no track metadata
+([capabilities.yaml](config/capabilities.yaml)). But nothing recognised a request for a *particular*
+song. 「放一下周杰伦那首讲晴天的歌」 contains 放 and 歌, which the `control_music` tool description maps to
+`action=play`, so the path was:
+
+```
+named-song request → control_music{play} → the bundled track starts → ok=true → claim released
+```
+
+Every existing guard passes, and that is what makes this class of defect different from P15/P21: an
+action really did execute and really did succeed. [I-1](docs/INVARIANTS.md) asks whether *an* action
+happened, and the answer was yes. What nothing checked was whether it was **the action the driver
+asked for**.
+
+`media.next_track` was already `unsupported` in the registry and had **no recogniser at all**, so
+「下一首」 went down the same path.
+
+### Fix
+
+1. `ActionClaimGuard.isSpecificMediaRequest` — structural, not a list of artists, which could never
+   be complete: require a music noun and a play verb, strip the words that make a request *generic*,
+   and if anything is left the driver named something in particular. 「放大地图」 has no music noun;
+   「播放音乐」 leaves nothing behind.
+2. It joins `isUnsupportedRequest`, so `DriverTurn` classifies the turn `NO_TOOL_ACTION` and holds
+   the reply until the wording is known to be honest — the P21 machinery, reused, not rebuilt.
+3. Classification alone is **not** sufficient: a `NO_TOOL_ACTION` turn that calls a tool anyway is
+   released as `tool_called`. So `AndroidToolDispatcher` — the only bridge to a device action —
+   refuses `control_music{play}` for such a request with `MEDIA_LIBRARY_UNSUPPORTED` and a `next`
+   telling the model what to say. A prompt rule is not an enforcement mechanism
+   ([I-11](docs/INVARIANTS.md)).
+4. 「下一首」「换一首」「切歌」 added to `UNSUPPORTED_WORDS`.
+
+### Found in the same pass
+
+- **A relative adjustment could be applied twice.** `adjust_temperature{-2}` dispatched twice is
+  −4 °C. Nothing prevented a duplicated function call from doubling a physical change; now refused
+  with `DUPLICATE_IN_TURN` when the tool, the arguments *and* the driver turn are identical. A
+  driver who asks twice speaks twice, which is two epochs, so a real second request still runs.
+  **Latent** — not observed in a log; it is a hazard the code permitted.
+- **SPEC-006 S2 was specified and never wired.** Cross-turn context would have survived a session
+  ending. `BaiduFlexClient.disconnect` now clears it.
+
+### Evidence
+
+`FalseCapabilityClaimTest` (10 cases) and `ContextResolverTest` (23). Full suite 631 tests, 0
+failures, 2026-09-19. **What is not proven:** that the live model, told it cannot play that song,
+says so in one honest sentence. That is `TEXT_LIVE`/`AUDIO_E2E` work on the phone.

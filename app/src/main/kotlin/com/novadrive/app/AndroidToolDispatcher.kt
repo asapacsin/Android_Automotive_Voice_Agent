@@ -10,6 +10,8 @@ import com.novadrive.app.nav.NavigationVoiceOutput
 import com.novadrive.app.nav.NavigationBackends
 import com.novadrive.app.nav.NavigationHostGateway
 import com.novadrive.app.vehicle.ClimateToolHandler
+import com.novadrive.app.voice.ActionClaimGuard
+import com.novadrive.app.voice.DriverContext
 import com.novadrive.app.vision.CameraQuestionHandler
 import com.novadrive.evaluation.EventType
 import com.novadrive.evaluation.Telemetry
@@ -51,6 +53,15 @@ class AndroidToolDispatcher(
     private val executor: AndroidActionExecutor,
     private val climate: ClimateToolHandler,
     private val camera: CameraQuestionHandler,
+    /**
+     * The app's cross-turn record for the turn this call belongs to, or null when there is none.
+     *
+     * A tool call alone cannot show that the *wrong capability* is about to run:
+     * `control_music{play}` is identical whether the driver said 「放首歌」 or named a song this
+     * product cannot play. It also cannot show that the same call already ran this turn, which for
+     * a relative adjustment means applying it twice.
+     */
+    private val driverContext: () -> DriverContext? = { DriverContext.currentOrNull() },
 ) {
     /**
      * Records the call, runs it and records the outcome (including deferred work). Arguments are
@@ -61,7 +72,7 @@ class AndroidToolDispatcher(
             com.novadrive.evaluation.Json.write(call.arguments.filterKeys { it != "_validation_error" })
         }
         Telemetry.record(EventType.TOOL_EXECUTION_START, toolType = call.name, detail = call.callId)
-        val result = dispatchUnrecorded(call)
+        val result = rejectIfRepeat(call) ?: dispatchUnrecorded(call)
         val deferred = result.deferredOutput
         if (deferred == null) {
             recordEnd(call, result.output, result.blockedReason)
@@ -100,6 +111,14 @@ class AndroidToolDispatcher(
             }
             ClimateToolHandler.TOOL -> {
                 val outcome = runBlocking { climate.handle(call.arguments) }
+                driverContext()?.let { context ->
+                    context.onClimateResult(
+                        action = call.arguments["action"].orEmpty(),
+                        value = call.arguments["value"]?.toDoubleOrNull(),
+                        output = outcome.output,
+                        epoch = context.currentEpoch(),
+                    )
+                }
                 // Failures are worth hearing too, even while navigating: the driver must not
                 // assume the climate changed when it did not.
                 NavigationState.allowConfirmation()
@@ -137,7 +156,19 @@ class AndroidToolDispatcher(
             }
             "control_music" -> {
                 when (call.arguments["action"]) {
-                    "play" -> result(call, executor.playMusic())
+                    // One bundled track, no library: a request that named a song, an artist or a
+                    // style cannot be satisfied, and starting the bundled track would make ok=true
+                    // mean "you got what you asked for". Refused here because this is the only
+                    // bridge to a device action.
+                    "play" ->
+                        if (ActionClaimGuard.isSpecificMediaRequest(
+                                driverContext()?.currentRequestText().orEmpty(),
+                            )
+                        ) {
+                            failed(call, "MEDIA_LIBRARY_UNSUPPORTED")
+                        } else {
+                            result(call, executor.playMusic())
+                        }
                     "stop" -> result(call, executor.stopMusic())
                     else -> failed(call, "ACTION_NOT_ALLOWED")
                 }
@@ -176,6 +207,13 @@ class AndroidToolDispatcher(
 
     companion object {
         const val CHOOSE_NAVIGATION_OPTION = com.novadrive.app.voice.BaiduFlexProtocol.CHOOSE_NAVIGATION_OPTION
+
+        /**
+         * Tools whose effect accumulates, so running one twice is not the same as running it once.
+         * A navigation search or a camera question can be repeated harmlessly; a relative climate
+         * change cannot.
+         */
+        private val REPEAT_SENSITIVE = setOf(ClimateToolHandler.TOOL, "control_music")
     }
 
     private fun result(call: DomainVoiceEvent.ToolCall, action: AndroidActionResult): ToolDispatchResult =
@@ -189,6 +227,27 @@ class AndroidToolDispatcher(
             }
             is AndroidActionResult.Rejected -> failed(call, action.code)
         }
+
+    /**
+     * The same call, with the same arguments, twice in one driver turn. For `adjust_temperature`
+     * that is the difference between −2 °C and −4 °C, so it is refused rather than repeated. A
+     * driver who really does ask twice speaks twice, which is two turns and two epochs.
+     */
+    private fun rejectIfRepeat(call: DomainVoiceEvent.ToolCall): ToolDispatchResult? {
+        if (call.name !in REPEAT_SENSITIVE) return null
+        val context = driverContext() ?: return null
+        // No transcribed utterance means no turn to be "within". Two identical calls are then two
+        // separate requests, not a repeat of one — refusing the second would drop a real action,
+        // which is the more expensive mistake of the two.
+        val epoch = context.currentEpoch()
+        if (epoch <= 0) return null
+        val arguments = call.arguments.filterKeys { it != "_validation_error" }
+        return if (context.claimDispatch(epoch, call.name, arguments)) {
+            null
+        } else {
+            failed(call, "DUPLICATE_IN_TURN")
+        }
+    }
 
     private fun failed(call: DomainVoiceEvent.ToolCall, code: String) = ToolDispatchResult(
         null, null, blockedReason = code,
@@ -217,6 +276,11 @@ object ToolFailureAdvice {
         "PREFERENCE_NOT_FOR_DESTINATIONS" to "这个偏好只能用于路线，不能用于地点。请用户说第几个。",
         "PREFERENCE_NOT_FOR_ROUTES" to "这个偏好只能用于地点，不能用于路线。请用户说第几条。",
         "NO_OPTIONS" to "现在没有可选的内容。请如实说明。",
+        "DUPLICATE_IN_TURN" to
+            "这个操作在本轮已经执行过一次，没有重复执行。请根据上一次的结果回答，不要说又调了一次。",
+        "MEDIA_LIBRARY_UNSUPPORTED" to
+            "车上只有一首内置曲目，没有音乐库，无法搜索或指定歌曲。" +
+            "请用一句话如实告诉用户放不了他要的那首歌，不要谎称已经播放，也不要改放其它曲子。",
     )
 
     fun forCode(code: String): String? = ADVICE[code]

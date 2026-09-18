@@ -1,6 +1,10 @@
 # SPEC-006 — Contextual voice commands
 
-Status: **Draft, not implemented.** Specification only — no runtime behaviour has changed.
+Status: **Partly implemented 2026-09-19.** Built: the context record and its staleness rules, the
+resolver (implicit intents, lexical binding, ambiguity, reversal, clarification answers), the hint
+that carries a resolution into each fresh conversation, and the two execution guards
+(`MEDIA_LIBRARY_UNSUPPORTED`, `DUPLICATE_IN_TURN`). Not yet built: navigation-phase cases beyond the
+hint text, and multi-intent decomposition. See §Implementation status.
 Raised: 2026-09-19 · Source: product-owner requirement 「后续可以试试复杂的语音指令」, with a modern
 automotive conversational assistant as the reference interaction style.
 Depends on: [I-1, I-2, I-3, I-4](../docs/INVARIANTS.md) · [capabilities.yaml](../config/capabilities.yaml) ·
@@ -303,11 +307,13 @@ others.
 `adjust_temperature{-2}` twice is −4 °C. Therefore:
 
 - each resolved intent carries the `DriverTurn` epoch and an intent key (`domain.action`);
-- two intents in **one utterance** that target the same dimension relatively are **merged into a
-  single call with the summed delta** (「调凉一点，再凉一点」 → one `adjust_temperature{-2}`). Merging keeps
-  both intents (FC-6) while dispatching once (FC-7); dropping one or dispatching twice fails;
-- after merging, a second dispatch with the same (epoch, intent key) is rejected before execution
-  and returns a failure the model can answer from — it must not silently succeed;
+- what is tested is the **observable total**, not the shape of the calls. 「调凉一点，再凉一点」 may
+  arrive as one `adjust_temperature{-2}` or as two `{-1}` calls; both keep the driver's two intents
+  (FC-6). What fails is a total of −1 (an intent was dropped) or −4 (one was applied twice);
+- a call that is **identical** — same tool, same arguments, same driver turn — is refused before it
+  executes and returns `DUPLICATE_IN_TURN`, which the model answers from. This is the case that
+  silently doubles a physical change: a protocol retry or a model repeating itself. A driver who
+  genuinely asks twice speaks twice, which is two turns and two epochs, so it cannot be swallowed;
 - a retry after a failed attempt is a *new* intent key only if the prior result was `ok=false`.
 
 **Partial failure.** If some intents succeed and others do not, the single reply must name both
@@ -482,7 +488,7 @@ instead of asking is a failure).
 | CVC-31 | HVAC on | 有点热，先把空调弄凉一点，然后导航去公司。 | 2 intents, stated order | `control_climate{adjust_temperature,-2}` **then** `navigate_to{公司}` | — | one intent dropped; order reversed; reply claims navigation started |
 | CVC-32 | HVAC on | 开点音乐，顺便把风调小一点。 | 2 independent intents | `control_music{play}` + `control_climate{adjust_fan,-1}`, either order | — | either intent dropped |
 | CVC-33 | HVAC on; climate backend fails | 把空调弄凉一点，然后导航去公司。 | partial failure | climate `ok=false`; `navigate_to` still dispatched | — | navigation skipped because climate failed; reply claims both done |
-| CVC-34 | HVAC on | 空调调凉一点，再凉一点。 | same dimension twice → merge | **one** `control_climate{adjust_temperature,-2}` | — | two dispatches; or one −1 call (an intent dropped) |
+| CVC-34 | HVAC on | 空调调凉一点，再凉一点。 | same dimension twice | any calls totalling −2 °C | — | a total of −1 (intent dropped) or −4 (applied twice) |
 
 ### C10 — correction / supersession
 
@@ -545,7 +551,7 @@ scenario's telemetry — none depends on reading the reply for tone.
 | FC-4 | A cancelled task executed, or its result mutated context. |
 | FC-5 | A stale success reply was spoken. |
 | FC-6 | A multi-intent utterance lost an intent. |
-| FC-7 | A side-effecting tool executed twice for one utterance. |
+| FC-7 | An identical side-effecting call executed twice in one driver turn. |
 | FC-8 | Partial success was reported as full success. |
 | FC-9 | An ambiguous request was guessed where clarification was required. |
 | FC-10 | A claim was released before the result that proves it. |
@@ -588,3 +594,25 @@ changes those rows and nothing else.
 5. **Whether 「公司」/「家」 should resolve without a saved address.** Today it becomes a POI search for
    the literal word, which will usually be wrong. Saved places are not a capability; CVC-31 expects
    the search, which is honest but not useful. A saved-places capability would be a separate spec.
+
+---
+
+## Implementation status (2026-09-19)
+
+| Area | State | Evidence |
+| --- | --- | --- |
+| Context record, S1–S7 | built | `DriverContext`; `ContextResolverTest` (CVC-13, 16, 44, 45, 46), `FalseCapabilityClaimTest` |
+| Implicit-intent table, D1 power dependency | built | `ContextResolver`; CVC-04–07 |
+| Lexical binding, relative continuation | built | CVC-09, 10 |
+| Ambiguity policy (clarify, never guess) | built | CVC-11, 12 |
+| Reversal | built | CVC-14, 15, 16 |
+| `pendingClarification` and its one-turn life | built | CVC-18, 18b |
+| Feedback recovery, `limit_reached` honesty | built | CVC-27, 28, 30 |
+| Unsupported media, duplicate execution | built | `FalseCapabilityClaimTest` (10 cases) |
+| Navigation-phase guidance (C6) | hint text only | `VoiceContextHints`; the phase rules are in the prompt, not yet in a test |
+| Multi-intent decomposition (C9) | not built | the model already emits several calls per response; nothing decomposes or orders them |
+| C1, C5 nav reference, C7 fuzzy, C10–C11 | pre-existing behaviour, unchanged | `NavigationChoiceResolver`, `DriverTurn` |
+
+The resolution layer is deterministic and tested. What a scripted model cannot prove — that the real
+model acts on the hint — needs `TEXT_LIVE` or `AUDIO_E2E` on the phone, and no capability level may be
+raised on simulation evidence.

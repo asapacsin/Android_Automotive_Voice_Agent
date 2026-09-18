@@ -50,9 +50,12 @@ def test_summary():
         task = parts[parts.index("test-results") + 1]
         if task == "testReleaseUnitTest":
             continue
-        # Only the most recent run counts; older residue is not evidence about this one.
-        if os.path.getmtime(f) < newest - 3600:
-            continue
+        # Deliberately no time window here. Gradle rewrites the reports of the tasks it runs and
+        # leaves an up-to-date module's reports untouched, so an older file is still the current
+        # result for that module. A one-hour window used to discard exactly that, and recorded
+        # "56 tests" for a 631-test suite (measured 2026-09-19) - canonical state that was wrong in
+        # the direction of looking worse, which is how it went unnoticed. Staleness is caught by
+        # --check against the commit instead.
         a = ET.parse(f).getroot().attrib
         module = parts[parts.index("test-results") - 1]
         m = modules.setdefault(module, {"tests": 0, "failures": 0, "errors": 0, "skipped": 0})

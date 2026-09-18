@@ -1,25 +1,61 @@
 {
-  "generated_at": "2026-09-18T19:38:28",
+  "generated_at": "2026-09-19T01:28:14",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "89c9338",
+    "commit": "88e24b8",
     "branch": "main",
-    "subject": "Execution evidence, not the model's wording, decides what is claimed",
+    "subject": "SPEC-006: contextual voice commands, specified against what actually exists",
     "working_tree_clean": false,
-    "uncommitted_files": 22
+    "uncommitted_files": 14
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-18T19:38:27",
+    "collected_at": "2026-09-19T01:26:57",
     "total": {
-      "tests": 56,
+      "tests": 631,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
+      "app": {
+        "tests": 475,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
       "behavior-test": {
         "tests": 56,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "contracts": {
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "evaluation": {
+        "tests": 27,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "ingress": {
+        "tests": 54,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "safety": {
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "simulator": {
+        "tests": 15,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -36,7 +72,8 @@
     "available": true,
     "by_level": {
       "device": 20,
-      "unsupported": 6
+      "unsupported": 7,
+      "unit": 2
     },
     "human_verification_pending": [
       "speech.wake_word",

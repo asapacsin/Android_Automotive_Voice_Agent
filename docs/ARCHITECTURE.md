@@ -46,6 +46,7 @@ One behaviour, one owner. If you need to change one of these, change it **here**
 | Whether an action **did** execute | the `ToolDispatchResult` / `AndroidActionResult` returned by the executor | any sentence the model produced |
 | What may be claimed to the driver | `DriverTurn` — holds reply audio+subtitle until execution proof exists; `PhantomTurnGate` judges phantom turns; `ActionClaimGuard` classifies requests and writes corrections | the persona prompt, the model's wording |
 | Per-utterance state (phase, kind, proof) | `DriverTurn`, one instance per driver turn, epoch-guarded | loose flags anywhere else |
+| **Cross-turn** context (what was adjusted, what is pending, what is stale) | `DriverContext`, built only from `ok=true` tool results; resolved by `ContextResolver`; carried to the model by `VoiceContextHints` | the model's memory — there is none, the conversation resets after every tool turn |
 | Navigation execution | `EmbeddedNavigationController` → `AmapNaviViewHost` (the only file that may import `com.amap`) | `NavigationAdapter` (legacy deep link, dormant) |
 | Which candidate the driver picked | `NavigationChoiceResolver` | the model |
 | Turn-taking / interruption | server VAD for turn ends; `ListeningLifecycle` for ACTIVE / SILENT_WAIT / SLEEP / DEEP_IDLE; `VoiceCommandRouter` for 「闭嘴」「休眠」 | ad-hoc checks in the client |
@@ -86,6 +87,20 @@ uplink gate refuses to upload anything shorter than 200 ms of voice-like energy;
 holds a doubtful turn's reply and drops it when the model asked for no action, nothing on screen was
 waiting, the audio produced no words, and the reply carries no content. See
 [INVARIANTS.md](INVARIANTS.md) I-4 and I-5.
+
+### Cross-turn context — `app/voice/DriverContext.kt`, `ContextResolver.kt`
+
+The conversation resets after every tool turn, so 「再凉一点」 reaches a model that does not know anything
+was adjusted. `DriverContext` is the app's record of what actually happened — written from tool
+results with `ok=true`, never from the model's wording — and `ContextResolver` turns a
+context-dependent sentence into one concrete action or into a decision to ask. `VoiceContextHints`
+puts that single resolved instruction into the fresh conversation.
+
+Navigation phase and candidates are **not** copied in: the hint reads them live from the navigation
+owner. Two copies of that state is the defect [TECH_DEBT.md](TECH_DEBT.md) D-4 already records.
+
+The rules are in [SPEC-006](../SPECS/SPEC-006-complex-voice-commands.md); the part that has a real
+oracle is proven by `ContextResolverTest`.
 
 ### Realtime provider — `app/voice/BaiduFlexClient.kt`
 Owns the vendor protocol and wires the per-turn machinery: `ResponseTurnGate` (one reply at a time),

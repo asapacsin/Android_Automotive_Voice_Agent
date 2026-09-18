@@ -96,7 +96,25 @@ class ActionClaimGuard {
          * Requests with no tool. Measured 2026-09-17: the generic follow-up for 「音量调大。」 made the
          * model call control_climate and raise the fan — a wrong action. These get a correction instead.
          */
-        private val UNSUPPORTED_WORDS = listOf("音量", "声音", "大声", "小声", "车窗", "窗户", "天窗", "座椅", "电话", "后备箱", "车门", "车灯", "雨刷")
+        private val UNSUPPORTED_WORDS = listOf(
+            "音量", "声音", "大声", "小声", "车窗", "窗户", "天窗", "座椅", "电话", "后备箱", "车门", "车灯", "雨刷",
+            // media.next_track is `unsupported` in the registry and had no recogniser, so a skip
+            // request reached control_music and was answered as though a track had changed.
+            "下一首", "上一首", "换一首", "换首歌", "切歌",
+        )
+
+        /** Music nouns; without one of these a 「放」 is not a media request (「放大地图」). */
+        private val MEDIA_NOUNS = listOf("音乐", "歌", "曲")
+        private val MEDIA_PLAY_WORDS = listOf("放", "播放", "听")
+
+        /**
+         * The words that make up a *generic* music request. What survives stripping them is the
+         * driver asking for something in particular.
+         */
+        private val GENERIC_MEDIA_TOKENS = Regex(
+            "播放|音乐|歌曲|随便|随意|来点|来首|一下|一首|放|听|来|首|点|歌|曲|吧|我|想|要|给|帮|个|的|了|啊|呢|请|下",
+        )
+        private val MEDIA_PUNCTUATION = "，。！？、,.!? \t　"
         /**
          * Questions about the world right now. This product has **no** weather, traffic or news
          * source, so any answer containing an actual forecast is invented by definition — there is
@@ -125,7 +143,28 @@ class ActionClaimGuard {
 
         fun isControlRequest(text: String): Boolean = CONTROL_WORDS.any { it in text }
 
-        fun isUnsupportedRequest(text: String): Boolean = UNSUPPORTED_WORDS.any { it in text }
+        fun isUnsupportedRequest(text: String): Boolean =
+            UNSUPPORTED_WORDS.any { it in text } || isSpecificMediaRequest(text)
+
+        /**
+         * A request for *particular* music. `media` is one bundled track with play/stop — there is
+         * no library, no search and no track metadata (`config/capabilities.yaml`), so a request
+         * that names a song, an artist or a style cannot be executed. Starting the bundled track
+         * instead would be a false claim about which capability ran ([I-2](../docs/INVARIANTS.md)):
+         * something plays, the result is `ok=true`, and the driver is told they got what they asked
+         * for.
+         *
+         * Structural rather than a list of artists, which could never be complete: strip the words
+         * that make a request *generic* and see whether the driver named anything else. A music
+         * noun is required so 「放大地图」 is not mistaken for a media request.
+         */
+        fun isSpecificMediaRequest(text: String): Boolean {
+            if (MEDIA_NOUNS.none { it in text }) return false
+            if (MEDIA_PLAY_WORDS.none { it in text }) return false
+            val remainder = GENERIC_MEDIA_TOKENS.replace(text, "")
+                .filterNot { it in MEDIA_PUNCTUATION }
+            return remainder.isNotEmpty()
+        }
 
         /** A question about the world right now, which this product has no tool to answer. */
         fun isRealtimeInfoRequest(text: String): Boolean = REALTIME_INFO_WORDS.any { it in text }

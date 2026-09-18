@@ -312,6 +312,10 @@ class BaiduFlexClient(
     fun disconnect() {
         cancelReset()
         closeSocket()
+        // S2 of SPEC-006: a referent does not survive the session that produced it. 「再低一点」 after
+        // a reconnect must be asked about, not answered from what the driver said before.
+        driverContext.onSessionEnded()
+        DriverContext.clear()
     }
 
     private fun closeSocket() {
@@ -562,6 +566,12 @@ class BaiduFlexClient(
     private val turnEpoch = java.util.concurrent.atomic.AtomicLong(0)
 
     /**
+     * Cross-turn context, owned here because the driver turn is owned here. Installed so the tool
+     * dispatcher and [VoiceContextHints] read this record rather than each keeping their own.
+     */
+    private val driverContext = DriverContext().also { DriverContext.install(it) }
+
+    /**
      * A new **driver** turn, not a new response. One command produces several responses — the tool
      * call, then the spoken result — and the transcript belongs to the utterance, not the response.
      */
@@ -569,8 +579,10 @@ class BaiduFlexClient(
     private fun beginDriverTurn() {
         val previous = turn
         if (previous.isHolding || previous.heldCount > 0) {
-            // A superseded turn's output is discarded: it can no longer be true or timely.
+            // A superseded turn's output is discarded: it can no longer be true or timely, and
+            // nothing it produced may be referred to by the utterance that replaced it (S5).
             applyVerdict(previous, previous.cancel("superseded"))
+            driverContext.cancel(previous.epoch)
         }
         turn = DriverTurn(turnEpoch.incrementAndGet())
     }
@@ -590,6 +602,7 @@ class BaiduFlexClient(
     private fun onUserTranscript(text: String) {
         val before = turn.isHolding
         val reason = turn.onUserTranscript(text) { DriverTurn.classify(it) }
+        if (turn.userSpoke) driverContext.onDriverUtterance(text, turn.epoch)
         if (before && reason == DriverTurn.HoldReason.NONE) {
             applyVerdict(turn, DriverTurn.Verdict.Release("user_spoke"))
         } else if (!before && reason != DriverTurn.HoldReason.NONE) {
