@@ -44,6 +44,35 @@ VOLATILE_IN_SKILL = [
 ]
 
 
+def carried_by_head(recorded):
+    """Is `recorded` the parent of HEAD, with HEAD being the commit that carried that state?
+
+    State is generated *before* the commit that contains it, so a freshly committed state file
+    always records the parent. Treating that as stale made the check fail after every single
+    commit, and "regenerate then commit" recurses forever - which is how this repository ended up
+    committing a state file that was genuinely stale, and nobody noticed among the false alarms.
+
+    So: one commit behind is correct, provided HEAD is the commit that introduced that state file.
+    Two commits behind, or a parent that did not touch it, is still stale.
+    """
+    if not recorded:
+        return False
+    try:
+        parent = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD~1"],
+            cwd=REPO, capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        if parent != recorded:
+            return False
+        changed = subprocess.run(
+            ["git", "diff", "--name-only", "HEAD~1", "HEAD"],
+            cwd=REPO, capture_output=True, text=True, check=True,
+        ).stdout.split()
+        return "state/PROJECT_STATE.json" in changed
+    except Exception:
+        return False
+
+
 def main():
     failures = []
 
@@ -60,10 +89,11 @@ def main():
                 ["git", "rev-parse", "--short", "HEAD"],
                 cwd=REPO, capture_output=True, text=True, check=True,
             ).stdout.strip()
-            if state.get("git", {}).get("commit") != head:
+            recorded = state.get("git", {}).get("commit")
+            if recorded != head and not carried_by_head(recorded):
                 failures.append(
                     "state/PROJECT_STATE.json is stale (%s vs %s); run scripts/collect_state.py"
-                    % (state.get("git", {}).get("commit"), head)
+                    % (recorded, head)
                 )
         except Exception as exc:
             failures.append("state/PROJECT_STATE.json unreadable: %s" % exc)
