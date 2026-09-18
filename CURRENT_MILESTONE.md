@@ -10,7 +10,7 @@ Date opened: 2026-09-19 · Source: [B-008](BACKLOG.md) · Spec: [SPEC-006](SPECS
 | 2 | Implicit goals, relative continuation and reversal resolve deterministically | L2 | **done** — `ContextResolver` |
 | 3 | An ambiguous referent is asked about, never guessed | L2 | **done** — CVC-11/12/13 |
 | 4 | A capability we do not have is never claimed to have run | L2 | **done** — `FalseCapabilityClaimTest`, 10 tests |
-| 5 | Multi-intent decomposition and ordering | L2 | **not built** |
+| 5 | Multi-intent per-call safety (validation, duplicate, cancellation, ambiguity) | L2 | **done** — decomposition itself is the model's, see SPEC-006 §On multi-intent |
 | 6 | The **live model** acts on the injected context | **L5** | **not earned** — needs `TEXT_LIVE`/`AUDIO_E2E` on the phone |
 
 Row 6 is the row that matters for the product and the one simulation cannot earn: a scripted model

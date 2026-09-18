@@ -130,7 +130,7 @@ class AndroidToolDispatcher(
                     null,
                     blockedReason = outcome.errorCode,
                     successChip = outcome.chip,
-                    output = outcome.output,
+                    output = withPowerAdvice(outcome.output),
                 )
             }
             "navigate_to" -> {
@@ -217,6 +217,18 @@ class AndroidToolDispatcher(
          * change cannot.
          */
         private val REPEAT_SENSITIVE = setOf(ClimateToolHandler.TOOL, "control_music")
+
+        private val TEMPERATURE_OR_FAN = setOf(
+            ClimateToolActions.ADJUST_TEMPERATURE,
+            ClimateToolActions.SET_TEMPERATURE,
+            ClimateToolActions.ADJUST_FAN,
+            ClimateToolActions.SET_FAN,
+        )
+
+        private const val POWER_OFF_ADVICE =
+            "设定已经改了，但空调现在是关着的，用户感受不到任何变化。" +
+                "请调用 control_climate{action=power_on} 把空调打开，成功后再用一句话告诉用户；" +
+                "不要直接说已经调好了。"
     }
 
     private fun result(call: DomainVoiceEvent.ToolCall, action: AndroidActionResult): ToolDispatchResult =
@@ -273,6 +285,25 @@ class AndroidToolDispatcher(
         if (resolution.reason == ContextResolver.REASON_NOTHING_TO_REVERSE) return null
         context.recordClarification(resolution.options, resolution.delta, epoch)
         return failed(call, "AMBIGUOUS_REFERENT")
+    }
+
+    /**
+     * A temperature or fan change that succeeded while the climate is **off**.
+     *
+     * The backend happily stores a new target with the system off, so the result is `ok=true` and
+     * the driver feels nothing — a true statement that leaves a false impression, which is the
+     * failure SPEC-006 D1 describes. The result carries the advice rather than the dispatcher
+     * switching the climate on by itself: the driver asked for a temperature, not for the system
+     * to be started, and inventing the second action is how an assistant stops being predictable.
+     */
+    private fun withPowerAdvice(output: String?): String? {
+        if (output == null) return null
+        if (!output.contains("\"ok\":true") || !output.contains("\"power_on\":false")) return output
+        val action = Regex("\"action\":\"([a-z_]+)\"").find(output)?.groupValues?.get(1)
+        if (action !in TEMPERATURE_OR_FAN) return output
+        return JSONObject(output)
+            .put("next", POWER_OFF_ADVICE)
+            .toString()
     }
 
     private fun failed(call: DomainVoiceEvent.ToolCall, code: String) = ToolDispatchResult(

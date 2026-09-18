@@ -210,6 +210,44 @@ class FalseCapabilityClaimTest {
         assertTrue(JSONObject(result.output!!).getBoolean("ok"))
     }
 
+    @Test
+    fun aTemperatureChangeWithTheClimateOffSaysTheDriverWillNotFeelIt() {
+        val vehicle = SimulatedVehicleControl()
+        val context = DriverContext()
+        context.onDriverUtterance("有点热。", epoch = 1)
+        val dispatcher = AndroidToolDispatcher(WillingExecutor(), ClimateToolHandler(vehicle), noCamera()) { context }
+
+        val result = dispatcher.dispatch(
+            call("control_climate", mapOf("action" to ClimateToolActions.ADJUST_TEMPERATURE, "value" to "-2")),
+        )
+        val output = JSONObject(result.output!!)
+
+        // The backend stores the new target happily with the system off, so this really did succeed.
+        assertTrue(output.getBoolean("ok"))
+        assertFalse(output.getBoolean("power_on"))
+        assertTrue(
+            output.getString("next").contains("power_on"),
+            "a true result that leaves a false impression must carry the correction",
+        )
+    }
+
+    @Test
+    fun aTemperatureChangeWithTheClimateOnNeedsNoSuchWarning() {
+        val vehicle = SimulatedVehicleControl()
+        val context = DriverContext()
+        context.onDriverUtterance("有点热。", epoch = 1)
+        val dispatcher = AndroidToolDispatcher(WillingExecutor(), ClimateToolHandler(vehicle), noCamera()) { context }
+        dispatcher.dispatch(call("control_climate", mapOf("action" to ClimateToolActions.POWER_ON)))
+
+        context.onDriverUtterance("再凉一点。", epoch = 2)
+        val result = dispatcher.dispatch(
+            call("control_climate", mapOf("action" to ClimateToolActions.ADJUST_TEMPERATURE, "value" to "-1")),
+        )
+        val output = JSONObject(result.output!!)
+        assertTrue(output.getBoolean("ok"))
+        assertFalse(output.has("next"), "nothing to warn about when the climate is on")
+    }
+
     private fun okClimate(): String =
         """{"ok":true,"tool":"control_climate","power_on":true,"temperature_c":24.0,""" +
             """"fan_level":3,"limit_reached":false}"""

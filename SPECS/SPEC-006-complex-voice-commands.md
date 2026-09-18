@@ -602,17 +602,37 @@ changes those rows and nothing else.
 | Area | State | Evidence |
 | --- | --- | --- |
 | Context record, S1–S7 | built | `DriverContext`; `ContextResolverTest` (CVC-13, 16, 44, 45, 46), `FalseCapabilityClaimTest` |
-| Implicit-intent table, D1 power dependency | built | `ContextResolver`; CVC-04–07 |
+| Implicit-intent table | built | `ContextResolver`; CVC-04–07 |
+| D1 power dependency | built, **device-verified** | The dispatcher does not switch the climate on by itself — the driver asked for a temperature, not for the system to be started. The result carries the correction instead, so the model powers on and only then says anything. `2391ff70`: `ok:true power_on:false` + `next`. |
 | Lexical binding, relative continuation | built | CVC-09, 10 |
-| Ambiguity policy (clarify, never guess) | built | CVC-11, 12 |
+| Ambiguity policy (clarify, never guess) | built, **device-verified** | `AMBIGUOUS_REFERENT` at the dispatcher, not only in the hint; `get_state` proves nothing moved |
 | Reversal | built | CVC-14, 15, 16 |
 | `pendingClarification` and its one-turn life | built | CVC-18, 18b |
 | Feedback recovery, `limit_reached` honesty | built | CVC-27, 28, 30 |
-| Unsupported media, duplicate execution | built | `FalseCapabilityClaimTest` (10 cases) |
+| Unsupported media, duplicate execution | built, **device-verified** | `FalseCapabilityClaimTest` (15 cases) + [ACCEPTANCE_TESTS.md](../ACCEPTANCE_TESTS.md) |
 | Navigation-phase guidance (C6) | hint text only | `VoiceContextHints`; the phase rules are in the prompt, not yet in a test |
-| Multi-intent decomposition (C9) | not built | the model already emits several calls per response; nothing decomposes or orders them |
+| Multi-intent decomposition (C9) | **not built as app code, deliberately** | See below. |
 | C1, C5 nav reference, C7 fuzzy, C10–C11 | pre-existing behaviour, unchanged | `NavigationChoiceResolver`, `DriverTurn` |
 
 The resolution layer is deterministic and tested. What a scripted model cannot prove — that the real
 model acts on the hint — needs `TEXT_LIVE` or `AUDIO_E2E` on the phone, and no capability level may be
 raised on simulation evidence.
+
+### On multi-intent (C9)
+
+The decomposition itself belongs to the model, and building an app-side planner to re-do it would
+be the heavyweight planner this spec's own Non-goals forbid. In an end-to-end speech stack the app
+never sees the utterance before the model answers — there is no ASR to split ([ADR-002](../DECISIONS/ADR-002-baidu-flex-default-provider.md))
+— so a planner could only re-derive intents from a transcript that arrives *after* the tool calls.
+
+What the app owes a multi-intent turn is therefore **per-call safety**, and that is built and
+proven: each call is validated independently, an identical call cannot run twice
+(`DUPLICATE_IN_TURN`), a cancelled turn's late results are discarded, an ambiguous one is refused,
+and no claim is released without `ok=true` for the call it describes ([I-1](../docs/INVARIANTS.md)).
+A turn that loses an intent is therefore a *model* failure, observable in the benchmark, not a
+missing mechanism.
+
+What remains genuinely unbuilt is **ordering between dependent intents** when the model issues them
+in the wrong order. Today the D1 case is handled by advice in the result rather than by sequencing.
+That is enough while `control_climate` is the only dependent pair; a second one would justify
+revisiting it, and this note is the record of that trigger.
