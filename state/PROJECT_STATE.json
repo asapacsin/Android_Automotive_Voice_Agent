@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-19T02:23:29",
+  "generated_at": "2026-09-19T02:24:49",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "29145ba",
+    "commit": "3532670",
     "branch": "main",
-    "subject": "A change the driver cannot feel is not a change worth confirming",
-    "working_tree_clean": false,
-    "uncommitted_files": 1
+    "subject": "The staleness check failed after every commit, so nobody read it",
+    "working_tree_clean": true,
+    "uncommitted_files": 0
   },
   "tests": {
     "available": true,
