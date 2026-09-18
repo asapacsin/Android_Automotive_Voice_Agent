@@ -44,7 +44,8 @@ One behaviour, one owner. If you need to change one of these, change it **here**
 | Whether a tool call is well-formed | `FlexFunctionCallAssembler` (schema, bounds, enums) | the model, the dispatcher |
 | Whether an action may execute | `AndroidToolDispatcher` (+ `SafetyPolicy` in `orchestration` for the JVM path) | the model |
 | Whether an action **did** execute | the `ToolDispatchResult` / `AndroidActionResult` returned by the executor | any sentence the model produced |
-| What may be claimed to the driver | `ActionClaimGuard` (after the fact) and `PhantomTurnGate` (before the audio plays) | the persona prompt alone |
+| What may be claimed to the driver | `DriverTurn` — holds reply audio+subtitle until execution proof exists; `PhantomTurnGate` judges phantom turns; `ActionClaimGuard` classifies requests and writes corrections | the persona prompt, the model's wording |
+| Per-utterance state (phase, kind, proof) | `DriverTurn`, one instance per driver turn, epoch-guarded | loose flags anywhere else |
 | Navigation execution | `EmbeddedNavigationController` → `AmapNaviViewHost` (the only file that may import `com.amap`) | `NavigationAdapter` (legacy deep link, dormant) |
 | Which candidate the driver picked | `NavigationChoiceResolver` | the model |
 | Turn-taking / interruption | server VAD for turn ends; `ListeningLifecycle` for ACTIVE / SILENT_WAIT / SLEEP / DEEP_IDLE; `VoiceCommandRouter` for 「闭嘴」「休眠」 | ad-hoc checks in the client |
@@ -87,10 +88,20 @@ waiting, the audio produced no words, and the reply carries no content. See
 [INVARIANTS.md](INVARIANTS.md) I-4 and I-5.
 
 ### Realtime provider — `app/voice/BaiduFlexClient.kt`
-Owns the vendor protocol and the per-turn machinery: `ResponseTurnGate` (one reply at a time),
-`ConversationResetPolicy` (a fresh conversation after tool turns), `EmptyResponseRetryPolicy`,
-`ActionClaimGuard` wiring, and the phantom/false-claim holds. **This file is oversized** — see
-[TECH_DEBT.md](TECH_DEBT.md) D-1.
+Owns the vendor protocol and wires the per-turn machinery: `ResponseTurnGate` (one reply at a time),
+`ConversationResetPolicy` (a fresh conversation after tool turns), `EmptyResponseRetryPolicy`, and
+`ActionClaimGuard`.
+
+**Per-utterance state lives in `DriverTurn`, not in the client.** One object per driver utterance
+carries the phase (LISTENING → RESPONDING → SETTLED, or CANCELLED), the request kind (ACTION /
+NO_TOOL_ACTION / REALTIME_INFO / CONVERSATION), whether the driver was transcribed, whether a tool
+was called, and whether execution *proved* success. It is the single authority on whether the reply
+may be heard, and it is why a stale event from a superseded turn cannot mutate a newer one — every
+turn carries an epoch and a cancelled turn accepts nothing.
+
+The three reasons a reply is held are one mechanism: `PHANTOM_AUDIO` (the audio looked like noise),
+`NO_TOOL_REQUEST` (nothing can ever prove it), `AWAITING_EXECUTION_PROOF` (I-1). Diagnostics:
+`TURN_HOLD`, `TURN_RELEASE`, `TURN_DROP`, each with the epoch and reason.
 
 ### Provider-neutral core — `ingress`
 `VoiceSessionController` holds the state machine, reconnect policy, work coordinator and the audio

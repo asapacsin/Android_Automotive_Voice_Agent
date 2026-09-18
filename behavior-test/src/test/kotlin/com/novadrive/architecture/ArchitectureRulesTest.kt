@@ -68,6 +68,9 @@ class ArchitectureRulesTest {
     @Test
     fun onlyAudioAndSubtitleMayBeHeld() {
         val client = text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt")
+        assertTrue(client.contains("private fun holdOrEmit")) {
+            "INVARIANT I-5: there must be exactly one place that decides what is held"
+        }
         assertTrue(client.contains("if (!holdable) return false")) {
             "INVARIANT I-5: everything that is not reply audio or its subtitle must pass through"
         }
@@ -76,6 +79,33 @@ class ArchitectureRulesTest {
         listOf("ToolCall", "Error", "UserTranscript").forEach { forbidden ->
             assertTrue(!holdableBlock.contains(forbidden)) {
                 "INVARIANT I-5 / I-4: $forbidden must never be held back from the session"
+            }
+        }
+    }
+
+    // ---- I-1: only execution evidence may establish that an action happened ----
+
+    @Test
+    fun executionProofOwnsActionClaims() {
+        val client = text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt")
+        // Proof enters the system at exactly one place: the tool result.
+        assertTrue(client.contains("onExecutionResult(output)")) {
+            "INVARIANT I-1: sendFunctionResult is the only source of execution evidence"
+        }
+        val turn = text("app/src/main/kotlin/com/novadrive/app/voice/DriverTurn.kt")
+        assertTrue(turn.contains("AWAITING_EXECUTION_PROOF")) {
+            "INVARIANT I-1: an action reply must be able to wait for proof"
+        }
+        assertTrue(turn.contains("if (!ok) {")) {
+            "INVARIANT I-1: a failed execution must not count as proof"
+        }
+        // Per-utterance state has one owner; the loose flags it replaced must not come back.
+        listOf(
+            "userSpokeThisTurn", "toolCalledThisTurn", "unsupportedRequestThisTurn",
+            "realtimeInfoThisTurn", "holdingTurn",
+        ).forEach { flag ->
+            assertTrue(!client.contains(flag)) {
+                "INVARIANT I-1 / I-10: per-turn state belongs to DriverTurn, not to a `$flag` flag"
             }
         }
     }

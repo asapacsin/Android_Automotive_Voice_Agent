@@ -8,11 +8,22 @@ enforced by review, it says so — those are the ones to be most careful with.
 
 ---
 
-**I-1. Only a real execution result may be reported as success.**
-The truth about what happened is the `AndroidActionResult` / `ToolDispatchResult` returned by the
-executor. A sentence produced by the model is never evidence that anything ran.
-*Enforced by:* `ActionClaimGuard` (corrects a claim with no tool call), `PhantomTurnGate` (drops a
-false claim before it is spoken), `AndroidToolDispatcherTest`, `PhantomTurnSuppressionTest`.
+**I-1. Only deterministic execution evidence may establish that an external action occurred.**
+The model may *propose* an action; it may not *assert* that one happened. The only proof in this
+system is a tool result with `ok=true`, delivered through `BaiduFlexClient.sendFunctionResult`.
+A sentence produced by the model is never evidence, and a failed result (`ok=false`) is never proof.
+
+Consequence: when the driver asked for an action, the reply's **audio and subtitle** wait until that
+proof exists. In the normal flow the model answers *from* the tool result, so proof already exists
+and nothing is delayed. A claim that is never proved is dropped unheard and the model is asked to
+actually perform the action.
+
+Never waits for proof, in any phase: the driver's transcript, the tool call, the execution itself,
+and error delivery to the model. Only output whose truth depends on execution proof may be held.
+
+*Owner:* `DriverTurn` — one object per driver utterance, holding the phase, the request kind and the
+proof. *Enforced by:* `DriverTurnTest` (claim-before-proof, failed execution, cancellation, stale
+events), `PhantomTurnSuppressionTest`, `ArchitectureRulesTest.executionProofOwnsActionClaims`.
 
 **I-2. A capability that does not exist must fail deterministically, and say so once.**
 No tool means: no execution, one honest sentence, and the same words on screen and in the speaker.
