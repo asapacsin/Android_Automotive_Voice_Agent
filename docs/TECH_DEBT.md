@@ -46,20 +46,23 @@ trim the prompt to tone and phrasing once the deterministic owners have more dev
 
 ---
 
-## D-3 — The UI executes vehicle and media actions directly — **MEDIUM**
+## D-3 — The UI executes vehicle and media actions directly — **RESOLVED 2026-09-19**
 
-**Problem.** `BottomBarView` calls `BundledMusicPlayer` and `VehicleControlPort` straight from the
-click listeners, so the screen path and the voice path reach the executors by different routes. The
-voice path gets validation, claim-guarding and result-based confirmation; the screen path does not.
+**Was.** `BottomBarView` called `BundledMusicPlayer` and `VehicleControlPort` straight from its
+click listeners, so the screen path and the voice path reached the executors by different routes.
+The voice path got argument validation, bounds checking and a result-shaped outcome; the screen
+path got none of it.
 
-**Affected.** `app/ui/BottomBarView.kt`, `app/ui/AssistantNavigationScreen.kt`.
+**Resolved by** `ScreenControls` / `ExecutorScreenControls`: the screen states intent, and the
+Activity hands it the **same** `AndroidActionExecutor` and `ClimateToolHandler` instances the tool
+dispatcher holds. The bar's label now changes only when the executor says the action succeeded,
+never because a button was pressed — which is the same rule the voice path follows.
 
-**Risk.** A future change to how actions are validated or confirmed silently misses the UI.
-Contradicts [INVARIANTS.md](INVARIANTS.md) I-6, which is why that invariant currently records two
-allowed exceptions.
+State flows are exposed through the same interface, not because reading is executing, but because a
+view that reaches for a concrete backend to render itself eventually reaches for it to act.
 
-**Recommendation.** Route both through the same executor the dispatcher uses, so the ports have one
-entry point. Small change; deferred only because it touches working UI.
+`ArchitectureRulesTest.uiDoesNotReachIntoExecution` now runs with an **empty** exception set, so a
+new offender fails the build instead of being recorded as debt.
 
 ---
 

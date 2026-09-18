@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-09-19T01:28:14",
+  "generated_at": "2026-09-19T01:39:41",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "88e24b8",
+    "commit": "b192790",
     "branch": "main",
-    "subject": "SPEC-006: contextual voice commands, specified against what actually exists",
+    "subject": "Cross-turn context, and a song we could not play is no longer \"played\"",
     "working_tree_clean": false,
-    "uncommitted_files": 14
+    "uncommitted_files": 8
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-19T01:26:57",
+    "collected_at": "2026-09-19T01:39:20",
     "total": {
       "tests": 631,
       "failures": 0,
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 228739854,
-    "built_at": "2026-09-18T17:36:45"
+    "bytes": 228822892,
+    "built_at": "2026-09-19T01:35:38"
   },
   "capabilities": {
     "available": true,
@@ -102,7 +102,7 @@
     {
       "id": "D-3",
       "title": "The UI executes vehicle and media actions directly",
-      "priority": "MEDIUM"
+      "priority": "RESOLVED"
     },
     {
       "id": "D-4",

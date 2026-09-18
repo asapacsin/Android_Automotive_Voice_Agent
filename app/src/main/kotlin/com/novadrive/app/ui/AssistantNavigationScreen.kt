@@ -9,7 +9,7 @@ import com.novadrive.app.nav.EmbeddedNavigation
 import com.novadrive.app.nav.NavigationHostGateway
 import com.novadrive.app.nav.RecenterOutcome
 import com.novadrive.app.nav.amap.AmapNaviViewHost
-import com.novadrive.app.vehicle.VehicleControlProvider
+import com.novadrive.app.ScreenControls
 import com.novadrive.app.DebugVoiceLog
 import com.novadrive.app.NavigationState
 import com.novadrive.app.vision.CameraQuestionHandler
@@ -80,9 +80,16 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
         camera.visibility = GONE
         bottomBar.onCameraClick = { onCameraToggleRequested?.invoke() }
         bottomBar.onRecenterClick = { recenterMap() }
-        bottomBar.bindClimate(VehicleControlProvider.port)
         overlay.onOpenDeveloperSettings = { onOpenDeveloperSettings?.invoke() }
         choiceOverlay.bind(EmbeddedNavigation.shared(context))
+    }
+
+    /**
+     * Supplied by the Activity, so this screen never names an executor or a backend itself
+     * ([I-6](../../../../../../../docs/INVARIANTS.md)).
+     */
+    fun bindControls(controls: ScreenControls) {
+        bottomBar.bind(controls)
     }
 
     fun onCreate(savedInstanceState: Bundle?) {

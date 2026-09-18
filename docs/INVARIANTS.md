@@ -49,11 +49,11 @@ together so the two can never diverge.
 *Enforced by:* `PhantomTurnSuppressionTest`, `ArchitectureRulesTest.onlyAudioAndSubtitleMayBeHeld`.
 
 **I-6. The UI must not execute vehicle or navigation actions directly.**
-Screen controls go through the same ports as the voice path. *(Today the bottom bar still calls
-`VehicleControlPort` and `BundledMusicPlayer` directly — see [TECH_DEBT.md](TECH_DEBT.md) D-3. The
-rule stands; the debt is the gap.)*
-*Enforced by:* `ArchitectureRulesTest.uiDoesNotReachIntoExecution` (currently allows the two known
-exceptions, and fails on any new one).
+A button and a spoken command reach the same executor by the same route, so a change to how an
+action is validated or confirmed cannot silently miss one of them. The screen states intent through
+`ScreenControls`; the Activity supplies the same executor instances the tool dispatcher holds.
+*Enforced by:* `ArchitectureRulesTest.uiDoesNotReachIntoExecution`, whose exception set has been
+**empty** since 2026-09-19 (D-3 resolved) — any new offender fails the build.
 
 **I-7. Secrets never enter source, Gradle files, logs or the APK.**
 Credentials live in `AndroidKeystoreCredentialStore`; the Amap key arrives through

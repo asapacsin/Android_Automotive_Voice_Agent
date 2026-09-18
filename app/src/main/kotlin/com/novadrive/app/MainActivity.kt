@@ -31,10 +31,20 @@ class MainActivity : Activity() {
         DebugVoiceLog.init(this)
         settingsRepository = BaiduSettingsRepository(this)
         val player = PcmAudioPlayer { code -> mainHandler.post { showError(code, "playback failed") } }
+        val actionExecutor = SafeAndroidActionExecutor(this)
+        val climateHandler = ClimateToolHandler(VehicleControlProvider.port)
         val toolDispatcher = AndroidToolDispatcher(
-            SafeAndroidActionExecutor(this),
-            ClimateToolHandler(VehicleControlProvider.port),
+            actionExecutor,
+            climateHandler,
             VisionProvider.handler(this),
+        )
+        // The screen reaches the executors the same way a spoken command does (I-6, TECH_DEBT D-3):
+        // the same instances, not a second route to the same ports.
+        val screenControls = ExecutorScreenControls(
+            executor = actionExecutor,
+            climatePort = VehicleControlProvider.port,
+            climateHandler = climateHandler,
+            musicPlaying = BundledMusicPlayer.playing,
         )
         controller =
             VoiceSessionController(
@@ -91,6 +101,7 @@ class MainActivity : Activity() {
                 onListeningToggle = { toggleListening() }
             }
         setContentView(screen)
+        screen.bindControls(screenControls)
         screen.onCreate(savedInstanceState)
         renderState(VoiceUiState.DISCONNECTED, null)
         if (Build.VERSION.SDK_INT >= 33 &&

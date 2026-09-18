@@ -226,7 +226,15 @@ class FeaturePresenceRegressionTest {
         assertContains(screen, "CameraPreviewView(context)", "camera window")
         assertContains(screen, "CameraVisionGateway.attach(", "camera must be reachable by the vision tool")
         assertContains(screen, "NavigationHostGateway.attach(", "embedded map host must be reachable")
-        assertContains(screen, "bottomBar.bindClimate(", "climate controls must be bound to the port")
+        // Was bindClimate(VehicleControlProvider.port) until 2026-09-19. The bar now reaches the
+        // executors the same way a spoken command does (I-6, D-3 resolved), so the link to assert
+        // is the one that supplies it, and the Activity is what supplies it.
+        assertContains(screen, "bottomBar.bind(controls)", "climate and media controls must be bound")
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/MainActivity.kt",
+            "screen.bindControls(screenControls)",
+            "without this the bottom bar is inert",
+        )
         assertContains(screen, "camera.onHostPause()", "the camera must be released when the screen is backgrounded")
         assertContains(screen, "camera.onHostResume()", "and reopened when the screen returns")
     }

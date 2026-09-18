@@ -7,14 +7,12 @@ import android.view.Gravity
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
-import com.novadrive.app.BundledMusicPlayer
 import com.novadrive.app.DebugVoiceLog
 import com.novadrive.app.R
+import com.novadrive.app.ScreenControls
 import com.novadrive.app.vehicle.ClimateToolHandler
 import com.novadrive.vehicle.ClimateLimits
 import com.novadrive.vehicle.ClimateState
-import com.novadrive.vehicle.VehicleActionResult
-import com.novadrive.vehicle.VehicleControlPort
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -22,9 +20,10 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 /**
- * Media + climate bar. Every control does real work: music buttons drive [BundledMusicPlayer]
- * and reflect its actual state; climate controls go through [VehicleControlPort] (a simulated
- * backend on the phone build) and the label shows the state read back from it.
+ * Media + climate bar. Every control does real work, and does it through [ScreenControls] — the
+ * same validated route to the executors that a spoken command takes
+ * ([I-6](../../../../../../../docs/INVARIANTS.md)). This view states intent and renders state; it
+ * decides nothing and reaches no backend directly.
  */
 class BottomBarView(context: Context) : LinearLayout(context) {
     var onCameraClick: (() -> Unit)? = null
@@ -33,7 +32,7 @@ class BottomBarView(context: Context) : LinearLayout(context) {
     var onRecenterClick: (() -> Unit)? = null
 
     private var scope: CoroutineScope? = null
-    private var climate: VehicleControlPort? = null
+    private var controls: ScreenControls? = null
 
     private val playPause: TextView
     private val climateLabel: TextView
@@ -46,8 +45,8 @@ class BottomBarView(context: Context) : LinearLayout(context) {
         isClickable = true
 
         // No separate 「音乐」 label: the bar is phone-width and the climate readout needs the room.
-        addView(control(context.getString(R.string.bottom_bar_prev)) { BundledMusicPlayer.restart(context) })
-        playPause = control(context.getString(R.string.bottom_bar_play)) { BundledMusicPlayer.toggle(context) }
+        addView(control(context.getString(R.string.bottom_bar_prev)) { act("restart") { it.restartMusic() } })
+        playPause = control(context.getString(R.string.bottom_bar_play)) { act("toggle_music") { it.toggleMusic() } }
         addView(playPause)
         // One bundled track: there is no "next". Shown disabled rather than as a button that does nothing.
         addView(
@@ -88,10 +87,10 @@ class BottomBarView(context: Context) : LinearLayout(context) {
         addView(camera, LayoutParams(dp(72), LayoutParams.WRAP_CONTENT))
     }
 
-    /** UI depends on the port only — never on the simulator. */
-    fun bindClimate(port: VehicleControlPort) {
-        climate = port
-        renderClimate(port.climateState.value)
+    /** The one way this bar reaches anything outside itself. */
+    fun bind(screenControls: ScreenControls) {
+        controls = screenControls
+        renderClimate(screenControls.climate.value)
         if (isAttachedToWindow) startCollecting()
     }
 
@@ -110,29 +109,30 @@ class BottomBarView(context: Context) : LinearLayout(context) {
         scope?.cancel()
         val created = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         scope = created
+        val bound = controls ?: return
         created.launch {
-            BundledMusicPlayer.playing.collect { playing ->
+            bound.musicPlaying.collect { playing ->
                 playPause.text = context.getString(if (playing) R.string.bottom_bar_pause else R.string.bottom_bar_play)
             }
         }
-        val port = climate ?: return
-        created.launch { port.climateState.collect(::renderClimate) }
+        created.launch { bound.climate.collect(::renderClimate) }
     }
 
-    private fun togglePower() {
-        val port = climate ?: return
-        scope?.launch { report(port.setHvacPower(!port.getClimateState().powerOn)) }
-    }
+    private fun togglePower() = act("climate_power") { it.toggleClimatePower() }
 
-    private fun adjustTemperature(delta: Double) {
-        val port = climate ?: return
-        scope?.launch { report(port.changeCabinTemperature(delta)) }
-    }
+    private fun adjustTemperature(delta: Double) = act("climate_temperature") { it.adjustTemperature(delta) }
 
-    private fun report(result: VehicleActionResult) {
-        DebugVoiceLog.log("climate_ui result=${result::class.simpleName}")
-        if (result !is VehicleActionResult.Success) {
-            climateLabel.text = context.getString(R.string.bottom_bar_climate_failed)
+    /**
+     * Runs one screen action and shows the driver the same truth the voice path would: the label
+     * changes only when the executor says the action succeeded, never because the button was
+     * pressed.
+     */
+    private fun act(name: String, action: suspend (ScreenControls) -> ScreenControls.Outcome) {
+        val bound = controls ?: return
+        scope?.launch {
+            val outcome = action(bound)
+            DebugVoiceLog.log("screen_action=$name ok=${outcome.ok} error=${outcome.errorCode ?: "-"}")
+            if (!outcome.ok) climateLabel.text = context.getString(R.string.bottom_bar_climate_failed)
         }
     }
 

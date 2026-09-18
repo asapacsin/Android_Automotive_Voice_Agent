@@ -48,10 +48,9 @@ class ArchitectureRulesTest {
     fun uiDoesNotReachIntoExecution() {
         // Recorded exceptions, with their debt entry. Adding to this set needs a reason in the
         // commit message; the point of the test is that a NEW one cannot appear silently.
-        val knownDebt = setOf(
-            "app/src/main/kotlin/com/novadrive/app/ui/BottomBarView.kt", // TECH_DEBT D-3
-            "app/src/main/kotlin/com/novadrive/app/ui/AssistantNavigationScreen.kt", // TECH_DEBT D-3
-        )
+        // Empty since 2026-09-19: D-3 is resolved, both screens go through ScreenControls. A file
+        // added back here needs a debt entry and a reason in the commit message.
+        val knownDebt = emptySet<String>()
         val executors = listOf("BundledMusicPlayer", "VehicleControlProvider", "SafeAndroidActionExecutor")
         val offenders = kotlinFiles("app/src/main/kotlin/com/novadrive/app/ui")
             .filter { file -> executors.any { file.readText().contains(it) } }
