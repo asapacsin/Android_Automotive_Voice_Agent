@@ -9,12 +9,17 @@ navigation are the **Amap Navigation SDK embedded in our own Activity**. Locale 
 ```powershell
 .\gradlew.bat test                     # everything; counts come from the JUnit XML, not the summary
 .\gradlew.bat :app:assembleDebug       # APK -> C:\Users\Administrator\tools\nova-drive-build\
-.\gradlew.bat :behavior-test:test      # the architecture and secret-scan rules
+.\gradlew.bat :behavior-test:test      # architecture, capability-contract and secret-scan rules
+python scripts/collect_state.py        # refresh state/PROJECT_STATE.json from evidence
+python scripts/harness_check.py        # is the harness coherent?
 ```
 
 Before you consider a change complete: `.\gradlew.bat test --rerun-tasks :app:assembleDebug`, then
 device evidence for anything touching audio, the map or lifecycle (`ACCEPTANCE_TESTS.md` says what
 each level may claim). A green build is not evidence that anything works.
+
+Starting a session? Follow [skills/start.md](skills/start.md). Finishing one?
+[skills/handoff.md](skills/handoff.md).
 
 ## Where things are
 
@@ -30,6 +35,10 @@ each level may claim). A green build is not evidence that anything works.
 | Settled decisions — read before reopening one | [DECISIONS/](DECISIONS/README.md) |
 | Periodic architecture clean-up | [docs/AGENT_MAINTENANCE.md](docs/AGENT_MAINTENANCE.md) |
 | Driving the test phone over ADB | [tools/speech-harness/README.md](tools/speech-harness/README.md) |
+| **Current state** — commit, tests, open issues (generated) | [state/PROJECT_STATE.json](state/PROJECT_STATE.json) |
+| **Capability truth**, machine-readable, with verification level | [config/capabilities.yaml](config/capabilities.yaml) |
+| How work is done here, and the agent harness | [harness/README.md](harness/README.md) |
+| Reusable procedures | [skills/](skills/) |
 
 ## How to change things here
 

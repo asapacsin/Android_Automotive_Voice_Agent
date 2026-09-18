@@ -1,0 +1,29 @@
+{
+  "generated_by": "scripts/skill_metrics.py",
+  "events": 3,
+  "outcomes": {
+    "PASS": 3
+  },
+  "total_retries": 2,
+  "skill_usage": {
+    "reproduce": 1,
+    "fix": 3,
+    "verify": 2,
+    "start": 1
+  },
+  "deviations": {},
+  "missing_steps": {},
+  "human_reminders": {},
+  "manual_repeated_work": {
+    "build-install-harness-read-log": 2
+  },
+  "failed_skill_assumptions": {},
+  "unused_skills": [
+    "handoff"
+  ],
+  "suggested_actions": [],
+  "thresholds": {
+    "new_skill": 3,
+    "modify": 2
+  }
+}

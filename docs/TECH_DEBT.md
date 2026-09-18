@@ -5,7 +5,7 @@ generic advice. Ordered by priority.
 
 ---
 
-## D-1 — `BaiduFlexClient` owns too much (790 lines) — **HIGH**
+## D-1 — `BaiduFlexClient` owns too much — **RESOLVED 2026-09-18** (`89c9338`)
 
 **Problem.** One class holds the WebSocket, the vendor protocol, the turn gate, the conversation
 reset policy, the empty-response retry, the claim guard wiring, the phantom-turn hold, the
@@ -19,10 +19,9 @@ silenced a real confirmation.
 **Risk.** The next per-turn feature will interact with the existing holds in a way nobody predicts.
 This is the most likely source of a future regression in the voice path.
 
-**Recommendation.** Extract a `DriverTurn` value object owning the per-utterance state
-(`userSpoke`, `toolCalled`, `unsupported`, `realtimeInfo`, `segment`, held events) with the hold
-decision as methods on it. The client keeps the socket and the protocol. Do this before adding any
-further per-turn policy.
+**Resolved.** `DriverTurn` now owns the per-utterance state with explicit phases, epoch guarding and
+legal transitions; the eight `@Volatile` flags are gone and `ArchitectureRulesTest` fails if any of
+them returns. Covered by `DriverTurnTest` (17 cases including cancellation and stale events).
 
 ---
 
@@ -40,10 +39,10 @@ editing the prompt and believe the job is done.
 **Risk.** Policy drifts between the two statements; the prompt grows; the deterministic owner is
 bypassed.
 
-**Recommendation.** Keep the prompt for *tone and phrasing*. For every safety-relevant rule, add a
-one-line comment in `PersonaProfiles` naming the deterministic owner, so the reader knows the prompt
-is advisory. Do not add a new prompt rule for anything that can be checked in code
-([INVARIANTS.md](INVARIANTS.md) I-11).
+**Partly addressed 2026-09-18** (`8d35b8a`): `PersonaProfiles` now carries a header naming the
+deterministic owner of each safety-relevant rule, so a reader knows the prose is advisory. The
+duplication itself remains — the prompt still states rules that code enforces. Remaining work is to
+trim the prompt to tone and phrasing once the deterministic owners have more device evidence.
 
 ---
 
@@ -99,7 +98,7 @@ provider is still wanted, and say so in one line. Fix the README's provider clai
 
 ---
 
-## D-6 — `agent/*.md` is stale and contradicts the current state — **LOW**
+## D-6 — `agent/*.md` is stale — **RESOLVED 2026-09-18** (`8d35b8a`)
 
 **Problem.** `agent/CURRENT_TASK.md`, `agent/PROJECT_STATE.md` and `agent/WORKER_REPORT.md` are
 dated 2026-09-15 and describe the deep-link navigation architecture, a 129-test suite and a
@@ -109,12 +108,12 @@ milestone that has since closed. They are wrong, and they are linked from the ol
 
 **Risk.** A fresh agent reads them as current and rebuilds the wrong mental model.
 
-**Recommendation.** Keep `agent/` for role instructions only (BUILDER/REVIEWER/INTAKE). Delete the
-three state files; live state belongs in `CURRENT_MILESTONE.md` and `OPEN_PROBLEMS.md`.
+**Resolved.** The four stale files were deleted and every reference repointed. Live state is now
+generated into `state/PROJECT_STATE.json`.
 
 ---
 
-## D-7 — A false claim can still be spoken for *supported* actions — **MEDIUM**
+## D-7 — A false claim could be spoken for *supported* actions — **RESOLVED 2026-09-18** (`89c9338`)
 
 **Problem.** The hold that prevents a false claim covers requests with **no** tool. For a supported
 action the model can still say 「导航已开始。」 before the tool runs; `ActionClaimGuard` then makes it
@@ -125,6 +124,8 @@ true and the driver hears the sentence twice. Measured on device 2026-09-18 duri
 **Risk.** The driver hears a claim before it is true — a weaker form of exactly what
 [INVARIANTS.md](INVARIANTS.md) I-1 exists to prevent.
 
-**Recommendation.** Extend the hold to control requests, releasing on the tool call (which usually
-arrives within a few hundred milliseconds) instead of on the reply text. Needs a latency measurement
-first: every control turn would be delayed by the hold.
+**Resolved, and generalised beyond navigation.** Invariant I-1 now states that only deterministic
+execution evidence may establish that an action occurred; `DriverTurn` holds an action reply until a
+tool result with `ok=true` arrives. Device evidence: `TURN_DROP epoch=3 reason=unproven_action_claim
+events=7`, then `nav_navigation_started routeId=12`, then the claim spoken once. The feared latency
+did not appear: in the normal flow the model answers *from* the tool result, so proof already exists.

@@ -1,0 +1,155 @@
+# Canonical, machine-readable capability truth.
+#
+# docs/CAPABILITIES.md is the prose for humans; this file is what tests and scripts read. They are
+# kept in step by behavior-test/CapabilityContractTest, which fails when a tool is declared to the
+# model but missing here, or listed here but not routed to an executor.
+#
+# verified: how far this capability has actually been proven. Do not upgrade a level without the
+# evidence that level requires (ACCEPTANCE_TESTS.md defines them):
+#   implemented   - code exists and compiles
+#   unit          - deterministic tests cover the behaviour
+#   device        - observed working on the phone, with a log line or screenshot as evidence
+#   human         - a person has confirmed it with their own voice/ears/eyes
+#   unsupported   - deliberately not provided; the app must say so and never pretend
+#
+# tool: the function name declared in BaiduFlexProtocol.sessionUpdate, or null when there is none.
+
+meta:
+  updated: 2026-09-18
+  commit_at_update: 89c9338
+  device: "Xiaomi 24069RA21C (2391ff70), Android SDK 36"
+
+navigation:
+  search_place:
+    tool: navigate_to
+    verified: device
+    evidence: "nav_resolve_candidates count=5 for 导航去珠海站 and 导航去附近的麦当劳"
+    notes: "Returns candidates only. Navigation has NOT started at this point."
+  search_nearby_brand:
+    tool: navigate_to
+    verified: device
+    evidence: "DestinationQuery strips 附近的; count=0 -> count=5 on device"
+  select_candidate_by_ordinal:
+    tool: choose_navigation_option
+    verified: device
+    evidence: "第二个 -> choose_navigation_option index -> route list"
+  select_candidate_by_name:
+    tool: choose_navigation_option
+    verified: device
+    evidence: "选择麦当劳创新方商场 -> routes; a name nobody offered returns NO_MATCH"
+  select_route:
+    tool: choose_navigation_option
+    verified: device
+    evidence: "选最快的那条 -> nav_active_route matched the fastest"
+  start_navigation:
+    tool: choose_navigation_option
+    verified: device
+    evidence: "nav_navigation_started routeId=12, spoken once after proof"
+  stop_navigation:
+    tool: exit_navigation_mode
+    verified: device
+    evidence: "结束导航 -> nav_stopped reached=true; 算了 cancels the picker"
+  guidance_voice:
+    tool: null
+    verified: device
+    evidence: "21 nav_guidance_play_start/end pairs on an emulator drive; mic gated while speaking"
+    notes: "Amap SDK offline voice. Loudness and quality are a human judgement."
+
+media:
+  play_music:
+    tool: control_music
+    verified: device
+    evidence: "播放音乐 -> control_music -> AudioPlaybackConfiguration started"
+  stop_music:
+    tool: control_music
+    verified: device
+  next_track:
+    tool: null
+    verified: unsupported
+    notes: "One bundled track. The bottom-bar control is shown disabled."
+
+climate:
+  power:
+    tool: control_climate
+    verified: device
+    backend: SimulatedVehicleControl
+    notes: "Simulated. Real vehicle = one new VehicleControlPort in VehicleControlProvider."
+  set_temperature:
+    tool: control_climate
+    verified: device
+    backend: SimulatedVehicleControl
+  set_fan:
+    tool: control_climate
+    verified: device
+    backend: SimulatedVehicleControl
+
+vision:
+  describe_camera_view:
+    tool: describe_camera_view
+    verified: device
+    evidence: "看看前面有什么 -> camera frame -> Qianfan vision -> spoken answer"
+    notes: "Needs a Qianfan API key; a legacy OAuth token is rejected with 401."
+
+speech:
+  tts:
+    tool: null
+    verified: device
+    notes: "The model's own audio; there is no separate TTS engine."
+  silent_mode:
+    tool: set_speech_output
+    verified: device
+    evidence: "闭嘴 -> SILENT_WAIT in 2 ms, reply cut off, listening continues"
+  sleep:
+    tool: end_conversation
+    verified: device
+    evidence: "休眠 -> SLEEP; speech in SLEEP ignored; tap or wake word -> ACTIVE"
+  interrupt_tts_by_voice:
+    tool: null
+    verified: unsupported
+    notes: >
+      The microphone is gated while the assistant speaks, so the driver cannot interrupt by
+      talking. The wake word is the interrupt. Deliberate trade-off, docs/ARCHITECTURE.md.
+  wake_word:
+    tool: null
+    verified: device
+    human_gap: true
+    evidence: "Engine initialises; VoiceSessionGateway.start(\"wake_word\") drives the same path"
+    notes: "Never triggered by a real human voice. See harness/README.md human gaps."
+
+apps:
+  open_maps:
+    tool: open_app
+    verified: device
+  open_settings:
+    tool: open_app
+    verified: device
+
+# Requests the product must refuse honestly, once, with subtitle and speech identical.
+unsupported:
+  volume_control:
+    tool: null
+    verified: unsupported
+    recognised_by: ActionClaimGuard.UNSUPPORTED_WORDS
+    required_behaviour: "One honest sentence. Never 正在调整音量."
+  windows_seats_doors_lights_wipers:
+    tool: null
+    verified: unsupported
+    recognised_by: ActionClaimGuard.UNSUPPORTED_WORDS
+  phone_calls:
+    tool: null
+    verified: unsupported
+    recognised_by: ActionClaimGuard.UNSUPPORTED_WORDS
+  realtime_weather_traffic_news:
+    tool: null
+    verified: unsupported
+    recognised_by: ActionClaimGuard.REALTIME_INFO_WORDS
+    required_behaviour: "Refuse. Any non-refusal is fabricated: there is no source on this car."
+
+# Facts that cannot be established without a person or a place.
+human_verification_pending:
+  - capability: speech.wake_word
+    reason: "H1 - needs a human voice saying 你好小诺"
+  - capability: open_mic_thresholds
+    reason: "H1 - needs real cabin acoustics: road noise, passengers, speed"
+  - capability: navigation.guidance_voice
+    reason: "H1 - loudness and speech quality are a human judgement"

@@ -1,0 +1,91 @@
+{
+  "generated_at": "2026-09-18T19:38:28",
+  "generated_by": "scripts/collect_state.py",
+  "git": {
+    "commit": "89c9338",
+    "branch": "main",
+    "subject": "Execution evidence, not the model's wording, decides what is claimed",
+    "working_tree_clean": false,
+    "uncommitted_files": 22
+  },
+  "tests": {
+    "available": true,
+    "collected_at": "2026-09-18T19:38:27",
+    "total": {
+      "tests": 56,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "by_module": {
+      "behavior-test": {
+        "tests": 56,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    "passing": true
+  },
+  "apk": {
+    "built": true,
+    "bytes": 228739854,
+    "built_at": "2026-09-18T17:36:45"
+  },
+  "capabilities": {
+    "available": true,
+    "by_level": {
+      "device": 20,
+      "unsupported": 6
+    },
+    "human_verification_pending": [
+      "speech.wake_word",
+      "open_mic_thresholds",
+      "navigation.guidance_voice"
+    ]
+  },
+  "open_issues": [
+    {
+      "id": "P15",
+      "title": "Replies claiming an action that never ran",
+      "status": "MITIGATED 2026-09-17 — unit + client tests; device evidence for each half (see below)"
+    }
+  ],
+  "tech_debt": [
+    {
+      "id": "D-1",
+      "title": "`BaiduFlexClient` owns too much",
+      "priority": "RESOLVED"
+    },
+    {
+      "id": "D-2",
+      "title": "The same policy is stated in the prompt and enforced in code",
+      "priority": "HIGH"
+    },
+    {
+      "id": "D-3",
+      "title": "The UI executes vehicle and media actions directly",
+      "priority": "MEDIUM"
+    },
+    {
+      "id": "D-4",
+      "title": "Two navigation state machines",
+      "priority": "MEDIUM"
+    },
+    {
+      "id": "D-5",
+      "title": "Dormant providers and paths still compile",
+      "priority": "LOW"
+    },
+    {
+      "id": "D-6",
+      "title": "`agent/*.md` is stale",
+      "priority": "RESOLVED"
+    },
+    {
+      "id": "D-7",
+      "title": "A false claim could be spoken for *supported* actions",
+      "priority": "RESOLVED"
+    }
+  ]
+}
