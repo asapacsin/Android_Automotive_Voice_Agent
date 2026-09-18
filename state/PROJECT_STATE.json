@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-19T01:39:41",
+  "generated_at": "2026-09-19T01:42:45",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "b192790",
+    "commit": "e6fda67",
     "branch": "main",
-    "subject": "Cross-turn context, and a song we could not play is no longer \"played\"",
+    "subject": "D-3: a button and a spoken command now take the same route",
     "working_tree_clean": false,
-    "uncommitted_files": 8
+    "uncommitted_files": 3
   },
   "tests": {
     "available": true,
@@ -81,13 +81,7 @@
       "navigation.guidance_voice"
     ]
   },
-  "open_issues": [
-    {
-      "id": "P15",
-      "title": "Replies claiming an action that never ran",
-      "status": "MITIGATED 2026-09-17 — unit + client tests; device evidence for each half (see below)"
-    }
-  ],
+  "open_issues": [],
   "tech_debt": [
     {
       "id": "D-1",

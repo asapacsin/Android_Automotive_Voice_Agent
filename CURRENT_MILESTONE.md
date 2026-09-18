@@ -1,8 +1,38 @@
 # Current Milestone
 
-**M2 — Embedded map proof: `AMapNaviView` inside our Activity with an assistant placeholder above it** — 🔒 **OPENED 2026-09-16, BLOCKED on one credential**
+**M3 — Contextual voice commands: the driver stops speaking like an API** — **OPENED 2026-09-19**
+
+Date opened: 2026-09-19 · Source: [B-008](BACKLOG.md) · Spec: [SPEC-006](SPECS/SPEC-006-complex-voice-commands.md)
+
+| # | Required | Level | State |
+| --- | --- | --- | --- |
+| 1 | Cross-turn context has one owner, built only from proven execution | L2 | **done** — `DriverContext`, 23 tests |
+| 2 | Implicit goals, relative continuation and reversal resolve deterministically | L2 | **done** — `ContextResolver` |
+| 3 | An ambiguous referent is asked about, never guessed | L2 | **done** — CVC-11/12/13 |
+| 4 | A capability we do not have is never claimed to have run | L2 | **done** — `FalseCapabilityClaimTest`, 10 tests |
+| 5 | Multi-intent decomposition and ordering | L2 | **not built** |
+| 6 | The **live model** acts on the injected context | **L5** | **not earned** — needs `TEXT_LIVE`/`AUDIO_E2E` on the phone |
+
+Row 6 is the row that matters for the product and the one simulation cannot earn: a scripted model
+emitting the expected call proves plumbing, not understanding.
+
+---
+
+# M2 — Embedded map proof (CLOSED 2026-09-19 — record kept, do not reopen)
+
+**M2 — Embedded map proof: `AMapNaviView` inside our Activity with an assistant placeholder above it** — ✅ **CLOSED 2026-09-19**
 
 Date opened: 2026-09-16 · Source: [DEMAND v2 §44 Phase 1 + §47](SPECS/DEMAND-2026-09-16-embedded-amap-v2.md) · Decision: [ADR-007](DECISIONS/ADR-007-embedded-amap-navigation-sdk.md) · Spec: [SPEC-005](SPECS/SPEC-005-embedded-amap-mvp.md)
+
+> **Closed on the evidence already recorded in [ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md)** against
+> `2391ff70`: destination candidates resolve and render as real POIs with name and distance, routes
+> draw, the *chosen* route id is the one driven (`nav_active_route meters=21410`), `nav_stopped
+> reached=true` fires exactly once, and arrival auto-stops. A map that renders POIs and routes
+> inside our Activity is the map rendering inside our Activity, so the credential question below is
+> settled by the navigation working at all.
+>
+> What is **not** earned by this, and is not an M2 gap: **L5 with a human voice**. Every device
+> result so far came from ADB-triggered calls or synthetic speech. That is a standing human gap.
 
 > M1 (close the on-device voice loop) closed 2026-09-16 — its record is preserved in git history and summarised in `OPEN_PROBLEMS.md`. Do not reopen it.
 

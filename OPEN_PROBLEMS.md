@@ -124,7 +124,11 @@ The fix was binding the Chinese stop verbs into the tool description plus a pers
 
 ## P3 — Amap's guidance is transcribed as the driver's speech
 
-**Status:** OPEN — Option A falsified 2026-09-16. **Option C (VAD mitigation) implemented 2026-09-16, compile- and test-verified only, NOT device-verified.** **Direction changed the same day by [ADR-007](DECISIONS/ADR-007-embedded-amap-navigation-sdk.md):** with the Amap SDK embedded, guidance speech is started *by our process* and its playing state is queryable — the exact signal SPEC-002 could not observe from outside. The proper fix is now v2 Phase 7 of [SPEC-005](SPECS/SPEC-005-embedded-amap-mvp.md); wake-word gating remains complementary. Until then the physical problem (guidance → speaker → mic) persists on the installed build.
+**Status:** FIXED 2026-09-19 (reconciled; the fix landed earlier and the entry was never updated) — `GuidanceMicGate` closes the uplink the moment Amap starts speaking, reopens 500 ms after it stops, and reopens anyway after a cap so a lost callback cannot leave the assistant deaf for the rest of the drive. Unit-proven by `GuidanceMicGateTest` (6 cases); the wiring (`NavigationGuidanceVoice.addListener(guidanceListener)`) is guarded by `FeaturePresenceRegressionTest` so it cannot be removed silently; device evidence is recorded in [capabilities.yaml](config/capabilities.yaml) `navigation.guidance_voice` — 21 `nav_guidance_play_start/end` pairs on an emulator drive with the mic gated throughout. ADR-007 is what made this possible: with the SDK embedded, guidance is started by our own process and its speaking state is observable, which is exactly the signal SPEC-002 could not get from outside.
+
+### History
+
+Option A falsified 2026-09-16. **Option C (VAD mitigation) implemented 2026-09-16, compile- and test-verified only, NOT device-verified.** **Direction changed the same day by [ADR-007](DECISIONS/ADR-007-embedded-amap-navigation-sdk.md):** with the Amap SDK embedded, guidance speech is started *by our process* and its playing state is queryable — the exact signal SPEC-002 could not observe from outside. The proper fix is now v2 Phase 7 of [SPEC-005](SPECS/SPEC-005-embedded-amap-mvp.md); wake-word gating remains complementary. Until then the physical problem (guidance → speaker → mic) persists on the installed build.
 **Found:** 2026-09-16, in the logs of the successful P1/P2 test
 **Severity:** ~~Medium — does not break the product~~ → **RAISED TO HIGH 2026-09-16. It does break the product.**
 
@@ -617,7 +621,7 @@ answered 「调高温度了。」 **without** calling `control_climate` — a fa
 
 ## P15 — Replies claiming an action that never ran
 
-**Status:** MITIGATED 2026-09-17 — unit + client tests; device evidence for each half (see below)
+**Status:** FIXED 2026-09-18, reconciled 2026-09-19 — the 2026-09-17 mitigation became a **guarantee** when [TECH_DEBT.md](docs/TECH_DEBT.md) D-7 was resolved: `DriverTurn` holds a reply's audio and subtitle until a tool result with `ok=true` proves the action, so a claim that nothing proved is dropped unheard rather than corrected after the driver has heard it ([I-1](docs/INVARIANTS.md)). [P22](#p22--a-song-we-cannot-play-would-have-been-played) closes the one case this does not cover on its own: an action that really did run, but was not the action the driver asked for. Original evidence below.
 
 `ActionClaimGuard`: when the driver asked for a control action or about the camera picture and the
 reply finished with no tool call and without declining, the client sends one self-contained
