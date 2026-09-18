@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-09-19T02:24:49",
+  "generated_at": "2026-09-19T02:46:09",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "3532670",
+    "commit": "6672d71",
     "branch": "main",
-    "subject": "The staleness check failed after every commit, so nobody read it",
-    "working_tree_clean": true,
-    "uncommitted_files": 0
+    "subject": "Refresh generated state",
+    "working_tree_clean": false,
+    "uncommitted_files": 4
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-19T02:21:31",
+    "collected_at": "2026-09-19T02:45:54",
     "total": {
       "tests": 636,
       "failures": 0,
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 228822892,
-    "built_at": "2026-09-19T02:18:33"
+    "bytes": 228789006,
+    "built_at": "2026-09-19T02:41:53"
   },
   "capabilities": {
     "available": true,

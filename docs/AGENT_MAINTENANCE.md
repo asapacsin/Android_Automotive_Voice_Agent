@@ -57,6 +57,13 @@ crosses its recorded budget — raise the budget only with a reason in the commi
 `FeaturePresenceRegressionTest` are the enforcement. If one now fails for a *deliberate* change,
 change the assertion in the same commit and say why — that is the record of the decision.
 
+**They only bite if they run.** These tests read the repository's own source at runtime, so Gradle
+cannot see their inputs and used to call the task up to date after changes it did not recognise. On
+2026-09-19 that hid a real failure: `AndroidToolDispatcher.kt` grew past its line budget and three
+consecutive green runs never re-ran the rule that says so. The task is now pinned with
+`outputs.upToDateWhen { false }`. If you add another test that inspects *files* rather than classes,
+pin it the same way — a guard that runs only when the build system happens to notice is not a guard.
+
 ## 6. Check the documents against reality
 
 - Does [CAPABILITIES.md](CAPABILITIES.md) list exactly the tools in `BaiduFlexProtocol`?

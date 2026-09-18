@@ -10,9 +10,6 @@ import com.novadrive.app.nav.NavigationVoiceOutput
 import com.novadrive.app.nav.NavigationBackends
 import com.novadrive.app.nav.NavigationHostGateway
 import com.novadrive.app.vehicle.ClimateToolHandler
-import com.novadrive.app.voice.ActionClaimGuard
-import com.novadrive.app.voice.ClimateToolActions
-import com.novadrive.app.voice.ContextResolver
 import com.novadrive.app.voice.DriverContext
 import com.novadrive.app.vision.CameraQuestionHandler
 import com.novadrive.evaluation.EventType
@@ -74,7 +71,7 @@ class AndroidToolDispatcher(
             com.novadrive.evaluation.Json.write(call.arguments.filterKeys { it != "_validation_error" })
         }
         Telemetry.record(EventType.TOOL_EXECUTION_START, toolType = call.name, detail = call.callId)
-        val result = rejectIfRepeat(call) ?: dispatchUnrecorded(call)
+        val result = guard(call) ?: dispatchUnrecorded(call)
         val deferred = result.deferredOutput
         if (deferred == null) {
             recordEnd(call, result.output, result.blockedReason)
@@ -112,7 +109,6 @@ class AndroidToolDispatcher(
                 )
             }
             ClimateToolHandler.TOOL -> {
-                refuseAmbiguousAdjustment(call)?.let { return it }
                 val outcome = runBlocking { climate.handle(call.arguments) }
                 driverContext()?.let { context ->
                     context.onClimateResult(
@@ -130,7 +126,7 @@ class AndroidToolDispatcher(
                     null,
                     blockedReason = outcome.errorCode,
                     successChip = outcome.chip,
-                    output = withPowerAdvice(outcome.output),
+                    output = ToolCallGuards.withPowerAdvice(outcome.output),
                 )
             }
             "navigate_to" -> {
@@ -163,15 +159,7 @@ class AndroidToolDispatcher(
                     // style cannot be satisfied, and starting the bundled track would make ok=true
                     // mean "you got what you asked for". Refused here because this is the only
                     // bridge to a device action.
-                    "play" ->
-                        if (ActionClaimGuard.isSpecificMediaRequest(
-                                driverContext()?.currentRequestText().orEmpty(),
-                            )
-                        ) {
-                            failed(call, "MEDIA_LIBRARY_UNSUPPORTED")
-                        } else {
-                            result(call, executor.playMusic())
-                        }
+                    "play" -> result(call, executor.playMusic())
                     "stop" -> result(call, executor.stopMusic())
                     else -> failed(call, "ACTION_NOT_ALLOWED")
                 }
@@ -211,24 +199,6 @@ class AndroidToolDispatcher(
     companion object {
         const val CHOOSE_NAVIGATION_OPTION = com.novadrive.app.voice.BaiduFlexProtocol.CHOOSE_NAVIGATION_OPTION
 
-        /**
-         * Tools whose effect accumulates, so running one twice is not the same as running it once.
-         * A navigation search or a camera question can be repeated harmlessly; a relative climate
-         * change cannot.
-         */
-        private val REPEAT_SENSITIVE = setOf(ClimateToolHandler.TOOL, "control_music")
-
-        private val TEMPERATURE_OR_FAN = setOf(
-            ClimateToolActions.ADJUST_TEMPERATURE,
-            ClimateToolActions.SET_TEMPERATURE,
-            ClimateToolActions.ADJUST_FAN,
-            ClimateToolActions.SET_FAN,
-        )
-
-        private const val POWER_OFF_ADVICE =
-            "设定已经改了，但空调现在是关着的，用户感受不到任何变化。" +
-                "请调用 control_climate{action=power_on} 把空调打开，成功后再用一句话告诉用户；" +
-                "不要直接说已经调好了。"
     }
 
     private fun result(call: DomainVoiceEvent.ToolCall, action: AndroidActionResult): ToolDispatchResult =
@@ -244,66 +214,17 @@ class AndroidToolDispatcher(
         }
 
     /**
-     * The same call, with the same arguments, twice in one driver turn. For `adjust_temperature`
-     * that is the difference between −2 °C and −4 °C, so it is refused rather than repeated. A
-     * driver who really does ask twice speaks twice, which is two turns and two epochs.
+     * Everything that can stop a validated call before it executes, in one place so the order is
+     * visible: is this the wrong capability, a repeat of one already run, or an adjustment whose
+     * target nobody has stated? See [ToolCallGuards].
      */
-    private fun rejectIfRepeat(call: DomainVoiceEvent.ToolCall): ToolDispatchResult? {
-        if (call.name !in REPEAT_SENSITIVE) return null
-        val context = driverContext() ?: return null
-        // No transcribed utterance means no turn to be "within". Two identical calls are then two
-        // separate requests, not a repeat of one — refusing the second would drop a real action,
-        // which is the more expensive mistake of the two.
-        val epoch = context.currentEpoch()
-        if (epoch <= 0) return null
-        val arguments = call.arguments.filterKeys { it != "_validation_error" }
-        return if (context.claimDispatch(epoch, call.name, arguments)) {
-            null
-        } else {
-            failed(call, "DUPLICATE_IN_TURN")
-        }
-    }
-
-    /**
-     * Refuses a relative climate change when the driver's words do not say *what* to change and the
-     * history cannot say either — 「再低一点」 after both the temperature and the fan were adjusted,
-     * or after nothing was.
-     *
-     * The hint asks the model to ask. This makes it hold: a prompt rule is not an enforcement
-     * mechanism ([I-11](../../../../../../docs/INVARIANTS.md)), and guessing right is still wrong
-     * — it is the same coin toss the next time. Recording the clarification here is what lets the
-     * driver's one-word answer resolve on the following turn.
-     */
-    private fun refuseAmbiguousAdjustment(call: DomainVoiceEvent.ToolCall): ToolDispatchResult? {
-        val action = call.arguments["action"] ?: return null
-        if (action != ClimateToolActions.ADJUST_TEMPERATURE && action != ClimateToolActions.ADJUST_FAN) return null
-        val context = driverContext() ?: return null
-        val epoch = context.currentEpoch()
-        if (epoch <= 0) return null
-        val resolution = ContextResolver.resolve(context.currentRequestText(), context, epoch)
-        if (resolution !is ContextResolver.Resolution.Clarify) return null
-        if (resolution.reason == ContextResolver.REASON_NOTHING_TO_REVERSE) return null
-        context.recordClarification(resolution.options, resolution.delta, epoch)
-        return failed(call, "AMBIGUOUS_REFERENT")
-    }
-
-    /**
-     * A temperature or fan change that succeeded while the climate is **off**.
-     *
-     * The backend happily stores a new target with the system off, so the result is `ok=true` and
-     * the driver feels nothing — a true statement that leaves a false impression, which is the
-     * failure SPEC-006 D1 describes. The result carries the advice rather than the dispatcher
-     * switching the climate on by itself: the driver asked for a temperature, not for the system
-     * to be started, and inventing the second action is how an assistant stops being predictable.
-     */
-    private fun withPowerAdvice(output: String?): String? {
-        if (output == null) return null
-        if (!output.contains("\"ok\":true") || !output.contains("\"power_on\":false")) return output
-        val action = Regex("\"action\":\"([a-z_]+)\"").find(output)?.groupValues?.get(1)
-        if (action !in TEMPERATURE_OR_FAN) return output
-        return JSONObject(output)
-            .put("next", POWER_OFF_ADVICE)
-            .toString()
+    private fun guard(call: DomainVoiceEvent.ToolCall): ToolDispatchResult? {
+        if (call.arguments.containsKey("_validation_error")) return null
+        val context = driverContext()
+        val code = ToolCallGuards.unsupportedMedia(call, context)
+            ?: ToolCallGuards.ambiguousReferent(call, context)
+            ?: ToolCallGuards.repeatedInTurn(call, context)
+        return code?.let { failed(call, it) }
     }
 
     private fun failed(call: DomainVoiceEvent.ToolCall, code: String) = ToolDispatchResult(
@@ -344,6 +265,12 @@ object ToolFailureAdvice {
     )
 
     fun forCode(code: String): String? = ADVICE[code]
+
+    /** Not a failure: the call succeeded, but the driver will not feel it (SPEC-006 D1). */
+    const val CLIMATE_OFF =
+        "设定已经改了，但空调现在是关着的，用户感受不到任何变化。" +
+            "请调用 control_climate{action=power_on} 把空调打开，成功后再用一句话告诉用户；" +
+            "不要直接说已经调好了。"
 }
 
 /**
