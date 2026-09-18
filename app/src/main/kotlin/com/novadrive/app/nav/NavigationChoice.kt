@@ -86,27 +86,100 @@ object NavigationChoiceResolver {
         if (position in 1..items.size) ChoiceMatch.Picked(items[position - 1], position)
         else ChoiceMatch.Rejected("OUT_OF_RANGE")
 
+    /**
+     * Name matching, in order of confidence. Checklist row T06: 「选择麦当劳珠海站店」 must reach the
+     * candidate the driver means, and must **never** silently pick when several are plausible.
+     *
+     * 1. exact, after normalising away punctuation, spaces and brackets;
+     * 2. one candidate that contains the spoken name, or is contained by it — the spoken form drops
+     *    a suffix (「麦当劳珠海站店」 for 「麦当劳(珠海站店)」) or adds a spoken 「那个」/「店」;
+     * 3. one candidate sharing a long enough distinctive run of characters, for a half-heard name.
+     *
+     * Every step requires exactly one survivor. Two plausible candidates return `AMBIGUOUS`, and
+     * the model is told to ask which one — a wrong destination is worse than a question.
+     */
     private fun <T> byName(items: List<T>, raw: String, nameOf: (T) -> String): ChoiceMatch<T> {
-        val wanted = normalise(raw)
+        val wanted = normalise(stripChoiceWords(raw))
         if (wanted.isEmpty()) return ChoiceMatch.Rejected("NO_MATCH")
-        val hits = items.withIndex().filter { item ->
-            val name = normalise(nameOf(item.value))
-            name.isNotEmpty() && (name.contains(wanted) || wanted.contains(name))
-        }
-        return when {
-            hits.isEmpty() -> ChoiceMatch.Rejected("NO_MATCH")
-            hits.size == 1 -> ChoiceMatch.Picked(hits[0].value, hits[0].index + 1)
-            else -> {
-                // 「珠海站」 against 「珠海站」 and 「珠海站(南广场)」: an exact name wins.
-                val exact = hits.filter { normalise(nameOf(it.value)) == wanted }
-                if (exact.size == 1) ChoiceMatch.Picked(exact[0].value, exact[0].index + 1)
-                else ChoiceMatch.Rejected("AMBIGUOUS")
+        val named = items.withIndex().map { it to normalise(nameOf(it.value)) }.filter { it.second.isNotEmpty() }
+
+        val exact = named.filter { it.second == wanted }
+        if (exact.size == 1) return ChoiceMatch.Picked(exact[0].first.value, exact[0].first.index + 1)
+        if (exact.size > 1) return ChoiceMatch.Rejected("AMBIGUOUS")
+
+        val containment = named.filter { it.second.contains(wanted) || wanted.contains(it.second) }
+        if (containment.size == 1) return ChoiceMatch.Picked(containment[0].first.value, containment[0].first.index + 1)
+        if (containment.size > 1) return ChoiceMatch.Rejected("AMBIGUOUS")
+
+        // Conservative fuzzy step, for a half-heard name. The winner must beat the runner-up:
+        // a run every candidate shares is the brand, not a choice.
+        //
+        // Measured on device 2026-09-18: 「选择麦当劳珠海站店」 against five 麦当劳 branches, none of
+        // them the one named. Every candidate shared the run 「麦当劳」, so a plain threshold called
+        // it AMBIGUOUS — as if the driver had nearly picked something. NO_MATCH is the truth.
+        val runs = named.map { it to longestCommonRun(it.second, wanted) }
+        val best = runs.maxOf { it.second }
+        if (best < MIN_FUZZY_RUN) return ChoiceMatch.Rejected("NO_MATCH")
+        // How much of what the driver said the run accounts for. 「麦当劳」 out of 「麦当劳珠海站店」 is
+        // the brand and decides nothing; 「麦当劳珠海站」 out of the same is nearly all of it.
+        val coverage = best.toDouble() / wanted.length
+        val leaders = runs.filter { it.second == best }
+        if (leaders.size == 1) {
+            return if (coverage >= MIN_FUZZY_COVERAGE) {
+                ChoiceMatch.Picked(leaders[0].first.first.value, leaders[0].first.first.index + 1)
+            } else {
+                ChoiceMatch.Rejected("NO_MATCH")
             }
         }
+        // Several tie. If the shared run is most of the request they are genuinely rival
+        // candidates and the driver must choose; if it is a fragment, nothing was matched at all.
+        return if (coverage >= MIN_FUZZY_COVERAGE) ChoiceMatch.Rejected("AMBIGUOUS") else ChoiceMatch.Rejected("NO_MATCH")
+    }
+
+    /** A spoken pick is wrapped in words that are not part of any name. */
+    private fun stripChoiceWords(raw: String): String {
+        var text = raw.trim()
+        for (word in CHOICE_WORDS) {
+            if (text.startsWith(word) && text.length > word.length) text = text.removePrefix(word).trim()
+        }
+        for (word in TRAILING_CHOICE_WORDS) {
+            if (text.endsWith(word) && text.length > word.length) text = text.removeSuffix(word).trim()
+        }
+        return text
+    }
+
+    private val CHOICE_WORDS = listOf("就去", "就到", "我要去", "我想去", "选择", "选", "去", "到", "第一个", "那个")
+        .sortedByDescending { it.length }
+    private val TRAILING_CHOICE_WORDS = listOf("那个", "这个", "吧", "好了", "就行", "谢谢")
+        .sortedByDescending { it.length }
+
+    /** Shortest run that is distinctive enough to act on; two Han characters are not. */
+    const val MIN_FUZZY_RUN = 3
+
+    /**
+     * How much of the spoken name a run must account for before it means anything. Below this the
+     * match is a shared fragment — a brand, a district — and selects nothing.
+     */
+    const val MIN_FUZZY_COVERAGE = 0.6
+
+    private fun longestCommonRun(a: String, b: String): Int {
+        if (a.isEmpty() || b.isEmpty()) return 0
+        var best = 0
+        val previous = IntArray(b.length + 1)
+        val current = IntArray(b.length + 1)
+        for (i in 1..a.length) {
+            for (j in 1..b.length) {
+                current[j] = if (a[i - 1] == b[j - 1]) previous[j - 1] + 1 else 0
+                if (current[j] > best) best = current[j]
+            }
+            System.arraycopy(current, 0, previous, 0, current.size)
+            current.fill(0)
+        }
+        return best
     }
 
     private fun normalise(text: String): String =
-        text.lowercase().filterNot { it.isWhitespace() || it in "。，,.!！?？、“”\"'「」（）()" }
+        text.lowercase().filterNot { it.isWhitespace() || it in "。，,.!！?？、“”\"'「」（）()·-—_" }
 
     /** What the model reads out: short, numbered, same order as the screen. */
     fun describeDestinations(candidates: List<DestinationCandidate>, limit: Int = 5): String =

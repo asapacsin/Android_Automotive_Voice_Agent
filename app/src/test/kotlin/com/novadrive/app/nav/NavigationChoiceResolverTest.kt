@@ -100,4 +100,104 @@ class NavigationChoiceResolverTest {
         val r = NavigationChoiceResolver.describeRoutes(routes)
         assertEquals("1. 46.0公里，约44分钟，推荐；2. 42.6公里，约47分钟，常规；3. 42.0公里，约59分钟，免费", r)
     }
+
+    // ---- T06: picking a candidate by its concrete name ----
+
+    private fun poi(name: String, distance: Int? = null) =
+        DestinationCandidate(
+            id = name,
+            name = name,
+            address = "珠海市",
+            district = "香洲区",
+            latitude = 22.0,
+            longitude = 113.0,
+            distanceMeters = distance,
+        )
+
+    @Test
+    fun aSpokenBranchNameReachesTheRightBranch() {
+        // Device row T06: 「选择麦当劳珠海站店」 against what Amap actually returns.
+        val list = listOf(
+            poi("麦当劳(拱北口岸店)"),
+            poi("麦当劳(珠海站店)"),
+            poi("麦当劳(吉大店)"),
+        )
+        val picked = NavigationChoiceResolver.pickDestination(list, NavigationChoice.Name("选择麦当劳珠海站店"))
+        assertTrue(picked is ChoiceMatch.Picked)
+        assertEquals(2, (picked as ChoiceMatch.Picked).position)
+        assertEquals("麦当劳(珠海站店)", picked.item.name)
+    }
+
+    @Test
+    fun theSpokenWrapperWordsAreNotPartOfTheName() {
+        val list = listOf(poi("拱北口岸"), poi("横琴口岸"))
+        val picked = NavigationChoiceResolver.pickDestination(list, NavigationChoice.Name("就去拱北口岸那个"))
+        assertEquals(1, (picked as ChoiceMatch.Picked).position)
+    }
+
+    @Test
+    fun twoPlausibleCandidatesAreNeverChosenSilently() {
+        // The requirement is explicit: never silently choose when several are plausible.
+        val list = listOf(poi("麦当劳(珠海站北店)"), poi("麦当劳(珠海站南店)"))
+        val picked = NavigationChoiceResolver.pickDestination(list, NavigationChoice.Name("麦当劳珠海站店"))
+        assertEquals("AMBIGUOUS", (picked as ChoiceMatch.Rejected).code)
+    }
+
+    @Test
+    fun anExactNameWinsOverAContainingOne() {
+        val list = listOf(poi("珠海站(南广场)"), poi("珠海站"))
+        val picked = NavigationChoiceResolver.pickDestination(list, NavigationChoice.Name("珠海站"))
+        assertEquals(2, (picked as ChoiceMatch.Picked).position)
+    }
+
+    @Test
+    fun aNameNobodyOfferedIsRefusedRatherThanGuessed() {
+        val list = listOf(poi("珠海站"), poi("横琴口岸"))
+        val picked = NavigationChoiceResolver.pickDestination(list, NavigationChoice.Name("拱北口岸"))
+        assertEquals("NO_MATCH", (picked as ChoiceMatch.Rejected).code)
+    }
+
+    @Test
+    fun aHalfHeardNameStillReachesASingleCandidate() {
+        // Fuzzy step: a distinctive run, and only one candidate has it.
+        val list = listOf(poi("华融琴海湾购物中心"), poi("横琴新家园"))
+        val picked = NavigationChoiceResolver.pickDestination(list, NavigationChoice.Name("琴海湾"))
+        assertEquals(1, (picked as ChoiceMatch.Picked).position)
+    }
+
+    /**
+     * Device, 2026-09-18: 「选择麦当劳珠海站店」 against five 麦当劳 branches, none of them that one.
+     * Every candidate shares the run 「麦当劳」, so a plain threshold reported AMBIGUOUS — as if the
+     * driver had nearly picked something. Nothing on screen matches, and that is what must be said.
+     */
+    @Test
+    fun aBrandSharedByEveryCandidateSelectsNothing() {
+        val list = listOf(
+            poi("麦当劳(横琴中央汇店)"),
+            poi("麦当劳(横琴口岸餐厅)"),
+            poi("麦当劳(横琴口岸店)"),
+            poi("麦当劳(创新方商场)"),
+        )
+        val picked = NavigationChoiceResolver.pickDestination(list, NavigationChoice.Name("麦当劳珠海站店"))
+        assertEquals("NO_MATCH", (picked as ChoiceMatch.Rejected).code)
+    }
+
+    @Test
+    fun aBranchThatIsOnScreenIsStillFoundAmongTheSameBrand() {
+        val list = listOf(
+            poi("麦当劳(横琴中央汇店)"),
+            poi("麦当劳(横琴口岸餐厅)"),
+            poi("麦当劳(创新方商场)"),
+        )
+        val picked = NavigationChoiceResolver.pickDestination(list, NavigationChoice.Name("麦当劳创新方商场"))
+        assertEquals(3, (picked as ChoiceMatch.Picked).position)
+    }
+
+    @Test
+    fun twoCharactersInCommonIsNotEnoughToAct() {
+        val list = listOf(poi("珠海大剧院"), poi("珠海长隆"))
+        val picked = NavigationChoiceResolver.pickDestination(list, NavigationChoice.Name("珠海"))
+        // Both contain it: ambiguous, never a silent pick.
+        assertEquals("AMBIGUOUS", (picked as ChoiceMatch.Rejected).code)
+    }
 }

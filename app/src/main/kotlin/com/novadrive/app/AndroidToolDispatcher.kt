@@ -192,8 +192,34 @@ class AndroidToolDispatcher(
 
     private fun failed(call: DomainVoiceEvent.ToolCall, code: String) = ToolDispatchResult(
         null, null, blockedReason = code,
-        output = JSONObject().put("ok", false).put("tool", call.name).put("error", code).toString(),
+        output = JSONObject().put("ok", false).put("tool", call.name).put("error", code)
+            .apply { ToolFailureAdvice.forCode(code)?.let { put("next", it) } }
+            .toString(),
     )
+}
+
+/**
+ * What the assistant should say when a tool refuses.
+ *
+ * Carried in the tool result rather than left to the tool description: a conversation reset drops
+ * the description's fine print, and the model then improvises. Measured on device 2026-09-18 — a
+ * name that matched nothing on screen returned `AMBIGUOUS` and the driver was told 「没听清，再说一遍」,
+ * which is not what happened and gives them nothing to do.
+ */
+object ToolFailureAdvice {
+    private val ADVICE = mapOf(
+        "NO_MATCH" to "屏幕上的候选里没有这个名字。请如实说没有这个选项，并请用户说第几个。",
+        "AMBIGUOUS" to "有多个候选都符合这个名字。请如实说有多个，并请用户说第几个。",
+        "OUT_OF_RANGE" to "屏幕上没有这一项。请如实说没有这一项，并说明一共有几个。",
+        "NO_OPTIONS_ON_SCREEN" to "现在屏幕上没有候选列表。请如实说明，不要假装已经选择。",
+        "OPTIONS_NOT_READY" to "候选还在计算中。请让用户稍等，不要假装已经选择。",
+        "DISTANCE_UNKNOWN" to "这些候选没有距离信息，无法判断最近的。请用户说第几个。",
+        "PREFERENCE_NOT_FOR_DESTINATIONS" to "这个偏好只能用于路线，不能用于地点。请用户说第几个。",
+        "PREFERENCE_NOT_FOR_ROUTES" to "这个偏好只能用于地点，不能用于路线。请用户说第几条。",
+        "NO_OPTIONS" to "现在没有可选的内容。请如实说明。",
+    )
+
+    fun forCode(code: String): String? = ADVICE[code]
 }
 
 /**
