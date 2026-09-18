@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.MotionEvent
 import android.widget.FrameLayout
+import com.amap.api.maps.AMapUtils
 import com.amap.api.maps.CameraUpdateFactory
 import com.amap.api.maps.CoordinateConverter
 import com.amap.api.maps.model.LatLng
@@ -53,12 +54,30 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
     @Volatile
     private var pendingFixRequest: (() -> Unit)? = null
 
+    /** The position the camera has been told to show but has not been confirmed at yet. */
+    private var pendingCameraTarget: LatLng? = null
+
+    /** Unconverted platform fix, kept only until one SDK fix can be compared against it. */
+    @Volatile
+    private var lastPlatformRaw: LocationFix? = null
+    private var cameraRetries = 0
+    private var mapLoadedWatchAttached = false
+
     private companion object {
         /** Emulator-only: fast enough to reach a nearby destination within a test cycle. */
         const val EMULATOR_SPEED_KMH = 120
 
         /** Street level: close enough to recognise where you are, wide enough to orient. */
         const val IDLE_ZOOM = 16f
+
+        /** The camera does not report a move in the same tick; sample after it has settled. */
+        const val CAMERA_SETTLE_CHECK_MS = 1_500L
+
+        /** Within this, the camera is on the fix; the map is ~1 km wide at IDLE_ZOOM. */
+        const val CAMERA_OFFSET_TOLERANCE_M = 200f
+
+        /** Enough to cover a slow surface; not a loop that fights the SDK forever. */
+        const val MAX_CAMERA_RETRIES = 3
     }
 
     init {
@@ -129,6 +148,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         DebugVoiceLog.log("amap_gps startGPS=$accepted location_services=$servicesOn")
         enableMyLocation()
         watchManualPan()
+        watchMapLoaded()
         seedFromLastKnown()
         requestFreshPlatformFix()
         return accepted
@@ -147,6 +167,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
             DebugVoiceLog.log("map_recenter_seed available=false")
             return
         }
+        lastPlatformRaw = raw
         applyFix(raw.toGcj02(), source = "last_known")
     }
 
@@ -161,9 +182,34 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         pendingFixRequest = platformLocation.requestSingleFix { raw ->
             pendingFixRequest = null
             DebugVoiceLog.log("map_recenter_fix source=platform")
+            lastPlatformRaw = raw
             applyFix(raw.toGcj02(), source = "platform")
         }
         DebugVoiceLog.log("map_recenter_request requested=${pendingFixRequest != null}")
+    }
+
+    /**
+     * Is the conversion below right for this device?
+     *
+     * Android's contract says `LocationManager` reports WGS-84, but this phone's network provider
+     * is Amap-backed (`amap=1` in its extras) and Chinese vendors sometimes hand back GCJ-02
+     * already — converting that again puts the camera a few hundred metres out. The SDK's own fix
+     * is GCJ-02 by definition, so it is the ruler. Distances only; no coordinate is logged. Once
+     * per app start.
+     */
+    private fun checkConversion(sdkFix: LocationFix) {
+        val raw = lastPlatformRaw ?: return
+        lastPlatformRaw = null
+        runCatching {
+            val sdkPoint = LatLng(sdkFix.latitude, sdkFix.longitude)
+            val rawPoint = LatLng(raw.latitude, raw.longitude)
+            val converted = raw.toGcj02()
+            val convertedPoint = LatLng(converted.latitude, converted.longitude)
+            DebugVoiceLog.log(
+                "map_coord_check convertedDeltaM=${AMapUtils.calculateLineDistance(convertedPoint, sdkPoint).toInt()}" +
+                    " rawDeltaM=${AMapUtils.calculateLineDistance(rawPoint, sdkPoint).toInt()}",
+            )
+        }
     }
 
     /** Android reports WGS-84; every Amap surface expects GCJ-02. Skew is ~100-500 m if skipped. */
@@ -184,8 +230,15 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         // While navigating, AMapNaviView owns its camera (it locks to the vehicle). Moving it
         // from here would fight the SDK for control mid-drive.
         if (isNavigating) return
-        val decision = recenter.decide(fix, System.currentTimeMillis())
-        if (decision == RecenterDecision.IGNORE) return
+        // Once settled or handed over, fixes keep streaming in; say nothing about those.
+        val wasOpen = !recenter.settled && !recenter.stopped
+        val decision = recenter.decide(fix)
+        if (decision == RecenterDecision.IGNORE) {
+            // A rejected fix is logged: silently dropping one is what made the original defect
+            // invisible. The age is a duration, not a position.
+            if (wasOpen) DebugVoiceLog.log("map_recenter_rejected source=$source ageMs=${fix.ageMs}")
+            return
+        }
         post { moveCameraTo(fix, source = source, why = decision.name.lowercase()) }
     }
 
@@ -196,13 +249,75 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
             DebugVoiceLog.log("map_recenter ok=false source=$source why=$why reason=no_map")
             return false
         }
+        val target = LatLng(fix.latitude, fix.longitude)
+        // Held so the move can be re-applied once the surface reports itself loaded: a move
+        // issued against a map that has not finished loading is silently dropped, and startup is
+        // exactly when that happens. Measured 2026-09-18 — at the moment of the call the camera
+        // still read the SDK's default (Beijing, zoom 10), ~2000 km from the fix.
+        pendingCameraTarget = target
         return runCatching {
-            map.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(fix.latitude, fix.longitude), IDLE_ZOOM))
+            map.moveCamera(CameraUpdateFactory.newLatLngZoom(target, IDLE_ZOOM))
         }.onSuccess {
             DebugVoiceLog.log("map_recenter ok=true source=$source why=$why")
+            // Sampled late, never inline: cameraPosition does not reflect the move in the same
+            // tick. The repo has been burned by an inline sample before (nav_route_info_prestart).
+            postDelayed({ verifyCamera(target, source) }, CAMERA_SETTLE_CHECK_MS)
         }.onFailure {
             DebugVoiceLog.log("map_recenter ok=false source=$source why=$why reason=exception")
         }.isSuccess
+    }
+
+    /**
+     * How far the camera actually ended up from the fix, in metres. A distance is not a position,
+     * so it is safe to log — and it is the only evidence from outside the process that the camera
+     * went where it was told rather than that a call returned without throwing.
+     *
+     * An offset larger than [CAMERA_OFFSET_TOLERANCE_M] means the move did not take, so it is
+     * issued again: the map surface may simply not have been ready the first time.
+     */
+    private fun verifyCamera(target: LatLng, source: String) {
+        val map = runCatching { naviView.map }.getOrNull() ?: return
+        val position = runCatching { map.cameraPosition }.getOrNull() ?: return
+        val centre = position.target ?: return
+        val offset = AMapUtils.calculateLineDistance(centre, target)
+        DebugVoiceLog.log("map_recenter_check source=$source offsetMeters=${offset.toInt()} zoom=${position.zoom}")
+        if (offset <= CAMERA_OFFSET_TOLERANCE_M) {
+            pendingCameraTarget = null
+            return
+        }
+        // Do not fight the driver, and do not fight navigation for the camera.
+        if (recenter.stopped || isNavigating) {
+            pendingCameraTarget = null
+            return
+        }
+        if (cameraRetries >= MAX_CAMERA_RETRIES) {
+            DebugVoiceLog.log("map_recenter_check give_up=true retries=$cameraRetries")
+            return
+        }
+        cameraRetries++
+        DebugVoiceLog.log("map_recenter_retry attempt=$cameraRetries")
+        runCatching { map.moveCamera(CameraUpdateFactory.newLatLngZoom(target, IDLE_ZOOM)) }
+        postDelayed({ verifyCamera(target, source) }, CAMERA_SETTLE_CHECK_MS)
+    }
+
+    /**
+     * The map reports itself loaded after its first tiles are ready, which on a cold start is
+     * later than the first fix. Re-applying here is what makes the startup recentre survive a
+     * surface that was not ready when the fix arrived.
+     */
+    private fun watchMapLoaded() {
+        if (mapLoadedWatchAttached) return
+        val map = runCatching { naviView.map }.getOrNull() ?: return
+        runCatching {
+            map.addOnMapLoadedListener {
+                val target = pendingCameraTarget
+                if (target == null || recenter.stopped || isNavigating) return@addOnMapLoadedListener
+                DebugVoiceLog.log("map_loaded reapply=true")
+                runCatching { map.moveCamera(CameraUpdateFactory.newLatLngZoom(target, IDLE_ZOOM)) }
+                postDelayed({ verifyCamera(target, "map_loaded") }, CAMERA_SETTLE_CHECK_MS)
+            }
+            mapLoadedWatchAttached = true
+        }
     }
 
     /**
@@ -480,7 +595,11 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
             // No separate teardown implementation.
             onNavigationEnded = { reason -> stopNavigation(reason) },
             onRouteFailed = { code -> onRouteCalculationFailed?.invoke(code) },
-            onLocation = { location -> applyFix(location.toFix(), source = "sdk") },
+            onLocation = { location ->
+                val fix = location.toFix()
+                checkConversion(fix)
+                applyFix(fix, source = "sdk")
+            },
         )
         traceListener = listener
         runCatching { navi?.addAMapNaviListener(listener) }
@@ -488,15 +607,22 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
     }
 
     /**
-     * SDK fixes are already GCJ-02, so no conversion. `getTime()` is a boxed Long and has been
-     * seen null; 0 then means "no timestamp", which the policy reads as a live fix.
+     * SDK fixes are already GCJ-02, so no conversion.
+     *
+     * The SDK exposes only a wall-clock `getTime()` (a boxed Long that has been seen null), not an
+     * elapsed-realtime stamp. That is tolerable here and nowhere else: these arrive on a push
+     * callback as the position is received, so a missing or skewed timestamp still describes a
+     * live fix. A cached *platform* fix goes through [CoarseLocationProvider], which uses the
+     * monotonic clock.
      */
     private fun AMapNaviLocation.toFix(): LocationFix {
         val coord = coord
+        val stamped = runCatching { time ?: 0L }.getOrDefault(0L)
+        val ageMs = if (stamped <= 0L) 0L else (System.currentTimeMillis() - stamped).coerceAtLeast(0L)
         return LocationFix(
             latitude = coord?.latitude ?: Double.NaN,
             longitude = coord?.longitude ?: Double.NaN,
-            timeMs = runCatching { time ?: 0L }.getOrDefault(0L),
+            ageMs = ageMs,
             accuracyMeters = accuracy,
         )
     }

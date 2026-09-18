@@ -677,7 +677,9 @@ description / list hint say an unspoken cancel changes nothing; device re-test c
 
 ## P18 — The map opens at an old position after a restart
 
-**Status:** FIXED 2026-09-18 — unit tests + build; **device verification outstanding (L5)**
+**Status:** FIXED 2026-09-18 — **verified on device** (Xiaomi 24069RA21C / `2391ff70`, 5 cold
+restarts, camera settles at `offsetMeters=0 zoom=16.0`). One item still needs the product owner:
+a restart after genuinely travelling somewhere else (see "What still needs a human").
 
 Owner report: on every cold start the embedded map opens at an old/default position and the driver
 has to drag it to where they actually are. It never recentres on the current location by itself.
@@ -718,8 +720,53 @@ and is draggable, so that condition no longer holds. The owner's 2026-09-18 inst
 must find the driver at startup — overrides "stop spending cycles on the idle map" for this
 behaviour only.
 
-### Acceptance
+### What the device added that the tests could not
 
-L5 — on the phone, after a cold start: `map_recenter ok=true` in logcat, the map showing the
-driver's actual surroundings with no dragging, no further automatic recentring after a manual pan,
-and 📍 returning to the current position.
+Two things were wrong in ways no unit test would have caught, both found by measuring on the phone
+rather than trusting the call:
+
+1. **The camera move was not sticking on its own.** `AMapNaviView` re-centres on its own fix at
+   its own zoom, and a move issued before the surface has loaded is dropped. Sampled 1.5 s after
+   the call, the camera sat **386 m away at zoom 18** on every cold start. Fixed by verifying the
+   camera against the intended target and re-issuing (up to 3 times, plus a re-apply on
+   `addOnMapLoadedListener`). Steady state is now `offsetMeters=0 zoom=16.0`, 5/5 restarts.
+2. **The GCJ-02 conversion needed proving, not asserting.** `map_coord_check` measures the
+   converted and the raw platform fix against the SDK's own GCJ-02 fix: **converted 0–6 m, raw
+   611–621 m**. Without the conversion the map would open ~600 m from the driver.
+
+A third finding was **mine, not the app's**: `dumpsys location`'s `et=+3d17h30m` was read as a fix
+age and reported as a stale-fix defect. It is the elapsed-realtime *timestamp* of the fix, and
+device uptime was 3d17h39m, so that fix was ~2 minutes old and the original `why=recenter_fresh`
+was correct. The age arithmetic was moved to `elapsedRealtimeNanos` anyway (`LocationAge`) because
+wall-clock ages are unsound in principle — but it fixed a latent weakness, not an observed failure.
+
+### Device evidence (2026-09-18, `2391ff70`, Android SDK 36)
+
+| Check | Evidence |
+| --- | --- |
+| Cold start recentres | 5/5 restarts: `map_recenter ok=true` then `map_recenter_check offsetMeters=0 zoom=16.0` |
+| Deterministic | identical sequence and timings across all 5 runs; settle ~3 s after launch |
+| Provisional → fresh | `why=recenter_provisional` (cached) then `why=recenter_fresh` (SDK), one camera move each |
+| Coordinate system | `map_coord_check convertedDeltaM=0..6 rawDeltaM=611..621` |
+| Manual pan stops it | swipe → `map_recenter_stopped reason=user_pan`; nothing recentred in the following 8 s |
+| 📍 works after a pan | `map_recenter ok=true source=manual why=driver_request` → `offsetMeters=0` |
+| Background / foreground | HOME → `amap_gps stopGPS=true`; return → `startGPS=true`, **no** new recentre |
+| No leaked listeners | live location listeners for our uid: 3 foreground → **0** backgrounded |
+| Screen off / on | `stopGPS` then `startGPS`, no recentre, no crash |
+| Location services off | `location_services=false`, `map_recenter_seed available=false`, no crash; 📍 → `NO_LOCATION_SERVICE` |
+| Permission revoked | `amap_gps skipped=no_fine_permission`, **0** SecurityExceptions, no crash; works again once granted |
+| Network off | still recentres from the cached fix and settles at `offsetMeters=0`; no crash |
+| Navigation unaffected | `nav_calc_success routes=3`, `nav_start accepted=true`, `nav_active_route meters=15124`, guidance spoken; **zero** `map_recenter` lines during the drive |
+| Crashes / ANRs | 0 across every run above |
+
+This also satisfies [P5](#p5--the-embedded-map-never-locates-the-phone)'s re-test trigger: with an
+active route, tiles render, the vehicle marker appears, the route line draws and the camera
+follows. The blank-idle-map condition P5 accepted no longer exists.
+
+### What still needs a human
+
+**One action, and only one:** restart the app after travelling somewhere genuinely different (a
+few kilometres is enough) and confirm the map opens on the new place. Everything above was run
+without moving the phone, so the "does it follow me when I actually move" question is the one
+piece no ADB command can answer honestly — the Amap SDK reads its own location stack and ignores
+`cmd location` test providers, which was verified: injected Beijing fixes never reached the map.

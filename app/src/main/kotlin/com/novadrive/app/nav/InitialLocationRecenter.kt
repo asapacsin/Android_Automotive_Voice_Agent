@@ -3,15 +3,44 @@ package com.novadrive.app.nav
 /**
  * One position fix, provider-neutral so the policy below can be unit-tested on the JVM.
  *
- * [timeMs] is wall-clock time in milliseconds, or 0 when the source reports none.
- * [accuracyMeters] is 0 when unknown. No coordinate is ever logged: this is location data.
+ * [ageMs] is how old the fix was **when it was read**, measured on a monotonic clock wherever the
+ * source offers one. It is deliberately not a timestamp: see [LocationAge]. [accuracyMeters] is 0
+ * when unknown. No coordinate is ever logged — this is location data.
  */
 data class LocationFix(
     val latitude: Double,
     val longitude: Double,
-    val timeMs: Long = 0L,
+    val ageMs: Long = 0L,
     val accuracyMeters: Float = 0f,
 )
+
+/**
+ * Age arithmetic, kept separate because getting it wrong decides whether a previous session's
+ * position can be shown as the driver's current one.
+ *
+ * Ages come from `elapsedRealtimeNanos`, not `Location.getTime()`. Wall-clock timestamps are not
+ * a sound basis for "how old is this fix": the clock can jump between the fix and the reading
+ * (NTP correction, the driver changing the time, crossing a time zone), and a provider is free to
+ * stamp a cached fix with the time it handed it over rather than the time it was taken. The
+ * monotonic clock has none of those failure modes — nothing re-stamps it, and a fix cannot
+ * survive the boot that would reset it.
+ *
+ * Not itself the cause of any observed misbehaviour: on the 2026-09-18 device run the platform
+ * fix was genuinely recent and both clocks agreed. This is the difference between a rule that
+ * happens to hold and one that has to.
+ */
+object LocationAge {
+    /** Treated as "older than any threshold": used when the monotonic clock cannot be trusted. */
+    const val UNKNOWN_AGE_MS = Long.MAX_VALUE / 2
+
+    fun fromElapsedRealtime(fixElapsedNanos: Long, nowElapsedNanos: Long): Long {
+        // 0 means the platform did not stamp it — never treat that as "brand new".
+        if (fixElapsedNanos <= 0L) return UNKNOWN_AGE_MS
+        // A fix stamped after "now" predates a reboot (or is nonsense); it is not current.
+        if (fixElapsedNanos > nowElapsedNanos) return UNKNOWN_AGE_MS
+        return (nowElapsedNanos - fixElapsedNanos) / 1_000_000L
+    }
+}
 
 enum class RecenterDecision {
     /** A fix new enough to be the driver's real position. Recenter and stop recentering. */
@@ -70,12 +99,11 @@ class InitialLocationRecenter(
     }
 
     @Synchronized
-    fun decide(fix: LocationFix, nowMs: Long): RecenterDecision {
+    fun decide(fix: LocationFix): RecenterDecision {
         if (userMovedCamera || centredOnFresh) return RecenterDecision.IGNORE
         if (!fix.isUsable(maxAccuracyMeters)) return RecenterDecision.IGNORE
-        // A fix with no timestamp can only have come from the live SDK callback, which fires as
-        // the position is received; the cached platform path always carries a real time.
-        val age = if (fix.timeMs <= 0L) 0L else nowMs - fix.timeMs
+        // Clock skew can make a live fix look microscopically future-dated; that is still live.
+        val age = fix.ageMs.coerceAtLeast(0L)
         if (age <= freshMaxAgeMs) {
             centredOnFresh = true
             centredProvisionally = true

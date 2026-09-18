@@ -8,6 +8,8 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
 import android.os.Looper
+import android.os.SystemClock
+import com.novadrive.app.nav.LocationAge
 import com.novadrive.app.nav.LocationFix
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -22,7 +24,7 @@ class CoarseLocationProvider(context: Context) {
      * *not* the GCJ-02 the Amap surfaces use. Converting is the caller's job, and only the Amap
      * host may do it (it owns the SDK import).
      *
-     * Carries the fix time so a caller can tell "a minute ago" from "last week": without it a
+     * Carries the fix's age so a caller can tell "a minute ago" from "last week": without it a
      * cached position from a previous session is indistinguishable from the driver's current one.
      * Never throws.
      */
@@ -37,16 +39,23 @@ class CoarseLocationProvider(context: Context) {
             runCatching { manager.getLastKnownLocation(provider) }.getOrNull()?.takeIf { location ->
                 location.latitude.isFinite() && location.longitude.isFinite()
             }
-        }.maxByOrNull { it.time }
-        best?.let {
-            LocationFix(
-                latitude = it.latitude,
-                longitude = it.longitude,
-                timeMs = it.time,
-                accuracyMeters = if (it.hasAccuracy()) it.accuracy else 0f,
-            )
-        }
+            // Newest by the monotonic clock, for the same reason the age is: a provider that
+            // re-stamps its cached fixes would otherwise always win this comparison.
+        }.maxByOrNull { it.elapsedRealtimeNanos }
+        best?.toFix()
     }.getOrNull()
+
+    /**
+     * Age comes from the monotonic clock, never from [Location.getTime]: a wall-clock stamp can
+     * be moved by a clock correction between the fix and the reading, and a provider may stamp a
+     * cached fix with the moment it handed it over. See [LocationAge].
+     */
+    private fun Location.toFix(): LocationFix = LocationFix(
+        latitude = latitude,
+        longitude = longitude,
+        ageMs = LocationAge.fromElapsedRealtime(elapsedRealtimeNanos, SystemClock.elapsedRealtimeNanos()),
+        accuracyMeters = if (hasAccuracy()) accuracy else 0f,
+    )
 
     /**
      * Asks the platform for one fresh fix, delivered on the main looper, then unregisters itself.
@@ -78,14 +87,9 @@ class CoarseLocationProvider(context: Context) {
                 if (!location.latitude.isFinite() || !location.longitude.isFinite()) return
                 if (!delivered.compareAndSet(false, true)) return
                 runCatching { manager.removeUpdates(this) }
-                onFix(
-                    LocationFix(
-                        latitude = location.latitude,
-                        longitude = location.longitude,
-                        timeMs = location.time,
-                        accuracyMeters = if (location.hasAccuracy()) location.accuracy else 0f,
-                    ),
-                )
+                // Age-stamped like any other fix: requestLocationUpdates can deliver the
+                // provider's cached position first, which is not a live one.
+                onFix(location.toFix())
             }
 
             // Overridden explicitly: these are default methods only in recent SDK stubs, and

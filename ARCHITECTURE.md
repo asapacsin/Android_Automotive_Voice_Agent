@@ -119,11 +119,25 @@ to drag the map to themselves on every restart.
   once and settles; an older one, under 10 minutes, may recentre **once** as a placeholder while
   GNSS warms up; anything older is a previous session's position and is never shown as current.
   Nonsense coordinates (non-finite, out of range, 0/0) and fixes worse than 2 km are dropped.
+  Ages come from `elapsedRealtimeNanos` via `LocationAge`, never from `Location.getTime()`, which
+  a clock correction or a re-stamping provider can move.
+- **The move is verified, not assumed.** `AMapNaviView` re-centres its own camera on its own fix
+  (measured 2026-09-18: 386 m away, zoom 18, ~1.5 s after ours), and a move issued before the
+  surface has loaded is dropped. So the host samples `cameraPosition` 1.5 s later, logs the
+  distance from the intended target, and re-issues up to 3 times until it is within 200 m —
+  and re-applies once on `addOnMapLoadedListener`. Steady state on the device is `offsetMeters=0
+  zoom=16.0`. It never retries after a pan or while navigating.
 - A drag on the map (`ACTION_MOVE`) ends automatic recentring for that app start. 📍 in the bottom
   bar recentres on demand afterwards and says why when it cannot (no permission, location services
   off, no fix yet).
-- No coordinate is persisted and none is logged — only `map_recenter ok=… source=… why=…`.
-- While navigating, the camera is left alone: `AMapNaviView` locks it to the vehicle.
+- No coordinate is persisted and none is logged. The diagnostics are distances and ages only:
+  `map_recenter ok=… source=… why=…`, `map_recenter_check offsetMeters=… zoom=…`,
+  `map_recenter_rejected ageMs=…`, and `map_coord_check convertedDeltaM=… rawDeltaM=…`.
+- The GCJ-02 conversion is **measured, not assumed**: `map_coord_check` compares the converted and
+  raw platform fix against the SDK's own GCJ-02 fix. On the device, 2026-09-18: converted 0–6 m,
+  raw 611–621 m. Skipping the conversion would put the camera ~600 m out.
+- While navigating, the camera is left alone: `AMapNaviView` locks it to the vehicle. Verified on
+  device — zero recenter attempts during a full emulator drive.
 
 ### Background behaviour — `VoiceSessionService`
 A `foregroundServiceType="microphone"` service started when a session starts and stopped on every session-end path. It is what keeps the session alive when another app takes the screen, and it also earns the background-activity-start exemption (`BAL_ALLOW_FOREGROUND`) that lets tools launch apps from the background.

@@ -136,6 +136,25 @@ Run on the physical device against build 18:51:57. The trigger was an ADB broadc
 > the active route. The authoritative line is **`nav_active_route`**, logged after `startNavi`.
 > Measured 2026-09-16: `selectRouteId` accepted=true, pre-start 19507 m, post-start 21410 m.
 
+### L5 evidence — map startup recentre, 2026-09-18 (ADB-driven, no human voice)
+
+Run on `2391ff70` against the build of 2026-09-18. Triggered by ADB, so it proves the app's
+behaviour on a real phone; it says nothing about speech.
+
+| Claim | Evidence | Status |
+| --- | --- | --- |
+| Cold start recentres on the current position | 5/5 restarts `map_recenter ok=true` → `map_recenter_check offsetMeters=0 zoom=16.0` | **VERIFIED** |
+| The camera actually moved (not just the call returning) | `offsetMeters` measured from `cameraPosition` 1.5 s after the move | **VERIFIED** |
+| The SDK's own camera is corrected | first sample 386 m / zoom 18 → after retry 0 m / zoom 16, every run | **VERIFIED** |
+| WGS-84 → GCJ-02 conversion is right | `map_coord_check convertedDeltaM=0..6 rawDeltaM=611..621` against the SDK's own fix | **VERIFIED** |
+| Recentre happens once per start | one `why=recenter_fresh` per run; none on resume | **VERIFIED** |
+| A manual pan ends it | `map_recenter_stopped reason=user_pan`; nothing recentred in the next 8 s | **VERIFIED** |
+| 📍 recentres on demand | `source=manual why=driver_request` → `offsetMeters=0` | **VERIFIED** |
+| No leaked location listener | live listeners for our uid 3 foreground → 0 backgrounded | **VERIFIED** |
+| Location off / permission denied / network off | clean logs, `NO_LOCATION_SERVICE` to the driver, 0 crashes, 0 SecurityExceptions | **VERIFIED** |
+| Navigation unaffected | routes=3, `nav_start accepted=true`, guidance spoken, **0** recentre attempts while navigating | **VERIFIED** |
+| The map opens on a **new** place after the driver travels | — | **NOT VERIFIED — needs the owner to move the phone.** `cmd location` test providers do not reach the Amap SDK's location stack (injected Beijing fixes never reached the map), so this cannot be simulated |
+
 ### L5-harness evidence — speech pipeline without a human, 2026-09-17
 
 `tools/speech-harness` injects synthetic Mandarin into the live Baidu Flex session (debug builds).
