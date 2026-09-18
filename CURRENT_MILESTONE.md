@@ -16,6 +16,25 @@ Date opened: 2026-09-19 · Source: [B-008](BACKLOG.md) · Spec: [SPEC-006](SPECS
 Row 6 is the row that matters for the product and the one simulation cannot earn: a scripted model
 emitting the expected call proves plumbing, not understanding.
 
+## Blocked — the test phone has no network (2026-09-19)
+
+`2391ff70` is attached over ADB and the app installs and runs, but Wi-Fi is **enabled and
+disconnected**: supplicant `DISCONNECTED`, no IP, `ip route` empty, `ping 8.8.8.8` → "Network is
+unreachable". Every session attempt ends `BAIDU_DNS_FAILED: UnknownHostException`. It last
+associated with `CU_62fC_5G` on 09-15.
+
+Reconnecting it is a change to the device's own settings and needs its network credentials, so it
+is the product owner's to do, not an agent's. Everything that does **not** need the model was
+verified instead, through the real dispatcher — see [ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md).
+
+**Also blocked by this, and only by this:**
+
+- [TECH_DEBT.md](docs/TECH_DEBT.md) **D-2** — trimming the persona prompt to tone. The rules being
+  removed are ones the model currently reads; removing them blind and unverified could degrade live
+  behaviour in exactly the way no test here would catch.
+- **D-4** — merging the two navigation state machines. Verification needs POI resolution, which is
+  a network call.
+
 ---
 
 # M2 — Embedded map proof (CLOSED 2026-09-19 — record kept, do not reopen)

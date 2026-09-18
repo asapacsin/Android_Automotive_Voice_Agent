@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-19T02:22:41",
+  "generated_at": "2026-09-19T02:23:29",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "995d990",
+    "commit": "29145ba",
     "branch": "main",
-    "subject": "The ambiguity rule now holds in code, and the guards are proven on the phone",
+    "subject": "A change the driver cannot feel is not a change worth confirming",
     "working_tree_clean": false,
-    "uncommitted_files": 4
+    "uncommitted_files": 1
   },
   "tests": {
     "available": true,
