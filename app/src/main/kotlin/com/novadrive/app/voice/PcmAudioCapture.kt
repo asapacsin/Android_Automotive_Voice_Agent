@@ -168,9 +168,50 @@ class AndroidMicrophonePort(
     /** Lifts quiet speech above Baidu's VAD floor before it is sent (see [MicInputGain]). */
     private val inputGain = MicInputGain()
 
+    /**
+     * Holds brief impulse sounds back so the model never sees a turn for them. Classification runs
+     * on the RAW frame: [MicInputGain] normalises peaks towards a target, which would erase the
+     * loud/quiet distinction the gate reads.
+     */
+    private val uplinkGate = SpeechUplinkGate()
+
+    /**
+     * The shape of the turn currently being judged. Read at `response.created`, which lands before
+     * the local hangover closes the segment, so this must report the utterance in progress.
+     */
+    fun measuredSegment(): SpeechUplinkGate.Segment? = uplinkGate.snapshot()
+
+    val droppedUplinkGate = java.util.concurrent.atomic.AtomicLong()
+
+    /** Debug A/B switch, mirroring [inputGainEnabled]; always on in normal use. */
+    @Volatile var uplinkGateEnabled: Boolean = true
+
     /** The processing every outgoing microphone frame gets; the speech harness uses it too. */
     fun processForSend(frame: ByteArray): ByteArray =
         if (inputGainEnabled) inputGain.process(frame) else frame
+
+    /**
+     * The speech harness's frames, through the same uplink gate as the live microphone, so an
+     * injected impulse is rejected exactly as a real tap would be and the gate can be measured on
+     * the device. Returns the frames to send — empty while the gate is holding.
+     */
+    fun gateForInjection(frame: ByteArray): List<ByteArray> {
+        if (!uplinkGateEnabled) return listOf(processForSend(frame))
+        val decision = uplinkGate.offer(frame)
+        decision.rejected?.let { rejection ->
+            com.novadrive.app.DebugVoiceLog.log(
+                "UPLINK_GATE_REJECT reason=impulse durationMs=${rejection.durationMs} peak=${rejection.peak} " +
+                    "rms=${rms(frame)} threshold=${uplinkGate.voicedThreshold} bytes=${frame.size} source=injected",
+            )
+        }
+        decision.finished?.let { segment ->
+            com.novadrive.app.DebugVoiceLog.log(
+                "UPLINK_GATE_SEGMENT durationMs=${segment.durationMs} voicedRatio=${"%.0f".format(segment.voicedRatio)} " +
+                    "peak=${segment.peak} suspicious=${segment.isSuspicious()} source=injected",
+            )
+        }
+        return decision.send.map { processForSend(it) }
+    }
 
     /** Debug A/B switch for the speech harness; always on in normal use. */
     @Volatile var inputGainEnabled: Boolean = true
@@ -189,9 +230,19 @@ class AndroidMicrophonePort(
                     when {
                         suppressLive -> Unit
                         muted -> droppedMuted.incrementAndGet()
-                        gated -> droppedGated.incrementAndGet()
-                        guidanceGated -> droppedGuidance.incrementAndGet()
-                        else -> onFrame(processForSend(bytes))
+                        gated -> {
+                            droppedGated.incrementAndGet()
+                            noteCaptureInterrupted()
+                        }
+                        guidanceGated -> {
+                            droppedGuidance.incrementAndGet()
+                            noteCaptureInterrupted()
+                        }
+                        !uplinkGateEnabled -> onFrame(processForSend(bytes))
+                        else -> {
+                            interrupted = false
+                            gateAndSend(bytes, onFrame)
+                        }
                     }
                 },
                 onError = onError,
@@ -199,9 +250,46 @@ class AndroidMicrophonePort(
         capture?.start()
     }
 
+    /** True while capture is gated, so the reset happens once per gate — not once per frame. */
+    private var interrupted = false
+
+    /**
+     * The assistant (or navigation guidance) started speaking. Reset the gate once, on the
+     * transition: doing it per gated frame also wiped the onset of audio arriving on the harness's
+     * injection path, so a barge-in could never accumulate its two frames (measured 2026-09-18).
+     */
+    private fun noteCaptureInterrupted() {
+        if (interrupted) return
+        interrupted = true
+        uplinkGate.onCaptureInterrupted()
+    }
+
+    /**
+     * One frame through the uplink gate. Frames the gate holds are simply not sent: the socket is
+     * idle, exactly as it already is while the assistant speaks.
+     */
+    private fun gateAndSend(bytes: ByteArray, onFrame: (ByteArray) -> Unit) {
+        val decision = uplinkGate.offer(bytes)
+        if (decision.send.isEmpty()) droppedUplinkGate.incrementAndGet()
+        decision.send.forEach { frame -> onFrame(processForSend(frame)) }
+        decision.rejected?.let { rejection ->
+            com.novadrive.app.DebugVoiceLog.log(
+                "UPLINK_GATE_REJECT reason=impulse durationMs=${rejection.durationMs} peak=${rejection.peak} " +
+                    "threshold=${uplinkGate.voicedThreshold}",
+            )
+        }
+        decision.finished?.let { segment ->
+            com.novadrive.app.DebugVoiceLog.log(
+                "UPLINK_GATE_SEGMENT durationMs=${segment.durationMs} voicedRatio=${"%.0f".format(segment.voicedRatio)} " +
+                    "peak=${segment.peak} suspicious=${segment.isSuspicious()}",
+            )
+        }
+    }
+
     override fun stop() {
         capture?.stop()
         capture = null
+        uplinkGate.reset()
     }
 }
 

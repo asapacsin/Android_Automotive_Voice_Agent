@@ -35,6 +35,10 @@ class BaiduFlexClient(
     private val requireTls: Boolean = true,
     private val tokenClient: BaiduAccessTokenClient = BaiduAccessTokenClient(http),
     private val contextHint: () -> String? = { VoiceContextHints.current() },
+    /** Shape of the audio that caused the current turn, measured by [SpeechUplinkGate]. */
+    private val lastAudioSegment: () -> SpeechUplinkGate.Segment? = { null },
+    /** True when something on screen is waiting for the driver's answer; such turns are never held. */
+    private val contextAwaitingAnswer: () -> Boolean = { VoiceContextHints.current() != null },
 ) {
     private val eventFlow = MutableSharedFlow<RealtimeEvent>(replay = 0, extraBufferCapacity = 64)
     private val generation = AtomicLong(0)
@@ -354,6 +358,9 @@ class BaiduFlexClient(
             val callIds = (0 until (outputs?.length() ?: 0)).mapNotNull { i ->
                 outputs!!.optJSONObject(i)?.takeIf { it.optString("type") == "function_call" }?.optString("call_id")?.takeIf { it.isNotEmpty() }
             }
+            // A turn that asked for an action is real by definition; only actionless turns can be
+            // phantoms. Decided here, where the outputs are already parsed.
+            finishTurnHold(hadToolCall = kinds.any { it == "function_call" })
             if (resetPolicy.onResponseDone(kinds, callIds)) resetConversation()
             val spoken = assistantText.toString()
             assistantText.setLength(0)
@@ -400,6 +407,7 @@ class BaiduFlexClient(
             if (type == "input_audio_buffer.speech_started") {
                 emptyRetry.onSpeechStarted()
                 turnGate.onSpeechStarted()
+                beginDriverTurn()
             }
             if (type == "input_audio_buffer.speech_stopped") {
                 turnGate.onSpeechStopped()
@@ -412,13 +420,22 @@ class BaiduFlexClient(
             if (type == "response.created") {
                 turnGate.onResponseCreated()
                 assistantText.setLength(0)
+                beginTurnHold()
             }
             if (type == "response.audio_transcript.done" || type == "response.text.done") {
                 val raw = JSONObject(text)
                 assistantText.append(raw.optString("transcript").ifEmpty { raw.optString("text") })
+                // A reply carrying real content is not a phantom whatever the audio looked like.
+                if (!PhantomTurnGate.isContentlessReply(assistantText.toString())) releaseHoldEarly("real_reply")
             }
             if (type == "conversation.item.input_audio_transcription.completed") {
-                actionGuard.onUserTranscript(JSONObject(text).optString("transcript"))
+                val transcript = JSONObject(text).optString("transcript")
+                actionGuard.onUserTranscript(transcript)
+                // A request, not a grunt: noise has come back as 「。」 and as 「嗯。」.
+                if (PhantomTurnGate.isMeaningfulTranscript(transcript)) {
+                    userSpokeThisTurn = true
+                    releaseHoldEarly("user_spoke")
+                }
             }
             if (type == "error" && BaiduFlexProtocol.isResponseAlreadyActive(text)) {
                 DebugVoiceLog.log("flex_turn_rejected_busy retry=true")
@@ -432,9 +449,20 @@ class BaiduFlexClient(
             if (type == "response.done") {
                 turnGate.onResponseDone()
                 if (onResponseDone(text)) requestReplyAfterEmptyResponse() else flushDeferredTurns()
+                // Fail-safe. finishTurnHold has already cleared the buffer on either verdict, so
+                // this only fires when the parse above returned early — better a spoken reply than
+                // audio stranded in a list.
+                releaseHeldAudio("response_done_fallback")
             }
             events.forEach { event ->
                 if (dropDuplicateCall(event)) return@forEach
+                // A tool call proves the driver's turn was real; never let one sit behind a hold,
+                // and remember it so the spoken result of the action is not judged on its own.
+                if (event is DomainVoiceEvent.ToolCall) {
+                    toolCalledThisTurn = true
+                    releaseHoldEarly("tool_call")
+                }
+                if (holdOrEmit(event)) return@forEach
                 if (event is DomainVoiceEvent.Error && !pending.isCompleted) {
                     if (!voiceFallbackUsed && sentVoice != BaiduAppSettings.DEFAULT_VOICE) {
                         voiceFallbackUsed = true
@@ -450,6 +478,7 @@ class BaiduFlexClient(
 
         override fun onFailure(webSocket: WebSocket, failure: Throwable, response: Response?) {
             if (generation.get() != current) return
+            dropHeldAudio("socket_failure")
             Telemetry.record(EventType.SOCKET_DISCONNECTED, detail = "failure")
             val mapped = mapFailure(failure, response)
             if (!pending.completeExceptionally(mapped)) emit(DomainVoiceEvent.Error(mapped.code, mapped.safeMessage))
@@ -466,6 +495,7 @@ class BaiduFlexClient(
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
             if (generation.get() != current) return
+            dropHeldAudio("socket_closed")
             Telemetry.record(EventType.SOCKET_DISCONNECTED, detail = "server_closed code=$code")
             val failure = VoiceProviderException("BAIDU_FLEX_CONNECTION_CLOSED", "Baidu Flex WebSocket closed (status=$code)")
             if (!pending.completeExceptionally(failure)) {
@@ -523,12 +553,128 @@ class BaiduFlexClient(
         )
     }
 
+    // ---- phantom-turn hold ------------------------------------------------
+    // Reply audio for a turn whose input looked like noise is held until response.done, then
+    // either released or dropped. Only audio is held, and only for suspicious input, so a normal
+    // turn is never delayed by a single millisecond. Tool calls are never held.
+
+    private val heldReplyAudio = mutableListOf<DomainVoiceEvent>()
+
+    @Volatile
+    private var holdingTurn = false
+    private var turnSegment: SpeechUplinkGate.Segment? = null
+
+    /** Did the provider transcribe a request during the driver's current turn? */
+    @Volatile
+    private var userSpokeThisTurn = false
+
+    /** Did the driver's current turn produce an action? Then every reply in it is real. */
+    @Volatile
+    private var toolCalledThisTurn = false
+
+    /**
+     * A new **driver** turn, not a new response. One utterance produces several responses — the
+     * tool call, then the spoken result — and the transcript belongs to the utterance. Measured on
+     * device 2026-09-18: resetting this per response made the second response of a real command
+     * look like a turn nobody spoke, and 「音乐已开始播放。」 was silenced.
+     */
+    private fun beginDriverTurn() {
+        userSpokeThisTurn = false
+        toolCalledThisTurn = false
+    }
+
+    private fun beginTurnHold() {
+        releaseHeldAudio("superseded")
+        val segment = lastAudioSegment()
+        turnSegment = segment
+        // Nothing to judge once the driver has been heard or has acted: hold only what is doubtful.
+        holdingTurn = segment != null && segment.needsHold() && !contextAwaitingAnswer() &&
+            !userSpokeThisTurn && !toolCalledThisTurn
+        if (holdingTurn) {
+            DebugVoiceLog.log(
+                "PHANTOM_GATE_HOLD durationMs=${segment?.durationMs} voicedRatio=${"%.0f".format(segment?.voicedRatio ?: 0.0)}",
+            )
+        }
+    }
+
+    /**
+     * The turn has proved itself real before it finished, so stop holding immediately. Without
+     * this, every short genuine command would wait for response.done to be spoken.
+     */
+    private fun releaseHoldEarly(reason: String) {
+        if (holdingTurn) releaseHeldAudio(reason)
+    }
+
+    /** Never lose a real reply: an over-long hold is released rather than risked. */
+    private fun holdOrEmit(event: DomainVoiceEvent): Boolean {
+        if (!holdingTurn) return false
+        if (event !is DomainVoiceEvent.AudioDelta && event !is DomainVoiceEvent.AudioDone) return false
+        heldReplyAudio += event
+        if (heldReplyAudio.size > MAX_HELD_AUDIO_EVENTS) {
+            DebugVoiceLog.log("PHANTOM_GATE_PASS reason=hold_budget_exceeded events=${heldReplyAudio.size}")
+            releaseHeldAudio("budget")
+        }
+        return true
+    }
+
+    /** The reply can no longer be played anyway (socket gone): discard rather than emit late. */
+    private fun dropHeldAudio(reason: String) {
+        holdingTurn = false
+        if (heldReplyAudio.isEmpty()) return
+        DebugVoiceLog.log("PHANTOM_GATE_DISCARD reason=$reason events=${heldReplyAudio.size}")
+        heldReplyAudio.clear()
+    }
+
+    private fun releaseHeldAudio(reason: String) {
+        holdingTurn = false
+        if (heldReplyAudio.isEmpty()) return
+        val pending = heldReplyAudio.toList()
+        heldReplyAudio.clear()
+        if (reason != "superseded") DebugVoiceLog.log("PHANTOM_GATE_RELEASE reason=$reason events=${pending.size}")
+        pending.forEach { emit(it) }
+    }
+
+    private fun finishTurnHold(hadToolCall: Boolean) {
+        if (!holdingTurn) {
+            turnSegment = null
+            return
+        }
+        val verdict = PhantomTurnGate.judge(
+            PhantomTurnGate.Turn(
+                hadToolCall = hadToolCall || toolCalledThisTurn,
+                contextAwaitingAnswer = contextAwaitingAnswer(),
+                audio = turnSegment,
+                assistantText = assistantText.toString(),
+                hadUserTranscript = userSpokeThisTurn,
+            ),
+        )
+        when (verdict) {
+            is PhantomTurnGate.Verdict.Drop -> {
+                val segment = turnSegment
+                holdingTurn = false
+                val dropped = heldReplyAudio.size
+                heldReplyAudio.clear()
+                DebugVoiceLog.log(
+                    "PHANTOM_GATE_DROP reason=${verdict.reason} durationMs=${segment?.durationMs} " +
+                        "voicedRatio=${"%.0f".format(segment?.voicedRatio ?: 0.0)} peak=${segment?.peak} " +
+                        "userSpoke=$userSpokeThisTurn audioEvents=$dropped replyChars=${assistantText.length}",
+                )
+                Telemetry.record(EventType.AUDIO_STOPPED, detail = "phantom_turn_dropped")
+            }
+            PhantomTurnGate.Verdict.Speak -> releaseHeldAudio("genuine_turn")
+        }
+        turnSegment = null
+    }
+
     private fun emit(event: DomainVoiceEvent) {
         eventFlow.tryEmit(RealtimeEvent(SystemSessionClock.nowMs(), event))
     }
 
     companion object {
         private const val SPEECH_STOPPED_FLUSH_MS = 1_600L
+
+        /** ~6 s of held reply at typical delta sizes: a ceiling, not an expected value. */
+        private const val MAX_HELD_AUDIO_EVENTS = 120
         private fun defaultHttp() = OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS).readTimeout(0, TimeUnit.MILLISECONDS)
             .pingInterval(20, TimeUnit.SECONDS).build()

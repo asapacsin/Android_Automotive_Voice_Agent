@@ -814,3 +814,56 @@ After: same sequence → `listening DEEP_IDLE->ACTIVE reason=start`, `state=LIST
 
 Not a regression from the map work — this is pre-existing behaviour in the session state machine,
 and the checklist is what surfaced it.
+
+## P20 — Environmental noise became a spoken conversational turn
+
+**Status:** FIXED 2026-09-18 — unit/client tests + **verified on device** with synthetic impulses
+and real speech in the same sessions. Real-cabin acoustics still owed (human).
+
+Owner report (checklist row T10): a stray sound produced 「怎么回事。」 and the assistant answered
+「没听清，再说一遍。」 No tool ran — the action layer was never at risk — but the assistant talked to
+nobody.
+
+### Root cause
+
+The product streams raw microphone audio to an end-to-end S2S model (ADR-002), so the *server*
+decides where a turn starts and ends. Every sustained sound in the cabin is therefore a candidate
+turn, and there is no ASR confidence score to consult — by design, and a second recogniser is out
+of scope. Nothing local filtered the uplink, and nothing judged a finished turn before it was
+spoken.
+
+### Fix
+
+Two deterministic gates, described in `ARCHITECTURE.md` → "Open-mic defence". Neither looks at what
+the driver said, neither touches the tool path, and the server VAD threshold is unchanged.
+
+### Device evidence (2026-09-18, `2391ff70`, one session each)
+
+| Input | Result |
+| --- | --- |
+| Tap (40 ms), knock (90 ms) | `UPLINK_GATE_REJECT reason=impulse` — never reached the model, no turn at all |
+| Chair scrape (400 ms) | reached the model; reply held and **dropped** (`PHANTOM_GATE_DROP … no_user_speech`, `audioEvents=3`) |
+| Cough (260 ms) | same — dropped, nothing audible |
+| 「播放音乐」 | `control_music` ✓, 「音乐已开始播放。」 **spoken** |
+| 「关闭音乐」 at ~1/5 volume (peak 4505) | transcribed, `control_music` ✓, reply spoken |
+| 「空调打开」 | `control_climate` ✓, 「空调已打开…」 spoken |
+| Any noise | **zero** tool calls in every run |
+
+### What the device corrected in the design
+
+1. The segment was read after the hangover closed it — later than `response.created` — so turns
+   were judged against the **previous** turn's audio. Now read in progress.
+2. A phrase list is not enough: noise was answered 「嗯。」. The primary test is reply *shape*.
+3. Baidu transcribes noise as 「。」 / 「嗯。」; word presence needed a two-character bar.
+4. **A false positive that mattered more than the phantoms:** scoping the turn to each response
+   silenced 「音乐已开始播放。」, the spoken result of a real action. Turn state is now scoped to the
+   driver's utterance.
+
+### Residual, and honest limits
+
+- A sustained noise that the model answers with *substantive* text is still spoken. Measured: the
+  synthetic cough once produced 「什么情况？刚才好像有爆炸声。」 — content, so not a phantom by any
+  deterministic test available here.
+- Voice barge-in is unchanged and still not a supported path: the microphone is gated while the
+  assistant speaks (pre-existing trade-off), and the wake word is the interrupt.
+- Real cabin noise, road noise and passengers remain a human test.

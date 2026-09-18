@@ -17,6 +17,12 @@ class BaiduFlexProvider(
     private val apiConfig: BaiduApiConfig,
     private val client: BaiduFlexClient = BaiduFlexClient(),
 ) : RealtimeVoiceProvider {
+    /** Secondary constructor: the microphone's measurement of the audio that caused each turn. */
+    constructor(
+        apiConfig: BaiduApiConfig,
+        lastAudioSegment: () -> SpeechUplinkGate.Segment?,
+    ) : this(apiConfig, BaiduFlexClient(lastAudioSegment = lastAudioSegment))
+
     override val providerId = "baidu.flex.realtime.direct"
     override val capabilities: ProviderCapabilities = VoiceCatalog.capabilities(VoiceProviderId.BAIDU_FLEX)
     override fun events(): Flow<RealtimeEvent> = client.events()

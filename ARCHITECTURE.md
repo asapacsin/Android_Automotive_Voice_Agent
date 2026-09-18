@@ -96,6 +96,41 @@ The audio-focus ducking described in the previous section remains underneath, bu
 
 > **Known limitation:** nothing detects when navigation *ends*. The flag clears when the voice session stops, so a driver who finishes navigating but keeps the session open stays muted until the session ends. A `stop_navigation` tool would resolve this; not yet specced.
 
+### Open-mic defence — `SpeechUplinkGate` + `PhantomTurnGate`
+
+Raw microphone audio goes to an end-to-end S2S model, so the **server** decides what a turn is: a
+tap on the dashboard is a turn. Two deterministic gates bracket the model. Neither inspects what
+the driver said, neither raises the server VAD threshold, and neither can stop an action — the
+tool path is untouched.
+
+**Before the model — `SpeechUplinkGate`** (per 100 ms capture frame, pure Kotlin):
+audio is held until `MIN_ONSET_FRAMES` (2 = 200 ms) of consecutive voice-like energy, measured
+against an adaptive noise floor (`max(120 RMS, room × 2.2)`), then the 300 ms pre-roll is flushed
+with it so no onset is clipped. Once open it streams through pauses for `HANGOVER_MS` (1200 ms) —
+six times the server's own `silence_duration_ms`, so the server still sees the silence that ends a
+turn and a 1–2 s thinking pause never truncates the driver. A tap (20–60 ms) never reaches two
+frames and is never uploaded.
+
+**After the model — `PhantomTurnGate`**: reply audio is *held* (never dropped blind) when the input
+was doubtful (`needsHold`: under 1.2 s or under 60 % voiced), and released the instant the turn
+proves itself — the driver's transcript arrives, a tool call appears, or the reply carries content.
+At `response.done` a held reply is dropped only when **all four** hold: no tool call in the driver's
+whole turn, nothing on screen awaiting an answer, the audio was short/sparse/**produced no words**,
+and the reply carries no content. The turn state is scoped to the driver's utterance, not to each
+response, because one command produces several (the action, then the spoken result).
+
+Notes that cost real device time to learn:
+- the segment must be read *in progress* (`snapshot()`); it only closes after the hangover, which is
+  later than `response.created`, so waiting for it judged each turn against the previous one's audio;
+- Baidu transcribes noise as 「。」 and 「嗯。」 — `isMeaningfulTranscript` needs two word-characters;
+- the reply test is **shape** (length), not vocabulary: noise was answered 「嗯。」, which no
+  phrase list would have held. The repair phrases are a secondary catch for longer apologies;
+- the gate is `@Synchronized`: capture thread, debug injection and the client all touch it.
+
+Logging (never content): `UPLINK_GATE_REJECT reason=impulse durationMs= peak=`,
+`UPLINK_GATE_SEGMENT durationMs= voicedRatio= suspicious=`, `PHANTOM_GATE_HOLD`,
+`PHANTOM_GATE_RELEASE reason=user_spoke|tool_call|real_reply`, `PHANTOM_GATE_DROP reason=…`.
+
 ### Tool dispatch — `AndroidToolDispatcher`
 The only bridge from model output to device action. Every call is validated before execution: exact field sets, length bounds, enum membership. Unknown tools return `UNKNOWN_TOOL` without executing. Tools: `navigate_to`, `open_app(maps|settings)`, `control_music(play|stop)`.
 

@@ -178,7 +178,7 @@ class VoiceSessionController(
         val outputRate = apiConfig.settings.resolvedOutputSampleRateHz()
         player.configureSampleRate(outputRate)
         val selected: RealtimeVoiceProvider = when (apiConfig.settings.runtimeProvider) {
-            BaiduRuntimeProvider.FLEX -> BaiduFlexProvider(apiConfig)
+            BaiduRuntimeProvider.FLEX -> BaiduFlexProvider(apiConfig) { microphone.measuredSegment() }
             BaiduRuntimeProvider.LITE -> BaiduDirectRealtimeProvider(apiConfig)
         }
         val providerId = if (apiConfig.settings.runtimeProvider == BaiduRuntimeProvider.FLEX) {
@@ -319,7 +319,9 @@ class VoiceSessionController(
                     } else {
                         silence
                     }
-                    active.injectAudioFrame(microphone.processForSend(chunk))
+                    // Through the real uplink gate: an injected impulse must be rejected exactly
+                    // as a tap on the dashboard is, or the harness would prove nothing about it.
+                    microphone.gateForInjection(chunk).forEach { active.injectAudioFrame(it) }
                     offset += frame
                     delay(TEST_FRAME_MS)
                 }

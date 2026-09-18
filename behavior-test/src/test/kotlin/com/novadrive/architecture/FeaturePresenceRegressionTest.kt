@@ -126,8 +126,13 @@ class FeaturePresenceRegressionTest {
         )
         assertContains(
             "app/src/main/kotlin/com/novadrive/app/voice/PcmAudioCapture.kt",
-            "guidanceGated -> droppedGuidance.incrementAndGet()",
+            "droppedGuidance.incrementAndGet()",
             "gated frames must actually be dropped",
+        )
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/voice/PcmAudioCapture.kt",
+            "uplinkGate.onCaptureInterrupted()",
+            "residual guidance or reply audio must not build a speech onset",
         )
     }
 
@@ -150,6 +155,25 @@ class FeaturePresenceRegressionTest {
             host,
             "CoordinateConverter.CoordType.GPS",
             "platform fixes are WGS-84 and the map is GCJ-02",
+        )
+    }
+
+    // ---- open mic: noise must not become a turn, and never an action ----
+
+    @Test
+    fun strayNoiseIsGatedBeforeTheModelAndSilencedAfterIt() {
+        val capture = "app/src/main/kotlin/com/novadrive/app/voice/PcmAudioCapture.kt"
+        assertContains(capture, "gateAndSend(bytes, onFrame)", "live frames must pass the uplink gate")
+        assertContains(capture, "gateForInjection", "harness audio goes through the same gate or it proves nothing")
+        val client = "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt"
+        assertContains(client, "beginTurnHold()", "a suspicious turn's reply audio must be held")
+        assertContains(client, "finishTurnHold(hadToolCall =", "the verdict needs the tool-call fact")
+        assertContains(client, "PHANTOM_GATE_DROP", "every suppression must say why")
+        // The safety invariant: suppression is about audio only. Tool calls are never held.
+        assertContains(
+            client,
+            "if (event !is DomainVoiceEvent.AudioDelta && event !is DomainVoiceEvent.AudioDone) return false",
+            "only reply audio may be held — never a tool call, transcript or error",
         )
     }
 
