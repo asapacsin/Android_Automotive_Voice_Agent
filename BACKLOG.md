@@ -6,6 +6,7 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 
 | # | Demand | Raised | Status | Spec |
 | --- | --- | --- | --- | --- |
+| B-008 | **Complex / contextual voice commands** — the driver speaks naturally (「有点热」「再凉一点」「这个太远了，换个近一点的」) instead of like an API, and the assistant resolves it against what it already did — **bounded by the tools that exist**, never a spoken acknowledgement in place of an execution | 2026-09-19 | **Specced**, not implemented. 47-case `CONTEXT` benchmark defined; 5 open product decisions recorded in the spec | [SPEC-006](SPECS/SPEC-006-complex-voice-commands.md) |
 | B-007 | **Assistant-on-map UI design** — avatar + state indicator + speech bubble upper-left, temporary action-feedback card, compact media/climate bottom bar, and a bottom-right **front-facing camera** button that must not end the assistant session | 2026-09-16 | **Decided** — authoritative layout; folded into [SPEC-005-P1-design](SPECS/SPEC-005-P1-design.md) D2. Four open questions remain (session entry point, inert bottom-bar controls, `openApp(maps)`, camera vs v2 §42) | [DEMAND](SPECS/DEMAND-2026-09-16-ui-design.md) → [SPEC-005-P1-design](SPECS/SPEC-005-P1-design.md) |
 | B-006 | **Embedded Amap navigation MVP** — map-first vehicle UI, `AMapNaviView` inside our Activity, assistant overlay above it, `NavigationController`/`DestinationResolver` abstractions, no external Amap app, no overlay permission. Replacement spec (48 sections) | 2026-09-16 | **In milestone (M2, Phase 1)** — decided by [ADR-007](DECISIONS/ADR-007-embedded-amap-navigation-sdk.md); blocked on an Amap *Android platform* key | [SPEC-005](SPECS/SPEC-005-embedded-amap-mvp.md) |
 | B-005 | Automated speech test harness — TTS-simulated user → real pipeline → ASR-verified output; local failure records; regression corpus; latency distributions | 2026-09-16 | **Revised by v2** (three levels A/B/C, UI screenshot assertions, navigation failure stages) — carried under SPEC-005; paid-API constraint on audio levels still needs owner acknowledgement | [SPEC-004](SPECS/SPEC-004-speech-test-harness.md) → SPEC-005 |
@@ -15,6 +16,28 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 | B-001 | 「关闭音乐」 must actually stop the music | 2026-09-15 | **Done** 2026-09-16 | [P2](OPEN_PROBLEMS.md) — verified on device with log evidence |
 
 ---
+
+## B-008 — Complex / contextual voice commands
+
+> 「后续可以试试复杂的语音指令」
+
+Received 2026-09-19 with a modern automotive conversational assistant as the reference interaction
+style. The demand is **not** "several commands in one sentence" — it is that the driver should not
+have to speak like an API, and that context from the conversation and the active task should resolve
+what they meant.
+
+Specced as [SPEC-006](SPECS/SPEC-006-complex-voice-commands.md) without implementing anything. Two
+findings from writing it are worth reading even before the work starts:
+
+- **The model has no cross-turn memory here.** `ConversationResetPolicy` resets the conversation
+  after every tool turn, on measured device evidence. So context must be app-owned and injected —
+  the spec extends `VoiceContextHints`, which exists for exactly this reason, rather than adding a
+  second mechanism.
+- **Three of the reference examples cannot be honoured as given.** The music ones need a library
+  this product does not have, and the barge-in one needs an interrupt the product deliberately does
+  not support. They are adapted, and the music phrasing becomes an *unsupported* case — today it is
+  a plausible false-success path, because a request for a named song is not recognised as
+  unsupported and would likely start the one bundled track.
 
 ## B-007 — Assistant-on-map UI design
 
