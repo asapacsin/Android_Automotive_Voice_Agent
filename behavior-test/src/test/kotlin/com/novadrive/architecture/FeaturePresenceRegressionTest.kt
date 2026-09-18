@@ -131,6 +131,28 @@ class FeaturePresenceRegressionTest {
         )
     }
 
+    // ---- the map finds the driver at startup ----
+
+    @Test
+    fun theMapRecentresOnTheCurrentPositionAtStartup() {
+        val host = "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapNaviViewHost.kt"
+        // The whole defect was that nothing ever moved the camera: MyLocationStyle alone does
+        // not recentre AMapNaviView without a route.
+        assertContains(host, "map.moveCamera(CameraUpdateFactory.newLatLngZoom", "nothing else moves the camera")
+        assertContains(host, "ensureTraceListener()", "no route means no listener means no fixes")
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/nav/amap/NavigationTraceListener.kt",
+            "location?.let(onLocation)",
+            "the SDK's position stream is the source of the first fix",
+        )
+        assertContains(host, "addOnMapTouchListener", "a manual pan must end automatic recentring")
+        assertContains(
+            host,
+            "CoordinateConverter.CoordType.GPS",
+            "platform fixes are WGS-84 and the map is GCJ-02",
+        )
+    }
+
     // ---- permissions every main feature depends on ----
 
     @Test

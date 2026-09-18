@@ -4,8 +4,10 @@ import android.content.Context
 import android.os.Bundle
 import android.view.Gravity
 import android.widget.FrameLayout
+import com.novadrive.app.R
 import com.novadrive.app.nav.EmbeddedNavigation
 import com.novadrive.app.nav.NavigationHostGateway
+import com.novadrive.app.nav.RecenterOutcome
 import com.novadrive.app.nav.amap.AmapNaviViewHost
 import com.novadrive.app.vehicle.VehicleControlProvider
 import com.novadrive.app.DebugVoiceLog
@@ -77,6 +79,7 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
         camera.onVisionText = { text -> overlay.appendTranscript("📷 $text") }
         camera.visibility = GONE
         bottomBar.onCameraClick = { onCameraToggleRequested?.invoke() }
+        bottomBar.onRecenterClick = { recenterMap() }
         bottomBar.bindClimate(VehicleControlProvider.port)
         overlay.onOpenDeveloperSettings = { onOpenDeveloperSettings?.invoke() }
         choiceOverlay.bind(EmbeddedNavigation.shared(context))
@@ -118,6 +121,23 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
 
     /** Objective verification hook for P5; exposes no location value. */
     fun isGpsReady(): Boolean = mapHost.isGpsReady()
+
+    /**
+     * 📍 — the way back to the current position after the driver has panned the map. The
+     * automatic startup recentre deliberately gives up once they pan, so without this control
+     * there would be no way to return.
+     */
+    fun recenterMap(): RecenterOutcome {
+        val outcome = mapHost.recenterOnCurrentLocation()
+        val message = when (outcome) {
+            RecenterOutcome.MOVED -> null
+            RecenterOutcome.NO_PERMISSION -> R.string.map_recenter_no_permission
+            RecenterOutcome.NO_LOCATION_SERVICE -> R.string.map_recenter_no_service
+            RecenterOutcome.NO_FIX -> R.string.map_recenter_no_fix
+        }
+        message?.let { overlay.appendTranscript(context.getString(it)) }
+        return outcome
+    }
 
     /**
      * Stage 4-6 entry point. Publishes the LIVE map host so a debug trigger can drive

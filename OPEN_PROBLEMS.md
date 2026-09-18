@@ -319,6 +319,12 @@ Costs to accept before doing it:
 - **Do NOT experiment further with `AMap.setLocationSource(...)`** unless Phase 2 navigation itself fails to render.
 - **Stop spending cycles on the idle map.**
 
+> **Narrowed 2026-09-18 by the product owner — see [P18](#p18--the-map-opens-at-an-old-position-after-a-restart).**
+> The map now renders and is draggable, so the "blank idle map" this decision accepted no longer
+> describes what is on screen. The owner asked for the camera to find the driver on every cold
+> start, and that is now implemented with an explicit `moveCamera` — **still no `MapView` fallback
+> and still no `setLocationSource`**, so the two prohibitions above stand as written.
+
 ### Re-test trigger — when Phase 2 starts a real route
 
 P5 is **reopened only** if, with an active route, any of these fail. Reopen with that evidence attached:
@@ -668,3 +674,52 @@ resume. Temporary suppression (reply / guidance audio) is unchanged and separate
 Found on the way: with the destination list open, the model answered 「不用了」 with 「已取消导航」 and no
 tool call, leaving the list open. The false-claim guard now covers 「不用了/没事了/返回」 and the tool
 description / list hint say an unspoken cancel changes nothing; device re-test cancelled the list.
+
+## P18 — The map opens at an old position after a restart
+
+**Status:** FIXED 2026-09-18 — unit tests + build; **device verification outstanding (L5)**
+
+Owner report: on every cold start the embedded map opens at an old/default position and the driver
+has to drag it to where they actually are. It never recentres on the current location by itself.
+
+### Root cause
+
+**Nothing in the app ever moved the map camera.** The only positioning mechanism was
+`AmapNaviViewHost.enableMyLocation()` setting `MyLocationStyle(LOCATION_TYPE_LOCATE)` on the map
+inside `AMapNaviView` and trusting the SDK to centre itself. It does not: `AMapNaviView` is a
+navigation view whose camera follows a *calculated route*, and there is no route while the app is
+idle. There was no `moveCamera` / `CameraUpdateFactory` call anywhere in the source.
+
+Two supporting causes made it impossible for the position to arrive at all when idle:
+
+- `NavigationTraceListener` — the only `AMapNaviListener`, and therefore the only `onLocationChange`
+  — was registered by `ensureTraceListener()`, which ran **only from `calculateDriveRoute`**. With
+  no route requested, no location callback was ever delivered to the app.
+- `onLocationChange` was an explicit `= Unit` no-op.
+
+Ruled out by inspection, not assumed: **no coordinate is persisted between sessions.** No
+SharedPreferences key holds a latitude or longitude; the old position is the SDK's own view state,
+not a stale value of ours being replayed as the driver's location.
+
+### Fix
+
+`InitialLocationRecenter` (plain Kotlin, 11 unit tests) decides which fix may move the camera;
+`AmapNaviViewHost` performs the move. Fixes come from the SDK's stream and, independently, from one
+platform `requestSingleFix`. Fresh (< 30 s) recentres once and settles; a cached fix under 10
+minutes may recentre once as a placeholder; anything older is never shown as the current position.
+A manual pan ends automatic recentring; 📍 in the bottom bar restores it on demand. See
+`ARCHITECTURE.md` → "Map startup position".
+
+### Relationship to P5
+
+This is **not** the E5 `MapView` fallback that P5's decision forbade, and no `setLocationSource`
+experiment was performed. P5 accepted a *blank* idle map; this report describes a map that renders
+and is draggable, so that condition no longer holds. The owner's 2026-09-18 instruction — the map
+must find the driver at startup — overrides "stop spending cycles on the idle map" for this
+behaviour only.
+
+### Acceptance
+
+L5 — on the phone, after a cold start: `map_recenter ok=true` in logcat, the map showing the
+driver's actual surroundings with no dragging, no further automatic recentring after a manual pan,
+and 📍 returning to the current position.

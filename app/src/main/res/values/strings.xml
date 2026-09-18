@@ -29,6 +29,11 @@
     <string name="bottom_bar_climate_off">关 %1$s°</string>
     <string name="bottom_bar_climate_failed">空调操作失败</string>
     <string name="camera_button">📷</string>
+    <string name="map_recenter_button">📍</string>
+    <string name="map_recenter_description">回到当前位置</string>
+    <string name="map_recenter_no_permission">没有定位权限，无法回到当前位置。</string>
+    <string name="map_recenter_no_service">设备定位已关闭，无法回到当前位置。</string>
+    <string name="map_recenter_no_fix">还没有定位信号，请稍等。</string>
     <string name="camera_close_short">✕</string>
     <string name="nav_choice_cancel">取消</string>
     <string name="nav_choice_pick_destination">选择目的地</string>

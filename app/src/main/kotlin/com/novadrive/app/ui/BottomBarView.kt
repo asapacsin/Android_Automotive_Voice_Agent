@@ -29,6 +29,9 @@ import kotlinx.coroutines.launch
 class BottomBarView(context: Context) : LinearLayout(context) {
     var onCameraClick: (() -> Unit)? = null
 
+    /** 📍 recentre the map on the driver's current position. */
+    var onRecenterClick: (() -> Unit)? = null
+
     private var scope: CoroutineScope? = null
     private var climate: VehicleControlPort? = null
 
@@ -66,6 +69,16 @@ class BottomBarView(context: Context) : LinearLayout(context) {
             }
         addView(climateLabel, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         addView(control(context.getString(R.string.bottom_bar_temp_up)) { adjustTemperature(ClimateLimits.DEFAULT_TEMPERATURE_STEP_C) })
+        // Recentre sits next to the camera rather than floating over the map: the map's own
+        // corners are taken by the assistant overlay, the settings entry and the camera window.
+        val recenter =
+            Button(context).apply {
+                text = context.getString(R.string.map_recenter_button)
+                textSize = 18f
+                contentDescription = context.getString(R.string.map_recenter_description)
+                setOnClickListener { onRecenterClick?.invoke() }
+            }
+        addView(recenter, LayoutParams(dp(56), LayoutParams.WRAP_CONTENT))
         val camera =
             Button(context).apply {
                 text = context.getString(R.string.camera_button)

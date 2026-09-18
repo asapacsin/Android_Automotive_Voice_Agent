@@ -32,6 +32,7 @@ internal class NavigationTraceListener(
     private val onRouteReady: (routeIds: IntArray) -> Unit,
     private val onNavigationEnded: (reason: String) -> Unit,
     private val onRouteFailed: (errorCode: Int) -> Unit = {},
+    private val onLocation: (AMapNaviLocation) -> Unit = {},
 ) : AMapNaviListener {
 
     // ---- stage 5: route calculation outcome -------------------------------
@@ -116,7 +117,14 @@ internal class NavigationTraceListener(
     // onLocationChange and onNaviInfoUpdate fire continuously and carry position
     // data. They are not logged: it would be both noisy and a location-data leak.
 
-    override fun onLocationChange(location: AMapNaviLocation?) = Unit
+    /**
+     * The SDK's own position stream, already in GCJ-02. It is the only location source the app
+     * has that needs no conversion, and it fires with no active route as long as `startGPS()` has
+     * run — which is what lets the map centre on the driver at startup. Forwarded, never logged.
+     */
+    override fun onLocationChange(location: AMapNaviLocation?) {
+        location?.let(onLocation)
+    }
 
     override fun onNaviInfoUpdate(info: NaviInfo?) = Unit
 

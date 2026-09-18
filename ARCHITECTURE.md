@@ -102,6 +102,29 @@ The only bridge from model output to device action. Every call is validated befo
 ### Navigation — `NavigationAdapter` + `AmapPoiClient`
 With an Amap Web key: resolve the destination to coordinates (`place/around` biased by coarse location, falling back to `place/text`), then launch `androidamap://navi?...&lat=&lon=&dev=0` for zero-tap turn-by-turn. Without a key: `keywordNavi` (one tap), then `geo:`. See `ADR-003`.
 
+### Map startup position — `InitialLocationRecenter` + `AmapNaviViewHost`
+
+The map camera is moved by us, explicitly. `MyLocationStyle(LOCATION_TYPE_LOCATE)` draws the
+position layer but does **not** recentre `AMapNaviView`, which has no route to follow when the app
+is idle — so before 2026-09-18 the view opened whatever position it was left at and the driver had
+to drag the map to themselves on every restart.
+
+- `AmapNaviViewHost.startLocation()` (called from `onResume` and on the FINE-permission grant)
+  registers `NavigationTraceListener` **before** any route exists, so `onLocationChange` delivers
+  fixes while idling, and starts `AMapNavi.startGPS()` as before.
+- Two independent sources feed it: the SDK's own stream (already GCJ-02) and one platform
+  `requestSingleFix` through `CoarseLocationProvider` (WGS-84, converted with `CoordinateConverter`
+  — Android and Amap disagree by 100–500 m). Whichever answers first wins; the second is a no-op.
+- `InitialLocationRecenter` (plain Kotlin, unit-tested) decides: a fix younger than 30 s recentres
+  once and settles; an older one, under 10 minutes, may recentre **once** as a placeholder while
+  GNSS warms up; anything older is a previous session's position and is never shown as current.
+  Nonsense coordinates (non-finite, out of range, 0/0) and fixes worse than 2 km are dropped.
+- A drag on the map (`ACTION_MOVE`) ends automatic recentring for that app start. 📍 in the bottom
+  bar recentres on demand afterwards and says why when it cannot (no permission, location services
+  off, no fix yet).
+- No coordinate is persisted and none is logged — only `map_recenter ok=… source=… why=…`.
+- While navigating, the camera is left alone: `AMapNaviView` locks it to the vehicle.
+
 ### Background behaviour — `VoiceSessionService`
 A `foregroundServiceType="microphone"` service started when a session starts and stopped on every session-end path. It is what keeps the session alive when another app takes the screen, and it also earns the background-activity-start exemption (`BAL_ALLOW_FOREGROUND`) that lets tools launch apps from the background.
 

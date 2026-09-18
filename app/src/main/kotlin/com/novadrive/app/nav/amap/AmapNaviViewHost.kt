@@ -4,7 +4,10 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.view.MotionEvent
 import android.widget.FrameLayout
+import com.amap.api.maps.CameraUpdateFactory
+import com.amap.api.maps.CoordinateConverter
 import com.amap.api.maps.model.LatLng
 import com.amap.api.maps.model.MyLocationStyle
 import com.amap.api.navi.AMapNavi
@@ -12,9 +15,15 @@ import com.amap.api.navi.AMapNaviView
 import com.amap.api.navi.TTSPlayListener
 import com.amap.api.navi.enums.NaviType
 import com.amap.api.navi.enums.PathPlanningStrategy
+import com.amap.api.navi.model.AMapNaviLocation
 import com.amap.api.navi.model.NaviPoi
+import com.novadrive.app.CoarseLocationProvider
 import com.novadrive.app.DebugVoiceLog
+import com.novadrive.app.nav.InitialLocationRecenter
+import com.novadrive.app.nav.LocationFix
 import com.novadrive.app.nav.NavigationGuidanceVoice
+import com.novadrive.app.nav.RecenterDecision
+import com.novadrive.app.nav.RecenterOutcome
 import com.novadrive.app.nav.RouteCandidate
 
 /**
@@ -32,10 +41,24 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
     private var traceListener: NavigationTraceListener? = null
     private val navLock = Any()
     private var navigationActive = false
+    private val recenter = InitialLocationRecenter()
+    private val platformLocation = CoarseLocationProvider(context)
+    private var panWatchAttached = false
+
+    /** Newest fix seen this app start, already in GCJ-02. Held only so 📍 has something to use. */
+    @Volatile
+    private var lastFix: LocationFix? = null
+
+    /** Cancels the outstanding platform fix request; null when none is in flight. */
+    @Volatile
+    private var pendingFixRequest: (() -> Unit)? = null
 
     private companion object {
         /** Emulator-only: fast enough to reach a nearby destination within a test cycle. */
         const val EMULATOR_SPEED_KMH = 120
+
+        /** Street level: close enough to recognise where you are, wide enough to orient. */
+        const val IDLE_ZOOM = 16f
     }
 
     init {
@@ -97,11 +120,133 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
             DebugVoiceLog.log("amap_gps skipped=no_fine_permission")
             return false
         }
+        // Registering here, not only at route calculation, is what makes onLocationChange fire
+        // while the app is merely idling on the map — the fixes the startup recentre needs.
+        ensureTraceListener()
         val accepted = navi?.startGPS() ?: false
         locationStarted = accepted
-        DebugVoiceLog.log("amap_gps startGPS=$accepted")
+        val servicesOn = platformLocation.locationServicesEnabled()
+        DebugVoiceLog.log("amap_gps startGPS=$accepted location_services=$servicesOn")
         enableMyLocation()
+        watchManualPan()
+        seedFromLastKnown()
+        requestFreshPlatformFix()
         return accepted
+    }
+
+    // ---- startup recentre --------------------------------------------------
+
+    /**
+     * A cached platform fix, so the map is roughly right in the second before GNSS answers.
+     * It is WGS-84 and the map is GCJ-02, so it is converted here — this is the only file that
+     * may touch the SDK. A fix the policy judges stale is dropped, never shown as "you are here".
+     */
+    private fun seedFromLastKnown() {
+        if (recenter.settled || recenter.stopped) return
+        val raw = platformLocation.lastKnownFix() ?: run {
+            DebugVoiceLog.log("map_recenter_seed available=false")
+            return
+        }
+        applyFix(raw.toGcj02(), source = "last_known")
+    }
+
+    /**
+     * A live fix from the platform, in parallel with the SDK's own stream. Whichever answers
+     * first recentres the map; the policy makes the second one a no-op. Cancelled on pause, and
+     * skipped entirely once the camera has settled or the driver has taken over.
+     */
+    private fun requestFreshPlatformFix() {
+        if (recenter.settled || recenter.stopped) return
+        if (pendingFixRequest != null) return
+        pendingFixRequest = platformLocation.requestSingleFix { raw ->
+            pendingFixRequest = null
+            DebugVoiceLog.log("map_recenter_fix source=platform")
+            applyFix(raw.toGcj02(), source = "platform")
+        }
+        DebugVoiceLog.log("map_recenter_request requested=${pendingFixRequest != null}")
+    }
+
+    /** Android reports WGS-84; every Amap surface expects GCJ-02. Skew is ~100-500 m if skipped. */
+    private fun LocationFix.toGcj02(): LocationFix = runCatching {
+        val converted = CoordinateConverter(context)
+            .from(CoordinateConverter.CoordType.GPS)
+            .coord(LatLng(latitude, longitude))
+            .convert()
+        copy(latitude = converted.latitude, longitude = converted.longitude)
+    }.getOrElse { this }
+
+    /**
+     * Every fix, from either source, funnels through here. The decision of whether it moves the
+     * camera belongs to [InitialLocationRecenter], which is plain Kotlin and unit-tested.
+     */
+    private fun applyFix(fix: LocationFix, source: String) {
+        lastFix = fix
+        // While navigating, AMapNaviView owns its camera (it locks to the vehicle). Moving it
+        // from here would fight the SDK for control mid-drive.
+        if (isNavigating) return
+        val decision = recenter.decide(fix, System.currentTimeMillis())
+        if (decision == RecenterDecision.IGNORE) return
+        post { moveCameraTo(fix, source = source, why = decision.name.lowercase()) }
+    }
+
+    /** Logs the decision and the source only — never the coordinate. */
+    private fun moveCameraTo(fix: LocationFix, source: String, why: String): Boolean {
+        val map = runCatching { naviView.map }.getOrNull()
+        if (map == null) {
+            DebugVoiceLog.log("map_recenter ok=false source=$source why=$why reason=no_map")
+            return false
+        }
+        return runCatching {
+            map.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(fix.latitude, fix.longitude), IDLE_ZOOM))
+        }.onSuccess {
+            DebugVoiceLog.log("map_recenter ok=true source=$source why=$why")
+        }.onFailure {
+            DebugVoiceLog.log("map_recenter ok=false source=$source why=$why reason=exception")
+        }.isSuccess
+    }
+
+    /**
+     * A drag on the map means the driver chose what to look at. Only ACTION_MOVE counts: a tap
+     * on a POI is not a decision to stop following the current position.
+     */
+    private fun watchManualPan() {
+        if (panWatchAttached) return
+        val map = runCatching { naviView.map }.getOrNull() ?: return
+        runCatching {
+            map.addOnMapTouchListener { event ->
+                if (event?.action == MotionEvent.ACTION_MOVE && !recenter.stopped) {
+                    recenter.onUserMovedCamera()
+                    DebugVoiceLog.log("map_recenter_stopped reason=user_pan")
+                }
+            }
+            panWatchAttached = true
+        }
+    }
+
+    /**
+     * The 📍 control. Manual, so it always moves if a position is known — the once-per-start rule
+     * governs the automatic move only. Reports why it could not, so the UI can say something
+     * truthful instead of nothing happening.
+     */
+    fun recenterOnCurrentLocation(): RecenterOutcome {
+        if (!hasFineLocation()) {
+            DebugVoiceLog.log("map_recenter_manual outcome=no_permission")
+            return RecenterOutcome.NO_PERMISSION
+        }
+        val fix = lastFix ?: platformLocation.lastKnownFix()?.toGcj02()
+        if (fix == null) {
+            val outcome =
+                if (!platformLocation.locationServicesEnabled()) {
+                    RecenterOutcome.NO_LOCATION_SERVICE
+                } else {
+                    RecenterOutcome.NO_FIX
+                }
+            DebugVoiceLog.log("map_recenter_manual outcome=$outcome")
+            return outcome
+        }
+        val moved = moveCameraTo(fix, source = "manual", why = "driver_request")
+        DebugVoiceLog.log("map_recenter_manual outcome=${if (moved) "moved" else "failed"}")
+        return if (moved) RecenterOutcome.MOVED else RecenterOutcome.NO_FIX
     }
 
     /**
@@ -335,16 +480,35 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
             // No separate teardown implementation.
             onNavigationEnded = { reason -> stopNavigation(reason) },
             onRouteFailed = { code -> onRouteCalculationFailed?.invoke(code) },
+            onLocation = { location -> applyFix(location.toFix(), source = "sdk") },
         )
         traceListener = listener
         runCatching { navi?.addAMapNaviListener(listener) }
         DebugVoiceLog.log("nav_listener_registered")
     }
 
+    /**
+     * SDK fixes are already GCJ-02, so no conversion. `getTime()` is a boxed Long and has been
+     * seen null; 0 then means "no timestamp", which the policy reads as a live fix.
+     */
+    private fun AMapNaviLocation.toFix(): LocationFix {
+        val coord = coord
+        return LocationFix(
+            latitude = coord?.latitude ?: Double.NaN,
+            longitude = coord?.longitude ?: Double.NaN,
+            timeMs = runCatching { time ?: 0L }.getOrDefault(0L),
+            accuracyMeters = accuracy,
+        )
+    }
+
     /** Objective check for the P5 fix; no location value is exposed. */
     fun isGpsReady(): Boolean = navi?.isGpsReady == true
 
     private fun stopLocation() {
+        // Unconditional: a fix request can be outstanding even when startGPS was refused, and
+        // leaving a LocationListener registered past onPause drains the battery.
+        pendingFixRequest?.invoke()
+        pendingFixRequest = null
         if (!locationStarted) return
         locationStarted = false
         val stopped = navi?.stopGPS() ?: false
