@@ -97,6 +97,20 @@ class ActionClaimGuard {
          * model call control_climate and raise the fan — a wrong action. These get a correction instead.
          */
         private val UNSUPPORTED_WORDS = listOf("音量", "声音", "大声", "小声", "车窗", "窗户", "天窗", "座椅", "电话", "后备箱", "车门", "车灯", "雨刷")
+        /**
+         * Questions about the world right now. This product has **no** weather, traffic or news
+         * source, so any answer containing an actual forecast is invented by definition — there is
+         * nothing it could have been read from.
+         *
+         * Measured 2026-09-18: 「今天天气怎么样」 was answered honestly once and, in a later session,
+         * with an invented forecast for **Beijing** (「今天北京天气晴转多云，气温20到28度」). Checklist
+         * row T09 requires a fixed refusal instead.
+         */
+        private val REALTIME_INFO_WORDS = listOf(
+            "天气", "气温", "温度多少度", "下雨", "下雪", "台风", "空气质量", "雾霾", "紫外线",
+            "路况", "堵车", "拥堵", "限行", "油价", "股票", "新闻", "汇率",
+        )
+
         private val CAMERA_WORDS = listOf("镜头", "摄像头", "画面", "拍到", "看看前面", "前面有什么", "前面是什么", "前面是谁", "前面有谁")
         private val DONE_WORDS = listOf("已", "了", "好的", "正在", "为你", "为您", "马上", "这就")
         private val ACTION_WORDS = listOf(
@@ -112,6 +126,20 @@ class ActionClaimGuard {
         fun isControlRequest(text: String): Boolean = CONTROL_WORDS.any { it in text }
 
         fun isUnsupportedRequest(text: String): Boolean = UNSUPPORTED_WORDS.any { it in text }
+
+        /** A question about the world right now, which this product has no tool to answer. */
+        fun isRealtimeInfoRequest(text: String): Boolean = REALTIME_INFO_WORDS.any { it in text }
+
+        /**
+         * An answer to a real-time question that did not decline is fabricated: there is no source
+         * it could have come from. No keyword list of "wrong" answers is possible or needed.
+         */
+        fun fabricatesRealtimeInfo(reply: String): Boolean = !declines(reply)
+
+        fun realtimeInfoCorrection(request: String): String =
+            "用户刚才问的是实时信息：「$request」。这辆车上没有任何可以查询天气、路况或新闻的工具，" +
+                "所以你上一句的内容是编造的。不要调用任何工具，只用一句话如实告诉用户：" +
+                "我没有实时信息的数据来源，无法回答这个问题。不要给出任何城市、温度或预报。"
 
         fun isCameraQuestion(text: String): Boolean = CAMERA_WORDS.any { it in text }
 

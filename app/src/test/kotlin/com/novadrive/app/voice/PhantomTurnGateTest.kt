@@ -136,4 +136,26 @@ class PhantomTurnGateTest {
         // The model produced nothing at all; there is certainly nothing to say out loud.
         assertTrue(PhantomTurnGate.judge(turn(assistantText = "")) is PhantomTurnGate.Verdict.Drop)
     }
+
+    /**
+     * Checklist row T09. This car has no weather, traffic or news source, so any answer that does
+     * not decline is invented — no list of "wrong answers" is possible, and none is needed.
+     */
+    @Test
+    fun anyNonRefusalAnswerToARealtimeQuestionCountsAsFabricated() {
+        assertTrue(ActionClaimGuard.isRealtimeInfoRequest("今天天气怎么样？"))
+        assertTrue(ActionClaimGuard.isRealtimeInfoRequest("前面路况堵不堵"))
+        assertFalse(ActionClaimGuard.isRealtimeInfoRequest("空调温度调高一点"))
+
+        assertTrue(ActionClaimGuard.fabricatesRealtimeInfo("今天北京天气晴转多云，气温20到28度。"))
+        assertFalse(ActionClaimGuard.fabricatesRealtimeInfo("抱歉，我无法获取实时天气信息。"))
+        assertFalse(ActionClaimGuard.fabricatesRealtimeInfo("我没有实时信息的数据来源，不能回答。"))
+    }
+
+    @Test
+    fun theRealtimeCorrectionForbidsInventingAnyDetail() {
+        val correction = ActionClaimGuard.realtimeInfoCorrection("今天天气怎么样？")
+        assertTrue(correction.contains("不要调用任何工具"))
+        assertTrue(correction.contains("不要给出任何城市、温度或预报"))
+    }
 }

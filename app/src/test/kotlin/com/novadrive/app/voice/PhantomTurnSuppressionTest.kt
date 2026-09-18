@@ -244,6 +244,83 @@ class PhantomTurnSuppressionTest {
         assertTrue(events.any { it is DomainVoiceEvent.AudioDelta }, "never suppress on a guess")
     }
 
+
+    /**
+     * Checklist row T07: 「把音量调大一点」 has no tool. The owner's requirement is one honest
+     * sentence, with subtitle and speech identical — never a confident 「正在调整」 spoken first and
+     * corrected afterwards.
+     */
+    private fun unsupportedRequestRun(replyText: String): List<DomainVoiceEvent> {
+        val done = CountDownLatch(1)
+        server.enqueue(
+            MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+                override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
+                    webSocket.send("""{"type":"session.created","session":{"model":"qianfan-realtime-flex-v1"}}""")
+                    webSocket.send("""{"type":"conversation.created","conversation":{"id":"conv_1"}}""")
+                }
+
+                override fun onMessage(webSocket: WebSocket, text: String) {
+                    if (JSONObject(text).optString("type") != "session.update") return
+                    webSocket.send("""{"type":"session.updated","session":{"model":"qianfan-realtime-flex-v1"}}""")
+                    webSocket.send("""{"type":"input_audio_buffer.speech_started"}""")
+                    webSocket.send("""{"type":"input_audio_buffer.speech_stopped"}""")
+                    webSocket.send("""{"type":"response.created","response":{"id":"resp_1"}}""")
+                    webSocket.send(
+                        JSONObject().put("type", "conversation.item.input_audio_transcription.completed")
+                            .put("transcript", "把音量调大一点").toString(),
+                    )
+                    webSocket.send("""{"type":"response.audio.delta","delta":"AAAA"}""")
+                    webSocket.send(
+                        JSONObject().put("type", "response.audio_transcript.done").put("transcript", replyText).toString(),
+                    )
+                    webSocket.send("""{"type":"response.audio.done"}""")
+                    webSocket.send(
+                        """{"type":"response.done","response":{"id":"resp_1","status":"completed","output":[{"type":"message"}]}}""",
+                    )
+                    done.countDown()
+                }
+
+                override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                    webSocket.close(code, reason)
+                }
+            }),
+        )
+        return runBlocking {
+            val client = BaiduFlexClient(
+                http = OkHttpClient(),
+                readyTimeoutMs = 3_000,
+                requireTls = false,
+                lastAudioSegment = { SpeechUplinkGate.Segment(1_400, 13, 12_000) },
+                contextAwaitingAnswer = { false },
+            )
+            val seen = Collections.synchronizedList(mutableListOf<DomainVoiceEvent>())
+            val job = launch(start = CoroutineStart.UNDISPATCHED) { client.events().collect { seen += it.payload } }
+            client.connect(config())
+            assertTrue(done.await(5, TimeUnit.SECONDS), "server script did not finish")
+            kotlinx.coroutines.delay(500)
+            job.cancel()
+            client.disconnect()
+            seen.toList()
+        }
+    }
+
+    @Test
+    fun aFalseClaimAboutAnUnsupportedRequestIsNeverSpokenOrShown() {
+        val events = unsupportedRequestRun("音量调大设置中，正在调整。")
+        assertTrue(events.none { it is DomainVoiceEvent.AudioDelta }, "the false claim must not be spoken")
+        assertTrue(
+            events.none { it is DomainVoiceEvent.AssistantTranscript },
+            "and must not appear as a subtitle either, or subtitle and speech diverge",
+        )
+    }
+
+    @Test
+    fun anHonestRefusalOfAnUnsupportedRequestIsSpokenNormally() {
+        val events = unsupportedRequestRun("抱歉，我无法调节音量。")
+        assertTrue(events.any { it is DomainVoiceEvent.AudioDelta }, "the honest answer must be spoken")
+        assertTrue(events.any { it is DomainVoiceEvent.AssistantTranscript }, "and shown")
+    }
+
     private fun config() = BaiduApiConfig(
         BaiduAppSettings(
             authMode = BaiduAuthMode.BEARER_API_KEY,

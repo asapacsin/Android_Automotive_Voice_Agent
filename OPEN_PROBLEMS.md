@@ -867,3 +867,56 @@ the driver said, neither touches the tool path, and the server VAD threshold is 
 - Voice barge-in is unchanged and still not a supported path: the microphone is gated while the
   assistant speaks (pre-existing trade-off), and the wake word is the interrupt.
 - Real cabin noise, road noise and passengers remain a human test.
+
+## P21 — A no-tool request could be answered with a claim, or an invention
+
+**Status:** FIXED 2026-09-18 — unit/client tests + device (no regression; the guard's own firing is
+covered by tests, since making the model misbehave on demand is not deterministic)
+
+Product owner's checklist, rows **T07** and **T09**:
+
+- T07 「把音量调大一点」 — 「会显示不支持，但没有语音反馈」, and the requirement: **one** sentence,
+  subtitle and speech identical, never a confident 「正在调整」 spoken first and corrected after.
+- T09 「今天天气怎么样？」 — answered honestly once, and in a later session with an invented forecast
+  **for Beijing**.
+
+### What was and was not reproducible
+
+On the 2026-09-18 build the "no voice" half of T07 did **not** reproduce: 「音量调大」 was answered
+「我暂时无法调整音量，没有对应工具。」 and the audio played (`AudioPlaybackConfiguration … 10263 …
+started`, `gated=true`, `droppedGated` 47→56). The owner's observation was most likely on an
+earlier build, or on the false-claim path below. What *was* missing is the guarantee: nothing
+stopped a false claim being spoken first, and `ActionClaimGuard` only corrected it afterwards —
+which is exactly what row T07 forbids.
+
+### Fix
+
+Both rows become the same deterministic rule, reusing the P20 hold machinery:
+
+1. When the driver's transcript is a request this product has **no tool for** —
+   `ActionClaimGuard.isUnsupportedRequest` (音量/车窗/座椅…) or the new `isRealtimeInfoRequest`
+   (天气/路况/新闻…) — the reply is **held**, audio *and* subtitle, instead of streaming out.
+2. At `response.done`, with no tool call in the driver's turn:
+   - an **honest refusal** is released and spoken (`PHANTOM_GATE_RELEASE reason=honest_refusal`);
+   - a **claim that the action happened** (`claimsDone`) is dropped unheard and unshown
+     (`PHANTOM_GATE_DROP reason=false_claim_unsupported`), leaving the guard's correction as the
+     only sentence;
+   - for a real-time question, **any answer that does not decline is fabricated by definition** —
+     there is no weather, traffic or news source on this car, so no list of "wrong answers" is
+     needed or possible (`reason=fabricated_realtime_info`). A fixed correction is sent that
+     forbids naming any city, temperature or forecast.
+
+Subtitle and speech are held and released together, so they cannot diverge.
+
+### Cost, stated plainly
+
+A no-tool request's reply is buffered until `response.done` — measured `events=17` released at once
+— so it is spoken up to about a second later than before. Only these requests are delayed; every
+other turn is untouched.
+
+### Device evidence (2026-09-18, `2391ff70`)
+
+`PHANTOM_GATE_HOLD reason=unsupported_request` → `PHANTOM_GATE_RELEASE reason=honest_refusal` for
+both 「音量调大」 and 「今天天气怎么样」 (the model declined honestly on all three attempts), then
+「播放音乐」 → `control_music` ✓ with its confirmation spoken. The drop paths are proven by
+`PhantomTurnSuppressionTest`, not by the device, because a fabrication cannot be produced on demand.

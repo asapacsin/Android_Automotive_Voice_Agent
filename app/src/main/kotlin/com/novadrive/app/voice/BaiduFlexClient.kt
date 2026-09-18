@@ -426,7 +426,11 @@ class BaiduFlexClient(
                 val raw = JSONObject(text)
                 assistantText.append(raw.optString("transcript").ifEmpty { raw.optString("text") })
                 // A reply carrying real content is not a phantom whatever the audio looked like.
-                if (!PhantomTurnGate.isContentlessReply(assistantText.toString())) releaseHoldEarly("real_reply")
+                if (!unsupportedRequestThisTurn &&
+                    !PhantomTurnGate.isContentlessReply(assistantText.toString())
+                ) {
+                    releaseHoldEarly("real_reply")
+                }
             }
             if (type == "conversation.item.input_audio_transcription.completed") {
                 val transcript = JSONObject(text).optString("transcript")
@@ -434,7 +438,20 @@ class BaiduFlexClient(
                 // A request, not a grunt: noise has come back as 「。」 and as 「嗯。」.
                 if (PhantomTurnGate.isMeaningfulTranscript(transcript)) {
                     userSpokeThisTurn = true
-                    releaseHoldEarly("user_spoke")
+                    if ((ActionClaimGuard.isUnsupportedRequest(transcript) ||
+                            ActionClaimGuard.isRealtimeInfoRequest(transcript)) && !toolCalledThisTurn
+                    ) {
+                        realtimeInfoThisTurn = ActionClaimGuard.isRealtimeInfoRequest(transcript)
+                        noToolRequestText = transcript
+                        // Hold rather than release: honesty is not known until the reply is complete.
+                        unsupportedRequestThisTurn = true
+                        if (!holdingTurn) {
+                            holdingTurn = true
+                            DebugVoiceLog.log("PHANTOM_GATE_HOLD reason=unsupported_request")
+                        }
+                    } else {
+                        releaseHoldEarly("user_spoke")
+                    }
                 }
             }
             if (type == "error" && BaiduFlexProtocol.isResponseAlreadyActive(text)) {
@@ -573,6 +590,25 @@ class BaiduFlexClient(
     private var toolCalledThisTurn = false
 
     /**
+     * The driver asked for something this product has no tool for (音量, 车窗, 座椅 …).
+     *
+     * Product owner, checklist row T07: such a request must produce **one** honest sentence, with
+     * the subtitle and the speech identical — never a confident 「正在调整」 spoken first and
+     * corrected afterwards. So the reply is held until it is known to be honest: an apology is
+     * released, a claim that the action happened is dropped unheard and unshown, and
+     * [ActionClaimGuard]'s correction becomes the only thing the driver sees or hears.
+     */
+    @Volatile
+    private var unsupportedRequestThisTurn = false
+
+    /** The no-tool request was a question about the world right now (weather, traffic, news). */
+    @Volatile
+    private var realtimeInfoThisTurn = false
+
+    @Volatile
+    private var noToolRequestText: String = ""
+
+    /**
      * A new **driver** turn, not a new response. One utterance produces several responses — the
      * tool call, then the spoken result — and the transcript belongs to the utterance. Measured on
      * device 2026-09-18: resetting this per response made the second response of a real command
@@ -581,6 +617,9 @@ class BaiduFlexClient(
     private fun beginDriverTurn() {
         userSpokeThisTurn = false
         toolCalledThisTurn = false
+        unsupportedRequestThisTurn = false
+        realtimeInfoThisTurn = false
+        noToolRequestText = ""
     }
 
     private fun beginTurnHold() {
@@ -608,7 +647,11 @@ class BaiduFlexClient(
     /** Never lose a real reply: an over-long hold is released rather than risked. */
     private fun holdOrEmit(event: DomainVoiceEvent): Boolean {
         if (!holdingTurn) return false
-        if (event !is DomainVoiceEvent.AudioDelta && event !is DomainVoiceEvent.AudioDone) return false
+        // Subtitle as well as speech: the owner's requirement is that the two never diverge.
+        val holdable = event is DomainVoiceEvent.AudioDelta ||
+            event is DomainVoiceEvent.AudioDone ||
+            event is DomainVoiceEvent.AssistantTranscript
+        if (!holdable) return false
         heldReplyAudio += event
         if (heldReplyAudio.size > MAX_HELD_AUDIO_EVENTS) {
             DebugVoiceLog.log("PHANTOM_GATE_PASS reason=hold_budget_exceeded events=${heldReplyAudio.size}")
@@ -636,6 +679,36 @@ class BaiduFlexClient(
 
     private fun finishTurnHold(hadToolCall: Boolean) {
         if (!holdingTurn) {
+            turnSegment = null
+            return
+        }
+        if (unsupportedRequestThisTurn && !hadToolCall && !toolCalledThisTurn) {
+            val reply = assistantText.toString().trim()
+            // A control claim, or an answer to a question nothing on this car could have answered.
+            val fabricated = if (realtimeInfoThisTurn) {
+                ActionClaimGuard.fabricatesRealtimeInfo(reply)
+            } else {
+                ActionClaimGuard.claimsDone(reply)
+            }
+            if (fabricated) {
+                holdingTurn = false
+                val dropped = heldReplyAudio.size
+                heldReplyAudio.clear()
+                unsupportedRequestThisTurn = false
+                val why = if (realtimeInfoThisTurn) "fabricated_realtime_info" else "false_claim_unsupported"
+                DebugVoiceLog.log("PHANTOM_GATE_DROP reason=$why events=$dropped replyChars=${reply.length}")
+                if (realtimeInfoThisTurn) {
+                    // The correction becomes the only sentence the driver sees or hears.
+                    sendUserText(ActionClaimGuard.realtimeInfoCorrection(noToolRequestText))
+                }
+                realtimeInfoThisTurn = false
+                turnSegment = null
+                return
+            }
+            // An honest refusal: say it, and it is the only sentence for this request.
+            releaseHeldAudio("honest_refusal")
+            unsupportedRequestThisTurn = false
+            realtimeInfoThisTurn = false
             turnSegment = null
             return
         }

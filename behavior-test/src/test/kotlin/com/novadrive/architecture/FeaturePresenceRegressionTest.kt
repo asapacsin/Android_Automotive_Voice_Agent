@@ -169,12 +169,16 @@ class FeaturePresenceRegressionTest {
         assertContains(client, "beginTurnHold()", "a suspicious turn's reply audio must be held")
         assertContains(client, "finishTurnHold(hadToolCall =", "the verdict needs the tool-call fact")
         assertContains(client, "PHANTOM_GATE_DROP", "every suppression must say why")
-        // The safety invariant: suppression is about audio only. Tool calls are never held.
-        assertContains(
-            client,
-            "if (event !is DomainVoiceEvent.AudioDelta && event !is DomainVoiceEvent.AudioDone) return false",
-            "only reply audio may be held — never a tool call, transcript or error",
-        )
+        // The safety invariant: only what the driver hears and reads may be held. A tool call, an
+        // error or the driver's own transcript must always pass straight through.
+        assertContains(client, "event is DomainVoiceEvent.AudioDelta ||", "reply audio may be held")
+        assertContains(client, "event is DomainVoiceEvent.AssistantTranscript", "and its subtitle, so the two cannot diverge")
+        assertContains(client, "if (!holdable) return false", "everything else passes through untouched")
+        // T07: an unsupported request must never speak a claim it cannot back up.
+        assertContains(client, "PHANTOM_GATE_HOLD reason=unsupported_request", "hold until the reply is known to be honest")
+        assertContains(client, "false_claim_unsupported", "a claimed action with no tool is dropped, not corrected after the fact")
+        // T09: no weather/traffic source exists, so a non-refusal is fabricated by definition.
+        assertContains(client, "fabricated_realtime_info", "an invented forecast is never spoken")
     }
 
     // ---- permissions every main feature depends on ----
