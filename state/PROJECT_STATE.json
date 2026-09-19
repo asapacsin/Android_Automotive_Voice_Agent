@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-09-19T22:14:38",
+  "generated_at": "2026-09-19T22:53:15",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "bccf1e5",
+    "commit": "c2d49b7",
     "branch": "main",
-    "subject": "Refresh generated state",
+    "subject": null,
     "working_tree_clean": false,
-    "uncommitted_files": 20
+    "uncommitted_files": 6
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-19T22:08:56",
+    "collected_at": "2026-09-19T22:50:48",
     "total": {
-      "tests": 705,
+      "tests": 717,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "app": {
-        "tests": 513,
+        "tests": 525,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 228968368,
-    "built_at": "2026-09-19T21:59:21"
+    "bytes": 229293668,
+    "built_at": "2026-09-19T22:49:15"
   },
   "capabilities": {
     "available": true,
@@ -124,7 +124,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "B-011: B-011 — no SPEC yet: compile this demand into scenarios and acceptance criteria",
-    "actionable_count": 3,
+    "actionable_count": 5,
     "blocked_count": 0,
     "candidates": [
       {
@@ -146,6 +146,20 @@
         "class": "next authorised backlog item",
         "source": "BACKLOG.md",
         "item": "B-013",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-014",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-015",
         "blocked_by": null
       }
     ]

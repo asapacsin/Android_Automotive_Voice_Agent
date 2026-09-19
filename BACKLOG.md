@@ -17,6 +17,8 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 | B-011 | **Spoken vague and contextual requests reach the right tool** — 「返屋企啦」「有啲熱，幫我舒服啲」 and the rest of the scenario set, through the live model | 2026-09-19 | Open | §Scenarios below |
 | B-012 | **Wake-word reliability is uncharacterised** — false accepts over a long drive, and detection at distance with road noise | 2026-09-19 | Open | [SPEC-001](SPECS/SPEC-001-wake-word.md) |
 | B-013 | **`BaiduFlexClientTest` readiness timeout is load-sensitive** — it fails under a full parallel suite and passes alone | 2026-09-19 | Open | §B-013 below |
+| B-014 | **A false sentence is spoken before it is corrected** — the correction follows; the driver still heard the claim | 2026-09-19 | Open | [P23](OPEN_PROBLEMS.md) |
+| B-015 | **Cantonese is not understood** — 「返屋企啦」 transcribes as 「发诺克拉」; the product owner speaks Cantonese | 2026-09-19 | Open | §B-015 below |
 | B-002 | 小诺 must stay quiet during navigation and speak only short confirmations | 2026-09-15 | **Done** 2026-09-16 | [P1](OPEN_PROBLEMS.md) — verified on device |
 | B-001 | 「关闭音乐」 must actually stop the music | 2026-09-15 | **Done** 2026-09-16 | [P2](OPEN_PROBLEMS.md) — verified on device with log evidence |
 
@@ -215,4 +217,44 @@ running it, and that is the whole basis of this project's evidence.
 
 **Acceptance:** the readiness wait either tolerates scheduler starvation or the test drives the
 clock; 20 consecutive full-suite runs with no such failure. **Verification:** repeated suite runs.
+
+## B-014 — The claim is spoken before the correction
+
+`ActionClaimGuard` sends a follow-up *after* a response completes, so the driver hears the false
+sentence and then hears it retracted. Better than the sentence standing, which is what P23 fixed,
+but not right.
+
+The honest fix is to hold reply audio until the response is done and its outcome is known —
+`DriverTurn` already holds audio pending execution proof, so the machinery exists. The cost is
+latency on every reply, which in a car is not free.
+
+**Acceptance:** a fabricated claim is never audible; measured reply latency does not regress beyond
+a stated budget. **Verification:** device, with the harness, comparing `TURN_HOLD`/`TURN_RELEASE`
+timings against the current build.
+
+## B-015 — Cantonese
+
+Measured 2026-09-19 against the live model, synthesized `zh-HK`:
+
+| Said | Heard | Result |
+| --- | --- | --- |
+| 「返屋企啦」 | 「发诺克拉。」 | nothing usable |
+| 「有啲熱，幫我舒服啲」 | 「有的人帮我舒服的。」 | wrong, but close enough that the model guessed 「有点热」 |
+| 「播啲精神啲嘅歌」 | 「波低精神的k歌。」 | `control_music{play}` ran — the bundled track, for a request that named a *style*. A false capability claim that `isSpecificMediaRequest` would have caught had the transcript survived |
+
+So it is not a clean failure: it is **plausible mis-transcription**, which is worse, because the
+model then acts confidently on a sentence the driver never said. P23 catches the case where nothing
+runs; it cannot catch a wrong tool running on a wrong transcript.
+
+This matters more than a localisation nicety: the product owner speaks Cantonese, and every
+scenario in the target set was written in it.
+
+**Open question this needs answered first:** whether `qianfan-realtime-flex-v1` accepts a language
+or dialect hint at all. If it does not, the options are a different model, a Cantonese ASR in front
+of it — which would contradict [ADR-002](DECISIONS/ADR-002-baidu-flex-default-provider.md)'s
+end-to-end design — or stating plainly that the product is Mandarin-only.
+
+**Acceptance:** either the scenario set passes in Cantonese, or ADR-002 records the limit and
+`capabilities.yaml` says the product is Mandarin-only, so nothing downstream claims otherwise.
+**Verification:** the same harness clips, re-run.
 

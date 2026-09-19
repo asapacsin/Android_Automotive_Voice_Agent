@@ -129,4 +129,108 @@ class ActionClaimGuardTest {
         assertTrue(ActionClaimGuard.claimsDone("好的，空调关了。"))
         assertTrue(!ActionClaimGuard.claimsDone("抱歉，没有找到这个地点。"))
     }
+
+    // ---- a claim is false on its own terms -----------------------------------------------
+
+    @Test
+    fun aFabricatedClaimIsCaughtEvenWhenTheRequestWasNotUnderstood() {
+        // Verbatim from the device log, 2026-09-19. 「返屋企啦」 reached the model as garbage, so
+        // every request-shaped check went blind - and it still announced a navigation that had
+        // not happened, with outputs=[message].
+        guard.onUserTranscript("发诺克拉。")
+        val correction = guard.onResponseDone(message, "导航到家。正在搜索您的家地址，请稍候。")
+        assertNotNull(correction, "an action claim with no tool call is false whatever was heard")
+        assertTrue(
+            correction!!.contains("没有执行"),
+            "the correction must say nothing happened, not perform a guess",
+        )
+    }
+
+    @Test
+    fun anAppInitiatedClaimIsStillLeftAlone() {
+        // No driver utterance means the app started the turn itself, and the claim may be about
+        // something the app really did. This check is for a driver who spoke and was misheard.
+        assertNull(guard.onResponseDone(message, "已为你播放音乐。"))
+    }
+
+    @Test
+    fun anOrdinaryReplyWithNoClaimIsLeftAlone() {
+        // The correction costs the driver a turn, so it must not fire on chat.
+        guard.onUserTranscript("你好啊。")
+        assertNull(guard.onResponseDone(message, "你好，有什么可以帮你的？"))
+        guard.onUserTranscript("今天真不错。")
+        assertNull(guard.onResponseDone(message, "是啊，天气不错。"))
+    }
+
+    @Test
+    fun aDeclineIsNotAClaim() {
+        guard.onUserTranscript("发诺克拉。")
+        assertNull(guard.onResponseDone(message, "抱歉，我没听清，可以再说一遍吗？"))
+    }
+
+    @Test
+    fun theCorrectionIsSentOnlyOncePerUtterance() {
+        guard.onUserTranscript("发诺克拉。")
+        assertNotNull(guard.onResponseDone(message, "导航到家。正在搜索。"))
+        assertNull(guard.onResponseDone(message, "导航到家。正在搜索。"))
+    }
+
+    @Test
+    fun aClaimThatFollowedARealToolCallIsLeftAlone() {
+        guard.onUserTranscript("发诺克拉。")
+        assertNull(guard.onResponseDone(call, ""))
+        assertNull(guard.onResponseDone(message, "已经帮你导航到家了。"))
+    }
+
+    @Test
+    fun everyWordingTheModelActuallyUsedIsCaught() {
+        // All three verbatim from device logs, 2026-09-19, each after the same garbled input and
+        // each with outputs=[message]. Two of them escaped earlier versions of this check.
+        listOf(
+            "有点热啊，我帮你调低一点温度。",
+            "我帮你调低温度，现在凉快点没？",
+            "我调低点温度先。",
+        ).forEach { reply ->
+            val fresh = ActionClaimGuard()
+            fresh.onUserTranscript("有的人帮我舒服的。")
+            assertNotNull(fresh.onResponseDone(message, reply), "not caught: $reply")
+        }
+    }
+
+    @Test
+    fun aPromisedActionThatNeverHappensIsAlsoCaught() {
+        // Verbatim from the device log, 2026-09-19. The cabin stayed hot, and the driver was told
+        // it was being handled - which is worse than being told nothing.
+        guard.onUserTranscript("有的人帮我舒服的。")
+        val correction = guard.onResponseDone(message, "有点热啊，我帮你调低一点温度。")
+        assertNotNull(correction, "a promise with no tool call is as empty as a false claim")
+    }
+
+    @Test
+    fun aPromiseFollowedByARealToolCallIsLeftAlone() {
+        guard.onUserTranscript("有的人帮我舒服的。")
+        assertNull(guard.onResponseDone(call, ""))
+        assertNull(guard.onResponseDone(message, "我帮你调低了一点温度。"))
+    }
+
+    @Test
+    fun chatThatMentionsHelpingIsNotAPromisedAction() {
+        // 帮你 with no car action in it must not fire: the correction costs a turn at the wheel.
+        guard.onUserTranscript("你好啊。")
+        assertNull(guard.onResponseDone(message, "你好，我可以帮你做很多事情。"))
+    }
+
+    @Test
+    fun aReplyThatClaimsAndAsksInOneBreathIsStillAClaim() {
+        // Verbatim from the device log, 2026-09-19. It escaped the first version of this check
+        // purely because it ended in 「？」 — while the cabin stayed exactly as hot.
+        guard.onUserTranscript("有的人帮我舒服的。")
+        assertNotNull(guard.onResponseDone(message, "我帮你调低温度，现在凉快点没？"))
+    }
+
+    @Test
+    fun anHonestInabilityIsNeverCorrected() {
+        guard.onUserTranscript("发诺克拉。")
+        assertNull(guard.onResponseDone(message, "抱歉，我帮不了你调这个，没听清。"))
+    }
 }

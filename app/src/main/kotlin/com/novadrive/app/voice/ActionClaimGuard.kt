@@ -60,10 +60,14 @@ class ActionClaimGuard {
             failureCorrected = true
             return correctionForFailure(failure)
         }
-        val request = userText ?: return null
+        val reply = assistantText.trim()
+        val request = userText
         userText = null
         if (toolCalledThisTurn || nudged) return null
-        val reply = assistantText.trim()
+        // No utterance at all means the app started this turn itself (VoiceSessionGateway.speak),
+        // where a claim may be about something the *app* just did. Left alone deliberately: the
+        // check below is for a driver who spoke and was not understood.
+        if (request == null) return null
         val suspicious = when {
             isCameraQuestion(request) -> !declines(reply)
             isUnsupportedRequest(request) -> claimsDone(reply)
@@ -79,10 +83,33 @@ class ActionClaimGuard {
             isControlRequest(request) -> claimsDone(reply) || ContextResolver.asksForClimateChange(request)
             else -> false
         }
-        if (!suspicious) return null
-        nudged = true
-        return nudgeFor(request)
+        if (suspicious) {
+            nudged = true
+            return nudgeFor(request)
+        }
+        // The request was not recognised as an action request - and the reply claimed an action
+        // anyway. Measured on device 2026-09-19: 「返屋企啦」 was transcribed as 「发诺克拉」,
+        // which matches no control word, and the model answered 「导航到家。正在搜索您的家地址」
+        // with outputs=[message]. Nothing had been called; nothing was searching; the claim was
+        // spoken and nothing corrected it, because every check keyed on what the *driver* was
+        // heard to say.
+        //
+        // A claim is false on its own terms. Whenever the transcript is garbled - which a noisy
+        // cabin guarantees, in any language - the request-shaped checks go blind, and this is the
+        // one that still sees.
+        return unverifiedClaim(reply)?.also { nudged = true }
     }
+
+    /**
+     * An action in the reply - finished, underway, or promised - with no tool call behind it.
+     *
+     * The promise matters as much as the claim. Measured on device 2026-09-19: 「有啲熱，幫我舒
+     * 服啲」 was heard as 「有的人帮我舒服的」 and answered 「有点热啊，我帮你调低一点温度」
+     * with outputs=[message]. Nothing was called and the cabin stayed hot. To the driver that is
+     * indistinguishable from a completed action: they were told it was being handled.
+     */
+    private fun unverifiedClaim(reply: String): String? =
+        if (claimsDone(reply) || describesCarAction(reply)) UNVERIFIED_ACTION_CLAIM else null
 
     @Synchronized
     fun reset() {
@@ -195,6 +222,44 @@ class ActionClaimGuard {
 
         fun declines(reply: String): Boolean = DECLINE_WORDS.any { it in reply }
 
+        /**
+         * The things in this car a reply can claim to have touched.
+         *
+         * Two live attempts to catch the promise by its *phrasing* both failed, because the model
+         * words it differently every time: 「我帮你调低一点温度」, then 「我帮你调低温度，现在
+         * 凉快点没？」, then 「我调低点温度先。」. Enumerating phrasings is a losing game.
+         *
+         * What does not vary is the structure: a reply that names something in this car *and*
+         * names an action on it, when no tool ran, describes something that did not happen. The
+         * politeness around it is decoration.
+         */
+        private val DEVICE_NOUNS = listOf(
+            "空调", "温度", "风量", "风速", "暖风", "冷风", "除雾",
+            "音乐", "歌", "曲",
+            "导航", "目的地", "路线", "地址",
+            "摄像头", "镜头", "画面",
+        )
+
+        /**
+         * Saying the product cannot do something. Narrower than [declines], which also counts any
+         * question mark - and a reply can claim *and* ask in one breath. Measured on device
+         * 2026-09-19: 「我帮你调低温度，现在凉快点没？」 called no tool, changed nothing, and
+         * escaped the check purely because it ended in 「？」.
+         */
+        private val INABILITY_WORDS = listOf(
+            "不支持", "无法", "不能", "没法", "暂不", "暂时不", "抱歉", "对不起", "没听清", "再说一遍",
+        )
+
+        fun refuses(reply: String): Boolean = INABILITY_WORDS.any { it in reply }
+
+        /**
+         * The reply describes acting on something in this car. Used only where the request could
+         * not be classified, so nothing else can see the mismatch; a reply that merely offers help
+         * (「我可以帮你做很多事情」) names nothing and does not match.
+         */
+        fun describesCarAction(reply: String): Boolean =
+            !refuses(reply) && DEVICE_NOUNS.any { it in reply } && ACTION_WORDS.any { it in reply }
+
         fun claimsDone(reply: String): Boolean =
             !declines(reply) && DONE_WORDS.any { it in reply } && ACTION_WORDS.any { it in reply }
 
@@ -202,6 +267,16 @@ class ActionClaimGuard {
         fun correctionForFailure(reason: String): String =
             "工具返回的结果是失败（$reason），你上一句说已经完成是错误的。" +
                 "不要调用任何工具，只用一句话如实告诉用户：这个操作没有成功，并简单说明原因。"
+
+        /**
+         * Sent when the reply described an action that no tool performed, and the app cannot tell
+         * what was asked. Performing something would be a guess; the only honest move is to say so
+         * and ask again.
+         */
+        const val UNVERIFIED_ACTION_CLAIM =
+            "你上一句说的操作实际上没有执行：你没有调用任何工具，车上也没有任何变化。" +
+                "而且用户刚才说的话可能没有听清楚。不要调用任何工具，" +
+                "只用一句话如实告诉用户：刚才没有听清楚，也没有执行任何操作，请再说一遍。"
 
         /** Self-contained: it may land in a fresh conversation after a reset. */
         fun nudgeFor(request: String): String =

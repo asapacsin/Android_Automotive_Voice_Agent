@@ -384,3 +384,36 @@ phone outdoors with a real fix — a physical condition, not a code one.
 which is the real dispatcher with the real store and the real Amap search, but with the model
 bypassed. What the model does with 「返屋企啦」 is a separate question, tracked as B-011.
 
+---
+
+## The Cantonese scenario set against the live model — 2026-09-19, `2391ff70`
+
+Synthesized `zh-HK` speech injected into a live Baidu Flex session. The point was to find out
+whether the product behaves as intended for the person who owns it. It did not, and the way it
+failed was more interesting than the failure.
+
+| Said | Heard | Model | Verdict |
+| --- | --- | --- | --- |
+| 「返屋企啦」 | 「发诺克拉。」 | 「导航到家。正在搜索您的家地址」, `outputs=[message]` | **false claim, uncorrected** → fixed, see P23 |
+| 「有啲熱，幫我舒服啲」 | 「有的人帮我舒服的。」 | 「我帮你调低温度。」, `outputs=[message]` | **empty promise** → fixed, see P23 |
+| 「播啲精神啲嘅歌」 | 「波低精神的k歌。」 | `control_music{play}` → 「音乐已经播放了。」 | **wrong capability ran** → B-015, not fixed |
+
+### After the fix
+
+| Utterance | Evidence | Result |
+| --- | --- | --- |
+| 「返屋企啦」 | fabrication → `flex_user_text chars=98` → 「没听清，再说一遍。」 | **PROVEN** |
+| 「有啲熱…」 | 「我帮你调低温度。」 → correction → 「没听清，再说一遍。」 | **PROVEN** |
+
+### What this run established beyond the fix
+
+The transcription does not fail cleanly. It produces **plausible Mandarin** that the model then
+acts on confidently. The music case is the sharp one: the driver asked for a *style* of song, which
+this product cannot serve and refuses on purpose ([P22](OPEN_PROBLEMS.md)) — but the refusal is
+keyed on the driver's words, and those never arrived. So the bundled track played and the driver
+was told they got what they asked for.
+
+Every guard in this product that reads the driver's utterance has the same exposure. P23 closes the
+case where nothing runs. Nothing yet closes the case where the **wrong thing** runs on a sentence
+the driver never said.
+

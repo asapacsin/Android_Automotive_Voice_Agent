@@ -1017,3 +1017,65 @@ asked for**.
 `FalseCapabilityClaimTest` (10 cases) and `ContextResolverTest` (23). Full suite 631 tests, 0
 failures, 2026-09-19. **What is not proven:** that the live model, told it cannot play that song,
 says so in one honest sentence. That is `TEXT_LIVE`/`AUDIO_E2E` work on the phone.
+
+---
+
+## P23 — A misheard driver could be told the car had acted
+
+**Status:** **FIXED and device-verified 2026-09-19.**
+**Found:** 2026-09-19, running the Cantonese scenario set through the live model.
+**Severity:** High — the driver is told the car did something it did not do.
+
+### Symptom
+
+「返屋企啦」 was transcribed as 「发诺克拉。」 The model answered:
+
+> 小诺: 导航到家。正在搜索您的家地址，请稍候。
+
+`outputs=[message]`. No tool was called. Nothing was searching. The sentence was spoken and
+nothing corrected it.
+
+Same session, 「有啲熱，幫我舒服啲」 → 「有的人帮我舒服的。」 → 「有点热啊，我帮你调低一点温度。」 —
+again no tool, and the cabin stayed hot.
+
+### Root cause
+
+Every claim check keyed on **what the driver was heard to say**. `ActionClaimGuard` classified the
+request first (`isControlRequest`, `isUnsupportedRequest`, `isCameraQuestion`) and only then looked
+at the reply. A garbled transcript matches no control word, so the `else` branch returned `false`
+and the reply was never examined at all.
+
+That is not a Cantonese bug. A noisy cabin garbles Mandarin too, and the same blindness follows.
+
+### Fix
+
+A claim is false on its own terms. When the request cannot be classified and no tool ran, the
+*reply* is checked directly, and a correction is sent instead of an action — because the app does
+not know what was asked and guessing would be worse.
+
+**Two wrong attempts first, both caught live, and worth recording.** The check was written against
+the model's *phrasing*: first 「我帮你…」-style promise words, which missed 「我帮你调低温度，现在凉快点
+没？」 because it ended in 「？」 and the blunt `declines()` treated any question as a refusal; then
+with `refuses()` split out, it missed 「我调低点温度先。」, which contains no promise word at all. The
+model words it differently every time.
+
+What does not vary is the structure: **a reply that names something in this car and names an action
+on it, when no tool ran, describes something that did not happen.** `describesCarAction` tests that
+instead of the wording.
+
+### Evidence
+
+| | |
+| --- | --- |
+| Before | 「导航到家。正在搜索您的家地址」 spoken, `outputs=[message]`, no correction |
+| After | same fabrication → `flex_user_text chars=98` → 「没听清，再说一遍。」 |
+| After (climate) | 「我帮你调低温度。」 → correction → 「没听清，再说一遍。」 |
+
+All on `2391ff70` against the live model. Regression-covered by `ActionClaimGuardTest`, including
+all three wordings verbatim.
+
+### What this does not fix
+
+The false sentence is still spoken before the correction — that is the existing architecture, and
+changing it means holding all reply audio until a response completes. Tracked as B-014.
+
