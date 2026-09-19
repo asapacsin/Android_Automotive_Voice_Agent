@@ -329,10 +329,24 @@ what language it is hearing.
 `tools/speech-harness/scenarios-cantonese.json`, deliberately outside the default suite: it is
 expected to fail some of the time, and a suite that is red by design stops being read.
 
-So a Cantonese request reaches a real action **roughly two times in five at best, and never** for
-the implicit-comfort phrasing. The third row is the one that changed: it was not a recognition
-problem but [P25](OPEN_PROBLEMS.md) — the app *acting* on a mis-transcription, which is now
-refused honestly whatever the transcript says.
+### Then one sentence was added to the persona, and re-measured
+
+The instructions never told the model it might hear Cantonese — only that it must *reply* in
+Mandarin. Adding that the driver may speak it, that the transcript may look strange, and that a
+recognisable instruction should still be executed:
+
+| Said | Must reach | Before | After |
+| --- | --- | --- | --- |
+| 「返屋企啦」 | `navigate_to` | 2/5 | **4/5** |
+| 「有啲熱，幫我舒服啲」 | `control_climate` | 0/5 | **1/5** |
+| 「播啲精神啲嘅歌」 | an honest refusal | 0/5 | **5/5** (P25) |
+
+Mandarin re-measured straight after: **20/20**, no regression.
+
+So the navigation case roughly works now, and the implicit-comfort case still does not — the
+phrasing that has no keyword in it at all is the one the transcriber destroys most completely.
+The third row was never a recognition problem: it was [P25](OPEN_PROBLEMS.md), the app *acting* on
+a mis-transcription, and it is now refused honestly whatever the transcript says.
 
 **Needs a product decision, not more engineering.** The evidence is in; the alternatives are real
 and not comparable on technical grounds: accept Mandarin-only and say so, spend effort on prompt

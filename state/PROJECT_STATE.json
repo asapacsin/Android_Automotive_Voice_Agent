@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-09-20T04:02:07",
+  "generated_at": "2026-09-20T04:24:34",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "223b3b1",
+    "commit": "65dacaf",
     "branch": "main",
-    "subject": "A cut connection, and sixteen minutes of music that woke nothing",
+    "subject": "A song we cannot play was \"played\" again, through a mis-transcription",
     "working_tree_clean": false,
-    "uncommitted_files": 6
+    "uncommitted_files": 2
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-20T03:58:42",
+    "collected_at": "2026-09-20T04:05:16",
     "total": {
       "tests": 737,
       "failures": 0,
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 229313544,
-    "built_at": "2026-09-20T03:57:41"
+    "bytes": 229314196,
+    "built_at": "2026-09-20T04:04:14"
   },
   "capabilities": {
     "available": true,
