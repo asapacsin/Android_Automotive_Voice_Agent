@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-20T04:24:34",
+  "generated_at": "2026-09-20T04:24:52",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "65dacaf",
+    "commit": "fd5c16c",
     "branch": "main",
-    "subject": "A song we cannot play was \"played\" again, through a mis-transcription",
+    "subject": "Telling the model it might hear Cantonese doubles the rate it acts on it",
     "working_tree_clean": false,
-    "uncommitted_files": 2
+    "uncommitted_files": 1
   },
   "tests": {
     "available": true,
@@ -121,13 +121,13 @@
     }
   ],
   "work_frontier": {
-    "AUTONOMOUS_ACTION_AVAILABLE": "YES",
-    "HUMAN_ACTION_REQUIRED": "NO",
-    "STOP_REASON": "NOT_STOPPING",
-    "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "B-015: B-015 — no SPEC yet: compile this demand into scenarios and acceptance criteria",
-    "actionable_count": 1,
-    "blocked_count": 2,
+    "AUTONOMOUS_ACTION_AVAILABLE": "NO",
+    "HUMAN_ACTION_REQUIRED": "YES",
+    "STOP_REASON": "BLOCKED_ON_EXTERNAL_DEPENDENCY",
+    "BLOCKING_DEPENDENCY": "a person saying 「你好小诺」 at a stated distance with the car actually moving, which is",
+    "NEXT_ACTION": "NONE",
+    "actionable_count": 0,
+    "blocked_count": 3,
     "candidates": [
       {
         "priority": 11,
@@ -141,7 +141,7 @@
         "class": "next authorised backlog item",
         "source": "BACKLOG.md",
         "item": "B-015",
-        "blocked_by": null
+        "blocked_by": "the owner choosing between three options that are not comparable on technical grounds"
       },
       {
         "priority": 11,

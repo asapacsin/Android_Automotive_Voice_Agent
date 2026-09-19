@@ -348,6 +348,11 @@ phrasing that has no keyword in it at all is the one the transcriber destroys mo
 The third row was never a recognition problem: it was [P25](OPEN_PROBLEMS.md), the app *acting* on
 a mis-transcription, and it is now refused honestly whatever the transcript says.
 
+BLOCKED_BY: the owner choosing between three options that are not comparable on technical grounds
+— accept Mandarin-only and say so in ADR-002 and the capability registry; keep the current partial
+support and document the measured rates as the expected behaviour; or reopen ADR-008 and evaluate a
+provider whose transcriber accepts Cantonese
+
 **Needs a product decision, not more engineering.** The evidence is in; the alternatives are real
 and not comparable on technical grounds: accept Mandarin-only and say so, spend effort on prompt
 work aimed at tool calling for accented or non-Mandarin input, or change provider — which
