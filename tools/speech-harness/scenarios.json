@@ -195,6 +195,19 @@
       "forbid": [
         "^tool="
       ]
+    },
+    {
+      "id": "S16",
+      "utterance": "再低一点 (nothing adjusted yet - genuinely ambiguous)",
+      "say": "ambig_lower",
+      "_note": "True ambiguity: 低 could mean temperature or fan, and with no prior turn the history cannot say either. The app must ask, and must not pick one. This is the counterpart to S12, where context makes the same shape of request answerable.",
+      "expect": [
+        "follow_up=true kind=clarify"
+      ],
+      "forbid": [
+        "^tool=control_climate"
+      ],
+      "fresh": true
     }
   ]
 }

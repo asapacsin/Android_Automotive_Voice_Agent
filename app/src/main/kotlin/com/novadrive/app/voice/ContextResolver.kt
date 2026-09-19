@@ -155,6 +155,22 @@ object ContextResolver {
      * Falls back to the implicit table when no context is installed, which is the case in tests and
      * before the first session.
      */
+    /**
+     * Does this sentence ask for a concrete change whose *target* cannot be worked out?
+     *
+     * 「再低一点」 with nothing adjusted yet: 低 could be temperature or fan, and no history says
+     * which. SPEC-006 requires asking. Measured on device 2026-09-20 without this, the driver got
+     * 「刚才没有听清」 for a sentence that was heard perfectly - the app simply had no way to say
+     * that the *referent*, not the audio, was the problem.
+     */
+    fun needsClarification(text: String): Boolean {
+        val context = DriverContext.currentOrNull() ?: return resolveWithoutContext(text)
+        return resolve(text, context, context.currentEpoch()) is Resolution.Clarify
+    }
+
+    private fun resolveWithoutContext(text: String): Boolean =
+        DriverContext().let { empty -> resolve(text, empty, empty.currentEpoch()) is Resolution.Clarify }
+
     fun asksForClimateChange(text: String): Boolean {
         val context = DriverContext.currentOrNull() ?: return isImplicitComfortRequest(text)
         return resolve(text, context, context.currentEpoch()) is Resolution.Adjust

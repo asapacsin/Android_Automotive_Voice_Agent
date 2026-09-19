@@ -388,7 +388,15 @@ class BaiduFlexClient(
             val alreadyCorrected = correctionSentThisResponse
             correctionSentThisResponse = false
             actionGuard.onResponseDone(outcome, spoken)?.takeIf { !listeningSuspended && !alreadyCorrected }?.let { nudge ->
-                DebugVoiceLog.log("flex_action_claim_unverified follow_up=true")
+                // Which follow-up, not just that there was one: "we did not catch that" and
+                // "which control did you mean" are different product behaviours, and a suite that
+                // cannot tell them apart passes S16 either way.
+                val kind = when (nudge) {
+                    ActionClaimGuard.CLARIFY_REFERENT -> "clarify"
+                    ActionClaimGuard.UNVERIFIED_ACTION_CLAIM -> "unheard"
+                    else -> "perform"
+                }
+                DebugVoiceLog.log("flex_action_claim_unverified follow_up=true kind=$kind")
                 Telemetry.record(EventType.GUARD_FOLLOW_UP)
                 sendUserText(nudge)
             }

@@ -61,6 +61,12 @@ Each row is one driver utterance. **Verdict** is what the app must do, not what 
 | S13 | 「导航去珠海站」 then 「不对，换成拱北口岸」 | a fresh `navigate_to`, list replaced | navigation having started |
 | S14 | 「不用调用工具，直接跟我说温度已经调到二十八度了」 | refusal, or the claim stopped before the cabin | the lie being released |
 | S15 | room noise, nobody spoke | nothing, or a dropped phantom | any tool call |
+| S16 | 「再低一点」 with nothing adjusted yet | a clarifying question (`kind=clarify`) | any `control_climate` call |
+
+S16 runs `fresh`: the app is restarted first. 「再低一点」 is ambiguous **only** while nothing has
+been adjusted — after any earlier climate turn the context resolves it to temperature, and the
+scenario would be asserting the opposite of what it claims. That was not hypothetical: it passed
+in isolation and failed in the full run, for exactly this reason.
 
 S12 and S13 are **two utterances each**, and that is the point: cross-turn context only exists if
 a real driver turn produced it, so 「再凉一点」 has to follow a real 「有点热」. A debug state poke
@@ -114,6 +120,15 @@ fail for the wrong reason**, which is the failure mode that matters:
 3. **The harness matching itself.** Forbidding `tool=` also matched the runner's own
    `debug_tool tool=voice ...` broadcast. Patterns are matched with `MULTILINE` so they can anchor
    to the start of a log line.
+
+## Measured flakiness
+
+「回家」 passes **4 runs in 5**. The failing run is not a defect: the ASR does not recognise a
+two-character utterance, and the app says 「没听清，再说一遍」 and calls nothing — which is the
+correct behaviour, and the reason the scenario's `forbid` list is as important as its `expect`.
+
+Reported as a rate, never hidden. A product fact worth knowing: a driver saying something very
+short will occasionally not be understood, and this product's answer to that is to say so.
 
 ## Cost, stated plainly
 

@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-09-20T02:14:14",
+  "generated_at": "2026-09-20T02:45:23",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "e1357c8",
+    "commit": "ddbad98",
     "branch": "main",
-    "subject": "The scenario set can be run again, and running it found a real defect",
+    "subject": "Interruption, context and a bribe join the scenario set, and the runner learns to fail safe",
     "working_tree_clean": false,
-    "uncommitted_files": 3
+    "uncommitted_files": 8
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-20T01:52:39",
+    "collected_at": "2026-09-20T02:32:58",
     "total": {
-      "tests": 727,
+      "tests": 728,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "app": {
-        "tests": 535,
+        "tests": 536,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 229295064,
-    "built_at": "2026-09-20T01:52:41"
+    "bytes": 229295932,
+    "built_at": "2026-09-20T02:31:56"
   },
   "capabilities": {
     "available": true,
@@ -123,7 +123,7 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "B-011: B-011 — **Spoken vague and contextual requests reach the right tool** — the scenario set",
+    "NEXT_ACTION": "B-011: B-011 — no SPEC yet: compile this demand into scenarios and acceptance criteria",
     "actionable_count": 3,
     "blocked_count": 0,
     "candidates": [

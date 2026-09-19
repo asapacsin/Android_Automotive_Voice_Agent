@@ -54,6 +54,13 @@ def push_clip(name):
 
 
 def run_scenario(sc, wait):
+    if sc.get("fresh"):
+        # Some scenarios are only themselves in a session with no history. 「再低一点」 is ambiguous
+        # only while nothing has been adjusted; after any earlier climate turn the context
+        # resolves it, and the scenario would be testing the opposite of what it claims.
+        adb("shell", "am", "force-stop", PKG)
+        adb("shell", "monkey", "-p", PKG, "-c", "android.intent.category.LAUNCHER", "1")
+        time.sleep(8)
     # Re-arm first. 「休眠」 is a scenario, and a sleeping session ignores everything that
     # follows - which on the first run silently invalidated the three scenarios after it.
     # start() resumes a session in SILENT_WAIT or SLEEP, is a no-op for an active one, and

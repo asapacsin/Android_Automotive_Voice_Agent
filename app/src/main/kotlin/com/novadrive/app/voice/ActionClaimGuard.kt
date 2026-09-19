@@ -105,7 +105,7 @@ class ActionClaimGuard {
         // A claim is false on its own terms. Whenever the transcript is garbled - which a noisy
         // cabin guarantees, in any language - the request-shaped checks go blind, and this is the
         // one that still sees.
-        return unverifiedClaim(reply)?.also { nudged = true }
+        return unverifiedClaim(reply, request)?.also { nudged = true }
     }
 
     /**
@@ -116,8 +116,13 @@ class ActionClaimGuard {
      * with outputs=[message]. Nothing was called and the cabin stayed hot. To the driver that is
      * indistinguishable from a completed action: they were told it was being handled.
      */
-    private fun unverifiedClaim(reply: String): String? =
-        if (claimsDone(reply) || describesCarAction(reply)) UNVERIFIED_ACTION_CLAIM else null
+    private fun unverifiedClaim(reply: String, request: String?): String? {
+        if (!claimsDone(reply) && !describesCarAction(reply)) return null
+        // The driver was heard; what is missing is the *target*. Telling them we did not catch a
+        // sentence we caught perfectly is both false and useless (measured 2026-09-20 on 「再低一点」).
+        if (request != null && ContextResolver.needsClarification(request)) return CLARIFY_REFERENT
+        return UNVERIFIED_ACTION_CLAIM
+    }
 
     @Synchronized
     fun reset() {
@@ -198,7 +203,12 @@ class ActionClaimGuard {
          * One answer to "can we act on this", so the guard and the resolver cannot drift.
          */
         fun isControlRequest(text: String): Boolean =
-            CONTROL_WORDS.any { it in text } || ContextResolver.isImplicitComfortRequest(text)
+            CONTROL_WORDS.any { it in text } ||
+                ContextResolver.isImplicitComfortRequest(text) ||
+                // A relative request the context CAN resolve: 「再低一点」 after a temperature
+                // adjustment means temperature. Measured on device 2026-09-20 without this, the
+                // driver was told 「刚才没有听清楚」 for a request the app could have carried out.
+                ContextResolver.asksForClimateChange(text)
 
         fun isUnsupportedRequest(text: String): Boolean =
             UNSUPPORTED_WORDS.any { it in text } || isSpecificMediaRequest(text)
@@ -292,6 +302,14 @@ class ActionClaimGuard {
          * what was asked. Performing something would be a guess; the only honest move is to say so
          * and ask again.
          */
+        /**
+         * The request was understood; which control it refers to was not. SPEC-006's ambiguity
+         * policy: ask, in one sentence, and execute nothing.
+         */
+        const val CLARIFY_REFERENT =
+            "用户说的这句话没有说明要调的是温度还是风量，之前也没有记录可以判断，所以没有执行。" +
+                "请只用一句话反问用户是温度还是风量，不要调用任何工具，也不要说没听清。"
+
         const val UNVERIFIED_ACTION_CLAIM =
             "你上一句说的操作实际上没有执行：你没有调用任何工具，车上也没有任何变化。" +
                 "而且用户刚才说的话可能没有听清楚。不要调用任何工具，" +

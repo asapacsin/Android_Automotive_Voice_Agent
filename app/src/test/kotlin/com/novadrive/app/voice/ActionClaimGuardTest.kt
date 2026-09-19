@@ -255,4 +255,19 @@ class ActionClaimGuardTest {
         assertTrue(ActionClaimGuard.isControlRequest("空调调到22度"))
         assertFalse(ActionClaimGuard.isControlRequest("今天天气怎么样"))
     }
+
+    @Test
+    fun anAmbiguousReferentIsAskedAboutRatherThanBlamedOnTheAudio() {
+        // Measured on device 2026-09-20: 「再低一点」 with nothing adjusted yet was answered
+        // 「刚才没有听清」 - for a sentence that was heard perfectly. What was missing was the
+        // referent, not the audio, and SPEC-006 says to ask which.
+        DriverContext.install(DriverContext())
+        guard.onUserTranscript("再低一点。")
+        val correction = guard.onResponseDone(message, "好的，已经帮你调低了。")
+        assertNotNull(correction)
+        assertTrue(
+            correction!!.contains("温度还是风量"),
+            "the driver must be asked which control, not told they were not heard: $correction",
+        )
+    }
 }
