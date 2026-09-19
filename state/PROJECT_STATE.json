@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-09-19T09:30:54",
+  "generated_at": "2026-09-19T09:31:34",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "52063b7",
+    "commit": "26f4bb5",
     "branch": "main",
-    "subject": "Run the new loop until it says stop",
-    "working_tree_clean": false,
-    "uncommitted_files": 2
+    "subject": "A blocker is one line, because that is how far it is read",
+    "working_tree_clean": true,
+    "uncommitted_files": 0
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-19T09:30:09",
+    "collected_at": "2026-09-19T09:31:24",
     "total": {
       "tests": 656,
       "failures": 0,
