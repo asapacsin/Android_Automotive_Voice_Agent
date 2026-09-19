@@ -1079,3 +1079,42 @@ all three wordings verbatim.
 The false sentence is still spoken before the correction — that is the existing architecture, and
 changing it means holding all reply audio until a response completes. Tracked as B-014.
 
+---
+
+## P24 — The same correction was sent twice
+
+**Status:** **FIXED 2026-09-20; device-verified. No regression test yet — see [B-017](BACKLOG.md).**
+**Found:** 2026-09-19, while verifying [P23](#p23).
+**Severity:** Medium — harmless here, and only by luck.
+
+### Symptom
+
+「算了」 produced two identical follow-ups 2 ms apart (`flex_user_text chars=127` twice) and
+`exit_navigation_mode` ran twice.
+
+### Root cause
+
+Two components correct the same response independently: `DriverTurn` when it drops a reply, and
+`ActionClaimGuard` on its own judgement. For an unproven action claim both fire.
+
+`exit_navigation_mode` is idempotent, so nothing broke. `control_climate{adjust_temperature,-2}`
+twice is −4 °C, and the only thing standing between those two facts is the dispatcher's
+`DUPLICATE_IN_TURN` guard — a second line of defence doing a first line's job.
+
+### Fix and evidence
+
+One owner: when `DriverTurn` sends a correction, `ActionClaimGuard` does not.
+
+| | |
+| --- | --- |
+| Before | `flex_user_text chars=127` ×2, `exit_navigation_mode` ×2 |
+| After | one of each, same utterance, same build path |
+
+### Why there is no test, stated plainly
+
+One was written against the scripted server and deleted: **it passed with and without the fix.**
+`ConversationResetPolicy` resets after the tool turn, so the second correction lands in
+`heldOutbound` and never reaches the wire in that flow — only on the device, where the reset
+completes, do both go out. A test that passes either way claims coverage that does not exist, which
+is worse than admitting the gap. [B-017](BACKLOG.md) carries it with the diagnosis.
+

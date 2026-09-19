@@ -144,13 +144,42 @@ class DriverTurnTest {
     }
 
     @Test
-    fun aTranscribedConversationReleasesADoubtfulHoldImmediately() {
+    fun aTranscribedConversationNeverWaitsForAnExecution() {
         val t = DriverTurn(epoch = 1)
         t.onResponseStarted(doubtfulAudio, false)
         t.hold("audio")
-        // Chat: nothing about this reply depends on an execution, so it must not wait.
-        assertEquals(DriverTurn.HoldReason.NONE, t.onUserTranscript("你好") { DriverTurn.Kind.CONVERSATION })
-        assertFalse(t.isHolding)
+        // Chat depends on no execution, so it must never wait for proof that cannot come. It does
+        // wait for the response to finish - the classification came from a transcript, and a
+        // transcript can be wrong (P23). Measured cost of that wait: 160-423 ms.
+        val reason = t.onUserTranscript("你好") { DriverTurn.Kind.CONVERSATION }
+        assertEquals(DriverTurn.HoldReason.UNCLASSIFIED_CLAIM, reason)
+        val verdict = t.onResponseDone("你好，有什么可以帮你的？", hadToolCallInResponse = false)
+        assertTrue(verdict is DriverTurn.Verdict.Release, "an honest chat reply is spoken")
+    }
+
+    @Test
+    fun aClaimAfterAMisheardTurnIsNeverSpoken() {
+        // The measured failure, 2026-09-19: 「返屋企啦」 arrived as 「发诺克拉。」, was classified as
+        // conversation, and the reply announced a navigation that never happened. Before this the
+        // driver heard it and was corrected afterwards; now they never hear it.
+        val t = DriverTurn(epoch = 1)
+        t.onResponseStarted(doubtfulAudio, false)
+        t.hold("audio")
+        t.onUserTranscript("发诺克拉。") { DriverTurn.Kind.CONVERSATION }
+        val verdict = t.onResponseDone("导航到家。正在搜索您的家地址。", hadToolCallInResponse = false)
+        assertTrue(verdict is DriverTurn.Verdict.Drop, "a claim nothing performed must not be spoken")
+    }
+
+    @Test
+    fun aRealActionAfterAMisheardTurnIsStillSpoken() {
+        // Cantonese tool calling is intermittent, not absent: the same utterance did call
+        // control_climate on 2026-09-19. When it does, the confirmation must be heard.
+        val t = DriverTurn(epoch = 1)
+        t.onResponseStarted(doubtfulAudio, false)
+        t.hold("audio")
+        t.onUserTranscript("有的人帮我说服的。") { DriverTurn.Kind.CONVERSATION }
+        val verdict = t.onResponseDone("温度已调低到22度。", hadToolCallInResponse = true)
+        assertTrue(verdict is DriverTurn.Verdict.Release)
     }
 
     @Test
@@ -240,5 +269,30 @@ class DriverTurnTest {
         assertEquals(DriverTurn.HoldReason.NONE, doubtful.onResponseStarted(doubtfulAudio, true))
         val noTool = turn(DriverTurn.Kind.NO_TOOL_ACTION)
         assertEquals(DriverTurn.HoldReason.NONE, noTool.onResponseStarted(goodAudio, true))
+    }
+
+    @Test
+    fun aPickerOnScreenDoesNotExemptAClaim() {
+        // The 2026-09-18 lesson, one layer down: contextAwaitingAnswer means a *prompt* is wanted,
+        // not that an action happened. Measured 2026-09-19, a claim slipped through this exemption
+        // because the turn was classified as conversation.
+        // Real speech, clearly audible, simply misheard - not the doubtful-audio case, which is
+        // exempt on purpose so a repair reaches a driver who is mid-choice.
+        val t = DriverTurn(epoch = 1)
+        t.onResponseStarted(goodAudio, contextAwaitingAnswer = true)
+        t.onUserTranscript("发诺克拉。") { DriverTurn.Kind.CONVERSATION }
+        t.hold("audio")
+        val verdict = t.onResponseDone("已为您打开空调。", hadToolCallInResponse = false)
+        assertTrue(verdict is DriverTurn.Verdict.Drop)
+    }
+
+    @Test
+    fun aGenuinePromptIsStillSpoken() {
+        val t = DriverTurn(epoch = 1)
+        t.onResponseStarted(goodAudio, contextAwaitingAnswer = true)
+        t.onUserTranscript("第二个") { DriverTurn.Kind.CONVERSATION }
+        t.hold("audio")
+        val verdict = t.onResponseDone("找到几个地点，请在屏幕上选择。", hadToolCallInResponse = false)
+        assertTrue(verdict is DriverTurn.Verdict.Release, "a prompt claims nothing")
     }
 }

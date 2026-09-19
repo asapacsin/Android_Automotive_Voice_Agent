@@ -17,9 +17,10 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 | B-011 | **Spoken vague and contextual requests reach the right tool** — 「返屋企啦」「有啲熱，幫我舒服啲」 and the rest of the scenario set, through the live model | 2026-09-19 | Open | §Scenarios below |
 | B-012 | **Wake-word reliability is uncharacterised** — false accepts over a long drive, and detection at distance with road noise | 2026-09-19 | Open | [SPEC-001](SPECS/SPEC-001-wake-word.md) |
 | B-013 | **`BaiduFlexClientTest` readiness timeout is load-sensitive** — it fails under a full parallel suite and passes alone | 2026-09-19 | Open | §B-013 below |
-| B-014 | **A false sentence is spoken before it is corrected** — the correction follows; the driver still heard the claim | 2026-09-19 | Open | [P23](OPEN_PROBLEMS.md) |
+| B-014 | **A false sentence is spoken before it is corrected** — the correction follows; the driver still heard the claim | 2026-09-19 | **Done** 2026-09-20 — held and dropped; measured cost 93–515 ms | [P23](OPEN_PROBLEMS.md) |
 | B-015 | **Cantonese is not understood** — 「返屋企啦」 transcribes as 「发诺克拉」; the product owner speaks Cantonese | 2026-09-19 | Open | §B-015 below |
 | B-016 | **A rejected session still looked like it was listening** — `state=ERROR` with `listening=ACTIVE` and zero frames, for 30 s | 2026-09-19 | **Done** 2026-09-19 — device-verified by reproducing the rejection | §B-016 below |
+| B-017 | **A duplicate correction is device-observed but not unit-covered** — the fix is in; the regression test is not | 2026-09-20 | Open | §B-017 below |
 | B-002 | 小诺 must stay quiet during navigation and speak only short confirmations | 2026-09-15 | **Done** 2026-09-16 | [P1](OPEN_PROBLEMS.md) — verified on device |
 | B-001 | 「关闭音乐」 must actually stop the music | 2026-09-15 | **Done** 2026-09-16 | [P2](OPEN_PROBLEMS.md) — verified on device with log evidence |
 
@@ -229,9 +230,18 @@ The honest fix is to hold reply audio until the response is done and its outcome
 `DriverTurn` already holds audio pending execution proof, so the machinery exists. The cost is
 latency on every reply, which in a car is not free.
 
-**Acceptance:** a fabricated claim is never audible; measured reply latency does not regress beyond
-a stated budget. **Verification:** device, with the harness, comparing `TURN_HOLD`/`TURN_RELEASE`
-timings against the current build.
+**CLOSED 2026-09-20.** The cost was measured before the design was chosen, which turned a judgement
+call into arithmetic. `reply_timing` instrumentation on device gave **93–515 ms** between the driver
+first hearing a reply and the app first knowing whether it was true — and **zero** for a turn that
+called a tool, because the spoken result is a separate response that happens after the tool has
+already run. So the whole cost falls on replies that called nothing, which are exactly the ones
+that can be false.
+
+`DriverTurn` now holds `CONVERSATION` and `UNKNOWN` turns until the response resolves, then drops
+the reply if it claims a car action nothing performed. The `contextAwaitingAnswer` exemption was
+closed for the same reason it was closed for `Kind.ACTION` in 2026-09-18: a picker on screen means
+a *prompt* is wanted, not that an action happened. Doubtful audio with a picker open stays exempt —
+a repair must reach a driver who is mid-choice.
 
 ## B-015 — Cantonese
 
@@ -307,4 +317,27 @@ Proven by reproducing the exact failure on `2391ff70`, with the same rejected co
 
 Baseline re-verified after reverting the injected fault: 「关闭空调。」 → `control_climate` →
 `✓ 空调关 · 24°C · 风2` → 「空调已关闭。」
+
+## B-017 — The duplicate correction has no regression test
+
+Measured on `2391ff70`, 2026-09-19: 「算了」 produced two identical follow-ups
+(`flex_user_text chars=127` twice, 2 ms apart) and `exit_navigation_mode` ran twice. Two components
+correct the same response independently — `DriverTurn` when it drops a reply, and
+`ActionClaimGuard` on its own judgement. `exit_navigation_mode` is idempotent so nothing broke;
+`control_climate{adjust_temperature,-2}` twice is −4 °C, and is only saved by the dispatcher's
+`DUPLICATE_IN_TURN` guard — a second line of defence doing a first line's job.
+
+**Fixed** by making corrections single-owner: when `DriverTurn` sends one, `ActionClaimGuard` does
+not.
+
+**Not covered by a test, and this is the honest part.** A scripted-server test was written and
+deleted: it passed with *and* without the fix. The reason is diagnosable — `ConversationResetPolicy`
+resets after the tool turn, and the second correction lands in `heldOutbound` and never reaches the
+wire in the scripted flow, so only one is ever observable there. On the device the reset completes
+and both go out. A test that passes either way is worse than no test, because it claims coverage
+that does not exist.
+
+**Acceptance:** a test that fails without the single-owner guard. Most likely it has to drive the
+reset explicitly rather than let it race. **Verification:** run it against a reverted fix first;
+if it still passes, it is not the test.
 

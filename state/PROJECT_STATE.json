@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-09-19T23:21:54",
+  "generated_at": "2026-09-20T00:52:05",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "aa38fa5",
+    "commit": "6bb26d7",
     "branch": "main",
-    "subject": "There is no dialect hint, and the model hears more than the transcriber",
+    "subject": "A dead session no longer shows the driver that it is listening",
     "working_tree_clean": false,
-    "uncommitted_files": 4
+    "uncommitted_files": 8
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-19T23:14:58",
+    "collected_at": "2026-09-20T00:17:48",
     "total": {
-      "tests": 719,
+      "tests": 723,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "app": {
-        "tests": 527,
+        "tests": 531,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 229294108,
-    "built_at": "2026-09-19T23:20:44"
+    "bytes": 229294992,
+    "built_at": "2026-09-20T00:14:13"
   },
   "capabilities": {
     "available": true,
@@ -152,14 +152,14 @@
         "priority": 11,
         "class": "next authorised backlog item",
         "source": "BACKLOG.md",
-        "item": "B-014",
+        "item": "B-015",
         "blocked_by": null
       },
       {
         "priority": 11,
         "class": "next authorised backlog item",
         "source": "BACKLOG.md",
-        "item": "B-015",
+        "item": "B-017",
         "blocked_by": null
       }
     ]

@@ -74,6 +74,14 @@ class BaiduFlexClient(
     @Volatile private var responseInProgress = false
     @Volatile private var ttsStartedForResponse = false
 
+    /** Reply-latency measurement for B-014; see the response.done branch. */
+    /** A correction was already sent for the response being finished; see onResponseDone. */
+    @Volatile private var correctionSentThisResponse = false
+
+    @Volatile private var responseStartedAtMs = 0L
+
+    @Volatile private var firstAudioAtMs = 0L
+
     /** Replies that claim an action without a tool call get one corrective follow-up. */
     private val actionGuard = ActionClaimGuard()
     private val assistantText = StringBuffer()
@@ -372,7 +380,14 @@ class BaiduFlexClient(
             if (resetPolicy.onResponseDone(outcome)) resetConversation()
             val spoken = assistantText.toString()
             assistantText.setLength(0)
-            actionGuard.onResponseDone(outcome, spoken)?.takeIf { !listeningSuspended }?.let { nudge ->
+            // DriverTurn may already have corrected this response when it dropped the reply. Two
+            // corrections mean the model is told the same thing twice: measured on device
+            // 2026-09-19, 「算了」 produced two identical follow-ups and `exit_navigation_mode` ran
+            // twice. It is idempotent and nothing broke; `adjust_temperature{-2}` twice is -4 degC
+            // and would have, were it not for the dispatcher's own duplicate guard. One owner.
+            val alreadyCorrected = correctionSentThisResponse
+            correctionSentThisResponse = false
+            actionGuard.onResponseDone(outcome, spoken)?.takeIf { !listeningSuspended && !alreadyCorrected }?.let { nudge ->
                 DebugVoiceLog.log("flex_action_claim_unverified follow_up=true")
                 Telemetry.record(EventType.GUARD_FOLLOW_UP)
                 sendUserText(nudge)
@@ -547,10 +562,13 @@ class BaiduFlexClient(
                 responseInProgress = true
                 callsThisResponse.clear()
                 ttsStartedForResponse = false
+                responseStartedAtMs = System.currentTimeMillis()
+                firstAudioAtMs = 0L
                 Telemetry.record(EventType.AGENT_REQUEST_START)
             }
             "response.audio.delta" -> if (!ttsStartedForResponse) {
                 ttsStartedForResponse = true
+                firstAudioAtMs = System.currentTimeMillis()
                 Telemetry.record(EventType.TTS_START)
             }
             "response.audio.done" -> Telemetry.record(EventType.TTS_END)
@@ -559,6 +577,18 @@ class BaiduFlexClient(
             }
             "response.done" -> {
                 responseInProgress = false
+                // What holding reply audio until the response proves itself would cost the driver
+                // (B-014): the gap between first hearing something and the app first being able to
+                // tell whether it was true.
+                if (responseStartedAtMs > 0L) {
+                    val now = System.currentTimeMillis()
+                    DebugVoiceLog.log(
+                        "reply_timing firstAudioMs=${if (firstAudioAtMs > 0L) firstAudioAtMs - responseStartedAtMs else -1L}" +
+                            " doneMs=${now - responseStartedAtMs}" +
+                            " holdCostMs=${if (firstAudioAtMs > 0L) now - firstAudioAtMs else -1L}",
+                    )
+                    responseStartedAtMs = 0L
+                }
                 Telemetry.record(EventType.RESPONSE_COMPLETED, detail = JSONObject(text).optJSONObject("response")?.optString("status"))
             }
             "error" -> Telemetry.record(EventType.ERROR, errorCode = runCatching {
@@ -695,7 +725,10 @@ class BaiduFlexClient(
                 Telemetry.record(EventType.AUDIO_STOPPED, detail = "turn_dropped_${verdict.reason}")
                 // In standby the client sends no turns of its own (see discardPendingAudio): the
                 // dropped reply was never going to be played, so there is nothing to correct.
-                verdict.correction?.takeIf { !listeningSuspended }?.let { sendUserText(it) }
+                verdict.correction?.takeIf { !listeningSuspended }?.let {
+                    correctionSentThisResponse = true
+                    sendUserText(it)
+                }
             }
         }
     }

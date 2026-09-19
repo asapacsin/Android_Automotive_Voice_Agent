@@ -66,7 +66,7 @@ class DriverTurn(val epoch: Long) {
     }
 
     /** Why the reply is being held. Reported in logs so a future agent can see the mechanism. */
-    enum class HoldReason { NONE, PHANTOM_AUDIO, NO_TOOL_REQUEST, AWAITING_EXECUTION_PROOF }
+    enum class HoldReason { NONE, PHANTOM_AUDIO, NO_TOOL_REQUEST, AWAITING_EXECUTION_PROOF, UNCLASSIFIED_CLAIM }
 
     sealed interface Verdict {
         /** Play and show what was held. */
@@ -143,18 +143,32 @@ class DriverTurn(val epoch: Long) {
         // spoken for a navigation that had not started. What is on screen says nothing about
         // whether an action happened; it only means a *prompt* to the driver is wanted.
         if (kind == Kind.ACTION) return HoldReason.AWAITING_EXECUTION_PROOF
+        // The same exemption, one layer down: a prompt on screen means a *question* to the driver
+        // is wanted, and says nothing about whether an action happened. A reply that claims one is
+        // still false with a picker open, so an unclassified turn is judged on its own terms too.
+        // A genuine prompt (「请在屏幕上选择」) claims nothing and is released at response end.
+        if (kind == Kind.CONVERSATION || kind == Kind.UNKNOWN) {
+            val doubtful = audio?.needsHold() == true && !userSpoke && !toolCalled
+            return when {
+                // Doubtful audio with a prompt on screen is the one case that must not wait: the
+                // driver is mid-choice and a repair (「没听清，再说一遍。」) has to reach them.
+                doubtful && contextAwaitingAnswer -> HoldReason.NONE
+                doubtful -> HoldReason.PHANTOM_AUDIO
+                else -> HoldReason.UNCLASSIFIED_CLAIM
+            }
+        }
         if (contextAwaitingAnswer) return HoldReason.NONE
         return when (kind) {
             // No tool exists, so proof never can. Hold until the wording is known to be honest.
             Kind.NO_TOOL_ACTION, Kind.REALTIME_INFO -> HoldReason.NO_TOOL_REQUEST
             // Handled above: an action claim needs proof whatever is on screen.
             Kind.ACTION -> HoldReason.AWAITING_EXECUTION_PROOF
-            Kind.CONVERSATION -> HoldReason.NONE
-            Kind.UNKNOWN -> {
-                // No transcript yet. Doubtful audio may be noise; hold until the turn proves real.
-                val doubtful = audio?.needsHold() == true && !userSpoke && !toolCalled
-                if (doubtful) HoldReason.PHANTOM_AUDIO else HoldReason.NONE
-            }
+            // Both handled above, whatever is on screen. Chat needs no execution proof, but its
+            // classification came from a transcript and a transcript can be wrong: on 2026-09-19
+            // 「返屋企啦」 arrived as 「发诺克拉。」, was classified as conversation, and the reply
+            // announced a navigation that never happened. Measured cost of the wait: 93-515 ms,
+            // and nothing at all when the turn already called a tool.
+            Kind.CONVERSATION, Kind.UNKNOWN -> HoldReason.UNCLASSIFIED_CLAIM
         }
     }
 
@@ -226,8 +240,11 @@ class DriverTurn(val epoch: Long) {
                 } else {
                     Verdict.Wait
                 }
-            // These two can only be settled once the response is complete.
-            HoldReason.NO_TOOL_REQUEST, HoldReason.AWAITING_EXECUTION_PROOF -> Verdict.Wait
+            // These can only be settled once the response is complete.
+            HoldReason.NO_TOOL_REQUEST,
+            HoldReason.AWAITING_EXECUTION_PROOF,
+            HoldReason.UNCLASSIFIED_CLAIM,
+            -> Verdict.Wait
         }
     }
 
@@ -284,6 +301,18 @@ class DriverTurn(val epoch: Long) {
                         Verdict.Release("honest_refusal")
                     }
                 }
+            }
+
+            // The driver said something the app could not classify - usually because the
+            // transcript is wrong. The reply is judged on its own terms: if it describes acting on
+            // something in this car and nothing ran, the driver never hears it. The correction is
+            // ActionClaimGuard's, so there is exactly one.
+            HoldReason.UNCLASSIFIED_CLAIM -> when {
+                toolCalled || hadToolCallInResponse -> Verdict.Release("tool_called")
+                proven -> Verdict.Release("execution_proved")
+                ActionClaimGuard.claimsDone(reply) || ActionClaimGuard.describesCarAction(reply) ->
+                    Verdict.Drop("unverified_claim")
+                else -> Verdict.Release("no_claim_made")
             }
 
             HoldReason.AWAITING_EXECUTION_PROOF -> {

@@ -417,3 +417,50 @@ Every guard in this product that reads the driver's utterance has the same expos
 case where nothing runs. Nothing yet closes the case where the **wrong thing** runs on a sentence
 the driver never said.
 
+---
+
+## A false claim is no longer spoken — 2026-09-20, `2391ff70`
+
+[P23](OPEN_PROBLEMS.md) made the fabrication honest by correcting it afterwards. The driver still
+heard it. This closes that.
+
+### The cost, measured before the design was chosen
+
+`reply_timing` on device, across climate, chat and navigation turns:
+
+| firstAudioMs | doneMs | holdCostMs |
+| --- | --- | --- |
+| -1 | 493 | — (tool-only response, no audio at all) |
+| 727 | 965 | 238 |
+| 285 | 378 | 93 |
+| 682 | 988 | 306 |
+| 609 | 764 | 155 |
+| 242 | 757 | 515 |
+
+`holdCostMs` is what the driver waits if reply audio is held until the response says whether
+anything ran: **93–515 ms**, and **nothing** when the turn called a tool — because the spoken result
+is a separate response that only starts after the tool has already returned. The whole cost falls
+on replies that called nothing, which are exactly the ones that can be false.
+
+### After
+
+| Case | Evidence | Result |
+| --- | --- | --- |
+| Misheard turn, reply claims navigation, nothing ran | held, then `TURN_DROP` — never audible | **PROVEN** |
+| Misheard turn, reply claims climate, tool *did* run | `TURN_HOLD reason=UNCLASSIFIED_CLAIM` → released | **PROVEN** |
+| Ordinary chat | released at response end | **PROVEN** |
+| Genuine prompt with a picker open | released | **PROVEN** (unit) |
+| Repair prompt on doubtful audio, picker open | still immediate, deliberately exempt | **PROVEN** (unit) |
+
+### One correction, not two ([P24](OPEN_PROBLEMS.md))
+
+| | |
+| --- | --- |
+| Before | 「算了」 → `flex_user_text chars=127` ×2, `exit_navigation_mode` ×2 |
+| After | one of each |
+
+Cantonese tool calling is **intermittent, not absent** — worth recording because it changes what
+B-015 is about. Across runs of the same clip, 「返屋企啦」 sometimes called `navigate_to` (and reached
+the saved home, `count=1`) and sometimes answered with words alone. 「有啲熱，幫我舒服啲」 likewise
+called `control_climate` and really set 22 °C on one run.
+
