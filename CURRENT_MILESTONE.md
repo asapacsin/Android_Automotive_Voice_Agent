@@ -1,6 +1,8 @@
 # Current Milestone
 
-**M3 — Contextual voice commands: the driver stops speaking like an API** — **OPENED 2026-09-19**
+**M3 — Contextual voice commands: the driver stops speaking like an API** — ✅ **CLOSED 2026-09-19**, all six rows earned
+
+> **No milestone is open.** The only unclosed backlog item is [B-003](BACKLOG.md) (wake word), which is blocked on credentials an agent cannot obtain, so the next milestone is the product owner's to choose. Opening one without a demand would be inventing scope — see [skills/continue.md](skills/continue.md).
 
 Date opened: 2026-09-19 · Source: [B-008](BACKLOG.md) · Spec: [SPEC-006](SPECS/SPEC-006-complex-voice-commands.md)
 

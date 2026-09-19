@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-09-19T10:02:25",
+  "generated_at": "2026-09-19T10:08:10",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "e88b3dc",
+    "commit": "da5ae6c",
     "branch": "main",
-    "subject": "The live model now acts on the context, and it took three failures to get there",
+    "subject": "D-2: the persona was telling the model to say something untrue",
     "working_tree_clean": false,
-    "uncommitted_files": 4
+    "uncommitted_files": 1
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-19T10:00:10",
+    "collected_at": "2026-09-19T10:07:57",
     "total": {
       "tests": 660,
       "failures": 0,
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 229150700,
-    "built_at": "2026-09-19T10:00:13"
+    "bytes": 228789006,
+    "built_at": "2026-09-19T10:05:37"
   },
   "capabilities": {
     "available": true,
