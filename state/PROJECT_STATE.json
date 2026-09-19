@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-19T10:08:10",
+  "generated_at": "2026-09-19T10:08:11",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "da5ae6c",
+    "commit": "81c59f4",
     "branch": "main",
-    "subject": "D-2: the persona was telling the model to say something untrue",
-    "working_tree_clean": false,
-    "uncommitted_files": 1
+    "subject": "M3 closed; no milestone opened, because none is authorised",
+    "working_tree_clean": true,
+    "uncommitted_files": 0
   },
   "tests": {
     "available": true,
