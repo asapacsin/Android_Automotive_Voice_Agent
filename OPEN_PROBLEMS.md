@@ -240,7 +240,9 @@ fired on this device**; only `onEndEmulatorNavi` has. Both are wired, but only o
 
 ## P5 — The embedded map never locates the phone
 
-**Status:** OPEN — **both identified root causes FIXED and verified on device 2026-09-16, but that was necessary and NOT sufficient. A third, structural cause is now confirmed by measurement.**
+**Status:** CLOSED 2026-09-19 — reconciled, not re-decided. Every item in the product-owner decision below is either **FIXED AND VERIFIED** on device, or **explicitly accepted as not a blocker** by that decision. The one remaining symptom it accepted — a blank idle map — stopped describing the screen when [P18](#p18--the-map-opens-at-an-old-position-after-a-restart) shipped the cold-start recentre, which was device-verified over five cold starts at an offset of 0 m. The two standing prohibitions (no `MapView` fallback, no `setLocationSource`) are part of that decision and remain in force; the re-test trigger below also stands.
+
+Original status, kept for the record: **both identified root causes FIXED and verified on device 2026-09-16, but that was necessary and NOT sufficient. A third, structural cause is confirmed by measurement.**
 
 ### Fix round 1 (2026-09-16) — verified, and still not enough
 

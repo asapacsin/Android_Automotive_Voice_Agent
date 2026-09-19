@@ -1,10 +1,12 @@
 # SPEC-006 — Contextual voice commands
 
-Status: **Partly implemented 2026-09-19.** Built: the context record and its staleness rules, the
-resolver (implicit intents, lexical binding, ambiguity, reversal, clarification answers), the hint
-that carries a resolution into each fresh conversation, and the two execution guards
-(`MEDIA_LIBRARY_UNSUPPORTED`, `DUPLICATE_IN_TURN`). Not yet built: navigation-phase cases beyond the
-hint text, and multi-intent decomposition. See §Implementation status.
+Status: **Implemented 2026-09-19, except the one row simulation cannot earn.** Built and tested:
+the context record and its staleness rules, the resolver (implicit intents, lexical binding,
+ambiguity, reversal, clarification answers), the referent state carried into each fresh
+conversation, the navigation-phase rules, and three execution guards
+(`MEDIA_LIBRARY_UNSUPPORTED`, `DUPLICATE_IN_TURN`, `AMBIGUOUS_REFERENT`), the last three
+device-verified. Multi-intent decomposition is deliberately not app code (§On multi-intent).
+**Outstanding:** whether the *live model* acts on the injected context — see §Implementation status.
 Raised: 2026-09-19 · Source: product-owner requirement 「后续可以试试复杂的语音指令」, with a modern
 automotive conversational assistant as the reference interaction style.
 Depends on: [I-1, I-2, I-3, I-4](../docs/INVARIANTS.md) · [capabilities.yaml](../config/capabilities.yaml) ·
@@ -610,7 +612,7 @@ changes those rows and nothing else.
 | `pendingClarification` and its one-turn life | built | CVC-18, 18b |
 | Feedback recovery, `limit_reached` honesty | built | CVC-27, 28, 30 |
 | Unsupported media, duplicate execution | built, **device-verified** | `FalseCapabilityClaimTest` (15 cases) + [ACCEPTANCE_TESTS.md](../ACCEPTANCE_TESTS.md) |
-| Navigation-phase guidance (C6) | hint text only | `VoiceContextHints`; the phase rules are in the prompt, not yet in a test |
+| Navigation-phase guidance (C6) | built, tested | `VoiceContextHintsTest` — 「换个近一点的」 resolves to `preference=nearest` with a destination list up, `preference=shortest` with a route list (`nearest` is rejected for routes), and asks rather than guessing while navigating |
 | Multi-intent decomposition (C9) | **not built as app code, deliberately** | See below. |
 | C1, C5 nav reference, C7 fuzzy, C10–C11 | pre-existing behaviour, unchanged | `NavigationChoiceResolver`, `DriverTurn` |
 

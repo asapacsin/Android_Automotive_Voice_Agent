@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-09-19T09:15:07",
+  "generated_at": "2026-09-19T09:30:18",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "6eb7946",
+    "commit": "a6090e4",
     "branch": "main",
-    "subject": "A run ends when the work runs out, not when the sentence does",
+    "subject": "D-4: the mute and the phase now disagree loudly instead of quietly",
     "working_tree_clean": false,
-    "uncommitted_files": 3
+    "uncommitted_files": 6
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-19T09:14:54",
+    "collected_at": "2026-09-19T09:30:09",
     "total": {
-      "tests": 648,
+      "tests": 656,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "app": {
-        "tests": 485,
+        "tests": 493,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -66,7 +66,7 @@
   "apk": {
     "built": true,
     "bytes": 228789006,
-    "built_at": "2026-09-19T02:41:53"
+    "built_at": "2026-09-19T09:29:01"
   },
   "capabilities": {
     "available": true,
@@ -120,13 +120,13 @@
     }
   ],
   "work_frontier": {
-    "AUTONOMOUS_ACTION_AVAILABLE": "YES",
-    "HUMAN_ACTION_REQUIRED": "NO",
-    "STOP_REASON": "NOT_STOPPING",
-    "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "P5: P5 — The embedded map never locates the phone",
-    "actionable_count": 7,
-    "blocked_count": 3,
+    "AUTONOMOUS_ACTION_AVAILABLE": "NO",
+    "HUMAN_ACTION_REQUIRED": "YES",
+    "STOP_REASON": "BLOCKED_ON_EXTERNAL_DEPENDENCY",
+    "BLOCKING_DEPENDENCY": "the test phone has no network route to the Baidu provider (Wi-Fi associated with no",
+    "NEXT_ACTION": "NONE",
+    "actionable_count": 0,
+    "blocked_count": 5,
     "candidates": [
       {
         "priority": 7,
@@ -150,53 +150,18 @@
         "blocked_by": "a product decision — whether a second realtime provider is still wanted at all. docs/ARCHITECTURE.md records these paths as deliberately kept, so deleting them is the owner's call, not an agent's."
       },
       {
-        "priority": 9,
-        "class": "unfinished or open problem",
-        "source": "OPEN_PROBLEMS.md",
-        "item": "P5",
-        "blocked_by": null
-      },
-      {
         "priority": 11,
         "class": "next authorised backlog item",
         "source": "BACKLOG.md",
         "item": "B-003",
-        "blocked_by": null
-      },
-      {
-        "priority": 11,
-        "class": "next authorised backlog item",
-        "source": "BACKLOG.md",
-        "item": "B-004",
-        "blocked_by": null
-      },
-      {
-        "priority": 11,
-        "class": "next authorised backlog item",
-        "source": "BACKLOG.md",
-        "item": "B-005",
-        "blocked_by": null
-      },
-      {
-        "priority": 11,
-        "class": "next authorised backlog item",
-        "source": "BACKLOG.md",
-        "item": "B-006",
-        "blocked_by": null
-      },
-      {
-        "priority": 11,
-        "class": "next authorised backlog item",
-        "source": "BACKLOG.md",
-        "item": "B-007",
-        "blocked_by": null
+        "blocked_by": "the iFlytek AIKit `apiKey` and `apiSecret` for this application, which are issued from the vendor console and are not on this machine"
       },
       {
         "priority": 11,
         "class": "next authorised backlog item",
         "source": "BACKLOG.md",
         "item": "B-008",
-        "blocked_by": null
+        "blocked_by": "the test phone has no network route to the Baidu provider, so no live session can be established to prove the model acts on the injected context"
       }
     ]
   }

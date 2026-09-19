@@ -222,6 +222,16 @@ def open_problems():
     return out
 
 
+def item_section_blocker(text, item):
+    """The BLOCKED_BY line inside `## <item> — ...`, wherever that section sits in the file."""
+    start = re.search(r"^## %s(?![\w-])" % re.escape(item), text, re.M)
+    if not start:
+        return None
+    following = re.search(r"^## ", text[start.end():], re.M)
+    end = start.end() + (following.start() if following else len(text))
+    return section_blocker(text, start.start(), end)
+
+
 def open_backlog():
     out = []
     text = read("BACKLOG.md")
@@ -229,8 +239,9 @@ def open_backlog():
         item, title, _, status = match.groups()
         if is_terminal(status):
             continue
-        out.append(candidate(P_BACKLOG, "BACKLOG.md", item, "%s — %s" % (item, title[:80]),
-                             section_blocker(text, match.start(), match.end() + 800)))
+        # A blocker is declared in the item's own section further down, not beside the table row.
+        blocker = section_blocker(text, match.start(), match.end() + 800) or item_section_blocker(text, item)
+        out.append(candidate(P_BACKLOG, "BACKLOG.md", item, "%s — %s" % (item, title[:80]), blocker))
     return out
 
 
