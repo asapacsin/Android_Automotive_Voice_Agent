@@ -12,14 +12,37 @@ navigation are the **Amap Navigation SDK embedded in our own Activity**. Locale 
 .\gradlew.bat :behavior-test:test      # architecture, capability-contract and secret-scan rules
 python scripts/collect_state.py        # refresh state/PROJECT_STATE.json from evidence
 python scripts/harness_check.py        # is the harness coherent?
+python scripts/discover_work.py        # what is left to do, and may this run stop?
 ```
 
 Before you consider a change complete: `.\gradlew.bat test --rerun-tasks :app:assembleDebug`, then
 device evidence for anything touching audio, the map or lifecycle (`ACCEPTANCE_TESTS.md` says what
 each level may claim). A green build is not evidence that anything works.
 
-Starting a session? Follow [skills/start.md](skills/start.md). Finishing one?
-[skills/handoff.md](skills/handoff.md).
+Starting a session? Follow [skills/start.md](skills/start.md). Finishing a *task*?
+[skills/handoff.md](skills/handoff.md) — and then keep going, because finishing a task is not
+finishing a run.
+
+## How a run ends
+
+**Your job is not to finish the user's most recent sentence. It is to advance this repository until
+the authorised work frontier is empty.** Treat a prompt as an entry point into the repository's
+state machine, not as an isolated task.
+
+After every completed item — a task, a SPEC, a debt entry, a repaired test, a milestone row —
+reconcile canonical state, rediscover what is left, and continue automatically:
+
+```powershell
+python scripts/discover_work.py        # what is left, ranked, and whether you may stop
+```
+
+`AUTONOMOUS_ACTION_AVAILABLE = YES` means the run may not end. Ask for a person only at a genuine
+external boundary — a credential, a device, an approval, a product decision — and say concretely
+what is missing. Choosing the next authorised task, writing a test, wiring something up, fixing
+stale state and picking between reasonable designs are all yours to do.
+
+The rule is [harness/CONSTITUTION.md](harness/CONSTITUTION.md) rule 12; the procedure is
+[skills/continue.md](skills/continue.md).
 
 ## Where things are
 
@@ -38,7 +61,7 @@ Starting a session? Follow [skills/start.md](skills/start.md). Finishing one?
 | **Current state** — commit, tests, open issues (generated) | [state/PROJECT_STATE.json](state/PROJECT_STATE.json) |
 | **Capability truth**, machine-readable, with verification level | [config/capabilities.yaml](config/capabilities.yaml) |
 | How work is done here, and the agent harness | [harness/README.md](harness/README.md) |
-| Reusable procedures | [skills/](skills/) |
+| Reusable procedures | [skills/](skills/) — start, **continue**, reproduce, fix, verify, handoff |
 
 ## How to change things here
 

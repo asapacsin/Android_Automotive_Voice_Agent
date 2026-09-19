@@ -54,20 +54,36 @@ Conversations are lost. A demand spoken once and acted on immediately tends to b
 | The one thing being built now | `CURRENT_MILESTONE.md` |
 | Defects found in real use | `OPEN_PROBLEMS.md` |
 
-## Spec template
+## Spec template and spec policy
 
-```markdown
-# SPEC-NNN — <short name>
+The template is [SPECS/SPEC-TEMPLATE.md](../SPECS/SPEC-TEMPLATE.md). Copy it; do not invent a
+shape. It used to be inlined here, which meant two versions drifting apart.
 
-Status: Draft | Ready | In milestone | Done | Dropped
-Raised: <date> by <who>
-Backlog: BACKLOG.md#<anchor>
+### A finished SPEC is a checkpoint, not the end of a run
 
-## Demand (what was actually asked for)
-## Why it matters
-## Scope
-## Out of scope
-## Constraints and conflicts   <- name the ADRs it touches
-## Open questions              <- what must be answered before building
-## Acceptance                  <- which L-level, per ACCEPTANCE_TESTS.md
-```
+When every acceptance criterion passes:
+
+1. reconcile the SPEC's own status and its implementation-status table;
+2. update the backlog row, the capability registry, the debt list and `OPEN_PROBLEMS.md`;
+3. regenerate canonical state (`python scripts/collect_state.py`);
+4. rediscover the frontier (`python scripts/discover_work.py`);
+5. **take the next item.**
+
+Handing control back because a SPEC reached Done is forbidden by
+[CONSTITUTION.md](../harness/CONSTITUTION.md) rule 12. The same applies to a finished debt item, a
+repaired test, a milestone row, or the last sentence of a prompt.
+
+### Acceptance criteria are executable where feasible
+
+Separate what each criterion proves — functional behaviour, production wiring, negative and failure
+behaviour, regression protection, architectural invariants, artifact build, and state
+reconciliation. "Supports X" is not a criterion when an assertion can say what X looks like when it
+works. A criterion whose state column says `not built` or `not earned` is picked up automatically by
+`scripts/discover_work.py`, so leaving it honest is what keeps it from being forgotten.
+
+### Finishing one SPEC must not hide another
+
+Closing a SPEC does not close: unfinished criteria in older SPECs · implemented-but-unwired code ·
+unverified behaviour · unresolved debt · broken invariants · stale state · missing tests · a failing
+build · or deferred work whose blocker has since disappeared. All of those are on the frontier the
+discovery script reads, which is why the script reads the documents rather than the transcript.

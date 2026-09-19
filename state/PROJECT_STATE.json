@@ -1,19 +1,19 @@
 {
-  "generated_at": "2026-09-19T02:46:09",
+  "generated_at": "2026-09-19T09:03:57",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "6672d71",
+    "commit": "eb1675d",
     "branch": "main",
-    "subject": "Refresh generated state",
+    "subject": "Extract the tool-call guards, and make the rule that caught it actually run",
     "working_tree_clean": false,
-    "uncommitted_files": 4
+    "uncommitted_files": 14
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-19T02:45:54",
+    "collected_at": "2026-09-19T09:03:49",
     "total": {
-      "tests": 636,
-      "failures": 0,
+      "tests": 587,
+      "failures": 1,
       "errors": 0,
       "skipped": 0
     },
@@ -25,8 +25,8 @@
         "skipped": 0
       },
       "behavior-test": {
-        "tests": 56,
-        "failures": 0,
+        "tests": 7,
+        "failures": 1,
         "errors": 0,
         "skipped": 0
       },
@@ -61,7 +61,7 @@
         "skipped": 0
       }
     },
-    "passing": true
+    "passing": false
   },
   "apk": {
     "built": true,
@@ -118,5 +118,100 @@
       "title": "A false claim could be spoken for *supported* actions",
       "priority": "RESOLVED"
     }
-  ]
+  ],
+  "work_frontier": {
+    "AUTONOMOUS_ACTION_AVAILABLE": "YES",
+    "HUMAN_ACTION_REQUIRED": "NO",
+    "STOP_REASON": "NOT_STOPPING",
+    "BLOCKING_DEPENDENCY": "none",
+    "NEXT_ACTION": "com.novadrive.architecture.AutonomyPolicyTest: 1 failing in com.novadrive.architecture.AutonomyPolicyTest",
+    "actionable_count": 9,
+    "blocked_count": 3,
+    "candidates": [
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "test report",
+        "item": "com.novadrive.architecture.AutonomyPolicyTest",
+        "blocked_by": null
+      },
+      {
+        "priority": 7,
+        "class": "active milestone row",
+        "source": "CURRENT_MILESTONE.md",
+        "item": "The **live model** acts on the injected context",
+        "blocked_by": "the test phone has no network route to the Baidu provider (Wi-Fi associated with no"
+      },
+      {
+        "priority": 8,
+        "class": "recorded technical debt",
+        "source": "docs/TECH_DEBT.md",
+        "item": "D-2",
+        "blocked_by": "the test phone has no network route to the Baidu provider, so removing a prompt rule cannot be shown to leave live behaviour unchanged — see CURRENT_MILESTONE.md"
+      },
+      {
+        "priority": 8,
+        "class": "recorded technical debt",
+        "source": "docs/TECH_DEBT.md",
+        "item": "D-4",
+        "blocked_by": null
+      },
+      {
+        "priority": 8,
+        "class": "recorded technical debt",
+        "source": "docs/TECH_DEBT.md",
+        "item": "D-5",
+        "blocked_by": "a product decision — whether a second realtime provider is still wanted at all. docs/ARCHITECTURE.md records these paths as deliberately kept, so deleting them is the owner's call, not an agent's."
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P5",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-003",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-004",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-005",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-006",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-007",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-008",
+        "blocked_by": null
+      }
+    ]
+  }
 }

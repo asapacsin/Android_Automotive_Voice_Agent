@@ -27,13 +27,21 @@ Reconnecting it is a change to the device's own settings and needs its network c
 is the product owner's to do, not an agent's. Everything that does **not** need the model was
 verified instead, through the real dispatcher — see [ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md).
 
+BLOCKED_BY: the test phone has no network route to the Baidu provider (Wi-Fi associated with no
+IP, every session ends BAIDU_DNS_FAILED); reconnecting it needs the network credentials and is a
+change to the device's own settings
+
 **Also blocked by this, and only by this:**
 
 - [TECH_DEBT.md](docs/TECH_DEBT.md) **D-2** — trimming the persona prompt to tone. The rules being
   removed are ones the model currently reads; removing them blind and unverified could degrade live
   behaviour in exactly the way no test here would catch.
-- **D-4** — merging the two navigation state machines. Verification needs POI resolution, which is
-  a network call.
+
+**Not blocked by it, corrected 2026-09-19:** **D-4** (merging the two navigation state machines)
+was listed here as network-blocked. That was wrong. The simulation harness has a
+`SimulatedNavigationWorld` with fixed places and routes, so the merge can be built and verified at
+`SIM_LOGIC` without touching the network; only a device confirmation would need it. D-4 is on the
+autonomous frontier.
 
 ---
 

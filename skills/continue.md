@@ -1,0 +1,149 @@
+# /continue — the default operating mode
+
+This is not a skill you invoke when asked to keep going. It is how a run behaves unless something
+stops it. A prompt is an entry point into the repository's state machine, not a task with an end.
+
+> Your job is not to finish the user's last sentence. It is to advance the repository until the
+> authorised work frontier is empty.
+
+[CONSTITUTION.md](../harness/CONSTITUTION.md) rule 12 is the rule; this is the procedure.
+
+## The loop
+
+```
+recover canonical state            /start
+while true:
+    reconcile observed state       collect_state.py, then read it
+    candidates = discover_work.py  the frontier, ranked, blockers removed
+    if candidates:
+        take the highest-ranked one
+        implement it                /fix
+        verify it                   /verify
+        reconcile canonical state   /handoff, without ending the run
+        continue
+    hostile stop audit             below
+    if the audit finds anything:  continue
+    stop
+```
+
+```bash
+python scripts/discover_work.py            # what is left, ranked, and may I stop?
+python scripts/discover_work.py --json     # the same for a machine
+```
+
+The script answers the question from the documents; it does not replace judgement about *how* to do
+the work. If it lists something already finished, the document it read is wrong — fixing that
+document is itself the next work item, not a reason to ignore the tool.
+
+## Priority
+
+Lower first. Nothing cosmetic outranks something broken.
+
+| | |
+| --- | --- |
+| 1 | broken build, or a required artifact missing |
+| 2 | failing regression tests |
+| 3 | an invariant violated (architecture, capability contract, secret scan, feature presence) |
+| 4 | an unmet acceptance criterion of an active SPEC |
+| 5 | implemented but not reachable from the production path |
+| 6 | behaviour with no regression protection |
+| 7 | a row of the active milestone |
+| 8 | recorded debt with an implementation path |
+| 9 | an open problem, or work started and not closed |
+| 10 | stale canonical state, or a harness defect |
+| 11 | the next authorised backlog item |
+
+## Done has stages
+
+A behaviour change is not finished because it compiles. Ask which stage it has actually reached:
+
+| Stage | Means | The mistake it prevents |
+| --- | --- | --- |
+| `IMPLEMENTED` | the code exists | a file is not a feature |
+| `PRODUCTION_WIRED` | the production path reaches it | a class nothing calls |
+| `BEHAVIOR_VERIFIED` | it was observed doing the thing | a green build is not behaviour |
+| `REGRESSION_PROTECTED` | a test fails if it breaks | proven once, unprotected after |
+| `ARTIFACT_VERIFIED` | the APK builds with it in | passing tests, broken package |
+| `CANONICAL_STATE_RECONCILED` | registry, debt, issues, state agree | documents that contradict the code |
+| `COMPLETE` | all of the above that apply | — |
+
+Documentation-only work skips the stages that cannot apply. Nothing skips the last one.
+
+## What counts as a candidate
+
+Only work the repository already authorises:
+
+an accepted SPEC · canonical backlog or debt · the active milestone · an invariant · failing
+executable evidence · a partially implemented feature · an explicit repository requirement · a
+repair made necessary by work already done · a harness or state inconsistency that makes execution
+untrustworthy.
+
+Everything else is an idea. Record it if [INTAKE.md](../agent/INTAKE.md) allows; do not implement it
+to avoid stopping. **The loop exhausts authorised work — it does not invent scope.**
+
+## When a human is genuinely required
+
+Only when progress needs something an agent cannot legitimately obtain or decide:
+
+a credential or secret · a physical interaction that cannot be automated or emulated · an external
+account approval · inaccessible infrastructure · an irreversible operation needing approval · a
+product or business choice the requirements deliberately leave open · input only a person or
+external system can provide · a real conflict between authoritative requirements with no precedence
+rule · a legal or compliance sign-off · a third-party response.
+
+**These are not blockers.** One SPEC finished · the prompt finished · uncertainty about an
+implementation detail · choosing between reasonable engineering alternatives · a test needs writing
+· another backlog item exists · state files need updating · code is unwired · a script is stale ·
+more inspection is needed · picking the next authorised task · a new milestone should start.
+
+Ordinary engineering judgement belongs to the agent. A blocker is declared by putting a line in the
+item's canonical document:
+
+```
+BLOCKED_BY: the test phone has no network route to the provider
+```
+
+`discover_work.py` removes that item from the frontier while the line stands, and
+`harness_check.py` rejects a stop state that claims a human is needed without one.
+
+## The hostile stop audit
+
+Before returning control, try to prove that stopping is wrong. Walk every one of these and answer
+out loud:
+
+- active SPECs and their acceptance criteria;
+- the active milestone rows;
+- backlog and debt;
+- invariant and architecture-rule status;
+- TODO/FIXME inside the current scope;
+- failing, skipped or disabled tests;
+- code that exists but nothing calls;
+- production paths with no test;
+- build and artifact status;
+- canonical state versus executable evidence;
+- items whose blocker may have disappeared since it was written.
+
+The question is: **is there any authorised action reachable from this machine that could plausibly
+improve correctness, verification, integration or completion?** If yes, stopping is forbidden.
+
+## Stale state outranks generated summaries
+
+When a generated file disagrees with executable evidence, the evidence is right and the generator is
+suspect. Investigate the generator; do not hand-patch the symptom. A state-generation defect is
+harness debt and is itself a work item — that is how `collect_state.py` came to record 56 tests for
+a 631-test suite while every run was green.
+
+## Stopping
+
+Report the machine-readable stop state, which `discover_work.py` prints and
+`state/PROJECT_STATE.json` carries:
+
+```
+AUTONOMOUS_ACTION_AVAILABLE = YES|NO
+HUMAN_ACTION_REQUIRED       = YES|NO
+STOP_REASON                 = NOT_STOPPING | WORK_FRONTIER_EXHAUSTED | BLOCKED_ON_EXTERNAL_DEPENDENCY
+BLOCKING_DEPENDENCY         = none | <the concrete thing a person must supply>
+NEXT_ACTION                 = NONE | <the next item>
+```
+
+`AUTONOMOUS_ACTION_AVAILABLE = YES` means the run may not end.

@@ -100,6 +100,27 @@ def main():
     else:
         failures.append("state/PROJECT_STATE.json missing; run scripts/collect_state.py")
 
+    # The stop state must be internally consistent, and the scenarios behind it must still pass.
+    # A run that claims a human is needed without naming what is missing is how "blocked" becomes a
+    # synonym for "finished".
+    try:
+        sys.path.insert(0, os.path.join(REPO, "scripts"))
+        import discover_work
+
+        stored = json.load(open(state_path, encoding="utf-8")) if os.path.isfile(state_path) else {}
+        frontier = stored.get("work_frontier") or {}
+        if frontier.get("available") is False:
+            failures.append("work_frontier could not be computed: %s" % frontier.get("reason"))
+        else:
+            for problem in discover_work.contradictions(frontier):
+                failures.append("stop state: %s" % problem)
+            for field in ("AUTONOMOUS_ACTION_AVAILABLE", "HUMAN_ACTION_REQUIRED", "STOP_REASON",
+                          "BLOCKING_DEPENDENCY", "NEXT_ACTION"):
+                if field not in frontier:
+                    failures.append("state/PROJECT_STATE.json is missing %s" % field)
+    except Exception as exc:
+        failures.append("stop-state validation failed: %r" % exc)
+
     skills_dir = os.path.join(REPO, "skills")
     if os.path.isdir(skills_dir):
         for name in sorted(os.listdir(skills_dir)):

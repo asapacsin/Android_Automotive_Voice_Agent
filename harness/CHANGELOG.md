@@ -21,3 +21,25 @@ machine-readable current truth, and no record of whether its own procedures work
 
 Reused rather than rebuilt: `evaluation/` (57 scenarios, oracle, baselines),
 `tools/speech-harness/` (device automation), `behavior-test/` (structural enforcement).
+
+## 2026-09-19 — a run ends when the work does, not when the sentence does
+
+Agents kept stopping with obvious work still in the repository, and "is anything left?" was being
+answered from memory. Rule 12 (`AUTONOMOUS_WORK_EXHAUSTION_REQUIRED`), rule 13 (done has stages)
+and rule 14 (a blocker names what is missing) are the rule; `skills/continue.md` is the procedure;
+`scripts/discover_work.py` is the answer, read from the same documents a person would read.
+
+- `state/PROJECT_STATE.json` now carries `work_frontier` with the stop decision.
+- `scripts/harness_check.py` rejects a self-contradictory stop state, and a claim that a human is
+  needed without naming what is unavailable.
+- `AutonomyPolicyTest` guards the mechanism; both guards were checked against a planted vague
+  blocker before being trusted.
+- `SPECS/SPEC-TEMPLATE.md` replaces the copy that was inlined in `agent/INTAKE.md`, which had
+  started to drift. Acceptance criteria now separate what each one proves, and an unmet one is
+  discoverable.
+
+Running it for real immediately found four false positives in its own reading: the SPEC template's
+placeholder rows, a `✅` prefix defeating the terminal-status match on four closed problems, and my
+own note claiming D-4 was network-blocked when the simulation harness can verify it. All fixed;
+the last one was wrong in the direction that lets an agent stop, which is the direction that
+matters.

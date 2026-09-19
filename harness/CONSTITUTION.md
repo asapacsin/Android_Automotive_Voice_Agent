@@ -26,3 +26,22 @@ about how work is done.
     `scripts/collect_state.py`. Never hand-edit it, and never record a value that was not observed.
 11. **The harness stays thin.** Every file here must earn its place by preventing a failure that
     actually happened. Delete what stops paying.
+12. **`AUTONOMOUS_WORK_EXHAUSTION_REQUIRED`.** A run does not end because the thing that was asked
+    for is finished. Finishing a task, a SPEC, a debt item, a test repair, a milestone row or the
+    prompt's last sentence is a **checkpoint**, not a boundary: reconcile canonical state,
+    rediscover the frontier, and continue. A run ends only when no authorised action reachable from
+    this machine could advance correctness, verification, integration or completion — or when
+    progress needs something a person must supply. Deciding *which* authorised work to do next is
+    the agent's job, never a reason to hand back control.
+    *Procedure:* [../skills/continue.md](../skills/continue.md). *Machine answer:*
+    `python scripts/discover_work.py`. *Enforced by:* `AutonomyPolicyTest`, and the stop-state
+    validation in `scripts/harness_check.py`.
+13. **Done has stages.** Code existing is not the same as code running, running is not the same as
+    proven, and proven is not the same as protected. A work item that changes behaviour passes
+    `IMPLEMENTED → PRODUCTION_WIRED → BEHAVIOR_VERIFIED → REGRESSION_PROTECTED → ARTIFACT_VERIFIED →
+    CANONICAL_STATE_RECONCILED → COMPLETE`. Never infer `COMPLETE` from the existence of a file.
+    Documentation-only changes skip the stages that do not apply to them.
+14. **A blocker names what is missing.** "Needs review" is not a blocker. Anything that leaves the
+    autonomous frontier carries a `BLOCKED_BY:` line in its canonical document naming the concrete
+    thing a person must supply — a credential, a device, an approval, a product decision. Ordinary
+    engineering choices are not blockers and are made by the agent.

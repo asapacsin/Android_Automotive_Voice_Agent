@@ -39,6 +39,8 @@ editing the prompt and believe the job is done.
 **Risk.** Policy drifts between the two statements; the prompt grows; the deterministic owner is
 bypassed.
 
+BLOCKED_BY: the test phone has no network route to the Baidu provider, so removing a prompt rule cannot be shown to leave live behaviour unchanged — see CURRENT_MILESTONE.md
+
 **Partly addressed 2026-09-18** (`8d35b8a`): `PersonaProfiles` now carries a header naming the
 deterministic owner of each safety-relevant rule, so a reader knows the prose is advisory. The
 duplication itself remains — the prompt still states rules that code enforces. Remaining work is to
@@ -97,7 +99,13 @@ the default provider, which is false.
 `AGENTS.md` warns about.
 
 **Recommendation.** Delete the PC backend and GPT-Live metadata; keep Qwen only if a second
-provider is still wanted, and say so in one line. Fix the README's provider claim now.
+provider is still wanted, and say so in one line.
+
+**README corrected 2026-09-19.** The setup steps read as product instructions and said
+`VOICE_PROVIDER=qwen (default)`; they are now scoped to the dormant `backend/` explicitly.
+That was the part of this entry no authority was needed for, so it is done.
+
+BLOCKED_BY: a product decision — whether a second realtime provider is still wanted at all. docs/ARCHITECTURE.md records these paths as deliberately kept, so deleting them is the owner's call, not an agent's.
 
 ---
 

@@ -44,7 +44,13 @@ Pinned because they are what this machine actually has or can extract:
 
 **The product runs Baidu Qianfan Flex end-to-end speech-to-speech on the phone** (`qianfan-realtime-flex-v1`), with credentials in the Android Keystore. Qwen, GPT-Live and the PC backend below are dormant compatibility code and are not reachable from the production UI — see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/TECH_DEBT.md](docs/TECH_DEBT.md) D-5.
 
-## Realtime voice credentials
+## Realtime voice credentials — **the dormant PC backend only**
+
+The phone does not read any of this. Its credentials live in the Android Keystore
+(`AndroidKeystoreCredentialStore`) and its provider is fixed to Baidu Qianfan Flex by
+[ADR-002](DECISIONS/ADR-002-baidu-flex-default-provider.md). The steps below configure
+`backend/`, which is dormant compatibility code ([TECH_DEBT.md](docs/TECH_DEBT.md) D-5) —
+`VOICE_PROVIDER=qwen` is that backend's default, never the product's.
 
 1. Copy `backend/.env.example` to `backend/.env`
 2. Keep `VOICE_PROVIDER=qwen` (default) and fill `DASHSCOPE_API_KEY`, **or** use `fake` with no keys

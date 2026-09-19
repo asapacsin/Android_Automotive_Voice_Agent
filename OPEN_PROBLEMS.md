@@ -188,7 +188,7 @@ L5 — during active navigation, no transcript lines appear that originate from 
 
 ## P4 — No `stop_navigation` tool
 
-**Status:** **Implemented 2026-09-16 as `exit_navigation_mode` — compile- and test-verified, NOT yet device-verified (L5 outstanding). Superseded in design by [ADR-007](DECISIONS/ADR-007-embedded-amap-navigation-sdk.md):** under the embedded SDK, navigation end/arrival arrive as callbacks and 「停止导航」 becomes a real `stop_navigation` through `NavigationController` (v2 §24). `exit_navigation_mode` stays as the interim on the installed build and is retired at SPEC-005 Phase 4.
+**Status:** SUPERSEDED 2026-09-16 by [ADR-007](DECISIONS/ADR-007-embedded-amap-navigation-sdk.md) — the embedded SDK reports navigation end and arrival as callbacks, so the interim tool is not the answer any more and the real one is tracked at SPEC-005 Phase 4, not here. Original record: **Implemented 2026-09-16 as `exit_navigation_mode` — compile- and test-verified, NOT yet device-verified (L5 outstanding). Superseded in design by [ADR-007](DECISIONS/ADR-007-embedded-amap-navigation-sdk.md):** under the embedded SDK, navigation end/arrival arrive as callbacks and 「停止导航」 becomes a real `stop_navigation` through `NavigationController` (v2 §24). `exit_navigation_mode` stays as the interim on the installed build and is retired at SPEC-005 Phase 4.
 **Found:** 2026-09-16
 **Severity:** Low–Medium
 
@@ -644,7 +644,7 @@ Limits: the false sentence is already spoken before the correction; detection is
 
 ## P16 — Destination and route could only be chosen by tapping
 
-**Status:** IMPLEMENTED 2026-09-17 — unit/client tests; speech harness on device
+**Status:** FIXED 2026-09-17 — unit/client tests; speech harness on device
 
 New tool `choose_navigation_option` (exactly one of `index` / `preference` / `name`) picks from
 the list on screen through the same `selectDestination` / `selectRoute` paths as a tap.

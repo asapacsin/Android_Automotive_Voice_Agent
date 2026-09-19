@@ -125,6 +125,24 @@ def tech_debt():
     ]
 
 
+def work_frontier():
+    """The ranked frontier and the stop state, from scripts/discover_work.py."""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import discover_work
+
+        candidates = discover_work.discover()
+        stop = discover_work.decide(candidates)
+        stop["candidates"] = [
+            {k: c[k] for k in ("priority", "class", "source", "item", "blocked_by")}
+            for c in candidates
+        ]
+        return stop
+    except Exception as exc:
+        # Never guess this one. A fabricated "nothing left to do" is the worst field in the file.
+        return {"available": False, "reason": "discover_work failed: %r" % exc}
+
+
 def build_state():
     return {
         "generated_at": datetime.datetime.now().isoformat(timespec="seconds"),
@@ -141,6 +159,9 @@ def build_state():
         "capabilities": capability_status(),
         "open_issues": open_issues(),
         "tech_debt": tech_debt(),
+        # Whether an agent is allowed to stop, derived from the same documents a person would read.
+        # CONSTITUTION rule 12: AUTONOMOUS_ACTION_AVAILABLE=YES means the run may not end.
+        "work_frontier": work_frontier(),
     }
 
 
