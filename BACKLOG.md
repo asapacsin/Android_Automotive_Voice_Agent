@@ -76,7 +76,30 @@ Today the driver must press 按住麦克风开始 to start a session. In a car t
 
 Specced in [SPEC-001](SPECS/SPEC-001-wake-word.md). It raises genuine architectural conflicts — always-on listening versus the microphone gating added for echo suppression, battery, and Baidu quota — so it needs a decision before any implementation.
 
-BLOCKED_BY: the iFlytek AIKit `apiKey` and `apiSecret` for this application, which are issued from the vendor console and are not on this machine
+BLOCKED_BY: the iFlytek **APPID** matching the staged `assets/ivw/wakeword.jet` wake resource, entered on the device through 开发者设置 — the integrated SDK is MSC v1140, which needs an APPID only, and a mismatched APPID fails at runtime with error 10407
+
+### What is actually required, corrected 2026-09-19
+
+The earlier blocker said "AIKit `apiKey` and `apiSecret`". That was true of the **AIKit** SDK and is
+no longer true of this repository: [FINDINGS-2026-09-16](SPECS/FINDINGS-2026-09-16-iflytek-msc-sdk.md)
+records that the delivered SDK was replaced by **MSC v1140** (`com.iflytek.cloud`, `Msc.jar`,
+`libmsc.so` + `libw_ivw.so`), and `AIKit.aar` is gone from `app/libs/`. No code references AIKit.
+
+| Needed | State |
+| --- | --- |
+| iFlytek **APPID** | **the one thing still missing** — entered on device, stored in the Android Keystore |
+| APIKey / APISecret | **not used by MSC.** `DeveloperSettingsActivity` says so in a comment, and the UI has no field for them. Storing them would be storing a secret with no consumer |
+| Wake resource `assets/ivw/wakeword.jet` | present, git-ignored, **bound to the APPID it was downloaded for** — a different APPID gives error 10407 |
+| AIKit ability `e867a88f2` | an **AIKit** concept. Irrelevant while MSC is integrated; returning to AIKit would need the SDK back and an ADR-006 revision |
+| Device activation quota / first-run network | MSC activates on first init; the phone has network again as of 2026-09-19 |
+
+So B-003 is blocked on **one value**, not three, and the credential path already exists end to end:
+`DeveloperSettingsActivity` → `WakeWordSettings` → `AndroidKeystoreCredentialStore`
+(keys `iflytek_app_id`, `iflytek_api_key`, `iflytek_api_secret`).
+
+**If the product owner intends to return to AIKit** — which is what an APIKey, an APISecret and an
+ability id imply — that is a product decision, not a credential entry: it needs the AIKit SDK
+restaged, ADR-006 revised against the FINDINGS, and the MSC integration removed or made selectable.
 
 ## B-002 — Quiet during navigation
 

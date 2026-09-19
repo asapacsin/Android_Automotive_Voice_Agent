@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-09-19T10:24:00",
+  "generated_at": "2026-09-19T10:35:35",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "aef1334",
+    "commit": "95f0d91",
     "branch": "main",
-    "subject": "Refresh generated state",
+    "subject": "Policy stops speaking Baidu's wire vocabulary",
     "working_tree_clean": false,
-    "uncommitted_files": 83
+    "uncommitted_files": 1
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-19T10:23:08",
+    "collected_at": "2026-09-19T10:33:18",
     "total": {
       "tests": 638,
       "failures": 0,
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 228788934,
-    "built_at": "2026-09-19T10:20:28"
+    "bytes": 229111224,
+    "built_at": "2026-09-19T10:32:13"
   },
   "capabilities": {
     "available": true,
@@ -119,20 +119,27 @@
     }
   ],
   "work_frontier": {
-    "AUTONOMOUS_ACTION_AVAILABLE": "NO",
-    "HUMAN_ACTION_REQUIRED": "YES",
-    "STOP_REASON": "BLOCKED_ON_EXTERNAL_DEPENDENCY",
-    "BLOCKING_DEPENDENCY": "the iFlytek AIKit `apiKey` and `apiSecret` for this application, which are issued from the vendor console and are not on this machine",
-    "NEXT_ACTION": "NONE",
-    "actionable_count": 0,
+    "AUTONOMOUS_ACTION_AVAILABLE": "YES",
+    "HUMAN_ACTION_REQUIRED": "NO",
+    "STOP_REASON": "NOT_STOPPING",
+    "BLOCKING_DEPENDENCY": "none",
+    "NEXT_ACTION": "PROJECT_STATE.json: records aef1334, repository is at 95f0d91",
+    "actionable_count": 1,
     "blocked_count": 1,
     "candidates": [
+      {
+        "priority": 10,
+        "class": "stale state or harness defect",
+        "source": "state",
+        "item": "PROJECT_STATE.json",
+        "blocked_by": null
+      },
       {
         "priority": 11,
         "class": "next authorised backlog item",
         "source": "BACKLOG.md",
         "item": "B-003",
-        "blocked_by": "the iFlytek AIKit `apiKey` and `apiSecret` for this application, which are issued from the vendor console and are not on this machine"
+        "blocked_by": "the iFlytek **APPID** matching the staged `assets/ivw/wakeword.jet` wake resource, entered on the device through 开发者设置 — the integrated SDK is MSC v1140, which needs an APPID only, and a mismatched APPID fails at runtime with error 10407"
       }
     ]
   }
