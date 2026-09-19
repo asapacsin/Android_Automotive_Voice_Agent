@@ -85,14 +85,15 @@ climate:
     backend: SimulatedVehicleControl
   relative_adjustment_from_context:
     tool: control_climate
-    verified: unit
+    verified: device
     evidence: "ContextResolverTest, 23 cases (SPEC-006 CVC-04..46)"
     notes: >
       「再凉一点」「有点热」「刚才那个调回来一点」. The model has no cross-turn memory here
-      (ConversationResetPolicy), so DriverContext holds the record and VoiceContextHints carries one
-      resolved instruction into each fresh conversation. The resolution is deterministic and
-      unit-proven; whether the LIVE model acts on that hint is NOT proven and needs TEXT_LIVE or
-      AUDIO_E2E on the phone. Do not raise this to device on simulation evidence.
+      (ConversationResetPolicy), so DriverContext holds the record and the bounded implicit-intent
+      table is stated in the control_climate declaration the model reads. Raised to device
+      2026-09-19 on live-model evidence, not simulation: 26->24 C for the implicit step and
+      24->23 C for the relative one, with the spoken line following the result. See
+      ACCEPTANCE_TESTS.md. Still NOT proven with a human voice in a cabin.
   ambiguous_relative_request:
     tool: null
     verified: device

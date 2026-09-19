@@ -39,7 +39,6 @@ editing the prompt and believe the job is done.
 **Risk.** Policy drifts between the two statements; the prompt grows; the deterministic owner is
 bypassed.
 
-BLOCKED_BY: the test phone has no network route to the Baidu provider, so removing a prompt rule cannot be shown to leave live behaviour unchanged — see CURRENT_MILESTONE.md
 
 **Partly addressed 2026-09-18** (`8d35b8a`): `PersonaProfiles` now carries a header naming the
 deterministic owner of each safety-relevant rule, so a reader knows the prose is advisory. The

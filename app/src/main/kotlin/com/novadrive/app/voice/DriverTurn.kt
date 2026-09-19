@@ -343,7 +343,11 @@ class DriverTurn(val epoch: Long) {
         fun classify(text: String): Kind = when {
             ActionClaimGuard.isRealtimeInfoRequest(text) -> Kind.REALTIME_INFO
             ActionClaimGuard.isUnsupportedRequest(text) -> Kind.NO_TOOL_ACTION
-            ActionClaimGuard.isControlRequest(text) || ActionClaimGuard.isCameraQuestion(text) -> Kind.ACTION
+            ActionClaimGuard.isControlRequest(text) ||
+                ActionClaimGuard.isCameraQuestion(text) ||
+                // 「有点热」 names no action, but it is a request for one: measured on device
+                // 2026-09-19 answering it with a claim and no call was released unheld.
+                ContextResolver.isImplicitComfortRequest(text) -> Kind.ACTION
             else -> Kind.CONVERSATION
         }
     }

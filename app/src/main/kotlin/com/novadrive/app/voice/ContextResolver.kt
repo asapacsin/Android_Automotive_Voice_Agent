@@ -134,6 +134,32 @@ object ContextResolver {
         return adjustment(last.dimension, back, context, implicit = false)
     }
 
+    /**
+     * Is this a request for a climate change that never names an action?
+     *
+     * Measured on device 2026-09-19: 「还是有点热。」 was answered 「再调高两度。」 with no tool call, and
+     * 「有点热。」 produced 「空调还没开呢，我给你打开。」 without ever calling `power_on`. Both were
+     * released unheld because [DriverTurn.classify] saw no control word in them and called the turn
+     * conversation — so [I-1](../../../../../../../docs/INVARIANTS.md) never applied to a request that
+     * plainly asks for an action.
+     *
+     * Classification reads the implicit-intent table rather than keeping a second copy of it.
+     */
+    fun isImplicitComfortRequest(text: String): Boolean = implicitIntent(text.trim()) != null
+
+    /**
+     * Does this sentence ask for a concrete climate change — whether it names one or only implies
+     * one? The single answer to that question, so classification, the nudge and the hint cannot
+     * drift apart on three copies of the same word list.
+     *
+     * Falls back to the implicit table when no context is installed, which is the case in tests and
+     * before the first session.
+     */
+    fun asksForClimateChange(text: String): Boolean {
+        val context = DriverContext.currentOrNull() ?: return isImplicitComfortRequest(text)
+        return resolve(text, context, context.currentEpoch()) is Resolution.Adjust
+    }
+
     private fun implicitIntent(said: String): Pair<Dimension, Double>? = when {
         FAN_TOO_MUCH.any { it in said } -> Dimension.FAN to -FAN_STEP
         FAN_TOO_LITTLE.any { it in said } && HOT.none { it in said } -> Dimension.FAN to FAN_STEP

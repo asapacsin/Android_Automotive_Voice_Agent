@@ -226,6 +226,38 @@ class ContextResolverTest {
         assertClarifies(resolve("再低一点。"), ContextResolver.REASON_NO_REFERENT)
     }
 
+    // ---- an implicit request is still a request for an action ----------------
+
+    @Test
+    fun `a stated discomfort is an action request, so its claims need proof`() {
+        // Measured on device 2026-09-19: both of these were answered with a claim and no tool
+        // call, and released unheld, because classify() saw no control word in them.
+        listOf("有点热。", "还是有点热。", "有点冷。", "风太大了。").forEach {
+            assertTrue(ContextResolver.isImplicitComfortRequest(it), it)
+            assertEquals(DriverTurn.Kind.ACTION, DriverTurn.classify(it), it)
+        }
+    }
+
+    @Test
+    fun `an ambiguous request is not treated as a resolved one`() {
+        // asksForClimateChange gates the nudge, so it must be false exactly when the ambiguity
+        // policy wants a question — otherwise the nudge would override the clarification.
+        adjusted(ClimateToolActions.ADJUST_TEMPERATURE, -1.0, epoch = 1)
+        adjusted(ClimateToolActions.ADJUST_FAN, 1.0, epoch = 1)
+        context.onDriverUtterance("再低一点。", 2)
+        assertClarifies(
+            ContextResolver.resolve("再低一点。", context, 2),
+            ContextResolver.REASON_AMBIGUOUS,
+        )
+    }
+
+    @Test
+    fun `chat is still chat`() {
+        listOf("你好。", "你能做什么？", "今天过得怎么样。").forEach {
+            assertTrue(!ContextResolver.isImplicitComfortRequest(it), it)
+        }
+    }
+
     // ---- not everything is contextual --------------------------------------
 
     @Test

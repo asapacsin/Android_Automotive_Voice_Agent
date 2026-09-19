@@ -238,3 +238,46 @@ read the tool result.
 - `ctx_hint` / the referent line reaching the model: the hint is composed when a conversation is
   configured, which needs the network. Unproven on device.
 - Every human-voice row: still L5 outstanding, as recorded above.
+
+---
+
+## SPEC-006 against the live model — 2026-09-19, `2391ff70`
+
+The phone's network was restored, so the row simulation cannot earn was finally attempted: does the
+**live** Baidu model act on what the app resolved? Synthetic Mandarin through the real audio path
+(`tools/speech-harness`), real sessions, real quota.
+
+| Case | Utterance | What happened | Result |
+| --- | --- | --- | --- |
+| CVC-04 | 「有点热。」 | `function_call` → `control_climate{adjust_temperature,-2}` → 26 → **24 °C** → 「已经调低了温度。」 | **VERIFIED** |
+| CVC-09 | 「再凉一点。」 | `function_call` → 24 → **23 °C** → 「已经调到23度了。」 | **VERIFIED** |
+| CVC-27 | 「还是有点热。」 | held → `TURN_DROP unproven_action_claim` → nudge → `function_call` → 26 → **24 °C** → 「温度已调至24度。」 | **VERIFIED** |
+| P22 | 「放一下周杰伦那首讲晴天的歌。」 | held `NO_TOOL_ACTION` → `control_music` refused `MEDIA_LIBRARY_UNSUPPORTED` → 「放不了，车上只有一首内置曲目。」, nothing played | **VERIFIED** |
+
+The step sizes are the spec's own: implicit discomfort moved 2 °C, an explicit relative request
+moved 1 °C. Nothing was spoken before the result that made it true.
+
+### What it took, and why that is the interesting part
+
+The first live run failed in three different ways, none of which any test here could have caught:
+
+1. 「有点热。」 was answered 「需要我帮你调低空调温度吗？」 with **no tool call**. The implicit-intent table
+   existed in `ContextResolver` and in the hint, but not in the one place the model reads when
+   deciding whether to call a tool — the `control_climate` declaration.
+2. With the table added, 「有点热。」 produced 「空调还没开呢，我给你打开。」 and **never called `power_on`** —
+   a claim of an action that did not happen. It was released unheld because `DriverTurn.classify`
+   saw no control word in 「有点热」 and called the turn conversation, so I-1 did not apply to a
+   request that plainly asks for an action.
+3. 「还是有点热。」 was answered 「再调高两度。」 — an intention, no call, and no claim either, so the
+   existing nudge (which only fires on a *claim*) did nothing and the request evaporated.
+
+Each was fixed at its owner: the tool declaration, `DriverTurn.classify` (reading the implicit table
+rather than a second copy of it), and the nudge condition. A request the app has already resolved to
+one concrete action is now also nudged when the model answers it with a **question** — that is not
+the clarification the ambiguity policy protects, because an ambiguous referent returns `Clarify` and
+never reaches this path.
+
+### Still not earned
+
+A **human voice** in a real cabin. Every line above came from synthetic speech injected into the
+audio path, which proves the software and says nothing about acoustics.

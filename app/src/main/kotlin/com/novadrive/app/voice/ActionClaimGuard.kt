@@ -65,7 +65,16 @@ class ActionClaimGuard {
         val suspicious = when {
             isCameraQuestion(request) -> !declines(reply)
             isUnsupportedRequest(request) -> claimsDone(reply)
-            isControlRequest(request) -> claimsDone(reply)
+            // A claim needs correcting; an action that simply never happened needs performing.
+            // Measured on device 2026-09-19: 「有点热」, 「再凉一点」 and 「还是有点热」 were each
+            // answered with an intention (「调低温度。」) and no tool call. Nothing claimed completion, so
+            // nothing was corrected, and the request evaporated. A question still ends here,
+            // because declines() covers the clarification the ambiguity policy requires.
+            // When the app has already resolved the request to ONE concrete action, a question back
+            // is not the clarification the ambiguity policy protects — that path returns Clarify,
+            // and asksForClimateChange() is false for it. It is hesitation, and it costs the driver
+            // a turn at the wheel. Measured 2026-09-19: 「有点热。」 → 「需要我调节空调温度吗？」.
+            isControlRequest(request) -> claimsDone(reply) || ContextResolver.asksForClimateChange(request)
             else -> false
         }
         if (!suspicious) return null

@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-09-19T09:31:34",
+  "generated_at": "2026-09-19T09:57:21",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "26f4bb5",
+    "commit": "7388f12",
     "branch": "main",
-    "subject": "A blocker is one line, because that is how far it is read",
-    "working_tree_clean": true,
-    "uncommitted_files": 0
+    "subject": "Refresh generated state",
+    "working_tree_clean": false,
+    "uncommitted_files": 12
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-19T09:31:24",
+    "collected_at": "2026-09-19T09:54:31",
     "total": {
-      "tests": 656,
+      "tests": 659,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "app": {
-        "tests": 493,
+        "tests": 496,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,15 +65,14 @@
   },
   "apk": {
     "built": true,
-    "bytes": 228789006,
-    "built_at": "2026-09-19T09:29:01"
+    "bytes": 229150700,
+    "built_at": "2026-09-19T09:53:06"
   },
   "capabilities": {
     "available": true,
     "by_level": {
-      "device": 21,
-      "unsupported": 7,
-      "unit": 1
+      "device": 22,
+      "unsupported": 7
     },
     "human_verification_pending": [
       "speech.wake_word",
@@ -120,27 +119,20 @@
     }
   ],
   "work_frontier": {
-    "AUTONOMOUS_ACTION_AVAILABLE": "NO",
-    "HUMAN_ACTION_REQUIRED": "YES",
-    "STOP_REASON": "BLOCKED_ON_EXTERNAL_DEPENDENCY",
-    "BLOCKING_DEPENDENCY": "the test phone has no network route to the Baidu provider — Wi-Fi shows no IP and an empty route table, every session ends BAIDU_DNS_FAILED, and reconnecting it needs the network's credentials",
-    "NEXT_ACTION": "NONE",
-    "actionable_count": 0,
-    "blocked_count": 5,
+    "AUTONOMOUS_ACTION_AVAILABLE": "YES",
+    "HUMAN_ACTION_REQUIRED": "NO",
+    "STOP_REASON": "NOT_STOPPING",
+    "BLOCKING_DEPENDENCY": "none",
+    "NEXT_ACTION": "D-2: D-2 HIGH — The same policy is stated in the prompt and enforced in code",
+    "actionable_count": 1,
+    "blocked_count": 2,
     "candidates": [
-      {
-        "priority": 7,
-        "class": "active milestone row",
-        "source": "CURRENT_MILESTONE.md",
-        "item": "The **live model** acts on the injected context",
-        "blocked_by": "the test phone has no network route to the Baidu provider — Wi-Fi shows no IP and an empty route table, every session ends BAIDU_DNS_FAILED, and reconnecting it needs the network's credentials"
-      },
       {
         "priority": 8,
         "class": "recorded technical debt",
         "source": "docs/TECH_DEBT.md",
         "item": "D-2",
-        "blocked_by": "the test phone has no network route to the Baidu provider, so removing a prompt rule cannot be shown to leave live behaviour unchanged — see CURRENT_MILESTONE.md"
+        "blocked_by": null
       },
       {
         "priority": 8,
@@ -155,13 +147,6 @@
         "source": "BACKLOG.md",
         "item": "B-003",
         "blocked_by": "the iFlytek AIKit `apiKey` and `apiSecret` for this application, which are issued from the vendor console and are not on this machine"
-      },
-      {
-        "priority": 11,
-        "class": "next authorised backlog item",
-        "source": "BACKLOG.md",
-        "item": "B-008",
-        "blocked_by": "the test phone has no network route to the Baidu provider, so no live session can be established to prove the model acts on the injected context"
       }
     ]
   }

@@ -11,23 +11,28 @@ Date opened: 2026-09-19 · Source: [B-008](BACKLOG.md) · Spec: [SPEC-006](SPECS
 | 3 | An ambiguous referent is asked about, never guessed | L2 | **done** — CVC-11/12/13 |
 | 4 | A capability we do not have is never claimed to have run | L2 | **done** — `FalseCapabilityClaimTest`, 10 tests |
 | 5 | Multi-intent per-call safety (validation, duplicate, cancellation, ambiguity) | L2 | **done** — decomposition itself is the model's, see SPEC-006 §On multi-intent |
-| 6 | The **live model** acts on the injected context | **L5** | **not earned** — needs `TEXT_LIVE`/`AUDIO_E2E` on the phone |
+| 6 | The **live model** acts on the injected context | **L5** | **earned 2026-09-19** — 「有点热」 → 26→24 °C, 「再凉一点」 → 24→23 °C, 「还是有点热」 → drop-unproven → nudge → 26→24 °C, named song refused and nothing played ([ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md)) |
 
-Row 6 is the row that matters for the product and the one simulation cannot earn: a scripted model
-emitting the expected call proves plumbing, not understanding.
+Row 6 was the row that mattered and the one simulation could not earn. It took three live failures to get there — the implicit table was missing from the tool declaration, an implicit
+request was classified as conversation so its claims were never held, and a lost action was not
+nudged because nothing had been *claimed*. All three are recorded in ACCEPTANCE_TESTS.md.
 
-## Blocked — the test phone has no network (2026-09-19)
+**M3 is complete except for a human voice in a real cabin**, which is a standing human gap.
+
+## Was blocked on the phone's network — LIFTED 2026-09-19
 
 `2391ff70` is attached over ADB and the app installs and runs, but Wi-Fi is **enabled and
 disconnected**: supplicant `DISCONNECTED`, no IP, `ip route` empty, `ping 8.8.8.8` → "Network is
 unreachable". Every session attempt ends `BAIDU_DNS_FAILED: UnknownHostException`. It last
 associated with `CU_62fC_5G` on 09-15.
 
-Reconnecting it is a change to the device's own settings and needs its network credentials, so it
-is the product owner's to do, not an agent's. Everything that does **not** need the model was
+The owner reconnected it on 2026-09-19: `wlan0` now has `192.168.0.135` and the provider answers
+ping in ~50 ms. Row 6 and D-2 are back on the autonomous frontier.
+
+What follows is the record of the block, kept because it is why the guards below were proven
+without a model first. Everything that does **not** need the model was
 verified instead, through the real dispatcher — see [ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md).
 
-BLOCKED_BY: the test phone has no network route to the Baidu provider — Wi-Fi shows no IP and an empty route table, every session ends BAIDU_DNS_FAILED, and reconnecting it needs the network's credentials
 
 **Also blocked by this, and only by this:**
 

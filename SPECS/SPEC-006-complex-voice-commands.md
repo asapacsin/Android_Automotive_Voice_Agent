@@ -6,7 +6,7 @@ ambiguity, reversal, clarification answers), the referent state carried into eac
 conversation, the navigation-phase rules, and three execution guards
 (`MEDIA_LIBRARY_UNSUPPORTED`, `DUPLICATE_IN_TURN`, `AMBIGUOUS_REFERENT`), the last three
 device-verified. Multi-intent decomposition is deliberately not app code (§On multi-intent).
-**Outstanding:** whether the *live model* acts on the injected context — see §Implementation status.
+**Verified against the live model 2026-09-19** (CVC-04, CVC-09, CVC-27 and the named-song refusal, on `2391ff70`). Outstanding: a human voice in a real cabin.
 Raised: 2026-09-19 · Source: product-owner requirement 「后续可以试试复杂的语音指令」, with a modern
 automotive conversational assistant as the reference interaction style.
 Depends on: [I-1, I-2, I-3, I-4](../docs/INVARIANTS.md) · [capabilities.yaml](../config/capabilities.yaml) ·
