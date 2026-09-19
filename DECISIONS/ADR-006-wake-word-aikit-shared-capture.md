@@ -1,6 +1,8 @@
 # ADR-006 — Wake word via iFlytek **AIKit**, sharing our existing capture stream
 
-Status: **PREMISE CONFIRMED for MSC at API level (2026-09-16). Decision stands; vendor names change; one device test outstanding.**
+Status: **CONFIRMED ON DEVICE (2026-09-19).** The engine honours `AUDIO_SOURCE=-1`: it consumed
+50 s of app-fed PCM without error and matched 「你好小诺」. The decision stands as written; only the
+vendor type names changed.
 Supersedes: [ADR-005](ADR-005-wake-word-mic-handover.md)
 
 > **The SDK changed after this ADR was accepted** — AIKit was replaced by **MSC v1140** (`com.iflytek.cloud`, `VoiceWakeuper`); see [FINDINGS-2026-09-16-iflytek-msc-sdk.md](../SPECS/FINDINGS-2026-09-16-iflytek-msc-sdk.md). This ADR's decision rests on one premise: *the SDK accepts externally captured audio*. That was proven for AIKit and briefly became unverified for MSC, because the vendor demo has `AUDIO_SOURCE = "-1"` and `writeAudio(...)` **commented out** (`WakeDemo.java:146,155`).
@@ -15,7 +17,15 @@ Supersedes: [ADR-005](ADR-005-wake-word-mic-handover.md)
 >
 > `VoiceWakeuper` exposes app-fed PCM with the identical signature to the dictation engine the demo exercises successfully. **So the shared-capture design survives the SDK swap** — `PcmAudioCapture` stays the single `AudioRecord` owner and feeds the detector. Only the vendor type names change.
 >
-> **Still outstanding (L5):** that the engine *honours* `AUDIO_SOURCE=-1` and detects reliably on fed audio. The API existing is necessary, not sufficient. If the device test fails, the fallback is MSC's `NOTIFY_RECORD_DATA` inversion (engine owns the mic and streams bytes back), which would be a new decision.
+> ~~**Still outstanding (L5):**~~ **Settled on device 2026-09-19.** The engine honours
+> `AUDIO_SOURCE=-1`. The fallback (`NOTIFY_RECORD_DATA`) is not needed and no new decision is due.
+>
+> The cost of not running this test when FINDINGS asked for it was paid in full: the integration
+> shipped setting neither `AUDIO_SOURCE` nor calling `writeFrame` from production, so MSC opened a
+> recorder of its own, lost the microphone, and reported it as `code=200061` — *a network error*.
+> Three days of diagnosis went to the network, the APPID and the `.jet`, all of which were correct.
+> The premise was cheap to test and expensive to assume. `WakeAudioPathTest` now holds both halves
+> of it in place.
 
 > ⚠️ **The SDK changed after this ADR was accepted.** The product owner replaced the **AIKit** bundle with the **MSC v1140** SDK (`com.iflytek.cloud`, `VoiceWakeuper`) — see [FINDINGS-2026-09-16-iflytek-msc-sdk.md](../SPECS/FINDINGS-2026-09-16-iflytek-msc-sdk.md).
 >

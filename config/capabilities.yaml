@@ -135,8 +135,11 @@ speech:
     tool: null
     verified: device
     human_gap: true
-    evidence: "Engine initialises; VoiceSessionGateway.start(\"wake_word\") drives the same path"
-    notes: "Never triggered by a real human voice. See harness/README.md human gaps."
+    evidence: "2026-09-19: synthesized 你好小诺 detected on 2391ff70; wake_word -> session.created"
+    notes: >
+      Never triggered by a real human voice. The earlier evidence here read "Engine initialises",
+      which was not true: the engine was ending every session with code 200061 because it had
+      opened a second recorder. Corrected 2026-09-19 with the fix. See harness/README.md human gaps.
 
 apps:
   open_maps:

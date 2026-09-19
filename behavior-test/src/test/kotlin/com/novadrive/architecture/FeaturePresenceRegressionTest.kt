@@ -41,7 +41,9 @@ class FeaturePresenceRegressionTest {
     fun wakeDetectionStartsTheVoiceSession() {
         assertContains(
             "app/src/main/kotlin/com/novadrive/app/wake/WakeWordController.kt",
-            "created.onWake = { onDetected() }",
+            // Not the full call: the detection callback must be wired, but its arguments are
+            // the controller's business and pinning them made this fail on an unrelated change.
+            "created.onWake = { onDetected(",
             "the detector callback must be wired",
         )
         assertContains(

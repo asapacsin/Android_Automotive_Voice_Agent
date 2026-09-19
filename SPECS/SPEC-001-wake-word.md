@@ -1,12 +1,16 @@
 # SPEC-001 — Wake word
 
-Status: **SUPERSEDED IN ITS TECHNICAL DETAIL (2026-09-16) — the SDK was replaced. Rewrite required before implementation.**
+Status: **Implemented and firing on device 2026-09-19.** The 2026-09-16 note below is kept because
+it is the record of an SDK swap, but its "rewrite required before implementation" no longer holds:
+the MSC integration is written, and 「你好小诺」 starts a session on `2391ff70`. Remaining: the
+acoustic acceptance rows, which need a human voice. Evidence:
+[ACCEPTANCE_TESTS.md](../ACCEPTANCE_TESTS.md).
 
 > The product owner swapped the **AIKit** bundle for the **MSC v1140** SDK. Everything below describing `AIKit.aar`, `com.iflytek.aikit.core`, `AiHelper`, ability `e867a88f2`, the four `IVW_*` resource files and the three-credential scheme **no longer matches what was delivered**. Measured replacement facts: [FINDINGS-2026-09-16-iflytek-msc-sdk.md](FINDINGS-2026-09-16-iflytek-msc-sdk.md).
 >
 > **Two things changed for the better:** MSC needs **only an APPID** — already supplied — so *the `apiKey`/`apiSecret` blocker this file has carried all day no longer exists*; and MSC loads its wake resource straight from `assets`, so no external-storage permission and probably no resource installer.
 >
-> ~~**One thing got worse:** the microphone-ownership premise behind ADR-006 is unverified again.~~ **RESOLVED 2026-09-16 at API level, without a device.** `javap` on `Msc.jar` shows `VoiceWakeuper` exposes `public int writeAudio(byte[], int, int)` — the *same signature* as `SpeechRecognizer.writeAudio`, which the vendor demo exercises successfully for dictation — and `SpeechConstant.AUDIO_SOURCE` is defined. The demo's commented-out `AUDIO_SOURCE="-1"` / `writeAudio()` lines were therefore a real API, not wishful code. **[ADR-006](../DECISIONS/ADR-006-wake-word-aikit-shared-capture.md)'s shared-capture design survives the SDK swap**; `PcmAudioCapture` stays the single `AudioRecord` owner. Outstanding (L5): that the engine *honours* fed audio and detects reliably — the API existing is necessary, not sufficient.
+> ~~**One thing got worse:** the microphone-ownership premise behind ADR-006 is unverified again.~~ **RESOLVED 2026-09-16 at API level, without a device.** `javap` on `Msc.jar` shows `VoiceWakeuper` exposes `public int writeAudio(byte[], int, int)` — the *same signature* as `SpeechRecognizer.writeAudio`, which the vendor demo exercises successfully for dictation — and `SpeechConstant.AUDIO_SOURCE` is defined. The demo's commented-out `AUDIO_SOURCE="-1"` / `writeAudio()` lines were therefore a real API, not wishful code. **[ADR-006](../DECISIONS/ADR-006-wake-word-aikit-shared-capture.md)'s shared-capture design survives the SDK swap**; `PcmAudioCapture` stays the single `AudioRecord` owner. Outstanding (L5): that the engine *honours* fed audio and detects reliably — the API existing is necessary, not sufficient. **Settled 2026-09-19 on device:** with `AUDIO_SOURCE=-1` the engine consumed 50 s of app-fed PCM without error and matched the phrase. The API was real *and* honoured.
 >
 > The demand, the wake phrase 你好小诺, the product rationale, the traps about per-consumer mic gating, and the acceptance levels below all still stand.
 Decision: [ADR-006](../DECISIONS/ADR-006-wake-word-aikit-shared-capture.md) (supersedes ADR-005)
@@ -156,12 +160,12 @@ Per `ACCEPTANCE_TESTS.md`:
 
 | Item | Level |
 | --- | --- |
-| SDK authorises on device (`ErrType.AUTH` code 0) | L5 |
-| Detector recognises 你好小诺 and starts a session | **L5** — device, human voice |
+| SDK authorises on device (`ErrType.AUTH` code 0) | **met** 2026-09-19 — `ivw sessionBegin ErrCode:0` |
+| Detector recognises 你好小诺 and starts a session | **met for synthesized speech** 2026-09-19 — `listening DEEP_IDLE->ACTIVE reason=wake_word`. **Human voice: not yet** |
 | Works with Amap foreground | **L5** |
 | No false trigger on navigation guidance or music over a sustained period | **L5** |
 | Battery cost measured over ≥ 30 minutes | **L5** |
-| Enable/disable setting persists | L2 |
+| Enable/disable setting persists | **met** — survives force-stop, verified 2026-09-19 |
 | Detector still hears the phrase while the provider uplink is gated | **L5** — trap 2 |
 
 A wake word cannot be accepted on automated tests. It is a live-audio feature and only device evidence counts.

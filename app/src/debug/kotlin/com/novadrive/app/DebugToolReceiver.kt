@@ -154,6 +154,18 @@ class DebugToolReceiver : BroadcastReceiver() {
             // looks identical to a broken engine in the logs.
             "status" -> "wake enabled=${settings.isEnabled()} credentials_complete=" +
                 settings.loadCredentials().isComplete()
+            // Feeds <externalFilesDir>/wake.pcm (16 kHz mono PCM16) to the wake engine, so the
+            // model's match can be proven without a person in the car saying the phrase.
+            "inject" -> {
+                val clip = java.io.File(context.getExternalFilesDir(null), "wake.pcm")
+                if (!clip.isFile) {
+                    "no clip at ${clip.absolutePath}"
+                } else {
+                    val bytes = clip.readBytes()
+                    Thread { com.novadrive.app.wake.WakeWordController.injectForHarness(bytes) }.start()
+                    "injecting ${bytes.size} bytes"
+                }
+            }
             else -> "usage: wake:on|off|status"
         }
     }

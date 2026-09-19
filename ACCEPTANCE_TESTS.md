@@ -295,45 +295,66 @@ The last line is the point: the persona used to instruct the model to add that t
 
 ---
 
-## B-003 wake word — APPID entered, engine still refuses — 2026-09-19, `2391ff70`
+## B-003 wake word — it was the microphone, and the wake word now fires — 2026-09-19, `2391ff70`
 
-The product owner entered the iFlytek APPID through 开发者设置 (Android Keystore). What that earned,
-and what it did not:
+**The wake word works.** 「你好小诺」 is detected and opens an assistant session. What follows is
+what it took, because three earlier diagnoses were wrong and the reason they were wrong is useful.
+
+### The failure, and what it actually was
 
 | Step | Evidence | Result |
 | --- | --- | --- |
-| Credential stored and readable | `debug_tool tool=wake arg=status → credentials_complete=true`; `iflytek_app_id_ciphertext` present in the encrypted prefs | **VERIFIED** |
-| MSC engine loads, IVW session opens | `ivw sessionBegin ErrCode:0 time:93` | **VERIFIED** |
-| Wake model loads | `setStatus bundle is null or error:true, model is null or error:true` | **FAILED** |
-| Wake word fires | never reached | **NOT EARNED** |
+| Credential stored and readable | `debug_tool tool=wake arg=status → credentials_complete=true` | **VERIFIED** |
+| MSC engine loads, IVW session opens | `ivw sessionBegin ErrCode:0 time:96` | **VERIFIED** |
+| Wake model loads | `setStatus success=recording`, no `model is null` | **VERIFIED** |
+| Engine receives audio | `cur writen size: 1600000` — 50 s of app-fed PCM, no error | **VERIFIED** |
+| Wake word fires | `listening DEEP_IDLE->ACTIVE reason=wake_word`, Baidu `session.created` | **VERIFIED** |
 
-Failure: **`wake_session_error code=200061`**, which MSC reports as 网络连接发生异常 — a network error.
+The error was `wake_session_error code=200061`, which MSC renders as 网络连接发生异常. The line that
+actually mattered was one the earlier pass never read, in the engine's own log:
 
-### The network is not the problem, and that was worth proving
+```
+E MscSpeechLog: cannot get record permission, get invalid audio data.
+        at com.iflytek.cloud.record.PcmRecorder.run(SourceFile:60)
+```
 
-| Check from the phone | Result |
-| --- | --- |
-| `ip route` | `192.168.0.0/24 … src 192.168.0.135` |
-| `ping openapi.xfyun.cn` | 47 ms |
-| `ping dev.voicecloud.cn` | 18 ms |
-| TCP 80 and 443 to `openapi.xfyun.cn` | **OPEN** |
-| `curl http://openapi.xfyun.cn/` | **HTTP 200** |
+`RECORD_AUDIO` was granted (`granted=true` in `dumpsys package`). The engine had opened **its own**
+`AudioRecord`, produced volume callbacks for about 0.9 s, and then read invalid audio and ended the
+session. MSC reports that as a network code.
 
-So 200061 is a misleading message. Three hypotheses were tested and killed:
+### Why three diagnoses missed it
 
-- **Stale `SpeechUtility`** — `getUtility()` is process-wide, so a utility built earlier with a blank
-  APPID would never pick the new one up. Tested on a force-stopped, fresh process: same failure.
-- **Cleartext blocked** by `usesCleartextTraffic="false"` — MSC does its networking in `libmsc.so`,
-  and a native socket never reaches Android's Java-layer policy. No cleartext denial was logged.
-- **DNS / reachability** — disproved by the table above, from the app's own device.
+[ADR-006](DECISIONS/ADR-006-wake-word-aikit-shared-capture.md) chose app-fed capture, and
+[FINDINGS-2026-09-16](SPECS/FINDINGS-2026-09-16-iflytek-msc-sdk.md) said to prove that premise with
+one small experiment **before** writing the integration. The integration was written first. It
+declared `writeFrame`, and:
 
-What is left is the line before the error: the wake **model** did not load. `assets/ivw/wakeword.jet`
-ships in the APK (987,361 bytes, matching the FINDINGS record) and the native libs are present, so
-the file is there — it is the **pairing** that fails. The `.jet` is downloaded bound to one APPID.
+- `IflytekWakeWordDetector` never set `AUDIO_SOURCE`, so the engine kept its own recorder;
+- **nothing in `app/src/main` ever called `writeFrame`** — only tests did.
 
-### Observability fixed in passing
+So the app was configured for neither design: the engine recorded for itself while the app believed
+it was feeding it. Every hypothesis that followed the misleading error code — stale `SpeechUtility`,
+cleartext blocking, DNS, a mismatched `.jet` — was chasing a network symptom.
 
-`WakeuperListener.onError` logged nothing and silently resumed, so an engine failure was
-indistinguishable from nobody speaking, and the only diagnosis lived in the SDK's native output.
-It now logs `wake_session_error code=<n>`. The code is the entire diagnosis here, and it is not a
-secret.
+The `.jet` hypothesis is also disproven directly: the staged resource is named for, and bound to,
+the same APPID the console shows for this app.
+
+### The fix
+
+`AUDIO_SOURCE = "-1"`, and `WakeWordController` owns a `PcmAudioCapture` while the assistant is
+idle, feeding frames to the engine and standing down while a session owns the microphone. That is
+[ADR-006](DECISIONS/ADR-006-wake-word-aikit-shared-capture.md) Option A as written — now measured,
+not assumed.
+
+### What is proven, and what is not
+
+Detection was driven by a synthesized 「你好小诺」 (edge-tts, `zh-CN-YunxiNeural`, 16 kHz mono)
+pushed to the device and fed through the same `writeFrame` path the microphone uses
+(`debug_tool tool=wake arg=inject`). That proves the model, the resource, the credential, the
+session and the handover to the assistant.
+
+It does **not** prove the acoustic path: a person's voice, at distance, over road noise, with the
+threshold at 1450. The live microphone is proven to reach the engine cleanly — 50 s of it, with no
+error — but nobody has yet said the phrase out loud to this build. That is the remaining check, and
+it needs a person.
+

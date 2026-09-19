@@ -255,6 +255,12 @@ class IflytekWakeWordDetector(
         current.setParameter(SpeechConstant.KEEP_ALIVE, KEEP_ALIVE_VALUE)
         current.setParameter(SpeechConstant.IVW_RES_PATH, resPath)
         current.setParameter(SpeechConstant.IVW_NET_MODE, IVW_NET_MODE_OFFLINE)
+        // The app owns the microphone and hands frames to the engine ([ADR-006] shared capture).
+        // Without this the engine opens a second recorder of its own, and on 2026-09-19 that one
+        // died a second in with `cannot get record permission, get invalid audio data` and ended
+        // the session as `error:200061` - a network code for a microphone problem, which cost
+        // three wrong diagnoses. The vendor demo has this line, commented out.
+        current.setParameter(SpeechConstant.AUDIO_SOURCE, AUDIO_SOURCE_APP_FED)
         // IVW_AUDIO_PATH and AUDIO_FORMAT are intentionally unset: the vendor demo
         // writes the last minute of microphone audio to disk. We do not.
         val code = current.startListening(listener)
@@ -275,5 +281,8 @@ class IflytekWakeWordDetector(
         const val IVW_SST_VALUE = "wakeup"
         const val KEEP_ALIVE_VALUE = "1"
         const val IVW_NET_MODE_OFFLINE = "0"
+
+        /** `-1`: no recorder of its own; audio arrives through [writeFrame]. */
+        const val AUDIO_SOURCE_APP_FED = "-1"
     }
 }

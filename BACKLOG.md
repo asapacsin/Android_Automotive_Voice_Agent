@@ -12,7 +12,7 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 | B-006 | **Embedded Amap navigation MVP** — map-first vehicle UI, `AMapNaviView` inside our Activity, assistant overlay above it, `NavigationController`/`DestinationResolver` abstractions, no external Amap app, no overlay permission. Replacement spec (48 sections) | 2026-09-16 | **Done** 2026-09-19 — M2 closed on device evidence: candidates resolve and render, routes draw, the chosen route is the one driven, arrival auto-stops ([ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md)). The key blocker was resolved; the key type is proven by navigation working | [SPEC-005](SPECS/SPEC-005-embedded-amap-mvp.md) |
 | B-005 | Automated speech test harness — TTS-simulated user → real pipeline → ASR-verified output; local failure records; regression corpus; latency distributions | 2026-09-16 | **Superseded** by SPEC-005 (three levels A/B/C, UI screenshot assertions, navigation failure stages). Level A is built and running ([docs/EVALUATION.md](docs/EVALUATION.md)); the speech harness drives the phone. The paid-API constraint on audio levels is acknowledged in that document | [SPEC-004](SPECS/SPEC-004-speech-test-harness.md) → SPEC-005 |
 | B-004 | Amap coexistence by **voice policy** and generic `ActionExecutor` with a mock | 2026-09-16 | **Superseded** by SPEC-005 Phases 5–6 — both open conflicts resolved (§16 keeps Baidu E2E; §19 supplies the Amap-speaking signal). The guidance mute shipped and is guarded by `GuidanceMicGate` + `NavigationMuteFollowsPhaseTest` | [SPEC-003](SPECS/SPEC-003-amap-coexistence-voice-policy.md) → SPEC-005 |
-| B-003 | Wake word to activate the assistant — say 「你好小诺」 instead of pressing a button | 2026-09-15 | **Ready to implement** — [ADR-006](DECISIONS/ADR-006-wake-word-aikit-shared-capture.md); AIKit SDK + 你好小诺 resource received 2026-09-16. Blocked only on `apiKey` + `apiSecret` | [SPEC-001](SPECS/SPEC-001-wake-word.md) |
+| B-003 | Wake word to activate the assistant — say 「你好小诺」 instead of pressing a button | 2026-09-15 | **Working, one human check left** 2026-09-19 — 「你好小诺」 fires and opens a session on `2391ff70`, proven with synthesized speech through the real audio path. Unproven: a person's voice in a cabin | [SPEC-001](SPECS/SPEC-001-wake-word.md) |
 | B-002 | 小诺 must stay quiet during navigation and speak only short confirmations | 2026-09-15 | **Done** 2026-09-16 | [P1](OPEN_PROBLEMS.md) — verified on device |
 | B-001 | 「关闭音乐」 must actually stop the music | 2026-09-15 | **Done** 2026-09-16 | [P2](OPEN_PROBLEMS.md) — verified on device with log evidence |
 
@@ -96,30 +96,30 @@ Same document, §1–13 and §33–34. This is P1 ("quiet during navigation") re
 
 > "you might need to establish things like awake words to awake the system"
 
-Today the driver must press 按住麦克风开始 to start a session. In a car that is the wrong interaction: hands should stay on the wheel. The persona and wake phrase 你好小诺 already exist in the product identity but are not implemented as an actual trigger.
+Pressing 按住麦克风开始 is the wrong interaction in a car: hands should stay on the wheel. Saying
+「你好小诺」 now opens a session on the device, which is what this item asked for.
 
-Specced in [SPEC-001](SPECS/SPEC-001-wake-word.md). It raises genuine architectural conflicts — always-on listening versus the microphone gating added for echo suppression, battery, and Baidu quota — so it needs a decision before any implementation.
+Specced in [SPEC-001](SPECS/SPEC-001-wake-word.md), decided in
+[ADR-006](DECISIONS/ADR-006-wake-word-aikit-shared-capture.md). The architectural conflict it raised
+— always-on listening against the microphone gating added for echo suppression — is resolved the way
+ADR-006 chose: one capture, owned by the app, handed to whichever consumer is active.
 
-BLOCKED_BY: an `assets/ivw/wakeword.jet` downloaded for the APPID now stored on the device — the APPID was entered 2026-09-19 and the MSC engine opens its session, but the wake model does not load and the session ends 200061, with the phone's network proven good (HTTP 200 to the vendor)
-UNBLOCK_WHEN: file_differs app/src/main/assets/ivw/wakeword.jet sha256:256d9a795e3bbe84b23d7ab3ff06be8d0951c4d3429b20dce1560e8884c7e5a2
+BLOCKED_BY: a person saying 「你好小诺」 out loud to this build on `2391ff70` — the acoustic path
+(a human voice at distance, over road noise, against threshold 1450) is the last unproven step and
+no amount of synthesized audio can stand in for it
 
-### Measured on device 2026-09-19, after the APPID was entered
+### Diagnosed and fixed on device 2026-09-19
 
-The credential path works: `credentials_complete=true`, and MSC opens the IVW session
-(`ivw sessionBegin ErrCode:0`). What fails is the **model**, one line before the error:
-`model is null or error:true`, then `wake_session_error code=200061`.
+The APPID and the `.jet` were both correct all along. The engine failed because it had opened a
+**second microphone recorder**: `cannot get record permission, get invalid audio data` from
+`com.iflytek.cloud.record.PcmRecorder`, reported to the app as `code=200061`, a network code.
 
-200061 reads as a network error and is not one: from the same phone, `openapi.xfyun.cn` answers
-ping in 47 ms, TCP 80/443 are open, and an HTTP GET returns 200. Three hypotheses were tested and
-killed — a stale process-wide `SpeechUtility`, cleartext blocking, and DNS — see
-[ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md).
-
-That leaves the pairing. The `.jet` is downloaded **bound to one APPID**, and the staged file came
-with the MSC delivery of 2026-09-16. If the APPID now stored is a different one — which is likely,
-given it came from an AIKit console — the model cannot load and no amount of network will help.
-
-**The smallest thing that unblocks this:** the `.jet` for *this* APPID, downloaded from the iFlytek
-MSC console with 语音唤醒 enabled, dropped at `app/src/main/assets/ivw/wakeword.jet` (git-ignored).
+`IflytekWakeWordDetector` never set `AUDIO_SOURCE`, and nothing in `app/src/main` ever called
+`writeFrame` — so the app was configured for neither the engine-owns-the-mic design nor the app-fed
+one that [ADR-006](DECISIONS/ADR-006-wake-word-aikit-shared-capture.md) chose. Fixed by setting
+`AUDIO_SOURCE=-1` and giving `WakeWordController` an idle capture that stands down while a session
+owns the mic. Full evidence in [ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md); regression-protected by
+`WakeAudioPathTest`.
 
 ### What is actually required, corrected 2026-09-19
 
@@ -130,13 +130,13 @@ records that the delivered SDK was replaced by **MSC v1140** (`com.iflytek.cloud
 
 | Needed | State |
 | --- | --- |
-| iFlytek **APPID** | **the one thing still missing** — entered on device, stored in the Android Keystore |
+| iFlytek **APPID** | **present** — entered on device 2026-09-19, stored in the Android Keystore |
 | APIKey / APISecret | **not used by MSC.** `DeveloperSettingsActivity` says so in a comment, and the UI has no field for them. Storing them would be storing a secret with no consumer |
-| Wake resource `assets/ivw/wakeword.jet` | present, git-ignored, **bound to the APPID it was downloaded for** — a different APPID gives error 10407 |
+| Wake resource `assets/ivw/wakeword.jet` | **present and correctly paired** — it is bound to the same APPID the iFlytek console shows for this app, verified 2026-09-19 |
 | AIKit ability `e867a88f2` | an **AIKit** concept. Irrelevant while MSC is integrated; returning to AIKit would need the SDK back and an ADR-006 revision |
 | Device activation quota / first-run network | MSC activates on first init; the phone has network again as of 2026-09-19 |
 
-So B-003 is blocked on **one value**, not three, and the credential path already exists end to end:
+So nothing is missing from the credential path, which exists end to end:
 `DeveloperSettingsActivity` → `WakeWordSettings` → `AndroidKeystoreCredentialStore`
 (keys `iflytek_app_id`, `iflytek_api_key`, `iflytek_api_secret`).
 

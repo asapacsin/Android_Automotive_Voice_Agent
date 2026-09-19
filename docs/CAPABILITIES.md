@@ -42,7 +42,8 @@ and an honest failure result, add a row above, and remove any keyword that now h
 - **Navigating to a brand near you works; a spoken branch name only matches what is on screen.**
   A name nobody offered returns `NO_MATCH` and the driver is asked to say which one. It is never a
   silent guess.
-- **The wake word is unverified by a human voice.** The engine initialises and the wake *path*
-  (`VoiceSessionGateway.start("wake_word")`) is exercised, but nobody has spoken 「你好小诺」 in a test.
+- **The wake word is unverified by a human voice.** Since 2026-09-19 the engine does detect
+  「你好小诺」 and open a session on device — driven by synthesized speech through the real audio
+  path. Nobody has said it out loud to a build.
 - **Barge-in by voice does not exist.** The microphone is gated while the assistant speaks; the wake
   word is the interrupt. See `ARCHITECTURE.md` and `OPEN_PROBLEMS.md` P20.

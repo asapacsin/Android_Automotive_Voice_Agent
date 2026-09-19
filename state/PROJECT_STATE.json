@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-09-19T18:23:29",
+  "generated_at": "2026-09-19T20:47:42",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "a3a8e3e",
+    "commit": "36461ce",
     "branch": "main",
-    "subject": "B-009: the contract, its shared tests, and a guard that bites",
-    "working_tree_clean": true,
-    "uncommitted_files": 0
+    "subject": "Refresh generated state",
+    "working_tree_clean": false,
+    "uncommitted_files": 12
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-19T18:22:50",
+    "collected_at": "2026-09-19T20:47:01",
     "total": {
-      "tests": 668,
+      "tests": 671,
       "failures": 0,
       "errors": 0,
       "skipped": 0
@@ -25,7 +25,7 @@
         "skipped": 0
       },
       "behavior-test": {
-        "tests": 68,
+        "tests": 71,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 228706346,
-    "built_at": "2026-09-19T18:20:39"
+    "bytes": 228955752,
+    "built_at": "2026-09-19T20:30:32"
   },
   "capabilities": {
     "available": true,
@@ -122,7 +122,7 @@
     "AUTONOMOUS_ACTION_AVAILABLE": "NO",
     "HUMAN_ACTION_REQUIRED": "YES",
     "STOP_REASON": "BLOCKED_ON_EXTERNAL_DEPENDENCY",
-    "BLOCKING_DEPENDENCY": "an `assets/ivw/wakeword.jet` downloaded for the APPID now stored on the device — the APPID was entered 2026-09-19 and the MSC engine opens its session, but the wake model does not load and the session ends 200061, with the phone's network proven good (HTTP 200 to the vendor)",
+    "BLOCKING_DEPENDENCY": "a person saying 「你好小诺」 out loud to this build on `2391ff70` — the acoustic path",
     "NEXT_ACTION": "NONE",
     "actionable_count": 0,
     "blocked_count": 1,
@@ -132,7 +132,7 @@
         "class": "next authorised backlog item",
         "source": "BACKLOG.md",
         "item": "B-003",
-        "blocked_by": "an `assets/ivw/wakeword.jet` downloaded for the APPID now stored on the device — the APPID was entered 2026-09-19 and the MSC engine opens its session, but the wake model does not load and the session ends 200061, with the phone's network proven good (HTTP 200 to the vendor)"
+        "blocked_by": "a person saying 「你好小诺」 out loud to this build on `2391ff70` — the acoustic path"
       }
     ]
   }

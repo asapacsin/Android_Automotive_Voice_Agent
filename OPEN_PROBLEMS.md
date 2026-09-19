@@ -413,9 +413,11 @@ java.lang.SecurityException: Neither user 10263 nor current process has android.
 
 ## P6 — Wake word produces no response
 
-**Status:** **NOT A DEFECT — the feature is unimplemented.** Recorded so it is not re-diagnosed as a bug.
+**Status:** **RESOLVED 2026-09-19.** 「你好小诺」 fires and opens a session on `2391ff70`. What
+follows is the history, kept because the last stretch of it is a lesson about a documented defect
+that shipped. Remaining: a human voice, which is [B-003](BACKLOG.md)'s last row.
 **Reported:** 2026-09-16 by the product owner
-**Severity:** Medium — it is wanted work, but nothing is broken
+**Severity:** Medium — it was wanted work, and for the last three days it was also broken
 
 ### Symptom
 
@@ -458,17 +460,38 @@ Privacy settings verified **by reading the parameter block**, not by grep — a 
 | `AUDIO_FORMAT` | **unset** | Same |
 | `IVW_RES_PATH` | `ivw/wakeword.jet` | Constant, **not** rebuilt from the APPID, so the credential never appears in a filename |
 
-### ⚠️ GAP — the detector will own the microphone, contradicting ADR-006
+### CLOSED 2026-09-19 — the gap this section predicted is exactly what broke, and it is fixed
 
-`writeFrame(pcm, first, last)` is implemented and maps correctly to `writeAudio(pcm, 0, pcm.size)`, but **nothing in the app calls it**. `PcmAudioCapture` was deliberately not modified, so no PCM is fed in, and `startListening(listener)` makes the MSC engine **open the microphone itself**.
+This section said, on 2026-09-16: *"nothing in the app calls it … `startListening(listener)` makes
+the MSC engine **open the microphone itself** … two owners of one `AudioRecord`, a defect class this
+project has already paid for twice."*
 
-That is precisely the mic-ownership conflict [ADR-006](DECISIONS/ADR-006-wake-word-aikit-shared-capture.md) exists to avoid, and it will collide with `PcmAudioCapture` the moment a voice session runs — two owners of one `AudioRecord`, a defect class this project has already paid for twice.
+That is precisely what happened, and it cost three wrong diagnoses, because MSC reports a
+microphone failure as a **network** error:
 
-Not a fault of the migration: the task scoped `PcmAudioCapture` as untouchable, and the fan-out is genuinely separate work. But **P6 is not complete until capture is shared**, and the API premise for doing so is already confirmed (`VoiceWakeuper.writeAudio` exists, same signature as the dictation engine the vendor demo exercises successfully).
+```
+E MscSpeechLog: cannot get record permission, get invalid audio data.
+        at com.iflytek.cloud.record.PcmRecorder.run(SourceFile:60)
+…
+E MscSpeechLog: error:200061
+```
 
-**Also to revisit:** `WakeWordController.bind()` is invoked from `DebugVoiceLog.init` — a workaround for `MainActivity` being off-limits. It functions, but a wake-word owner does not belong in a logging initialiser.
+`RECORD_AUDIO` was granted. The network, the APPID and the `.jet` were all fine, and each was
+investigated in turn because `200061` renders as 网络连接发生异常.
 
-**Still unverified (L5):** MSC initialisation on device, real detection of 你好小诺, entry into the session pipeline, repeated cycles without leaked or duplicated listeners, whether `KEEP_ALIVE=1` truly continues listening, and the false-accept rate.
+**Fixed:** `AUDIO_SOURCE="-1"` on the wake session, and `WakeWordController` owns a
+`PcmAudioCapture` while the assistant is idle, feeding `writeFrame` and standing down while a
+session owns the microphone. 「你好小诺」 now fires and opens a session on `2391ff70`.
+
+**The lesson worth keeping:** this defect was written down, in this file, with the right diagnosis,
+and shipped anyway — because it was correctly scoped out of the migration task and nothing carried
+it forward as work. A paragraph is not a work item. `WakeAudioPathTest` is.
+
+**Also to revisit:** `WakeWordController.bind()` is invoked from `DebugVoiceLog.init` — a workaround
+for `MainActivity` being off-limits. It functions, but a wake-word owner does not belong in a
+logging initialiser.
+
+**Verified on device 2026-09-19:** MSC initialisation, detection of 你好小诺 (synthesized), and entry into the session pipeline. **Still unverified:** a human voice at distance, repeated cycles without leaked or duplicated listeners, whether `KEEP_ALIVE=1` truly continues listening across many wakes, and the false-accept rate with guidance and music playing.
 
 ---
 
