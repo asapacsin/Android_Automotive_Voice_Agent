@@ -25,25 +25,37 @@ them returns. Covered by `DriverTurnTest` (17 cases including cancellation and s
 
 ---
 
-## D-2 — The same policy is stated in the prompt and enforced in code — **HIGH**
+## D-2 — The same policy is stated in the prompt and enforced in code — **RESOLVED 2026-09-19**
 
-**Problem.** Persona rules 2–4 and `FLEX_TOOL_RULE` tell the model: always call the tool, never
-claim success without one, call `control_music` for stop, call `choose_navigation_option` rather
-than answering verbally. Every one of those is *also* enforced deterministically
-(`ActionClaimGuard`, `PhantomTurnGate`, `AndroidToolDispatcher`). The prompt text is now a
-restatement, not a mechanism — but it reads like one, so a future agent may "fix" behaviour by
-editing the prompt and believe the job is done.
+**Was.** Persona rules 2–4 and `FLEX_TOOL_RULE` tell the model things that are *also* enforced
+deterministically, so the prose read like a mechanism. The recorded remedy was to trim the prompt to
+tone once the deterministic owners had device evidence.
 
-**Affected.** `PersonaProfiles.kt`, `ActionClaimGuard`, `PhantomTurnGate`, `BaiduFlexClient`.
+**What the evidence changed.** The premise was partly wrong, and the live runs of 2026-09-19 showed
+it directly. Most of those sentences are the **only** mechanism that can cause a tool call: no code
+can make a model call a function. When the implicit-intent table was missing from the
+`control_climate` declaration, 「有点热」 was answered with a question and the cabin did not change;
+adding it produced the call. Trimming that class of sentence does not remove duplication, it removes
+the only lever.
 
-**Risk.** Policy drifts between the two statements; the prompt grows; the deterministic owner is
-bypassed.
+[I-11](INVARIANTS.md) says a prompt rule may not be the only thing *preventing a wrong action*. It
+does not say the prompt may not be the only thing *prompting a right one*. Those are different, and
+conflating them is what made this entry look larger than it was.
 
+**What was actually wrong, and is fixed.** The persona told the model to say
+「高德地图的导航需要用户自己退出」 — true under the deep-link model (ADR-003), false since
+[ADR-007](../DECISIONS/ADR-007-embedded-amap-navigation-sdk.md) embedded the SDK, and flatly
+contradicted by `FLEX_TOOL_RULE` two paragraphs below. The persona was instructing the model to make
+a false statement about the product to the driver.
 
-**Partly addressed 2026-09-18** (`8d35b8a`): `PersonaProfiles` now carries a header naming the
-deterministic owner of each safety-relevant rule, so a reader knows the prose is advisory. The
-duplication itself remains — the prompt still states rules that code enforces. Remaining work is to
-trim the prompt to tone and phrasing once the deterministic owners have more device evidence.
+Removed, and guarded by `ArchitectureRulesTest.thePersonaDoesNotDescribeAnArchitectureWeNoLongerHave`
+so a replaced architecture cannot survive in the prompt again. Verified live on `2391ff70`:
+「结束导航。」 → `exit_navigation_mode` → 「已取消导航选择。」, with no instruction to the driver to go and
+close another app.
+
+**Not done, deliberately.** The persona is not trimmed further. Every remaining tool sentence is
+load-bearing by the measurement above, and the safety-relevant ones already have deterministic
+owners named in the `FLEX_TOOL_RULE` doc comment.
 
 ---
 

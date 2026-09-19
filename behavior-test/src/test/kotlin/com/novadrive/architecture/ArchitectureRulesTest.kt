@@ -144,6 +144,28 @@ class ArchitectureRulesTest {
         }
     }
 
+    // ---- I-11 / D-2: the persona may shape tone, never state a false capability ----
+
+    @Test
+    fun thePersonaDoesNotDescribeAnArchitectureWeNoLongerHave() {
+        val persona = text("app/src/main/kotlin/com/novadrive/app/PersonaProfiles.kt")
+        // Under the deep-link model (ADR-003) the driver really did have to leave Amap themselves.
+        // ADR-007 embedded the SDK, so exit_navigation_mode ends the drive - and the persona was
+        // still telling the model to say otherwise, while FLEX_TOOL_RULE said the opposite two
+        // paragraphs below. A persona that contradicts itself about what the product can do is
+        // worse than one that says nothing.
+        val stale = listOf(
+            "高德地图的导航需要用户自己退出",
+            "需要用户自己退出",
+            "打开高德地图",
+            "切换到高德",
+        ).filter { persona.contains(it) }
+        assertTrue(stale.isEmpty()) {
+            "INVARIANT I-11 / TECH_DEBT D-2: the persona still describes the external-Amap " +
+                "architecture that ADR-007 replaced: $stale"
+        }
+    }
+
     // ---- maintenance: files do not grow without somebody noticing ----
 
     @Test

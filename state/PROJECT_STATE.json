@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-09-19T09:57:21",
+  "generated_at": "2026-09-19T10:02:25",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "7388f12",
+    "commit": "e88b3dc",
     "branch": "main",
-    "subject": "Refresh generated state",
+    "subject": "The live model now acts on the context, and it took three failures to get there",
     "working_tree_clean": false,
-    "uncommitted_files": 12
+    "uncommitted_files": 4
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-19T09:54:31",
+    "collected_at": "2026-09-19T10:00:10",
     "total": {
-      "tests": 659,
+      "tests": 660,
       "failures": 0,
       "errors": 0,
       "skipped": 0
@@ -25,7 +25,7 @@
         "skipped": 0
       },
       "behavior-test": {
-        "tests": 63,
+        "tests": 64,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -66,7 +66,7 @@
   "apk": {
     "built": true,
     "bytes": 229150700,
-    "built_at": "2026-09-19T09:53:06"
+    "built_at": "2026-09-19T10:00:13"
   },
   "capabilities": {
     "available": true,
@@ -90,7 +90,7 @@
     {
       "id": "D-2",
       "title": "The same policy is stated in the prompt and enforced in code",
-      "priority": "HIGH"
+      "priority": "RESOLVED"
     },
     {
       "id": "D-3",
@@ -119,21 +119,14 @@
     }
   ],
   "work_frontier": {
-    "AUTONOMOUS_ACTION_AVAILABLE": "YES",
-    "HUMAN_ACTION_REQUIRED": "NO",
-    "STOP_REASON": "NOT_STOPPING",
-    "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "D-2: D-2 HIGH — The same policy is stated in the prompt and enforced in code",
-    "actionable_count": 1,
+    "AUTONOMOUS_ACTION_AVAILABLE": "NO",
+    "HUMAN_ACTION_REQUIRED": "YES",
+    "STOP_REASON": "BLOCKED_ON_EXTERNAL_DEPENDENCY",
+    "BLOCKING_DEPENDENCY": "a product decision — whether a second realtime provider is still wanted at all. docs/ARCHITECTURE.md records these paths as deliberately kept, so deleting them is the owner's call, not an agent's.",
+    "NEXT_ACTION": "NONE",
+    "actionable_count": 0,
     "blocked_count": 2,
     "candidates": [
-      {
-        "priority": 8,
-        "class": "recorded technical debt",
-        "source": "docs/TECH_DEBT.md",
-        "item": "D-2",
-        "blocked_by": null
-      },
       {
         "priority": 8,
         "class": "recorded technical debt",

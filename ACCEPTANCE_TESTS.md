@@ -281,3 +281,14 @@ never reaches this path.
 
 A **human voice** in a real cabin. Every line above came from synthetic speech injected into the
 audio path, which proves the software and says nothing about acoustics.
+
+### Navigation by voice, and an honest ending — 2026-09-19, `2391ff70`
+
+| Step | Evidence |
+| --- | --- |
+| 「导航去珠海站。」 | `navigate_to` → `nav_resolve_candidates count=5` → 「找到5个地点，请选择第几个。」 — the list is shown, not read aloud |
+| 「第二个。」 | `choose_navigation_option{index}` → `nav_route_candidates count=3` |
+| 「结束导航。」 | `exit_navigation_mode` → `nav_flow_cancelled` → 「已取消导航选择。」 |
+
+The last line is the point: the persona used to instruct the model to add that the driver must exit
+高德地图 themselves, which stopped being true when ADR-007 embedded the SDK. It no longer says it.
