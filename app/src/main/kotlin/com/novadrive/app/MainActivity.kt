@@ -29,6 +29,10 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         DebugVoiceLog.init(this)
+        // The wake detector's process-lifetime owner. It used to be bound inside
+        // DebugVoiceLog.init, which is a logging initialiser: one guard added there for a
+        // sensible logging reason would have silently taken the wake word with it.
+        com.novadrive.app.wake.WakeWordController.bind(this)
         settingsRepository = BaiduSettingsRepository(this)
         val player = PcmAudioPlayer { code -> mainHandler.post { showError(code, "playback failed") } }
         val actionExecutor = SafeAndroidActionExecutor(this)

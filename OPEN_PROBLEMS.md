@@ -487,9 +487,11 @@ session owns the microphone. 「你好小诺」 now fires and opens a session on
 and shipped anyway — because it was correctly scoped out of the migration task and nothing carried
 it forward as work. A paragraph is not a work item. `WakeAudioPathTest` is.
 
-**Also to revisit:** `WakeWordController.bind()` is invoked from `DebugVoiceLog.init` — a workaround
-for `MainActivity` being off-limits. It functions, but a wake-word owner does not belong in a
-logging initialiser.
+**Also revisited, and fixed 2026-09-19:** `WakeWordController.bind()` was invoked from
+`DebugVoiceLog.init` — a workaround for `MainActivity` being off-limits at the time. It worked, but
+it meant one guard added to a *logging* initialiser, for a sensible logging reason, would have taken
+the wake word with it and left no trace. Now bound from `MainActivity.onCreate`, where the
+process-lifetime owner belongs, and `FeaturePresenceRegressionTest` pins it there instead.
 
 **Verified on device 2026-09-19:** MSC initialisation, detection of 你好小诺 (synthesized), and entry into the session pipeline. **Still unverified:** a human voice at distance, repeated cycles without leaked or duplicated listeners, whether `KEEP_ALIVE=1` truly continues listening across many wakes, and the false-accept rate with guidance and music playing.
 

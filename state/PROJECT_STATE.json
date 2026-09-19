@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-09-19T20:48:09",
+  "generated_at": "2026-09-19T20:56:50",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "a7889c3",
+    "commit": "bcb4fb2",
     "branch": "main",
-    "subject": "The wake word was never blocked on the .jet; it was blocked on the mic",
-    "working_tree_clean": true,
-    "uncommitted_files": 0
+    "subject": "Refresh generated state",
+    "working_tree_clean": false,
+    "uncommitted_files": 4
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-19T20:47:01",
+    "collected_at": "2026-09-19T20:55:29",
     "total": {
       "tests": 671,
       "failures": 0,
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 228955752,
-    "built_at": "2026-09-19T20:30:32"
+    "bytes": 228955764,
+    "built_at": "2026-09-19T20:53:15"
   },
   "capabilities": {
     "available": true,

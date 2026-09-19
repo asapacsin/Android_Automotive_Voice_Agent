@@ -25,14 +25,12 @@ class FeaturePresenceRegressionTest {
 
     @Test
     fun wakeWordIsBoundAtAppStart() {
+        // It used to be bound inside DebugVoiceLog.init, and this test pinned it there. A logging
+        // initialiser is the wrong owner: a guard added to it for a logging reason would have taken
+        // the wake word with it, silently.
         assertContains(
             "app/src/main/kotlin/com/novadrive/app/MainActivity.kt",
-            "DebugVoiceLog.init(this)",
-            "the process-lifetime wake-word owner is bound from here",
-        )
-        assertContains(
-            "app/src/main/kotlin/com/novadrive/app/DebugVoiceLog.kt",
-            "WakeWordController.bind(context)",
+            "WakeWordController.bind(this)",
             "without this nothing ever starts the detector",
         )
     }
