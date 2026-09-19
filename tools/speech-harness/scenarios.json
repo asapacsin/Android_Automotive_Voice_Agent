@@ -208,6 +208,19 @@
         "^tool=control_climate"
       ],
       "fresh": true
+    },
+    {
+      "id": "S17",
+      "utterance": "找一家附近还开着的餐厅，带我去，顺便打电话问一下有没有位子",
+      "say": "multi_step",
+      "fresh": true,
+      "_note": "Multi-step: one sentence, three asks. The navigation part must really run. The call part cannot on this phone (no SIM), and what matters is that it is refused honestly rather than claimed - which is the whole product thesis under load.",
+      "expect": [
+        "^tool=navigate_to"
+      ],
+      "forbid": [
+        "call_placed"
+      ]
     }
   ]
 }

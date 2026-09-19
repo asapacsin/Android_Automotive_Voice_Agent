@@ -14,7 +14,7 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 | B-004 | Amap coexistence by **voice policy** and generic `ActionExecutor` with a mock | 2026-09-16 | **Superseded** by SPEC-005 Phases 5–6 — both open conflicts resolved (§16 keeps Baidu E2E; §19 supplies the Amap-speaking signal). The guidance mute shipped and is guarded by `GuidanceMicGate` + `NavigationMuteFollowsPhaseTest` | [SPEC-003](SPECS/SPEC-003-amap-coexistence-voice-policy.md) → SPEC-005 |
 | B-003 | Wake word to activate the assistant — say 「你好小诺」 instead of pressing a button | 2026-09-15 | **Done** 2026-09-19 — spoken by the product owner, the session opens. Human-verified end to end | [SPEC-001](SPECS/SPEC-001-wake-word.md) |
 | B-010 | **Saved places** — 「回家」「去公司」 must navigate, and an unset slot must be admitted rather than guessed | 2026-09-19 | **Done** 2026-09-19 — device-verified both ways. Driving to arrival is blocked by a physical GPS condition, not by this | [CAPABILITIES](docs/CAPABILITIES.md) |
-| B-011 | **Spoken vague and contextual requests reach the right tool** — the scenario set, through the live model | 2026-09-19 | **Mostly done** 2026-09-20 — 18 scenarios, 17 solid + 「回家」 at 4/5. Remaining: the multi-step row, which needs calling | [SPEC-008](SPECS/SPEC-008-live-scenario-suite.md) |
+| B-011 | **Spoken vague and contextual requests reach the right tool** — the scenario set, through the live model | 2026-09-19 | **Done** 2026-09-20 — 19/19, every §scenario row this hardware can reach; 「回家」 measured at 4/5 | [SPEC-008](SPECS/SPEC-008-live-scenario-suite.md) |
 | B-012 | **Wake-word reliability is uncharacterised** — false accepts over a long drive, and detection at distance with road noise | 2026-09-19 | Open | [SPEC-001](SPECS/SPEC-001-wake-word.md) |
 | B-013 | **`BaiduFlexClientTest` readiness timeout is load-sensitive** — it fails under a full parallel suite and passes alone | 2026-09-19 | **Done** 2026-09-20 — the wait no longer encodes machine speed, and the timeout has its own test | §B-013 below |
 | B-014 | **A false sentence is spoken before it is corrected** — the correction follows; the driver still heard the claim | 2026-09-19 | **Done** 2026-09-20 — held and dropped; measured cost 93–515 ms | [P23](OPEN_PROBLEMS.md) |
@@ -396,8 +396,9 @@ own contacts. Names and numbers are never logged; the log says how many matched.
 **What is not proven, and cannot be here: a call connecting.** The test phone has no SIM. That is a
 physical dependency, not a code one.
 
-**BLOCKED_BY: a SIM in the test phone, or another Android device with an active SIM, before a call
-can be dialled and heard to connect** — and a number the owner is willing to have this app ring.
+BLOCKED_BY: a SIM in the test phone (or another Android device with an active SIM), and a number
+its owner is willing to have this app ring, before a call can be dialled and heard to connect
+
 Until then no call has been placed by this project, and none will be.
 
 **Acceptance for the rest:** a confirmed call reaches a real handset, and cancelling before

@@ -157,7 +157,9 @@ speech:
 phone:
   place_call:
     tool: place_call
-    verified: implemented
+    verified: unit
+    evidence: "PhoneCallToolTest: confirm-before-dial, ambiguity, unknown name, and no-SIM refusal"
+    human_gap: true
     notes: >
       Two turns on purpose: the first resolves the contact and asks, the second dials only with
       confirmed=true. Every other tool here can be undone by saying the opposite; a wrong call has
@@ -216,3 +218,5 @@ human_verification_pending:
     reason: "H1 - needs real cabin acoustics: road noise, passengers, speed"
   - capability: navigation.guidance_voice
     reason: "H1 - loudness and speech quality are a human judgement"
+  - capability: phone.place_call
+    reason: "H2 - needs a SIM and a number its owner agrees this app may ring; no call has been placed"

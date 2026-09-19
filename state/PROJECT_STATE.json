@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-20T02:53:33",
+  "generated_at": "2026-09-20T03:05:07",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "7c9be7b",
+    "commit": "b1d6b22",
     "branch": "main",
-    "subject": "An ambiguous request is asked about, not blamed on the microphone",
+    "subject": "The car can call someone, and admits when it cannot",
     "working_tree_clean": false,
-    "uncommitted_files": 17
+    "uncommitted_files": 5
   },
   "tests": {
     "available": true,
@@ -74,11 +74,12 @@
       "device": 24,
       "unsupported": 7,
       "human": 1,
-      "implemented": 1
+      "unit": 1
     },
     "human_verification_pending": [
       "open_mic_thresholds",
-      "navigation.guidance_voice"
+      "navigation.guidance_voice",
+      "phone.place_call"
     ]
   },
   "open_issues": [],
@@ -124,24 +125,10 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "place_call: place_call is only `implemented`: nothing proves it runs",
-    "actionable_count": 5,
-    "blocked_count": 0,
+    "NEXT_ACTION": "B-012: B-012 — no SPEC yet: compile this demand into scenarios and acceptance criteria",
+    "actionable_count": 2,
+    "blocked_count": 1,
     "candidates": [
-      {
-        "priority": 5,
-        "class": "implemented but not wired into production",
-        "source": "capabilities.yaml",
-        "item": "place_call",
-        "blocked_by": null
-      },
-      {
-        "priority": 11,
-        "class": "next authorised backlog item",
-        "source": "BACKLOG.md",
-        "item": "B-011",
-        "blocked_by": null
-      },
       {
         "priority": 11,
         "class": "next authorised backlog item",
@@ -161,7 +148,7 @@
         "class": "next authorised backlog item",
         "source": "BACKLOG.md",
         "item": "B-018",
-        "blocked_by": null
+        "blocked_by": "a SIM in the test phone (or another Android device with an active SIM), and a number"
       }
     ]
   }
