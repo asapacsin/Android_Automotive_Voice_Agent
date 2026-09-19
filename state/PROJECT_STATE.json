@@ -1,32 +1,32 @@
 {
-  "generated_at": "2026-09-19T09:03:57",
+  "generated_at": "2026-09-19T09:15:07",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "eb1675d",
+    "commit": "6eb7946",
     "branch": "main",
-    "subject": "Extract the tool-call guards, and make the rule that caught it actually run",
+    "subject": "A run ends when the work runs out, not when the sentence does",
     "working_tree_clean": false,
-    "uncommitted_files": 14
+    "uncommitted_files": 3
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-19T09:03:49",
+    "collected_at": "2026-09-19T09:14:54",
     "total": {
-      "tests": 587,
-      "failures": 1,
+      "tests": 648,
+      "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "app": {
-        "tests": 480,
+        "tests": 485,
         "failures": 0,
         "errors": 0,
         "skipped": 0
       },
       "behavior-test": {
-        "tests": 7,
-        "failures": 1,
+        "tests": 63,
+        "failures": 0,
         "errors": 0,
         "skipped": 0
       },
@@ -61,7 +61,7 @@
         "skipped": 0
       }
     },
-    "passing": false
+    "passing": true
   },
   "apk": {
     "built": true,
@@ -101,7 +101,7 @@
     {
       "id": "D-4",
       "title": "Two navigation state machines",
-      "priority": "MEDIUM"
+      "priority": "RESOLVED"
     },
     {
       "id": "D-5",
@@ -124,17 +124,10 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "com.novadrive.architecture.AutonomyPolicyTest: 1 failing in com.novadrive.architecture.AutonomyPolicyTest",
-    "actionable_count": 9,
+    "NEXT_ACTION": "P5: P5 — The embedded map never locates the phone",
+    "actionable_count": 7,
     "blocked_count": 3,
     "candidates": [
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "test report",
-        "item": "com.novadrive.architecture.AutonomyPolicyTest",
-        "blocked_by": null
-      },
       {
         "priority": 7,
         "class": "active milestone row",
@@ -148,13 +141,6 @@
         "source": "docs/TECH_DEBT.md",
         "item": "D-2",
         "blocked_by": "the test phone has no network route to the Baidu provider, so removing a prompt rule cannot be shown to leave live behaviour unchanged — see CURRENT_MILESTONE.md"
-      },
-      {
-        "priority": 8,
-        "class": "recorded technical debt",
-        "source": "docs/TECH_DEBT.md",
-        "item": "D-4",
-        "blocked_by": null
       },
       {
         "priority": 8,

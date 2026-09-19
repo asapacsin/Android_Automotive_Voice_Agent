@@ -68,20 +68,31 @@ new offender fails the build instead of being recorded as debt.
 
 ---
 
-## D-4 — Two navigation state machines — **MEDIUM**
+## D-4 — Two navigation state machines — **RESOLVED 2026-09-19** (risk closed; the duplication is now guarded)
 
-**Problem.** `NavigationState` (legacy: the speech-mute flag, cleared on session stop) and
-`NavigationPhase` / `NavigationStateStore` (current: IDLE → RESOLVING → CHOOSING → NAVIGATING →
-ARRIVED/STOPPED) both describe "are we navigating". The arrival fix updated the new one; the mute
-still follows the old one, so a driver who arrives but keeps the session open stays muted.
+**Was.** `NavigationState.navigating` (the legacy speech-mute flag) and `NavigationPhase` /
+`NavigationStateStore` both answered "are we navigating". The recorded symptom was that arriving
+with the session still open left the driver muted, because the arrival fix updated the phase and
+the mute followed the old flag.
 
-**Affected.** `app/NavigationState.kt`, `app/nav/NavigationPhase.kt`, `NavigationStateStore`,
-`AndroidPlaybackPort`, `AndroidToolDispatcher`.
+**What was actually true on 2026-09-19.** The symptom no longer reproduced:
+`EmbeddedNavigationController.onNavigationEnded` already calls `onFlowEnded()`, which resets the
+mute, for `arrived`, `emulator_end` and every stop. What was missing was *anything that would
+notice if that stopped being true* — the flag has one writer path, and the risk was drift, not
+disagreement.
 
-**Risk.** Two answers to one question; already visible as the known P1 limitation.
+**Resolved by** `NavigationMuteFollowsPhaseTest`, which drives the real `NavigationState` through
+the controller's production callbacks at every terminal transition: guidance starts and mutes;
+`arrived`, `emulator_end` and an explicit stop each unmute; and `replaced` deliberately stays muted,
+because the old guidance ended but a new drive is already running.
 
-**Recommendation.** Make `NavigationState`'s mute read `NavigationPhase`, then delete the duplicate
-flag. Planned as SPEC-005 Phase 4; still open.
+The test was checked against a broken build before being trusted — changing the production call to
+`if (reason == "stopped")` failed exactly the two arrival cases and nothing else.
+
+**What was deliberately not done.** The flag is not collapsed into `NavigationPhase`. It has a
+single writer path and now a guard; replacing it would touch the one behaviour (P1) the product
+owner verified by ear on the device, for no behavioural gain. If a second writer ever appears, that
+is the trigger to finish the job — and the test above is what will surface it.
 
 ---
 
