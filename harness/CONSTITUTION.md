@@ -41,7 +41,20 @@ about how work is done.
     `IMPLEMENTED → PRODUCTION_WIRED → BEHAVIOR_VERIFIED → REGRESSION_PROTECTED → ARTIFACT_VERIFIED →
     CANONICAL_STATE_RECONCILED → COMPLETE`. Never infer `COMPLETE` from the existence of a file.
     Documentation-only changes skip the stages that do not apply to them.
-14. **A blocker names what is missing.** "Needs review" is not a blocker. Anything that leaves the
+14. **Compile the demand before implementing it.** A request in product language is not a task.
+    Derive what it is actually asking for, the scenarios that would show it working, the observable
+    behaviour, the states and invariants it implies, and the acceptance criteria — *then* implement.
+    A demand with no SPEC is eligible work, but the work is compiling it, and
+    `scripts/discover_work.py` says so rather than naming an implementation.
+    *Procedure:* [../skills/continue.md](../skills/continue.md) §Compiling a demand.
+15. **A blocker narrows the frontier; it does not end the run.** A blocked item makes ineligible
+    itself and whatever transitively depends on it — nothing else. Independent work stays
+    executable, and the run stops only when no unblocked authorised item remains. A blocked item is
+    not retried until something changes: the missing input arrives, a dependency moves, or new
+    evidence appears. Declare it with `BLOCKED_BY:`, its dependants with `DEPENDS_ON:`, and where
+    the world can answer the question by itself, `UNBLOCK_WHEN:` — which the next refresh checks,
+    so nobody has to remember to edit a document.
+16. **A blocker names what is missing.** "Needs review" is not a blocker. Anything that leaves the
     autonomous frontier carries a `BLOCKED_BY:` line in its canonical document naming the concrete
     thing a person must supply — a credential, a device, an approval, a product decision. Ordinary
     engineering choices are not blockers and are made by the agent.

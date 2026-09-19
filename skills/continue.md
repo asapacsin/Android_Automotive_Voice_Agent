@@ -69,6 +69,57 @@ A behaviour change is not finished because it compiles. Ask which stage it has a
 
 Documentation-only work skips the stages that cannot apply. Nothing skips the last one.
 
+## Compiling a demand
+
+A request in product language — "make cancellation work properly", "support wake word", "make the
+provider layer generic" — is not a task. Going straight from that sentence to editing code is how a
+repository ends up with a feature nobody can prove. Derive these first, and record them where the
+repository already keeps them:
+
+| Derive | Where it goes |
+| --- | --- |
+| what the request literally said, and what outcome it is actually after | the SPEC's Goal |
+| the scenarios that would show it working — initial state, action, expected transition, tool behaviour, what the driver hears, failure, cancellation | the SPEC's Behaviour |
+| the **observable** evidence of success — a state transition, a tool called exactly once, audio muted at the right phase, a callback firing on real hardware | the SPEC's Acceptance criteria |
+| the states, transitions and invariants it implies | [../docs/INVARIANTS.md](../docs/INVARIANTS.md), or the SPEC |
+| what is deliberately out of scope | the SPEC's Non-goals |
+| conflicts with existing decisions | an ADR, before building |
+
+"Should work correctly" and "implementation complete" are not acceptance criteria. If a behaviour
+can be written as a scenario, write the scenario.
+
+A backlog demand with no SPEC is **eligible work whose next action is to compile it**, and
+`discover_work.py` names it that way rather than naming an implementation. That is the difference
+between a plan and a guess.
+
+Then, in order, and not out of it:
+
+```
+SPEC -> TEST -> IMPLEMENTATION -> VERIFICATION -> canonical state
+```
+
+A test existing is not the feature existing. A green build is not behaviour. The stages in
+[CONSTITUTION.md](../harness/CONSTITUTION.md) rule 13 are executable — `completion_stage()` in
+`discover_work.py` — so "is this done?" has an answer that does not depend on who is asked.
+
+## Declaring a blocker
+
+Three one-line markers, read from the item's own section in its canonical document:
+
+```
+BLOCKED_BY: the concrete thing a person must supply
+DEPENDS_ON: B-003, D-2
+UNBLOCK_WHEN: file_differs app/src/main/assets/ivw/wakeword.jet sha256:<digest recorded when blocked>
+```
+
+`BLOCKED_BY` takes the item off the frontier. `DEPENDS_ON` takes its dependants off too, and
+**nothing else** — one external dependency narrows the frontier, it does not end the run.
+`UNBLOCK_WHEN` is checked on every refresh, so when the missing thing arrives the item and its
+dependants reopen without anyone remembering to edit a document.
+
+A blocked item is not reselected while it stays blocked. Retrying it needs a reason: the input
+arrived, a dependency moved, new evidence appeared, or you were asked to.
+
 ## What counts as a candidate
 
 Only work the repository already authorises:

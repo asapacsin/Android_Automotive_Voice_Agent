@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-09-19T14:06:35",
+  "generated_at": "2026-09-19T18:01:18",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "a5b25d1",
+    "commit": "7be2246",
     "branch": "main",
-    "subject": "B-003 was blocked on the wrong thing",
+    "subject": "The APPID is in; the wake model is not",
     "working_tree_clean": false,
-    "uncommitted_files": 4
+    "uncommitted_files": 6
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-19T14:05:13",
+    "collected_at": "2026-09-19T18:00:55",
     "total": {
-      "tests": 638,
+      "tests": 640,
       "failures": 0,
       "errors": 0,
       "skipped": 0
@@ -25,7 +25,7 @@
         "skipped": 0
       },
       "behavior-test": {
-        "tests": 63,
+        "tests": 65,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -119,12 +119,12 @@
     }
   ],
   "work_frontier": {
-    "AUTONOMOUS_ACTION_AVAILABLE": "NO",
-    "HUMAN_ACTION_REQUIRED": "YES",
-    "STOP_REASON": "BLOCKED_ON_EXTERNAL_DEPENDENCY",
-    "BLOCKING_DEPENDENCY": "an `assets/ivw/wakeword.jet` downloaded for the APPID now stored on the device — the APPID was entered 2026-09-19 and the MSC engine opens its session, but the wake model does not load and the session ends 200061, with the phone's network proven good (HTTP 200 to the vendor)",
-    "NEXT_ACTION": "NONE",
-    "actionable_count": 0,
+    "AUTONOMOUS_ACTION_AVAILABLE": "YES",
+    "HUMAN_ACTION_REQUIRED": "NO",
+    "STOP_REASON": "NOT_STOPPING",
+    "BLOCKING_DEPENDENCY": "none",
+    "NEXT_ACTION": "B-009: B-009 — **Provider-neutral realtime layer** — a second realtime provider must be addable",
+    "actionable_count": 1,
     "blocked_count": 1,
     "candidates": [
       {
@@ -133,6 +133,13 @@
         "source": "BACKLOG.md",
         "item": "B-003",
         "blocked_by": "an `assets/ivw/wakeword.jet` downloaded for the APPID now stored on the device — the APPID was entered 2026-09-19 and the MSC engine opens its session, but the wake model does not load and the session ends 200061, with the phone's network proven good (HTTP 200 to the vendor)"
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-009",
+        "blocked_by": null
       }
     ]
   }

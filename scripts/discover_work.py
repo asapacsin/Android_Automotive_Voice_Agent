@@ -22,6 +22,7 @@ blocker; the line must name what is missing.
 
 import argparse
 import glob
+import hashlib
 import json
 import os
 import re
@@ -33,6 +34,8 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUILD_DIR = r"C:\Users\Administrator\tools\nova-drive-build"
 
 BLOCKED_BY = re.compile(r"^\s*BLOCKED_BY:\s*(.+?)\s*$", re.M)
+DEPENDS_ON = re.compile(r"^\s*DEPENDS_ON:\s*(.+?)\s*$", re.M)
+UNBLOCK_WHEN = re.compile(r"^\s*UNBLOCK_WHEN:\s*(.+?)\s*$", re.M)
 
 # The priority ladder. Lower runs first. Correctness outranks tidiness, and nothing cosmetic can
 # outrank something that is broken.
@@ -77,7 +80,8 @@ def git(*args):
         return None
 
 
-def candidate(priority, source, item, summary, blocked_by=None):
+def candidate(priority, source, item, summary, blocked_by=None,
+              depends_on=(), unblock_when=None, needs_compilation=False):
     return {
         "priority": priority,
         "class": LADDER[priority],
@@ -85,6 +89,14 @@ def candidate(priority, source, item, summary, blocked_by=None):
         "item": item,
         "summary": summary.strip()[:200],
         "blocked_by": blocked_by,
+        # Items this one cannot proceed without. A blocked dependency blocks this transitively;
+        # everything else stays eligible, which is the whole point of a frontier.
+        "depends_on": list(depends_on),
+        # A machine-checkable condition that lifts the block without anyone editing a document.
+        "unblock_when": unblock_when,
+        # A demand nobody has turned into scenarios and acceptance criteria yet. Eligible work,
+        # but the work is compiling it - not implementing whatever it seems to ask for.
+        "needs_compilation": needs_compilation,
     }
 
 
@@ -107,6 +119,74 @@ def section_blocker(text, start, end):
     """The BLOCKED_BY line governing a document section, or None."""
     match = BLOCKED_BY.search(text[start:end])
     return match.group(1) if match else None
+
+
+def section_depends_on(text, start, end):
+    """`DEPENDS_ON: B-003, D-2` - ids this item cannot proceed without."""
+    match = DEPENDS_ON.search(text[start:end])
+    if not match:
+        return []
+    return [part.strip() for part in re.split(r"[,\s]+", match.group(1)) if part.strip()]
+
+
+def section_unblock_when(text, start, end):
+    """`UNBLOCK_WHEN: file_differs <path> sha256:<digest>` - checked on every refresh."""
+    match = UNBLOCK_WHEN.search(text[start:end])
+    return match.group(1).strip() if match else None
+
+
+def unblock_condition_met(condition):
+    """Has the world changed in the way the document said would lift this block?
+
+    Only one form is supported, deliberately: a file whose content differs from the digest
+    recorded when the block was raised. That covers "the resource we were given is the wrong
+    one; the block lifts when it is replaced" without anyone remembering to edit a document,
+    and without the repository ever holding the file itself.
+    """
+    if not condition:
+        return False
+    parts = condition.split()
+    if len(parts) != 3 or parts[0] != "file_differs":
+        return False
+    path, expected = parts[1], parts[2]
+    full = os.path.join(REPO, path)
+    if not os.path.isfile(full):
+        return False
+    digest = "sha256:" + hashlib.sha256(open(full, "rb").read()).hexdigest()
+    return digest != expected
+
+
+def propagate_blocks(candidates):
+    """A blocked item blocks what transitively depends on it, and nothing else.
+
+    This is the rule that keeps one external dependency from stopping the project: it narrows
+    the frontier to everything that does not need the missing thing.
+    """
+    by_item = {c["item"]: c for c in candidates}
+    changed = True
+    while changed:
+        changed = False
+        for c in candidates:
+            if c["blocked_by"]:
+                continue
+            for needed in c["depends_on"]:
+                upstream = by_item.get(needed)
+                if upstream and upstream["blocked_by"]:
+                    c["blocked_by"] = "depends on %s, which is blocked by: %s" % (
+                        needed, upstream["blocked_by"],
+                    )
+                    changed = True
+                    break
+    return candidates
+
+
+def lift_met_blocks(candidates):
+    """Blocks whose recorded condition has come true are lifted before anything is ranked."""
+    for c in candidates:
+        if c["blocked_by"] and unblock_condition_met(c["unblock_when"]):
+            c["unblocked_by_condition"] = c["blocked_by"]
+            c["blocked_by"] = None
+    return candidates
 
 
 # ---- sources -------------------------------------------------------------------------------
@@ -202,7 +282,9 @@ def open_debt():
         end = headings[i + 1].start() if i + 1 < len(headings) else len(text)
         out.append(candidate(P_DEBT, "docs/TECH_DEBT.md", item,
                              "%s %s — %s" % (item, priority, title),
-                             section_blocker(text, match.start(), end)))
+                             section_blocker(text, match.start(), end),
+                             depends_on=section_depends_on(text, match.start(), end),
+                             unblock_when=section_unblock_when(text, match.start(), end)))
     return out
 
 
@@ -218,8 +300,20 @@ def open_problems():
         if is_terminal(status.group(1) if status else ""):
             continue
         out.append(candidate(P_UNFINISHED, "OPEN_PROBLEMS.md", item, "%s — %s" % (item, title),
-                             section_blocker(text, match.start(), end)))
+                             section_blocker(text, match.start(), end),
+                             depends_on=section_depends_on(text, match.start(), end),
+                             unblock_when=section_unblock_when(text, match.start(), end)))
     return out
+
+
+def item_section_bounds(text, item):
+    """Where `## <item> - ...` starts and ends, so every marker is read from one place."""
+    start = re.search(r"^## %s(?![\w-])" % re.escape(item), text, re.M)
+    if not start:
+        return None
+    following = re.search(r"^## ", text[start.end():], re.M)
+    end = start.end() + (following.start() if following else len(text))
+    return start.start(), end
 
 
 def item_section_blocker(text, item):
@@ -239,9 +333,26 @@ def open_backlog():
         item, title, _, status = match.groups()
         if is_terminal(status):
             continue
-        # A blocker is declared in the item's own section further down, not beside the table row.
-        blocker = section_blocker(text, match.start(), match.end() + 800) or item_section_blocker(text, item)
-        out.append(candidate(P_BACKLOG, "BACKLOG.md", item, "%s — %s" % (item, title[:80]), blocker))
+        # Markers live in the item's own section further down, not beside the table row.
+        bounds = item_section_bounds(text, item)
+        blocker = section_blocker(text, match.start(), match.end() + 800)
+        depends, unblock = [], None
+        if bounds:
+            start, end = bounds
+            blocker = blocker or section_blocker(text, start, end)
+            depends = section_depends_on(text, start, end)
+            unblock = section_unblock_when(text, start, end)
+        # A demand with no SPEC has not been turned into scenarios and acceptance criteria. It is
+        # eligible work, but the work is compiling it - not guessing what it asks for and editing
+        # code (skills/continue.md, "Compile the demand first").
+        section = text[bounds[0]:bounds[1]] if bounds else ""
+        compiled = "SPECS/SPEC-" in section or "SPECS/SPEC-" in match.group(0)
+        summary = "%s — %s" % (item, title[:80])
+        if not compiled:
+            summary = "%s — no SPEC yet: compile this demand into scenarios and acceptance criteria" % item
+        out.append(candidate(P_BACKLOG, "BACKLOG.md", item, summary, blocker,
+                             depends_on=depends, unblock_when=unblock,
+                             needs_compilation=not compiled))
     return out
 
 
@@ -287,6 +398,10 @@ def discover():
         except Exception as exc:  # a broken reader must not hide the rest of the frontier
             found.append(candidate(P_HARNESS, "discover_work.py", source.__name__,
                                    "this reader raised %s: %r" % (type(exc).__name__, exc)))
+    # Order matters: a block whose condition has come true is lifted before dependants are
+    # computed, so the whole chain reopens in one refresh rather than one refresh per link.
+    found = lift_met_blocks(found)
+    found = propagate_blocks(found)
     found.sort(key=lambda c: (c["priority"], c["item"]))
     return found
 
@@ -367,6 +482,34 @@ def contradictions(stop):
     return problems
 
 
+# ---- completion lifecycle ------------------------------------------------------------------
+
+# CONSTITUTION rule 13. Ordered: each stage is only reachable once the previous one holds.
+STAGES = (
+    ("IMPLEMENTED", "implemented"),
+    ("PRODUCTION_WIRED", "wired"),
+    ("BEHAVIOR_VERIFIED", "verified"),
+    ("REGRESSION_PROTECTED", "protected"),
+    ("ARTIFACT_VERIFIED", "packaged"),
+    ("CANONICAL_STATE_RECONCILED", "reconciled"),
+)
+
+
+def completion_stage(evidence):
+    """How far a work item has actually got, from the evidence that exists for it.
+
+    `evidence` is a dict of the flags in [STAGES]. The point is that COMPLETE is not reachable by
+    writing a test, or by compiling, or by a document saying so: every earlier stage has to hold
+    first, and the stage names say which evidence is missing.
+    """
+    reached = "NOT_STARTED"
+    for name, key in STAGES:
+        if not evidence.get(key):
+            return reached
+        reached = name
+    return "COMPLETE"
+
+
 # ---- scenarios -----------------------------------------------------------------------------
 
 
@@ -431,6 +574,84 @@ def selftest():
     ranked = sorted([spec_done, broken, wiring], key=lambda c: c["priority"])
     check("broken build outranks everything", ranked[0]["item"] == "app-debug.apk")
     check("backlog ranks last", ranked[-1]["item"] == "B-009")
+
+    print("A  vague intent does not become an implementation task")
+    vague = candidate(P_BACKLOG, "BACKLOG.md", "B-099",
+                      "B-099 — no SPEC yet: compile this demand into scenarios and acceptance criteria",
+                      needs_compilation=True)
+    a1 = decide([vague])
+    check("A1 the demand is eligible work", a1["AUTONOMOUS_ACTION_AVAILABLE"] == "YES")
+    check("A1 but the work is compiling it, not implementing it",
+          "compile this demand" in a1["NEXT_ACTION"], a1["NEXT_ACTION"])
+    check("A2 a compiled demand names the implementation instead",
+          "compile this demand" not in decide([
+              candidate(P_BACKLOG, "BACKLOG.md", "B-098", "B-098 — specced work")])["NEXT_ACTION"])
+    check("A3 a test existing is not completion",
+          completion_stage({"implemented": True, "protected": True}) == "IMPLEMENTED",
+          completion_stage({"implemented": True, "protected": True}))
+    check("A4 implementation plus a green build is not completion",
+          completion_stage({"implemented": True, "wired": True, "packaged": True})
+          == "PRODUCTION_WIRED")
+    check("A4 verification is what unlocks the next stage",
+          completion_stage({"implemented": True, "wired": True, "verified": True})
+          == "BEHAVIOR_VERIFIED")
+    check("A5 only the full chain is COMPLETE",
+          completion_stage(dict.fromkeys(
+              [k for _, k in STAGES], True)) == "COMPLETE")
+
+    print("B  a blocked task narrows the frontier, it does not end the run")
+    blocked = candidate(P_MILESTONE, "CURRENT_MILESTONE.md", "A-1", "needs a file only a person has",
+                        blocked_by="an APPID-matched resource that is not on this machine")
+    independent = candidate(P_DEBT, "docs/TECH_DEBT.md", "B-1", "unrelated authorised work")
+    dependent = candidate(P_DEBT, "docs/TECH_DEBT.md", "C-1", "needs A-1 first", depends_on=["A-1"])
+
+    b1 = decide(propagate_blocks([dict(blocked), dict(independent)]))
+    check("B1 independent work stays eligible", b1["AUTONOMOUS_ACTION_AVAILABLE"] == "YES")
+    check("B1 and it is what gets picked", "B-1" in b1["NEXT_ACTION"], b1["NEXT_ACTION"])
+
+    chain = propagate_blocks([dict(blocked), dict(dependent)])
+    b2 = decide(chain)
+    check("B2 a dependant of a blocked task is not executable",
+          b2["AUTONOMOUS_ACTION_AVAILABLE"] == "NO", b2["NEXT_ACTION"])
+    check("B2 and it says which dependency blocked it",
+          any("depends on A-1" in (c["blocked_by"] or "") for c in chain))
+
+    both = propagate_blocks([dict(blocked), dict(dependent), dict(independent)])
+    b3 = decide(both)
+    check("B3 one blocked chain does not disable unrelated work",
+          b3["AUTONOMOUS_ACTION_AVAILABLE"] == "YES" and "B-1" in b3["NEXT_ACTION"])
+    check("B3 a blocked task is never the next action",
+          "A-1" not in b3["NEXT_ACTION"] and "C-1" not in b3["NEXT_ACTION"])
+
+    b5 = decide(propagate_blocks([dict(blocked), dict(dependent)]))
+    check("B5 everything blocked is a legitimate global stop",
+          b5["STOP_REASON"] == "BLOCKED_ON_EXTERNAL_DEPENDENCY")
+    check("B5 and the report names a concrete missing input",
+          not is_vague(b5["BLOCKING_DEPENDENCY"]), b5["BLOCKING_DEPENDENCY"])
+
+    print("B4 external input arriving reopens the chain")
+    import tempfile
+    handle, path = tempfile.mkstemp(dir=REPO, suffix=".selftest")
+    try:
+        os.write(handle, b"the resource as first delivered")
+        os.close(handle)
+        rel = os.path.relpath(path, REPO).replace("\\", "/")
+        stale = "sha256:" + hashlib.sha256(b"the resource as first delivered").hexdigest()
+        waiting = candidate(P_MILESTONE, "m", "A-2", "waiting on a replacement file",
+                            blocked_by="the delivered resource is the wrong one",
+                            unblock_when="file_differs %s %s" % (rel, stale))
+        still = lift_met_blocks([dict(waiting)])
+        check("B4 unchanged file keeps the block", still[0]["blocked_by"] is not None)
+        open(path, "wb").write(b"the replacement the owner supplied")
+        lifted = lift_met_blocks([dict(waiting)])
+        check("B4 replacing the file lifts it on the next refresh", lifted[0]["blocked_by"] is None)
+        chained = propagate_blocks(lift_met_blocks([
+            dict(waiting), candidate(P_DEBT, "d", "C-2", "needs A-2", depends_on=["A-2"])]))
+        check("B4 and its dependants reopen in the same refresh",
+              all(c["blocked_by"] is None for c in chained))
+    finally:
+        if os.path.exists(path):
+            os.remove(path)
 
     print("   contradictions are caught")
     check("YES with no next action", contradictions(

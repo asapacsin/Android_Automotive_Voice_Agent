@@ -6,6 +6,7 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 
 | # | Demand | Raised | Status | Spec |
 | --- | --- | --- | --- | --- |
+| B-009 | **Provider-neutral realtime layer** — a second realtime provider must be addable by writing one adapter, without provider-name branches or vendor protocol vocabulary reaching voice/session/tool logic | 2026-09-19 | **Specced** — the invariant breach is fixed (`ResponseOutcome`); the contract, its shared tests and the architecture guard remain | [SPEC-007](SPECS/SPEC-007-provider-neutral-realtime.md) |
 | B-008 | **Complex / contextual voice commands** — the driver speaks naturally (「有点热」「再凉一点」「这个太远了，换个近一点的」) instead of like an API, and the assistant resolves it against what it already did — **bounded by the tools that exist**, never a spoken acknowledgement in place of an execution | 2026-09-19 | **Done** 2026-09-19 — context record, resolver, staleness, ambiguity, clarification and three execution guards, all device-verified, and the live model verified acting on them (CVC-04/09/27 + the named-song refusal). Multi-intent decomposition is deliberately the model's (SPEC-006 §On multi-intent). A human voice in a cabin remains a standing gap |
 | B-007 | **Assistant-on-map UI design** — avatar + state indicator + speech bubble upper-left, temporary action-feedback card, compact media/climate bottom bar, and a bottom-right **front-facing camera** button that must not end the assistant session | 2026-09-16 | **Done** 2026-09-19 as a *decision* — the layout is authoritative and folded into [SPEC-005-P1-design](SPECS/SPEC-005-P1-design.md) D2. Of its four open questions, **inert bottom-bar controls is closed**: the bar now executes through `ScreenControls`, the same route a spoken command takes (D-3). The rest are tracked where they belong — session entry point with B-003, `openApp(maps)` and camera-vs-§42 in that design | [DEMAND](SPECS/DEMAND-2026-09-16-ui-design.md) → [SPEC-005-P1-design](SPECS/SPEC-005-P1-design.md) |
 | B-006 | **Embedded Amap navigation MVP** — map-first vehicle UI, `AMapNaviView` inside our Activity, assistant overlay above it, `NavigationController`/`DestinationResolver` abstractions, no external Amap app, no overlay permission. Replacement spec (48 sections) | 2026-09-16 | **Done** 2026-09-19 — M2 closed on device evidence: candidates resolve and render, routes draw, the chosen route is the one driven, arrival auto-stops ([ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md)). The key blocker was resolved; the key type is proven by navigation working | [SPEC-005](SPECS/SPEC-005-embedded-amap-mvp.md) |
@@ -16,6 +17,29 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 | B-001 | 「关闭音乐」 must actually stop the music | 2026-09-15 | **Done** 2026-09-16 | [P2](OPEN_PROBLEMS.md) — verified on device with log evidence |
 
 ---
+
+## B-009 — Provider-neutral realtime layer
+
+> "Application-level voice/session/tool/business logic must depend on a provider-neutral realtime
+> voice contract, not on Baidu/iFlytek/Qwen/GPT protocol details."
+
+Raised 2026-09-19. The abstraction largely existed already — `RealtimeVoiceProvider`,
+`ProviderCapabilities`, `DomainVoiceEvent`, `ErrorClass` — and provider selection was already at the
+composition boundary. Measurement found one real breach: `ActionClaimGuard` and
+`ConversationResetPolicy` read Baidu's own `output[].type` strings. **Fixed** — they take a neutral
+`ResponseOutcome` and the adapter translates at its boundary.
+
+What remains, and is independent of [B-003](#b-003--wake-word):
+
+- [ADR-009](DECISIONS/ADR-009-provider-neutral-realtime-contract.md) — the dependency direction;
+- [SPEC-007](SPECS/SPEC-007-provider-neutral-realtime.md) — the contract, the capability model, the
+  normalized events and errors, and what a new adapter must satisfy;
+- a **shared provider-contract test suite** every adapter runs against;
+- an **architecture guard** that fails when vendor vocabulary appears in core;
+- harness rules for future provider integrations.
+
+Deliberately **not** in scope: introducing a second concrete provider. [ADR-008](DECISIONS/ADR-008-single-active-realtime-provider.md)
+settled that dormant vendor implementations are a liability, and nothing here revives one.
 
 ## B-008 — Complex / contextual voice commands
 
@@ -77,6 +101,7 @@ Today the driver must press 按住麦克风开始 to start a session. In a car t
 Specced in [SPEC-001](SPECS/SPEC-001-wake-word.md). It raises genuine architectural conflicts — always-on listening versus the microphone gating added for echo suppression, battery, and Baidu quota — so it needs a decision before any implementation.
 
 BLOCKED_BY: an `assets/ivw/wakeword.jet` downloaded for the APPID now stored on the device — the APPID was entered 2026-09-19 and the MSC engine opens its session, but the wake model does not load and the session ends 200061, with the phone's network proven good (HTTP 200 to the vendor)
+UNBLOCK_WHEN: file_differs app/src/main/assets/ivw/wakeword.jet sha256:256d9a795e3bbe84b23d7ab3ff06be8d0951c4d3429b20dce1560e8884c7e5a2
 
 ### Measured on device 2026-09-19, after the APPID was entered
 

@@ -132,6 +132,43 @@ class AutonomyPolicyTest {
         assertTrue(missing.isEmpty()) { "SPECs with no Status line: $missing" }
     }
 
+    @Test
+    fun theWorkflowRulesAreStatedAndHaveAProcedure() {
+        val constitution = text("harness/CONSTITUTION.md")
+        // Rule 14: a demand is compiled before it is implemented. Rule 15: a blocker narrows the
+        // frontier. Both decay silently if the procedure that implements them is removed.
+        assertTrue(constitution.contains("Compile the demand before implementing it")) {
+            "CONSTITUTION must carry the demand-compilation rule"
+        }
+        assertTrue(constitution.contains("narrows the frontier")) {
+            "CONSTITUTION must say that a blocker narrows the frontier rather than ending the run"
+        }
+        val procedure = text("skills/continue.md")
+        listOf("Compiling a demand", "Declaring a blocker", "BLOCKED_BY", "DEPENDS_ON", "UNBLOCK_WHEN")
+            .forEach { assertTrue(procedure.contains(it)) { "skills/continue.md must define $it" } }
+    }
+
+    @Test
+    fun aBlockedItemNeverBecomesTheNextAction() {
+        // The failure this prevents: a run reporting a blocked task as what it is about to do, and
+        // then spinning on it. Parsed with plain string work rather than a regex, because the
+        // escaping is where this kind of guard usually breaks.
+        val frontier = text("state/PROJECT_STATE.json").substringAfter("\"work_frontier\"", "")
+        val next = stopState().getValue("NEXT_ACTION")
+        if (next == "NONE") return
+
+        val blockedItems = frontier.split("{")
+            .filter { it.contains("\"item\"") && it.contains("\"blocked_by\"") }
+            .filterNot { it.substringAfter("\"blocked_by\"").trimStart().startsWith(": null") }
+            .map { it.substringAfter("\"item\"").substringAfter('"').substringBefore('"') }
+
+        blockedItems.forEach { blocked ->
+            assertFalse(next.startsWith("$blocked:")) {
+                "NEXT_ACTION names $blocked, which the same frontier reports as blocked"
+            }
+        }
+    }
+
     private companion object {
         const val IDENTIFIER = "AUTONOMOUS_WORK_EXHAUSTION_REQUIRED"
 
