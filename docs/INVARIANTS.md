@@ -65,6 +65,15 @@ Diagnostics log durations, distances, counts and decisions — never position or
 `map_recenter_check` logs `offsetMeters` and `PHANTOM_GATE_DROP` logs `durationMs`.
 *Enforced by:* review, plus `ArchitectureRulesTest.locationIsNotLogged` for the obvious shapes.
 
+**I-13. Application logic depends on the realtime contract, never on a vendor's protocol.**
+Core and per-turn policy consume `DomainVoiceEvent`, `ResponseOutcome`, `ProviderCapabilities` and
+`ErrorClass`. A vendor event name, field name or JSON object reaching them is a defect — it was one:
+`ActionClaimGuard` and `ConversationResetPolicy` decided behaviour from Baidu's `output[].type`
+strings until 2026-09-19. Differences between providers are capabilities, not provider names.
+*Owner:* `RealtimeVoiceProvider` + the adapter that implements it.
+*Enforced by:* `ProviderBoundaryTest`, `RealtimeProviderContractTest`,
+[ADR-009](../DECISIONS/ADR-009-provider-neutral-realtime-contract.md).
+
 **I-9. Vendor types stay inside their adapter.**
 `com.amap` may be imported by exactly one file. Baidu JSON never escapes the Android voice adapters.
 The `ingress` core is provider-neutral.
