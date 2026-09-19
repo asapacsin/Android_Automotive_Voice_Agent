@@ -19,7 +19,7 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 | B-013 | **`BaiduFlexClientTest` readiness timeout is load-sensitive** — it fails under a full parallel suite and passes alone | 2026-09-19 | Open | §B-013 below |
 | B-014 | **A false sentence is spoken before it is corrected** — the correction follows; the driver still heard the claim | 2026-09-19 | Open | [P23](OPEN_PROBLEMS.md) |
 | B-015 | **Cantonese is not understood** — 「返屋企啦」 transcribes as 「发诺克拉」; the product owner speaks Cantonese | 2026-09-19 | Open | §B-015 below |
-| B-016 | **A rejected session still looked like it was listening** — `state=ERROR` with `listening=ACTIVE` and zero frames, for 30 s | 2026-09-19 | Open | §B-016 below |
+| B-016 | **A rejected session still looked like it was listening** — `state=ERROR` with `listening=ACTIVE` and zero frames, for 30 s | 2026-09-19 | **Done** 2026-09-19 — device-verified by reproducing the rejection | §B-016 below |
 | B-002 | 小诺 must stay quiet during navigation and speak only short confirmations | 2026-09-15 | **Done** 2026-09-16 | [P1](OPEN_PROBLEMS.md) — verified on device |
 | B-001 | 「关闭音乐」 must actually stop the music | 2026-09-15 | **Done** 2026-09-16 | [P2](OPEN_PROBLEMS.md) — verified on device with log evidence |
 
@@ -294,6 +294,17 @@ The session was dead and the listening lifecycle did not know. A driver watching
 see the assistant listening while every word fell on the floor — and the failure that produced it
 was a *configuration* error, the kind that survives a reconnect, so waiting does not help.
 
-**Acceptance:** a terminal session error moves the listening state out of ACTIVE, and the driver is
-told. **Verification:** reproduce by rejecting the config, assert the lifecycle state in the log.
+**CLOSED 2026-09-19.** `onConnectionLost` is for a session that is coming back - staying ACTIVE
+through a reconnect is right, or every network wobble would cost the driver their turn. A terminal
+failure now takes the separate `onSessionFailed` path to DEEP_IDLE and closes the session.
+
+Proven by reproducing the exact failure on `2391ff70`, with the same rejected configuration:
+
+| | |
+| --- | --- |
+| Before | `state=ERROR` → 30 s of `listening=ACTIVE captureSuspended=false captured=0` |
+| After | `state=ERROR` → `state=DISCONNECTED` → `listening=DEEP_IDLE`, immediately |
+
+Baseline re-verified after reverting the injected fault: 「关闭空调。」 → `control_climate` →
+`✓ 空调关 · 24°C · 风2` → 「空调已关闭。」
 

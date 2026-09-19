@@ -226,6 +226,22 @@ class ListeningLifecycle(
         if (_state.value == ListeningState.SLEEP) enterDeepIdleLocked("connection_lost_in_sleep")
     }
 
+    /**
+     * The session ended and nothing is going to reconnect it.
+     *
+     * Distinct from [onConnectionLost], which is for a session that is coming back: staying ACTIVE
+     * through a reconnect is correct, because the driver can keep talking. Staying ACTIVE through a
+     * *terminal* failure is not. Measured on device 2026-09-19, after the server rejected a session
+     * configuration: `state=ERROR` and then 30 seconds of
+     * `listening=ACTIVE captureSuspended=false captured=0` - the assistant showing that it was
+     * listening while every word fell on the floor, after the one class of error that a reconnect
+     * cannot fix.
+     */
+    fun onSessionFailed(reason: String) = synchronized(lock) {
+        if (_state.value == ListeningState.DEEP_IDLE) return@synchronized
+        enterDeepIdleLocked(reason)
+    }
+
     /** The session was stopped from outside (settings, app teardown). */
     fun onSessionStopped(reason: String) = synchronized(lock) {
         if (_state.value == ListeningState.DEEP_IDLE) return@synchronized

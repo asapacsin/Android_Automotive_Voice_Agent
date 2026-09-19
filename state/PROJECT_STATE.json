@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-09-19T23:06:20",
+  "generated_at": "2026-09-19T23:21:54",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "71977a4",
+    "commit": "aa38fa5",
     "branch": "main",
-    "subject": "A misheard driver could be told the car had acted",
+    "subject": "There is no dialect hint, and the model hears more than the transcriber",
     "working_tree_clean": false,
-    "uncommitted_files": 2
+    "uncommitted_files": 4
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-19T23:04:52",
+    "collected_at": "2026-09-19T23:14:58",
     "total": {
-      "tests": 717,
+      "tests": 719,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "app": {
-        "tests": 525,
+        "tests": 527,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 229293672,
-    "built_at": "2026-09-19T23:02:23"
+    "bytes": 229294108,
+    "built_at": "2026-09-19T23:20:44"
   },
   "capabilities": {
     "available": true,
@@ -124,7 +124,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "B-011: B-011 — no SPEC yet: compile this demand into scenarios and acceptance criteria",
-    "actionable_count": 6,
+    "actionable_count": 5,
     "blocked_count": 0,
     "candidates": [
       {
@@ -160,13 +160,6 @@
         "class": "next authorised backlog item",
         "source": "BACKLOG.md",
         "item": "B-015",
-        "blocked_by": null
-      },
-      {
-        "priority": 11,
-        "class": "next authorised backlog item",
-        "source": "BACKLOG.md",
-        "item": "B-016",
         "blocked_by": null
       }
     ]

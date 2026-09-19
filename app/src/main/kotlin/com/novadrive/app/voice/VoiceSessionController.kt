@@ -56,7 +56,12 @@ class VoiceSessionController(
             onUiState = { state, error ->
                 lastUiState = state
                 onUiState(state, error)
-                if (state == VoiceUiState.RECONNECTING || state == VoiceUiState.ERROR) lifecycle.onConnectionLost()
+                // A reconnect keeps the driver armed; a terminal error must not pretend to.
+                when (state) {
+                    VoiceUiState.RECONNECTING -> lifecycle.onConnectionLost()
+                    VoiceUiState.ERROR -> lifecycle.onSessionFailed("session_error")
+                    else -> Unit
+                }
                 updateBusy()
             },
             onTranscript = onTranscript,

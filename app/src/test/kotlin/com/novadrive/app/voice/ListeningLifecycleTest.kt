@@ -364,6 +364,36 @@ class ListeningLifecycleTest {
     }
 
     @Test
+    fun aTerminalFailureStopsListeningFromEveryState() = runTest {
+        // Measured on device 2026-09-19: after the server rejected a session configuration the app
+        // logged state=ERROR and then sat for 30 s reporting listening=ACTIVE with zero frames
+        // captured. A reconnect cannot fix a rejected configuration, so staying armed shows the
+        // driver an assistant that is listening to nothing.
+        listOf<(Rig) -> Unit>(
+            { },
+            { it.lifecycle.silence("voice_command") },
+            { it.lifecycle.sleep("ui") },
+        ).forEach { reach ->
+            val rig = Rig(this)
+            rig.start()
+            reach(rig)
+            rig.lifecycle.onSessionFailed("session_error")
+            assertEquals(ListeningState.DEEP_IDLE, rig.state)
+            assertTrue("close" in rig.controls.log, "the dead session must be closed, not left open")
+        }
+    }
+
+    @Test
+    fun aReconnectingSessionStaysArmed() = runTest {
+        // The other half of the same rule: a session that is coming back must not be torn down,
+        // or every brief network wobble would cost the driver their turn.
+        val rig = Rig(this)
+        rig.start()
+        rig.lifecycle.onConnectionLost()
+        assertEquals(ListeningState.ACTIVE, rig.state)
+    }
+
+    @Test
     fun streamingTimeCountsActiveAndSilentWait() = runTest {
         val rig = Rig(this)
         rig.start()
