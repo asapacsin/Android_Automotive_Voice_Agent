@@ -19,6 +19,7 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 | B-013 | **`BaiduFlexClientTest` readiness timeout is load-sensitive** — it fails under a full parallel suite and passes alone | 2026-09-19 | Open | §B-013 below |
 | B-014 | **A false sentence is spoken before it is corrected** — the correction follows; the driver still heard the claim | 2026-09-19 | Open | [P23](OPEN_PROBLEMS.md) |
 | B-015 | **Cantonese is not understood** — 「返屋企啦」 transcribes as 「发诺克拉」; the product owner speaks Cantonese | 2026-09-19 | Open | §B-015 below |
+| B-016 | **A rejected session still looked like it was listening** — `state=ERROR` with `listening=ACTIVE` and zero frames, for 30 s | 2026-09-19 | Open | §B-016 below |
 | B-002 | 小诺 must stay quiet during navigation and speak only short confirmations | 2026-09-15 | **Done** 2026-09-16 | [P1](OPEN_PROBLEMS.md) — verified on device |
 | B-001 | 「关闭音乐」 must actually stop the music | 2026-09-15 | **Done** 2026-09-16 | [P2](OPEN_PROBLEMS.md) — verified on device with log evidence |
 
@@ -249,12 +250,50 @@ runs; it cannot catch a wrong tool running on a wrong transcript.
 This matters more than a localisation nicety: the product owner speaks Cantonese, and every
 scenario in the target set was written in it.
 
-**Open question this needs answered first:** whether `qianfan-realtime-flex-v1` accepts a language
-or dialect hint at all. If it does not, the options are a different model, a Cantonese ASR in front
-of it — which would contradict [ADR-002](DECISIONS/ADR-002-baidu-flex-default-provider.md)'s
-end-to-end design — or stating plainly that the product is Mandarin-only.
+### Answered 2026-09-19: there is no dialect hint, and that is not the whole story
+
+The session already carries `input_audio_transcription.language`. Setting it to `yue` was rejected
+by the server in as many words:
+
+```
+BAIDU_FLEX_API_REJECTED Invalid value: 'yue'. Value must be null or 'zh'.
+```
+
+So the transcriber is Mandarin-only and no configuration changes that. **But the transcript is not
+what the model hears.** This is an end-to-end speech model: it consumes the audio. And it plainly
+understood the Cantonese — 「有啲熱，幫我舒服啲」 produced 「有点热啊，我帮你调低一点温度」, which is a
+correct reading of an utterance the transcriber turned into 「有的人帮我舒服的。」, and 「播啲精神啲嘅歌」
+produced an actual `control_music` call.
+
+So Cantonese comprehension is **partly there**. What degrades is **tool calling**: the same request
+in Mandarin calls `control_climate` (SPEC-006 CVC-04, device-verified), and in Cantonese it
+answered with words and called nothing.
+
+That reframes the decision. It is not "support Cantonese or do not"; it is whether to invest in
+making tool calls reliable for non-Mandarin input, against a model whose transcriber cannot be told
+what language it is hearing.
 
 **Acceptance:** either the scenario set passes in Cantonese, or ADR-002 records the limit and
 `capabilities.yaml` says the product is Mandarin-only, so nothing downstream claims otherwise.
 **Verification:** the same harness clips, re-run.
+
+**Needs a product decision, not more engineering.** The evidence is in; the alternatives are real
+and not comparable on technical grounds: accept Mandarin-only and say so, spend effort on prompt
+work aimed at tool calling for accented or non-Mandarin input, or change provider — which
+[ADR-008](DECISIONS/ADR-008-single-active-realtime-provider.md) settled and would be reopening.
+Until then, [P23](OPEN_PROBLEMS.md) makes the failure honest: the driver is told nothing happened
+rather than told it did.
+
+## B-016 — A rejected session still looked like it was listening
+
+Measured while testing the above. When the server rejected the configuration, the app logged
+`state=ERROR err=BAIDU_FLEX_API_REJECTED` and then sat for ~30 s with
+`session_diag listening=ACTIVE captureSuspended=false captured=0`.
+
+The session was dead and the listening lifecycle did not know. A driver watching the screen would
+see the assistant listening while every word fell on the floor — and the failure that produced it
+was a *configuration* error, the kind that survives a reconnect, so waiting does not help.
+
+**Acceptance:** a terminal session error moves the listening state out of ACTIVE, and the driver is
+told. **Verification:** reproduce by rejecting the config, assert the lifecycle state in the log.
 

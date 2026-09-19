@@ -176,7 +176,14 @@ object BaiduFlexProtocol {
             .put("speed", speed)
             .put("input_audio_format", "pcm16")
             .put("output_audio_format", "pcm16")
-            .put("input_audio_transcription", JSONObject().put("model", "default").put("language", "zh"))
+            .put(
+                "input_audio_transcription",
+                // Measured 2026-09-19: the server rejects anything else outright -
+                // `Invalid value: 'yue'. Value must be null or 'zh'.` There is no dialect
+                // hint to give this model, so Cantonese input is transcribed as whatever
+                // Mandarin it sounds like (B-015).
+                JSONObject().put("model", "default").put("language", "zh"),
+            )
             .put(
                 "turn_detection",
                 JSONObject()
