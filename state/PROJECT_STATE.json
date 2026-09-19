@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-20T01:56:53",
+  "generated_at": "2026-09-20T02:14:14",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "db8b195",
+    "commit": "e1357c8",
     "branch": "main",
-    "subject": "The duplicate-correction test, and the bug it took three tries to find",
+    "subject": "The scenario set can be run again, and running it found a real defect",
     "working_tree_clean": false,
-    "uncommitted_files": 10
+    "uncommitted_files": 3
   },
   "tests": {
     "available": true,

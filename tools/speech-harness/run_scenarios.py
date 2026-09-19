@@ -54,15 +54,27 @@ def push_clip(name):
 
 
 def run_scenario(sc, wait):
+    # Re-arm first. 「休眠」 is a scenario, and a sleeping session ignores everything that
+    # follows - which on the first run silently invalidated the three scenarios after it.
+    # start() resumes a session in SILENT_WAIT or SLEEP, is a no-op for an active one, and
+    # costs no model turn.
+    broadcast("voice", "start")
+    # Long enough for a session opened from DEEP_IDLE to reach LISTENING: injecting during
+    # setup gets the response cancelled (status=cancelled reason=client_cancelled).
+    time.sleep(6)
     for step in sc.get("setup", []):
         if step.startswith("dispatch:"):
             broadcast("dispatch", step[len("dispatch:"):])
         elif step.startswith("climate:"):
             broadcast("climate", step[len("climate:"):])
         time.sleep(2)
-    missing = push_clip(sc["say"])
-    if missing:
-        return False, [missing], []
+    # A scenario may be several utterances: cross-turn context only exists if a *driver* turn
+    # produced it, so 「再凉一点」 has to follow a real 「有点热」 rather than a debug state poke.
+    clips = sc["say"] if isinstance(sc["say"], list) else [sc["say"]]
+    for clip in clips:
+        missing = push_clip(clip)
+        if missing:
+            return False, [missing], []
     marker = f"scenario_marker_{sc['id']}_{int(time.time() * 1000)}"
     # A log line of our own is the scenario boundary: reading the whole buffer would let one
     # scenario pass on the previous one's evidence, which is the classic way a suite like this
@@ -71,16 +83,22 @@ def run_scenario(sc, wait):
     # driver utterance into DriverContext and quietly alter what the next scenario is judged on.
     broadcast("dispatch", marker)
     time.sleep(1)
-    broadcast("voice", "say:" + sc["say"])
-    time.sleep(wait)
+    for clip in clips:
+        broadcast("voice", "say:" + clip)
+        time.sleep(wait)
     lines = log_since(marker)
+    if lines is None:
+        return False, ["scenario marker never reached the log - the app may not be running"], []
     text = "\n".join(lines)
     failures = []
+    # MULTILINE so a pattern can anchor to the start of a log line. Without it, forbidding
+    # `tool=` also matched the runner's own `debug_tool tool=voice ...` broadcast and reported a
+    # product failure that was entirely the harness talking to itself.
     for pattern in sc.get("expect", []):
-        if not re.search(pattern, text):
+        if not re.search(pattern, text, re.M):
             failures.append(f"expected /{pattern}/")
     for pattern in sc.get("forbid", []):
-        found = re.search(pattern, text)
+        found = re.search(pattern, text, re.M)
         if found:
             failures.append(f"forbidden /{pattern}/ matched {found.group(0)!r}")
     return not failures, failures, lines

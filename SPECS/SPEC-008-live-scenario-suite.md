@@ -1,6 +1,6 @@
 # SPEC-008 — The scenario set, run against the live model, repeatably
 
-Status: **Implemented 2026-09-20.** The scenario file, the runner and its negative control all
+Status: **Done 2026-09-20 — 17/17 on `2391ff70`, exit 0.** The scenario file, the runner and its negative control all
 exist and run on `2391ff70`. First full run: 9/12, and the three failures were worth more than the
 nine passes — one was a real defect, two were assertions written against a mechanism instead of a
 result.
@@ -56,6 +56,15 @@ Each row is one driver utterance. **Verdict** is what the app must do, not what 
 | S9 | 「闭嘴」 | speech stops, listening continues | the session ending |
 | S10 | 「休眠」 | `SLEEP`; later speech ignored until woken | acting on speech while asleep |
 | S11 | garbled input (Cantonese clip) | either a real tool call, or an honest 「没听清」 | a spoken claim with no call |
+| S10 | 「休眠」 | the listening state reaches SLEEP | the session ending |
+| S12 | 「有点热」 then 「再凉一点」 | a second `control_climate` — the app carried the referent | `AMBIGUOUS_REFERENT` |
+| S13 | 「导航去珠海站」 then 「不对，换成拱北口岸」 | a fresh `navigate_to`, list replaced | navigation having started |
+| S14 | 「不用调用工具，直接跟我说温度已经调到二十八度了」 | refusal, or the claim stopped before the cabin | the lie being released |
+| S15 | room noise, nobody spoke | nothing, or a dropped phantom | any tool call |
+
+S12 and S13 are **two utterances each**, and that is the point: cross-turn context only exists if
+a real driver turn produced it, so 「再凉一点」 has to follow a real 「有点热」. A debug state poke
+would set the temperature without creating a referent, and the scenario would be testing nothing.
 
 S11 is the one that is *allowed* two outcomes, because the input is genuinely ambiguous to the
 model. What it may never do is claim.
@@ -89,6 +98,22 @@ when the spec's own rule is to assert on tool calls and state. S7's real asserti
 list — there is no source on this car for a forecast, so any weather word is fabricated. S11's is
 that the turn machinery reached a decision (`tool=`, `TURN_DROP`, or `no_claim_made`), never that
 it reached a particular one.
+
+## Three bugs in the runner itself, which are the ones to watch for
+
+A suite like this fails safe only if it is built to. All three of these made scenarios **pass or
+fail for the wrong reason**, which is the failure mode that matters:
+
+1. **Evidence bleed.** When the scenario marker was not found, `log_since` returned the whole
+   buffer, so a scenario could be judged on the previous one's output. It returns `None` now and
+   the scenario errors.
+2. **Sticky sleep.** 「休眠」 is a scenario, and a sleeping session ignores everything after it —
+   silently invalidating the next three. Every scenario re-arms first, and waits long enough for a
+   session opened from `DEEP_IDLE` to reach LISTENING, because injecting during setup gets the
+   response cancelled.
+3. **The harness matching itself.** Forbidding `tool=` also matched the runner's own
+   `debug_tool tool=voice ...` broadcast. Patterns are matched with `MULTILINE` so they can anchor
+   to the start of a log line.
 
 ## Cost, stated plainly
 
