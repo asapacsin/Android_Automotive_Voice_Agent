@@ -2,11 +2,11 @@
   "generated_at": "2026-09-19T20:56:50",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "bcb4fb2",
+    "commit": "2e584bc",
     "branch": "main",
-    "subject": "Refresh generated state",
-    "working_tree_clean": false,
-    "uncommitted_files": 4
+    "subject": "The wake-word owner moves out of the logging initialiser",
+    "working_tree_clean": true,
+    "uncommitted_files": 0
   },
   "tests": {
     "available": true,
