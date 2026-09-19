@@ -70,7 +70,13 @@ object ToolCallGuards {
     fun unsupportedMedia(call: DomainVoiceEvent.ToolCall, context: DriverContext?): String? {
         if (call.name != "control_music" || call.arguments["action"] != "play") return null
         val said = context?.currentRequestText().orEmpty()
-        return if (ActionClaimGuard.isSpecificMediaRequest(said)) MEDIA_LIBRARY_UNSUPPORTED else null
+        // The model already decided this is a request to play music, so the driver's words only
+        // have to answer one question: did they name something in particular?
+        return if (ActionClaimGuard.isSpecificMediaRequest(said, mediaIntentKnown = true)) {
+            MEDIA_LIBRARY_UNSUPPORTED
+        } else {
+            null
+        }
     }
 
     /**

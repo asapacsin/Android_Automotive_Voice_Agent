@@ -1,0 +1,36 @@
+{
+  "_comment": [
+    "B-015. Kept OUT of the default suite on purpose: these are expected to fail some of the time,",
+    "and a suite that is red by design stops being read. Run with --repeat to get a rate:",
+    "  python tools/speech-harness/run_scenarios.py --file tools/speech-harness/scenarios-cantonese.json --repeat 5",
+    "The question these answer is not 'does Cantonese work' but 'how often does a Cantonese request",
+    "reach a real action', which is what the decision in B-015 actually turns on."
+  ],
+  "scenarios": [
+    {
+      "id": "YUE-HOME",
+      "utterance": "返屋企啦",
+      "say": "yue_home",
+      "fresh": true,
+      "expect": ["^tool=navigate_to"],
+      "forbid": []
+    },
+    {
+      "id": "YUE-HOT",
+      "utterance": "有啲熱，幫我舒服啲",
+      "say": "yue_hot",
+      "fresh": true,
+      "expect": ["^tool=control_climate"],
+      "forbid": []
+    },
+    {
+      "id": "YUE-MUSIC",
+      "utterance": "播啲精神啲嘅歌",
+      "say": "yue_music",
+      "fresh": true,
+      "_note": "A request for a STYLE of song, which this product cannot serve. The honest answer is a refusal; playing the bundled track and saying yes is the false-capability claim P22 exists to prevent.",
+      "expect": ["MEDIA_LIBRARY_UNSUPPORTED|TURN_DROP|no_claim_made|flex_user_text"],
+      "forbid": []
+    }
+  ]
+}

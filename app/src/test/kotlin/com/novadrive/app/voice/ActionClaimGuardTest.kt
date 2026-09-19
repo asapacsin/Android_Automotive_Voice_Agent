@@ -270,4 +270,21 @@ class ActionClaimGuardTest {
             "the driver must be asked which control, not told they were not heard: $correction",
         )
     }
+
+    @Test
+    fun aMisheardSongRequestIsStillRefusedOnceTheIntentIsKnown() {
+        // Verbatim from the device, 2026-09-20: 「播啲精神啲嘅歌」 arrived as 「波迪精神的k歌」.
+        // No play word survived, so the refusal did not fire, the bundled track played, and the
+        // driver was told 「音乐已开始播放」 for a style of song this product cannot serve.
+        assertFalse(ActionClaimGuard.isSpecificMediaRequest("波迪精神的k歌"))
+        assertTrue(ActionClaimGuard.isSpecificMediaRequest("波迪精神的k歌", mediaIntentKnown = true))
+    }
+
+    @Test
+    fun aGenericRequestIsStillAllowedWhenTheIntentIsKnown() {
+        // The bundled track IS what 「放首歌」 asks for. Refusing it would be the opposite defect.
+        assertFalse(ActionClaimGuard.isSpecificMediaRequest("放首歌", mediaIntentKnown = true))
+        assertFalse(ActionClaimGuard.isSpecificMediaRequest("来点音乐", mediaIntentKnown = true))
+        assertFalse(ActionClaimGuard.isSpecificMediaRequest("播放音乐", mediaIntentKnown = true))
+    }
 }

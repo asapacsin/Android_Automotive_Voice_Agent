@@ -318,6 +318,22 @@ what language it is hearing.
 `capabilities.yaml` says the product is Mandarin-only, so nothing downstream claims otherwise.
 **Verification:** the same harness clips, re-run.
 
+### Measured 2026-09-20, five runs each
+
+| Said | Must reach | Rate |
+| --- | --- | --- |
+| 「返屋企啦」 | `navigate_to` | **2/5** |
+| 「有啲熱，幫我舒服啲」 | `control_climate` | **0/5** |
+| 「播啲精神啲嘅歌」 | an honest refusal | **0/5 before the P25 fix, 3/3 after** |
+
+`tools/speech-harness/scenarios-cantonese.json`, deliberately outside the default suite: it is
+expected to fail some of the time, and a suite that is red by design stops being read.
+
+So a Cantonese request reaches a real action **roughly two times in five at best, and never** for
+the implicit-comfort phrasing. The third row is the one that changed: it was not a recognition
+problem but [P25](OPEN_PROBLEMS.md) — the app *acting* on a mis-transcription, which is now
+refused honestly whatever the transcript says.
+
 **Needs a product decision, not more engineering.** The evidence is in; the alternatives are real
 and not comparable on technical grounds: accept Mandarin-only and say so, spend effort on prompt
 work aimed at tool calling for accented or non-Mandarin input, or change provider — which

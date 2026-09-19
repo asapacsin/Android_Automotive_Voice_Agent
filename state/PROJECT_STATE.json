@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-09-20T03:44:17",
+  "generated_at": "2026-09-20T04:02:07",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "5c87418",
+    "commit": "223b3b1",
     "branch": "main",
-    "subject": "Multi-step: one sentence, three asks, and no claim about the one it cannot do",
+    "subject": "A cut connection, and sixteen minutes of music that woke nothing",
     "working_tree_clean": false,
-    "uncommitted_files": 8
+    "uncommitted_files": 6
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-20T03:19:26",
+    "collected_at": "2026-09-20T03:58:42",
     "total": {
-      "tests": 735,
+      "tests": 737,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "app": {
-        "tests": 543,
+        "tests": 545,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 229313424,
-    "built_at": "2026-09-20T03:18:50"
+    "bytes": 229313544,
+    "built_at": "2026-09-20T03:57:41"
   },
   "capabilities": {
     "available": true,

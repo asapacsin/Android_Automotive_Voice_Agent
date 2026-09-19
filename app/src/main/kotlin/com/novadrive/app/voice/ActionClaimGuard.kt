@@ -225,9 +225,23 @@ class ActionClaimGuard {
          * that make a request *generic* and see whether the driver named anything else. A music
          * noun is required so 「放大地图」 is not mistaken for a media request.
          */
-        fun isSpecificMediaRequest(text: String): Boolean {
+        fun isSpecificMediaRequest(text: String): Boolean = isSpecificMediaRequest(text, false)
+
+        /**
+         * [mediaIntentKnown] when something else has already established that this is a request to
+         * play music - in practice, the model having called `control_music{play}`.
+         *
+         * The play-word check exists so 「放大地图」 is not mistaken for a media request. When the
+         * intent is already known it is not protection, it is a hole: measured on device
+         * 2026-09-20, 「播啲精神啲嘅歌」 arrived as 「波迪精神的k歌」, which names a music noun and
+         * something specific but no play word, so the refusal did not fire. The bundled track
+         * played and the driver was told 「音乐已开始播放」 - for a style of song this product has
+         * no way to serve. That is [P22](../../../../../../OPEN_PROBLEMS.md) returning through
+         * a mis-transcription.
+         */
+        fun isSpecificMediaRequest(text: String, mediaIntentKnown: Boolean): Boolean {
             if (MEDIA_NOUNS.none { it in text }) return false
-            if (MEDIA_PLAY_WORDS.none { it in text }) return false
+            if (!mediaIntentKnown && MEDIA_PLAY_WORDS.none { it in text }) return false
             val remainder = GENERIC_MEDIA_TOKENS.replace(text, "")
                 .filterNot { it in MEDIA_PUNCTUATION }
             return remainder.isNotEmpty()

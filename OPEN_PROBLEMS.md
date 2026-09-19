@@ -1118,3 +1118,47 @@ One was written against the scripted server and deleted: **it passed with and wi
 completes, do both go out. A test that passes either way claims coverage that does not exist, which
 is worse than admitting the gap. [B-017](BACKLOG.md) carries it with the diagnosis.
 
+---
+
+## P25 — A mis-transcription let a song we cannot play be "played"
+
+**Status:** **FIXED and device-verified 2026-09-20.**
+**Found:** 2026-09-20, measuring the Cantonese success rate for [B-015](BACKLOG.md).
+**Severity:** High — [P22](#p22--a-song-we-cannot-play-would-have-been-played) returning by a
+different door.
+
+### Symptom
+
+「播啲精神啲嘅歌」 — a request for a *style* of song — arrived as 「波迪精神的k歌」. The model called
+`control_music{play}`, the one bundled track started, and the driver was told 「音乐已开始播放」.
+
+### Root cause
+
+`isSpecificMediaRequest` requires **both** a music noun and a play word in the driver's utterance.
+The garble kept 歌 and lost 播: 「波」 is not 「放」. So the refusal did not fire.
+
+The play-word check exists for a good reason — so 「放大地图」 is not mistaken for a media request.
+But by the time this guard runs, **the model has already called `control_music{play}`**, so the
+intent is not in question. Requiring the driver's words to re-establish it was not protection; it
+was a hole, and any noisy cabin opens it.
+
+### Fix
+
+The guard passes `mediaIntentKnown = true`. The driver's words then answer one question only: did
+they name something in particular? 「放首歌」 and 「来点音乐」 still play, because the bundled track is
+what they asked for. 「波迪精神的k歌」 does not.
+
+### Evidence
+
+| | |
+| --- | --- |
+| Before | `tool=control_music → ✓`, 「音乐已开始播放。」 |
+| After, 3 runs of 3 | `MEDIA_LIBRARY_UNSUPPORTED`, 「车上只有一首内置曲目，没法放波迪精神的k歌。」 |
+
+### The lesson this is the fourth instance of
+
+Every guard in this product that reads the driver's transcribed words has the same exposure, and
+each fix has been the same shape: stop requiring the transcript to prove something another part of
+the system already knows. [P23](#p23) was the claim path, [S2](ACCEPTANCE_TESTS.md) the control
+word list, [S16](SPECS/SPEC-008-live-scenario-suite.md) the referent, and this the media intent.
+
