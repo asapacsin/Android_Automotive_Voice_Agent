@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-19T18:23:07",
+  "generated_at": "2026-09-19T18:23:29",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "9312aa8",
+    "commit": "a3a8e3e",
     "branch": "main",
-    "subject": "A vague demand is compiled, and a blocker narrows the frontier",
-    "working_tree_clean": false,
-    "uncommitted_files": 7
+    "subject": "B-009: the contract, its shared tests, and a guard that bites",
+    "working_tree_clean": true,
+    "uncommitted_files": 0
   },
   "tests": {
     "available": true,
