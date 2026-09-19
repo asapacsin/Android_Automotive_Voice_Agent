@@ -187,7 +187,18 @@ class ActionClaimGuard {
             "请问", "吗", "？", "?", "哪", "什么",
         )
 
-        fun isControlRequest(text: String): Boolean = CONTROL_WORDS.any { it in text }
+        /**
+         * A request this product can act on.
+         *
+         * The word list alone is not enough: 「有点热」 names nothing in [CONTROL_WORDS] — no 空调,
+         * no 温度, no 调 — yet SPEC-006 handles it, and `ContextResolver` resolves it to a concrete
+         * adjustment. Measured on device 2026-09-20 with the list alone, the fallback told the
+         * driver 「刚才没听清楚」 about a sentence the app understands perfectly well.
+         *
+         * One answer to "can we act on this", so the guard and the resolver cannot drift.
+         */
+        fun isControlRequest(text: String): Boolean =
+            CONTROL_WORDS.any { it in text } || ContextResolver.isImplicitComfortRequest(text)
 
         fun isUnsupportedRequest(text: String): Boolean =
             UNSUPPORTED_WORDS.any { it in text } || isSpecificMediaRequest(text)

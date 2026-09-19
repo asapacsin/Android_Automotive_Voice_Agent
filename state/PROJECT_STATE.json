@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-09-20T01:17:40",
+  "generated_at": "2026-09-20T01:56:53",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "3db2de2",
+    "commit": "db8b195",
     "branch": "main",
-    "subject": "A claim nothing performed is never spoken",
+    "subject": "The duplicate-correction test, and the bug it took three tries to find",
     "working_tree_clean": false,
-    "uncommitted_files": 5
+    "uncommitted_files": 10
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-20T01:16:03",
+    "collected_at": "2026-09-20T01:52:39",
     "total": {
-      "tests": 725,
+      "tests": 727,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "app": {
-        "tests": 533,
+        "tests": 535,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 229295032,
-    "built_at": "2026-09-20T01:13:29"
+    "bytes": 229295064,
+    "built_at": "2026-09-20T01:52:41"
   },
   "capabilities": {
     "available": true,
@@ -123,8 +123,8 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "B-011: B-011 — no SPEC yet: compile this demand into scenarios and acceptance criteria",
-    "actionable_count": 4,
+    "NEXT_ACTION": "B-011: B-011 — **Spoken vague and contextual requests reach the right tool** — the scenario set",
+    "actionable_count": 3,
     "blocked_count": 0,
     "candidates": [
       {
@@ -139,13 +139,6 @@
         "class": "next authorised backlog item",
         "source": "BACKLOG.md",
         "item": "B-012",
-        "blocked_by": null
-      },
-      {
-        "priority": 11,
-        "class": "next authorised backlog item",
-        "source": "BACKLOG.md",
-        "item": "B-013",
         "blocked_by": null
       },
       {

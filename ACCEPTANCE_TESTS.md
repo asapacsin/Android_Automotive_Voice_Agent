@@ -464,3 +464,46 @@ B-015 is about. Across runs of the same clip, 「返屋企啦」 sometimes calle
 the saved home, `count=1`) and sometimes answered with words alone. 「有啲熱，幫我舒服啲」 likewise
 called `control_climate` and really set 22 °C on one run.
 
+---
+
+## The scenario suite against the live model — 2026-09-20, `2391ff70`
+
+[SPEC-008](SPECS/SPEC-008-live-scenario-suite.md). `python tools/speech-harness/run_scenarios.py`.
+
+| Run | Result |
+| --- | --- |
+| First | **9/12** |
+| After the one real fix | **12/12**, exit 0 |
+
+| # | Driver says | Asserted |
+| --- | --- | --- |
+| S1 | 调到二十四度 | `control_climate`, 24 |
+| S2 | 有点热 | a real `control_climate` call |
+| S3 | 回家 (home saved) | `nav_saved_place set=true`, `count=1`, no `HOME_NOT_SET` |
+| S4 | 播放音乐 | `control_music` |
+| S4b | 放一首周杰伦的歌 | `MEDIA_LIBRARY_UNSUPPORTED` |
+| S5 | 导航去珠海站 | candidates, and **not** `nav_navigation_started` |
+| S5b | 第二个 | `choose_navigation_option` |
+| S6 | 算了 | `exit_navigation_mode` |
+| S7 | 今天天气怎么样 | no 晴/多云/下雨/气温/摄氏 anywhere |
+| S8 | 关闭空调 | `control_climate` |
+| S9 | 闭嘴 | speech stops, session survives |
+| S11 | 返屋企啦 (Cantonese) | the turn machinery reached a decision, never a released claim |
+
+**The negative control matters more than the passes.** Pointing S1's expectation at a tool that
+does not exist turns the run red and returns a non-zero exit code, so a green run means the
+assertions ran.
+
+### What the first run found, which is the point of building it
+
+`ActionClaimGuard.isControlRequest` was a word list, and 「有点热」 contains none of its words — no
+空调, no 温度, no 调. The turn fell to the unclassified fallback and the driver was told 「刚才没听清
+楚」 about a sentence `ContextResolver` resolves to a concrete adjustment. Two other failures were
+my assertions demanding a *mechanism* (that a correction be sent) rather than a result; both were
+rewritten to assert what the spec says to assert.
+
+### Cost
+
+One Baidu turn per scenario. Before a release and after a change to the turn machinery — not per
+commit. The simulation benchmark remains the one that runs on every build.
+

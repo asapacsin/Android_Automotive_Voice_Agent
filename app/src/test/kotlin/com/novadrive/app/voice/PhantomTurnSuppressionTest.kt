@@ -102,7 +102,7 @@ class PhantomTurnSuppressionTest {
         val done = scriptReply(replyText, withToolCall)
         val client = BaiduFlexClient(
             http = OkHttpClient(),
-            readyTimeoutMs = 3_000,
+            readyTimeoutMs = READY_TIMEOUT_MS,
             requireTls = false,
             lastAudioSegment = { segment },
             contextAwaitingAnswer = { contextAwaiting },
@@ -173,7 +173,7 @@ class PhantomTurnSuppressionTest {
         val events = runBlocking {
             val client = BaiduFlexClient(
                 http = OkHttpClient(),
-                readyTimeoutMs = 3_000,
+                readyTimeoutMs = READY_TIMEOUT_MS,
                 requireTls = false,
                 // Short audio, as a brief command is.
                 lastAudioSegment = { SpeechUplinkGate.Segment(600, 5, 12_000) },
@@ -288,7 +288,7 @@ class PhantomTurnSuppressionTest {
         return runBlocking {
             val client = BaiduFlexClient(
                 http = OkHttpClient(),
-                readyTimeoutMs = 3_000,
+                readyTimeoutMs = READY_TIMEOUT_MS,
                 requireTls = false,
                 lastAudioSegment = { SpeechUplinkGate.Segment(1_400, 13, 12_000) },
                 contextAwaitingAnswer = { false },
@@ -401,7 +401,7 @@ class PhantomTurnSuppressionTest {
         )
         val client = BaiduFlexClient(
             http = OkHttpClient(),
-            readyTimeoutMs = 3_000,
+            readyTimeoutMs = READY_TIMEOUT_MS,
             requireTls = false,
             lastAudioSegment = { null },
             contextAwaitingAnswer = { false },
@@ -414,5 +414,10 @@ class PhantomTurnSuppressionTest {
         job.cancel()
         client.close()
         assertEquals(1, corrections.size, "expected exactly one correction, got: $corrections")
+    }
+
+    private companion object {
+        /** See BaiduFlexClientTest: long on purpose, so a busy machine cannot fail these (B-013). */
+        const val READY_TIMEOUT_MS = 30_000L
     }
 }

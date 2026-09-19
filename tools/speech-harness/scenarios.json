@@ -1,0 +1,100 @@
+{
+  "_comment": [
+    "SPEC-008. Each scenario is one thing a driver says and what must be true afterwards in the",
+    "app's own log. Assertions are on tool calls and state, never on the reply's wording: the",
+    "model rewords freely, and every attempt to match phrasing in this project has lost.",
+    "'expect' are regexes that must all appear. 'forbid' must not appear. 'setup' runs debug_tool",
+    "dispatch calls first, which bypass the model to put the app in a known state.",
+    "Every scenario spends Baidu quota."
+  ],
+  "scenarios": [
+    {
+      "id": "S1",
+      "utterance": "调到二十四度",
+      "say": "temp24",
+      "expect": ["tool=control_climate", "24"],
+      "forbid": []
+    },
+    {
+      "id": "S2",
+      "utterance": "有点热",
+      "say": "ctx_too_hot",
+      "setup": ["climate:set_temperature:26"],
+      "expect": ["tool=control_climate"],
+      "forbid": []
+    },
+    {
+      "id": "S3",
+      "utterance": "回家 (home saved)",
+      "say": "nav_home",
+      "setup": ["dispatch:save_place:slot=home,address=珠海站"],
+      "expect": ["nav_saved_place slot=HOME set=true", "nav_resolve_candidates count=1"],
+      "forbid": ["HOME_NOT_SET"]
+    },
+    {
+      "id": "S4",
+      "utterance": "播放音乐",
+      "say": "music_on",
+      "expect": ["tool=control_music"],
+      "forbid": []
+    },
+    {
+      "id": "S4b",
+      "utterance": "放一首周杰伦的歌",
+      "say": "media_named_song",
+      "expect": ["MEDIA_LIBRARY_UNSUPPORTED"],
+      "forbid": []
+    },
+    {
+      "id": "S5",
+      "utterance": "导航去珠海站",
+      "say": "nav_zhuhai",
+      "expect": ["tool=navigate_to", "nav_resolve_candidates count="],
+      "forbid": ["nav_navigation_started"]
+    },
+    {
+      "id": "S5b",
+      "utterance": "第二个",
+      "say": "pick_second",
+      "expect": ["tool=choose_navigation_option"],
+      "forbid": []
+    },
+    {
+      "id": "S6",
+      "utterance": "算了",
+      "say": "cancel",
+      "expect": ["tool=exit_navigation_mode"],
+      "forbid": []
+    },
+    {
+      "id": "S7",
+      "utterance": "今天天气怎么样",
+      "say": "chat_q",
+      "_note": "The refusal is the assertion, and it is the forbid list: there is no source on this car for any of those words. How the app arrives at the refusal is not this scenario's business.",
+      "expect": [],
+      "forbid": ["晴|多云|下雨|气温|摄氏"]
+    },
+    {
+      "id": "S8",
+      "utterance": "关闭空调",
+      "say": "ac_off",
+      "expect": ["tool=control_climate"],
+      "forbid": []
+    },
+    {
+      "id": "S9",
+      "utterance": "闭嘴",
+      "say": "shut_up_zh",
+      "expect": ["tool=set_speech_output|listening .*SILENT_WAIT"],
+      "forbid": ["state=DISCONNECTED"]
+    },
+    {
+      "id": "S11",
+      "utterance": "返屋企啦 (Cantonese, often misheard)",
+      "say": "yue_home",
+      "_note": "Either a real tool call, or the turn machinery deciding the reply claimed nothing. What it may never do is release a claim with no call behind it.",
+      "expect": ["tool=|TURN_DROP|no_claim_made"],
+      "forbid": []
+    }
+  ]
+}

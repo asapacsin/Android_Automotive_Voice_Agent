@@ -27,3 +27,32 @@ harmless test commands.
 - Baidu server VAD ignores speech peaking below ~2700 and hears ~3800 → `MicInputGain` (3x).
 - One long session: empty replies and actions executed a turn late from about the third tool
   turn; one conversation per command: 8/8 → `ConversationResetPolicy`.
+
+## The scenario suite (SPEC-008)
+
+`harness.ps1` drives a list of steps and prints a log for a person to read. `run_scenarios.py`
+runs the declared scenario set and says **pass or fail**, so the same checks can be repeated after
+a change instead of re-read.
+
+```powershell
+python tools\speech-harness\run_scenarios.py                 # once, all scenarios
+python tools\speech-harness\run_scenarios.py --repeat 5      # flakiness as a rate
+python tools\speech-harness\run_scenarios.py --only S3 S11   # just these
+```
+
+Scenarios live in `scenarios.json` as data: what the driver says, which clip carries it, and what
+must (or must not) appear in the app's own log afterwards. Assertions are on **tool calls and
+state, never on the reply's wording** — the model rewords freely, and every attempt to match
+phrasing in this project has lost.
+
+Exit code is non-zero if any scenario fails, so it can gate a release.
+
+**It spends quota**, one Baidu turn per scenario. Run it before a release and after a change to the
+turn machinery; the simulation benchmark is the one for every build.
+
+### If you add a scenario
+
+Check it fails for the right reason before trusting it. Point an `expect` at something that cannot
+happen and confirm the run goes red — the runner's own negative control was done exactly that way,
+and two of the first twelve assertions turned out to be testing a mechanism rather than a result.
+

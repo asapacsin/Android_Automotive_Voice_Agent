@@ -2,6 +2,7 @@ package com.novadrive.app.voice
 
 import com.novadrive.ingress.realtime.ResponseOutcome
 
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -243,5 +244,15 @@ class ActionClaimGuardTest {
         val nudge = guard.onResponseDone(message, "退出导航中，请选择下一个目的地。")
         assertNotNull(nudge)
         assertTrue(nudge!!.contains("算了"), "the follow-up must carry the request itself")
+    }
+
+    @Test
+    fun anImplicitComfortRequestCountsAsSomethingWeCanAct0n() {
+        // Measured on device 2026-09-20: 「有点热」 contains no control word - no 空调, no 温度,
+        // no 调 - so the guard treated it as unclassified and told the driver 「刚才没听清楚」
+        // about a sentence SPEC-006 resolves to a concrete adjustment.
+        assertTrue(ActionClaimGuard.isControlRequest("有点热"))
+        assertTrue(ActionClaimGuard.isControlRequest("空调调到22度"))
+        assertFalse(ActionClaimGuard.isControlRequest("今天天气怎么样"))
     }
 }

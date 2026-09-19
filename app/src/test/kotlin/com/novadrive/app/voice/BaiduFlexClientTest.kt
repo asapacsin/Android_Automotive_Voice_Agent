@@ -54,7 +54,7 @@ class BaiduFlexClientTest {
             }
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
         }))
-        val client = BaiduFlexClient(OkHttpClient(), 3_000, requireTls = false)
+        val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
         client.connect(config())
         client.sendFunctionResult("call_9", "{\"ok\":true}")
         assertTrue(resultMessages.await(3, TimeUnit.SECONDS))
@@ -88,7 +88,7 @@ class BaiduFlexClientTest {
             }
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
         }))
-        val client = BaiduFlexClient(OkHttpClient(), 3_000, requireTls = false)
+        val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
         client.connect(config(voice = "4157"))
         client.disconnect()
         val updates = received.map(::JSONObject).filter { it.getString("type") == "session.update" }
@@ -125,7 +125,7 @@ class BaiduFlexClientTest {
             }
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
         }))
-        val client = BaiduFlexClient(OkHttpClient(), 3_000, requireTls = false)
+        val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
         client.connect(config())
         assertTrue(first.await(3, TimeUnit.SECONDS))
         NavigationState.begin()
@@ -155,7 +155,7 @@ class BaiduFlexClientTest {
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
         }))
         NavigationState.begin()
-        val client = BaiduFlexClient(OkHttpClient(), 3_000, requireTls = false)
+        val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
         client.connect(config())
         assertTrue(first.await(3, TimeUnit.SECONDS))
         val payload = received.map(::JSONObject).first { it.getString("type") == "session.update" }
@@ -183,7 +183,7 @@ class BaiduFlexClientTest {
             }
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
         }))
-        val client = BaiduFlexClient(OkHttpClient(), 3_000, requireTls = false)
+        val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
         client.connect(config())
         Thread.sleep(800)
         val creates = received.map(::JSONObject).count { it.getString("type") == "response.create" }
@@ -210,7 +210,7 @@ class BaiduFlexClientTest {
             }
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
         }))
-        val client = BaiduFlexClient(OkHttpClient(), 3_000, requireTls = false)
+        val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
         val errors = Collections.synchronizedList(mutableListOf<DomainVoiceEvent.Error>())
         val collector = launch(kotlinx.coroutines.Dispatchers.IO) {
             client.events().collect { (it.payload as? DomainVoiceEvent.Error)?.let(errors::add) }
@@ -264,7 +264,7 @@ class BaiduFlexClientTest {
             }
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
         }))
-        val client = BaiduFlexClient(OkHttpClient(), 3_000, requireTls = false)
+        val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
         client.connect(config())
         Thread.sleep(800)
         val sent = received.map(::JSONObject)
@@ -290,7 +290,7 @@ class BaiduFlexClientTest {
                 }
             }
         }))
-        val client = BaiduFlexClient(OkHttpClient(), 3_000, requireTls = false)
+        val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
         val closed = async(start = CoroutineStart.UNDISPATCHED) {
             kotlinx.coroutines.withTimeout(3_000) {
                 client.events().first { (it.payload as? DomainVoiceEvent.Error)?.code == "BAIDU_FLEX_CONNECTION_CLOSED" }
@@ -320,7 +320,7 @@ class BaiduFlexClientTest {
             }
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
         }))
-        val client = BaiduFlexClient(OkHttpClient(), 3_000, requireTls = false)
+        val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
         client.connect(config())
         val socket = serverSocket!!
         socket.send("""{"type":"response.created","response":{"id":"r1"}}""")
@@ -376,7 +376,7 @@ class BaiduFlexClientTest {
             }
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
         }))
-        val client = BaiduFlexClient(OkHttpClient(), 3_000, requireTls = false)
+        val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
         client.connect(config())
 
         // A tool turn: the model calls a tool, the result goes back, the model replies.
@@ -397,7 +397,7 @@ class BaiduFlexClientTest {
 
     @Test
     fun sendAudioOnClosedSocketEmitsErrorWithoutThrowing() = runBlocking {
-        val client = BaiduFlexClient(OkHttpClient(), 3_000, requireTls = false)
+        val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
         val pending = async(start = CoroutineStart.UNDISPATCHED) { client.events().first() }
         client.sendAudio(ByteArray(320))
         val payload = pending.await().payload
@@ -431,7 +431,7 @@ class BaiduFlexClientTest {
             }
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
         }))
-        val client = BaiduFlexClient(OkHttpClient(), 3_000, requireTls = false)
+        val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
         client.connect(config())
         client.cancelResponse()
         client.sendAudio(ByteArray(320))
@@ -459,4 +459,43 @@ class BaiduFlexClientTest {
         ),
         BaiduCredentials("", "placeholder-flex-key", ""),
     )
+
+    /**
+     * The readiness timeout does fire - proven here, with a short one, so no other test has to
+     * depend on it.
+     */
+    @Test
+    fun aSessionThatNeverBecomesReadyFails() = runBlocking {
+        server.enqueue(
+            MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+                // Upgrades and then says nothing: no session.created, ever.
+                override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) = Unit
+
+                // Without this the half-open socket outlives the test and MockWebServer's
+                // shutdown fails with "Gave up waiting for queue to shut down".
+                override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                    webSocket.close(code, reason)
+                }
+            }),
+        )
+        val client = BaiduFlexClient(OkHttpClient(), 300, requireTls = false)
+        val failure = runCatching { client.connect(config()) }.exceptionOrNull()
+        client.close()
+        kotlinx.coroutines.delay(200)
+        assertTrue(failure is VoiceProviderException, "a session that never opens must fail, not hang")
+        assertEquals("BAIDU_FLEX_TIMEOUT", (failure as VoiceProviderException).code)
+    }
+
+    private companion object {
+        /**
+         * Deliberately far longer than any of these tests needs.
+         *
+         * At 3 s the suite failed with `Baidu Flex session readiness timed out` under a full
+         * parallel Gradle run on 2026-09-19 and passed on its own seconds later (B-013). None of
+         * these tests is about how long readiness may take - they are about what happens once it
+         * arrives - so the wait must not encode how busy the machine is. The timeout itself is
+         * covered by [aSessionThatNeverBecomesReadyFails], with its own short value.
+         */
+        const val READY_TIMEOUT_MS = 30_000L
+    }
 }
