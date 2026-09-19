@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-19T20:47:42",
+  "generated_at": "2026-09-19T20:48:09",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "36461ce",
+    "commit": "a7889c3",
     "branch": "main",
-    "subject": "Refresh generated state",
-    "working_tree_clean": false,
-    "uncommitted_files": 12
+    "subject": "The wake word was never blocked on the .jet; it was blocked on the mic",
+    "working_tree_clean": true,
+    "uncommitted_files": 0
   },
   "tests": {
     "available": true,
