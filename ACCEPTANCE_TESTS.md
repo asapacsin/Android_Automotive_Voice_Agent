@@ -532,3 +532,43 @@ seconds; a wrong call has already rung someone's phone. And the risk is measured
 imagined — [P23](OPEN_PROBLEMS.md) recorded the model acting confidently on a sentence the driver
 never said. So resolution and dialling are separate turns, and the second needs the driver's word.
 
+---
+
+## Wake-word false accepts, and recovery from a lost signal — 2026-09-20, `2391ff70`
+
+### False accepts (B-012, the half that needs no person)
+
+`python tools/speech-harness/measure_false_wake.py --minutes 16`
+
+| | |
+| --- | --- |
+| duration | 16 min, the car's own music playing throughout |
+| **false wakes** | **0** |
+| engine errors | 0 |
+| engine restarts | 0 |
+| engine alive at the end | **true** |
+
+That last row is the one that makes the others mean anything, and the first attempt failed on it.
+The script reported `engine started False` and the run was discarded — an engine that quietly
+stopped listening would report zero false accepts too. The cause was the script clearing logcat
+*after* launching the app, so the proof of a healthy engine had been thrown away rather than never
+produced. Fixed, re-run, and the count above is from a run where the engine is known to have been
+listening the whole time.
+
+**Still needs a person:** detection of a human voice at a stated distance, with the car moving.
+Synthesized speech through the injection path proves the model matches the phrase and says nothing
+about a real cabin.
+
+### Recovery from a lost signal (S18)
+
+The realtime socket is cut exactly as a lost signal would cut it (`net:drop` →
+`NetworkFaults.dropConnectionNow`), and then the driver speaks.
+
+| Step | Evidence | Result |
+| --- | --- | --- |
+| The socket is cut mid-session | `dropped=true` | **PROVEN** |
+| The next utterance still executes | `tool=control_climate → ✓ 空调开 · 24°C · 风2` | **PROVEN** |
+
+A product that needs the driver to notice a dropped connection and retry is not one you can use
+while driving.
+

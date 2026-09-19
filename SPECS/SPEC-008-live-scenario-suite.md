@@ -63,6 +63,11 @@ Each row is one driver utterance. **Verdict** is what the app must do, not what 
 | S15 | room noise, nobody spoke | nothing, or a dropped phantom | any tool call |
 | S16 | 「再低一点」 with nothing adjusted yet | a clarifying question (`kind=clarify`) | any `control_climate` call |
 | S17 | 「找一家附近还开着的餐厅，带我去，顺便打电话问一下有没有位子」 | `navigate_to` really runs | any claim that a call was placed |
+| S18 | 「空调打开」 after the realtime socket is cut | `control_climate` still runs | — |
+
+S18 injects the failure rather than waiting for one: `net:drop` cancels the socket exactly as a
+lost signal would, and the very next thing the driver says must still be carried out. A product
+that needs the driver to notice and retry is not one you can use while driving.
 
 S17 is one sentence with three asks, and it is the scenario the whole product is aimed at. The
 model decomposed it, ran the search (5 restaurants), and asked the driver to choose — deferring

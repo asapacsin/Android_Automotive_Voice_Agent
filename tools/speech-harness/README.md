@@ -56,3 +56,22 @@ Check it fails for the right reason before trusting it. Point an `expect` at som
 happen and confirm the run goes red — the runner's own negative control was done exactly that way,
 and two of the first twelve assertions turned out to be testing a mechanism rather than a result.
 
+## False wake measurement (B-012)
+
+```powershell
+python tools\speech-harness\measure_false_wake.py --minutes 16
+```
+
+Leaves the wake engine listening with the car's own music playing and counts how many times it
+wakes. A false accept is worse than a missed wake: the assistant interrupts a driver who never
+asked for it.
+
+It also reports whether the engine was **alive at the end**, and that line matters more than the
+count — an engine that quietly stopped listening reports zero false accepts too. The first run said
+`engine started False` and the measurement was discarded; the cause turned out to be the script
+clearing logcat *after* launching, so the evidence of a healthy engine had been thrown away rather
+than never produced.
+
+This one spends no Baidu quota. It does hold the microphone and play audio, so run it when the
+phone is somewhere the noise does not matter.
+

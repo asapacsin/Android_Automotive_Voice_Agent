@@ -74,6 +74,8 @@ def run_scenario(sc, wait):
             broadcast("dispatch", step[len("dispatch:"):])
         elif step.startswith("climate:"):
             broadcast("climate", step[len("climate:"):])
+        elif step.startswith("net:"):
+            broadcast("net", step[len("net:"):])
         time.sleep(2)
     # A scenario may be several utterances: cross-turn context only exists if a *driver* turn
     # produced it, so 「再凉一点」 has to follow a real 「有点热」 rather than a debug state poke.

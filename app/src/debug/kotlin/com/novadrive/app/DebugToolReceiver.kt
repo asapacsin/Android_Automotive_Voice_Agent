@@ -22,6 +22,12 @@ class DebugToolReceiver : BroadcastReceiver() {
                 "nav_stop" -> navStop()
                 "climate" -> climate(arg)
                 "wake" -> wake(context, arg)
+                // Cuts the realtime socket as a lost signal would, so recovery can be a scenario
+                // rather than a claim. NetworkFaults is production code with a test-only caller.
+                "net" -> when (arg.lowercase()) {
+                    "drop" -> "dropped=" + com.novadrive.app.voice.NetworkFaults.dropConnectionNow()
+                    else -> "usage: net:drop"
+                }
                 "turn" -> beginTurn(arg)
                 "dispatch" -> dispatch(context, arg)
                 "voice" -> voice(context, arg)

@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-09-20T03:05:07",
+  "generated_at": "2026-09-20T03:44:17",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "b1d6b22",
+    "commit": "5c87418",
     "branch": "main",
-    "subject": "The car can call someone, and admits when it cannot",
+    "subject": "Multi-step: one sentence, three asks, and no claim about the one it cannot do",
     "working_tree_clean": false,
-    "uncommitted_files": 5
+    "uncommitted_files": 8
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-20T02:52:06",
+    "collected_at": "2026-09-20T03:19:26",
     "total": {
       "tests": 735,
       "failures": 0,
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 229034768,
-    "built_at": "2026-09-20T02:51:04"
+    "bytes": 229313424,
+    "built_at": "2026-09-20T03:18:50"
   },
   "capabilities": {
     "available": true,
@@ -125,16 +125,16 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "B-012: B-012 — no SPEC yet: compile this demand into scenarios and acceptance criteria",
-    "actionable_count": 2,
-    "blocked_count": 1,
+    "NEXT_ACTION": "B-015: B-015 — no SPEC yet: compile this demand into scenarios and acceptance criteria",
+    "actionable_count": 1,
+    "blocked_count": 2,
     "candidates": [
       {
         "priority": 11,
         "class": "next authorised backlog item",
         "source": "BACKLOG.md",
         "item": "B-012",
-        "blocked_by": null
+        "blocked_by": "a person saying 「你好小诺」 at a stated distance with the car actually moving, which is"
       },
       {
         "priority": 11,

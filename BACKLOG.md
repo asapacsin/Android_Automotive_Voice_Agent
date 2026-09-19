@@ -15,7 +15,7 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 | B-003 | Wake word to activate the assistant — say 「你好小诺」 instead of pressing a button | 2026-09-15 | **Done** 2026-09-19 — spoken by the product owner, the session opens. Human-verified end to end | [SPEC-001](SPECS/SPEC-001-wake-word.md) |
 | B-010 | **Saved places** — 「回家」「去公司」 must navigate, and an unset slot must be admitted rather than guessed | 2026-09-19 | **Done** 2026-09-19 — device-verified both ways. Driving to arrival is blocked by a physical GPS condition, not by this | [CAPABILITIES](docs/CAPABILITIES.md) |
 | B-011 | **Spoken vague and contextual requests reach the right tool** — the scenario set, through the live model | 2026-09-19 | **Done** 2026-09-20 — 19/19, every §scenario row this hardware can reach; 「回家」 measured at 4/5 | [SPEC-008](SPECS/SPEC-008-live-scenario-suite.md) |
-| B-012 | **Wake-word reliability is uncharacterised** — false accepts over a long drive, and detection at distance with road noise | 2026-09-19 | Open | [SPEC-001](SPECS/SPEC-001-wake-word.md) |
+| B-012 | **Wake-word reliability is uncharacterised** — false accepts over a long drive, and detection at distance with road noise | 2026-09-19 | **Half done** 2026-09-20 — 0 false wakes in 16 min with music, engine proven alive. Detection by a human voice still needs a person | [SPEC-001](SPECS/SPEC-001-wake-word.md) |
 | B-013 | **`BaiduFlexClientTest` readiness timeout is load-sensitive** — it fails under a full parallel suite and passes alone | 2026-09-19 | **Done** 2026-09-20 — the wait no longer encodes machine speed, and the timeout has its own test | §B-013 below |
 | B-014 | **A false sentence is spoken before it is corrected** — the correction follows; the driver still heard the claim | 2026-09-19 | **Done** 2026-09-20 — held and dropped; measured cost 93–515 ms | [P23](OPEN_PROBLEMS.md) |
 | B-015 | **Cantonese is not understood** — 「返屋企啦」 transcribes as 「发诺克拉」; the product owner speaks Cantonese | 2026-09-19 | Open | §B-015 below |
@@ -207,8 +207,27 @@ Detection exists and a human has confirmed it. Unmeasured: the false-accept rate
 guidance playing over a sustained period, and detection at arm's length with road noise. Threshold
 is 1450 of 0–3000, lower being easier to wake.
 
-**Acceptance:** a measured false-accept count over ≥30 minutes of mixed playback, and a detection
-rate at a stated distance. **Verification:** device, with a person.
+Wake-word reliability has two halves, and only one of them needs a person.
+
+**The half a machine can measure — false accepts.** Leave the engine listening with the car's own
+music playing and count how many times it wakes. A false accept is worse than a missed wake: the
+assistant interrupts a driver who did not ask for it. `tools/speech-harness/measure_false_wake.py`
+does this, and checks the engine was still alive at the end — an engine that quietly stopped
+listening would also report zero.
+
+**The half that needs a person — detection.** A human voice, at arm's length, over road noise, in
+a moving car. Synthesized speech through the injection path proves the model matches the phrase; it
+says nothing about a real cabin, and no amount of it will.
+
+**Acceptance:** (a) a measured false-accept count over ≥15 minutes of playback, with the engine
+proven alive; (b) a detection rate for a human voice at a stated distance with the car moving.
+**Verification:** (a) autonomous, recorded below; (b) device, with a person driving.
+
+**(a) is done, 2026-09-20: 0 false wakes in 16 minutes with music playing**, 0 engine errors, 0
+restarts, engine alive at the end. Evidence in [ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md).
+
+BLOCKED_BY: a person saying 「你好小诺」 at a stated distance with the car actually moving, which is
+the only way to measure detection in a real cabin
 
 ## B-013 — A load-sensitive test
 

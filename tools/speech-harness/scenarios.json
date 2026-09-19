@@ -221,6 +221,19 @@
       "forbid": [
         "call_placed"
       ]
+    },
+    {
+      "id": "S18",
+      "utterance": "空调打开 (after the socket is cut mid-session)",
+      "say": "ac_on",
+      "setup": [
+        "net:drop"
+      ],
+      "_note": "Failure recovery: the realtime socket is cut as a lost signal would cut it, and the very next thing the driver says must still be carried out. A product that needs the driver to notice and retry is not one you can use while driving.",
+      "expect": [
+        "^tool=control_climate"
+      ],
+      "forbid": []
     }
   ]
 }
