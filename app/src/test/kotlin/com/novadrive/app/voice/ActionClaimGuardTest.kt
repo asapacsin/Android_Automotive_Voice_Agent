@@ -233,4 +233,15 @@ class ActionClaimGuardTest {
         guard.onUserTranscript("发诺克拉。")
         assertNull(guard.onResponseDone(message, "抱歉，我帮不了你调这个，没听清。"))
     }
+
+    @Test
+    fun aKnownRequestIsPerformedRatherThanQueried() {
+        // Verbatim from the device log, 2026-09-20. 「算了」 is a request this app understands, so
+        // the follow-up must make the model run the tool - not tell the driver it misheard a
+        // sentence it heard correctly.
+        guard.onUserTranscript("算了。")
+        val nudge = guard.onResponseDone(message, "退出导航中，请选择下一个目的地。")
+        assertNotNull(nudge)
+        assertTrue(nudge!!.contains("算了"), "the follow-up must carry the request itself")
+    }
 }

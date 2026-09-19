@@ -331,4 +331,88 @@ class PhantomTurnSuppressionTest {
         BaiduCredentials("", "placeholder-flex-key", ""),
     )
 
+
+    /**
+     * One correction per response, not two.
+     *
+     * `DriverTurn` corrects when it drops a reply and `ActionClaimGuard` corrects on its own
+     * judgement; for an unproven action claim both fire. Measured on device 2026-09-19: 「算了」
+     * produced two identical follow-ups 2 ms apart and `exit_navigation_mode` ran twice. It is
+     * idempotent so nothing broke; `adjust_temperature{-2}` twice is −4 °C, and would have.
+     *
+     * The server here answers `response.create`, not just the opening handshake. That matters:
+     * a follow-up is a real turn, and the client's `ResponseTurnGate` holds everything behind it
+     * until the server replies. Two earlier versions of this test did not, so the second
+     * correction never reached the wire and they passed whether or not the fix was present - which
+     * is worse than no test, and why this one was checked against a reverted fix first.
+     */
+    @Test
+    fun anUnprovenClaimIsCorrectedOnceNotTwice() = runBlocking {
+        val corrections = Collections.synchronizedList(mutableListOf<String>())
+        val handshakes = java.util.concurrent.atomic.AtomicInteger(0)
+        val done = CountDownLatch(1)
+        server.enqueue(
+            MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+                override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
+                    webSocket.send("""{"type":"session.created","session":{"model":"qianfan-realtime-flex-v1"}}""")
+                    webSocket.send("""{"type":"conversation.created","conversation":{"id":"conv_1"}}""")
+                }
+
+                override fun onMessage(webSocket: WebSocket, text: String) {
+                    val type = JSONObject(text).optString("type")
+                    if (type == "conversation.item.create") {
+                        corrections += text
+                        return
+                    }
+                    // A follow-up is a real turn: the client's ResponseTurnGate holds everything
+                    // behind it until the server answers. Without this the second correction never
+                    // reaches the wire and the test passes whether or not the fix is present.
+                    if (type == "response.create") {
+                        webSocket.send("""{"type":"response.created","response":{"id":"resp_f"}}""")
+                        webSocket.send(
+                            """{"type":"response.done","response":{"status":"completed","output":[{"type":"message"}]}}""",
+                        )
+                        return
+                    }
+                    if (type != "session.update") return
+                    webSocket.send("""{"type":"session.updated","session":{"model":"qianfan-realtime-flex-v1"}}""")
+                    // Only the first handshake carries the turn; later ones are resets.
+                    if (handshakes.incrementAndGet() != 1) return
+                    webSocket.send("""{"type":"input_audio_buffer.speech_started"}""")
+                    webSocket.send("""{"type":"input_audio_buffer.speech_stopped"}""")
+                    webSocket.send("""{"type":"response.created","response":{"id":"resp_1"}}""")
+                    // The driver asked for a real action; the model claims it happened and calls
+                    // nothing. Both guards see a false claim.
+                    webSocket.send(
+                        """{"type":"conversation.item.input_audio_transcription.completed","transcript":"空调打开。"}""",
+                    )
+                    webSocket.send("""{"type":"response.audio.delta","delta":"AAAA"}""")
+                    webSocket.send("""{"type":"response.audio_transcript.done","transcript":"空调已打开。"}""")
+                    webSocket.send(
+                        """{"type":"response.done","response":{"status":"completed","output":[{"type":"message"}]}}""",
+                    )
+                    done.countDown()
+                }
+
+                override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                    webSocket.close(code, reason)
+                }
+            }),
+        )
+        val client = BaiduFlexClient(
+            http = OkHttpClient(),
+            readyTimeoutMs = 3_000,
+            requireTls = false,
+            lastAudioSegment = { null },
+            contextAwaitingAnswer = { false },
+        )
+        val job = launch(start = CoroutineStart.UNDISPATCHED) { client.events().collect { } }
+        client.connect(config())
+        assertTrue(done.await(5, TimeUnit.SECONDS), "the server script did not finish")
+        // Long enough for the reset to complete and flush anything it was holding.
+        kotlinx.coroutines.delay(2_500)
+        job.cancel()
+        client.close()
+        assertEquals(1, corrections.size, "expected exactly one correction, got: $corrections")
+    }
 }

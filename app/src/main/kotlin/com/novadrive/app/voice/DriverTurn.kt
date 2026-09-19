@@ -187,6 +187,12 @@ class DriverTurn(val epoch: Long) {
         if (kind == Kind.UNKNOWN) kind = classify(text)
         // A turn that was only held because its audio looked doubtful is now known to be real.
         if (holdReason == HoldReason.PHANTOM_AUDIO) holdReason = HoldReason.NONE
+        // The transcript is what classifies the turn, and it usually arrives after the response
+        // has started - so a hold taken in ignorance is re-decided now that the kind is known.
+        // UNCLASSIFIED_CLAIM is exactly such a hold: leaving it in place would keep treating a
+        // known ACTION as unclassified, and an action claim released by execution proof mid-
+        // response would instead wait for the response to end.
+        if (holdReason == HoldReason.UNCLASSIFIED_CLAIM) holdReason = HoldReason.NONE
         if (holdReason == HoldReason.NONE && phase == Phase.RESPONDING) {
             holdReason = decideHold(contextAwaitingAnswer = false)
         }

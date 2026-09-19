@@ -20,7 +20,7 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 | B-014 | **A false sentence is spoken before it is corrected** — the correction follows; the driver still heard the claim | 2026-09-19 | **Done** 2026-09-20 — held and dropped; measured cost 93–515 ms | [P23](OPEN_PROBLEMS.md) |
 | B-015 | **Cantonese is not understood** — 「返屋企啦」 transcribes as 「发诺克拉」; the product owner speaks Cantonese | 2026-09-19 | Open | §B-015 below |
 | B-016 | **A rejected session still looked like it was listening** — `state=ERROR` with `listening=ACTIVE` and zero frames, for 30 s | 2026-09-19 | **Done** 2026-09-19 — device-verified by reproducing the rejection | §B-016 below |
-| B-017 | **A duplicate correction is device-observed but not unit-covered** — the fix is in; the regression test is not | 2026-09-20 | Open | §B-017 below |
+| B-017 | **A duplicate correction is device-observed but not unit-covered** — the fix is in; the regression test is not | 2026-09-20 | **Done** 2026-09-20 — covered, after three attempts and one real bug found on the way | §B-017 below |
 | B-002 | 小诺 must stay quiet during navigation and speak only short confirmations | 2026-09-15 | **Done** 2026-09-16 | [P1](OPEN_PROBLEMS.md) — verified on device |
 | B-001 | 「关闭音乐」 must actually stop the music | 2026-09-15 | **Done** 2026-09-16 | [P2](OPEN_PROBLEMS.md) — verified on device with log evidence |
 
@@ -337,7 +337,22 @@ wire in the scripted flow, so only one is ever observable there. On the device t
 and both go out. A test that passes either way is worse than no test, because it claims coverage
 that does not exist.
 
-**Acceptance:** a test that fails without the single-owner guard. Most likely it has to drive the
-reset explicitly rather than let it race. **Verification:** run it against a reverted fix first;
-if it still passes, it is not the test.
+**CLOSED 2026-09-20.** It took three attempts, and the first two passing was the useful part.
 
+| Attempt | Why it passed without the fix |
+| --- | --- |
+| 1 | The mock answered only the opening handshake, so the follow-up turn hung in `ResponseTurnGate` |
+| 2 | The mock still never answered `response.create`, so the second correction never left the client |
+| 3 | The transcript arrived *after* `response.created`, so the turn stayed `UNCLASSIFIED_CLAIM` instead of being re-classified as `ACTION` — and only the `ACTION` path sends a correction of its own |
+
+The third one was not a test bug. `onUserTranscript` re-decides a hold taken before the kind was
+known, but it only did so for `PHANTOM_AUDIO` and `NONE`. The new `UNCLASSIFIED_CLAIM` hold was
+left in place, so a turn known to be an ACTION kept being treated as unclassified, and an action
+claim that execution proof would have released mid-response waited for the response to end instead.
+Fixed, and the test now fails without the single-owner guard (**n=2**) and passes with it.
+
+Found in the same pass and fixed: with a *known* request, the fallback was telling the driver
+「刚才没有听清楚」 for a sentence the app had understood. Measured on device — 「算了」 answered
+「退出导航中…」 with no tool call. When the request is known the follow-up must make the model perform
+it; `describesCarAction` now feeds the classified branch too. Device-verified: 「算了」 with a picker
+open cancels for real (`nav_flow_cancelled`, `exit_navigation_mode`, 「已取消选择。」).

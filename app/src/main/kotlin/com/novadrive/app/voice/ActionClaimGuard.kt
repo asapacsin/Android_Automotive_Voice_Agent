@@ -80,7 +80,15 @@ class ActionClaimGuard {
             // is not the clarification the ambiguity policy protects — that path returns Clarify,
             // and asksForClimateChange() is false for it. It is hesitation, and it costs the driver
             // a turn at the wheel. Measured 2026-09-19: 「有点热。」 → 「需要我调节空调温度吗？」.
-            isControlRequest(request) -> claimsDone(reply) || ContextResolver.asksForClimateChange(request)
+            // describesCarAction covers the wording claimsDone misses. Measured on device
+            // 2026-09-20: 「算了」 was answered 「退出导航中，请选择下一个目的地。」 with no tool call -
+            // no completion word, so claimsDone was false, and the driver was told to repeat
+            // themselves for a request the app had understood perfectly well. When the request is
+            // known, the right follow-up is to perform it, not to ask again.
+            isControlRequest(request) ->
+                claimsDone(reply) ||
+                    describesCarAction(reply) ||
+                    ContextResolver.asksForClimateChange(request)
             else -> false
         }
         if (suspicious) {

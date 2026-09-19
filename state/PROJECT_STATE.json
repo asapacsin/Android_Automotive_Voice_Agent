@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-09-20T00:52:05",
+  "generated_at": "2026-09-20T01:17:40",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "6bb26d7",
+    "commit": "3db2de2",
     "branch": "main",
-    "subject": "A dead session no longer shows the driver that it is listening",
+    "subject": "A claim nothing performed is never spoken",
     "working_tree_clean": false,
-    "uncommitted_files": 8
+    "uncommitted_files": 5
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-20T00:17:48",
+    "collected_at": "2026-09-20T01:16:03",
     "total": {
-      "tests": 723,
+      "tests": 725,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "app": {
-        "tests": 531,
+        "tests": 533,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 229294992,
-    "built_at": "2026-09-20T00:14:13"
+    "bytes": 229295032,
+    "built_at": "2026-09-20T01:13:29"
   },
   "capabilities": {
     "available": true,
@@ -124,7 +124,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "B-011: B-011 — no SPEC yet: compile this demand into scenarios and acceptance criteria",
-    "actionable_count": 5,
+    "actionable_count": 4,
     "blocked_count": 0,
     "candidates": [
       {
@@ -153,13 +153,6 @@
         "class": "next authorised backlog item",
         "source": "BACKLOG.md",
         "item": "B-015",
-        "blocked_by": null
-      },
-      {
-        "priority": 11,
-        "class": "next authorised backlog item",
-        "source": "BACKLOG.md",
-        "item": "B-017",
         "blocked_by": null
       }
     ]
