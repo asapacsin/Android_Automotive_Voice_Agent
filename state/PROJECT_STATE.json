@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-19T09:30:18",
+  "generated_at": "2026-09-19T09:30:54",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "a6090e4",
+    "commit": "52063b7",
     "branch": "main",
-    "subject": "D-4: the mute and the phase now disagree loudly instead of quietly",
+    "subject": "Run the new loop until it says stop",
     "working_tree_clean": false,
-    "uncommitted_files": 6
+    "uncommitted_files": 2
   },
   "tests": {
     "available": true,
@@ -123,7 +123,7 @@
     "AUTONOMOUS_ACTION_AVAILABLE": "NO",
     "HUMAN_ACTION_REQUIRED": "YES",
     "STOP_REASON": "BLOCKED_ON_EXTERNAL_DEPENDENCY",
-    "BLOCKING_DEPENDENCY": "the test phone has no network route to the Baidu provider (Wi-Fi associated with no",
+    "BLOCKING_DEPENDENCY": "the test phone has no network route to the Baidu provider — Wi-Fi shows no IP and an empty route table, every session ends BAIDU_DNS_FAILED, and reconnecting it needs the network's credentials",
     "NEXT_ACTION": "NONE",
     "actionable_count": 0,
     "blocked_count": 5,
@@ -133,7 +133,7 @@
         "class": "active milestone row",
         "source": "CURRENT_MILESTONE.md",
         "item": "The **live model** acts on the injected context",
-        "blocked_by": "the test phone has no network route to the Baidu provider (Wi-Fi associated with no"
+        "blocked_by": "the test phone has no network route to the Baidu provider — Wi-Fi shows no IP and an empty route table, every session ends BAIDU_DNS_FAILED, and reconnecting it needs the network's credentials"
       },
       {
         "priority": 8,

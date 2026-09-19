@@ -27,9 +27,7 @@ Reconnecting it is a change to the device's own settings and needs its network c
 is the product owner's to do, not an agent's. Everything that does **not** need the model was
 verified instead, through the real dispatcher — see [ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md).
 
-BLOCKED_BY: the test phone has no network route to the Baidu provider (Wi-Fi associated with no
-IP, every session ends BAIDU_DNS_FAILED); reconnecting it needs the network credentials and is a
-change to the device's own settings
+BLOCKED_BY: the test phone has no network route to the Baidu provider — Wi-Fi shows no IP and an empty route table, every session ends BAIDU_DNS_FAILED, and reconnecting it needs the network's credentials
 
 **Also blocked by this, and only by this:**
 

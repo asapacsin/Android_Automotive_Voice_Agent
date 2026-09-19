@@ -103,6 +103,8 @@ item's canonical document:
 BLOCKED_BY: the test phone has no network route to the provider
 ```
 
+**One line.** The value is read to the end of the line and no further, so a wrapped blocker is a blocker truncated mid-sentence in `BLOCKING_DEPENDENCY`.
+
 `discover_work.py` removes that item from the frontier while the line stands, and
 `harness_check.py` rejects a stop state that claims a human is needed without one.
 
