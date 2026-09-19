@@ -1,5 +1,7 @@
 package com.novadrive.app.voice
 
+import com.novadrive.ingress.realtime.ResponseOutcome
+
 /**
  * Decides when to start a fresh Baidu Flex conversation.
  *
@@ -27,19 +29,21 @@ class ConversationResetPolicy(private val maxPlainTurns: Int = 3) {
     private val answeredEarly = mutableSetOf<String>()
 
     /**
-     * A response finished; [outputKinds] are its `output[].type` values and [callIds] the call ids
-     * of its function calls, where known. Returns true to reset now.
+     * A response finished. Returns true to reset now.
+     *
+     * Takes a [ResponseOutcome] rather than the provider's own `output[].type` strings: which wire
+     * format said "function_call" is the adapter's business, and this policy's rules are not
+     * Baidu's (ADR-009).
      */
     @Synchronized
-    fun onResponseDone(outputKinds: List<String>, callIds: List<String> = emptyList()): Boolean {
-        val calls = outputKinds.count { it == "function_call" }
-        if (calls > 0) {
-            callIds.forEach { id -> if (!answeredEarly.remove(id)) owed += id }
-            pendingToolResults += (calls - callIds.size).coerceAtLeast(0)
+    fun onResponseDone(outcome: ResponseOutcome): Boolean {
+        if (outcome.requestedTool) {
+            outcome.toolCallIds.forEach { id -> if (!answeredEarly.remove(id)) owed += id }
+            pendingToolResults += outcome.unidentifiedToolCalls
             toolTurnSinceReset = true
             return false
         }
-        if ("message" !in outputKinds) return false
+        if (!outcome.spoke) return false
         if (pendingToolResults > 0 || owed.isNotEmpty()) return false
         if (toolTurnSinceReset) return true
         plainTurns += 1

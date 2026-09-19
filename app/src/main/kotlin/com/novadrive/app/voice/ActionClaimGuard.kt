@@ -1,5 +1,7 @@
 package com.novadrive.app.voice
 
+import com.novadrive.ingress.realtime.ResponseOutcome
+
 /**
  * Catches a reply that claims a car action happened when no tool was called.
  *
@@ -47,12 +49,12 @@ class ActionClaimGuard {
 
     /** A response finished. Returns the follow-up text to send, or null. */
     @Synchronized
-    fun onResponseDone(outputKinds: List<String>, assistantText: String): String? {
-        if ("function_call" in outputKinds) {
+    fun onResponseDone(outcome: ResponseOutcome, assistantText: String): String? {
+        if (outcome.requestedTool) {
             toolCalledThisTurn = true
             return null
         }
-        if ("message" !in outputKinds) return null
+        if (!outcome.spoke) return null
         val failure = lastToolFailure
         if (failure != null && !failureCorrected && claimsDone(assistantText.trim())) {
             failureCorrected = true

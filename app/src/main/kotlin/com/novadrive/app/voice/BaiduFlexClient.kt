@@ -10,6 +10,7 @@ import com.novadrive.app.NavigationState
 import com.novadrive.app.PersonaProfiles
 import com.novadrive.ingress.realtime.DomainVoiceEvent
 import com.novadrive.ingress.realtime.RealtimeEvent
+import com.novadrive.ingress.realtime.ResponseOutcome
 import com.novadrive.ingress.realtime.SystemSessionClock
 import com.novadrive.ingress.realtime.VoiceProviderException
 import kotlinx.coroutines.CompletableDeferred
@@ -362,22 +363,44 @@ class BaiduFlexClient(
                 // An empty response carries no user or assistant content, only ids and usage.
                 DebugVoiceLog.log("flex_empty_response_raw ${text.take(800)}")
             }
-            val callIds = (0 until (outputs?.length() ?: 0)).mapNotNull { i ->
-                outputs!!.optJSONObject(i)?.takeIf { it.optString("type") == "function_call" }?.optString("call_id")?.takeIf { it.isNotEmpty() }
-            }
+            // Baidu's wire vocabulary stops here. Everything downstream is policy, and policy does
+            // not get to know what this provider calls a tool call (ADR-009).
+            val outcome = toOutcome(kinds, outputs)
             // A turn that asked for an action is real by definition; only actionless turns can be
             // phantoms. Decided here, where the outputs are already parsed.
-            finishResponse(hadToolCall = kinds.any { it == "function_call" })
-            if (resetPolicy.onResponseDone(kinds, callIds)) resetConversation()
+            finishResponse(hadToolCall = outcome.requestedTool)
+            if (resetPolicy.onResponseDone(outcome)) resetConversation()
             val spoken = assistantText.toString()
             assistantText.setLength(0)
-            actionGuard.onResponseDone(kinds, spoken)?.takeIf { !listeningSuspended }?.let { nudge ->
+            actionGuard.onResponseDone(outcome, spoken)?.takeIf { !listeningSuspended }?.let { nudge ->
                 DebugVoiceLog.log("flex_action_claim_unverified follow_up=true")
                 Telemetry.record(EventType.GUARD_FOLLOW_UP)
                 sendUserText(nudge)
             }
             emptyRetry.onResponseDone(status, kinds.size)
         }.getOrDefault(false)
+
+    /**
+     * Baidu's `output[].type` list translated into the neutral [ResponseOutcome].
+     *
+     * `"function_call"` and `"message"` are this vendor's words. A provider that called them
+     * something else would translate here and every policy downstream would be unaffected, which
+     * is the entire point of the boundary.
+     */
+    private fun toOutcome(kinds: List<String>, outputs: org.json.JSONArray?): ResponseOutcome {
+        val callIds = (0 until (outputs?.length() ?: 0)).mapNotNull { i ->
+            outputs!!.optJSONObject(i)
+                ?.takeIf { it.optString("type") == FLEX_FUNCTION_CALL }
+                ?.optString("call_id")
+                ?.takeIf { it.isNotEmpty() }
+        }
+        val calls = kinds.count { it == FLEX_FUNCTION_CALL }
+        return ResponseOutcome(
+            spoke = kinds.any { it == FLEX_MESSAGE },
+            toolCallIds = callIds,
+            unidentifiedToolCalls = (calls - callIds.size).coerceAtLeast(0),
+        )
+    }
 
     /** One extra response.create for a turn Baidu completed with no output (see EmptyResponseRetryPolicy). */
     private fun requestReplyAfterEmptyResponse() {
@@ -688,6 +711,13 @@ class BaiduFlexClient(
     }
 
     companion object {
+        /**
+         * Baidu's own `output[].type` values. The only place in the app these strings may appear:
+         * everything downstream takes a [ResponseOutcome] instead (ADR-009).
+         */
+        private const val FLEX_FUNCTION_CALL = "function_call"
+        private const val FLEX_MESSAGE = "message"
+
         private const val SPEECH_STOPPED_FLUSH_MS = 1_600L
 
         /** ~6 s of held reply at typical delta sizes: a ceiling, not an expected value. */

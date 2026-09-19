@@ -1,5 +1,7 @@
 package com.novadrive.app.voice
 
+import com.novadrive.ingress.realtime.ResponseOutcome
+
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -7,8 +9,8 @@ import org.junit.jupiter.api.Test
 
 class ActionClaimGuardTest {
     private val guard = ActionClaimGuard()
-    private val message = listOf("message")
-    private val call = listOf("function_call")
+    private val message = ResponseOutcome.spokenOnly()
+    private val call = ResponseOutcome.toolsOnly("call_1")
 
     @Test
     fun theMeasuredFalseClaimIsCaught() {
