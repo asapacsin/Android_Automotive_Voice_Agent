@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-09-20T02:45:23",
+  "generated_at": "2026-09-20T02:53:33",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "ddbad98",
+    "commit": "7c9be7b",
     "branch": "main",
-    "subject": "Interruption, context and a bribe join the scenario set, and the runner learns to fail safe",
+    "subject": "An ambiguous request is asked about, not blamed on the microphone",
     "working_tree_clean": false,
-    "uncommitted_files": 8
+    "uncommitted_files": 17
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-20T02:32:58",
+    "collected_at": "2026-09-20T02:52:06",
     "total": {
-      "tests": 728,
+      "tests": 735,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "app": {
-        "tests": 536,
+        "tests": 543,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,15 +65,16 @@
   },
   "apk": {
     "built": true,
-    "bytes": 229295932,
-    "built_at": "2026-09-20T02:31:56"
+    "bytes": 229034768,
+    "built_at": "2026-09-20T02:51:04"
   },
   "capabilities": {
     "available": true,
     "by_level": {
-      "device": 23,
+      "device": 24,
       "unsupported": 7,
-      "human": 1
+      "human": 1,
+      "implemented": 1
     },
     "human_verification_pending": [
       "open_mic_thresholds",
@@ -123,10 +124,17 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "B-011: B-011 — no SPEC yet: compile this demand into scenarios and acceptance criteria",
-    "actionable_count": 3,
+    "NEXT_ACTION": "place_call: place_call is only `implemented`: nothing proves it runs",
+    "actionable_count": 5,
     "blocked_count": 0,
     "candidates": [
+      {
+        "priority": 5,
+        "class": "implemented but not wired into production",
+        "source": "capabilities.yaml",
+        "item": "place_call",
+        "blocked_by": null
+      },
       {
         "priority": 11,
         "class": "next authorised backlog item",
@@ -146,6 +154,13 @@
         "class": "next authorised backlog item",
         "source": "BACKLOG.md",
         "item": "B-015",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-018",
         "blocked_by": null
       }
     ]

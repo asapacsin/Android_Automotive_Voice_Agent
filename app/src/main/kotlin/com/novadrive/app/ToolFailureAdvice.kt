@@ -26,6 +26,12 @@ object ToolFailureAdvice {
             "请只用一句话反问用户是温度还是风量，不要再调用任何工具，也不要说已经调好了。",
         "DUPLICATE_IN_TURN" to
             "这个操作在本轮已经执行过一次，没有重复执行。请根据上一次的结果回答，不要说又调了一次。",
+        PhoneCallTool.NO_TELEPHONY to
+            "这辆车上现在没有可用的通话功能（没有 SIM 卡），所以打不了电话。" +
+            "请用一句话如实告诉用户，不要谎称已经拨号。",
+        PhoneCallTool.CONTACT_NOT_FOUND to
+            "通讯录里没有找到这个人，没有拨号。" +
+            "请用一句话如实说没找到，请用户说完整的名字，不要猜一个人。",
         "MEDIA_LIBRARY_UNSUPPORTED" to
             "车上只有一首内置曲目，没有音乐库，无法搜索或指定歌曲。" +
             "请用一句话如实告诉用户放不了他要的那首歌，不要谎称已经播放，也不要改放其它曲子。",
@@ -38,6 +44,18 @@ object ToolFailureAdvice {
     )
 
     fun forCode(code: String): String? = ADVICE[code]
+
+    /** Found one match and did not dial. A call is the one action here that cannot be taken back. */
+    const val CONFIRM_CALL =
+        "已经找到联系人，但还没有拨号。" +
+            "请用一句话问用户是否要给这个人打电话；" +
+            "用户确认后，再用 confirmed=true 再调用一次 place_call。" +
+            "不要说已经打了。"
+
+    /** More than one contact matched; the driver picks, the model does not guess. */
+    const val CHOOSE_CONTACT =
+        "有多个联系人符合这个名字，没有拨号。" +
+            "请用一句话请用户说清楚是哪一位，不要自己选一个。"
 
     /** Not a failure: the call succeeded, but the driver will not feel it (SPEC-006 D1). */
     const val CLIMATE_OFF =

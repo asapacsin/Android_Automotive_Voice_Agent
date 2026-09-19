@@ -32,6 +32,9 @@ class ToolCoverageTest {
         // A save that cannot resolve the address is still dispatched - it just fails with
         // ADDRESS_NOT_FOUND rather than UNKNOWN_TOOL, which is what this test checks.
         "save_place" to """{"slot":"home","address":"珠海站"}""",
+        // Dispatched, then refused with NO_TELEPHONY on a device with no SIM - which is a
+        // dispatch, not an UNKNOWN_TOOL, and that is what this test checks.
+        "place_call" to """{"contact":"张三"}""",
     )
 
     private fun declaredTools(): List<String> {

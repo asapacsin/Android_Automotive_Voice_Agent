@@ -67,6 +67,8 @@ class AndroidToolDispatcher(
      * built for a simulation never reads the real device's saved places.
      */
     private val places: SavedPlaceTool = SavedPlaceTool.none(),
+    /** Calling someone is the one action here that reaches a person; see [PhoneCallTool]. */
+    private val phone: PhoneCallTool = PhoneCallTool.none(),
     /**
      * Last so the common test call site can pass it as a trailing lambda. Everything above has a
      * default; this one is what nearly every dispatcher test overrides.
@@ -182,6 +184,7 @@ class AndroidToolDispatcher(
                 }
             }
             "save_place" -> places.save(call, ::failed)
+            "place_call" -> phone.call(call, ::failed)
             "exit_navigation_mode" -> result(call, executor.exitNavigationMode())
             com.novadrive.app.voice.BaiduFlexProtocol.END_CONVERSATION -> result(call, executor.endConversation())
             com.novadrive.app.voice.BaiduFlexProtocol.SET_SPEECH_OUTPUT -> when (call.arguments["mode"]) {

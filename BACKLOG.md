@@ -21,6 +21,7 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 | B-015 | **Cantonese is not understood** — 「返屋企啦」 transcribes as 「发诺克拉」; the product owner speaks Cantonese | 2026-09-19 | Open | §B-015 below |
 | B-016 | **A rejected session still looked like it was listening** — `state=ERROR` with `listening=ACTIVE` and zero frames, for 30 s | 2026-09-19 | **Done** 2026-09-19 — device-verified by reproducing the rejection | §B-016 below |
 | B-017 | **A duplicate correction is device-observed but not unit-covered** — the fix is in; the regression test is not | 2026-09-20 | **Done** 2026-09-20 — covered, after three attempts and one real bug found on the way | §B-017 below |
+| B-018 | **Calling** — resolve a contact, confirm, then dial; and admit when the car cannot call at all | 2026-09-20 | **Partly done** 2026-09-20 — the refusal and the confirmation contract are verified; dialling needs a SIM | §B-018 below |
 | B-002 | 小诺 must stay quiet during navigation and speak only short confirmations | 2026-09-15 | **Done** 2026-09-16 | [P1](OPEN_PROBLEMS.md) — verified on device |
 | B-001 | 「关闭音乐」 must actually stop the music | 2026-09-15 | **Done** 2026-09-16 | [P2](OPEN_PROBLEMS.md) — verified on device with log evidence |
 
@@ -367,3 +368,38 @@ Found in the same pass and fixed: with a *known* request, the fallback was telli
 「退出导航中…」 with no tool call. When the request is known the follow-up must make the model perform
 it; `describesCarAction` now feeds the classified branch too. Device-verified: 「算了」 with a picker
 open cancels for real (`nav_flow_cancelled`, `exit_navigation_mode`, 「已取消选择。」).
+
+## B-018 — Calling
+
+The last capability named in the product objective that did not exist. It is the one tool here that
+reaches a **person who did not ask to be reached**, so it is built to refuse rather than to guess.
+
+**Two turns, on purpose.** The first call resolves the contact and returns `confirm_required` with
+the display name; only a second call carrying `confirmed=true` dials. Every other tool in this
+product can be undone by saying the opposite — a wrong temperature is wrong for ten seconds. A
+wrong call has already rung someone. And the risk is measured, not theoretical:
+[P23](OPEN_PROBLEMS.md) recorded the model acting confidently on a sentence the driver never said.
+
+**The number never reaches the model.** It would end up in a transcript, and the driver knows their
+own contacts. Names and numbers are never logged; the log says how many matched.
+
+**What is proven** (device, `2391ff70`, `gsm.sim.state=ABSENT,ABSENT`):
+
+| | |
+| --- | --- |
+| A car that cannot call says so | `NO_TELEPHONY`, with wording that forbids claiming otherwise |
+| No dialler is started on refusal | no intent, nothing launched |
+| One match is never dialled on the first turn | unit |
+| Two matches are offered, never chosen between — even with `confirmed=true` | unit |
+| An unknown name is not substituted for a real one | unit |
+
+**What is not proven, and cannot be here: a call connecting.** The test phone has no SIM. That is a
+physical dependency, not a code one.
+
+**BLOCKED_BY: a SIM in the test phone, or another Android device with an active SIM, before a call
+can be dialled and heard to connect** — and a number the owner is willing to have this app ring.
+Until then no call has been placed by this project, and none will be.
+
+**Acceptance for the rest:** a confirmed call reaches a real handset, and cancelling before
+confirmation dials nothing. **Verification:** device, with a person, on a phone that has service.
+

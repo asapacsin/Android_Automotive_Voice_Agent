@@ -507,3 +507,28 @@ rewritten to assert what the spec says to assert.
 One Baidu turn per scenario. Before a release and after a change to the turn machinery — not per
 commit. The simulation benchmark remains the one that runs on every build.
 
+---
+
+## Calling — 2026-09-20, `2391ff70`
+
+The last capability in the product objective that did not exist. **No call has been placed by this
+project.** The test phone reports `gsm.sim.state=ABSENT,ABSENT`, and the point of the first
+verification was that the app says so rather than pretending.
+
+| Step | Evidence | Result |
+| --- | --- | --- |
+| A car with no SIM refuses, and says why | `{"ok":false,"error":"NO_TELEPHONY","next":"…不要谎称已经拨号。"}` | **PROVEN** |
+| Nothing is launched on refusal | no dialler, no intent | **PROVEN** |
+| One match is not dialled on the first turn | `status=confirm_required`, `dialled=0` | **PROVEN** (unit) |
+| The number never reaches the model | asserted absent from the tool output | **PROVEN** (unit) |
+| Two matches are offered, not chosen between | `status=ambiguous`, `dialled=0` even with `confirmed=true` | **PROVEN** (unit) |
+| An unknown name is not substituted | `CONTACT_NOT_FOUND`, `dialled=0` | **PROVEN** (unit) |
+| A confirmed call connects | — | **BLOCKED** — needs a SIM |
+
+### Why it confirms before dialling
+
+Every other tool here can be undone by saying the opposite. A wrong temperature is wrong for ten
+seconds; a wrong call has already rung someone's phone. And the risk is measured rather than
+imagined — [P23](OPEN_PROBLEMS.md) recorded the model acting confidently on a sentence the driver
+never said. So resolution and dialling are separate turns, and the second needs the driver's word.
+

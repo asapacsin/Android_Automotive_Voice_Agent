@@ -114,6 +114,26 @@ object BaiduFlexProtocol {
                 ),
             required = listOf("slot", "address"),
         )
+        val placeCall = functionTool(
+            name = "place_call",
+            description = "给联系人打电话。用户说「打电话给XX」「给XX打个电话」时调用，contact 填人名。" +
+                "第一次调用不要填 confirmed：工具只会找人，不会拨号。" +
+                "按返回的 status 回答：confirm_required=请问用户是否要打；" +
+                "ambiguous=有多个同名，请用户说清楚是哪一位。" +
+                "只有用户明确答应后，才能用 confirmed=true 再调用一次。" +
+                "Finds the contact first and asks; only dials on a second call with confirmed=true.",
+            properties = JSONObject()
+                .put(
+                    "contact",
+                    JSONObject().put("type", "string").put("minLength", 1).put("maxLength", 40),
+                )
+                .put(
+                    "confirmed",
+                    JSONObject().put("type", "string").put("enum", JSONArray(listOf("true", "false")))
+                        .put("description", "只有用户明确同意后才填 true"),
+                ),
+            required = listOf("contact"),
+        )
         val exitNavigationMode = functionToolNoArgs(
             name = "exit_navigation_mode",
             description = "结束或取消导航。用户说「结束导航」「停止导航」「取消导航」「退出导航」「不去了」，或在导航、选择地点/路线时说「算了」「不用了」「返回」时调用；只口头答应而不调用本工具，屏幕上的导航或列表不会有任何变化。" +
@@ -195,7 +215,7 @@ object BaiduFlexProtocol {
                     .put("create_response", true)
                     .put("interrupt_response", true),
             )
-            .put("tools", JSONArray().put(navigate).put(openApp).put(controlMusic).put(controlClimate).put(describeCamera).put(exitNavigationMode).put(chooseNavigationOption).put(endConversation).put(setSpeechOutput).put(savePlace))
+            .put("tools", JSONArray().put(navigate).put(openApp).put(controlMusic).put(controlClimate).put(describeCamera).put(exitNavigationMode).put(chooseNavigationOption).put(endConversation).put(setSpeechOutput).put(savePlace).put(placeCall))
             .put("tool_choice", "auto")
         return JSONObject().put("type", "session.update").put("session", session).toString()
     }

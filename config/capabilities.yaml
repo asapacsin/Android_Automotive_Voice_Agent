@@ -154,6 +154,21 @@ speech:
       than deleted: "Engine initialises" was recorded while the engine ended every session with
       code 200061, and `device` was recorded from synthesized audio. A real voice has now done it.
 
+phone:
+  place_call:
+    tool: place_call
+    verified: implemented
+    notes: >
+      Two turns on purpose: the first resolves the contact and asks, the second dials only with
+      confirmed=true. Every other tool here can be undone by saying the opposite; a wrong call has
+      already rung someone. The confirmation exists because mis-transcription is measured, not
+      hypothetical (P23).
+  call_without_sim:
+    tool: place_call
+    verified: device
+    evidence: "2026-09-20 on 2391ff70 (gsm.sim.state=ABSENT): NO_TELEPHONY, no dialler started"
+    notes: "A car that cannot call says so. Starting the dialler and reporting success would be I-1's exact failure."
+
 apps:
   open_maps:
     tool: open_app
