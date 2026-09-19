@@ -22,6 +22,7 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 | B-016 | **A rejected session still looked like it was listening** — `state=ERROR` with `listening=ACTIVE` and zero frames, for 30 s | 2026-09-19 | **Done** 2026-09-19 — device-verified by reproducing the rejection | §B-016 below |
 | B-017 | **A duplicate correction is device-observed but not unit-covered** — the fix is in; the regression test is not | 2026-09-20 | **Done** 2026-09-20 — covered, after three attempts and one real bug found on the way | §B-017 below |
 | B-018 | **Calling** — resolve a contact, confirm, then dial; and admit when the car cannot call at all | 2026-09-20 | **Partly done** 2026-09-20 — the refusal and the confirmation contract are verified; dialling needs a SIM | §B-018 below |
+| B-019 | **Release readiness** — the release APK is unsigned and 227 MB; neither is fixable without the owner | 2026-09-20 | Open | §B-019 below |
 | B-002 | 小诺 must stay quiet during navigation and speak only short confirmations | 2026-09-15 | **Done** 2026-09-16 | [P1](OPEN_PROBLEMS.md) — verified on device |
 | B-001 | 「关闭音乐」 must actually stop the music | 2026-09-15 | **Done** 2026-09-16 | [P2](OPEN_PROBLEMS.md) — verified on device with log evidence |
 
@@ -457,4 +458,37 @@ Until then no call has been placed by this project, and none will be.
 
 **Acceptance for the rest:** a confirmed call reaches a real handset, and cancelling before
 confirmation dials nothing. **Verification:** device, with a person, on a phone that has service.
+
+## B-019 — Release readiness
+
+`:app:assembleRelease` succeeds, which is worth knowing. What it produces is not shippable:
+
+**Unsigned.** `app-release-unsigned.apk`. Signing needs a keystore and its passwords, which are the
+owner's credentials and are not going anywhere near this repository ([I-7](docs/INVARIANTS.md)).
+
+**227 MB**, against 229 MB for debug — so essentially nothing is being stripped. The reason is that
+almost none of it is code:
+
+| | |
+| --- | --- |
+| `libAMapSDK_NAVI` arm64 + armeabi-v7a | **108 MB** |
+| `libw_ivw` + `libmsc` (wake, both ABIs) | 28 MB |
+| `libneonui_shared` + `libnui` (both ABIs) | 25 MB |
+| `classes.dex` | 9.6 MB |
+| bundled track, Amap resources | 15 MB |
+
+`isMinifyEnabled = false` for release. Turning R8 on would shrink `classes.dex` and nothing else —
+a few MB of 227 — and it carries a real risk with three SDKs that use reflection, which could only
+be discharged by installing and exercising a *signed* release build. So it waits on the same thing.
+
+**The lever that would actually work is dropping `armeabi-v7a`**, which would remove roughly 70 MB.
+That is a compatibility decision: no 32-bit device could install it. Modern Automotive head units
+are arm64, but "modern" is the owner's call, not mine. ABI *splits* are the middle path — separate
+per-ABI APKs, nobody loses support — and are worth doing if the distribution channel supports them.
+
+BLOCKED_BY: a signing keystore and its credentials, which only the owner can provide, plus a
+decision on whether armeabi-v7a must keep working
+
+**Acceptance:** a signed release APK installs and passes the scenario suite; a stated size and the
+ABI decision recorded. **Verification:** device, with the signed build.
 

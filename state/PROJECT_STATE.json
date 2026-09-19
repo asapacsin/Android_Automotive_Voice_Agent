@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-20T04:24:52",
+  "generated_at": "2026-09-20T04:28:18",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "fd5c16c",
+    "commit": "df01def",
     "branch": "main",
-    "subject": "Telling the model it might hear Cantonese doubles the rate it acts on it",
+    "subject": "B-015 names the decision it is waiting on",
     "working_tree_clean": false,
-    "uncommitted_files": 1
+    "uncommitted_files": 2
   },
   "tests": {
     "available": true,
@@ -127,7 +127,7 @@
     "BLOCKING_DEPENDENCY": "a person saying 「你好小诺」 at a stated distance with the car actually moving, which is",
     "NEXT_ACTION": "NONE",
     "actionable_count": 0,
-    "blocked_count": 3,
+    "blocked_count": 4,
     "candidates": [
       {
         "priority": 11,
@@ -149,6 +149,13 @@
         "source": "BACKLOG.md",
         "item": "B-018",
         "blocked_by": "a SIM in the test phone (or another Android device with an active SIM), and a number"
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-019",
+        "blocked_by": "a signing keystore and its credentials, which only the owner can provide, plus a"
       }
     ]
   }

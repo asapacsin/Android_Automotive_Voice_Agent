@@ -572,3 +572,22 @@ The realtime socket is cut exactly as a lost signal would cut it (`net:drop` →
 A product that needs the driver to notice a dropped connection and retry is not one you can use
 while driving.
 
+---
+
+## Latency, measured rather than assumed — 2026-09-20, `2391ff70`
+
+From the driver finishing their sentence (`input_audio_buffer.speech_stopped`) to the first thing
+that actually happens — a tool call, or reply audio starting. Twenty-one turns across the scenario
+suite:
+
+| | |
+| --- | --- |
+| min | 328 ms |
+| **median** | **734 ms** |
+| p90 | 1007 ms |
+| max | 1062 ms |
+| of which tool calls | median 849 ms |
+
+Under a second at p90, end to end, including the model's thinking. This was on the gap-analysis
+list as a suspected problem and is not one; recorded so nobody has to suspect it again.
+
