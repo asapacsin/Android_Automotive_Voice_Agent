@@ -77,6 +77,11 @@ class IflytekWakeWordDetector(
         }
 
         override fun onError(error: SpeechError?) {
+            // The engine's own failures were invisible here: MSC reported 200061 only in its
+            // native log, so a wake word that never fired looked identical to one nobody said.
+            // The code is the whole diagnosis (200061 is reported as a network error even when
+            // the network is provably fine), so it is worth a line of its own.
+            DebugVoiceLog.log("wake_session_error code=${error?.errorCode ?: -1}")
             resumeListeningIfNeeded()
         }
 

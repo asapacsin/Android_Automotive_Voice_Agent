@@ -21,6 +21,7 @@ class DebugToolReceiver : BroadcastReceiver() {
                 "nav_start" -> navStart(arg)
                 "nav_stop" -> navStop()
                 "climate" -> climate(arg)
+                "wake" -> wake(context, arg)
                 "turn" -> beginTurn(arg)
                 "dispatch" -> dispatch(context, arg)
                 "voice" -> voice(context, arg)
@@ -127,6 +128,34 @@ class DebugToolReceiver : BroadcastReceiver() {
             com.novadrive.app.vehicle.ClimateToolHandler(com.novadrive.app.vehicle.VehicleControlProvider.port).handle(args)
         }
         return outcome.output
+    }
+
+    /**
+     * Enables or disables the wake word through the **production** controller.
+     *
+     * 开发者设置 is not exported, so ADB cannot open it, and driving the toggle through
+     * uiautomator would prove the button works rather than that the engine initialises. This calls
+     * the same `WakeWordController.setEnabled` the button calls.
+     *
+     * arg: `on` | `off` | `status`
+     */
+    private fun wake(context: Context, arg: String): String {
+        val settings = com.novadrive.app.wake.WakeWordSettings.from(context)
+        return when (arg.lowercase()) {
+            "on" -> {
+                com.novadrive.app.wake.WakeWordController.setEnabled(context, true)
+                "wake enabled=${settings.isEnabled()}"
+            }
+            "off" -> {
+                com.novadrive.app.wake.WakeWordController.setEnabled(context, false)
+                "wake enabled=${settings.isEnabled()}"
+            }
+            // Credential *presence*, never the value: a blank appId is the one failure mode that
+            // looks identical to a broken engine in the logs.
+            "status" -> "wake enabled=${settings.isEnabled()} credentials_complete=" +
+                settings.loadCredentials().isComplete()
+            else -> "usage: wake:on|off|status"
+        }
     }
 
     /**

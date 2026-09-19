@@ -292,3 +292,48 @@ audio path, which proves the software and says nothing about acoustics.
 
 The last line is the point: the persona used to instruct the model to add that the driver must exit
 高德地图 themselves, which stopped being true when ADR-007 embedded the SDK. It no longer says it.
+
+---
+
+## B-003 wake word — APPID entered, engine still refuses — 2026-09-19, `2391ff70`
+
+The product owner entered the iFlytek APPID through 开发者设置 (Android Keystore). What that earned,
+and what it did not:
+
+| Step | Evidence | Result |
+| --- | --- | --- |
+| Credential stored and readable | `debug_tool tool=wake arg=status → credentials_complete=true`; `iflytek_app_id_ciphertext` present in the encrypted prefs | **VERIFIED** |
+| MSC engine loads, IVW session opens | `ivw sessionBegin ErrCode:0 time:93` | **VERIFIED** |
+| Wake model loads | `setStatus bundle is null or error:true, model is null or error:true` | **FAILED** |
+| Wake word fires | never reached | **NOT EARNED** |
+
+Failure: **`wake_session_error code=200061`**, which MSC reports as 网络连接发生异常 — a network error.
+
+### The network is not the problem, and that was worth proving
+
+| Check from the phone | Result |
+| --- | --- |
+| `ip route` | `192.168.0.0/24 … src 192.168.0.135` |
+| `ping openapi.xfyun.cn` | 47 ms |
+| `ping dev.voicecloud.cn` | 18 ms |
+| TCP 80 and 443 to `openapi.xfyun.cn` | **OPEN** |
+| `curl http://openapi.xfyun.cn/` | **HTTP 200** |
+
+So 200061 is a misleading message. Three hypotheses were tested and killed:
+
+- **Stale `SpeechUtility`** — `getUtility()` is process-wide, so a utility built earlier with a blank
+  APPID would never pick the new one up. Tested on a force-stopped, fresh process: same failure.
+- **Cleartext blocked** by `usesCleartextTraffic="false"` — MSC does its networking in `libmsc.so`,
+  and a native socket never reaches Android's Java-layer policy. No cleartext denial was logged.
+- **DNS / reachability** — disproved by the table above, from the app's own device.
+
+What is left is the line before the error: the wake **model** did not load. `assets/ivw/wakeword.jet`
+ships in the APK (987,361 bytes, matching the FINDINGS record) and the native libs are present, so
+the file is there — it is the **pairing** that fails. The `.jet` is downloaded bound to one APPID.
+
+### Observability fixed in passing
+
+`WakeuperListener.onError` logged nothing and silently resumed, so an engine failure was
+indistinguishable from nobody speaking, and the only diagnosis lived in the SDK's native output.
+It now logs `wake_session_error code=<n>`. The code is the entire diagnosis here, and it is not a
+secret.

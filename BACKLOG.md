@@ -76,7 +76,25 @@ Today the driver must press 按住麦克风开始 to start a session. In a car t
 
 Specced in [SPEC-001](SPECS/SPEC-001-wake-word.md). It raises genuine architectural conflicts — always-on listening versus the microphone gating added for echo suppression, battery, and Baidu quota — so it needs a decision before any implementation.
 
-BLOCKED_BY: the iFlytek **APPID** matching the staged `assets/ivw/wakeword.jet` wake resource, entered on the device through 开发者设置 — the integrated SDK is MSC v1140, which needs an APPID only, and a mismatched APPID fails at runtime with error 10407
+BLOCKED_BY: an `assets/ivw/wakeword.jet` downloaded for the APPID now stored on the device — the APPID was entered 2026-09-19 and the MSC engine opens its session, but the wake model does not load and the session ends 200061, with the phone's network proven good (HTTP 200 to the vendor)
+
+### Measured on device 2026-09-19, after the APPID was entered
+
+The credential path works: `credentials_complete=true`, and MSC opens the IVW session
+(`ivw sessionBegin ErrCode:0`). What fails is the **model**, one line before the error:
+`model is null or error:true`, then `wake_session_error code=200061`.
+
+200061 reads as a network error and is not one: from the same phone, `openapi.xfyun.cn` answers
+ping in 47 ms, TCP 80/443 are open, and an HTTP GET returns 200. Three hypotheses were tested and
+killed — a stale process-wide `SpeechUtility`, cleartext blocking, and DNS — see
+[ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md).
+
+That leaves the pairing. The `.jet` is downloaded **bound to one APPID**, and the staged file came
+with the MSC delivery of 2026-09-16. If the APPID now stored is a different one — which is likely,
+given it came from an AIKit console — the model cannot load and no amount of network will help.
+
+**The smallest thing that unblocks this:** the `.jet` for *this* APPID, downloaded from the iFlytek
+MSC console with 语音唤醒 enabled, dropped at `app/src/main/assets/ivw/wakeword.jet` (git-ignored).
 
 ### What is actually required, corrected 2026-09-19
 
