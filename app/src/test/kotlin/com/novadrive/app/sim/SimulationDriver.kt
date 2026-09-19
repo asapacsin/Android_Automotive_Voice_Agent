@@ -1,6 +1,9 @@
 package com.novadrive.app.sim
 
 import com.novadrive.app.AndroidToolDispatcher
+import com.novadrive.app.SavedPlaceTool
+import com.novadrive.app.nav.PlaceSlot
+import com.novadrive.app.nav.SavedPlace
 import com.novadrive.app.BaiduApiConfig
 import com.novadrive.app.BaiduAppSettings
 import com.novadrive.app.BaiduAuthMode
@@ -122,10 +125,22 @@ class SimulationDriver(
         val http = OkHttpClient.Builder().readTimeout(0, TimeUnit.MILLISECONDS).build()
         client = BaiduFlexClient(http, 5_000, requireTls = false, contextHint = { VoiceContextHints.describe(nav, camera.open) })
         val provider = BaiduFlexProvider(config(server.endpoint()), client)
+        // The simulated driver has a home and a workplace, because a real one does. Without them
+        // 「导航到家」 is refused with HOME_NOT_SET - correctly, and the simulation caught exactly
+        // that the day the guard was added.
+        val savedPlaces = mutableMapOf<PlaceSlot, SavedPlace>(
+            PlaceSlot.HOME to SavedPlace(PlaceSlot.HOME, "家", "模拟世界·家", 22.2400, 113.5300),
+            PlaceSlot.WORK to SavedPlace(PlaceSlot.WORK, "公司", "模拟世界·公司", 22.2600, 113.5800),
+        )
         val dispatcher = AndroidToolDispatcher(
             CoreActionExecutor(navigationFlow = nav, music = { music }),
             ClimateToolHandler(vehicle),
             CameraQuestionHandler(surface = { camera }, vision = vision),
+            places = SavedPlaceTool(
+                read = { slot -> savedPlaces[slot] },
+                write = { place -> savedPlaces[place.slot] = place },
+                resolve = { address -> kotlinx.coroutines.runBlocking { world.resolve(address) }.firstOrNull() },
+            ),
         )
         mainThread = Executors.newSingleThreadExecutor { r -> Thread(r, "sim-main").apply { isDaemon = true } }
         scope = CoroutineScope(SupervisorJob() + mainThread!!.asCoroutineDispatcher())

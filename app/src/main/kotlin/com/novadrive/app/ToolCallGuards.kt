@@ -1,5 +1,8 @@
 package com.novadrive.app
 
+import com.novadrive.app.nav.PlaceSlot
+import com.novadrive.app.nav.SavedPlace
+import com.novadrive.app.nav.SavedPlaces
 import com.novadrive.app.vehicle.ClimateToolHandler
 import com.novadrive.app.voice.ActionClaimGuard
 import com.novadrive.app.voice.ClimateToolActions
@@ -37,6 +40,8 @@ object ToolCallGuards {
     )
 
     const val MEDIA_LIBRARY_UNSUPPORTED = "MEDIA_LIBRARY_UNSUPPORTED"
+    const val HOME_NOT_SET = "HOME_NOT_SET"
+    const val WORK_NOT_SET = "WORK_NOT_SET"
     const val DUPLICATE_IN_TURN = "DUPLICATE_IN_TURN"
     const val AMBIGUOUS_REFERENT = "AMBIGUOUS_REFERENT"
 
@@ -105,5 +110,27 @@ object ToolCallGuards {
         val action = Regex("\"action\":\"([a-z_]+)\"").find(output)?.groupValues?.get(1)
         if (action !in TEMPERATURE_OR_FAN) return output
         return JSONObject(output).put("next", ToolFailureAdvice.CLIMATE_OFF).toString()
+    }
+
+    /**
+     * 「回家」 when we do not know where home is.
+     *
+     * The failure this prevents is not a crash: it is a *plausible* wrong answer. Sent to a POI
+     * search, 家 matches shops and other people's addresses, and the driver would be routed
+     * somewhere confidently wrong. Measured on device 2026-09-19, the search returned nothing at
+     * all - which is luckier than the alternative, and not something to rely on.
+     *
+     * A set slot returns null: the resolver answers it from the store, with no search.
+     */
+    fun savedPlaceMissing(
+        destination: String,
+        savedPlace: (PlaceSlot) -> SavedPlace?,
+    ): String? {
+        val slot = SavedPlaces.slotFor(destination) ?: return null
+        if (savedPlace(slot) != null) return null
+        return when (slot) {
+            PlaceSlot.HOME -> HOME_NOT_SET
+            PlaceSlot.WORK -> WORK_NOT_SET
+        }
     }
 }

@@ -17,9 +17,9 @@ class BaiduFlexProtocolTest {
         assertEquals(BaiduFlexProtocol.MODEL, session.getString("model"))
         assertEquals("auto", session.getString("tool_choice"))
         val tools = session.getJSONArray("tools")
-        assertEquals(9, tools.length())
+        assertEquals(10, tools.length())
         assertEquals(
-            setOf("navigate_to", "open_app", "control_music", "control_climate", "describe_camera_view", "exit_navigation_mode", "choose_navigation_option", "end_conversation", "set_speech_output"),
+            setOf("navigate_to", "open_app", "control_music", "control_climate", "describe_camera_view", "exit_navigation_mode", "choose_navigation_option", "end_conversation", "set_speech_output", "save_place"),
             (0 until tools.length()).map { tools.getJSONObject(it).getString("name") }.toSet(),
         )
         val openApp = (0 until tools.length()).map { tools.getJSONObject(it) }.single { it.getString("name") == "open_app" }
@@ -36,7 +36,7 @@ class BaiduFlexProtocolTest {
     fun controlMusicDescriptionBindsChineseStopAndPlayVerbs() {
         val session = JSONObject(BaiduFlexProtocol.sessionUpdate("x")).getJSONObject("session")
         val tools = session.getJSONArray("tools")
-        assertEquals(9, tools.length())
+        assertEquals(10, tools.length())
         val controlMusic = (0 until tools.length()).map { tools.getJSONObject(it) }
             .single { it.getString("name") == "control_music" }
         val description = controlMusic.getString("description")
@@ -61,9 +61,9 @@ class BaiduFlexProtocolTest {
         assertTrue(turn.getBoolean("create_response"))
         assertTrue(turn.getBoolean("interrupt_response"))
         val tools = session.getJSONArray("tools")
-        assertEquals(9, tools.length())
+        assertEquals(10, tools.length())
         assertEquals(
-            setOf("navigate_to", "open_app", "control_music", "control_climate", "describe_camera_view", "exit_navigation_mode", "choose_navigation_option", "end_conversation", "set_speech_output"),
+            setOf("navigate_to", "open_app", "control_music", "control_climate", "describe_camera_view", "exit_navigation_mode", "choose_navigation_option", "end_conversation", "set_speech_output", "save_place"),
             (0 until tools.length()).map { tools.getJSONObject(it).getString("name") }.toSet(),
         )
     }
@@ -72,7 +72,7 @@ class BaiduFlexProtocolTest {
     fun exitNavigationModeIsDeclaredAndDoesNotClaimToStopAmap() {
         val session = JSONObject(BaiduFlexProtocol.sessionUpdate("x")).getJSONObject("session")
         val tools = session.getJSONArray("tools")
-        assertEquals(9, tools.length())
+        assertEquals(10, tools.length())
         val exit = (0 until tools.length()).map { tools.getJSONObject(it) }
             .single { it.getString("name") == "exit_navigation_mode" }
         val description = exit.getString("description")
@@ -140,7 +140,7 @@ class BaiduFlexProtocolTest {
         val turn = session.getJSONObject("turn_detection")
         assertEquals(0.62, turn.getDouble("threshold"))
         assertEquals(BaiduFlexProtocol.DEFAULT_VAD_THRESHOLD, turn.getDouble("threshold"))
-        assertEquals(9, session.getJSONArray("tools").length())
+        assertEquals(10, session.getJSONArray("tools").length())
         assertEquals(300, turn.getInt("prefix_padding_ms"))
         assertEquals(200, turn.getInt("silence_duration_ms"))
     }
@@ -153,7 +153,7 @@ class BaiduFlexProtocolTest {
         val turn = session.getJSONObject("turn_detection")
         assertEquals(0.75, turn.getDouble("threshold"))
         assertEquals(BaiduFlexProtocol.NAVIGATION_VAD_THRESHOLD, turn.getDouble("threshold"))
-        assertEquals(9, session.getJSONArray("tools").length())
+        assertEquals(10, session.getJSONArray("tools").length())
         assertEquals(300, turn.getInt("prefix_padding_ms"))
         assertEquals(200, turn.getInt("silence_duration_ms"))
     }

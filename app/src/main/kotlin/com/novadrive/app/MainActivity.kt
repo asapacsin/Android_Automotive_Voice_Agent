@@ -37,10 +37,21 @@ class MainActivity : Activity() {
         val player = PcmAudioPlayer { code -> mainHandler.post { showError(code, "playback failed") } }
         val actionExecutor = SafeAndroidActionExecutor(this)
         val climateHandler = ClimateToolHandler(VehicleControlProvider.port)
+        val savedPlaces = com.novadrive.app.nav.SavedPlaceStore(this)
+        val placeLookup = com.novadrive.app.nav.LiveDestinationCandidateSource(this)
         val toolDispatcher = AndroidToolDispatcher(
             actionExecutor,
             climateHandler,
             VisionProvider.handler(this),
+            places = SavedPlaceTool(
+                read = savedPlaces::get,
+                write = savedPlaces::set,
+                // The same search the driver's own 「导航去X」 uses, so a saved place lands where
+                // navigating to that address would have landed.
+                resolve = { address ->
+                    kotlinx.coroutines.runBlocking { placeLookup.resolve(address) }.firstOrNull()
+                },
+            ),
         )
         // The screen reaches the executors the same way a spoken command does (I-6, TECH_DEBT D-3):
         // the same instances, not a second route to the same ports.

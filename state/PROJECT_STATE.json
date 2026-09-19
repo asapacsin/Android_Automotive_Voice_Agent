@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-09-19T20:56:50",
+  "generated_at": "2026-09-19T22:14:38",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "2e584bc",
+    "commit": "bccf1e5",
     "branch": "main",
-    "subject": "The wake-word owner moves out of the logging initialiser",
-    "working_tree_clean": true,
-    "uncommitted_files": 0
+    "subject": "Refresh generated state",
+    "working_tree_clean": false,
+    "uncommitted_files": 20
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-19T20:55:29",
+    "collected_at": "2026-09-19T22:08:56",
     "total": {
-      "tests": 671,
+      "tests": 705,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "app": {
-        "tests": 479,
+        "tests": 513,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,17 +65,17 @@
   },
   "apk": {
     "built": true,
-    "bytes": 228955764,
-    "built_at": "2026-09-19T20:53:15"
+    "bytes": 228968368,
+    "built_at": "2026-09-19T21:59:21"
   },
   "capabilities": {
     "available": true,
     "by_level": {
-      "device": 22,
-      "unsupported": 7
+      "device": 23,
+      "unsupported": 7,
+      "human": 1
     },
     "human_verification_pending": [
-      "speech.wake_word",
       "open_mic_thresholds",
       "navigation.guidance_voice"
     ]
@@ -119,20 +119,34 @@
     }
   ],
   "work_frontier": {
-    "AUTONOMOUS_ACTION_AVAILABLE": "NO",
-    "HUMAN_ACTION_REQUIRED": "YES",
-    "STOP_REASON": "BLOCKED_ON_EXTERNAL_DEPENDENCY",
-    "BLOCKING_DEPENDENCY": "a person saying 「你好小诺」 out loud to this build on `2391ff70` — the acoustic path",
-    "NEXT_ACTION": "NONE",
-    "actionable_count": 0,
-    "blocked_count": 1,
+    "AUTONOMOUS_ACTION_AVAILABLE": "YES",
+    "HUMAN_ACTION_REQUIRED": "NO",
+    "STOP_REASON": "NOT_STOPPING",
+    "BLOCKING_DEPENDENCY": "none",
+    "NEXT_ACTION": "B-011: B-011 — no SPEC yet: compile this demand into scenarios and acceptance criteria",
+    "actionable_count": 3,
+    "blocked_count": 0,
     "candidates": [
       {
         "priority": 11,
         "class": "next authorised backlog item",
         "source": "BACKLOG.md",
-        "item": "B-003",
-        "blocked_by": "a person saying 「你好小诺」 out loud to this build on `2391ff70` — the acoustic path"
+        "item": "B-011",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-012",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-013",
+        "blocked_by": null
       }
     ]
   }

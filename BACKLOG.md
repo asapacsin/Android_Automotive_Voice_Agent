@@ -12,7 +12,11 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 | B-006 | **Embedded Amap navigation MVP** — map-first vehicle UI, `AMapNaviView` inside our Activity, assistant overlay above it, `NavigationController`/`DestinationResolver` abstractions, no external Amap app, no overlay permission. Replacement spec (48 sections) | 2026-09-16 | **Done** 2026-09-19 — M2 closed on device evidence: candidates resolve and render, routes draw, the chosen route is the one driven, arrival auto-stops ([ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md)). The key blocker was resolved; the key type is proven by navigation working | [SPEC-005](SPECS/SPEC-005-embedded-amap-mvp.md) |
 | B-005 | Automated speech test harness — TTS-simulated user → real pipeline → ASR-verified output; local failure records; regression corpus; latency distributions | 2026-09-16 | **Superseded** by SPEC-005 (three levels A/B/C, UI screenshot assertions, navigation failure stages). Level A is built and running ([docs/EVALUATION.md](docs/EVALUATION.md)); the speech harness drives the phone. The paid-API constraint on audio levels is acknowledged in that document | [SPEC-004](SPECS/SPEC-004-speech-test-harness.md) → SPEC-005 |
 | B-004 | Amap coexistence by **voice policy** and generic `ActionExecutor` with a mock | 2026-09-16 | **Superseded** by SPEC-005 Phases 5–6 — both open conflicts resolved (§16 keeps Baidu E2E; §19 supplies the Amap-speaking signal). The guidance mute shipped and is guarded by `GuidanceMicGate` + `NavigationMuteFollowsPhaseTest` | [SPEC-003](SPECS/SPEC-003-amap-coexistence-voice-policy.md) → SPEC-005 |
-| B-003 | Wake word to activate the assistant — say 「你好小诺」 instead of pressing a button | 2026-09-15 | **Working, one human check left** 2026-09-19 — 「你好小诺」 fires and opens a session on `2391ff70`, proven with synthesized speech through the real audio path. Unproven: a person's voice in a cabin | [SPEC-001](SPECS/SPEC-001-wake-word.md) |
+| B-003 | Wake word to activate the assistant — say 「你好小诺」 instead of pressing a button | 2026-09-15 | **Done** 2026-09-19 — spoken by the product owner, the session opens. Human-verified end to end | [SPEC-001](SPECS/SPEC-001-wake-word.md) |
+| B-010 | **Saved places** — 「回家」「去公司」 must navigate, and an unset slot must be admitted rather than guessed | 2026-09-19 | **Done** 2026-09-19 — device-verified both ways. Driving to arrival is blocked by a physical GPS condition, not by this | [CAPABILITIES](docs/CAPABILITIES.md) |
+| B-011 | **Spoken vague and contextual requests reach the right tool** — 「返屋企啦」「有啲熱，幫我舒服啲」 and the rest of the scenario set, through the live model | 2026-09-19 | Open | §Scenarios below |
+| B-012 | **Wake-word reliability is uncharacterised** — false accepts over a long drive, and detection at distance with road noise | 2026-09-19 | Open | [SPEC-001](SPECS/SPEC-001-wake-word.md) |
+| B-013 | **`BaiduFlexClientTest` readiness timeout is load-sensitive** — it fails under a full parallel suite and passes alone | 2026-09-19 | Open | §B-013 below |
 | B-002 | 小诺 must stay quiet during navigation and speak only short confirmations | 2026-09-15 | **Done** 2026-09-16 | [P1](OPEN_PROBLEMS.md) — verified on device |
 | B-001 | 「关闭音乐」 must actually stop the music | 2026-09-15 | **Done** 2026-09-16 | [P2](OPEN_PROBLEMS.md) — verified on device with log evidence |
 
@@ -104,9 +108,13 @@ Specced in [SPEC-001](SPECS/SPEC-001-wake-word.md), decided in
 — always-on listening against the microphone gating added for echo suppression — is resolved the way
 ADR-006 chose: one capture, owned by the app, handed to whichever consumer is active.
 
-BLOCKED_BY: a person saying 「你好小诺」 out loud to this build on `2391ff70` — the acoustic path
-(a human voice at distance, over road noise, against threshold 1450) is the last unproven step and
-no amount of synthesized audio can stand in for it
+**CLOSED 2026-09-19.** The product owner said 「你好小诺」 to the build on `2391ff70` and the
+session opened. Every level of the evidence hierarchy this item can reach has been reached.
+
+What is *not* claimed by closing it: a measured false-accept rate over a long drive, and detection
+at distance with road noise and passengers. Those are reliability characteristics, tracked as
+[B-010](#b-010--wake-word-reliability-is-uncharacterised), not preconditions for the feature
+existing.
 
 ### Diagnosed and fixed on device 2026-09-19
 
@@ -155,3 +163,56 @@ Root cause confirmed: we request audio focus but never react to losing it. Recor
 > "currently say close the music also dont work"
 
 Root cause confirmed from logs: the model calls `control_music` for 「播放」 but not for 「关闭」/「关掉」, because the tool declaration was English-only with no binding to the Chinese stop verbs. Recorded in full as **P2** in [OPEN_PROBLEMS.md](OPEN_PROBLEMS.md). Fix in progress.
+
+## B-010 — Saved places
+
+**CLOSED 2026-09-19.** Evidence in [ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md).
+
+## B-011 — Spoken vague and contextual requests
+
+The scenario set this product is aimed at, stated as the driver would say it:
+
+| # | Utterance | What must happen | State |
+| --- | --- | --- | --- |
+| S1 | 「把空調調到22度」 | `control_climate{set_temperature,22}` | device-verified |
+| S2 | 「有啲熱，幫我舒服啲」 | a real climate change, not a sentence about one | unit + live (SPEC-006 CVC-04) |
+| S3 | 「返屋企啦」 | `navigate_to{回家}` → the saved home | **the tool path is proven; the spoken path is not** |
+| S4 | 「播啲精神啲嘅歌」 | refused honestly — there is no music library | unit |
+| S5 | 「搵間附近仲開緊嘅餐廳，帶我去，順便打電話問下有冇位」 | decomposition, then a call | **no calling capability exists** |
+| S6 | context resolves an otherwise ambiguous request | no clarification asked | SPEC-006 |
+| S7 | genuinely ambiguous request | clarification asked, nothing executed | SPEC-006 CVC-09 |
+| S8 | a tool fails | recovery or an honest failure, never a claim | partial |
+| S9 | an action needs confirmation or refusal | safety decision reaches execution | partial |
+| S10 | the driver interrupts mid-execution | the task stops | 「闭嘴」「休眠」 device-verified |
+| S11 | wake / listening / executing audio ownership | no conflict | device-verified 2026-09-19 |
+
+**Why it matters:** every row above that is not device-verified is a claim about the product that
+rests on a test double. The Cantonese phrasing is deliberate and not decoration — the product owner
+speaks it, and a Mandarin-only system would pass every test here and fail in the car.
+
+**Acceptance:** each row driven through the live model on `2391ff70`, with the tool call and the
+resulting state in the log, not the reply text.
+
+**Verification:** the speech harness injects synthesized utterances into a live session; assert on
+`flex_event`/dispatch logs.
+
+## B-012 — Wake-word reliability
+
+Detection exists and a human has confirmed it. Unmeasured: the false-accept rate with music and
+guidance playing over a sustained period, and detection at arm's length with road noise. Threshold
+is 1450 of 0–3000, lower being easier to wake.
+
+**Acceptance:** a measured false-accept count over ≥30 minutes of mixed playback, and a detection
+rate at a stated distance. **Verification:** device, with a person.
+
+## B-013 — A load-sensitive test
+
+`BaiduFlexClientTest.completedToolTurnStartsAFreshConversationAndHeldAudioReachesIt` failed with
+`Baidu Flex session readiness timed out` during a full parallel suite on 2026-09-19 and passed on
+its own immediately after. It is a real timing dependency in a readiness wait, not a product defect
+yet — but a suite that fails for reasons unrelated to the change under test destroys the value of
+running it, and that is the whole basis of this project's evidence.
+
+**Acceptance:** the readiness wait either tolerates scheduler starvation or the test drives the
+clock; 20 consecutive full-suite runs with no such failure. **Verification:** repeated suite runs.
+

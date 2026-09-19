@@ -10,6 +10,7 @@ import com.novadrive.app.nav.NavigationVoiceOutput
 import com.novadrive.app.nav.NavigationBackends
 import com.novadrive.app.nav.NavigationHostGateway
 import com.novadrive.app.vehicle.ClimateToolHandler
+import com.novadrive.app.nav.PlaceSlot
 import com.novadrive.app.voice.DriverContext
 import com.novadrive.app.vision.CameraQuestionHandler
 import com.novadrive.evaluation.EventType
@@ -59,6 +60,16 @@ class AndroidToolDispatcher(
      * `control_music{play}` is identical whether the driver said 「放首歌」 or named a song this
      * product cannot play. It also cannot show that the same call already ran this turn, which for
      * a relative adjustment means applying it twice.
+     */
+    /**
+     * What this driver has told us 「家」 and 「公司」 mean, and how to change it. Injected rather
+     * than read from a store here so the guard is testable without Android, and so a dispatcher
+     * built for a simulation never reads the real device's saved places.
+     */
+    private val places: SavedPlaceTool = SavedPlaceTool.none(),
+    /**
+     * Last so the common test call site can pass it as a trailing lambda. Everything above has a
+     * default; this one is what nearly every dispatcher test overrides.
      */
     private val driverContext: () -> DriverContext? = { DriverContext.currentOrNull() },
 ) {
@@ -133,6 +144,12 @@ class AndroidToolDispatcher(
                 val destination = call.arguments["destination"]?.trim().orEmpty()
                 if (destination.isBlank()) return failed(call, "BLANK_DESTINATION")
                 if (destination.length > 120) return failed(call, "DESTINATION_TOO_LONG")
+                // A saved place the driver has not given us is a question, not a search. Letting
+                // it through would send 「回家」 to a POI search, which on 2026-09-19 returned
+                // nothing - and on a different day could return a stranger's address.
+                ToolCallGuards.savedPlaceMissing(destination, places::get)?.let { code ->
+                    return failed(call, code)
+                }
                 // The executor sets the navigation speech mute before the search starts, so a
                 // search that fails at once cannot leave it on.
                 val action = executor.navigate(destination)
@@ -164,6 +181,7 @@ class AndroidToolDispatcher(
                     else -> failed(call, "ACTION_NOT_ALLOWED")
                 }
             }
+            "save_place" -> places.save(call, ::failed)
             "exit_navigation_mode" -> result(call, executor.exitNavigationMode())
             com.novadrive.app.voice.BaiduFlexProtocol.END_CONVERSATION -> result(call, executor.endConversation())
             com.novadrive.app.voice.BaiduFlexProtocol.SET_SPEECH_OUTPUT -> when (call.arguments["mode"]) {
@@ -243,35 +261,6 @@ class AndroidToolDispatcher(
  * name that matched nothing on screen returned `AMBIGUOUS` and the driver was told 「没听清，再说一遍」,
  * which is not what happened and gives them nothing to do.
  */
-object ToolFailureAdvice {
-    private val ADVICE = mapOf(
-        "NO_MATCH" to "屏幕上的候选里没有这个名字。请如实说没有这个选项，并请用户说第几个。",
-        "AMBIGUOUS" to "有多个候选都符合这个名字。请如实说有多个，并请用户说第几个。",
-        "OUT_OF_RANGE" to "屏幕上没有这一项。请如实说没有这一项，并说明一共有几个。",
-        "NO_OPTIONS_ON_SCREEN" to "现在屏幕上没有候选列表。请如实说明，不要假装已经选择。",
-        "OPTIONS_NOT_READY" to "候选还在计算中。请让用户稍等，不要假装已经选择。",
-        "DISTANCE_UNKNOWN" to "这些候选没有距离信息，无法判断最近的。请用户说第几个。",
-        "PREFERENCE_NOT_FOR_DESTINATIONS" to "这个偏好只能用于路线，不能用于地点。请用户说第几个。",
-        "PREFERENCE_NOT_FOR_ROUTES" to "这个偏好只能用于地点，不能用于路线。请用户说第几条。",
-        "NO_OPTIONS" to "现在没有可选的内容。请如实说明。",
-        "AMBIGUOUS_REFERENT" to
-            "用户这句话没有说明要调的是温度还是风量，之前的记录也无法确定，所以没有执行。" +
-            "请只用一句话反问用户是温度还是风量，不要再调用任何工具，也不要说已经调好了。",
-        "DUPLICATE_IN_TURN" to
-            "这个操作在本轮已经执行过一次，没有重复执行。请根据上一次的结果回答，不要说又调了一次。",
-        "MEDIA_LIBRARY_UNSUPPORTED" to
-            "车上只有一首内置曲目，没有音乐库，无法搜索或指定歌曲。" +
-            "请用一句话如实告诉用户放不了他要的那首歌，不要谎称已经播放，也不要改放其它曲子。",
-    )
-
-    fun forCode(code: String): String? = ADVICE[code]
-
-    /** Not a failure: the call succeeded, but the driver will not feel it (SPEC-006 D1). */
-    const val CLIMATE_OFF =
-        "设定已经改了，但空调现在是关着的，用户感受不到任何变化。" +
-            "请调用 control_climate{action=power_on} 把空调打开，成功后再用一句话告诉用户；" +
-            "不要直接说已经调好了。"
-}
 
 /**
  * The tool actions without Android: navigation flow, music backend and listening control are

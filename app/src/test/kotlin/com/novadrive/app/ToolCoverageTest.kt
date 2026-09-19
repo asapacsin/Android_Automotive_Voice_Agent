@@ -29,6 +29,9 @@ class ToolCoverageTest {
         "choose_navigation_option" to """{"index":2}""",
         "end_conversation" to """{}""",
         "set_speech_output" to """{"mode":"silent"}""",
+        // A save that cannot resolve the address is still dispatched - it just fails with
+        // ADDRESS_NOT_FOUND rather than UNKNOWN_TOOL, which is what this test checks.
+        "save_place" to """{"slot":"home","address":"珠海站"}""",
     )
 
     private fun declaredTools(): List<String> {

@@ -358,3 +358,29 @@ threshold at 1450. The live microphone is proven to reach the engine cleanly —
 error — but nobody has yet said the phrase out loud to this build. That is the remaining check, and
 it needs a person.
 
+---
+
+## Saved places — 「回家」 and 「去公司」 — 2026-09-19, `2391ff70`
+
+Before this, 「回家」 was sent to Amap's POI search verbatim and returned `count=0`. The driver
+could not go home.
+
+| Step | Evidence | Result |
+| --- | --- | --- |
+| 「回家」 with nothing saved is refused, not guessed | `{"ok":false,"error":"HOME_NOT_SET","next":"…请他直接说出地址，不要猜一个地方。"}` | **PROVEN** |
+| Saving resolves the address before storing it | `save_place{home,珠海站}` → `{"ok":true,"place":"珠海站"}`, `saved_place_set slot=HOME` | **PROVEN** |
+| 「回家」 then answers from the saved place, with no search | `nav_saved_place slot=HOME set=true`, `nav_resolve_candidates count=1` | **PROVEN** |
+| The work slot is separate and behaves the same | `save_place{work,横琴口岸}` → `place=珠海横琴口岸`; 「去公司」 → `slot=WORK set=true`, `count=1` | **PROVEN** |
+| A saved place drives to arrival | — | **UNPROVEN** |
+
+**Why the last row is unproven, and why it is not this change's fault.** Route calculation fails
+with `nav_calc_failure_v2 code=3 详情=起点不在支持范围内` — the *starting point*, not the destination.
+The control proves it: 「横琴口岸」 resolved 5 candidates normally and failed calculation with the
+same code 3 from the same desk. A mock GPS provider did not lift it, consistent with the
+2026-09-18 finding that the Amap SDK serves its own fix and ignores test providers. This needs the
+phone outdoors with a real fix — a physical condition, not a code one.
+
+**Not claimed:** that a *spoken* 「回家」 reaches this path. These went through `debug_tool dispatch`,
+which is the real dispatcher with the real store and the real Amap search, but with the model
+bypassed. What the model does with 「返屋企啦」 is a separate question, tracked as B-011.
+

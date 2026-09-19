@@ -45,6 +45,20 @@ navigation:
     tool: choose_navigation_option
     verified: device
     evidence: "nav_navigation_started routeId=12, spoken once after proof"
+  navigate_to_saved_place:
+    tool: navigate_to
+    verified: device
+    evidence: "2026-09-19: 回家 -> nav_saved_place slot=HOME set=true, count=1; 去公司 -> slot=WORK"
+    notes: >
+      「回家」「返屋企」「去公司」 resolve from the driver's saved places, never from a POI
+      search. Measured 2026-09-19: sent to the search verbatim, 回家 returned count=0.
+  save_place:
+    tool: save_place
+    verified: device
+    evidence: "2026-09-19: save_place{home,珠海站} -> ok=true place=珠海站, saved_place_set slot=HOME"
+    notes: >
+      An address that cannot be resolved is not saved. Storing the raw string would move the
+      failure to the moment the driver says 「回家」 while driving.
   stop_navigation:
     tool: exit_navigation_mode
     verified: device
@@ -133,13 +147,12 @@ speech:
       talking. The wake word is the interrupt. Deliberate trade-off, docs/ARCHITECTURE.md.
   wake_word:
     tool: null
-    verified: device
-    human_gap: true
-    evidence: "2026-09-19: synthesized 你好小诺 detected on 2391ff70; wake_word -> session.created"
+    verified: human
+    evidence: "2026-09-19: the product owner said 你好小诺 to 2391ff70 and the session opened"
     notes: >
-      Never triggered by a real human voice. The earlier evidence here read "Engine initialises",
-      which was not true: the engine was ending every session with code 200061 because it had
-      opened a second recorder. Corrected 2026-09-19 with the fix. See harness/README.md human gaps.
+      Reached `human` the hard way. Two earlier claims here were false and are kept in mind rather
+      than deleted: "Engine initialises" was recorded while the engine ended every session with
+      code 200061, and `device` was recorded from synthesized audio. A real voice has now done it.
 
 apps:
   open_maps:
@@ -184,8 +197,6 @@ unsupported:
 
 # Facts that cannot be established without a person or a place.
 human_verification_pending:
-  - capability: speech.wake_word
-    reason: "H1 - needs a human voice saying 你好小诺"
   - capability: open_mic_thresholds
     reason: "H1 - needs real cabin acoustics: road noise, passengers, speed"
   - capability: navigation.guidance_voice

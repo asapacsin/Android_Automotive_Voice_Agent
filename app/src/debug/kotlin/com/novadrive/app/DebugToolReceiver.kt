@@ -205,6 +205,15 @@ class DebugToolReceiver : BroadcastReceiver() {
             SafeAndroidActionExecutor(context),
             com.novadrive.app.vehicle.ClimateToolHandler(com.novadrive.app.vehicle.VehicleControlProvider.port),
             com.novadrive.app.vision.VisionProvider.handler(context),
+            places = SavedPlaceTool(
+                read = com.novadrive.app.nav.SavedPlaceStore(context)::get,
+                write = com.novadrive.app.nav.SavedPlaceStore(context)::set,
+                resolve = { address ->
+                    kotlinx.coroutines.runBlocking {
+                        com.novadrive.app.nav.LiveDestinationCandidateSource(context).resolve(address)
+                    }.firstOrNull()
+                },
+            ),
         )
         val result = dispatcher.dispatch(
             com.novadrive.ingress.realtime.DomainVoiceEvent.ToolCall("debug", name, arguments),

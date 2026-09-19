@@ -29,7 +29,7 @@ object BaiduFlexProtocol {
                 "destination",
                 JSONObject().put("type", "string").put("minLength", 1).put("maxLength", 120),
             ),
-            required = "destination",
+            required = listOf("destination"),
         )
         val openApp = functionTool(
             name = "open_app",
@@ -38,7 +38,7 @@ object BaiduFlexProtocol {
                 "app",
                 JSONObject().put("type", "string").put("enum", JSONArray(listOf("maps", "settings"))),
             ),
-            required = "app",
+            required = listOf("app"),
         )
         val controlMusic = functionTool(
             name = "control_music",
@@ -50,7 +50,7 @@ object BaiduFlexProtocol {
                     .put("enum", JSONArray(listOf("play", "stop")))
                     .put("description", "play=开始播放音乐；stop=停止播放音乐"),
             ),
-            required = "action",
+            required = listOf("action"),
         )
         val controlClimate = functionTool(
             name = "control_climate",
@@ -82,7 +82,7 @@ object BaiduFlexProtocol {
                         .put("type", "number")
                         .put("description", "set_temperature: 16-32 摄氏度；set_fan: 0-7 档；adjust_*: 变化量，默认 1"),
                 ),
-            required = "action",
+            required = listOf("action"),
         )
         val describeCamera = functionTool(
             name = "describe_camera_view",
@@ -94,7 +94,25 @@ object BaiduFlexProtocol {
                 "question",
                 JSONObject().put("type", "string").put("minLength", 1).put("maxLength", 200),
             ),
-            required = "question",
+            required = listOf("question"),
+        )
+        val savePlace = functionTool(
+            name = "save_place",
+            description = "记住用户的家或公司地址。用户说「我家在XX」「把XX设为我家」「我公司在XX」时调用：" +
+                "slot=home 或 work，address 填用户说的地址或地点名。" +
+                "保存后用户再说「回家」「去公司」就能直接导航。" +
+                "如果返回 ok=false，请按 error 如实说明，不要谎称已经保存。" +
+                "Save the driver's home or work address so 'go home' can navigate later.",
+            properties = JSONObject()
+                .put(
+                    "slot",
+                    JSONObject().put("type", "string").put("enum", JSONArray(listOf("home", "work"))),
+                )
+                .put(
+                    "address",
+                    JSONObject().put("type", "string").put("minLength", 1).put("maxLength", 120),
+                ),
+            required = listOf("slot", "address"),
         )
         val exitNavigationMode = functionToolNoArgs(
             name = "exit_navigation_mode",
@@ -148,7 +166,7 @@ object BaiduFlexProtocol {
                 "mode",
                 JSONObject().put("type", "string").put("enum", JSONArray(listOf("silent", "spoken"))),
             ),
-            required = "mode",
+            required = listOf("mode"),
         )
         val session = JSONObject()
             .put("model", MODEL)
@@ -170,7 +188,7 @@ object BaiduFlexProtocol {
                     .put("create_response", true)
                     .put("interrupt_response", true),
             )
-            .put("tools", JSONArray().put(navigate).put(openApp).put(controlMusic).put(controlClimate).put(describeCamera).put(exitNavigationMode).put(chooseNavigationOption).put(endConversation).put(setSpeechOutput))
+            .put("tools", JSONArray().put(navigate).put(openApp).put(controlMusic).put(controlClimate).put(describeCamera).put(exitNavigationMode).put(chooseNavigationOption).put(endConversation).put(setSpeechOutput).put(savePlace))
             .put("tool_choice", "auto")
         return JSONObject().put("type", "session.update").put("session", session).toString()
     }
@@ -264,7 +282,12 @@ object BaiduFlexProtocol {
         }
     }
 
-    private fun functionTool(name: String, description: String, properties: JSONObject, required: String): JSONObject =
+    private fun functionTool(
+        name: String,
+        description: String,
+        properties: JSONObject,
+        required: List<String>,
+    ): JSONObject =
         JSONObject()
             .put("type", "function")
             .put("name", name)
@@ -274,7 +297,7 @@ object BaiduFlexProtocol {
                 JSONObject()
                     .put("type", "object")
                     .put("properties", properties)
-                    .put("required", JSONArray().put(required))
+                    .put("required", JSONArray(required))
                     .put("additionalProperties", false),
             )
 

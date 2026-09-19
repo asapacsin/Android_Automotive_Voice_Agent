@@ -12,6 +12,8 @@ prompt and the UI are not sources of truth ([INVARIANTS.md](INVARIANTS.md) I-11)
 | Capability | Tool | Executes via | Success result | Failure result |
 | --- | --- | --- | --- | --- |
 | Navigate to a place | `navigate_to(destination)` | `DestinationQuery` → `LiveDestinationCandidateSource` → `AmapPoiClient` → `EmbeddedNavigationController` | `ok=true`, candidates on screen, `next` asks the driver to choose. **Navigation has not started yet.** | `ok=false` `NO_WEB_KEY` / `NO_CANDIDATES` / `NAVIGATION_UNAVAILABLE` |
+| Go home / go to work | `navigate_to(destination)` | `SavedPlaces` → `SavedPlaceStore` → `EmbeddedNavigationController` | `ok=true`, the saved place is the only candidate and routing starts from it — no POI search | `ok=false` `HOME_NOT_SET` / `WORK_NOT_SET`: the driver has not told us where it is, and the assistant says so instead of guessing |
+| Remember home / work | `save_place(slot, address)` | `SavedPlaceTool` → `LiveDestinationCandidateSource` → `SavedPlaceStore` | `ok=true` with the **resolved** place name, so the confirmation names what was stored | `ok=false` `ADDRESS_NOT_FOUND` — an address that cannot be resolved is not saved |
 | Pick a candidate or route | `choose_navigation_option(index \| preference \| name)` | `NavigationChoiceResolver` → `EmbeddedNavigationController` | `ok=true` `destination_selected` (routes shown) or `navigation_started` | `ok=false` `OUT_OF_RANGE` / `NO_MATCH` / `AMBIGUOUS` / `NO_OPTIONS_ON_SCREEN` / `OPTIONS_NOT_READY`, each with `next` |
 | End navigation | `exit_navigation_mode()` | `EmbeddedNavigationController.endByVoice()` | `ok=true` `navigation_stopped` / `navigation_selection_cancelled` | `ok=false` `no_navigation_active` |
 | Play / stop music | `control_music(play\|stop)` | `BundledMusicPlayer` (in-app, `res/raw`) | `ok=true` `music_playing` / `music_stopped` | `ok=false` `MUSIC_UNAVAILABLE` |
@@ -42,8 +44,8 @@ and an honest failure result, add a row above, and remove any keyword that now h
 - **Navigating to a brand near you works; a spoken branch name only matches what is on screen.**
   A name nobody offered returns `NO_MATCH` and the driver is asked to say which one. It is never a
   silent guess.
-- **The wake word is unverified by a human voice.** Since 2026-09-19 the engine does detect
-  「你好小诺」 and open a session on device — driven by synthesized speech through the real audio
-  path. Nobody has said it out loud to a build.
+- **The wake word works, by a human voice.** 「你好小诺」 spoken by the product owner opens a
+  session on `2391ff70` (2026-09-19). Not yet characterised: false-accept rate over a long drive,
+  and reliability at distance with road noise — those are reliability questions, not existence ones.
 - **Barge-in by voice does not exist.** The microphone is gated while the assistant speaks; the wake
   word is the interrupt. See `ARCHITECTURE.md` and `OPEN_PROBLEMS.md` P20.
