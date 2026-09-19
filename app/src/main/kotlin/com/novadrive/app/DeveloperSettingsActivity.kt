@@ -47,7 +47,6 @@ class DeveloperSettingsActivity : Activity() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private lateinit var repository: BaiduSettingsRepository
     private lateinit var amapRepository: AmapSettingsRepository
-    private lateinit var autoPickStatus: TextView
     private lateinit var voiceToggle: Button
     private lateinit var wakeToggle: Button
     private lateinit var result: TextView
@@ -116,8 +115,6 @@ class DeveloperSettingsActivity : Activity() {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
         }
         result = TextView(this).apply { setPadding(0, 20, 0, 12) }
-        autoPickStatus = TextView(this)
-        refreshAutoPickStatus()
         voiceToggle = Button(this).apply {
             text = voiceToggleLabel()
             setOnClickListener { toggleVoiceSession() }
@@ -288,7 +285,6 @@ class DeveloperSettingsActivity : Activity() {
                 text = "Amap Web key (optional: enables hands-free navigation; without it Amap shows a destination list)"
             })
             addView(amapKey)
-            addView(autoPickStatus)
             addView(openAccessibility)
             addView(voiceToggle)
             addView("讯飞 APPID（唤醒词 你好小诺；MSC 只需要 APPID，不需要 API Key/Secret）".label())
@@ -317,7 +313,6 @@ class DeveloperSettingsActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        if (::autoPickStatus.isInitialized) refreshAutoPickStatus()
         if (::voiceToggle.isInitialized) voiceToggle.text = voiceToggleLabel()
         if (::wakeToggle.isInitialized) wakeToggle.text = wakeToggleLabel()
     }
@@ -420,11 +415,6 @@ class DeveloperSettingsActivity : Activity() {
 
     override fun onDestroy() { closeTestClient?.invoke(); scope.cancel(); super.onDestroy() }
 
-    private fun refreshAutoPickStatus() {
-        val enabled = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES).orEmpty()
-        val on = enabled.contains("com.novadrive.app/") && enabled.contains("AmapAutoPickService")
-        autoPickStatus.text = "高德自动选点辅助（无高德Key时自动选第一个结果并开始导航）: ${if (on) "已启用" else "未启用"}"
-    }
 
     private fun candidate(
         auth: RadioGroup, legacy: RadioButton, appId: EditText, apiKey: EditText, secretKey: EditText,

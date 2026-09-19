@@ -35,17 +35,26 @@ class SecretScanTest {
     }
 
     @Test
-    fun gitignoreCoversBackendEnv() {
+    fun theDeletedBackendLeavesNoCredentialSurface() {
+        // backend/ held a .env with provider keys and was removed by ADR-008. The rule it used to
+        // enforce (the example file must carry placeholders, never a real key) has nothing left to
+        // guard, so what is asserted now is that the directory really is gone - a half-deleted
+        // backend that still shipped a .env.example would be worse than either state.
+        // Tracked files, not the working tree. backend/.env is git-ignored and may be the only
+        // copy of a credential the owner holds; deleting someone's secret is not what removing a
+        // code path means, and it cannot be undone.
+        val tracked = ProcessBuilder("git", "ls-files", "backend")
+            .directory(root).redirectErrorStream(true).start()
+            .inputStream.bufferedReader().readText().trim()
+        assertTrue(tracked.isEmpty()) {
+            "ADR-008 removed the PC backend, but git still tracks: $tracked"
+        }
         val gitignore = File(root, ".gitignore").readText()
-        assertTrue(gitignore.contains("backend/.env"))
-        val example = File(root, "backend/.env.example").readText()
-        assertTrue(example.contains("YOUR_API_KEY"))
-        assertTrue(example.contains("audio-mini-realtime-near"))
-        assertTrue(example.contains("qwen-audio-3.0-realtime-flash"))
-        assertFalse(example.contains("BAIDU_API_KEY=ak"))
+        assertTrue(gitignore.contains("backend/.env")) {
+            "keep the ignore rule: it costs nothing and protects anyone who restores the directory"
+        }
     }
 
-    @Test
     fun gitignoreCoversLocalPropertiesAndKeystore() {
         val gitignore = File(root, ".gitignore").readText()
         assertTrue(gitignore.contains("local.properties"))

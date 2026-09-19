@@ -19,12 +19,6 @@ object BaiduFlexRealtimeCapabilities {
     const val PUBLIC_BETA = true
 }
 
-object QwenRealtimeCapabilities {
-    const val CUSTOM_FUNCTION_CALLING = true
-    const val OFFICIAL_DOC = "https://docs.qwencloud.com/api-reference/qwen-audio-realtime/websocket-api"
-    const val CLIENT_EVENTS_DOC = "https://docs.qwencloud.com/api-reference/qwen-audio-realtime/client-events"
-}
-
 object GptLiveCapabilities {
     const val CUSTOM_FUNCTION_CALLING = true
     const val OFFICIAL_DOC = "https://developers.openai.com/api/docs/guides/voice-websockets"

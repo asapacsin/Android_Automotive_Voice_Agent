@@ -49,10 +49,6 @@
             android:name=".VoiceSessionService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
-        <service android:name=".AmapAutoPickService" android:exported="false" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
-            <intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter>
-            <meta-data android:name="android.accessibilityservice" android:resource="@xml/amap_auto_pick" />
-        </service>
     </application>
     <queries>
         <package android:name="com.autonavi.minimap" />

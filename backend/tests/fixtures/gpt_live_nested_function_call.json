@@ -1,1 +1,0 @@
-{"type":"response.event","event_id":"event_response_1","delegation_id":"item_9tA2cB6n2V8c4X1z7Q5r9","event":{"type":"response.output_item.done","item":{"type":"function_call","call_id":"call_123","name":"set_temperature","arguments":"{\"temperature_c\":\"22\"}","status":"completed"}}}

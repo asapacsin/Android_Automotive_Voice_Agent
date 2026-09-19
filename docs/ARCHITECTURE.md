@@ -145,7 +145,14 @@ A `foregroundServiceType="microphone"` service, started when a session starts an
 session-end path. It is what keeps the socket alive when another app takes the screen, and what
 earns the background-activity-start exemption that lets tools launch apps.
 
-### Dormant, deliberately kept
-Qwen, GPT-Live, the PC backend (`backend/`, `BackendRealtimeProvider`), `NavigationAdapter`'s deep
-link and `AmapAutoPickService` all still compile and are **not** part of the product. Do not infer
-the architecture from their existence — see [TECH_DEBT.md](TECH_DEBT.md) D-4.
+### One active provider, and the seam that keeps it replaceable
+
+There is exactly one realtime provider: Baidu Qianfan Flex. The dormant Qwen, GPT-Live and PC-backend
+implementations were **deleted** on 2026-09-19 by
+[ADR-008](../DECISIONS/ADR-008-single-active-realtime-provider.md), along with `NavigationAdapter`'s
+deep link and `AmapAutoPickService`. Do not infer a second provider from git history: none of it was
+finished, and it was written against an older session model.
+
+What remains, and is the point: `RealtimeVoiceProvider` and the provider-neutral `ingress` core.
+Adding a provider means writing one implementation of that interface and registering it — not
+changing voice logic.

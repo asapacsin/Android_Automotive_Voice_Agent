@@ -1,31 +1,31 @@
 {
-  "generated_at": "2026-09-19T10:08:11",
+  "generated_at": "2026-09-19T10:24:00",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "81c59f4",
+    "commit": "aef1334",
     "branch": "main",
-    "subject": "M3 closed; no milestone opened, because none is authorised",
-    "working_tree_clean": true,
-    "uncommitted_files": 0
+    "subject": "Refresh generated state",
+    "working_tree_clean": false,
+    "uncommitted_files": 83
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-19T10:07:57",
+    "collected_at": "2026-09-19T10:23:08",
     "total": {
-      "tests": 660,
+      "tests": 638,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "app": {
-        "tests": 496,
+        "tests": 479,
         "failures": 0,
         "errors": 0,
         "skipped": 0
       },
       "behavior-test": {
-        "tests": 64,
+        "tests": 63,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -43,7 +43,7 @@
         "skipped": 0
       },
       "ingress": {
-        "tests": 54,
+        "tests": 50,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 228789006,
-    "built_at": "2026-09-19T10:05:37"
+    "bytes": 228788934,
+    "built_at": "2026-09-19T10:20:28"
   },
   "capabilities": {
     "available": true,
@@ -105,7 +105,7 @@
     {
       "id": "D-5",
       "title": "Dormant providers and paths still compile",
-      "priority": "LOW"
+      "priority": "RESOLVED"
     },
     {
       "id": "D-6",
@@ -122,18 +122,11 @@
     "AUTONOMOUS_ACTION_AVAILABLE": "NO",
     "HUMAN_ACTION_REQUIRED": "YES",
     "STOP_REASON": "BLOCKED_ON_EXTERNAL_DEPENDENCY",
-    "BLOCKING_DEPENDENCY": "a product decision — whether a second realtime provider is still wanted at all. docs/ARCHITECTURE.md records these paths as deliberately kept, so deleting them is the owner's call, not an agent's.",
+    "BLOCKING_DEPENDENCY": "the iFlytek AIKit `apiKey` and `apiSecret` for this application, which are issued from the vendor console and are not on this machine",
     "NEXT_ACTION": "NONE",
     "actionable_count": 0,
-    "blocked_count": 2,
+    "blocked_count": 1,
     "candidates": [
-      {
-        "priority": 8,
-        "class": "recorded technical debt",
-        "source": "docs/TECH_DEBT.md",
-        "item": "D-5",
-        "blocked_by": "a product decision — whether a second realtime provider is still wanted at all. docs/ARCHITECTURE.md records these paths as deliberately kept, so deleting them is the owner's call, not an agent's."
-      },
       {
         "priority": 11,
         "class": "next authorised backlog item",

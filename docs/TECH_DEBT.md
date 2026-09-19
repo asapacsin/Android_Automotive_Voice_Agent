@@ -107,27 +107,33 @@ is the trigger to finish the job — and the test above is what will surface it.
 
 ---
 
-## D-5 — Dormant providers and paths still compile — **LOW, but costly to a fresh agent**
+## D-5 — Dormant providers and paths still compile — **RESOLVED 2026-09-19** ([ADR-008](../DECISIONS/ADR-008-single-active-realtime-provider.md))
 
-**Problem.** Qwen, GPT-Live, the PC backend (`backend/`, `BackendRealtimeProvider`,
-`BackendVoiceClient`), `NavigationAdapter`'s Amap deep link and `AmapAutoPickService` are all
-present and buildable, and none is part of the product. `README.md` still describes Qwen Flash as
-the default provider, which is false.
+**Was.** Qwen, GPT-Live, a PC backend, `NavigationAdapter`'s Amap deep link and `AmapAutoPickService`
+all compiled and none was part of the product, so a fresh agent inferred the wrong architecture from
+filenames — the exact failure `AGENTS.md` warns about.
 
-**Affected.** `app/voice/Qwen*`, `app/voice/Backend*`, `backend/`, `app/NavigationAdapter.kt`,
-`app/AmapAutoPickService.kt`, `README.md`.
+**Resolved by** the product owner's decision of 2026-09-19: keep the provider-neutral seam, delete
+the dormant concrete implementations. Removed: the Qwen client/protocol/provider and its settings,
+the PC-backend client/provider and `LocalConnectivity`, the unused `DeveloperOptions`, the
+unreachable `VoiceSessionController.start(settings, qwenConfig)` overload that was the only way to
+reach any of them, `NavigationAdapter` and `AmapAutoPickService` (ADR-003 apparatus superseded by
+ADR-007), and the `backend/` sources.
 
-**Risk.** A fresh agent infers the wrong architecture from filenames — the exact failure
-`AGENTS.md` warns about.
+Kept, deliberately: `RealtimeVoiceProvider`, `VoiceProviderId`, `RealtimeSessionConfig`, the
+`ingress` core, `VoiceCatalog`'s neutral model ids, and the `NavigationBackends` / `MusicBackends` /
+`VehicleControlProvider` seams.
 
-**Recommendation.** Delete the PC backend and GPT-Live metadata; keep Qwen only if a second
-provider is still wanted, and say so in one line.
+**Three things the deletion taught, all caught by the build or a guard:**
 
-**README corrected 2026-09-19.** The setup steps read as product instructions and said
-`VOICE_PROVIDER=qwen (default)`; they are now scoped to the dormant `backend/` explicitly.
-That was the part of this entry no authority was needed for, so it is done.
-
-BLOCKED_BY: a product decision — whether a second realtime provider is still wanted at all. docs/ARCHITECTURE.md records these paths as deliberately kept, so deleting them is the owner's call, not an agent's.
+1. `ApiKeyStore` — a provider-*neutral* contract — was defined inside `QwenSettings.kt` and went with
+   it. Restored as its own concern; a neutral interface living inside a vendor file is how the seam
+   gets deleted by accident.
+2. `SecretScanTest.gitignoreCoversBackendEnv` asserted things about `backend/.env.example`. It now
+   asserts that **git tracks nothing** under `backend/` — not that the directory is gone from disk,
+   because `backend/.env` is git-ignored and may be the owner's only copy of a credential. Deleting
+   a path from the repository is not the same as destroying a local secret.
+3. `NavigationUris` built `androidamap://` deep links and had its own test. Both died with ADR-003.
 
 ---
 

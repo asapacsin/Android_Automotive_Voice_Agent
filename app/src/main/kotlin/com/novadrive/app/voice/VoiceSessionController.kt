@@ -4,9 +4,6 @@ import android.content.Context
 import com.novadrive.app.BaiduApiConfig
 import com.novadrive.app.NavigationState
 import com.novadrive.app.BaiduRuntimeProvider
-import com.novadrive.app.ConnectionMode
-import com.novadrive.app.QwenApiConfig
-import com.novadrive.app.VoiceAppSettings
 import com.novadrive.app.resolvedOutputSampleRateHz
 import com.novadrive.evaluation.EventType
 import com.novadrive.evaluation.Telemetry
@@ -219,39 +216,6 @@ class VoiceSessionController(
         }
     }
 
-    fun start(settings: VoiceAppSettings, qwenConfig: QwenApiConfig? = null) {
-        active.stop()
-        provider?.close()
-        val selected: RealtimeVoiceProvider
-        val config: RealtimeSessionConfig
-        if (settings.connectionMode == ConnectionMode.QWEN_DIRECT) {
-            val direct = qwenConfig ?: throw IllegalArgumentException("QWEN_API_KEY_MISSING")
-            player.configureSampleRate(QWEN_OUTPUT_SAMPLE_RATE)
-            selected = QwenDirectRealtimeProvider(direct)
-            config =
-                RealtimeSessionConfig(
-                    provider = VoiceProviderId.QWEN,
-                    model = settings.qwenModel,
-                    audio = RealtimeAudioConfig(
-                        inputSampleRateHz = 16_000,
-                        outputSampleRateHz = QWEN_OUTPUT_SAMPLE_RATE,
-                    ),
-                )
-        } else {
-            player.configureSampleRate(BACKEND_OUTPUT_SAMPLE_RATE)
-            val client =
-                BackendVoiceClient(
-                    onEvent = {},
-                    onStateLabel = {},
-                    onRawError = onError,
-                )
-            selected = BackendRealtimeProvider(client).also { it.attachBackendUrl(settings.backendUrl) }
-            config = RealtimeSessionConfig(provider = settings.backendProvider, model = settings.backendModel)
-        }
-        provider = selected
-        active = newCore(selected, config)
-        active.start()
-    }
 
     fun stop() {
         NavigationState.reset()
@@ -396,8 +360,6 @@ class VoiceSessionController(
             VoiceUiState.CONNECTING,
             VoiceUiState.RECONNECTING,
         )
-        private const val QWEN_OUTPUT_SAMPLE_RATE = 24_000
-        private const val BACKEND_OUTPUT_SAMPLE_RATE = 16_000
         private const val PLAYBACK_UNGATE_DELAY_MS = 350L
         private const val SESSION_DIAG_INTERVAL_MS = 5_000L
         private const val TEST_FRAME_BYTES = 3_200 // 100 ms at 16 kHz mono PCM16

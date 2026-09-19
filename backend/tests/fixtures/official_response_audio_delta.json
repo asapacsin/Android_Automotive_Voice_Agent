@@ -1,9 +1,0 @@
-{
-  "type": "response.audio.delta",
-  "event_id": "event_Ula21nRHDN0DDc4GT280_yZemLoGb",
-  "response_id": "resp_Ula21nRHDN0DDc4GT280_001",
-  "item_id": "item_Ula21nRHDN0DDc4GT280_002",
-  "output_index": 0,
-  "content_index": 0,
-  "delta": "audio_base64"
-}

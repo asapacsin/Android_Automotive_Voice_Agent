@@ -15,7 +15,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 
 /**
- * PCM16 mono playback. Qwen produces 24 kHz audio; the backend compatibility path uses 16 kHz.
+ * PCM16 mono playback. The rate is configured per session from what the provider actually
+ * returns (`resolvedOutputSampleRateHz`), not assumed: Baidu Flex and Lite differ.
  * Hardware routing, Bluetooth SCO, and AEC remain manual-test-only.
  */
 class PcmAudioPlayer(

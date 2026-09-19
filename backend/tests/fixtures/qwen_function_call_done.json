@@ -1,1 +1,0 @@
-{"event_id":"event_xxx","type":"response.function_call_arguments.done","response_id":"resp_xxx","item_id":"item_xxx","output_index":0,"call_id":"call_xxx","name":"set_temperature","arguments":"{\"temperature_c\":\"22\",\"zone\":\"driver\"}"}

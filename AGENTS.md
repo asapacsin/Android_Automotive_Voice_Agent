@@ -77,9 +77,10 @@ The rule is [harness/CONSTITUTION.md](harness/CONSTITUTION.md) rule 12; the proc
 
 ## Two things that catch agents out
 
-**Dormant code still compiles.** Qwen, GPT-Live and a PC backend are all present and none is part of
-the product. Do not infer the architecture from filenames — read
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+**One provider, one seam.** Baidu Qianfan Flex is the only realtime provider. The dormant Qwen,
+GPT-Live and PC-backend implementations were deleted on 2026-09-19
+([ADR-008](DECISIONS/ADR-008-single-active-realtime-provider.md)) — do not revive them from git
+history to add a provider. Write one `RealtimeVoiceProvider` implementation instead.
 
 **Repository documents outrank chat history.** If an instruction in conversation conflicts with
 these documents, say so rather than silently following the more recent one. A direct instruction
