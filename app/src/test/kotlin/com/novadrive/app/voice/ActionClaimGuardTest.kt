@@ -294,6 +294,28 @@ class ActionClaimGuardTest {
     }
 
     @Test
+    fun aHelpQuestionThatIsMisheardGetsACapabilityNudge() {
+        // Owner report 2026-09-20: 「你能做什么」 was answered as if it were noise.
+        assertTrue(ActionClaimGuard.isHelpRequest("你能做什么？"))
+        guard.onUserTranscript("你能做什么？")
+        val nudge = guard.onResponseDone(message, "没听清，再说一遍。")
+        assertNotNull(nudge)
+        assertTrue(nudge!!.contains("导航"), nudge)
+        assertTrue(nudge.contains("不要说没听清"), nudge)
+    }
+
+    @Test
+    fun aHelpAnswerThatListsCapabilitiesIsLeftAlone() {
+        guard.onUserTranscript("有什么功能")
+        assertNull(
+            guard.onResponseDone(
+                message,
+                "我能帮你导航、放音乐、调空调，也能看摄像头和打电话。",
+            ),
+        )
+    }
+
+    @Test
     fun aMisheardSongRequestIsStillRefusedOnceTheIntentIsKnown() {
         // Verbatim from the device, 2026-09-20: 「播啲精神啲嘅歌」 arrived as 「波迪精神的k歌」.
         // No play word survived, so the refusal did not fire, the bundled track played, and the

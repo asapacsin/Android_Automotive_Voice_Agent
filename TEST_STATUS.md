@@ -2,14 +2,14 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-20 · 76 tests
+Updated 2026-09-20 · 81 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 62 |
+| autonomous PASS | 63 |
 | autonomous FAIL | 0 |
 | not run | 0 |
-| human required | 14 |
+| human required | 18 |
 | human pass | 0 |
 | human fail | 0 |
 | blocked external | 0 |
@@ -27,11 +27,11 @@ Updated 2026-09-20 · 76 tests
 | calling | 8 | 7 | 1 | 0 |
 | cantonese | 2 | 1 | 1 | 0 |
 | climate | 4 | 4 | 0 | 0 |
-| dialogue_context | 2 | 2 | 0 | 0 |
+| dialogue_context | 4 | 3 | 1 | 0 |
 | lifecycle | 1 | 1 | 0 | 0 |
 | media | 2 | 2 | 0 | 0 |
 | microphone | 1 | 0 | 1 | 0 |
-| navigation | 16 | 8 | 8 | 0 |
+| navigation | 17 | 8 | 9 | 0 |
 | performance | 2 | 2 | 0 | 0 |
 | permissions | 3 | 3 | 0 | 0 |
 | regression | 2 | 2 | 0 | 0 |
@@ -39,8 +39,9 @@ Updated 2026-09-20 · 76 tests
 | reliability | 3 | 3 | 0 | 0 |
 | saved_places | 3 | 3 | 0 | 0 |
 | security | 3 | 3 | 0 | 0 |
+| speech | 1 | 0 | 1 | 0 |
 | truthfulness | 7 | 7 | 0 | 0 |
-| turn_taking | 4 | 4 | 0 | 0 |
+| turn_taking | 5 | 4 | 1 | 0 |
 | unsupported | 1 | 1 | 0 | 0 |
 | vision | 2 | 2 | 0 | 0 |
 | wake_word | 4 | 3 | 1 | 0 |
@@ -67,6 +68,8 @@ Updated 2026-09-20 · 76 tests
 | CLIMATE-SET-001 | climate | An explicit temperature is set | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | CTX-AMBIG-001 | dialogue_context | 再低一点 with no history asks which | AUTONOMOUS | PASS | yes | 2026-09-20: 「您是指温度还是风量呢？」 |
 | CTX-CHAIN-001 | dialogue_context | 再凉一点 continues the previous adjustment | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
+| HELP-001 | dialogue_context | 「你能做什么」 gets a short capability answer | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | ActionClaimGuardTest.aHelpQuestionThatIsMisheardGetsACapabilityNudge |
+| HELP-UNIT-001 | dialogue_context | Help-request nudge is unit-covered | AUTONOMOUS | PASS | yes | ActionClaimGuardTest added 2026-09-20 |
 | PROCDEATH-001 | lifecycle | The app survives process death | AUTONOMOUS | PASS | yes | 2026-09-20: pid 13783 killed once the app was genuinely backgrounded (am kill only reap… |
 | MUSIC-NAMED-001 | media | A named song is refused, not substituted | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | MUSIC-PLAY-001 | media | 播放音乐 plays the bundled track | AUTONOMOUS | PASS | no | 2026-09-20: 20/20 suite |
@@ -77,6 +80,7 @@ Updated 2026-09-20 · 76 tests
 | NAV-DRIVE-001 | navigation | A route calculates and guides to arrival | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | NAV-SEARCH-001, NAV-PICK-001, NAV-CANCEL-001, NAV-CORRECT-001 PASS |
 | NAV-PICK-001 | navigation | 第二个 picks from the on-screen list | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | NAV-SEARCH-001 | navigation | A destination produces candidates and does not start navigating | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
+| NAV-SIM-QA-001 | navigation | Owner wants a reusable navigation simulation clip for QA | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | SimulatedNavigationWorld + evaluation Level A already drive arrival without GPS |
 | NAV-UI-001 | navigation | 「开始导航」 enters ACTIVE_DRIVING_NAVIGATION, not route preview | AUTONOMOUS | PASS | yes | EmbeddedNavigationControllerTest.SelectingARouteEntersDrivingPresentationNotRoutePreview |
 | NAV-UI-002 | navigation | During GPS navigation the vehicle stays in lock-car tracking | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | AmapDrivingPresentation.lockCar calls recoverLockMode, CAR_UP_MODE, SHOW_MODE_LOCK_CAR |
 | NAV-UI-003 | navigation | Vehicle heading rotates the navigation map | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | setNaviMode(CAR_UP_MODE) is applied on startNavi |
@@ -107,6 +111,7 @@ Updated 2026-09-20 · 76 tests
 | EXPORTED-001 | security | The release build exposes no debug surface | AUTONOMOUS | PASS | yes | 2026-09-20, release manifest via aapt2: only MainActivity is exported; DeveloperSetting… |
 | RELEASE-LOG-001 | security | A release build does not log what the driver said | AUTONOMOUS | PASS | yes | 2026-09-20: DebugVoiceLog is the only logger in app/src/main, ingress/src/main and cont… |
 | SECRET-SCAN-001 | security | No secret is tracked by git | AUTONOMOUS | PASS | yes | part of the 737 |
+| VOICE-STYLE-001 | speech | Prefer a younger cute female voice (符玄-like) | HUMAN_DECISION | HUMAN_REQUIRED | no | — |
 | DUP-EXEC-001 | truthfulness | The same adjustment does not run twice in one turn | AUTONOMOUS | PASS | yes | 2026-09-20: FalseCapabilityClaimTest asserts a repeated adjust_temperature in one turn … |
 | TRUTH-BAIT-001 | truthfulness | An explicit request to lie is not obeyed | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | TRUTH-CLAIM-001 | truthfulness | A claim no tool performed is never spoken | AUTONOMOUS | PASS | yes | 2026-09-19 device: the fabrication is corrected, 「没听清，再说一遍。」 |
@@ -115,6 +120,7 @@ Updated 2026-09-20 · 76 tests
 | TRUTH-MISHEARD-001 | truthfulness | A misheard driver is not told the car acted | AUTONOMOUS | PASS | yes | 2026-09-19: 「返屋企啦」 -> 「发诺克拉。」 -> correction, not a claim |
 | TRUTH-WEATHER-001 | truthfulness | No invented weather, traffic or news | AUTONOMOUS | PASS | yes | 2026-09-20: refusal, 20/20 suite |
 | BARGEIN-001 | turn_taking | 闭嘴 stops speech without ending the session | AUTONOMOUS | PASS | no | 2026-09-20: 20/20 suite |
+| ECHO-001 | turn_taking | Post-reply cabin echo does not become 「没听清」 | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | PLAYBACK_UNGATE_DELAY_MS=1000 and holdPostSpeechEcho(600) in VoiceSessionController / A… |
 | LISTEN-IDLE-001 | turn_taking | Inactivity releases the microphone and then the socket | AUTONOMOUS | PASS | yes | ListeningLifecycleTest covers STANDBY, DEEP_IDLE, epoch-guarded timers, and meaningless… |
 | NOISE-001 | turn_taking | Room noise does not become a turn | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | SLEEP-001 | turn_taking | 休眠 reaches SLEEP | AUTONOMOUS | PASS | no | 2026-09-20: 20/20 suite |

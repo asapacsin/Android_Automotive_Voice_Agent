@@ -1196,4 +1196,64 @@ was never switched on. P5 forbade a `MapView` fallback; that decision stands.
 `startNavi`, full-route overview on route calculation, idle browse on stop. Voice still goes
 through `EmbeddedNavigationController` / `NaviEngine.showOverview` / `resumeTracking`.
 
+---
+
+## P27 — After navigation starts, 小诺 says 「没听清」 to her own voice
+
+**Status:** FIXED 2026-09-20 — unit/compile pending device retest (`ECHO-001`)
+**Found:** 2026-09-20, owner spreadsheet `problem_record_filled_corrected.xlsx` #1
+**Severity:** High — every navigation start produces a phantom turn
+
+### Symptom
+
+Vehicle navigation itself works. At navigation startup, after the model speaks a confirmation, it
+then says 「没听清」. The end-to-end model is treating residual cabin echo of its own reply as a new
+user input.
+
+### Fix
+
+`PLAYBACK_UNGATE_DELAY_MS` raised 350→1000 ms, plus `AndroidMicrophonePort.holdPostSpeechEcho(600)`
+so frames and uplink onset stay closed after the mic formally reopens. Visual/cabin confirmation is
+`LOCAL_DEVICE_REQUIRED` ([ECHO-001](TEST_MATRIX.yaml)).
+
+---
+
+## P28 — 「你能做什么」 is answered as if it were noise
+
+**Status:** FIXED 2026-09-20 — guarded by `ActionClaimGuard` help nudge; device retest `HELP-001`
+**Found:** 2026-09-20, owner spreadsheet #2
+
+### Symptom
+
+User asks what the AI can do; the reply is 「不理解」 / 「没听清」 instead of a short capability list.
+
+### Fix
+
+`ActionClaimGuard.isHelpRequest` + `HELP_CAPABILITY_NUDGE` when the reply refuses or names fewer
+than two real capabilities. Persona rule 5 also names the expected answer (tone only; the guard
+enforces).
+
+---
+
+## P29 — Real-drive-only navigation QA is too slow to repeat
+
+**Status:** RECORDED 2026-09-20 — not a product defect; queued as [NAV-SIM-QA-001](TEST_MATRIX.yaml)
+BLOCKED_BY: the owner recording or naming a local navigation QA clip (kept out of git), or accepting Level A simulation as enough for repeat QA
+**Found:** 2026-09-20, owner spreadsheet #3 (test improvement, not a product defect)
+
+The Level A simulation benchmark and `SimulatedNavigationWorld` already exercise arrival without a
+road. What is still missing is an owner-chosen recorded drive clip for UI+voice replay; that cannot
+be authored in the cloud without the owner's media and is not uploaded to git (large file policy).
+
+---
+
+## P30 — Assistant voice sounds like an older woman; prefer a younger cute style
+
+**Status:** HUMAN_REQUIRED 2026-09-20 — [VOICE-STYLE-001](TEST_MATRIX.yaml)
+BLOCKED_BY: the owner choosing a Baidu Flex voice id (default vs numeric younger-female vs defer)
+**Found:** 2026-09-20, owner spreadsheet #4
+
+Baidu Flex voice id is a product choice among vendor options (default / numeric ids with fallback).
+Not comparable on engineering grounds alone; quantify options in the matrix and wait for the owner.
+
 

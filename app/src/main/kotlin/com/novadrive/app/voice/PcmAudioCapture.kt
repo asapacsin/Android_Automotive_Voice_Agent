@@ -151,6 +151,28 @@ class AndroidMicrophonePort(
     /** Navigation guidance is being spoken (P3); see [GuidanceMicGate]. */
     @Volatile var guidanceGated: Boolean = false
 
+    /**
+     * Wall-clock ms until which post-speech cabin echo must not reach Baidu.
+     * Set by [holdPostSpeechEcho] when the assistant finishes speaking.
+     */
+    @Volatile private var echoHoldUntilElapsedMs: Long = 0L
+
+    /**
+     * After 小诺 finishes a reply the mic reopens, but the room still holds her voice briefly.
+     * That residual was measured (2026-09-20) to become a phantom 「没听清」. Drop frames and
+     * reset the uplink onset for [durationMs] after reopen.
+     */
+    fun holdPostSpeechEcho(durationMs: Long) {
+        if (durationMs <= 0L) return
+        echoHoldUntilElapsedMs = android.os.SystemClock.elapsedRealtime() + durationMs
+        uplinkGate.onCaptureInterrupted()
+        interrupted = false
+        com.novadrive.app.DebugVoiceLog.log("mic_echo_hold_ms=$durationMs")
+    }
+
+    private fun inPostSpeechEchoHold(): Boolean =
+        android.os.SystemClock.elapsedRealtime() < echoHoldUntilElapsedMs
+
     /** Debug speech harness: drop live frames while synthetic speech is being injected. */
     @Volatile var suppressLive: Boolean = false
 
@@ -236,6 +258,10 @@ class AndroidMicrophonePort(
                         }
                         guidanceGated -> {
                             droppedGuidance.incrementAndGet()
+                            noteCaptureInterrupted()
+                        }
+                        inPostSpeechEchoHold() -> {
+                            droppedGated.incrementAndGet()
                             noteCaptureInterrupted()
                         }
                         !uplinkGateEnabled -> onFrame(processForSend(bytes))

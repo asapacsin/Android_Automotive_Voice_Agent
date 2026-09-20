@@ -1457,3 +1457,115 @@ tests:
     related: [B-019]
     last_run: {at: 2026-09-20, result: PASS}
 
+  - id: ECHO-001
+    capability: turn_taking
+    name: Post-reply cabin echo does not become 「没听清」
+    purpose: "P27: navigation startup confirmation was followed by a phantom repair turn"
+    type: device
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    release_blocking: true
+    human_reason: "Cabin echo of the assistant's own voice cannot be reproduced without a real speaker in a room/car"
+    prerequisites: ["updated debug APK with 1000 ms ungate + 600 ms echo hold", "device with live Baidu session"]
+    procedure:
+      - "start a voice session"
+      - "say a destination, pick a route, start navigation so 小诺 speaks a short confirmation"
+      - "do not speak for five seconds after her reply ends"
+      - "watch the subtitle and logcat for a second turn"
+    pass_criteria:
+      - "no second assistant turn that says 没听清 / 再说一遍"
+      - "log may show mic_echo_hold_ms=600 after her reply"
+    autonomous_evidence:
+      - "PLAYBACK_UNGATE_DELAY_MS=1000 and holdPostSpeechEcho(600) in VoiceSessionController / AndroidMicrophonePort"
+      - "PhantomTurnGate already drops contentless repairs when there is no user transcript"
+    returns: ["did a phantom 没听清 appear", "rough room / speaker volume"]
+    remaining_uncertainty: ["whether 1.6 s total blackout is enough in this cabin at this volume"]
+    related: [P27]
+    last_run: {at: null, result: null}
+
+  - id: HELP-001
+    capability: dialogue_context
+    name: 「你能做什么」 gets a short capability answer
+    purpose: "P28: capability help was answered as noise / 不理解"
+    type: device
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    release_blocking: true
+    human_reason: "Live model wording and Mandarin ASR of the help phrase need a human voice"
+    prerequisites: ["updated debug APK", "live Baidu session"]
+    procedure:
+      - "start a session"
+      - "say 「你能做什么」 or 「有什么功能」"
+      - "listen for a short list of real capabilities"
+    pass_criteria:
+      - "reply names at least navigation and one other real capability"
+      - "reply is not 没听清 / 不理解"
+    autonomous_evidence:
+      - "ActionClaimGuardTest.aHelpQuestionThatIsMisheardGetsACapabilityNudge"
+      - "HELP_CAPABILITY_NUDGE forces a capability summary when the first reply refuses"
+    returns: ["exact reply heard", "whether a second corrected turn was needed"]
+    remaining_uncertainty: ["whether the live model answers correctly on the first turn without needing the nudge"]
+    related: [P28]
+    last_run: {at: null, result: null}
+
+  - id: HELP-UNIT-001
+    capability: dialogue_context
+    name: Help-request nudge is unit-covered
+    purpose: "P28 regression without a device"
+    type: unit
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["gradlew :app:testDebugUnitTest --tests *ActionClaimGuardTest*"]
+    pass_criteria: ["aHelpQuestionThatIsMisheardGetsACapabilityNudge and aHelpAnswerThatListsCapabilitiesIsLeftAlone pass"]
+    evidence: ["ActionClaimGuardTest added 2026-09-20"]
+    related: [P28]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: NAV-SIM-QA-001
+    capability: navigation
+    name: Owner wants a reusable navigation simulation clip for QA
+    purpose: "P29: repeated real-drive QA is too slow; Level A sim already exists"
+    type: device
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    release_blocking: false
+    human_reason: "Recording or choosing a drive clip is owner media; large videos stay out of git"
+    prerequisites: ["Level A simulation benchmark already green on every build"]
+    procedure:
+      - "optionally record a short navigation run on device or reuse an existing local clip under android_doc (do not commit large files)"
+      - "use that clip for repeated UI+voice checks"
+      - "keep one real outdoor drive for final NAV-DRIVE-001 only"
+    pass_criteria: ["a local clip path is noted for the team, or the owner accepts Level A sim as enough for repeat QA"]
+    autonomous_evidence:
+      - "SimulatedNavigationWorld + evaluation Level A already drive arrival without GPS"
+      - "NAV-DRIVE-001 remains the outdoor gate"
+    returns: ["clip path or 'accept Level A only'"]
+    remaining_uncertainty: ["whether Level A sim alone is enough for the owner's QA cadence"]
+    related: [P29, NAV-DRIVE-001]
+    last_run: {at: null, result: null}
+
+  - id: VOICE-STYLE-001
+    capability: speech
+    name: Prefer a younger cute female voice (符玄-like)
+    purpose: "P30: current voice reads as an older woman"
+    type: decision
+    owner: HUMAN_DECISION
+    status: HUMAN_REQUIRED
+    release_blocking: false
+    human_reason: "Voice persona is a product taste choice among Baidu Flex voice ids"
+    prerequisites: ["Developer Settings voice picker", "ear test in cabin optional"]
+    procedure: ["choose one of the options below", "save in 开发者设置 and reset persona if needed"]
+    pass_criteria: ["a voice id is chosen and recorded here"]
+    decision_options:
+      - "A. Keep Flex default (current)."
+      - "B. Try a numeric younger-female id from Baidu's catalog (app falls back to default if rejected)."
+      - "C. Stay on default for release; revisit after Cantonese/provider decision (B-015)."
+    quantified:
+      - "the app already falls back to voice id default when a non-default id is refused"
+      - "AUTO sample rate maps Flex to 24 kHz; pitch perception is ear-only"
+    returns: ["chosen option and voice id if B"]
+    related: [P30]
+    last_run: {at: null, result: null}
+

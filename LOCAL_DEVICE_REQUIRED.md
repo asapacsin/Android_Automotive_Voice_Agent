@@ -6,7 +6,7 @@ Every case below **requires a physical Android device** (and usually a real cabi
 
 Autonomous cloud work for the current frontier is settled. Run this batch locally in one sitting.
 
-**10 LOCAL_DEVICE_REQUIRED item(s).**
+**13 LOCAL_DEVICE_REQUIRED item(s).**
 
 Install tip (from a cloud-built APK, when one exists):
 
@@ -29,7 +29,7 @@ adb logcat -s NovaVoice:D
 
 **You will need:** a vehicle; the app installed on the head unit or phone; normal driving conditions
 
-**Exact procedure:**
+**What to do:**
 
 1. sit in the normal driver position
 2. drive under ordinary cabin noise
@@ -62,7 +62,7 @@ adb logcat -s NovaVoice:D
 
 **You will need:** the device outdoors with a real GPS fix; a destination a few minutes away
 
-**Exact procedure:**
+**What to do:**
 
 1. take the device outside until it has a GPS fix
 2. say a nearby destination, pick a candidate, pick a route
@@ -93,7 +93,7 @@ adb logcat -s NovaVoice:D
 
 **You will need:** device with a real GPS fix or Amap emulator navi after a successful route
 
-**Exact procedure:**
+**What to do:**
 
 1. start navigation
 2. watch whether the vehicle stays in the lower-middle and the map follows
@@ -122,7 +122,7 @@ adb logcat -s NovaVoice:D
 
 **You will need:** NAV-UI-002 setup
 
-**Exact procedure:**
+**What to do:**
 
 1. change heading during active navigation
 2. confirm the map rotates
@@ -149,7 +149,7 @@ adb logcat -s NovaVoice:D
 
 **You will need:** network; a route with mixed traffic if the city has any
 
-**Exact procedure:**
+**What to do:**
 
 1. start navigation
 2. look at the route colour
@@ -178,7 +178,7 @@ adb logcat -s NovaVoice:D
 
 **You will need:** NAV-UI-002 setup
 
-**Exact procedure:**
+**What to do:**
 
 1. start navigation
 2. look for next-turn / remaining distance-time
@@ -207,7 +207,7 @@ adb logcat -s NovaVoice:D
 
 **You will need:** a route that passes a multi-lane junction
 
-**Exact procedure:**
+**What to do:**
 
 1. drive or emulate through a junction
 2. note lane/junction chrome
@@ -233,7 +233,7 @@ adb logcat -s NovaVoice:D
 
 **You will need:** NAV-UI-002 setup
 
-**Exact procedure:**
+**What to do:**
 
 1. enter overview (native 全览 or showOverview)
 2. return to navigation (native lock or 📍 / resumeTracking)
@@ -262,7 +262,7 @@ adb logcat -s NovaVoice:D
 
 **You will need:** a drive with guidance active
 
-**Exact procedure:**
+**What to do:**
 
 1. drive a route with guidance on
 2. speak to the assistant while guidance is talking
@@ -291,7 +291,7 @@ adb logcat -s NovaVoice:D
 
 **You will need:** a drive; a passenger talking at some point
 
-**Exact procedure:**
+**What to do:**
 
 1. drive with the assistant listening
 2. hold a normal conversation with a passenger without addressing the assistant
@@ -305,6 +305,94 @@ adb logcat -s NovaVoice:D
 **Tell me back:** spurious turns during conversation; whether commands were heard first time
 
 **Still unknown until you do:** thresholds against road noise and cross-talk at speed
+
+### LOCAL_DEVICE_REQUIRED — ECHO-001 — Post-reply cabin echo does not become 「没听清」
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Cabin echo of the assistant's own voice cannot be reproduced without a real speaker in a room/car
+
+**Already established without you:**
+
+- PLAYBACK_UNGATE_DELAY_MS=1000 and holdPostSpeechEcho(600) in VoiceSessionController / AndroidMicrophonePort
+- PhantomTurnGate already drops contentless repairs when there is no user transcript
+
+**You will need:** updated debug APK with 1000 ms ungate + 600 ms echo hold; device with live Baidu session
+
+**What to do:**
+
+1. start a voice session
+2. say a destination, pick a route, start navigation so 小诺 speaks a short confirmation
+3. do not speak for five seconds after her reply ends
+4. watch the subtitle and logcat for a second turn
+
+**It passes if:**
+
+- no second assistant turn that says 没听清 / 再说一遍
+- log may show mic_echo_hold_ms=600 after her reply
+
+**Tell me back:** did a phantom 没听清 appear; rough room / speaker volume
+
+**Still unknown until you do:** whether 1.6 s total blackout is enough in this cabin at this volume
+
+*Release-blocking.*
+
+### LOCAL_DEVICE_REQUIRED — HELP-001 — 「你能做什么」 gets a short capability answer
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Live model wording and Mandarin ASR of the help phrase need a human voice
+
+**Already established without you:**
+
+- ActionClaimGuardTest.aHelpQuestionThatIsMisheardGetsACapabilityNudge
+- HELP_CAPABILITY_NUDGE forces a capability summary when the first reply refuses
+
+**You will need:** updated debug APK; live Baidu session
+
+**What to do:**
+
+1. start a session
+2. say 「你能做什么」 or 「有什么功能」
+3. listen for a short list of real capabilities
+
+**It passes if:**
+
+- reply names at least navigation and one other real capability
+- reply is not 没听清 / 不理解
+
+**Tell me back:** exact reply heard; whether a second corrected turn was needed
+
+**Still unknown until you do:** whether the live model answers correctly on the first turn without needing the nudge
+
+*Release-blocking.*
+
+### LOCAL_DEVICE_REQUIRED — NAV-SIM-QA-001 — Owner wants a reusable navigation simulation clip for QA
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Recording or choosing a drive clip is owner media; large videos stay out of git
+
+**Already established without you:**
+
+- SimulatedNavigationWorld + evaluation Level A already drive arrival without GPS
+- NAV-DRIVE-001 remains the outdoor gate
+
+**You will need:** Level A simulation benchmark already green on every build
+
+**What to do:**
+
+1. optionally record a short navigation run on device or reuse an existing local clip under android_doc (do not commit large files)
+2. use that clip for repeated UI+voice checks
+3. keep one real outdoor drive for final NAV-DRIVE-001 only
+
+**It passes if:**
+
+- a local clip path is noted for the team, or the owner accepts Level A sim as enough for repeat QA
+
+**Tell me back:** clip path or 'accept Level A only'
+
+**Still unknown until you do:** whether Level A sim alone is enough for the owner's QA cadence
 
 ---
 

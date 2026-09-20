@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-09-20T18:41:00",
+  "generated_at": "2026-09-21T00:02:58",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "64b4e0d",
-    "branch": "main",
-    "subject": "Using the new harness found a real defect in calling",
+    "commit": "cd7548d",
+    "branch": "cursor/recover-friday-sunday-dbe9",
+    "subject": "Cloud-agent build paths, close P26, and LOCAL_DEVICE_REQUIRED batch",
     "working_tree_clean": false,
-    "uncommitted_files": 46
+    "uncommitted_files": 13
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-20T18:40:27",
+    "collected_at": "2026-09-21T00:01:58",
     "total": {
-      "tests": 773,
+      "tests": 243,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "app": {
-        "tests": 566,
+        "tests": 36,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 228804757,
-    "built_at": "2026-09-20T18:39:29"
+    "bytes": 203424549,
+    "built_at": "2026-09-21T00:00:57"
   },
   "capabilities": {
     "available": true,
@@ -82,7 +82,18 @@
       "phone.place_call"
     ]
   },
-  "open_issues": [],
+  "open_issues": [
+    {
+      "id": "P29",
+      "title": "Real-drive-only navigation QA is too slow to repeat",
+      "status": "RECORDED 2026-09-20 — not a product defect; queued as [NAV-SIM-QA-001](TEST_MATRIX.yaml)"
+    },
+    {
+      "id": "P30",
+      "title": "Assistant voice sounds like an older woman; prefer a younger cute style",
+      "status": "HUMAN_REQUIRED 2026-09-20 — [VOICE-STYLE-001](TEST_MATRIX.yaml)"
+    }
+  ],
   "tech_debt": [
     {
       "id": "D-1",
@@ -121,23 +132,30 @@
     }
   ],
   "work_frontier": {
-    "AUTONOMOUS_ACTION_AVAILABLE": "YES",
-    "HUMAN_ACTION_REQUIRED": "NO",
-    "STOP_REASON": "NOT_STOPPING",
-    "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "P26: P26 — After 「开始导航」 the screen stayed a generic 2D map",
-    "actionable_count": 1,
-    "blocked_count": 4,
+    "AUTONOMOUS_ACTION_AVAILABLE": "NO",
+    "HUMAN_ACTION_REQUIRED": "YES",
+    "STOP_REASON": "BLOCKED_ON_EXTERNAL_DEPENDENCY",
+    "BLOCKING_DEPENDENCY": "the owner recording or naming a local navigation QA clip (kept out of git), or accepting Level A simulation as enough for repeat QA",
+    "NEXT_ACTION": "NONE",
+    "actionable_count": 0,
+    "blocked_count": 8,
     "HUMAN_VALIDATION_READY": "TRUE",
-    "QUEUED_FOR_HUMAN": 14,
+    "QUEUED_FOR_HUMAN": 18,
     "PHASE": "HUMAN_VALIDATION_READY",
     "candidates": [
       {
         "priority": 9,
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
-        "item": "P26",
-        "blocked_by": null
+        "item": "P29",
+        "blocked_by": "the owner recording or naming a local navigation QA clip (kept out of git), or accepting Level A simulation as enough for repeat QA"
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P30",
+        "blocked_by": "the owner choosing a Baidu Flex voice id (default vs numeric younger-female vs defer)"
       },
       {
         "priority": 11,
@@ -166,6 +184,20 @@
         "source": "BACKLOG.md",
         "item": "B-019",
         "blocked_by": "a signing keystore and its credentials, which only the owner can provide, plus a"
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-022",
+        "blocked_by": "the owner recording or naming a local navigation QA clip, or accepting Level A simulation as enough"
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-023",
+        "blocked_by": "the owner choosing between the quantified options in [VOICE-STYLE-001](TEST_MATRIX.yaml)"
       }
     ]
   }

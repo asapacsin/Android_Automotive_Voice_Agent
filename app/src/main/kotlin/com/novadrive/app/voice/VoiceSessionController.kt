@@ -340,6 +340,7 @@ class VoiceSessionController(
                         synchronized(this@VoiceSessionController) {
                             if (generation == ungateGeneration) {
                                 microphone.gated = false
+                                microphone.holdPostSpeechEcho(POST_SPEECH_ECHO_HOLD_MS)
                             }
                         }
                     }
@@ -365,7 +366,11 @@ class VoiceSessionController(
             VoiceUiState.CONNECTING,
             VoiceUiState.RECONNECTING,
         )
-        private const val PLAYBACK_UNGATE_DELAY_MS = 350L
+        // Cabin echo of 小诺's own reply used to reopen the mic after 350 ms and become a phantom
+        // 「没听清」 turn (owner report 2026-09-20, navigation startup).
+        private const val PLAYBACK_UNGATE_DELAY_MS = 1_000L
+        /** Extra blackout after the mic reopens; see [AndroidMicrophonePort.holdPostSpeechEcho]. */
+        private const val POST_SPEECH_ECHO_HOLD_MS = 600L
         private const val SESSION_DIAG_INTERVAL_MS = 5_000L
         private const val TEST_FRAME_BYTES = 3_200 // 100 ms at 16 kHz mono PCM16
         private const val TEST_FRAME_MS = 100L

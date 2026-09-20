@@ -4,7 +4,7 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 
 Everything an agent could do has been done. What follows is the whole of what needs a person — **in one batch, to be handled in one sitting**, rather than one interruption per test.
 
-14 item(s) queued.
+18 item(s) queued.
 
 Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEVICE_REQUIRED.md).
 
@@ -24,7 +24,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** a vehicle; the app installed on the head unit or phone; normal driving conditions
 
-**Exact procedure:**
+**What to do:**
 
 1. sit in the normal driver position
 2. drive under ordinary cabin noise
@@ -57,7 +57,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** the device outdoors with a real GPS fix; a destination a few minutes away
 
-**Exact procedure:**
+**What to do:**
 
 1. take the device outside until it has a GPS fix
 2. say a nearby destination, pick a candidate, pick a route
@@ -88,7 +88,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** device with a real GPS fix or Amap emulator navi after a successful route
 
-**Exact procedure:**
+**What to do:**
 
 1. start navigation
 2. watch whether the vehicle stays in the lower-middle and the map follows
@@ -117,7 +117,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** NAV-UI-002 setup
 
-**Exact procedure:**
+**What to do:**
 
 1. change heading during active navigation
 2. confirm the map rotates
@@ -144,7 +144,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** network; a route with mixed traffic if the city has any
 
-**Exact procedure:**
+**What to do:**
 
 1. start navigation
 2. look at the route colour
@@ -173,7 +173,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** NAV-UI-002 setup
 
-**Exact procedure:**
+**What to do:**
 
 1. start navigation
 2. look for next-turn / remaining distance-time
@@ -202,7 +202,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** a route that passes a multi-lane junction
 
-**Exact procedure:**
+**What to do:**
 
 1. drive or emulate through a junction
 2. note lane/junction chrome
@@ -228,7 +228,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** NAV-UI-002 setup
 
-**Exact procedure:**
+**What to do:**
 
 1. enter overview (native 全览 or showOverview)
 2. return to navigation (native lock or 📍 / resumeTracking)
@@ -257,7 +257,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** a drive with guidance active
 
-**Exact procedure:**
+**What to do:**
 
 1. drive a route with guidance on
 2. speak to the assistant while guidance is talking
@@ -286,7 +286,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** a drive; a passenger talking at some point
 
-**Exact procedure:**
+**What to do:**
 
 1. drive with the assistant listening
 2. hold a normal conversation with a passenger without addressing the assistant
@@ -300,6 +300,94 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 **Tell me back:** spurious turns during conversation; whether commands were heard first time
 
 **Still unknown until you do:** thresholds against road noise and cross-talk at speed
+
+### LOCAL_DEVICE_REQUIRED — ECHO-001 — Post-reply cabin echo does not become 「没听清」
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Cabin echo of the assistant's own voice cannot be reproduced without a real speaker in a room/car
+
+**Already established without you:**
+
+- PLAYBACK_UNGATE_DELAY_MS=1000 and holdPostSpeechEcho(600) in VoiceSessionController / AndroidMicrophonePort
+- PhantomTurnGate already drops contentless repairs when there is no user transcript
+
+**You will need:** updated debug APK with 1000 ms ungate + 600 ms echo hold; device with live Baidu session
+
+**What to do:**
+
+1. start a voice session
+2. say a destination, pick a route, start navigation so 小诺 speaks a short confirmation
+3. do not speak for five seconds after her reply ends
+4. watch the subtitle and logcat for a second turn
+
+**It passes if:**
+
+- no second assistant turn that says 没听清 / 再说一遍
+- log may show mic_echo_hold_ms=600 after her reply
+
+**Tell me back:** did a phantom 没听清 appear; rough room / speaker volume
+
+**Still unknown until you do:** whether 1.6 s total blackout is enough in this cabin at this volume
+
+*Release-blocking.*
+
+### LOCAL_DEVICE_REQUIRED — HELP-001 — 「你能做什么」 gets a short capability answer
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Live model wording and Mandarin ASR of the help phrase need a human voice
+
+**Already established without you:**
+
+- ActionClaimGuardTest.aHelpQuestionThatIsMisheardGetsACapabilityNudge
+- HELP_CAPABILITY_NUDGE forces a capability summary when the first reply refuses
+
+**You will need:** updated debug APK; live Baidu session
+
+**What to do:**
+
+1. start a session
+2. say 「你能做什么」 or 「有什么功能」
+3. listen for a short list of real capabilities
+
+**It passes if:**
+
+- reply names at least navigation and one other real capability
+- reply is not 没听清 / 不理解
+
+**Tell me back:** exact reply heard; whether a second corrected turn was needed
+
+**Still unknown until you do:** whether the live model answers correctly on the first turn without needing the nudge
+
+*Release-blocking.*
+
+### LOCAL_DEVICE_REQUIRED — NAV-SIM-QA-001 — Owner wants a reusable navigation simulation clip for QA
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Recording or choosing a drive clip is owner media; large videos stay out of git
+
+**Already established without you:**
+
+- SimulatedNavigationWorld + evaluation Level A already drive arrival without GPS
+- NAV-DRIVE-001 remains the outdoor gate
+
+**You will need:** Level A simulation benchmark already green on every build
+
+**What to do:**
+
+1. optionally record a short navigation run on device or reuse an existing local clip under android_doc (do not commit large files)
+2. use that clip for repeated UI+voice checks
+3. keep one real outdoor drive for final NAV-DRIVE-001 only
+
+**It passes if:**
+
+- a local clip path is noted for the team, or the owner accepts Level A sim as enough for repeat QA
+
+**Tell me back:** clip path or 'accept Level A only'
+
+**Still unknown until you do:** whether Level A sim alone is enough for the owner's QA cadence
 
 ## B. Account and real-service tests
 
@@ -316,7 +404,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** an Android device with an active SIM; a contact saved on it; consent from the number's owner
 
-**Exact procedure:**
+**What to do:**
 
 1. install the build on a phone with a SIM
 2. grant contacts and phone permissions
@@ -349,7 +437,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** a keystore; its passwords, supplied outside the repository
 
-**Exact procedure:**
+**What to do:**
 
 1. configure signing outside version control (Gradle properties in a local file, or an environment variable)
 2. build the signed release
@@ -388,7 +476,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 - B. Keep the current partial support and publish the measured rates as the expected behaviour.
 - C. Reopen ADR-008 and evaluate a provider whose transcriber accepts Cantonese.
 
-**Exact procedure:**
+**What to do:**
 
 1. choose one of the options below and say which
 
@@ -419,7 +507,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** ABI-SIZE-001 measured
 
-**Exact procedure:**
+**What to do:**
 
 1. choose one of the options below
 
@@ -428,6 +516,34 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 - the choice is recorded in build.gradle.kts and B-019
 
 **Tell me back:** which option, and the minimum head-unit generation that must be supported
+
+### VOICE-STYLE-001 — Prefer a younger cute female voice (符玄-like)
+
+**Why this needs you.** Voice persona is a product taste choice among Baidu Flex voice ids
+
+**Measured, so this is a choice and not a question:**
+
+- the app already falls back to voice id default when a non-default id is refused
+- AUTO sample rate maps Flex to 24 kHz; pitch perception is ear-only
+
+**Options:**
+
+- A. Keep Flex default (current).
+- B. Try a numeric younger-female id from Baidu's catalog (app falls back to default if rejected).
+- C. Stay on default for release; revisit after Cantonese/provider decision (B-015).
+
+**You will need:** Developer Settings voice picker; ear test in cabin optional
+
+**What to do:**
+
+1. choose one of the options below
+2. save in 开发者设置 and reset persona if needed
+
+**It passes if:**
+
+- a voice id is chosen and recorded here
+
+**Tell me back:** chosen option and voice id if B
 
 ---
 
