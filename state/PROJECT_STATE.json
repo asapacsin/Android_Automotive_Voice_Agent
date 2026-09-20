@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-21T00:02:58",
+  "generated_at": "2026-09-21T00:03:41",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "cd7548d",
+    "commit": "5afbcd8",
     "branch": "cursor/recover-friday-sunday-dbe9",
-    "subject": "Cloud-agent build paths, close P26, and LOCAL_DEVICE_REQUIRED batch",
-    "working_tree_clean": false,
-    "uncommitted_files": 13
+    "subject": "Fix spreadsheet P27/P28: post-speech echo hold and capability help",
+    "working_tree_clean": true,
+    "uncommitted_files": 0
   },
   "tests": {
     "available": true,
