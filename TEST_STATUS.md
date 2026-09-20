@@ -2,11 +2,11 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-20 · 57 tests
+Updated 2026-09-20 · 60 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 49 |
+| autonomous PASS | 52 |
 | autonomous FAIL | 0 |
 | not run | 0 |
 | human required | 8 |
@@ -24,7 +24,7 @@ Updated 2026-09-20 · 57 tests
 | --- | --- | --- | --- | --- |
 | apps | 1 | 1 | 0 | 0 |
 | architecture | 1 | 1 | 0 | 0 |
-| calling | 5 | 4 | 1 | 0 |
+| calling | 6 | 5 | 1 | 0 |
 | cantonese | 2 | 1 | 1 | 0 |
 | climate | 3 | 3 | 0 | 0 |
 | dialogue_context | 2 | 2 | 0 | 0 |
@@ -32,11 +32,11 @@ Updated 2026-09-20 · 57 tests
 | media | 2 | 2 | 0 | 0 |
 | microphone | 1 | 0 | 1 | 0 |
 | navigation | 6 | 4 | 2 | 0 |
-| performance | 1 | 1 | 0 | 0 |
+| performance | 2 | 2 | 0 | 0 |
 | permissions | 1 | 1 | 0 | 0 |
 | regression | 2 | 2 | 0 | 0 |
 | release | 4 | 2 | 2 | 0 |
-| reliability | 2 | 2 | 0 | 0 |
+| reliability | 3 | 3 | 0 | 0 |
 | saved_places | 3 | 3 | 0 | 0 |
 | security | 3 | 3 | 0 | 0 |
 | truthfulness | 7 | 7 | 0 | 0 |
@@ -56,6 +56,7 @@ Updated 2026-09-20 · 57 tests
 | CALL-NOSIM-001 | calling | A car that cannot call says so | AUTONOMOUS | PASS | yes | 2026-09-20 on 2391ff70, gsm.sim.state=ABSENT,ABSENT |
 | CALL-PRIVACY-001 | calling | The phone number never reaches the model | AUTONOMOUS | PASS | yes | PhoneCallToolTest, 2026-09-20 |
 | CALL-REAL-001 | calling | A confirmed call reaches a real handset | HUMAN_ACCOUNT | HUMAN_REQUIRED | yes | CALL-CONFIRM-001, CALL-AMBIG-001, CALL-PRIVACY-001 PASS |
+| STALE-CONFIRM-001 | calling | A confirmation only authorises the call it was asked about | AUTONOMOUS | PASS | yes | 2026-09-20: found by discovery, and it was a real defect - confirmed=true was trusted o… |
 | YUE-POLICY-001 | cantonese | Is Cantonese an advertised capability? | HUMAN_DECISION | HUMAN_REQUIRED | yes | — |
 | YUE-RATE-001 | cantonese | Measured Cantonese success rate | AUTONOMOUS | PASS | no | 2026-09-20 before the persona line: 返屋企 2/5, 有啲熱 0/5, music refusal 0/5 |
 | CLIMATE-IMPLICIT-001 | climate | 有点热 produces a real adjustment | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite, after isControlRequest learned to ask ContextResolver |
@@ -74,6 +75,7 @@ Updated 2026-09-20 · 57 tests
 | NAV-PICK-001 | navigation | 第二个 picks from the on-screen list | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | NAV-SEARCH-001 | navigation | A destination produces candidates and does not start navigating | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | LATENCY-001 | performance | Response latency from end of speech | AUTONOMOUS | PASS | no | 2026-09-20, 21 turns: min 328, median 734, p90 1007, max 1062 ms |
+| RESOURCE-IDLE-001 | performance | CPU and memory while idle and listening | AUTONOMOUS | PASS | no | 2026-09-20 on 2391ff70: ~62% CPU, 565 MB resident with the wake word ON |
 | PERM-DENY-001 | permissions | A revoked microphone permission fails honestly | AUTONOMOUS | PASS | yes | 2026-09-20: pm revoke RECORD_AUDIO -> voice start returns MicPermissionMissing, wake lo… |
 | SUITE-SCENARIO-001 | regression | The live scenario suite | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20, exit 0 |
 | SUITE-UNIT-001 | regression | The whole unit and architecture suite | AUTONOMOUS | PASS | yes | 2026-09-20: 737 tests, 0 failures |
@@ -81,6 +83,7 @@ Updated 2026-09-20 · 57 tests
 | ABI-SIZE-001 | release | APK size per ABI | AUTONOMOUS | PASS | no | 2026-09-20: universal release APK 216.7 MB on disk, 228.0 MB uncompressed |
 | RELEASE-BUILD-001 | release | The release variant builds | AUTONOMOUS | PASS | yes | 2026-09-20: app-release-unsigned.apk, 227 MB |
 | RELEASE-SIGN-001 | release | A signed release build installs and works | HUMAN_CREDENTIAL | HUMAN_REQUIRED | yes | RELEASE-BUILD-001 PASS - the release variant compiles and packages |
+| AUDIOFOCUS-001 | reliability | Losing audio focus stops the assistant talking | AUTONOMOUS | PASS | no | 2026-09-20: the handling already existed in AndroidPlaybackPort and had no test, becaus… |
 | LIFECYCLE-ERROR-001 | reliability | A dead session stops showing that it is listening | AUTONOMOUS | PASS | yes | 2026-09-20: verified by reproducing the rejection, then reverting it |
 | NET-RECOVER-001 | reliability | A cut connection recovers without the driver noticing | AUTONOMOUS | PASS | yes | 2026-09-20: tool=control_climate after the socket was cancelled |
 | PLACE-NAV-001 | saved_places | 回家 resolves from the saved place, not a POI search | AUTONOMOUS | PASS | no | 2026-09-20: 4/5 - the ASR misses the two-character utterance about once in five, and th… |

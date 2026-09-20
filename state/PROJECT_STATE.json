@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-09-20T10:33:10",
+  "generated_at": "2026-09-20T10:46:03",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "3c22824",
+    "commit": "ba4757d",
     "branch": "main",
-    "subject": "Latency was a suspicion, not a problem; release readiness is a real gap",
+    "subject": "Harness v2: a human is a phase boundary, not an exception handler",
     "working_tree_clean": false,
-    "uncommitted_files": 16
+    "uncommitted_files": 7
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-20T10:32:46",
+    "collected_at": "2026-09-20T10:42:19",
     "total": {
-      "tests": 743,
+      "tests": 752,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "app": {
-        "tests": 545,
+        "tests": 554,
         "failures": 0,
         "errors": 0,
         "skipped": 0

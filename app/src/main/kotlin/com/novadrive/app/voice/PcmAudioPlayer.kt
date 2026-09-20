@@ -254,17 +254,18 @@ class AndroidPlaybackPort(
 
     fun applyFocusChange(change: Int) {
         try {
-            when (change) {
-                AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> player.duck()
-                AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> player.pausePlayback()
-                AudioManager.AUDIOFOCUS_LOSS -> {
+            when (focusAction(change)) {
+                FocusAction.DUCK -> player.duck()
+                FocusAction.PAUSE -> player.pausePlayback()
+                FocusAction.STOP -> {
                     player.pausePlayback()
                     player.flush()
                 }
-                AudioManager.AUDIOFOCUS_GAIN -> {
+                FocusAction.RESUME -> {
                     player.unduck()
                     player.resumePlayback()
                 }
+                FocusAction.NOTHING -> Unit
             }
         } catch (_: Exception) {
         }
@@ -306,4 +307,25 @@ class AndroidPlaybackPort(
     override fun stop() {
         player.stop()
     }
+}
+
+/** What losing or regaining audio focus should do to reply playback. */
+enum class FocusAction { DUCK, PAUSE, STOP, RESUME, NOTHING }
+
+/**
+ * The focus mapping, separated from the player so it can be tested at all.
+ *
+ * `AndroidPlaybackPort` holds a concrete `PcmAudioPlayer` built on `AudioTrack`, so nothing about
+ * this decision could be exercised on the JVM while it lived inside the `when`. The four cases are
+ * not interchangeable: ducking under a navigation prompt and flushing a reply because a phone call
+ * arrived are different promises to the driver.
+ */
+fun focusAction(change: Int): FocusAction = when (change) {
+    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> FocusAction.DUCK
+    // Transient: the reply is still wanted, so it pauses rather than being thrown away.
+    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> FocusAction.PAUSE
+    // Permanent - a call, another assistant. What was queued is no longer worth saying.
+    AudioManager.AUDIOFOCUS_LOSS -> FocusAction.STOP
+    AudioManager.AUDIOFOCUS_GAIN -> FocusAction.RESUME
+    else -> FocusAction.NOTHING
 }

@@ -1078,3 +1078,73 @@ tests:
       - "dumpsys media.camera then reports every device closed, no client instance"
     related: [P12]
     last_run: {at: 2026-09-20, result: PASS}
+
+# ---- added by TEST_DISCOVERY pass 3, 2026-09-20 ----------------------------------------------
+# From walking the capability list in the harness directive rather than the code: audio focus and
+# stale confirmation were both listed there and neither had an entry.
+
+  - id: STALE-CONFIRM-001
+    capability: calling
+    name: A confirmation only authorises the call it was asked about
+    purpose: "confirmed=true was trusted unconditionally: the assistant could ask about one person and dial another"
+    type: unit
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["gradlew test --tests *PhoneCallToolTest*"]
+    pass_criteria:
+      - "confirmed=true for a contact nobody was asked about does not dial"
+      - "a confirmation that has gone stale does not dial"
+      - "the confirmation is consumed - repeating it does not dial twice"
+    evidence:
+      - "2026-09-20: found by discovery, and it was a real defect - confirmed=true was trusted on its own, so the assistant could ask about one person and dial another"
+      - "a confirmation now authorises one contact id, is consumed when used, and expires after 60 s"
+      - "PhoneCallToolTest covers all three"
+    related: [B-018, P23]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: AUDIOFOCUS-001
+    capability: reliability
+    name: Losing audio focus stops the assistant talking
+    purpose: "An assistant that keeps speaking over a phone call or another app's audio is a defect no log shows"
+    type: unit
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: []
+    procedure: ["exercise AudioFocusController's loss and regain paths"]
+    pass_criteria:
+      - "a permanent loss stops playback"
+      - "a transient loss pauses rather than tearing the session down"
+    evidence:
+      - "2026-09-20: the handling already existed in AndroidPlaybackPort and had no test, because it lived inside a `when` on an AudioTrack-backed player and could not run off-device"
+      - "the mapping is now a pure function: duck / pause / stop+flush / resume / nothing"
+      - "FocusActionTest covers all five, including an unrecognised code doing nothing rather than guessing"
+    related: [P1]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: RESOURCE-IDLE-001
+    capability: performance
+    name: CPU and memory while idle and listening
+    purpose: "An always-listening assistant runs for the whole journey; what it costs at rest is what it costs"
+    type: measurement
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: ["device", "the app in the foreground"]
+    procedure:
+      - "launch, enable the wake word, let it settle"
+      - "sample top over a delta window with wake on, then again with wake off"
+    pass_criteria: ["the numbers are recorded - this test reports, it does not judge"]
+    evidence:
+      - "2026-09-20 on 2391ff70: ~62% CPU, 565 MB resident with the wake word ON"
+      - "~63% CPU, 564 MB with the wake word OFF - so the wake engine is not the cost"
+      - "the cost is the foreground map rendering continuously, which is inherent to a navigation product"
+    notes: >
+      Worth knowing rather than acting on yet: whether ~62% of a core and 565 MB is acceptable
+      depends on the head unit, and the obvious lever (throttling the map when the car is stopped
+      and nothing is being navigated) cannot be evaluated without knowing the target hardware.
+    related: [B-019]
+    last_run: {at: 2026-09-20, result: PASS}
+

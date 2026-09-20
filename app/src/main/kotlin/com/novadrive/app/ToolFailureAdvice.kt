@@ -29,6 +29,12 @@ object ToolFailureAdvice {
         PhoneCallTool.NO_TELEPHONY to
             "这辆车上现在没有可用的通话功能（没有 SIM 卡），所以打不了电话。" +
             "请用一句话如实告诉用户，不要谎称已经拨号。",
+        PhoneCallTool.UNCONFIRMED to
+            "用户还没有确认要给这个人打电话，所以没有拨号。" +
+            "请先用一句话问清楚是否要打给谁，得到答复后再调用一次。",
+        PhoneCallTool.CONFIRMATION_STALE to
+            "用户的确认已经是很久以前的了，不能当作现在的同意，所以没有拨号。" +
+            "请重新问一次是否要打电话。",
         PhoneCallTool.CONTACT_NOT_FOUND to
             "通讯录里没有找到这个人，没有拨号。" +
             "请用一句话如实说没找到，请用户说完整的名字，不要猜一个人。",

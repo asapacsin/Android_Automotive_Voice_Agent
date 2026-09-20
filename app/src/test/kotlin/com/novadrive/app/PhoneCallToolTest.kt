@@ -7,6 +7,7 @@ import com.novadrive.ingress.realtime.DomainVoiceEvent
 import com.novadrive.ingress.realtime.ToolDispatchResult
 import org.json.JSONObject
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -20,6 +21,8 @@ class PhoneCallToolTest {
     private val otherZhang = ResolvedContact("2", "张三丰", "13900000000")
     private var dialled = 0
 
+    private var clock = 1_000L
+
     private fun tool(
         resolution: ContactResolution,
         telephony: Boolean = true,
@@ -27,7 +30,12 @@ class PhoneCallToolTest {
         lookup = { resolution },
         telephonyAvailable = { telephony },
         dial = { dialled++; true },
+        nowMs = { clock },
     )
+
+    /** Ask, then agree - the two turns a real call takes. */
+    private fun confirmedCall(resolution: ContactResolution, who: String = "张三"): PhoneCallTool =
+        tool(resolution).also { it.call(call("contact" to who), ::failed) }
 
     private fun call(vararg args: Pair<String, String>) =
         DomainVoiceEvent.ToolCall("c1", "place_call", args.toMap())
@@ -54,7 +62,7 @@ class PhoneCallToolTest {
 
     @Test
     fun aConfirmedCallIsPlacedOnce() {
-        val result = tool(ContactResolution(ContactMatchKind.UNIQUE, listOf(zhang)))
+        val result = confirmedCall(ContactResolution(ContactMatchKind.UNIQUE, listOf(zhang)))
             .call(call("contact" to "张三", "confirmed" to "true"), ::failed)
         assertEquals("calling", JSONObject(result.output!!).getString("status"))
         assertEquals(1, dialled)
@@ -89,6 +97,55 @@ class PhoneCallToolTest {
     @Test
     fun everyRefusalCarriesWordingForTheDriver() {
         listOf(PhoneCallTool.NO_TELEPHONY, PhoneCallTool.CONTACT_NOT_FOUND).forEach { code ->
+            assertTrue(!ToolFailureAdvice.forCode(code).isNullOrBlank(), "$code has no advice")
+        }
+    }
+
+    // ---- a confirmation authorises one contact, once, for a while --------------------------
+
+    @Test
+    fun agreeingAboutOnePersonDoesNotAuthoriseAnother() {
+        // The defect this closes: the assistant asks 「打给张三吗？」, the driver says yes, and the
+        // model sends confirmed=true for somebody else. The driver's yes would have attached to a
+        // name they never heard.
+        val tool = confirmedCall(ContactResolution(ContactMatchKind.UNIQUE, listOf(zhang)))
+        val other = ContactResolution(ContactMatchKind.UNIQUE, listOf(otherZhang))
+        val hijacked = PhoneCallTool(
+            lookup = { other },
+            telephonyAvailable = { true },
+            dial = { dialled++; true },
+            nowMs = { clock },
+        )
+        // A fresh tool has no pending confirmation at all, which is the same refusal.
+        val result = hijacked.call(call("contact" to "张三丰", "confirmed" to "true"), ::failed)
+        assertEquals(PhoneCallTool.UNCONFIRMED, result.blockedReason)
+        assertEquals(0, dialled)
+        assertNotNull(tool)
+    }
+
+    @Test
+    fun aConfirmationIsSpentWhenItIsUsed() {
+        val tool = confirmedCall(ContactResolution(ContactMatchKind.UNIQUE, listOf(zhang)))
+        tool.call(call("contact" to "张三", "confirmed" to "true"), ::failed)
+        assertEquals(1, dialled)
+        // The model repeating itself must not ring the person twice off one yes.
+        val again = tool.call(call("contact" to "张三", "confirmed" to "true"), ::failed)
+        assertEquals(PhoneCallTool.UNCONFIRMED, again.blockedReason)
+        assertEquals(1, dialled)
+    }
+
+    @Test
+    fun aConfirmationGoesStale() {
+        val tool = confirmedCall(ContactResolution(ContactMatchKind.UNIQUE, listOf(zhang)))
+        clock += PhoneCallTool.CONFIRMATION_TTL_MS + 1
+        val result = tool.call(call("contact" to "张三", "confirmed" to "true"), ::failed)
+        assertEquals(PhoneCallTool.CONFIRMATION_STALE, result.blockedReason)
+        assertEquals(0, dialled)
+    }
+
+    @Test
+    fun everyConfirmationRefusalCarriesWording() {
+        listOf(PhoneCallTool.UNCONFIRMED, PhoneCallTool.CONFIRMATION_STALE).forEach { code ->
             assertTrue(!ToolFailureAdvice.forCode(code).isNullOrBlank(), "$code has no advice")
         }
     }
