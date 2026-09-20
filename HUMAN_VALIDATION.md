@@ -24,7 +24,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** a vehicle; the app installed on the head unit or phone; normal driving conditions
 
-**Exact procedure:**
+**What to do:**
 
 1. sit in the normal driver position
 2. drive under ordinary cabin noise
@@ -57,7 +57,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** the device outdoors with a real GPS fix; a destination a few minutes away
 
-**Exact procedure:**
+**What to do:**
 
 1. take the device outside until it has a GPS fix
 2. say a nearby destination, pick a candidate, pick a route
@@ -88,7 +88,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** device with a real GPS fix or Amap emulator navi after a successful route
 
-**Exact procedure:**
+**What to do:**
 
 1. start navigation
 2. watch whether the vehicle stays in the lower-middle and the map follows
@@ -117,7 +117,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** NAV-UI-002 setup
 
-**Exact procedure:**
+**What to do:**
 
 1. change heading during active navigation
 2. confirm the map rotates
@@ -144,7 +144,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** network; a route with mixed traffic if the city has any
 
-**Exact procedure:**
+**What to do:**
 
 1. start navigation
 2. look at the route colour
@@ -173,7 +173,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** NAV-UI-002 setup
 
-**Exact procedure:**
+**What to do:**
 
 1. start navigation
 2. look for next-turn / remaining distance-time
@@ -202,7 +202,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** a route that passes a multi-lane junction
 
-**Exact procedure:**
+**What to do:**
 
 1. drive or emulate through a junction
 2. note lane/junction chrome
@@ -228,7 +228,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** NAV-UI-002 setup
 
-**Exact procedure:**
+**What to do:**
 
 1. enter overview (native 全览 or showOverview)
 2. return to navigation (native lock or 📍 / resumeTracking)
@@ -257,7 +257,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** a drive with guidance active
 
-**Exact procedure:**
+**What to do:**
 
 1. drive a route with guidance on
 2. speak to the assistant while guidance is talking
@@ -286,7 +286,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** a drive; a passenger talking at some point
 
-**Exact procedure:**
+**What to do:**
 
 1. drive with the assistant listening
 2. hold a normal conversation with a passenger without addressing the assistant
@@ -316,7 +316,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** an Android device with an active SIM; a contact saved on it; consent from the number's owner
 
-**Exact procedure:**
+**What to do:**
 
 1. install the build on a phone with a SIM
 2. grant contacts and phone permissions
@@ -349,7 +349,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** a keystore; its passwords, supplied outside the repository
 
-**Exact procedure:**
+**What to do:**
 
 1. configure signing outside version control (Gradle properties in a local file, or an environment variable)
 2. build the signed release
@@ -388,7 +388,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 - B. Keep the current partial support and publish the measured rates as the expected behaviour.
 - C. Reopen ADR-008 and evaluate a provider whose transcriber accepts Cantonese.
 
-**Exact procedure:**
+**What to do:**
 
 1. choose one of the options below and say which
 
@@ -419,7 +419,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **You will need:** ABI-SIZE-001 measured
 
-**Exact procedure:**
+**What to do:**
 
 1. choose one of the options below
 

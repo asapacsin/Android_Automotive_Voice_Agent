@@ -356,7 +356,7 @@ def _entry_section(entry, local_device=False):
     if entry.get("prerequisites"):
         lines.append("**You will need:** %s" % "; ".join(entry["prerequisites"]))
         lines.append("")
-    lines.append("**Exact procedure:**")
+    lines.append("**What to do:**")
     lines.append("")
     for i, step in enumerate(entry["procedure"], 1):
         lines.append("%d. %s" % (i, step))

@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-20T18:41:00",
+  "generated_at": "2026-09-20T23:27:50",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "64b4e0d",
-    "branch": "main",
-    "subject": "Using the new harness found a real defect in calling",
+    "commit": "cd7548d",
+    "branch": "cursor/recover-friday-sunday-dbe9",
+    "subject": "Cloud-agent build paths, close P26, and LOCAL_DEVICE_REQUIRED batch",
     "working_tree_clean": false,
-    "uncommitted_files": 46
+    "uncommitted_files": 4
   },
   "tests": {
     "available": true,
@@ -125,7 +125,7 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "P26: P26 — After 「开始导航」 the screen stayed a generic 2D map",
+    "NEXT_ACTION": "PROJECT_STATE.json: records 64b4e0d, repository is at cd7548d",
     "actionable_count": 1,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "TRUE",
@@ -133,10 +133,10 @@
     "PHASE": "HUMAN_VALIDATION_READY",
     "candidates": [
       {
-        "priority": 9,
-        "class": "unfinished or open problem",
-        "source": "OPEN_PROBLEMS.md",
-        "item": "P26",
+        "priority": 10,
+        "class": "stale state or harness defect",
+        "source": "state",
+        "item": "PROJECT_STATE.json",
         "blocked_by": null
       },
       {

@@ -1,0 +1,42 @@
+================================================================================
+D:\桌面\android_doc\problem_record_filled_corrected.xlsx
+--- sheet: Sheet1 dims=A1:F5 ---
+000| ID || Type || Data / Observation || Problem || Adjustment Checklist || Status
+001| 1 || Bug || Vehicle navigation itself works. || At navigation startup, after the model speaks, it then says「沒聽清」. It appears the end-to-end model may be treating its own generated voice as a new user input. || ☐ Prevent the model's own generated voice from being treated as a new input | ☐ Make sure listening resumes only after the model finishes speaking | ☐ Retest navigation startup || To adjust
+002| 2 || Bug || At the beginning, user asks what the AI can do. || The AI replies that it does not understand instead of explaining its supported capabilities. || ☐ Add capability/help intent such as「你可以做什麼？」 | ☐ Return a concise list of supported functions | ☐ Test several equivalent phrasings || To adjust
+003| 3 || Test improvement || Navigation currently requires real navigation/driving to observe the full experience. || Real-world navigation testing is slow and inconvenient for repeated QA. || ☐ Record a navigation simulation video / reusable route playback | ☐ Use it to repeatedly test navigation UI + voice behavior without real driving | ☐ Keep one real-drive test only for final validation || To adjust
+004| 4 || UX / Voice || Current assistant voice sounds like an older woman. || Voice persona does not match the preferred product style. || ☐ Replace with a younger, cute female voice style similar to 符玄 | ☐ Compare available TTS voices | ☐ Verify clarity in vehicle/noisy environment || To adjust
+================================================================================
+D:\桌面\android_doc\problem_record.xlsx
+--- sheet: Sheet1 dims=A1:A1 ---
+================================================================================
+D:\桌面\android_doc\problem_record_app_tracker.xlsx
+--- sheet: Sheet1 dims=A1:H20 ---
+000| App Problem Record & Adjustment Tracker ||  ||  ||  ||  ||  ||  || 
+001| Use Problem Log to capture what happened and the evidence. Use Adjustment Checklist to drive each issue through reproduce → diagnose → fix → regression → human retest → close. ||  ||  ||  ||  ||  ||  || 
+003| KPI || Current ||  || Status || Count ||  ||  || 
+004| Open issues || 0 ||  || New || 0 ||  ||  || 
+005| P0/P1 open || 0 ||  || Reproducing || 0 ||  ||  || 
+006| Ready for retest || 0 ||  || Diagnosing || 0 ||  ||  || 
+007| Closed issues || 0 ||  || Fixing || 0 ||  ||  || 
+008| Avg checklist completion || 0 ||  || Ready for Retest || 0 ||  ||  || 
+009|  ||  ||  || Retesting || 0 ||  ||  || 
+010|  ||  ||  || Blocked || 0 ||  ||  || 
+011| Recommended workflow || What to record ||  || Closed || 0 ||  ||  || 
+012| 1. Record issue || Issue ID, build, module, test case, input/test data ||  ||  ||  ||  ||  || 
+013| 2. Capture evidence || Observed metrics, logs/screenshots, exact actual behavior ||  ||  ||  ||  ||  || 
+014| 3. Reproduce || Write steps and a real repro rate such as 2/5 or 5/5 ||  ||  ||  ||  ||  || 
+015| 4. Adjust || Record suspected cause, fix/change, and owner ||  ||  ||  ||  ||  || 
+016| 5. Verify || Regression + human retest; reopen if either fails ||  ||  ||  ||  ||  || 
+017| 6. Close || Only close after evidence is updated and checklist is complete ||  ||  ||  ||  ||  || 
+019| Tip: keep Issue ID stable (for example APP-001). Do not use row number as the ID, because sorting/filtering would change it. ||  ||  ||  ||  ||  ||  || 
+--- sheet: Problem Log dims=A1:W104 ---
+000| Problem Log — data, evidence, and observed failure ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  || 
+001| One row = one distinct issue. Record actual test data and evidence first; diagnosis can change later. Keep Issue ID stable so it can be linked to the checklist. ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  || 
+003| Issue ID || Found Date || App Build || Test Round || Module || Test Case ID || Scenario || Input / Test Data || Observed Data / Metrics || Steps to Reproduce || Expected Result || Actual Problem || Severity || Repro Rate || Environment / Device || Evidence / Log Link || Suspected Cause || Owner || Status || Adjustment / Fix || Retest Result || Closed Date || Notes
+004|  || 2026-09-20 00:00:00 ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  || 
+011|  ||  ||  ||  ||  ||  || S ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  || 
+--- sheet: Adjustment Checklist dims=A1:P104 ---
+000| Adjustment Checklist — finish all verification before closing ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  || 
+001| Enter the same Issue ID as Problem Log. Mark each gate TODO / DONE / N/A / BLOCKED. Completion excludes N/A. Use Human Batch / Session to group manual retests together. ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  || 
+003| Issue ID || Problem Summary || Reproduced || Data / Logs Captured || Root Cause Confirmed || Adjustment Plan Defined || Fix Implemented || Automated Test Added || Regression Passed || Human Retest Passed || Docs / Specs Updated || Ready to Close || Next Action / Blocker || Completion % || Human Batch / Session || Checklist Status
