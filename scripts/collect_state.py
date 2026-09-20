@@ -132,7 +132,7 @@ def work_frontier():
         import discover_work
 
         candidates = discover_work.discover()
-        stop = discover_work.decide(candidates)
+        stop = discover_work.with_gate(discover_work.decide(candidates), discover_work.human_gate())
         stop["candidates"] = [
             {k: c[k] for k in ("priority", "class", "source", "item", "blocked_by")}
             for c in candidates

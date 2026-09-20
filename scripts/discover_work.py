@@ -31,6 +31,7 @@ import sys
 import xml.etree.ElementTree as ET
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 BUILD_DIR = r"C:\Users\Administrator\tools\nova-drive-build"
 
 BLOCKED_BY = re.compile(r"^\s*BLOCKED_BY:\s*(.+?)\s*$", re.M)
@@ -377,9 +378,31 @@ def stale_state():
                       "records %s, repository is at %s" % (recorded, head))]
 
 
+def unsettled_matrix_tests():
+    """Autonomous tests in TEST_MATRIX.yaml that have not settled.
+
+    A registry entry is work when an agent owns it and it is NOT_RUN, FAIL, RUNNING or
+    BLOCKED_AUTONOMOUS. Entries a *person* owns are deliberately absent from this reader: a
+    HUMAN_REQUIRED test is queued for a batch, and a queued item is not a reason to stop. That is
+    the whole behavioural change (harness/PHASES.md, CONSTITUTION rule 17).
+    """
+    try:
+        import test_matrix
+    except Exception as exc:
+        return [candidate(P_HARNESS, "TEST_MATRIX.yaml", "test_matrix.py",
+                          "the registry could not be loaded: %r" % (exc,))]
+    out = []
+    for entry in test_matrix.autonomous_work():
+        priority = P_TESTS if entry["status"] == "FAIL" else P_UNGUARDED
+        out.append(candidate(priority, "TEST_MATRIX.yaml", entry["id"],
+                             "%s: %s" % (entry["status"], entry["name"])))
+    return out
+
+
 SOURCES = (
     missing_artifact,
     failing_tests,
+    unsettled_matrix_tests,
     unmet_spec_criteria,
     unwired_or_unverified_capabilities,
     milestone_rows,
@@ -409,7 +432,21 @@ def discover():
 # ---- the stop decision ---------------------------------------------------------------------
 
 
-def decide(candidates):
+def human_gate():
+    """HUMAN_VALIDATION_READY from TEST_MATRIX.yaml, or None when the registry is unreadable.
+
+    This, not AUTONOMOUS_ACTION_AVAILABLE, is the canonical transition into the human phase.
+    The old field was a judgement about whether anything was left; this is a property of the
+    registry (CONSTITUTION rule 18).
+    """
+    try:
+        import test_matrix
+        return test_matrix.gate()
+    except Exception:
+        return None
+
+
+def decide(candidates, gate=None):
     """The machine-checkable stop state. Pure, so the scenarios below can exercise it."""
     actionable = [c for c in candidates if not c["blocked_by"]]
     blocked = [c for c in candidates if c["blocked_by"]]
@@ -445,6 +482,21 @@ def decide(candidates):
         "actionable_count": 0,
         "blocked_count": 0,
     }
+
+
+def with_gate(stop, gate):
+    """Adds the registry-based phase decision to a stop state."""
+    if gate is None:
+        stop["HUMAN_VALIDATION_READY"] = "UNKNOWN"
+        stop["PHASE"] = "AUTONOMOUS_TEST"
+        return stop
+    ready = gate["HUMAN_VALIDATION_READY"] == "TRUE"
+    stop["HUMAN_VALIDATION_READY"] = gate["HUMAN_VALIDATION_READY"]
+    stop["QUEUED_FOR_HUMAN"] = gate["queued_human_items"]
+    stop["PHASE"] = "HUMAN_VALIDATION_READY" if ready else (
+        "AUTONOMOUS_TEST" if stop["AUTONOMOUS_ACTION_AVAILABLE"] == "YES" else "TEST_REVIEW"
+    )
+    return stop
 
 
 # Phrases that describe wanting a human rather than naming what is missing. A blocker has to say
@@ -682,7 +734,7 @@ def main():
         return selftest()
 
     found = discover()
-    stop = decide(found)
+    stop = with_gate(decide(found), human_gate())
     if args.json:
         print(json.dumps({"candidates": found, "stop": stop}, indent=2, ensure_ascii=False))
         return 0
@@ -694,9 +746,15 @@ def main():
         if c["blocked_by"]:
             print("            blocked by: %s" % c["blocked_by"])
     print()
-    for key in ("AUTONOMOUS_ACTION_AVAILABLE", "HUMAN_ACTION_REQUIRED", "STOP_REASON",
-                "BLOCKING_DEPENDENCY", "NEXT_ACTION"):
-        print("%s = %s" % (key, stop[key]))
+    for key in ("PHASE", "HUMAN_VALIDATION_READY", "AUTONOMOUS_ACTION_AVAILABLE",
+                "HUMAN_ACTION_REQUIRED", "STOP_REASON", "BLOCKING_DEPENDENCY", "NEXT_ACTION"):
+        if key in stop:
+            print("%s = %s" % (key, stop[key]))
+    if stop.get("QUEUED_FOR_HUMAN"):
+        # Said out loud so it is never mistaken for a stop condition: these are waiting for a
+        # batch, not holding anything up.
+        print("QUEUED_FOR_HUMAN = %d (queued for the next batch, not blocking)"
+              % stop["QUEUED_FOR_HUMAN"])
     return 0
 
 

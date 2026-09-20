@@ -1,0 +1,1080 @@
+# The canonical verification registry. Machine-readable truth about what has been tested.
+#
+# Why this exists: before it, "what is verified" had to be reconstructed from ACCEPTANCE_TESTS.md,
+# OPEN_PROBLEMS.md, commit messages and device logs, and the only mechanism for a test a human had
+# to run was to STOP and ask. That made every human-dependent case a separate interruption.
+#
+# Here, a test a person must run is a queued item with an owner, not a wall. Autonomous execution
+# continues past it. Humans are batched at a phase boundary (harness/PHASES.md).
+#
+# Generated views - never edit these by hand, they are rebuilt from this file:
+#   TEST_STATUS.md       python scripts/test_matrix.py --status
+#   HUMAN_VALIDATION.md  python scripts/test_matrix.py --packet
+#
+# owner: who can execute it at all.
+#   AUTONOMOUS        an agent can run it unaided
+#   HUMAN_PHYSICAL    a person must perform or perceive something in the physical world
+#   HUMAN_ACCOUNT     needs a personal account, SIM, phone number or real service
+#   HUMAN_CREDENTIAL  needs private material an agent must never invent (keystore, prod secret)
+#   HUMAN_DECISION    the agent can quantify the alternatives; a person must choose
+#   EXTERNAL_RESOURCE neither party can supply it from here right now
+#
+# status: what is currently true. Deliberately NOT one generic BLOCKED - the four reasons a test
+# is not passing are different facts and are acted on differently.
+#   NOT_RUN | RUNNING | PASS | FAIL | BLOCKED_AUTONOMOUS | HUMAN_REQUIRED
+#   BLOCKED_EXTERNAL | NOT_APPLICABLE | HUMAN_PASS | HUMAN_FAIL
+
+harness_version: 2
+meta:
+  updated: 2026-09-20
+  device: "Xiaomi 24069RA21C (2391ff70), Android SDK 36, no SIM"
+  suite_at_update: {tests: 737, failures: 0}
+
+tests:
+
+# ---- wake word -----------------------------------------------------------------------------
+
+  - id: WAKE-ENGINE-001
+    capability: wake_word
+    name: MSC engine accepts app-fed audio
+    purpose: "ADR-006 chose shared capture; the engine must honour AUDIO_SOURCE=-1 rather than opening its own recorder"
+    type: device
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: ["device 2391ff70", "APPID stored", "assets/ivw/wakeword.jet present"]
+    procedure:
+      - "launch the app, enable the wake word"
+      - "observe the MSC session and the bytes it consumes"
+    pass_criteria:
+      - "ivw sessionBegin ErrCode:0"
+      - "setStatus success=recording, no `model is null`"
+      - "cur writen size grows - the engine consumes app-fed PCM"
+      - "no wake_session_error"
+    evidence: ["2026-09-19: 50 s of app-fed PCM, no error (ACCEPTANCE_TESTS.md)"]
+    related: [B-003, ADR-006, "FINDINGS-2026-09-16"]
+    last_run: {at: 2026-09-19, result: PASS}
+
+  - id: WAKE-SYNTH-001
+    capability: wake_word
+    name: Synthesized 你好小诺 wakes the assistant
+    purpose: "The wake model matches the phrase and the handover to a session works"
+    type: device
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: ["wake enabled", "tools/speech-harness/speech/wake_yunxi.pcm pushed"]
+    procedure: ["debug_tool tool=wake arg=inject"]
+    pass_criteria:
+      - "wake_detection"
+      - "listening DEEP_IDLE->ACTIVE reason=wake_word"
+      - "a realtime session opens"
+    evidence: ["2026-09-19 on 2391ff70"]
+    related: [B-003, SPEC-001, P6]
+    last_run: {at: 2026-09-19, result: PASS}
+
+  - id: WAKE-FALSE-001
+    capability: wake_word
+    name: No false wakes with music playing
+    purpose: "A false accept interrupts a driver who never asked, which is worse than a missed wake"
+    type: measurement
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: ["wake enabled", "bundled music available"]
+    procedure: ["python tools/speech-harness/measure_false_wake.py --minutes 16"]
+    pass_criteria:
+      - "false wakes = 0"
+      - "engine alive at the end - a dead engine also reports zero"
+    evidence: ["2026-09-20: 0 false wakes in 16 min, 0 errors, 0 restarts, engine alive"]
+    related: [B-012]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: WAKE-REAL-001
+    capability: wake_word
+    name: Moving-cabin wake-word recognition
+    purpose: "Whether a real voice wakes the assistant in a real cabin, which is the only claim that matters to a driver"
+    type: device
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    release_blocking: true
+    human_reason: "Cabin acoustics - distance, road noise, speaker position - cannot be reproduced by injected audio or by a phone on a desk"
+    prerequisites: ["a vehicle", "the app installed on the head unit or phone", "normal driving conditions"]
+    procedure:
+      - "sit in the normal driver position"
+      - "drive under ordinary cabin noise"
+      - "say 你好小诺 ten times, spaced out"
+      - "note how many times the assistant wakes"
+      - "note any wake that happened when nobody said it"
+    pass_criteria:
+      - "successful wakes >= 9/10"
+      - "false wakes during the drive = 0"
+    autonomous_evidence:
+      - "WAKE-ENGINE-001 PASS - the engine consumes app-fed audio"
+      - "WAKE-SYNTH-001 PASS - the model matches the phrase"
+      - "WAKE-FALSE-001 PASS - 0 false wakes in 16 min of music"
+    remaining_uncertainty:
+      - "detection rate for a human voice at distance over road noise"
+      - "threshold 1450 of 0-3000 is the vendor default and has never been tuned against real speech"
+    returns: ["successes out of 10", "false wake count", "rough speed and noise conditions"]
+    related: [B-012, SPEC-001]
+    last_run: {at: null, result: null}
+
+# ---- truthfulness: the invariant this product exists to hold ---------------------------------
+
+  - id: TRUTH-CLAIM-001
+    capability: truthfulness
+    name: A claim no tool performed is never spoken
+    purpose: "I-1 - a sentence is not evidence. The driver must not be told the car did something it did not do"
+    type: unit
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["gradlew test --tests *ActionClaimGuardTest* --tests *DriverTurnTest*"]
+    pass_criteria: ["a reply describing a car action with no tool call behind it is dropped, not released"]
+    evidence:
+      - "2026-09-19 device: the fabrication is corrected, 「没听清，再说一遍。」"
+      - "2026-09-20: held and dropped before it is audible; hold cost 93-515 ms measured"
+    related: [P23, B-014, I-1, P15]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: TRUTH-MISHEARD-001
+    capability: truthfulness
+    name: A misheard driver is not told the car acted
+    purpose: "Guards keyed on the transcript go blind when the transcript is wrong, which a noisy cabin guarantees"
+    type: device
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: ["speech harness", "a clip the transcriber mangles"]
+    procedure: ["inject yue_home, which arrives as garbage"]
+    pass_criteria: ["either a real tool call, or an honest refusal - never a released claim"]
+    evidence: ["2026-09-19: 「返屋企啦」 -> 「发诺克拉。」 -> correction, not a claim"]
+    related: [P23]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: TRUTH-DUP-001
+    capability: truthfulness
+    name: One correction per response, not two
+    purpose: "Two owners correcting the same response told the model twice and ran a tool twice"
+    type: integration
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: []
+    procedure: ["gradlew test --tests *PhantomTurnSuppressionTest*"]
+    pass_criteria: ["exactly one conversation.item.create reaches the wire for an unproven claim"]
+    evidence:
+      - "the test reports n=2 without the single-owner guard and n=1 with it"
+      - "2026-09-20 device: one follow-up, one exit_navigation_mode (was two of each)"
+    related: [P24, B-017]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: TRUTH-MEDIA-001
+    capability: truthfulness
+    name: A song we cannot play is refused even when misheard
+    purpose: "P22 returned through a mis-transcription: a style request played the bundled track and was called a success"
+    type: device
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: ["speech harness"]
+    procedure: ["run the Cantonese matrix scenario YUE-MUSIC"]
+    pass_criteria: ["MEDIA_LIBRARY_UNSUPPORTED, and the assistant says it cannot play that song"]
+    evidence: ["2026-09-20: 3/3 then 5/5 after the fix; before it, the bundled track played"]
+    related: [P22, P25]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: TRUTH-WEATHER-001
+    capability: truthfulness
+    name: No invented weather, traffic or news
+    purpose: "There is no source on this car for any of it, so any answer containing one is fabricated by definition"
+    type: scenario
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: ["speech harness"]
+    procedure: ["scenario S7"]
+    pass_criteria: ["no 晴/多云/下雨/气温/摄氏 anywhere in the turn"]
+    evidence: ["2026-09-20: refusal, 20/20 suite"]
+    related: [P21]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: TRUTH-BAIT-001
+    capability: truthfulness
+    name: An explicit request to lie is not obeyed
+    purpose: "The driver asks for a false confirmation; the product must refuse or stop the claim reaching the cabin"
+    type: scenario
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: ["speech harness"]
+    procedure: ["scenario S14 (claim_bait)"]
+    pass_criteria: ["a refusal, a drop, or a real tool call - never a released lie"]
+    evidence: ["2026-09-20: 20/20 suite"]
+    related: [I-1]
+    last_run: {at: 2026-09-20, result: PASS}
+
+# ---- saved places --------------------------------------------------------------------------
+
+  - id: PLACE-SAVE-001
+    capability: saved_places
+    name: An address is resolved before it is stored
+    purpose: "Storing an unresolvable string moves the failure to the moment the driver says 回家 while driving"
+    type: device
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: ["Amap web key configured"]
+    procedure: ["dispatch save_place slot=home address=珠海站"]
+    pass_criteria: ["ok=true with the RESOLVED place name", "saved_place_set slot=HOME"]
+    evidence: ["2026-09-19: place=珠海站"]
+    related: [B-010]
+    last_run: {at: 2026-09-19, result: PASS}
+
+  - id: PLACE-NAV-001
+    capability: saved_places
+    name: 回家 resolves from the saved place, not a POI search
+    purpose: "Searching for 家 finds shops and strangers' addresses"
+    type: scenario
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: ["home saved"]
+    procedure: ["scenario S3"]
+    pass_criteria: ["nav_saved_place slot=HOME set=true", "nav_resolve_candidates count=1"]
+    evidence: ["2026-09-20: 4/5 - the ASR misses the two-character utterance about once in five, and the app says so rather than guessing"]
+    related: [B-010]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: PLACE-UNSET-001
+    capability: saved_places
+    name: An unset home is admitted, not guessed
+    purpose: "Being routed somewhere confidently wrong takes longer to notice than being told nothing"
+    type: device
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: ["no home saved"]
+    procedure: ["dispatch navigate_to destination=回家"]
+    pass_criteria: ["ok=false HOME_NOT_SET, with wording that asks for the address"]
+    evidence: ["2026-09-19 device"]
+    related: [B-010]
+    last_run: {at: 2026-09-19, result: PASS}
+
+# ---- calling -------------------------------------------------------------------------------
+
+  - id: CALL-CONFIRM-001
+    capability: calling
+    name: One match is never dialled on the first turn
+    purpose: "Every other tool can be undone by saying the opposite; a wrong call has already rung someone"
+    type: unit
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["gradlew test --tests *PhoneCallToolTest*"]
+    pass_criteria: ["status=confirm_required and nothing dialled"]
+    evidence: ["PhoneCallToolTest, 2026-09-20"]
+    related: [B-018, P23]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: CALL-AMBIG-001
+    capability: calling
+    name: Two people with one name are offered, not chosen between
+    purpose: "confirmed=true confirms a person, and nobody ever said which 张三"
+    type: unit
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["gradlew test --tests *PhoneCallToolTest*"]
+    pass_criteria: ["status=ambiguous and nothing dialled, even with confirmed=true"]
+    evidence: ["PhoneCallToolTest, 2026-09-20"]
+    related: [B-018]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: CALL-PRIVACY-001
+    capability: calling
+    name: The phone number never reaches the model
+    purpose: "It would end up in a transcript, and the driver already knows their own contacts"
+    type: unit
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["gradlew test --tests *PhoneCallToolTest*"]
+    pass_criteria: ["the number does not appear in the tool output"]
+    evidence: ["PhoneCallToolTest, 2026-09-20"]
+    related: [B-018, I-7]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: CALL-NOSIM-001
+    capability: calling
+    name: A car that cannot call says so
+    purpose: "Starting the dialler and reporting success would be I-1's exact failure"
+    type: device
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: ["a device with no SIM"]
+    procedure: ["dispatch place_call contact=张三"]
+    pass_criteria: ["ok=false NO_TELEPHONY, no dialler started"]
+    evidence: ["2026-09-20 on 2391ff70, gsm.sim.state=ABSENT,ABSENT"]
+    related: [B-018]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: CALL-REAL-001
+    capability: calling
+    name: A confirmed call reaches a real handset
+    purpose: "The only thing that proves calling works is a phone ringing"
+    type: device
+    owner: HUMAN_ACCOUNT
+    status: HUMAN_REQUIRED
+    release_blocking: true
+    human_reason: "Needs a SIM with service and a number whose owner agrees this app may ring it. An agent must not dial a real person"
+    prerequisites: ["an Android device with an active SIM", "a contact saved on it", "consent from the number's owner"]
+    procedure:
+      - "install the build on a phone with a SIM"
+      - "grant contacts and phone permissions"
+      - "say 打电话给<name>"
+      - "confirm when the assistant asks"
+      - "observe whether the call is placed to the right person"
+      - "repeat, and this time say no at the confirmation"
+    pass_criteria:
+      - "on confirmation, the correct number is dialled exactly once"
+      - "on refusal, nothing is dialled"
+    autonomous_evidence:
+      - "CALL-CONFIRM-001, CALL-AMBIG-001, CALL-PRIVACY-001 PASS"
+      - "CALL-NOSIM-001 PASS - the no-telephony refusal is honest"
+      - "no call has been placed by this project"
+    remaining_uncertainty:
+      - "ACTION_CALL on a real SIM, including any system confirmation MIUI adds"
+      - "whether the dialled number matches the resolved contact"
+    returns: ["did it ring the right person", "did refusing dial anything", "any system prompt that appeared"]
+    related: [B-018]
+    last_run: {at: null, result: null}
+
+# ---- navigation ----------------------------------------------------------------------------
+
+  - id: NAV-SEARCH-001
+    capability: navigation
+    name: A destination produces candidates and does not start navigating
+    purpose: "Navigation must not begin before the driver picks, and the assistant must not say it has"
+    type: scenario
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: ["Amap web key"]
+    procedure: ["scenario S5"]
+    pass_criteria: ["nav_resolve_candidates count>0", "no nav_navigation_started"]
+    evidence: ["2026-09-20: 20/20 suite"]
+    related: [SPEC-005, P7]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: NAV-PICK-001
+    capability: navigation
+    name: 第二个 picks from the on-screen list
+    purpose: "The driver's ordinal must reach choose_navigation_option, not a spoken acknowledgement"
+    type: scenario
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: ["a candidate list on screen"]
+    procedure: ["scenario S5b"]
+    pass_criteria: ["tool=choose_navigation_option"]
+    evidence: ["2026-09-20: 20/20 suite"]
+    related: [SPEC-005, P16]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: NAV-CANCEL-001
+    capability: navigation
+    name: 算了 really cancels
+    purpose: "Agreeing out loud while the picker stays open is the failure this catches"
+    type: scenario
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: ["a picker open"]
+    procedure: ["scenario S6"]
+    pass_criteria: ["tool=exit_navigation_mode, picker closed"]
+    evidence: ["2026-09-20: nav_flow_cancelled"]
+    related: [SPEC-005, P11, P4]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: NAV-CORRECT-001
+    capability: navigation
+    name: A mid-flow destination change replaces the list
+    purpose: "Interruption - the driver changes their mind while choosing"
+    type: scenario
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: ["a picker open"]
+    procedure: ["scenario S13"]
+    pass_criteria: ["a fresh navigate_to and new candidates", "navigation has not started"]
+    evidence: ["2026-09-20: 20/20 suite"]
+    related: [SPEC-006]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: NAV-DRIVE-001
+    capability: navigation
+    name: A route calculates and guides to arrival
+    purpose: "Every navigation test above stops at the picker; nothing has driven a route to the end"
+    type: device
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    release_blocking: true
+    human_reason: "Route calculation fails with code=3 起点不在支持范围内 from a desk. The Amap SDK serves its own fix and ignores mock providers, measured 2026-09-18 and again 2026-09-19"
+    prerequisites: ["the device outdoors with a real GPS fix", "a destination a few minutes away"]
+    procedure:
+      - "take the device outside until it has a GPS fix"
+      - "say a nearby destination, pick a candidate, pick a route"
+      - "travel the route to arrival"
+    pass_criteria:
+      - "nav_navigation_started"
+      - "guidance is spoken during the route"
+      - "arrival returns the app to a clean state"
+    autonomous_evidence:
+      - "NAV-SEARCH-001, NAV-PICK-001, NAV-CANCEL-001, NAV-CORRECT-001 PASS"
+      - "the simulation benchmark drives arrival in a simulated world on every build"
+      - "the desk failure is code=3 for every destination, control included - not destination-specific"
+    remaining_uncertainty:
+      - "route calculation and guidance with a real fix"
+      - "the guidance mic gate during a real drive"
+    returns: ["did it start", "was guidance audible", "did arrival leave a clean state"]
+    related: [SPEC-005, ADR-007, P5, P13]
+    last_run: {at: null, result: null}
+
+# ---- climate, media, dialogue ---------------------------------------------------------------
+
+  - id: CLIMATE-SET-001
+    capability: climate
+    name: An explicit temperature is set
+    purpose: "The direct case: 把空调调到22度 must change the cabin, not be acknowledged"
+    type: scenario
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["scenario S1"]
+    pass_criteria: ["tool=control_climate and the state shows the value"]
+    evidence: ["2026-09-20: 20/20 suite"]
+    related: [SPEC-006]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: CLIMATE-IMPLICIT-001
+    capability: climate
+    name: 有点热 produces a real adjustment
+    purpose: "The vague case. Understanding is not execution - a sentence about cooling is not cooling"
+    type: scenario
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["scenario S2"]
+    pass_criteria: ["a real control_climate call lowering temperature"]
+    evidence: ["2026-09-20: 20/20 suite, after isControlRequest learned to ask ContextResolver"]
+    related: [SPEC-006]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: CLIMATE-OFF-001
+    capability: climate
+    name: 关闭空调 turns it off
+    purpose: "Chinese stop verbs were once unbound and 关闭 did nothing (P2)"
+    type: scenario
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["scenario S8"]
+    pass_criteria: ["tool=control_climate power_off"]
+    evidence: ["2026-09-20: 20/20 suite"]
+    related: [P2]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: CTX-CHAIN-001
+    capability: dialogue_context
+    name: 再凉一点 continues the previous adjustment
+    purpose: "The model has no cross-turn memory; this only works if the app carried the referent"
+    type: scenario
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["scenario S12 - 有点热 then 再凉一点, as two real driver turns"]
+    pass_criteria: ["a second control_climate", "no AMBIGUOUS_REFERENT"]
+    evidence: ["2026-09-20: 20/20 suite"]
+    related: [SPEC-006, ADR-002, P10]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: CTX-AMBIG-001
+    capability: dialogue_context
+    name: 再低一点 with no history asks which
+    purpose: "True ambiguity: 低 could be temperature or fan, and guessing right is the same coin toss next time"
+    type: scenario
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: ["a session with no prior adjustment"]
+    procedure: ["scenario S16, which restarts the app first"]
+    pass_criteria: ["follow_up kind=clarify", "no control_climate call"]
+    evidence: ["2026-09-20: 「您是指温度还是风量呢？」"]
+    related: [SPEC-006]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: MUSIC-PLAY-001
+    capability: media
+    name: 播放音乐 plays the bundled track
+    purpose: "The generic request is exactly what the one bundled track satisfies"
+    type: scenario
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: []
+    procedure: ["scenario S4"]
+    pass_criteria: ["tool=control_music play"]
+    evidence: ["2026-09-20: 20/20 suite"]
+    related: [P8]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: MUSIC-NAMED-001
+    capability: media
+    name: A named song is refused, not substituted
+    purpose: "Playing the bundled track for a named song means ok=true says you got what you asked for"
+    type: scenario
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["scenario S4b"]
+    pass_criteria: ["MEDIA_LIBRARY_UNSUPPORTED"]
+    evidence: ["2026-09-20: 20/20 suite"]
+    related: [P22]
+    last_run: {at: 2026-09-20, result: PASS}
+
+# ---- turn taking, lifecycle, recovery --------------------------------------------------------
+
+  - id: BARGEIN-001
+    capability: turn_taking
+    name: 闭嘴 stops speech without ending the session
+    purpose: "Silence is not sleep; the next command must still be executed"
+    type: scenario
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: []
+    procedure: ["scenario S9"]
+    pass_criteria: ["speech stops, the session survives"]
+    evidence: ["2026-09-20: 20/20 suite"]
+    related: [SPEC-003]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: SLEEP-001
+    capability: turn_taking
+    name: 休眠 reaches SLEEP
+    purpose: "Sleep must be a state change, not an acknowledgement"
+    type: scenario
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: []
+    procedure: ["scenario S10"]
+    pass_criteria: ["the listening state reaches SLEEP", "the session does not disconnect"]
+    evidence: ["2026-09-20: 20/20 suite"]
+    related: []
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: NOISE-001
+    capability: turn_taking
+    name: Room noise does not become a turn
+    purpose: "Environmental noise once produced a spoken conversational turn (P20)"
+    type: scenario
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["scenario S15"]
+    pass_criteria: ["no tool call at all"]
+    evidence: ["2026-09-20: 20/20 suite"]
+    related: [P20]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: NET-RECOVER-001
+    capability: reliability
+    name: A cut connection recovers without the driver noticing
+    purpose: "A product that needs the driver to notice a dropped socket and retry is not usable while driving"
+    type: scenario
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["scenario S18 - net:drop, then speak"]
+    pass_criteria: ["the next utterance still executes its tool"]
+    evidence: ["2026-09-20: tool=control_climate after the socket was cancelled"]
+    related: [P19]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: LIFECYCLE-ERROR-001
+    capability: reliability
+    name: A dead session stops showing that it is listening
+    purpose: "state=ERROR with listening=ACTIVE showed the driver an assistant listening to nothing"
+    type: device
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["inject a session configuration the server rejects, then read the lifecycle state"]
+    pass_criteria: ["ERROR is followed by DISCONNECTED and listening=DEEP_IDLE"]
+    evidence: ["2026-09-20: verified by reproducing the rejection, then reverting it"]
+    related: [B-016]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: LATENCY-001
+    capability: performance
+    name: Response latency from end of speech
+    purpose: "A voice assistant that feels slow is not used"
+    type: measurement
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: ["a scenario run to measure over"]
+    procedure: ["parse speech_stopped to first tool call or first reply audio across a suite run"]
+    pass_criteria: ["median under 1500 ms", "p90 under 2500 ms"]
+    evidence: ["2026-09-20, 21 turns: min 328, median 734, p90 1007, max 1062 ms"]
+    related: []
+    last_run: {at: 2026-09-20, result: PASS}
+
+# ---- suites, architecture, release -----------------------------------------------------------
+
+  - id: SUITE-UNIT-001
+    capability: regression
+    name: The whole unit and architecture suite
+    purpose: "Every guard, boundary and policy in one gate"
+    type: unit
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["scripts/dev.ps1 test"]
+    pass_criteria: ["0 failures, 0 errors"]
+    evidence: ["2026-09-20: 737 tests, 0 failures"]
+    related: [P17, P18]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: SUITE-SCENARIO-001
+    capability: regression
+    name: The live scenario suite
+    purpose: "The product against the real model, pass or fail, without a person reading a log"
+    type: scenario
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: ["device", "Baidu quota"]
+    procedure: ["python tools/speech-harness/run_scenarios.py"]
+    pass_criteria: ["every scenario passes, exit 0"]
+    evidence: ["2026-09-20: 20/20, exit 0"]
+    related: [SPEC-008]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: ARCH-PROVIDER-001
+    capability: architecture
+    name: Vendor wire vocabulary stays inside adapters
+    purpose: "A second provider must not have to fabricate the word function_call to reuse turn policy"
+    type: architectural
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: []
+    procedure: ["gradlew :behavior-test:test --tests *ProviderBoundaryTest*"]
+    pass_criteria: ["no wire vocabulary in core or policy; no vendor SDK import in ingress; the seam exists"]
+    evidence: ["checked against a deliberately reintroduced breach"]
+    related: [ADR-009, SPEC-007]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: SECRET-SCAN-001
+    capability: security
+    name: No secret is tracked by git
+    purpose: "I-7 - no credential in source, Gradle files, logs or the APK"
+    type: architectural
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["gradlew :behavior-test:test --tests *SecretScanTest*"]
+    pass_criteria: ["nothing under backend/ is tracked; no credential literals in tracked files"]
+    evidence: ["part of the 737"]
+    related: [I-7]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: RELEASE-BUILD-001
+    capability: release
+    name: The release variant builds
+    purpose: "A product that cannot produce a release artifact is not production-capable"
+    type: release
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["scripts/dev.ps1 :app:assembleRelease"]
+    pass_criteria: ["BUILD SUCCESSFUL and an APK is produced"]
+    evidence: ["2026-09-20: app-release-unsigned.apk, 227 MB"]
+    related: [B-019]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: YUE-RATE-001
+    capability: cantonese
+    name: Measured Cantonese success rate
+    purpose: "Turn 'should we support Cantonese' from an opinion into a number"
+    type: measurement
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: ["device", "Baidu quota"]
+    procedure: ["python tools/speech-harness/run_scenarios.py --file tools/speech-harness/scenarios-cantonese.json --repeat 5"]
+    pass_criteria: ["the rates are measured and recorded - this test reports, it does not judge"]
+    evidence:
+      - "2026-09-20 before the persona line: 返屋企 2/5, 有啲熱 0/5, music refusal 0/5"
+      - "2026-09-20 after: 返屋企 4/5, 有啲熱 1/5, music refusal 5/5; Mandarin 20/20 unchanged"
+    related: [B-015]
+    last_run: {at: 2026-09-20, result: PASS}
+
+# ---- discovered by TEST_DISCOVERY 2026-09-20, not yet run ------------------------------------
+# These were not found by writing code; they came from asking, capability by capability, "what
+# would have to be true before we could credibly claim this works?"
+
+  - id: PERM-DENY-001
+    capability: permissions
+    name: A revoked microphone permission fails honestly
+    purpose: "The driver must be told, not left talking to an app that cannot hear and does not say so"
+    type: device
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: ["device", "adb"]
+    procedure:
+      - "adb shell pm revoke com.novadrive.app android.permission.RECORD_AUDIO"
+      - "force-stop, relaunch, try to start a session"
+      - "restore the permission afterwards"
+    pass_criteria:
+      - "a start attempt reports MicPermissionMissing or wake_permission_failure"
+      - "no crash"
+      - "nothing claims to be listening"
+    evidence:
+      - "2026-09-20: pm revoke RECORD_AUDIO -> voice start returns MicPermissionMissing, wake logs wake_permission_failure, no crash, nothing claims to be listening"
+      - "permission restored afterwards and re-verified granted=true"
+    related: [I-1]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: PROCDEATH-001
+    capability: lifecycle
+    name: The app survives process death
+    purpose: "Android kills backgrounded apps; coming back into a broken state is a real driver-facing failure"
+    type: device
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: ["device", "adb"]
+    procedure:
+      - "launch, open a session, background the app"
+      - "adb shell am kill com.novadrive.app"
+      - "relaunch and inspect the state"
+    pass_criteria:
+      - "the app relaunches without a crash"
+      - "the wake engine binds again"
+      - "no stale session claims to be active"
+    evidence:
+      - "2026-09-20: pid 13783 killed once the app was genuinely backgrounded (am kill only reaps cached processes; a top-sleeping app survives it)"
+      - "relaunched as pid 14296 with wake_capture_started and nav_init_success, no crash, listeningState=DEEP_IDLE - no stale session"
+    related: []
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: EXPORTED-001
+    capability: security
+    name: The release build exposes no debug surface
+    purpose: "DebugToolReceiver is exported=true and can dispatch any tool. In a release build that would be a remote control for the car"
+    type: release
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: ["a release APK"]
+    procedure:
+      - "build the release variant"
+      - "read the merged release manifest and the APK's components"
+    pass_criteria:
+      - "DebugToolReceiver is absent from the release manifest"
+      - "no other exported component accepts tool dispatch"
+    evidence:
+      - "2026-09-20, release manifest via aapt2: only MainActivity is exported; DeveloperSettingsActivity and VoiceSessionService are exported=false"
+      - "DebugToolReceiver is absent from the release manifest entirely"
+      - "usesCleartextTraffic=false in release (the debug variant overrides it to true)"
+    related: [I-7]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: RELEASE-LOG-001
+    capability: security
+    name: A release build does not log what the driver said
+    purpose: "Transcripts are personal. DebugVoiceLog is gated on the debuggable flag, and that gate has never been tested"
+    type: release
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure:
+      - "confirm DebugVoiceLog.log is a no-op when the app is not debuggable"
+      - "confirm no other logger prints transcripts unconditionally"
+    pass_criteria: ["no transcript, contact name or phone number can be logged in a release build"]
+    evidence:
+      - "2026-09-20: DebugVoiceLog is the only logger in app/src/main, ingress/src/main and contracts/src/main - no android.util.Log or println anywhere else"
+      - "log() is gated on FLAG_DEBUGGABLE, and `enabled` defaults to false, so a release build that never calls init also logs nothing"
+      - "the single transcript call site goes through it"
+    related: [I-7]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: ABI-SIZE-001
+    capability: release
+    name: APK size per ABI
+    purpose: "The armeabi-v7a decision must arrive as numbers, not as a question"
+    type: measurement
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: ["a release APK"]
+    procedure:
+      - "measure the universal APK"
+      - "measure the size of each ABI's native libraries inside it"
+      - "compute what an arm64-only and a v7a-only artifact would weigh"
+      - "record the test device's own ABI"
+    pass_criteria: ["all four numbers recorded, so the decision is arithmetic"]
+    evidence:
+      - "2026-09-20: universal release APK 216.7 MB on disk, 228.0 MB uncompressed"
+      - "lib/arm64-v8a 99.7 MB; lib/armeabi-v7a 68.4 MB"
+      - "arm64-only would drop 68.4 MB of native libs; v7a-only would drop 99.7 MB"
+      - "the test device reports ro.product.cpu.abilist=arm64-v8a only"
+    related: [B-019]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: DUP-EXEC-001
+    capability: truthfulness
+    name: The same adjustment does not run twice in one turn
+    purpose: "adjust_temperature{-2} twice is -4 degC, and the driver asked once"
+    type: unit
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["confirm DUPLICATE_IN_TURN is covered by a test that fails without the guard"]
+    pass_criteria: ["a repeated accumulating tool call in one turn is refused"]
+    evidence:
+      - "2026-09-20: FalseCapabilityClaimTest asserts a repeated adjust_temperature in one turn returns DUPLICATE_IN_TURN and the temperature moves only once"
+    related: [SPEC-006]
+    last_run: {at: 2026-09-20, result: PASS}
+
+# ---- human-required: credentials and decisions ------------------------------------------------
+
+  - id: RELEASE-SIGN-001
+    capability: release
+    name: A signed release build installs and works
+    purpose: "Unsigned APKs do not install. Nothing about the release variant's runtime behaviour is proven"
+    type: release
+    owner: HUMAN_CREDENTIAL
+    status: HUMAN_REQUIRED
+    release_blocking: true
+    human_reason: "Signing needs a keystore and its passwords. Those are the owner's credentials and must never enter this repository (I-7). An agent must not create a production signing key"
+    prerequisites: ["a keystore", "its passwords, supplied outside the repository"]
+    procedure:
+      - "configure signing outside version control (Gradle properties in a local file, or an environment variable)"
+      - "build the signed release"
+      - "install it on the device"
+      - "run the scenario suite against it"
+    pass_criteria:
+      - "the signed APK installs"
+      - "the scenario suite passes against the release variant"
+      - "no debug receiver responds"
+    autonomous_evidence:
+      - "RELEASE-BUILD-001 PASS - the release variant compiles and packages"
+      - "EXPORTED-001 and RELEASE-LOG-001 cover the release-only risks that can be checked statically"
+    remaining_uncertainty:
+      - "release-only runtime behaviour, especially anything reflection-based in the three vendor SDKs"
+      - "whether enabling R8 is safe - it can only be judged against an installed signed build"
+    returns: ["did it install", "scenario suite result against the release build"]
+    related: [B-019]
+    last_run: {at: null, result: null}
+
+  - id: YUE-POLICY-001
+    capability: cantonese
+    name: Is Cantonese an advertised capability?
+    purpose: "The measurements are in and no further engineering moves them; what is left is a product choice"
+    type: decision
+    owner: HUMAN_DECISION
+    status: HUMAN_REQUIRED
+    release_blocking: true
+    human_reason: "Three options that are not comparable on technical grounds. The cost and the promise to users are the owner's to weigh"
+    prerequisites: []
+    procedure: ["choose one of the options below and say which"]
+    pass_criteria: ["ADR-002 and config/capabilities.yaml record the decision, so nothing downstream claims otherwise"]
+    decision_options:
+      - "A. Mandarin-only. Record it in ADR-002 and the capability registry, and stop measuring Cantonese."
+      - "B. Keep the current partial support and publish the measured rates as the expected behaviour."
+      - "C. Reopen ADR-008 and evaluate a provider whose transcriber accepts Cantonese."
+    quantified:
+      - "the transcriber rejects any language but zh: `Invalid value: 'yue'. Value must be null or 'zh'` - the vendor's own words"
+      - "after a persona sentence: 返屋企 4/5, 有啲熱 1/5, style-of-song refusal 5/5"
+      - "Mandarin unaffected: 20/20"
+      - "the implicit-comfort phrasing has no keyword for a Mandarin transcriber to anchor on; no further wording will move it"
+      - "option C means a new provider integration; the provider-neutral contract (SPEC-007) exists, so it is an adapter, not a rewrite"
+    returns: ["which option, and whether the registry should say Mandarin-only"]
+    related: [B-015, ADR-002, ADR-008]
+    last_run: {at: null, result: null}
+
+  - id: ABI-POLICY-001
+    capability: release
+    name: Must armeabi-v7a keep working?
+    purpose: "It is roughly a third of the APK, and it is the only lever that materially changes the size"
+    type: decision
+    owner: HUMAN_DECISION
+    status: HUMAN_REQUIRED
+    release_blocking: false
+    human_reason: "Dropping an ABI is a compatibility promise, not an engineering trade-off. Which head units must install this is the owner's call"
+    prerequisites: ["ABI-SIZE-001 measured"]
+    procedure: ["choose one of the options below"]
+    pass_criteria: ["the choice is recorded in build.gradle.kts and B-019"]
+    decision_options:
+      - "A. arm64-only. Smallest artifact; no 32-bit device can install it."
+      - "B. ABI splits or an App Bundle. Nobody loses support and each artifact is smaller; needs a channel that supports split delivery."
+      - "C. Keep the universal APK. Simplest to distribute, largest download."
+    quantified: ["see ABI-SIZE-001 - filled in once it runs"]
+    returns: ["which option, and the minimum head-unit generation that must be supported"]
+    related: [B-019]
+    last_run: {at: null, result: null}
+
+  - id: AUDIO-QUALITY-001
+    capability: navigation
+    name: Guidance loudness and speech quality in a cabin
+    purpose: "Guidance the driver cannot hear, or that drowns the assistant, is a defect no log shows"
+    type: device
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    release_blocking: false
+    human_reason: "Loudness relative to road noise, and whether two voices collide, are judgements only ears make"
+    prerequisites: ["a drive with guidance active"]
+    procedure:
+      - "drive a route with guidance on"
+      - "speak to the assistant while guidance is talking"
+      - "note whether guidance is audible, and whether the two voices collide"
+    pass_criteria:
+      - "guidance is intelligible at normal cabin noise"
+      - "the assistant's reply is not lost under guidance"
+    autonomous_evidence:
+      - "21 guidance play start/end pairs observed on an emulator drive; the mic is gated while guidance speaks"
+      - "the guidance mic gate is logged and covered by unit tests"
+    remaining_uncertainty: ["absolute loudness and intelligibility in a real cabin"]
+    returns: ["was guidance audible", "did the two voices collide", "rough noise conditions"]
+    related: [SPEC-002, SPEC-003, P1]
+    last_run: {at: null, result: null}
+
+  - id: MIC-CABIN-001
+    capability: microphone
+    name: Open-mic thresholds in real cabin acoustics
+    purpose: "The uplink gate and VAD thresholds were tuned against injected audio and a quiet room"
+    type: device
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    release_blocking: false
+    human_reason: "Road noise, passengers and speed cannot be reproduced from a desk"
+    prerequisites: ["a drive", "a passenger talking at some point"]
+    procedure:
+      - "drive with the assistant listening"
+      - "hold a normal conversation with a passenger without addressing the assistant"
+      - "then address the assistant normally"
+    pass_criteria:
+      - "passenger conversation does not produce assistant turns"
+      - "a normal command is still heard first time"
+    autonomous_evidence:
+      - "NOISE-001 PASS - room noise produces no turn"
+      - "the uplink gate and phantom-turn gate are covered by unit tests and logged per segment"
+      - "server VAD threshold raised 0.5 to 0.62 after measuring our own playback tripping it"
+    remaining_uncertainty: ["thresholds against road noise and cross-talk at speed"]
+    returns: ["spurious turns during conversation", "whether commands were heard first time"]
+    related: [SPEC-002, P20, P3, P9]
+    last_run: {at: null, result: null}
+
+# ---- added by TEST_REVIEW pass 1, 2026-09-20 -------------------------------------------------
+# Found by comparing the capability groups in config/capabilities.yaml against the capability tags
+# used here: vision, apps and the unsupported-refusal group had no entry at all.
+
+  - id: VISION-001
+    capability: vision
+    name: A camera question is answered from the camera
+    purpose: "Describing a scene the model never saw is the same lie as claiming an action that never ran"
+    type: device
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: ["camera permission granted", "Qianfan vision quota"]
+    procedure: ["ask a camera question through the live session (clip camera_q)"]
+    pass_criteria:
+      - "describe_camera_view is called"
+      - "no description is produced without that call"
+    evidence:
+      - "2026-09-20, scenario S19: describe_camera_view is called, or the turn ends without a claim - never a description with no call"
+    related: [P21, P14]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: APPS-001
+    capability: apps
+    name: open_app reaches a real app
+    purpose: "A spoken 打开地图 must open something, not be acknowledged"
+    type: device
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: ["maps and settings installed"]
+    procedure: ["dispatch open_app app=settings", "dispatch open_app app=maps", "dispatch open_app app=music"]
+    pass_criteria:
+      - "settings and maps are Accepted"
+      - "an app outside the allow-list is refused with APP_NOT_ALLOWED"
+    evidence:
+      - "2026-09-20: open_app settings -> Accepted, maps -> Accepted"
+      - "an app outside the allow-list is refused: dispatch open_app app=music -> APP_NOT_ALLOWED"
+    related: []
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: UNSUPPORTED-001
+    capability: unsupported
+    name: A request with no tool is refused, not improvised
+    purpose: "Volume, windows and seats have no tool. Silence or a claim are both failures; an honest sentence is the requirement"
+    type: scenario
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: ["speech harness"]
+    procedure: ["inject volume_up (音量调大), which this product cannot do"]
+    pass_criteria:
+      - "no tool call is made"
+      - "the turn ends in a refusal or a correction, never a released claim"
+    evidence:
+      - "2026-09-20, scenario S20 (音量调大): no tool call at all, and the turn ends honestly"
+    related: [P21]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: CAMERA-RELEASE-001
+    capability: vision
+    name: The camera is released when the app leaves the foreground
+    purpose: "A camera left open in the background is a privacy failure, and it was a real one (P12)"
+    type: device
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: ["camera permission granted"]
+    procedure:
+      - "open the camera preview"
+      - "send the app to the background"
+      - "inspect whether the app still holds a camera"
+    pass_criteria: ["no camera is held by the app once it is not in the foreground"]
+    evidence:
+      - "2026-09-20: camera CONNECT at 10:20:25 while in the foreground, DISCONNECT at 10:23:27 on backgrounding"
+      - "dumpsys media.camera then reports every device closed, no client instance"
+    related: [P12]
+    last_run: {at: 2026-09-20, result: PASS}

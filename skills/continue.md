@@ -200,3 +200,37 @@ NEXT_ACTION                 = NONE | <the next item>
 ```
 
 `AUTONOMOUS_ACTION_AVAILABLE = YES` means the run may not end.
+
+## Meeting something only a person can do
+
+Do not stop. That was the old behaviour and it cost the person one interruption per case, each
+arriving at the moment of discovery rather than at a time that suited them.
+
+1. Define the test precisely — procedure, prerequisites, pass criterion.
+2. Add it to [TEST_MATRIX.yaml](../TEST_MATRIX.yaml).
+3. Give it the owner that says *which kind* of human: `HUMAN_PHYSICAL`, `HUMAN_ACCOUNT`,
+   `HUMAN_CREDENTIAL`, `HUMAN_DECISION`, or `EXTERNAL_RESOURCE`. Not one generic blocked.
+4. `status: HUMAN_REQUIRED`.
+5. Record under `autonomous_evidence:` everything already established without them.
+6. Record under `remaining_uncertainty:` exactly what is still unknown, and under `returns:` what
+   you need them to tell you.
+7. **Continue with every independent piece of work.**
+
+For a `HUMAN_DECISION`, measure the alternatives first. A question with no numbers behind it is
+not ready to be asked — `quantified:` is required, and validation enforces it.
+
+## Asking, once
+
+Only when `python scripts/test_matrix.py --gate` prints `HUMAN_VALIDATION_READY = TRUE`. It will
+list every reason it is shut otherwise. Then regenerate the packet and hand over that one document:
+
+```powershell
+python scripts/test_matrix.py --status
+python scripts/test_matrix.py --packet
+```
+
+When results come back, apply them **all**, triage every failure **together**, fix everything
+autonomous in **one** cycle, and only then produce a single retest batch. Never ask for a retest of
+the first failure while others are still fixable — the batching applies to every round, not just
+the first ([harness/PHASES.md](../harness/PHASES.md)).
+

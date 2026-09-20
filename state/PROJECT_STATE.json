@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-09-20T04:28:18",
+  "generated_at": "2026-09-20T10:33:10",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "df01def",
+    "commit": "3c22824",
     "branch": "main",
-    "subject": "B-015 names the decision it is waiting on",
+    "subject": "Latency was a suspicion, not a problem; release readiness is a real gap",
     "working_tree_clean": false,
-    "uncommitted_files": 2
+    "uncommitted_files": 16
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-20T04:05:16",
+    "collected_at": "2026-09-20T10:32:46",
     "total": {
-      "tests": 737,
+      "tests": 743,
       "failures": 0,
       "errors": 0,
       "skipped": 0
@@ -25,7 +25,7 @@
         "skipped": 0
       },
       "behavior-test": {
-        "tests": 71,
+        "tests": 77,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -128,6 +128,9 @@
     "NEXT_ACTION": "NONE",
     "actionable_count": 0,
     "blocked_count": 4,
+    "HUMAN_VALIDATION_READY": "TRUE",
+    "QUEUED_FOR_HUMAN": 8,
+    "PHASE": "HUMAN_VALIDATION_READY",
     "candidates": [
       {
         "priority": 11,

@@ -2,6 +2,35 @@
 
 Newest first. One line per change, with the evidence that motivated it.
 
+## 2026-09-20 — harness v2: human intervention is batched
+
+The harness asked for a person **at the moment of discovery**. Hit a test only a human could run,
+stop, ask, wait, resume, hit the next one, stop again. Every human-dependent case was its own
+interruption, and between them the agent sat idle while work it could have done unaided went
+untouched.
+
+- **[TEST_MATRIX.yaml](../TEST_MATRIX.yaml)** — the canonical verification registry. Six owner
+  categories and ten statuses, because "a person must drive the car", "we need a SIM", "we need a
+  keystore" and "you must choose a policy" are four different facts and one generic `BLOCKED`
+  loses the only information that matters: who can unblock it.
+- **[scripts/test_matrix.py](../scripts/test_matrix.py)** — validation, the gate, and the two
+  generated views. `autonomous_work()` selects on `owner == AUTONOMOUS`, so a `HUMAN_REQUIRED`
+  entry can never become the next action and can never end a run.
+- **[TEST_STATUS.md](../TEST_STATUS.md)** and **[HUMAN_VALIDATION.md](../HUMAN_VALIDATION.md)** —
+  generated, never hand-edited; `harness_check.py` regenerates them and fails if they had drifted.
+- **[PHASES.md](PHASES.md)** — the lifecycle, with the human as a boundary rather than an
+  exception handler, and the batching rule applied recursively to retests.
+- **CONSTITUTION rules 17–19** — `HUMAN_INTERVENTION_IS_BATCHED`; the gate is mechanical;
+  a decision reaches a person quantified.
+- `AUTONOMOUS_ACTION_AVAILABLE = NO` is **no longer the phase transition**. It was a judgement
+  about whether anything was left. `HUMAN_VALIDATION_READY` is a property of the registry.
+- `HumanBatchingPolicyTest` guards the mechanism, not the prose.
+
+Migrating the existing evidence into the registry and then reviewing it found seven tests that did
+not exist, six of them autonomous — and running those found nothing broken but proved several
+things that had only been assumed. The review also found `vision`, `apps` and the unsupported
+refusals had no coverage at all.
+
 ## 2026-09-18 — harness created
 
 Audited at `89c9338` ([AUDIT.md](AUDIT.md)). The repository had strong rules and tests but no

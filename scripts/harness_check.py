@@ -18,6 +18,8 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REQUIRED = [
     "AGENTS.md",
     "harness/CONSTITUTION.md",
+    "harness/PHASES.md",
+    "TEST_MATRIX.yaml",
     "harness/HARNESS_POLICY.md",
     "harness/SKILL_POLICY.md",
     "harness/CHANGELOG.md",
@@ -73,8 +75,32 @@ def carried_by_head(recorded):
         return False
 
 
+def generated_views_current():
+    """TEST_STATUS.md and HUMAN_VALIDATION.md are views. A stale view is a second source of truth."""
+    import subprocess
+    problems = []
+    for flag, path in (("--status", "TEST_STATUS.md"), ("--packet", "HUMAN_VALIDATION.md")):
+        full = os.path.join(REPO, path)
+        before = open(full, encoding="utf-8").read() if os.path.isfile(full) else None
+        subprocess.run([sys.executable, os.path.join(REPO, "scripts", "test_matrix.py"), flag],
+                       capture_output=True)
+        after = open(full, encoding="utf-8").read() if os.path.isfile(full) else None
+        if before != after:
+            problems.append("%s was stale; it has been regenerated" % path)
+    return problems
+
+
 def main():
     failures = []
+
+    # The registry must validate, and its views must not have drifted from it.
+    try:
+        sys.path.insert(0, os.path.join(REPO, "scripts"))
+        import test_matrix
+        failures.extend("TEST_MATRIX.yaml: %s" % p for p in test_matrix.validate())
+        failures.extend(generated_views_current())
+    except Exception as exc:
+        failures.append("the test registry could not be checked: %r" % (exc,))
 
     for path in REQUIRED:
         if not os.path.isfile(os.path.join(REPO, path)):

@@ -58,3 +58,20 @@ about how work is done.
     autonomous frontier carries a `BLOCKED_BY:` line in its canonical document naming the concrete
     thing a person must supply — a credential, a device, an approval, a product decision. Ordinary
     engineering choices are not blockers and are made by the agent.
+17. **`HUMAN_INTERVENTION_IS_BATCHED`.** Encountering something only a person can do is not a stop.
+    Define the test precisely, register it in [../TEST_MATRIX.yaml](../TEST_MATRIX.yaml) with the
+    right `HUMAN_*` owner and `status: HUMAN_REQUIRED`, record what has already been established
+    without them and what uncertainty is left — then **keep going**. A `HUMAN_REQUIRED` item is a
+    queued future validation, never a global blocker. The person is asked once, at a phase
+    boundary, with the whole queue at hand.
+    *Procedure:* [PHASES.md](PHASES.md).
+18. **The human gate is mechanical.** `PHASE = HUMAN_VALIDATION_READY` is legal only when the
+    registry says so: every `AUTONOMOUS` test settled, every remaining case owned by a named human
+    category and carrying its procedure, criterion, prior evidence and expected return, every
+    decision quantified, and **two consecutive clean discovery/review passes**. Checked by
+    `python scripts/test_matrix.py --gate`. `AUTONOMOUS_ACTION_AVAILABLE = NO` is no longer the
+    transition — it was a judgement about whether anything was left, and judgements drift.
+19. **A decision reaches a human as a decision, not a question.** Before asking which option to
+    take, measure the alternatives. "Should we drop armeabi-v7a?" is not a question anyone can
+    answer; the sizes, the split behaviour and the device's own ABI are. An item with
+    `owner: HUMAN_DECISION` and nothing under `quantified:` fails validation.

@@ -12,7 +12,9 @@ navigation are the **Amap Navigation SDK embedded in our own Activity**. Locale 
 .\gradlew.bat :behavior-test:test      # architecture, capability-contract and secret-scan rules
 python scripts/collect_state.py        # refresh state/PROJECT_STATE.json from evidence
 python scripts/harness_check.py        # is the harness coherent?
-python scripts/discover_work.py        # what is left to do, and may this run stop?
+python scripts/discover_work.py        # what is left to do, and which phase this run is in
+python scripts/test_matrix.py --gate   # may a human be asked yet, and if not why not
+python scripts/test_matrix.py --work   # autonomous tests that have not settled
 ```
 
 Before you consider a change complete: `.\gradlew.bat test --rerun-tasks :app:assembleDebug`, then
@@ -36,13 +38,23 @@ reconcile canonical state, rediscover what is left, and continue automatically:
 python scripts/discover_work.py        # what is left, ranked, and whether you may stop
 ```
 
-`AUTONOMOUS_ACTION_AVAILABLE = YES` means the run may not end. Ask for a person only at a genuine
-external boundary — a credential, a device, an approval, a product decision — and say concretely
-what is missing. Choosing the next authorised task, writing a test, wiring something up, fixing
-stale state and picking between reasonable designs are all yours to do.
+`AUTONOMOUS_ACTION_AVAILABLE = YES` means the run may not end. Choosing the next authorised task,
+writing a test, wiring something up, fixing stale state and picking between reasonable designs are
+all yours to do.
 
-The rule is [harness/CONSTITUTION.md](harness/CONSTITUTION.md) rule 12; the procedure is
-[skills/continue.md](skills/continue.md).
+**Meeting something only a person can do is not a stop.** Define the test, put it in
+[TEST_MATRIX.yaml](TEST_MATRIX.yaml) with the right `HUMAN_*` owner and `status: HUMAN_REQUIRED`,
+record what you already established and what is still unknown — then carry on with everything else.
+A queued human item is a future validation, not a blocker. The person is asked **once**, at a phase
+boundary, from [HUMAN_VALIDATION.md](HUMAN_VALIDATION.md).
+
+That boundary is not a judgement call. `PHASE = HUMAN_VALIDATION_READY` is legal only when the
+registry says so — every autonomous test settled, every remaining case owned and documented, every
+decision quantified, and two consecutive clean discovery/review passes. Check it with
+`python scripts/test_matrix.py --gate`, which prints every reason the gate is shut.
+
+The rules are [harness/CONSTITUTION.md](harness/CONSTITUTION.md) 12 and 17–19; the phase model is
+[harness/PHASES.md](harness/PHASES.md); the procedure is [skills/continue.md](skills/continue.md).
 
 ## Where things are
 
