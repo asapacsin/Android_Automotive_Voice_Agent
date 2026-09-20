@@ -20,8 +20,21 @@ import xml.etree.ElementTree as ET
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STATE = os.path.join(REPO, "state", "PROJECT_STATE.json")
-# Build output is redirected outside the repo (non-ASCII source path); see ACCEPTANCE_TESTS.md.
-BUILD_DIR = r"C:\Users\Administrator\tools\nova-drive-build"
+# Build output is redirected outside the repo on Windows (non-ASCII source path); see
+# ACCEPTANCE_TESTS.md. Linux/cloud agents use NOVA_BUILD_DIR or ~/nova-drive-build.
+
+
+def resolve_build_dir():
+    env = os.environ.get("NOVA_BUILD_DIR")
+    if env:
+        return env
+    win = r"C:\Users\Administrator\tools\nova-drive-build"
+    if os.name == "nt":
+        return win
+    return os.path.join(os.path.expanduser("~"), "nova-drive-build")
+
+
+BUILD_DIR = resolve_build_dir()
 
 
 def git(*args):

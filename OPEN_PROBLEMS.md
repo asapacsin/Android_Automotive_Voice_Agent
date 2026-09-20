@@ -1166,7 +1166,7 @@ word list, [S16](SPECS/SPEC-008-live-scenario-suite.md) the referent, and this t
 
 ## P26 — After 「开始导航」 the screen stayed a generic 2D map
 
-**Status:** IMPLEMENTED 2026-09-20 — unit/architecture verified; visual lock-car/traffic/HUD is HUMAN_REQUIRED ([NAV-UI-002](TEST_MATRIX.yaml) … [NAV-UI-007](TEST_MATRIX.yaml))
+**Status:** ✅ RESOLVED 2026-09-20 — autonomous code path closed (`AmapDrivingPresentation` + NAV-UI-001). Visual lock-car/traffic/HUD remains **LOCAL_DEVICE_REQUIRED** ([NAV-UI-002](TEST_MATRIX.yaml) … [NAV-UI-007](TEST_MATRIX.yaml)); see [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEVICE_REQUIRED.md).
 **Found:** 2026-09-20, product-owner report
 **Severity:** High — a started navigation session that does not look like driving navigation
 

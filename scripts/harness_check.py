@@ -76,10 +76,15 @@ def carried_by_head(recorded):
 
 
 def generated_views_current():
-    """TEST_STATUS.md and HUMAN_VALIDATION.md are views. A stale view is a second source of truth."""
+    """Generated markdown views must match the registry. A stale view is a second source of truth."""
     import subprocess
     problems = []
-    for flag, path in (("--status", "TEST_STATUS.md"), ("--packet", "HUMAN_VALIDATION.md")):
+    checks = (
+        ("--status", "TEST_STATUS.md"),
+        ("--packet", "HUMAN_VALIDATION.md"),
+        ("--local-device", "LOCAL_DEVICE_REQUIRED.md"),
+    )
+    for flag, path in checks:
         full = os.path.join(REPO, path)
         before = open(full, encoding="utf-8").read() if os.path.isfile(full) else None
         subprocess.run([sys.executable, os.path.join(REPO, "scripts", "test_matrix.py"), flag],

@@ -32,7 +32,19 @@ import xml.etree.ElementTree as ET
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-BUILD_DIR = r"C:\Users\Administrator\tools\nova-drive-build"
+
+
+def resolve_build_dir():
+    env = os.environ.get("NOVA_BUILD_DIR")
+    if env:
+        return env
+    win = r"C:\Users\Administrator\tools\nova-drive-build"
+    if os.name == "nt":
+        return win
+    return os.path.join(os.path.expanduser("~"), "nova-drive-build")
+
+
+BUILD_DIR = resolve_build_dir()
 
 BLOCKED_BY = re.compile(r"^\s*BLOCKED_BY:\s*(.+?)\s*$", re.M)
 DEPENDS_ON = re.compile(r"^\s*DEPENDS_ON:\s*(.+?)\s*$", re.M)

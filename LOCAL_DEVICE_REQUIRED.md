@@ -1,14 +1,19 @@
-# Human validation packet
+# LOCAL_DEVICE_REQUIRED — consolidated device-test batch
 
-Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --packet`. **Do not edit by hand.**
+Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --local-device`. **Do not edit by hand.**
 
-Everything an agent could do has been done. What follows is the whole of what needs a person — **in one batch, to be handled in one sitting**, rather than one interruption per test.
+Every case below **requires a physical Android device** (and usually a real cabin / GPS / human voice). Cloud agents must not block on these: record them here and continue autonomous work.
 
-14 item(s) queued.
+Autonomous cloud work for the current frontier is settled. Run this batch locally in one sitting.
 
-Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEVICE_REQUIRED.md).
+**10 LOCAL_DEVICE_REQUIRED item(s).**
 
-## A. Physical tests (LOCAL_DEVICE_REQUIRED)
+Install tip (from a cloud-built APK, when one exists):
+
+```bash
+adb install -r "$NOVA_BUILD_DIR/app/outputs/apk/debug/app-debug.apk"
+adb logcat -s NovaVoice:D
+```
 
 ### LOCAL_DEVICE_REQUIRED — WAKE-REAL-001 — Moving-cabin wake-word recognition
 
@@ -301,134 +306,6 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **Still unknown until you do:** thresholds against road noise and cross-talk at speed
 
-## B. Account and real-service tests
-
-### CALL-REAL-001 — A confirmed call reaches a real handset
-
-**Why this needs you.** Needs a SIM with service and a number whose owner agrees this app may ring it. An agent must not dial a real person
-
-**Already established without you:**
-
-- CALL-CONFIRM-001, CALL-AMBIG-001, CALL-PRIVACY-001 PASS
-- CALL-NOSIM-001 PASS - the no-telephony refusal is honest
-- CALL-CLASSIFY-001 PASS - 打电话 is classified as an action we have, not as unsupported
-- no call has been placed by this project
-
-**You will need:** an Android device with an active SIM; a contact saved on it; consent from the number's owner
-
-**Exact procedure:**
-
-1. install the build on a phone with a SIM
-2. grant contacts and phone permissions
-3. say 打电话给<name>
-4. confirm when the assistant asks
-5. observe whether the call is placed to the right person
-6. repeat, and this time say no at the confirmation
-
-**It passes if:**
-
-- on confirmation, the correct number is dialled exactly once
-- on refusal, nothing is dialled
-
-**Tell me back:** did it ring the right person; did refusing dial anything; any system prompt that appeared
-
-**Still unknown until you do:** ACTION_CALL on a real SIM, including any system confirmation MIUI adds; whether the dialled number matches the resolved contact
-
-*Release-blocking.*
-
-## C. Required credentials
-
-### RELEASE-SIGN-001 — A signed release build installs and works
-
-**Why this needs you.** Signing needs a keystore and its passwords. Those are the owner's credentials and must never enter this repository (I-7). An agent must not create a production signing key
-
-**Already established without you:**
-
-- RELEASE-BUILD-001 PASS - the release variant compiles and packages
-- EXPORTED-001 and RELEASE-LOG-001 cover the release-only risks that can be checked statically
-
-**You will need:** a keystore; its passwords, supplied outside the repository
-
-**Exact procedure:**
-
-1. configure signing outside version control (Gradle properties in a local file, or an environment variable)
-2. build the signed release
-3. install it on the device
-4. run the scenario suite against it
-
-**It passes if:**
-
-- the signed APK installs
-- the scenario suite passes against the release variant
-- no debug receiver responds
-
-**Tell me back:** did it install; scenario suite result against the release build
-
-**Still unknown until you do:** release-only runtime behaviour, especially anything reflection-based in the three vendor SDKs; whether enabling R8 is safe - it can only be judged against an installed signed build
-
-*Release-blocking.*
-
-## D. Product decisions
-
-### YUE-POLICY-001 — Is Cantonese an advertised capability?
-
-**Why this needs you.** Three options that are not comparable on technical grounds. The cost and the promise to users are the owner's to weigh
-
-**Measured, so this is a choice and not a question:**
-
-- the transcriber rejects any language but zh: `Invalid value: 'yue'. Value must be null or 'zh'` - the vendor's own words
-- after a persona sentence: 返屋企 4/5, 有啲熱 1/5, style-of-song refusal 5/5
-- Mandarin unaffected: 20/20
-- the implicit-comfort phrasing has no keyword for a Mandarin transcriber to anchor on; no further wording will move it
-- option C means a new provider integration; the provider-neutral contract (SPEC-007) exists, so it is an adapter, not a rewrite
-
-**Options:**
-
-- A. Mandarin-only. Record it in ADR-002 and the capability registry, and stop measuring Cantonese.
-- B. Keep the current partial support and publish the measured rates as the expected behaviour.
-- C. Reopen ADR-008 and evaluate a provider whose transcriber accepts Cantonese.
-
-**Exact procedure:**
-
-1. choose one of the options below and say which
-
-**It passes if:**
-
-- ADR-002 and config/capabilities.yaml record the decision, so nothing downstream claims otherwise
-
-**Tell me back:** which option, and whether the registry should say Mandarin-only
-
-*Release-blocking.*
-
-### ABI-POLICY-001 — Must armeabi-v7a keep working?
-
-**Why this needs you.** Dropping an ABI is a compatibility promise, not an engineering trade-off. Which head units must install this is the owner's call
-
-**Measured, so this is a choice and not a question:**
-
-- ABI-SIZE-001: universal release APK 216.7 MB on disk, 228.0 MB uncompressed
-- lib/arm64-v8a 99.7 MB; lib/armeabi-v7a 68.4 MB
-- arm64-only would drop 68.4 MB of native libs (~30% of the APK); v7a-only would drop 99.7 MB
-- the test device reports ro.product.cpu.abilist=arm64-v8a only
-
-**Options:**
-
-- A. arm64-only. Smallest artifact; no 32-bit device can install it.
-- B. ABI splits or an App Bundle. Nobody loses support and each artifact is smaller; needs a channel that supports split delivery.
-- C. Keep the universal APK. Simplest to distribute, largest download.
-
-**You will need:** ABI-SIZE-001 measured
-
-**Exact procedure:**
-
-1. choose one of the options below
-
-**It passes if:**
-
-- the choice is recorded in build.gradle.kts and B-019
-
-**Tell me back:** which option, and the minimum head-unit generation that must be supported
-
 ---
 
-When you have results for any of these, give me all of them at once. They will be applied together, every resulting failure triaged together, and every fix that follows made in one autonomous cycle before anything is asked of you again ([harness/PHASES.md](harness/PHASES.md)).
+Return every result together. Non-device human items remain in [HUMAN_VALIDATION.md](HUMAN_VALIDATION.md).

@@ -27,6 +27,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MATRIX = os.path.join(REPO, "TEST_MATRIX.yaml")
 STATUS_DOC = os.path.join(REPO, "TEST_STATUS.md")
 PACKET_DOC = os.path.join(REPO, "HUMAN_VALIDATION.md")
+LOCAL_DEVICE_DOC = os.path.join(REPO, "LOCAL_DEVICE_REQUIRED.md")
 PASSES = os.path.join(REPO, "state", "DISCOVERY_PASSES.json")
 
 OWNERS = (
@@ -277,7 +278,7 @@ def packet_doc(doc=None):
     g = gate(doc)
 
     groups = [
-        ("A. Physical tests", "HUMAN_PHYSICAL"),
+        ("A. Physical tests (LOCAL_DEVICE_REQUIRED)", "HUMAN_PHYSICAL"),
         ("B. Account and real-service tests", "HUMAN_ACCOUNT"),
         ("C. Required credentials", "HUMAN_CREDENTIAL"),
         ("D. Product decisions", "HUMAN_DECISION"),
@@ -302,6 +303,9 @@ def packet_doc(doc=None):
     lines.append("")
     lines.append("%d item(s) queued." % len(entries))
     lines.append("")
+    lines.append("Physical-device cases are also collected in "
+                 "[LOCAL_DEVICE_REQUIRED.md](LOCAL_DEVICE_REQUIRED.md).")
+    lines.append("")
 
     for title, owner in groups:
         group = [e for e in entries if e["owner"] == owner]
@@ -310,57 +314,112 @@ def packet_doc(doc=None):
         lines.append("## %s" % title)
         lines.append("")
         for entry in group:
-            lines.append("### %s — %s" % (entry["id"], entry["name"]))
-            lines.append("")
-            lines.append("**Why this needs you.** %s" % entry.get("human_reason", ""))
-            lines.append("")
-            if entry.get("autonomous_evidence"):
-                lines.append("**Already established without you:**")
-                lines.append("")
-                for item in entry["autonomous_evidence"]:
-                    lines.append("- %s" % item)
-                lines.append("")
-            if entry.get("quantified"):
-                lines.append("**Measured, so this is a choice and not a question:**")
-                lines.append("")
-                for item in entry["quantified"]:
-                    lines.append("- %s" % item)
-                lines.append("")
-            if entry.get("decision_options"):
-                lines.append("**Options:**")
-                lines.append("")
-                for item in entry["decision_options"]:
-                    lines.append("- %s" % item)
-                lines.append("")
-            if entry.get("prerequisites"):
-                lines.append("**You will need:** %s" % "; ".join(entry["prerequisites"]))
-                lines.append("")
-            lines.append("**What to do:**")
-            lines.append("")
-            for i, step in enumerate(entry["procedure"], 1):
-                lines.append("%d. %s" % (i, step))
-            lines.append("")
-            lines.append("**It passes if:**")
-            lines.append("")
-            for item in entry["pass_criteria"]:
-                lines.append("- %s" % item)
-            lines.append("")
-            if entry.get("returns"):
-                lines.append("**Tell me back:** %s" % "; ".join(entry["returns"]))
-                lines.append("")
-            if entry.get("remaining_uncertainty"):
-                lines.append("**Still unknown until you do:** %s"
-                             % "; ".join(entry["remaining_uncertainty"]))
-                lines.append("")
-            if entry.get("release_blocking"):
-                lines.append("*Release-blocking.*")
-                lines.append("")
+            lines.extend(_entry_section(entry, local_device=(owner == "HUMAN_PHYSICAL")))
     lines.append("---")
     lines.append("")
     lines.append("When you have results for any of these, give me all of them at once. They will be "
                  "applied together, every resulting failure triaged together, and every fix that "
                  "follows made in one autonomous cycle before anything is asked of you again "
                  "([harness/PHASES.md](harness/PHASES.md)).")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _entry_section(entry, local_device=False):
+    lines = []
+    label = "LOCAL_DEVICE_REQUIRED — " if local_device else ""
+    lines.append("### %s%s — %s" % (label, entry["id"], entry["name"]))
+    lines.append("")
+    if local_device:
+        lines.append("**Tag:** `LOCAL_DEVICE_REQUIRED`")
+        lines.append("")
+    lines.append("**Why this needs you.** %s" % entry.get("human_reason", ""))
+    lines.append("")
+    if entry.get("autonomous_evidence"):
+        lines.append("**Already established without you:**")
+        lines.append("")
+        for item in entry["autonomous_evidence"]:
+            lines.append("- %s" % item)
+        lines.append("")
+    if entry.get("quantified"):
+        lines.append("**Measured, so this is a choice and not a question:**")
+        lines.append("")
+        for item in entry["quantified"]:
+            lines.append("- %s" % item)
+        lines.append("")
+    if entry.get("decision_options"):
+        lines.append("**Options:**")
+        lines.append("")
+        for item in entry["decision_options"]:
+            lines.append("- %s" % item)
+        lines.append("")
+    if entry.get("prerequisites"):
+        lines.append("**You will need:** %s" % "; ".join(entry["prerequisites"]))
+        lines.append("")
+    lines.append("**Exact procedure:**")
+    lines.append("")
+    for i, step in enumerate(entry["procedure"], 1):
+        lines.append("%d. %s" % (i, step))
+    lines.append("")
+    lines.append("**It passes if:**")
+    lines.append("")
+    for item in entry["pass_criteria"]:
+        lines.append("- %s" % item)
+    lines.append("")
+    if entry.get("returns"):
+        lines.append("**Tell me back:** %s" % "; ".join(entry["returns"]))
+        lines.append("")
+    if entry.get("remaining_uncertainty"):
+        lines.append("**Still unknown until you do:** %s"
+                     % "; ".join(entry["remaining_uncertainty"]))
+        lines.append("")
+    if entry.get("release_blocking"):
+        lines.append("*Release-blocking.*")
+        lines.append("")
+    return lines
+
+
+def local_device_doc(doc=None):
+    """One consolidated batch of every physical-device case for local execution."""
+    doc = doc or load()
+    entries = [e for e in doc["tests"]
+               if e["status"] in AWAITING_HUMAN and e["owner"] == "HUMAN_PHYSICAL"]
+    g = gate(doc)
+    lines = []
+    lines.append("# LOCAL_DEVICE_REQUIRED — consolidated device-test batch")
+    lines.append("")
+    lines.append("Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by "
+                 "`python scripts/test_matrix.py --local-device`. **Do not edit by hand.**")
+    lines.append("")
+    lines.append("Every case below **requires a physical Android device** (and usually a real "
+                 "cabin / GPS / human voice). Cloud agents must not block on these: record them "
+                 "here and continue autonomous work.")
+    lines.append("")
+    if g["HUMAN_VALIDATION_READY"] == "TRUE":
+        lines.append("Autonomous cloud work for the current frontier is settled. Run this batch "
+                     "locally in one sitting.")
+    else:
+        lines.append("> Autonomous work may still be open. Prefer finishing cloud-verifiable work "
+                     "first; this file is still the device queue.")
+        lines.append(">")
+        for reason in g["reasons"][:8]:
+            lines.append("> - %s" % reason)
+    lines.append("")
+    lines.append("**%d LOCAL_DEVICE_REQUIRED item(s).**" % len(entries))
+    lines.append("")
+    lines.append("Install tip (from a cloud-built APK, when one exists):")
+    lines.append("")
+    lines.append("```bash")
+    lines.append("adb install -r \"$NOVA_BUILD_DIR/app/outputs/apk/debug/app-debug.apk\"")
+    lines.append("adb logcat -s NovaVoice:D")
+    lines.append("```")
+    lines.append("")
+    for entry in entries:
+        lines.extend(_entry_section(entry, local_device=True))
+    lines.append("---")
+    lines.append("")
+    lines.append("Return every result together. Non-device human items remain in "
+                 "[HUMAN_VALIDATION.md](HUMAN_VALIDATION.md).")
     lines.append("")
     return "\n".join(lines)
 
@@ -464,6 +523,8 @@ def main():
     ap.add_argument("--gate", action="store_true")
     ap.add_argument("--status", action="store_true")
     ap.add_argument("--packet", action="store_true")
+    ap.add_argument("--local-device", action="store_true",
+                    help="regenerate LOCAL_DEVICE_REQUIRED.md (physical-device batch)")
     ap.add_argument("--work", action="store_true", help="autonomous tests that are not settled")
     ap.add_argument("--record-pass", choices=["clean", "dirty"],
                     help="record a discovery/review pass result")
@@ -498,6 +559,11 @@ def main():
 
     if args.packet:
         print("wrote %s" % write(PACKET_DOC, packet_doc(doc)))
+        print("wrote %s" % write(LOCAL_DEVICE_DOC, local_device_doc(doc)))
+        return 0
+
+    if args.local_device:
+        print("wrote %s" % write(LOCAL_DEVICE_DOC, local_device_doc(doc)))
         return 0
 
     g = gate(doc)
