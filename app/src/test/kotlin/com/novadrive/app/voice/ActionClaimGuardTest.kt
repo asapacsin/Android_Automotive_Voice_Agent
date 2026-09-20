@@ -85,6 +85,28 @@ class ActionClaimGuardTest {
     }
 
     @Test
+    fun aCallRequestIsAnActionNotAnUnsupportedRefusal() {
+        // Keyword lists used to be capability truth: 电话 in the fallback made 打电话给张三
+        // Kind.NO_TOOL_ACTION after place_call already existed. Availability is the catalog now.
+        listOf("打电话给张三。", "给李四打个电话。", "拨打王五。").forEach {
+            assertFalse(ActionClaimGuard.isUnsupportedRequest(it), "must not refuse a real tool: $it")
+            assertTrue(ActionClaimGuard.isControlRequest(it), "must be an action we can perform: $it")
+        }
+        assertTrue(ActionClaimGuard.isUnsupportedRequest("把音量调大。"))
+        assertTrue(ActionClaimGuard.isUnsupportedRequest("打开车窗。"))
+    }
+
+    @Test
+    fun aCallClaimWithoutAToolIsNudgedToPlaceTheCall() {
+        guard.onUserTranscript("打电话给张三。")
+        val nudge = guard.onResponseDone(message, "已经开始打电话了。")
+        assertNotNull(nudge)
+        assertTrue(nudge!!.contains("完成它"), "the follow-up must ask for place_call, not a refusal")
+        assertTrue(!nudge.contains("暂时不支持"))
+        assertTrue(!nudge.contains("不要调用任何工具"))
+    }
+
+    @Test
     fun aSpokenPickThatWasNotExecutedIsCaught() {
         guard.onUserTranscript("第二个。")
         assertNotNull(guard.onResponseDone(message, "好的，已选择第二个。"))

@@ -18,6 +18,12 @@ interface NaviEngine {
 
     fun stopNavigation(reason: String = "manual"): Boolean
 
+    /** Full-route overview. No-op unless a driving session is active. */
+    fun showOverview(): Boolean
+
+    /** Return from overview to lock-car tracking. */
+    fun resumeTracking(): Boolean
+
     fun routeCandidates(): List<RouteCandidate>
 
     fun attachRouteCallbacks(

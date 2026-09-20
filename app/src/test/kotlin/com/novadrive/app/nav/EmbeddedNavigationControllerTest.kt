@@ -81,6 +81,57 @@ class EmbeddedNavigationControllerTest {
         controller.selectRoute(10)
         assertEquals(1, engine.startNaviCount)
         assertEquals(listOf(20), engine.selectRouteCalls)
+        assertEquals(NaviPresentation.DRIVING, engine.presentation)
+    }
+
+    @Test
+    fun selectingARouteEntersDrivingPresentationNotRoutePreview() = runBlocking {
+        val engine = FakeNaviEngine()
+        engine.routes = threeRoutes()
+        val controller = controller(engine, listOf(candidate("a", 22.20, 113.54)))
+        controller.requestDestination("珠海站")
+        engine.emitSuccess(intArrayOf(10, 20, 30))
+        assertEquals(NaviPresentation.IDLE, engine.presentation)
+        controller.selectRoute(10)
+        assertEquals(NavigationPhase.NAVIGATING, controller.state().value)
+        assertEquals(NaviPresentation.DRIVING, engine.presentation)
+        assertEquals(1, engine.startNaviCount)
+    }
+
+    @Test
+    fun voiceStartEntersTheSameDrivingPresentationAsATap() = runBlocking {
+        val engine = FakeNaviEngine()
+        engine.routes = threeRoutes()
+        val controller = controller(engine, listOf(candidate("a", 22.20, 113.54)))
+        controller.requestDestination("珠海站")
+        engine.emitSuccess(intArrayOf(10, 20, 30))
+        val result = controller.chooseByVoice(NavigationChoice.Preference(NavigationChoice.Kind.RECOMMENDED))
+        assertEquals(EmbeddedNavigationController.VoiceChoiceResult.RouteChosen(1, true), result)
+        assertEquals(NavigationPhase.NAVIGATING, controller.state().value)
+        assertEquals(NaviPresentation.DRIVING, engine.presentation)
+        assertEquals(1, engine.startNaviCount)
+    }
+
+    @Test
+    fun overviewAndResumeTrackingOnlyWorkWhileNavigating() = runBlocking {
+        val engine = FakeNaviEngine()
+        engine.routes = threeRoutes()
+        val controller = controller(engine, listOf(candidate("a", 22.20, 113.54)))
+        assertFalse(controller.showOverview())
+        assertFalse(controller.resumeTracking())
+        controller.requestDestination("珠海站")
+        engine.emitSuccess(intArrayOf(10, 20, 30))
+        assertFalse(controller.showOverview())
+        controller.selectRoute(10)
+        assertTrue(controller.showOverview())
+        assertEquals(NaviPresentation.OVERVIEW, engine.presentation)
+        assertEquals(1, engine.overviewCount)
+        assertTrue(controller.resumeTracking())
+        assertEquals(NaviPresentation.DRIVING, engine.presentation)
+        assertEquals(1, engine.resumeTrackingCount)
+        engine.emitNavigationEnded("arrived")
+        assertFalse(controller.showOverview())
+        assertFalse(controller.resumeTracking())
     }
 
     @Test
@@ -466,6 +517,9 @@ class FakeNaviEngine : NaviEngine, DestinationCandidateSource {
     val selectRouteCalls = mutableListOf<Int>()
     var startNaviCount = 0
     var stopNaviCount = 0
+    var overviewCount = 0
+    var resumeTrackingCount = 0
+    var presentation: NaviPresentation = NaviPresentation.IDLE
     var calculateAccepted = true
     var selectAccepted = true
     var startAccepted = true
@@ -495,11 +549,29 @@ class FakeNaviEngine : NaviEngine, DestinationCandidateSource {
 
     override fun startNavigation(emulator: Boolean): Boolean {
         startNaviCount++
+        if (startAccepted) presentation = NaviPresentation.DRIVING
         return startAccepted
     }
 
     override fun stopNavigation(reason: String): Boolean {
         stopNaviCount++
+        presentation = NaviPresentation.IDLE
+        return true
+    }
+
+    override fun showOverview(): Boolean {
+        if (presentation != NaviPresentation.DRIVING) return false
+        presentation = NaviPresentation.OVERVIEW
+        overviewCount++
+        return true
+    }
+
+    override fun resumeTracking(): Boolean {
+        if (presentation != NaviPresentation.OVERVIEW && presentation != NaviPresentation.DRIVING) {
+            return false
+        }
+        presentation = NaviPresentation.DRIVING
+        resumeTrackingCount++
         return true
     }
 

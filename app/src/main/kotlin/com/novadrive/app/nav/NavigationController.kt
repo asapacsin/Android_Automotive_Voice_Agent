@@ -7,6 +7,8 @@ interface NavigationController {
     suspend fun planRoute(destination: Destination): RoutePlanResult
     suspend fun startNavigation(routeId: Int? = null): NavigationResult
     suspend fun stopNavigation()
+    fun showOverview(): Boolean = false
+    fun resumeTracking(): Boolean = false
     suspend fun cancelRoute()
     suspend fun reroute(): NavigationResult
     fun state(): StateFlow<NavigationPhase>

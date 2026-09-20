@@ -66,6 +66,8 @@ class VoiceSessionOrchestrator(
             when (resolved.kind) {
                 ContactMatchKind.NONE ->
                     return finish(command, OrchestrationStatus.INVALID, executed = false)
+                ContactMatchKind.PERMISSION_DENIED ->
+                    return finish(command, OrchestrationStatus.INVALID, executed = false)
                 ContactMatchKind.AMBIGUOUS ->
                     return finish(
                         command,

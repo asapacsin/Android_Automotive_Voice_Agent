@@ -146,6 +146,16 @@ class EmbeddedNavigationController(
         }
     }
 
+    override fun showOverview(): Boolean {
+        if (store.phase.value != NavigationPhase.NAVIGATING) return false
+        return engine.showOverview()
+    }
+
+    override fun resumeTracking(): Boolean {
+        if (store.phase.value != NavigationPhase.NAVIGATING) return false
+        return engine.resumeTracking()
+    }
+
     sealed interface VoiceChoiceResult {
         data class DestinationChosen(val name: String, val position: Int) : VoiceChoiceResult
         data class RouteChosen(val position: Int, val started: Boolean) : VoiceChoiceResult

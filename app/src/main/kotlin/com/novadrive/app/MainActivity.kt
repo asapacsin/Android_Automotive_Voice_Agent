@@ -43,13 +43,7 @@ class MainActivity : Activity() {
             actionExecutor,
             climateHandler,
             VisionProvider.handler(this),
-            phone = com.novadrive.app.AndroidContacts(this).let { contacts ->
-                PhoneCallTool(
-                    lookup = contacts::resolve,
-                    telephonyAvailable = contacts::telephonyAvailable,
-                    dial = contacts::dial,
-                )
-            },
+            phone = PhoneCallTool(com.novadrive.app.phone.PhoneProvider.port(this)),
             places = SavedPlaceTool(
                 read = savedPlaces::get,
                 write = savedPlaces::set,

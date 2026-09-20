@@ -23,6 +23,9 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
 
     private var lastVoiceState: VoiceUiState = VoiceUiState.DISCONNECTED
 
+    /** True while native Amap HUD owns the top of the screen. */
+    private var drivingChrome = false
+
     private val avatar: TextView
     private val stateDot: TextView
     private val stateLabel: TextView
@@ -173,9 +176,23 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
         bindState(lastVoiceState, null)
     }
 
+    /** Shrink the assistant chrome so Amap's native turn HUD is not covered. */
+    fun setDrivingChrome(driving: Boolean) {
+        if (drivingChrome == driving) return
+        drivingChrome = driving
+        bindState(lastVoiceState, null)
+    }
+
     fun bindState(state: VoiceUiState, error: String?) {
         lastVoiceState = state
         val ui = AssistantUiStateMapper.from(state)
+        if (drivingChrome) {
+            settingsEntry.visibility = GONE
+            bubble.maxLines = 1
+        } else {
+            settingsEntry.visibility = VISIBLE
+            bubble.maxLines = Int.MAX_VALUE
+        }
         if (listening != ListeningState.ACTIVE && ui != AssistantUiState.ERROR) {
             stateLabel.text = context.getString(
                 when (listening) {

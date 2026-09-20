@@ -101,7 +101,7 @@ Three of the reference examples cannot be honoured as given, and are adapted rat
 
 | Reference example | Why it cannot stand | Adapted requirement |
 | --- | --- | --- |
-| 「放一下周杰伦那首我忘了名字的歌，就是讲晴天的那个。」 | There is no music library, no track metadata, no search. | Becomes an **unsupported-capability case**: refuse once, honestly, and do **not** start the bundled track. Today this is a live false-success risk — `ActionClaimGuard.UNSUPPORTED_WORDS` does not cover music-library requests, so this phrasing plausibly reaches `control_music{play}` and plays something the driver did not ask for. §Failure behaviour F-7. |
+| 「放一下周杰伦那首我忘了名字的歌，就是讲晴天的那个。」 | There is no music library, no track metadata, no search. | Becomes an **unsupported-capability case**: refuse once, honestly, and do **not** start the bundled track. Recognised as `unsupported.media_library` (`ActionClaimGuard.isSpecificMediaRequest` → `CapabilityCatalog`); the dispatcher refuses with `MEDIA_LIBRARY_UNSUPPORTED` so the bundled track cannot start. §Failure behaviour F-7. |
 | 「对，就是那个，帮我放一下。」 (cross-turn media reference) | Same: nothing to refer to. | Cross-turn reference is specified against **navigation candidates**, which do have names, distances and screen positions. |
 | 「等等，别导航了」 spoken over 小诺's reply | The microphone is gated while the assistant speaks. | Specified as **cross-turn supersession**: the same words in the driver's next turn must cancel the pending navigation task. |
 
@@ -356,7 +356,7 @@ Because the mic is gated while 小诺 speaks, correction always arrives as the *
 | F-4 | Missing context (S1–S7) | Clarify. Never substitute a default. |
 | F-5 | Ambiguous context | Clarify, naming the options. Never pick one. |
 | F-6 | Partial failure in a multi-intent turn | Report both outcomes. Never "all done". |
-| F-7 | Unsupported capability implied by natural phrasing | Refuse; do not execute a *nearby* supported action. Specifically: a request for a named song, artist or lyric must **not** start the bundled track. This requires the music-library phrasing to be recognised as unsupported — `ActionClaimGuard.UNSUPPORTED_WORDS` does not cover it today. |
+| F-7 | Unsupported capability implied by natural phrasing | Refuse; do not execute a *nearby* supported action. Specifically: a request for a named song, artist or lyric must **not** start the bundled track. Availability is `CapabilityCatalog` (`unsupported.media_library`); `ActionClaimGuard.isSpecificMediaRequest` only maps the phrasing onto that id. |
 | F-8 | Driver reports the previous action was ineffective | Treat as C8 feedback: adjust again in the same direction. If `limit_reached`, say so honestly instead of adjusting again. If `power_on == false`, apply D1. |
 | F-9 | Cancellation race | See the table above. |
 | F-10 | Duplicate execution | Rejected by the (epoch, intent key) rule; never silently repeated. |

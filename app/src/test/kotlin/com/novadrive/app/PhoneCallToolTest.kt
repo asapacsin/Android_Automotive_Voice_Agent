@@ -95,10 +95,40 @@ class PhoneCallToolTest {
     }
 
     @Test
+    fun missingContactsPermissionIsNotReportedAsNotFound() {
+        // AndroidContacts used to map READ_CONTACTS denial onto NONE, so the driver was told
+        // the person was not in the book when we had not looked.
+        val result = tool(ContactResolution(ContactMatchKind.PERMISSION_DENIED))
+            .call(call("contact" to "张三"), ::failed)
+        assertEquals(PhoneCallTool.CONTACTS_PERMISSION_DENIED, result.blockedReason)
+        assertEquals(0, dialled)
+        assertTrue(!result.output!!.contains("没找到"), "permission denied is not a failed search")
+    }
+
+    @Test
     fun everyRefusalCarriesWordingForTheDriver() {
-        listOf(PhoneCallTool.NO_TELEPHONY, PhoneCallTool.CONTACT_NOT_FOUND).forEach { code ->
+        listOf(
+            PhoneCallTool.NO_TELEPHONY,
+            PhoneCallTool.CONTACT_NOT_FOUND,
+            PhoneCallTool.CONTACTS_PERMISSION_DENIED,
+            PhoneCallTool.CALL_FAILED,
+        ).forEach { code ->
             assertTrue(!ToolFailureAdvice.forCode(code).isNullOrBlank(), "$code has no advice")
         }
+    }
+
+    @Test
+    fun aDiallerFailureIsNotReportedAsAPlacedCall() {
+        val port = com.novadrive.contracts.FakePhonePort(
+            contacts = listOf(zhang),
+            telephony = true,
+            callPermitted = false,
+        )
+        val tool = PhoneCallTool(port)
+        tool.call(call("contact" to "张三"), ::failed)
+        val result = tool.call(call("contact" to "张三", "confirmed" to "true"), ::failed)
+        assertEquals(PhoneCallTool.CALL_FAILED, result.blockedReason)
+        assertTrue(port.dialled.isEmpty())
     }
 
     // ---- a confirmation authorises one contact, once, for a while --------------------------

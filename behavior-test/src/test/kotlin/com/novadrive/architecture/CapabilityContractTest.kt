@@ -68,11 +68,15 @@ class CapabilityContractTest {
     @Test
     fun unsupportedRequestsNameTheClassifierThatCatchesThem() {
         // An "unsupported" entry is only true if something deterministic recognises the request.
-        val guard = File(root, "app/src/main/kotlin/com/novadrive/app/voice/ActionClaimGuard.kt").readText()
+        val recognisers = listOf(
+            "app/src/main/kotlin/com/novadrive/app/voice/ActionClaimGuard.kt",
+            "app/src/main/kotlin/com/novadrive/app/voice/UtteranceIntentResolver.kt",
+            "contracts/src/main/kotlin/com/novadrive/contracts/Capability.kt",
+        ).joinToString("\n") { File(root, it).readText() }
         Regex("recognised_by: ([A-Za-z.]+)").findAll(registry).map { it.groupValues[1] }.forEach { ref ->
             val member = ref.substringAfterLast('.')
-            assertTrue(guard.contains(member)) {
-                "config/capabilities.yaml points at $ref, which does not exist in ActionClaimGuard"
+            assertTrue(recognisers.contains(member)) {
+                "config/capabilities.yaml points at $ref, which does not exist in the classifier/catalog"
             }
         }
     }
@@ -97,6 +101,58 @@ class CapabilityContractTest {
         assertTrue(prose.contains("Not supported")) {
             "docs/CAPABILITIES.md must keep its unsupported section; the registry references it"
         }
+    }
+
+    @Test
+    fun aDeclaredToolIsNotAlsoListedAsUnsupported() {
+        // B-018 shipped place_call while unsupported.phone_calls and the prose table still named
+        // phone calls as a request with no tool. The classifier then refused a capability we have.
+        assertTrue(registry.contains("place_call"), "calling is a declared tool")
+        assertTrue(!registry.contains("phone_calls")) {
+            "config/capabilities.yaml must not list phone_calls under unsupported while place_call exists"
+        }
+        val prose = File(root, "docs/CAPABILITIES.md").readText()
+        val unsupportedSection = prose.substringAfter("## Not supported", "")
+        assertTrue(unsupportedSection.isNotEmpty(), "prose must keep a Not supported section")
+        assertTrue(!unsupportedSection.contains("phone calls")) {
+            "docs/CAPABILITIES.md unsupported table still lists phone calls, which now have a tool"
+        }
+    }
+
+    @Test
+    fun theKotlinCatalogMatchesTheYamlRegistry() {
+        val catalog = File(root, "contracts/src/main/kotlin/com/novadrive/contracts/Capability.kt").readText()
+        val yamlIds = yamlCapabilityIds()
+        val missing = yamlIds.filter { id -> !catalog.contains("\"$id\"") }
+        assertTrue(missing.isEmpty()) {
+            "ProductCapabilities is missing yaml ids: $missing. The catalog is the in-process registry."
+        }
+        val catalogIds = Regex("rec\\(\"([a-z_.]+)\"").findAll(catalog).map { it.groupValues[1] }.toSet()
+        val extra = catalogIds - yamlIds
+        assertTrue(extra.isEmpty()) {
+            "ProductCapabilities has ids yaml does not: $extra"
+        }
+    }
+
+    private fun yamlCapabilityIds(): Set<String> {
+        val skipGroups = setOf("meta", "human_verification_pending")
+        var group: String? = null
+        val ids = mutableSetOf<String>()
+        File(root, "config/capabilities.yaml").readLines()
+            .filterNot { it.trimStart().startsWith("#") || it.isBlank() }
+            .forEach { line ->
+                val name = Regex("^(\\s*)([a-z_]+):").find(line) ?: return@forEach
+                val indent = name.groupValues[1].length
+                val key = name.groupValues[2]
+                if (indent == 0) {
+                    group = key
+                    return@forEach
+                }
+                if (indent == 2 && group != null && group !in skipGroups) {
+                    ids += "$group.$key"
+                }
+            }
+        return ids
     }
 
     private companion object {

@@ -2,14 +2,14 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-20 · 60 tests
+Updated 2026-09-20 · 76 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 52 |
+| autonomous PASS | 62 |
 | autonomous FAIL | 0 |
 | not run | 0 |
-| human required | 8 |
+| human required | 14 |
 | human pass | 0 |
 | human fail | 0 |
 | blocked external | 0 |
@@ -24,23 +24,23 @@ Updated 2026-09-20 · 60 tests
 | --- | --- | --- | --- | --- |
 | apps | 1 | 1 | 0 | 0 |
 | architecture | 1 | 1 | 0 | 0 |
-| calling | 6 | 5 | 1 | 0 |
+| calling | 8 | 7 | 1 | 0 |
 | cantonese | 2 | 1 | 1 | 0 |
-| climate | 3 | 3 | 0 | 0 |
+| climate | 4 | 4 | 0 | 0 |
 | dialogue_context | 2 | 2 | 0 | 0 |
 | lifecycle | 1 | 1 | 0 | 0 |
 | media | 2 | 2 | 0 | 0 |
 | microphone | 1 | 0 | 1 | 0 |
-| navigation | 6 | 4 | 2 | 0 |
+| navigation | 16 | 8 | 8 | 0 |
 | performance | 2 | 2 | 0 | 0 |
-| permissions | 1 | 1 | 0 | 0 |
+| permissions | 3 | 3 | 0 | 0 |
 | regression | 2 | 2 | 0 | 0 |
 | release | 4 | 2 | 2 | 0 |
 | reliability | 3 | 3 | 0 | 0 |
 | saved_places | 3 | 3 | 0 | 0 |
 | security | 3 | 3 | 0 | 0 |
 | truthfulness | 7 | 7 | 0 | 0 |
-| turn_taking | 3 | 3 | 0 | 0 |
+| turn_taking | 4 | 4 | 0 | 0 |
 | unsupported | 1 | 1 | 0 | 0 |
 | vision | 2 | 2 | 0 | 0 |
 | wake_word | 4 | 3 | 1 | 0 |
@@ -52,13 +52,16 @@ Updated 2026-09-20 · 60 tests
 | APPS-001 | apps | open_app reaches a real app | AUTONOMOUS | PASS | no | 2026-09-20: open_app settings -> Accepted, maps -> Accepted |
 | ARCH-PROVIDER-001 | architecture | Vendor wire vocabulary stays inside adapters | AUTONOMOUS | PASS | no | checked against a deliberately reintroduced breach |
 | CALL-AMBIG-001 | calling | Two people with one name are offered, not chosen between | AUTONOMOUS | PASS | yes | PhoneCallToolTest, 2026-09-20 |
+| CALL-CLASSIFY-001 | calling | A call request is an action, not an unsupported refusal | AUTONOMOUS | PASS | yes | 2026-09-20 TEST_REVIEW: keyword list and registry both claimed ownership of calling |
 | CALL-CONFIRM-001 | calling | One match is never dialled on the first turn | AUTONOMOUS | PASS | yes | PhoneCallToolTest, 2026-09-20 |
+| CALL-DIAL-001 | calling | A failed dial is not reported as a placed call | AUTONOMOUS | PASS | yes | PhoneCallToolTest.aDiallerFailureIsNotReportedAsAPlacedCall |
 | CALL-NOSIM-001 | calling | A car that cannot call says so | AUTONOMOUS | PASS | yes | 2026-09-20 on 2391ff70, gsm.sim.state=ABSENT,ABSENT |
 | CALL-PRIVACY-001 | calling | The phone number never reaches the model | AUTONOMOUS | PASS | yes | PhoneCallToolTest, 2026-09-20 |
 | CALL-REAL-001 | calling | A confirmed call reaches a real handset | HUMAN_ACCOUNT | HUMAN_REQUIRED | yes | CALL-CONFIRM-001, CALL-AMBIG-001, CALL-PRIVACY-001 PASS |
 | STALE-CONFIRM-001 | calling | A confirmation only authorises the call it was asked about | AUTONOMOUS | PASS | yes | 2026-09-20: found by discovery, and it was a real defect - confirmed=true was trusted o… |
 | YUE-POLICY-001 | cantonese | Is Cantonese an advertised capability? | HUMAN_DECISION | HUMAN_REQUIRED | yes | — |
 | YUE-RATE-001 | cantonese | Measured Cantonese success rate | AUTONOMOUS | PASS | no | 2026-09-20 before the persona line: 返屋企 2/5, 有啲熱 0/5, music refusal 0/5 |
+| CLIMATE-FAN-001 | climate | An explicit fan level is set | AUTONOMOUS | PASS | no | ClimateToolHandlerTest.eachActionCallsExactlyOnePortMethod and malformedArgumentsNeverR… |
 | CLIMATE-IMPLICIT-001 | climate | 有点热 produces a real adjustment | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite, after isControlRequest learned to ask ContextResolver |
 | CLIMATE-OFF-001 | climate | 关闭空调 turns it off | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | CLIMATE-SET-001 | climate | An explicit temperature is set | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
@@ -74,8 +77,20 @@ Updated 2026-09-20 · 60 tests
 | NAV-DRIVE-001 | navigation | A route calculates and guides to arrival | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | NAV-SEARCH-001, NAV-PICK-001, NAV-CANCEL-001, NAV-CORRECT-001 PASS |
 | NAV-PICK-001 | navigation | 第二个 picks from the on-screen list | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | NAV-SEARCH-001 | navigation | A destination produces candidates and does not start navigating | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
+| NAV-UI-001 | navigation | 「开始导航」 enters ACTIVE_DRIVING_NAVIGATION, not route preview | AUTONOMOUS | PASS | yes | EmbeddedNavigationControllerTest.SelectingARouteEntersDrivingPresentationNotRoutePreview |
+| NAV-UI-002 | navigation | During GPS navigation the vehicle stays in lock-car tracking | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | AmapDrivingPresentation.lockCar calls recoverLockMode, CAR_UP_MODE, SHOW_MODE_LOCK_CAR |
+| NAV-UI-003 | navigation | Vehicle heading rotates the navigation map | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | setNaviMode(CAR_UP_MODE) is applied on startNavi |
+| NAV-UI-004 | navigation | Active route shows traffic-state colouring when Amap supplies it | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | setTrafficLine(true), setTrafficStatusUpdateEnabled(true), setTrafficInfoUpdateEnabled(… |
+| NAV-UI-005 | navigation | Next-maneuver guidance is visible | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | setLayoutVisible(driving), setNaviStatusBarEnabled(driving), nav_maneuver log on icon c… |
+| NAV-UI-006 | navigation | Lane or junction enlarge appears when Amap supplies it | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | setLaneInfoShow, setModeCrossDisplayShow, setRealCrossDisplayShow enabled while driving |
+| NAV-UI-007 | navigation | Overview then return restores vehicle tracking | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | EmbeddedNavigationControllerTest.overviewAndResumeTrackingOnlyWorkWhileNavigating |
+| NAV-UI-008 | navigation | Spoken 「开始导航」 enters the same driving state as a route tap | AUTONOMOUS | PASS | yes | 2026-09-20 unit |
+| NAV-UI-009 | navigation | Arrival leaves ACTIVE_DRIVING_NAVIGATION | AUTONOMOUS | PASS | yes | 2026-09-20 unit plus existing arrival tests |
+| NAV-UI-010 | navigation | Route-selection voice commands are unchanged | AUTONOMOUS | PASS | yes | 2026-09-20 unit, pre-existing tests still green |
 | LATENCY-001 | performance | Response latency from end of speech | AUTONOMOUS | PASS | no | 2026-09-20, 21 turns: min 328, median 734, p90 1007, max 1062 ms |
 | RESOURCE-IDLE-001 | performance | CPU and memory while idle and listening | AUTONOMOUS | PASS | no | 2026-09-20 on 2391ff70: ~62% CPU, 565 MB resident with the wake word ON |
+| PERM-CAMERA-001 | permissions | A camera question without permission fails honestly | AUTONOMOUS | PASS | yes | CameraQuestionHandlerTest.missingCameraPermissionFailsFastWithoutCaptureOrRequest |
+| PERM-CONTACTS-001 | permissions | Missing contacts permission is not reported as not-found | AUTONOMOUS | PASS | yes | 2026-09-20 TEST_REVIEW: AndroidContacts mapped READ_CONTACTS denial onto ContactMatchKi… |
 | PERM-DENY-001 | permissions | A revoked microphone permission fails honestly | AUTONOMOUS | PASS | yes | 2026-09-20: pm revoke RECORD_AUDIO -> voice start returns MicPermissionMissing, wake lo… |
 | SUITE-SCENARIO-001 | regression | The live scenario suite | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20, exit 0 |
 | SUITE-UNIT-001 | regression | The whole unit and architecture suite | AUTONOMOUS | PASS | yes | 2026-09-20: 737 tests, 0 failures |
@@ -100,6 +115,7 @@ Updated 2026-09-20 · 60 tests
 | TRUTH-MISHEARD-001 | truthfulness | A misheard driver is not told the car acted | AUTONOMOUS | PASS | yes | 2026-09-19: 「返屋企啦」 -> 「发诺克拉。」 -> correction, not a claim |
 | TRUTH-WEATHER-001 | truthfulness | No invented weather, traffic or news | AUTONOMOUS | PASS | yes | 2026-09-20: refusal, 20/20 suite |
 | BARGEIN-001 | turn_taking | 闭嘴 stops speech without ending the session | AUTONOMOUS | PASS | no | 2026-09-20: 20/20 suite |
+| LISTEN-IDLE-001 | turn_taking | Inactivity releases the microphone and then the socket | AUTONOMOUS | PASS | yes | ListeningLifecycleTest covers STANDBY, DEEP_IDLE, epoch-guarded timers, and meaningless… |
 | NOISE-001 | turn_taking | Room noise does not become a turn | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | SLEEP-001 | turn_taking | 休眠 reaches SLEEP | AUTONOMOUS | PASS | no | 2026-09-20: 20/20 suite |
 | UNSUPPORTED-001 | unsupported | A request with no tool is refused, not improvised | AUTONOMOUS | PASS | yes | 2026-09-20, scenario S20 (音量调大): no tool call at all, and the turn ends honestly |

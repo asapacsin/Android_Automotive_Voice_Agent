@@ -45,6 +45,9 @@ navigation:
     tool: choose_navigation_option
     verified: device
     evidence: "nav_navigation_started routeId=12, spoken once after proof"
+    notes: >
+      Selecting a route calls startNavi. From 2026-09-20 the host then applies AmapDrivingPresentation
+      (lock-car, traffic line, native HUD). Visual driving HUD is human-verified (NAV-UI-*).
   navigate_to_saved_place:
     tool: navigate_to
     verified: device
@@ -80,7 +83,7 @@ media:
   next_track:
     tool: null
     verified: unsupported
-    recognised_by: ActionClaimGuard.UNSUPPORTED_WORDS
+    recognised_by: UtteranceIntentResolver
     notes: "One bundled track. The bottom-bar control is shown disabled."
 
 climate:
@@ -184,16 +187,12 @@ unsupported:
   volume_control:
     tool: null
     verified: unsupported
-    recognised_by: ActionClaimGuard.UNSUPPORTED_WORDS
+    recognised_by: UtteranceIntentResolver
     required_behaviour: "One honest sentence. Never 正在调整音量."
   windows_seats_doors_lights_wipers:
     tool: null
     verified: unsupported
-    recognised_by: ActionClaimGuard.UNSUPPORTED_WORDS
-  phone_calls:
-    tool: null
-    verified: unsupported
-    recognised_by: ActionClaimGuard.UNSUPPORTED_WORDS
+    recognised_by: UtteranceIntentResolver
   media_library:
     tool: null
     verified: unsupported

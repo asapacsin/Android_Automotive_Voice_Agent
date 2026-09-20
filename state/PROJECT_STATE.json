@@ -1,37 +1,37 @@
 {
-  "generated_at": "2026-09-20T10:46:03",
+  "generated_at": "2026-09-20T18:41:00",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "ba4757d",
+    "commit": "64b4e0d",
     "branch": "main",
-    "subject": "Harness v2: a human is a phase boundary, not an exception handler",
+    "subject": "Using the new harness found a real defect in calling",
     "working_tree_clean": false,
-    "uncommitted_files": 7
+    "uncommitted_files": 46
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-20T10:42:19",
+    "collected_at": "2026-09-20T18:40:27",
     "total": {
-      "tests": 752,
+      "tests": 773,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "app": {
-        "tests": 554,
+        "tests": 566,
         "failures": 0,
         "errors": 0,
         "skipped": 0
       },
       "behavior-test": {
-        "tests": 77,
+        "tests": 83,
         "failures": 0,
         "errors": 0,
         "skipped": 0
       },
       "contracts": {
-        "tests": 2,
+        "tests": 5,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,14 +65,14 @@
   },
   "apk": {
     "built": true,
-    "bytes": 229314196,
-    "built_at": "2026-09-20T04:04:14"
+    "bytes": 228804757,
+    "built_at": "2026-09-20T18:39:29"
   },
   "capabilities": {
     "available": true,
     "by_level": {
       "device": 24,
-      "unsupported": 7,
+      "unsupported": 6,
       "human": 1,
       "unit": 1
     },
@@ -121,17 +121,24 @@
     }
   ],
   "work_frontier": {
-    "AUTONOMOUS_ACTION_AVAILABLE": "NO",
-    "HUMAN_ACTION_REQUIRED": "YES",
-    "STOP_REASON": "BLOCKED_ON_EXTERNAL_DEPENDENCY",
-    "BLOCKING_DEPENDENCY": "a person saying 「你好小诺」 at a stated distance with the car actually moving, which is",
-    "NEXT_ACTION": "NONE",
-    "actionable_count": 0,
+    "AUTONOMOUS_ACTION_AVAILABLE": "YES",
+    "HUMAN_ACTION_REQUIRED": "NO",
+    "STOP_REASON": "NOT_STOPPING",
+    "BLOCKING_DEPENDENCY": "none",
+    "NEXT_ACTION": "P26: P26 — After 「开始导航」 the screen stayed a generic 2D map",
+    "actionable_count": 1,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "TRUE",
-    "QUEUED_FOR_HUMAN": 8,
+    "QUEUED_FOR_HUMAN": 14,
     "PHASE": "HUMAN_VALIDATION_READY",
     "candidates": [
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P26",
+        "blocked_by": null
+      },
       {
         "priority": 11,
         "class": "next authorised backlog item",

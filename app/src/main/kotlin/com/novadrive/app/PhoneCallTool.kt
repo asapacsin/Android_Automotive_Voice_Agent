@@ -2,6 +2,8 @@ package com.novadrive.app
 
 import com.novadrive.contracts.ContactMatchKind
 import com.novadrive.contracts.ContactResolution
+import com.novadrive.contracts.FakePhonePort
+import com.novadrive.contracts.PhonePort
 import com.novadrive.contracts.ResolvedContact
 import com.novadrive.ingress.realtime.DomainVoiceEvent
 import com.novadrive.ingress.realtime.ToolDispatchResult
@@ -21,11 +23,25 @@ import org.json.JSONObject
  * ([I-1](../../../../../../docs/INVARIANTS.md)), so `NO_TELEPHONY` is a real answer.
  */
 class PhoneCallTool(
-    private val lookup: (String) -> ContactResolution,
-    private val telephonyAvailable: () -> Boolean,
-    private val dial: (ResolvedContact) -> Boolean,
+    private val phone: PhonePort,
     private val nowMs: () -> Long = System::currentTimeMillis,
 ) {
+    constructor(
+        lookup: (String) -> ContactResolution,
+        telephonyAvailable: () -> Boolean,
+        dial: (ResolvedContact) -> Boolean,
+        nowMs: () -> Long = System::currentTimeMillis,
+    ) : this(LambdaPhonePort(lookup, telephonyAvailable, dial), nowMs)
+
+    private class LambdaPhonePort(
+        private val lookupFn: (String) -> ContactResolution,
+        private val telephonyFn: () -> Boolean,
+        private val placeFn: (ResolvedContact) -> Boolean,
+    ) : PhonePort {
+        override fun telephonyAvailable(): Boolean = telephonyFn()
+        override fun resolve(spokenName: String): ContactResolution = lookupFn(spokenName)
+        override fun dial(contact: ResolvedContact): Boolean = placeFn(contact)
+    }
     /**
      * Who we last asked the driver about, and when.
      *
@@ -43,13 +59,14 @@ class PhoneCallTool(
         val who = event.arguments["contact"]?.trim().orEmpty()
         if (who.isBlank()) return failed(event, "BLANK_CONTACT")
         if (who.length > 40) return failed(event, "CONTACT_TOO_LONG")
-        if (!telephonyAvailable()) return failed(event, NO_TELEPHONY)
+        if (!phone.telephonyAvailable()) return failed(event, NO_TELEPHONY)
 
-        val resolution = lookup(who)
+        val resolution = phone.resolve(who)
         // Names are personal data: the log says how many matched, never who.
         DebugVoiceLog.log("call_lookup kind=${resolution.kind} matches=${resolution.candidates.size}")
         return when (resolution.kind) {
             ContactMatchKind.NONE -> failed(event, CONTACT_NOT_FOUND)
+            ContactMatchKind.PERMISSION_DENIED -> failed(event, CONTACTS_PERMISSION_DENIED)
             ContactMatchKind.AMBIGUOUS -> ambiguous(event, resolution.candidates)
             ContactMatchKind.UNIQUE -> {
                 val contact = resolution.candidates.first()
@@ -63,7 +80,7 @@ class PhoneCallTool(
                     return failed(event, UNCONFIRMED)
                 }
                 if (nowMs() - agreed.atMs > CONFIRMATION_TTL_MS) return failed(event, CONFIRMATION_STALE)
-                if (!dial(contact)) return failed(event, "CALL_FAILED")
+                if (!phone.dial(contact)) return failed(event, CALL_FAILED)
                 DebugVoiceLog.log("call_placed confirmed=true")
                 ok(event) {
                     put("status", "calling")
@@ -111,6 +128,8 @@ class PhoneCallTool(
     companion object {
         const val NO_TELEPHONY = "NO_TELEPHONY"
         const val CONTACT_NOT_FOUND = "CONTACT_NOT_FOUND"
+        const val CONTACTS_PERMISSION_DENIED = "CONTACTS_PERMISSION_DENIED"
+        const val CALL_FAILED = "CALL_FAILED"
 
         /** confirmed=true for somebody the driver was never asked about. */
         const val UNCONFIRMED = "CALL_NOT_CONFIRMED"
@@ -123,10 +142,6 @@ class PhoneCallTool(
         private const val MAX_CANDIDATES = 5
 
         /** A tool with no driver behind it: nothing resolves, nothing dials. */
-        fun none(): PhoneCallTool = PhoneCallTool(
-            lookup = { ContactResolution(ContactMatchKind.NONE) },
-            telephonyAvailable = { false },
-            dial = { false },
-        )
+        fun none(): PhoneCallTool = PhoneCallTool(FakePhonePort(telephony = false))
     }
 }

@@ -188,6 +188,10 @@ class SimulatedNavigationWorld(
         return true
     }
 
+    override fun showOverview(): Boolean = synchronized(lock) { navigating }
+
+    override fun resumeTracking(): Boolean = synchronized(lock) { navigating }
+
     /** Like the SDK host: stopping an active session reports the end exactly once. */
     override fun stopNavigation(reason: String): Boolean {
         synchronized(lock) {

@@ -35,6 +35,8 @@ internal class NavigationTraceListener(
     private val onLocation: (AMapNaviLocation) -> Unit = {},
 ) : AMapNaviListener {
 
+    private var lastManeuverIcon: Int? = null
+
     // ---- stage 5: route calculation outcome -------------------------------
 
     override fun onCalculateRouteSuccess(routeIds: IntArray?) {
@@ -126,13 +128,22 @@ internal class NavigationTraceListener(
         location?.let(onLocation)
     }
 
-    override fun onNaviInfoUpdate(info: NaviInfo?) = Unit
+    override fun onNaviInfoUpdate(info: NaviInfo?) {
+        val icon = info?.iconType ?: return
+        if (icon == lastManeuverIcon) return
+        lastManeuverIcon = icon
+        DebugVoiceLog.log(
+            "nav_maneuver iconType=$icon remainMeters=${info.pathRetainDistance} remainSeconds=${info.pathRetainTime}",
+        )
+    }
 
     override fun onGetNavigationText(type: Int, text: String?) = Unit
 
     override fun onGetNavigationText(text: String?) = Unit
 
-    override fun onTrafficStatusUpdate() = Unit
+    override fun onTrafficStatusUpdate() {
+        DebugVoiceLog.log("nav_traffic_status_update")
+    }
 
     override fun onArrivedWayPoint(index: Int) = Unit
 
@@ -142,7 +153,9 @@ internal class NavigationTraceListener(
 
     override fun onServiceAreaUpdate(info: Array<out AMapServiceAreaInfo>?) = Unit
 
-    override fun showCross(cross: AMapNaviCross?) = Unit
+    override fun showCross(cross: AMapNaviCross?) {
+        DebugVoiceLog.log("nav_junction shown=${cross != null}")
+    }
 
     override fun hideCross() = Unit
 
@@ -150,9 +163,13 @@ internal class NavigationTraceListener(
 
     override fun hideModeCross() = Unit
 
-    override fun showLaneInfo(lanes: Array<out AMapLaneInfo>?, a: ByteArray?, b: ByteArray?) = Unit
+    override fun showLaneInfo(lanes: Array<out AMapLaneInfo>?, a: ByteArray?, b: ByteArray?) {
+        DebugVoiceLog.log("nav_lane_info shown=${lanes != null}")
+    }
 
-    override fun showLaneInfo(lane: AMapLaneInfo?) = Unit
+    override fun showLaneInfo(lane: AMapLaneInfo?) {
+        DebugVoiceLog.log("nav_lane_info shown=${lane != null}")
+    }
 
     override fun hideLaneInfo() = Unit
 

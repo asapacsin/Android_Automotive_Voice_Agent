@@ -4,7 +4,7 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 
 Everything an agent could do has been done. What follows is the whole of what needs a person — **in one batch, to be handled in one sitting**, rather than one interruption per test.
 
-8 item(s) queued.
+14 item(s) queued.
 
 ## A. Physical tests
 
@@ -66,6 +66,163 @@ Everything an agent could do has been done. What follows is the whole of what ne
 **Tell me back:** did it start; was guidance audible; did arrival leave a clean state
 
 **Still unknown until you do:** route calculation and guidance with a real fix; the guidance mic gate during a real drive
+
+*Release-blocking.*
+
+### NAV-UI-002 — During GPS navigation the vehicle stays in lock-car tracking
+
+**Why this needs you.** Lock-car is a visual judgement on a moving vehicle; the desk GPS origin is rejected (code=3)
+
+**Already established without you:**
+
+- AmapDrivingPresentation.lockCar calls recoverLockMode, CAR_UP_MODE, SHOW_MODE_LOCK_CAR
+- 📍 during NAVIGATING calls resumeTracking, not newLatLngZoom
+
+**You will need:** device with a real GPS fix or Amap emulator navi after a successful route
+
+**What to do:**
+
+1. start navigation
+2. watch whether the vehicle stays in the lower-middle and the map follows
+
+**It passes if:**
+
+- vehicle stays near lower-middle
+- map tracks the vehicle
+- not a static overview
+
+**Tell me back:** did the car stay locked; did the map follow
+
+**Still unknown until you do:** whether the SDK honours those options on this device/key
+
+*Release-blocking.*
+
+### NAV-UI-003 — Vehicle heading rotates the navigation map
+
+**Why this needs you.** Heading-up is visible only while the vehicle turns
+
+**Already established without you:**
+
+- setNaviMode(CAR_UP_MODE) is applied on startNavi
+
+**You will need:** NAV-UI-002 setup
+
+**What to do:**
+
+1. change heading during active navigation
+2. confirm the map rotates
+
+**It passes if:**
+
+- map bearing follows direction of travel, not frozen north-up
+
+**Tell me back:** did the map rotate with heading
+
+**Still unknown until you do:** on-device camera bearing
+
+*Release-blocking.*
+
+### NAV-UI-004 — Active route shows traffic-state colouring when Amap supplies it
+
+**Why this needs you.** Traffic tiles and colouring need live Amap data and eyes
+
+**Already established without you:**
+
+- setTrafficLine(true), setTrafficStatusUpdateEnabled(true), setTrafficInfoUpdateEnabled(true)
+
+**You will need:** network; a route with mixed traffic if the city has any
+
+**What to do:**
+
+1. start navigation
+2. look at the route colour
+3. wait for an update
+
+**It passes if:**
+
+- route is not a single static colour when traffic data exists
+- nav_traffic_status_update may appear
+
+**Tell me back:** was the route traffic-coloured; did it change during the drive
+
+**Still unknown until you do:** whether this key/region returns traffic on the navi line
+
+*Release-blocking.*
+
+### NAV-UI-005 — Next-maneuver guidance is visible
+
+**Why this needs you.** Maneuver chrome is on-screen only
+
+**Already established without you:**
+
+- setLayoutVisible(driving), setNaviStatusBarEnabled(driving), nav_maneuver log on icon change
+
+**You will need:** NAV-UI-002 setup
+
+**What to do:**
+
+1. start navigation
+2. look for next-turn / remaining distance-time
+
+**It passes if:**
+
+- next maneuver visible
+- remaining distance or time visible
+
+**Tell me back:** was the next turn visible
+
+**Still unknown until you do:** whether native layout is covered by our overlay on this screen size
+
+*Release-blocking.*
+
+### NAV-UI-006 — Lane or junction enlarge appears when Amap supplies it
+
+**Why this needs you.** Lane/junction views only appear at some intersections
+
+**Already established without you:**
+
+- setLaneInfoShow, setModeCrossDisplayShow, setRealCrossDisplayShow enabled while driving
+- NavigationTraceListener logs nav_lane_info / nav_junction
+
+**You will need:** a route that passes a multi-lane junction
+
+**What to do:**
+
+1. drive or emulate through a junction
+2. note lane/junction chrome
+
+**It passes if:**
+
+- lane or junction view appears when the SDK has data
+
+**Tell me back:** did a lane or junction view appear; or was there no such intersection
+
+**Still unknown until you do:** this route may not include a junction Amap enlarges
+
+### NAV-UI-007 — Overview then return restores vehicle tracking
+
+**Why this needs you.** Overview/lock-car toggle is a visual interaction
+
+**Already established without you:**
+
+- EmbeddedNavigationControllerTest.overviewAndResumeTrackingOnlyWorkWhileNavigating
+- 📍 while navigating calls recoverLockMode
+
+**You will need:** NAV-UI-002 setup
+
+**What to do:**
+
+1. enter overview (native 全览 or showOverview)
+2. return to navigation (native lock or 📍 / resumeTracking)
+
+**It passes if:**
+
+- overview shows the whole remaining route
+- return restores lock-car
+
+**Tell me back:** did overview work; did lock-car return
+
+**Still unknown until you do:** native 全览 button hit-testing under our overlay
 
 *Release-blocking.*
 
@@ -132,6 +289,7 @@ Everything an agent could do has been done. What follows is the whole of what ne
 
 - CALL-CONFIRM-001, CALL-AMBIG-001, CALL-PRIVACY-001 PASS
 - CALL-NOSIM-001 PASS - the no-telephony refusal is honest
+- CALL-CLASSIFY-001 PASS - 打电话 is classified as an action we have, not as unsupported
 - no call has been placed by this project
 
 **You will need:** an Android device with an active SIM; a contact saved on it; consent from the number's owner
@@ -226,7 +384,10 @@ Everything an agent could do has been done. What follows is the whole of what ne
 
 **Measured, so this is a choice and not a question:**
 
-- see ABI-SIZE-001 - filled in once it runs
+- ABI-SIZE-001: universal release APK 216.7 MB on disk, 228.0 MB uncompressed
+- lib/arm64-v8a 99.7 MB; lib/armeabi-v7a 68.4 MB
+- arm64-only would drop 68.4 MB of native libs (~30% of the APK); v7a-only would drop 99.7 MB
+- the test device reports ro.product.cpu.abilist=arm64-v8a only
 
 **Options:**
 

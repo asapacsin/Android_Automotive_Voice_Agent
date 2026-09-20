@@ -158,6 +158,35 @@ class FeaturePresenceRegressionTest {
         )
     }
 
+    @Test
+    fun drivingNavigationUsesNativeAmapPresentationNotIdleCamera() {
+        val presentation = "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapDrivingPresentation.kt"
+        assertContains(presentation, "setAutoLockCar(driving)", "lock-car is an Amap option, not a homemade tilt")
+        assertContains(presentation, "AMapNaviView.CAR_UP_MODE", "heading-up is navi mode, not MapView bearing")
+        assertContains(presentation, "setTrafficLine(true)", "traffic colour comes from the navi route")
+        assertContains(presentation, "recoverLockMode()", "overview must be able to return to tracking")
+        assertContains(presentation, "setNaviArrowVisible(driving)", "3D turn arrows are a navi overlay")
+        assertContains(presentation, "setLaneInfoShow(driving)", "lane guidance is native HUD")
+        assertContains(presentation, "setTurnArrowIs3D(driving)", "turn arrows must be 3D when the SDK draws them")
+        assertContains(presentation, "setLayoutVisible(driving)", "default Amap navi chrome is shown while driving")
+        assertContains(presentation, "SHOW_MODE_LOCK_CAR", "the camera mode is lock-car")
+        assertContains(presentation, "setTrafficStatusUpdateEnabled(true)", "traffic must update during the drive")
+        assertContains(presentation, "setPointToCenter(LOCK_CENTER_X, LOCK_CENTER_Y)", "vehicle sits in the lower-middle")
+        val host = "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapNaviViewHost.kt"
+        assertContains(host, "AmapDrivingPresentation.applyDriving", "startNavi must enter driving presentation")
+        assertContains(host, "AmapDrivingPresentation.applyRoutePreview", "route pick is overview, not driving camera")
+        assertContains(host, "AmapDrivingPresentation.applyIdle", "ending navi restores browse")
+        assertContains(host, "lock_car", "📍 during a drive recovers lock-car, it does not 2D-recenter")
+        assertContains(host, "disableBrowseLocationLayer()", "the idle blue-dot layer must not fight the navi car")
+        val controller = "app/src/main/kotlin/com/novadrive/app/nav/EmbeddedNavigationController.kt"
+        assertContains(controller, "fun showOverview()", "voice/UI overview must not touch AMapNaviView")
+        assertContains(controller, "fun resumeTracking()", "voice/UI lock-car return goes through the engine")
+        val resolver = "app/src/main/kotlin/com/novadrive/app/voice/UtteranceIntentResolver.kt"
+        assertTrue(!text(resolver).contains("AMapNaviView")) {
+            "NLU must not name AMapNaviView"
+        }
+    }
+
     // ---- open mic: noise must not become a turn, and never an action ----
 
     @Test

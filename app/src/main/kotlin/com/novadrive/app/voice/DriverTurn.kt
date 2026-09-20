@@ -1,5 +1,8 @@
 package com.novadrive.app.voice
 
+import com.novadrive.contracts.CapabilityCatalog
+import com.novadrive.contracts.ProductCapabilities
+
 /**
  * Everything known about **one thing the driver said**, and the single authority on whether the
  * assistant's reply to it may be heard yet.
@@ -375,10 +378,13 @@ class DriverTurn(val epoch: Long) {
 
     companion object {
         /** Classifies a transcript into what its reply's truth depends on. */
-        fun classify(text: String): Kind = when {
+        fun classify(
+            text: String,
+            catalog: CapabilityCatalog = ProductCapabilities,
+        ): Kind = when {
             ActionClaimGuard.isRealtimeInfoRequest(text) -> Kind.REALTIME_INFO
-            ActionClaimGuard.isUnsupportedRequest(text) -> Kind.NO_TOOL_ACTION
-            ActionClaimGuard.isControlRequest(text) ||
+            ActionClaimGuard.isUnsupportedRequest(text, catalog) -> Kind.NO_TOOL_ACTION
+            ActionClaimGuard.isControlRequest(text, catalog) ||
                 ActionClaimGuard.isCameraQuestion(text) ||
                 // 「有点热」 names no action, but it is a request for one: measured on device
                 // 2026-09-19 answering it with a claim and no call was released unheld.

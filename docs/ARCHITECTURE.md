@@ -40,14 +40,17 @@ One behaviour, one owner. If you need to change one of these, change it **here**
 
 | Behaviour | Canonical owner | Not owned by |
 | --- | --- | --- |
-| Whether a capability exists at all | the tool list in `BaiduFlexProtocol.sessionUpdate` + [CAPABILITIES.md](CAPABILITIES.md) | the persona prompt, the UI |
+| Whether a capability exists at all | `ProductCapabilities` / `config/capabilities.yaml` (kept in step by `CapabilityContractTest`) | the persona prompt, the UI, `ActionClaimGuard` keyword lists |
+| What an utterance names (intent → capability id) | `UtteranceIntentResolver` — parsing only | availability, Android APIs, the model |
+| Calling a contact | `PhoneCallTool` via `PhonePort`; `PhoneProvider` selects `AndroidContacts` | NLU, the catalog, the UI |
 | Whether a tool call is well-formed | `FlexFunctionCallAssembler` (schema, bounds, enums) | the model, the dispatcher |
 | Whether an action may execute | `AndroidToolDispatcher` (+ `SafetyPolicy` in `orchestration` for the JVM path) | the model |
 | Whether an action **did** execute | the `ToolDispatchResult` / `AndroidActionResult` returned by the executor | any sentence the model produced |
 | What may be claimed to the driver | `DriverTurn` — holds reply audio+subtitle until execution proof exists; `PhantomTurnGate` judges phantom turns; `ActionClaimGuard` classifies requests and writes corrections | the persona prompt, the model's wording |
 | Per-utterance state (phase, kind, proof) | `DriverTurn`, one instance per driver turn, epoch-guarded | loose flags anywhere else |
 | **Cross-turn** context (what was adjusted, what is pending, what is stale) | `DriverContext`, built only from `ok=true` tool results; resolved by `ContextResolver`; carried to the model by `VoiceContextHints` | the model's memory — there is none, the conversation resets after every tool turn |
-| Navigation execution | `EmbeddedNavigationController` → `AmapNaviViewHost` (the only file that may import `com.amap`) | `NavigationAdapter` (legacy deep link, dormant) |
+| Navigation execution | `EmbeddedNavigationController` → `AmapNaviViewHost` | `NavigationAdapter` (legacy deep link, dormant) |
+| Navigation camera while driving | `AmapDrivingPresentation` (`AMapNaviView` lock-car, traffic line, native HUD) | idle `moveCamera(newLatLngZoom)`, a homemade tilt, `MapView` |
 | Which candidate the driver picked | `NavigationChoiceResolver` | the model |
 | Turn-taking / interruption | server VAD for turn ends; `ListeningLifecycle` for ACTIVE / SILENT_WAIT / SLEEP / DEEP_IDLE; `VoiceCommandRouter` for 「闭嘴」「休眠」 | ad-hoc checks in the client |
 | Whether reply audio is heard | `AndroidPlaybackPort` (navigation mute, lifecycle) + `PhantomTurnGate` (phantom/false-claim holds) | the UI |
@@ -64,6 +67,8 @@ app       → everything above; nothing depends on app
 simulator → contracts, vehicle          TEST/SIM ONLY
 evaluation→ nothing product-facing      Level A simulation harness
 ```
+
+`PhonePort` lives in `contracts`, parallel to `VehicleControlPort`: tests inject `FakePhonePort`; production selects `AndroidContacts` only in `PhoneProvider`.
 
 **Forbidden, and enforced by `behavior-test/DependencyBoundaryTest`:** `contracts`, `ingress`,
 `safety`, `vehicle`, `verification`, `feedback` and `orchestration` must not import
@@ -130,9 +135,10 @@ description surviving a conversation reset.
 
 ### Navigation — `app/nav/`
 `EmbeddedNavigationController` owns the flow (resolve → candidates → route list → start → end) and
-`NavigationPhase`/`NavigationStateStore` the state. `AmapNaviViewHost` is the only file permitted to
-import `com.amap`; it also owns the map camera, including the startup recentre
-(`InitialLocationRecenter`). `DestinationQuery` turns what the driver said into a POI keyword;
+`NavigationPhase`/`NavigationStateStore` the state. `AmapNaviViewHost` is the only module permitted to
+import `com.amap`; `AmapDrivingPresentation` is the native driving HUD (lock-car, traffic line, 3D
+arrows, lanes). Idle browse still uses `InitialLocationRecenter`. After `startNavi` the idle 2D
+camera must not run. `DestinationQuery` turns what the driver said into a POI keyword;
 `NavigationChoiceResolver` turns 「第二个」/「就去某某」 into a candidate.
 
 ### Vehicle control — `vehicle` module

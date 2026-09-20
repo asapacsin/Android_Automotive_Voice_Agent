@@ -1083,7 +1083,7 @@ changing it means holding all reply audio until a response completes. Tracked as
 
 ## P24 — The same correction was sent twice
 
-**Status:** **FIXED 2026-09-20; device-verified. No regression test yet — see [B-017](BACKLOG.md).**
+**Status:** **FIXED 2026-09-20; device-verified. Regression: [TRUTH-DUP-001](TEST_MATRIX.yaml) / [B-017](BACKLOG.md).**
 **Found:** 2026-09-19, while verifying [P23](#p23).
 **Severity:** Medium — harmless here, and only by luck.
 
@@ -1161,4 +1161,39 @@ Every guard in this product that reads the driver's transcribed words has the sa
 each fix has been the same shape: stop requiring the transcript to prove something another part of
 the system already knows. [P23](#p23) was the claim path, [S2](ACCEPTANCE_TESTS.md) the control
 word list, [S16](SPECS/SPEC-008-live-scenario-suite.md) the referent, and this the media intent.
+
+---
+
+## P26 — After 「开始导航」 the screen stayed a generic 2D map
+
+**Status:** IMPLEMENTED 2026-09-20 — unit/architecture verified; visual lock-car/traffic/HUD is HUMAN_REQUIRED ([NAV-UI-002](TEST_MATRIX.yaml) … [NAV-UI-007](TEST_MATRIX.yaml))
+**Found:** 2026-09-20, product-owner report
+**Severity:** High — a started navigation session that does not look like driving navigation
+
+### Symptom
+
+Search, route pick and `startNavi` all succeeded. The screen after 「开始导航」 still looked like an
+ordinary map with a route drawn on it: north-up, full route fitted or a 2D locate camera, no
+lock-car HUD, no traffic-coloured navi line, no native turn/lane/junction chrome.
+
+### Root cause (read from the 11.2.100 artifact, not guessed)
+
+`AmapNaviViewHost.startNavigation` called `AMapNavi.startNavi` and set `navigationActive = true`.
+It never configured `AMapNaviViewOptions`, never called `setNaviMode(CAR_UP_MODE)`,
+`recoverLockMode()`, `setTrafficLine(true)`, `setLayoutVisible`, `setAutoLockCar`, 3D turn arrows,
+lane/junction flags, or `setTrafficStatusUpdateEnabled`. Idle browse kept
+`MyLocationStyle.LOCATION_TYPE_LOCATE` plus `moveCamera(newLatLngZoom(..., 16))`, and `onResume`
+re-enabled that layer even while a session was running. The 📍 control used the same 2D move during
+a drive. The code *commented* that “AMapNaviView owns its camera” during navigation; the SDK only
+does that after those options are set.
+
+This is not a missing `MapView`. The surface was already `AMapNaviView`. The driving presentation
+was never switched on. P5 forbade a `MapView` fallback; that decision stands.
+
+### Fix
+
+`AmapDrivingPresentation` (verified against navi-3dmap 11.2.100) applies native lock-car HUD on
+`startNavi`, full-route overview on route calculation, idle browse on stop. Voice still goes
+through `EmbeddedNavigationController` / `NaviEngine.showOverview` / `resumeTracking`.
+
 

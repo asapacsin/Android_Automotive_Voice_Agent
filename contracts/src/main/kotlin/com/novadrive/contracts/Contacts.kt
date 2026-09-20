@@ -25,6 +25,8 @@ enum class ContactMatchKind {
     UNIQUE,
     AMBIGUOUS,
     NONE,
+    /** READ_CONTACTS was denied. Not the same as NONE: we did not search. */
+    PERMISSION_DENIED,
 }
 
 data class ContactResolution(

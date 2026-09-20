@@ -35,6 +35,7 @@ class ArchitectureRulesTest {
             "app/src/main/kotlin/com/novadrive/app/nav/amap/NavigationTraceListener.kt",
             "app/src/main/kotlin/com/novadrive/app/nav/amap/NoOpNaviViewListener.kt",
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapPrivacyCompliance.kt",
+            "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapDrivingPresentation.kt",
         )
         val unexpected = importers - allowed
         assertTrue(unexpected.isEmpty()) {
@@ -234,6 +235,53 @@ class ArchitectureRulesTest {
         val undocumented = declared.filter { it !in ARGUMENT_VALUES && !capabilities.contains(it) }
         assertTrue(undocumented.isEmpty()) {
             "INVARIANT I-10: every tool must appear in docs/CAPABILITIES.md. Missing: $undocumented"
+        }
+    }
+
+    // ---- capability truth has one owner: the catalog, not a keyword list ----
+
+    @Test
+    fun unsupportedClassificationConsultsTheCatalogBeforeAnyWordList() {
+        val guard = text("app/src/main/kotlin/com/novadrive/app/voice/ActionClaimGuard.kt")
+        val body = guard.substringAfter("fun isUnsupportedRequest(").substringBefore("fun fallbackUnsupportedHeuristic")
+        assertTrue(body.contains("catalog.isSupported")) {
+            "isUnsupportedRequest must ask CapabilityCatalog; keyword lists are not capability truth"
+        }
+        val catalogAt = body.indexOf("catalog.isSupported")
+        val fallbackAt = body.indexOf("fallbackUnsupportedHeuristic")
+        assertTrue(catalogAt >= 0 && fallbackAt > catalogAt) {
+            "the catalog must decide before the fallback heuristic; catalog@$catalogAt fallback@$fallbackAt"
+        }
+    }
+
+    @Test
+    fun utteranceParsingDoesNotImportAndroidCallingApis() {
+        listOf(
+            "app/src/main/kotlin/com/novadrive/app/voice/UtteranceIntentResolver.kt",
+            "app/src/main/kotlin/com/novadrive/app/voice/ActionClaimGuard.kt",
+            "contracts/src/main/kotlin/com/novadrive/contracts/Capability.kt",
+        ).forEach { path ->
+            val src = text(path)
+            listOf("android.telephony", "android.content.Intent", "ACTION_CALL", "AndroidContacts").forEach { forbidden ->
+                assertTrue(!src.contains(forbidden)) {
+                    "$path must not couple NLU/catalog to Android calling ($forbidden)"
+                }
+            }
+        }
+    }
+
+    @Test
+    fun onlyPhoneProviderConstructsTheAndroidPhoneAdapter() {
+        val allowed = setOf(
+            "app/src/main/kotlin/com/novadrive/app/phone/PhoneProvider.kt",
+            "app/src/main/kotlin/com/novadrive/app/AndroidContacts.kt",
+        )
+        val offenders = kotlinFiles("app/src/main").filter { file ->
+            val rel = file.relativeTo(root).path.replace('\\', '/')
+            rel !in allowed && file.readText().contains("AndroidContacts(")
+        }.map { it.relativeTo(root).path.replace('\\', '/') }
+        assertTrue(offenders.isEmpty()) {
+            "PhonePort implementations are selected in PhoneProvider, like VehicleControlPort. Found: $offenders"
         }
     }
 

@@ -28,8 +28,10 @@ events), `PhantomTurnSuppressionTest`, `ArchitectureRulesTest.executionProofOwns
 **I-2. A capability that does not exist must fail deterministically, and say so once.**
 No tool means: no execution, one honest sentence, and the same words on screen and in the speaker.
 Never a confident intermediate ("正在调整音量") followed by a correction.
-*Enforced by:* `ActionClaimGuard.isUnsupportedRequest` + the hold in `BaiduFlexClient`,
+*Enforced by:* `CapabilityCatalog` + `UtteranceIntentResolver` (availability, not keywords), the hold in `BaiduFlexClient`,
 `PhantomTurnSuppressionTest.aFalseClaimAboutAnUnsupportedRequestIsNeverSpokenOrShown`.
+A lexical fallback remains in `ActionClaimGuard` for phrases that never mapped to an id; it must
+not override a registered capability.
 
 **I-3. Information the product has no source for is refused, not invented.**
 There is no weather, traffic or news tool. Any answer to such a question that does not decline is
@@ -87,7 +89,7 @@ change it there. A second mechanism that enforces the same policy is a defect, n
 **I-11. A prompt rule is not an enforcement mechanism.**
 The persona may *ask* the model to behave; it may never be the only thing preventing a wrong action
 or a false claim. Anything safety-relevant must also hold when the model ignores the prompt.
-*Enforced by:* review. The existing duplicates are listed in [TECH_DEBT.md](TECH_DEBT.md) D-2.
+*Enforced by:* review. The duplicates this once named were [TECH_DEBT.md](TECH_DEBT.md) D-2, now resolved — remaining prompt sentences are the lever that causes a tool call, not a second enforcement of a prohibition.
 
 **I-12. Device evidence is required for anything involving audio, the map or lifecycle.**
 A green build proves compilation. See `ACCEPTANCE_TESTS.md` for what each level may claim.

@@ -9,6 +9,7 @@ import android.provider.ContactsContract
 import android.telephony.TelephonyManager
 import com.novadrive.contracts.ContactMatchKind
 import com.novadrive.contracts.ContactResolution
+import com.novadrive.contracts.PhonePort
 import com.novadrive.contracts.ResolvedContact
 
 /**
@@ -17,7 +18,7 @@ import com.novadrive.contracts.ResolvedContact
  * Nothing here logs a name or a number. The driver's contacts are theirs; the app needs to know
  * *how many* matched, and the model needs a display name to say out loud — no more than that.
  */
-class AndroidContacts(context: Context) {
+class AndroidContacts(context: Context) : PhonePort {
     private val appContext = context.applicationContext
 
     /**
@@ -25,17 +26,17 @@ class AndroidContacts(context: Context) {
      * (`gsm.sim.state=ABSENT`), and on such a phone starting the dialler and reporting success
      * would be a false claim — so this is checked before anything else.
      */
-    fun telephonyAvailable(): Boolean {
+    override fun telephonyAvailable(): Boolean {
         if (!appContext.packageManager.hasSystemFeature(PackageManager.FEATURE_TELEPHONY)) return false
         val manager = appContext.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
             ?: return false
         return manager.simState == TelephonyManager.SIM_STATE_READY
     }
 
-    fun resolve(spokenName: String): ContactResolution {
+    override fun resolve(spokenName: String): ContactResolution {
         if (appContext.checkSelfPermission(Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
             DebugVoiceLog.log("call_lookup_denied reason=no_contacts_permission")
-            return ContactResolution(ContactMatchKind.NONE)
+            return ContactResolution(ContactMatchKind.PERMISSION_DENIED)
         }
         val uri = Uri.withAppendedPath(
             ContactsContract.CommonDataKinds.Phone.CONTENT_FILTER_URI,
@@ -69,7 +70,7 @@ class AndroidContacts(context: Context) {
     }
 
     /** Places the call. Only ever reached with the driver's spoken confirmation. */
-    fun dial(contact: ResolvedContact): Boolean {
+    override fun dial(contact: ResolvedContact): Boolean {
         if (appContext.checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
             DebugVoiceLog.log("call_denied reason=no_call_permission")
             return false

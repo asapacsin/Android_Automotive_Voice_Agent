@@ -55,6 +55,14 @@ class GatewayNaviEngine : NaviEngine {
         NavigationHostGateway.current()?.stopNavigation(reason) ?: false
     }
 
+    override fun showOverview(): Boolean = onMain {
+        NavigationHostGateway.current()?.showOverview() ?: false
+    }
+
+    override fun resumeTracking(): Boolean = onMain {
+        NavigationHostGateway.current()?.resumeTracking() ?: false
+    }
+
     override fun routeCandidates(): List<RouteCandidate> =
         NavigationHostGateway.current()?.routeCandidates() ?: emptyList()
 

@@ -38,6 +38,12 @@ object ToolFailureAdvice {
         PhoneCallTool.CONTACT_NOT_FOUND to
             "通讯录里没有找到这个人，没有拨号。" +
             "请用一句话如实说没找到，请用户说完整的名字，不要猜一个人。",
+        PhoneCallTool.CONTACTS_PERMISSION_DENIED to
+            "没有通讯录权限，所以没有查找，也没有拨号。" +
+            "请用一句话如实告诉用户需要通讯录权限才能打电话，不要说没找到这个人。",
+        PhoneCallTool.CALL_FAILED to
+            "拨号没有成功，没有接通。" +
+            "请用一句话如实告诉用户没打出去，不要谎称已经接通。",
         "MEDIA_LIBRARY_UNSUPPORTED" to
             "车上只有一首内置曲目，没有音乐库，无法搜索或指定歌曲。" +
             "请用一句话如实告诉用户放不了他要的那首歌，不要谎称已经播放，也不要改放其它曲子。",

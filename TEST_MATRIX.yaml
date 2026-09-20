@@ -325,6 +325,29 @@ tests:
     related: [B-018]
     last_run: {at: 2026-09-20, result: PASS}
 
+  - id: CALL-CLASSIFY-001
+    capability: calling
+    name: A call request is an action, not an unsupported refusal
+    purpose: "B-018 added place_call while 电话 stayed in a keyword list that was treated as capability truth"
+    type: unit
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["gradlew test --tests *CapabilityResolutionInvariantTest* --tests *CapabilityCatalogTest* --tests *CapabilityContractTest*"]
+    pass_criteria:
+      - "打电话给张三 / 给张三打电话 / 拨打张三电话 all resolve to phone.place_call and Kind.ACTION"
+      - "the fallback heuristic still contains 电话, and the catalog still wins"
+      - "an empty catalog makes the same phrases NO_TOOL_ACTION"
+      - "FakePhonePort places a confirmed call with no Android types"
+      - "ProductCapabilities ids match config/capabilities.yaml"
+    evidence:
+      - "2026-09-20 TEST_REVIEW: keyword list and registry both claimed ownership of calling"
+      - "availability moved to ProductCapabilities; utterances map through UtteranceIntentResolver; AndroidContacts is a PhonePort"
+      - "CapabilityResolutionInvariantTest, CapabilityCatalogTest, CapabilityContractTest, ArchitectureRulesTest"
+    related: [B-018, I-2, I-10]
+    last_run: {at: 2026-09-20, result: PASS}
+
   - id: CALL-REAL-001
     capability: calling
     name: A confirmed call reaches a real handset
@@ -348,6 +371,7 @@ tests:
     autonomous_evidence:
       - "CALL-CONFIRM-001, CALL-AMBIG-001, CALL-PRIVACY-001 PASS"
       - "CALL-NOSIM-001 PASS - the no-telephony refusal is honest"
+      - "CALL-CLASSIFY-001 PASS - 打电话 is classified as an action we have, not as unsupported"
       - "no call has been placed by this project"
     remaining_uncertainty:
       - "ACTION_CALL on a real SIM, including any system confirmation MIUI adds"
@@ -447,6 +471,190 @@ tests:
     related: [SPEC-005, ADR-007, P5, P13]
     last_run: {at: null, result: null}
 
+  - id: NAV-UI-001
+    capability: navigation
+    name: 「开始导航」 enters ACTIVE_DRIVING_NAVIGATION, not route preview
+    purpose: "P26: startNavi succeeded while the camera stayed in browse/preview"
+    type: unit
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["gradlew test --tests *EmbeddedNavigationControllerTest* --tests *FeaturePresenceRegressionTest*"]
+    pass_criteria:
+      - "selectRoute and voice recommended both set NavigationPhase.NAVIGATING and NaviPresentation.DRIVING"
+      - "AmapDrivingPresentation is applied on startNavi; idle moveCamera is not the driving camera"
+    evidence:
+      - "EmbeddedNavigationControllerTest.SelectingARouteEntersDrivingPresentationNotRoutePreview"
+      - "FeaturePresenceRegressionTest.drivingNavigationUsesNativeAmapPresentationNotIdleCamera"
+    related: [P26, SPEC-007]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: NAV-UI-002
+    capability: navigation
+    name: During GPS navigation the vehicle stays in lock-car tracking
+    purpose: "The vehicle must not travel across an unmoving north-up map"
+    type: device
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    release_blocking: true
+    human_reason: "Lock-car is a visual judgement on a moving vehicle; the desk GPS origin is rejected (code=3)"
+    prerequisites: ["device with a real GPS fix or Amap emulator navi after a successful route"]
+    procedure:
+      - "start navigation"
+      - "watch whether the vehicle stays in the lower-middle and the map follows"
+    pass_criteria: ["vehicle stays near lower-middle", "map tracks the vehicle", "not a static overview"]
+    autonomous_evidence:
+      - "AmapDrivingPresentation.lockCar calls recoverLockMode, CAR_UP_MODE, SHOW_MODE_LOCK_CAR"
+      - "📍 during NAVIGATING calls resumeTracking, not newLatLngZoom"
+    remaining_uncertainty: ["whether the SDK honours those options on this device/key"]
+    returns: ["did the car stay locked", "did the map follow"]
+    related: [P26, SPEC-007]
+    last_run: {at: null, result: null}
+
+  - id: NAV-UI-003
+    capability: navigation
+    name: Vehicle heading rotates the navigation map
+    purpose: "CAR_UP_MODE must actually turn the map with the vehicle"
+    type: device
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    release_blocking: true
+    human_reason: "Heading-up is visible only while the vehicle turns"
+    prerequisites: ["NAV-UI-002 setup"]
+    procedure: ["change heading during active navigation", "confirm the map rotates"]
+    pass_criteria: ["map bearing follows direction of travel, not frozen north-up"]
+    autonomous_evidence: ["setNaviMode(CAR_UP_MODE) is applied on startNavi"]
+    remaining_uncertainty: ["on-device camera bearing"]
+    returns: ["did the map rotate with heading"]
+    related: [P26, SPEC-007]
+    last_run: {at: null, result: null}
+
+  - id: NAV-UI-004
+    capability: navigation
+    name: Active route shows traffic-state colouring when Amap supplies it
+    purpose: "A single static route colour is not traffic"
+    type: device
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    release_blocking: true
+    human_reason: "Traffic tiles and colouring need live Amap data and eyes"
+    prerequisites: ["network", "a route with mixed traffic if the city has any"]
+    procedure: ["start navigation", "look at the route colour", "wait for an update"]
+    pass_criteria: ["route is not a single static colour when traffic data exists", "nav_traffic_status_update may appear"]
+    autonomous_evidence:
+      - "setTrafficLine(true), setTrafficStatusUpdateEnabled(true), setTrafficInfoUpdateEnabled(true)"
+    remaining_uncertainty: ["whether this key/region returns traffic on the navi line"]
+    returns: ["was the route traffic-coloured", "did it change during the drive"]
+    related: [P26, SPEC-007]
+    last_run: {at: null, result: null}
+
+  - id: NAV-UI-005
+    capability: navigation
+    name: Next-maneuver guidance is visible
+    purpose: "Native HUD must show the upcoming turn"
+    type: device
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    release_blocking: true
+    human_reason: "Maneuver chrome is on-screen only"
+    prerequisites: ["NAV-UI-002 setup"]
+    procedure: ["start navigation", "look for next-turn / remaining distance-time"]
+    pass_criteria: ["next maneuver visible", "remaining distance or time visible"]
+    autonomous_evidence:
+      - "setLayoutVisible(driving), setNaviStatusBarEnabled(driving), nav_maneuver log on icon change"
+    remaining_uncertainty: ["whether native layout is covered by our overlay on this screen size"]
+    returns: ["was the next turn visible"]
+    related: [P26, SPEC-007]
+    last_run: {at: null, result: null}
+
+  - id: NAV-UI-006
+    capability: navigation
+    name: Lane or junction enlarge appears when Amap supplies it
+    purpose: "Do not rebuild Gaode junction UI; confirm the native one can show"
+    type: device
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    release_blocking: false
+    human_reason: "Lane/junction views only appear at some intersections"
+    prerequisites: ["a route that passes a multi-lane junction"]
+    procedure: ["drive or emulate through a junction", "note lane/junction chrome"]
+    pass_criteria: ["lane or junction view appears when the SDK has data"]
+    autonomous_evidence:
+      - "setLaneInfoShow, setModeCrossDisplayShow, setRealCrossDisplayShow enabled while driving"
+      - "NavigationTraceListener logs nav_lane_info / nav_junction"
+    remaining_uncertainty: ["this route may not include a junction Amap enlarges"]
+    returns: ["did a lane or junction view appear", "or was there no such intersection"]
+    related: [P26, SPEC-007]
+    last_run: {at: null, result: null}
+
+  - id: NAV-UI-007
+    capability: navigation
+    name: Overview then return restores vehicle tracking
+    purpose: "Overview is allowed; it must not trap the camera in full-route fit"
+    type: device
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    release_blocking: true
+    human_reason: "Overview/lock-car toggle is a visual interaction"
+    prerequisites: ["NAV-UI-002 setup"]
+    procedure:
+      - "enter overview (native 全览 or showOverview)"
+      - "return to navigation (native lock or 📍 / resumeTracking)"
+    pass_criteria: ["overview shows the whole remaining route", "return restores lock-car"]
+    autonomous_evidence:
+      - "EmbeddedNavigationControllerTest.overviewAndResumeTrackingOnlyWorkWhileNavigating"
+      - "📍 while navigating calls recoverLockMode"
+    remaining_uncertainty: ["native 全览 button hit-testing under our overlay"]
+    returns: ["did overview work", "did lock-car return"]
+    related: [P26, SPEC-007]
+    last_run: {at: null, result: null}
+
+  - id: NAV-UI-008
+    capability: navigation
+    name: Spoken 「开始导航」 enters the same driving state as a route tap
+    purpose: "Voice must not have a parallel start path that skips presentation"
+    type: unit
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["EmbeddedNavigationControllerTest.voiceStartEntersTheSameDrivingPresentationAsATap"]
+    pass_criteria: ["preference=recommended and selectRoute both set DRIVING and one startNavi"]
+    evidence: ["2026-09-20 unit"]
+    related: [P26, P16, SPEC-007]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: NAV-UI-009
+    capability: navigation
+    name: Arrival leaves ACTIVE_DRIVING_NAVIGATION
+    purpose: "Idle browse must return after arrival; driving HUD must not stick"
+    type: unit
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["EmbeddedNavigationControllerTest arrival / overview after arrived is refused"]
+    pass_criteria: ["phase ARRIVED/STOPPED", "showOverview false after end"]
+    evidence: ["2026-09-20 unit plus existing arrival tests"]
+    related: [P26, SPEC-007]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: NAV-UI-010
+    capability: navigation
+    name: Route-selection voice commands are unchanged
+    purpose: "Driving HUD must not break 第二条 / 最快的 / 最短的 / 免费的 / 红绿灯少的"
+    type: unit
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["existing EmbeddedNavigationControllerTest voiceChoiceWalksDestinationThenRouteThroughTheTapPaths"]
+    pass_criteria: ["those phrases still pick the same route and start once"]
+    evidence: ["2026-09-20 unit, pre-existing tests still green"]
+    related: [P16, SPEC-007]
+    last_run: {at: 2026-09-20, result: PASS}
+
 # ---- climate, media, dialogue ---------------------------------------------------------------
 
   - id: CLIMATE-SET-001
@@ -492,6 +700,25 @@ tests:
     pass_criteria: ["tool=control_climate power_off"]
     evidence: ["2026-09-20: 20/20 suite"]
     related: [P2]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: CLIMATE-FAN-001
+    capability: climate
+    name: An explicit fan level is set
+    purpose: "Temperature had a scenario; fan is the other dimension SPEC-006 resolves, and had no registry case"
+    type: unit
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: []
+    procedure: ["gradlew test --tests *ClimateToolHandlerTest*"]
+    pass_criteria:
+      - "set_fan calls setFanLevel with the integer value"
+      - "adjust_fan calls changeFanLevel"
+      - "malformed fan values never reach the port"
+    evidence:
+      - "ClimateToolHandlerTest.eachActionCallsExactlyOnePortMethod and malformedArgumentsNeverReachThePort"
+    related: [SPEC-006]
     last_run: {at: 2026-09-20, result: PASS}
 
   - id: CTX-CHAIN-001
@@ -584,6 +811,25 @@ tests:
     pass_criteria: ["the listening state reaches SLEEP", "the session does not disconnect"]
     evidence: ["2026-09-20: 20/20 suite"]
     related: []
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: LISTEN-IDLE-001
+    capability: turn_taking
+    name: Inactivity releases the microphone and then the socket
+    purpose: "P17: the mic used to stream to Baidu for the whole session; STANDBY and DEEP_IDLE are the fix"
+    type: unit
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["gradlew test --tests *ListeningLifecycleTest*"]
+    pass_criteria:
+      - "30 s idle -> STANDBY and capture released"
+      - "5 min in STANDBY -> DEEP_IDLE and the socket closed"
+      - "wake or tap returns to ACTIVE"
+    evidence:
+      - "ListeningLifecycleTest covers STANDBY, DEEP_IDLE, epoch-guarded timers, and meaningless transcripts not extending the session"
+    related: [P17]
     last_run: {at: 2026-09-20, result: PASS}
 
   - id: NOISE-001
@@ -767,6 +1013,65 @@ tests:
     related: [I-1]
     last_run: {at: 2026-09-20, result: PASS}
 
+  - id: PERM-CAMERA-001
+    capability: permissions
+    name: A camera question without permission fails honestly
+    purpose: "Describing a scene without the camera is the same lie as claiming an action that never ran"
+    type: unit
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["gradlew test --tests *CameraQuestionHandlerTest.missingCameraPermission*"]
+    pass_criteria:
+      - "CAMERA_PERMISSION_DENIED"
+      - "no JPEG is captured"
+      - "the vision model is not called"
+      - "the permission prompt is requested once"
+    evidence:
+      - "CameraQuestionHandlerTest.missingCameraPermissionFailsFastWithoutCaptureOrRequest"
+    related: [P14, VISION-001]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: PERM-CONTACTS-001
+    capability: permissions
+    name: Missing contacts permission is not reported as not-found
+    purpose: "Telling the driver the person is not in the book when we did not look is a false claim"
+    type: unit
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["gradlew test --tests *PhoneCallToolTest.missingContactsPermission*"]
+    pass_criteria:
+      - "CONTACTS_PERMISSION_DENIED, not CONTACT_NOT_FOUND"
+      - "nothing is dialled"
+      - "the model is told to ask for permission, not to say the name is missing"
+    evidence:
+      - "2026-09-20 TEST_REVIEW: AndroidContacts mapped READ_CONTACTS denial onto ContactMatchKind.NONE"
+      - "PhoneCallToolTest.missingContactsPermissionIsNotReportedAsNotFound"
+    related: [B-018, I-1]
+    last_run: {at: 2026-09-20, result: PASS}
+
+  - id: CALL-DIAL-001
+    capability: calling
+    name: A failed dial is not reported as a placed call
+    purpose: "CALL_FAILED had no ToolFailureAdvice, so the model would improvise around a bare error string"
+    type: unit
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["gradlew test --tests *PhoneCallToolTest.aDiallerFailure*"]
+    pass_criteria:
+      - "FakePhonePort with callPermitted=false returns CALL_FAILED"
+      - "nothing is recorded as dialled"
+      - "ToolFailureAdvice has wording for CALL_FAILED"
+    evidence:
+      - "PhoneCallToolTest.aDiallerFailureIsNotReportedAsAPlacedCall"
+    related: [B-018, I-1]
+    last_run: {at: 2026-09-20, result: PASS}
+
   - id: PROCDEATH-001
     capability: lifecycle
     name: The app survives process death
@@ -944,7 +1249,11 @@ tests:
       - "A. arm64-only. Smallest artifact; no 32-bit device can install it."
       - "B. ABI splits or an App Bundle. Nobody loses support and each artifact is smaller; needs a channel that supports split delivery."
       - "C. Keep the universal APK. Simplest to distribute, largest download."
-    quantified: ["see ABI-SIZE-001 - filled in once it runs"]
+    quantified:
+      - "ABI-SIZE-001: universal release APK 216.7 MB on disk, 228.0 MB uncompressed"
+      - "lib/arm64-v8a 99.7 MB; lib/armeabi-v7a 68.4 MB"
+      - "arm64-only would drop 68.4 MB of native libs (~30% of the APK); v7a-only would drop 99.7 MB"
+      - "the test device reports ro.product.cpu.abilist=arm64-v8a only"
     returns: ["which option, and the minimum head-unit generation that must be supported"]
     related: [B-019]
     last_run: {at: null, result: null}

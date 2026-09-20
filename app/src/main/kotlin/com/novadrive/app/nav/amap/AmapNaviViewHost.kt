@@ -86,7 +86,8 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         navi = AMapNavi.getInstance(context.applicationContext)
         enableGuidanceVoice()
         naviView = AMapNaviView(context)
-        naviView.setAMapNaviViewListener(NoOpNaviViewListener)
+        naviView.setAMapNaviViewListener(AmapDrivingPresentation.listener { stopNavigation("ui_exit") })
+        AmapDrivingPresentation.applyIdle(naviView)
         addView(naviView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     }
 
@@ -146,7 +147,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         locationStarted = accepted
         val servicesOn = platformLocation.locationServicesEnabled()
         DebugVoiceLog.log("amap_gps startGPS=$accepted location_services=$servicesOn")
-        enableMyLocation()
+        if (!isNavigating) enableMyLocation()
         watchManualPan()
         watchMapLoaded()
         seedFromLastKnown()
@@ -344,6 +345,11 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
      * truthful instead of nothing happening.
      */
     fun recenterOnCurrentLocation(): RecenterOutcome {
+        if (isNavigating) {
+            val recovered = AmapDrivingPresentation.resumeTracking(naviView)
+            DebugVoiceLog.log("map_recenter_manual outcome=${if (recovered) "lock_car" else "failed"}")
+            return if (recovered) RecenterOutcome.MOVED else RecenterOutcome.NO_FIX
+        }
         if (!hasFineLocation()) {
             DebugVoiceLog.log("map_recenter_manual outcome=no_permission")
             return RecenterOutcome.NO_PERMISSION
@@ -515,8 +521,16 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
             DebugVoiceLog.log("nav_emulator_speed kmh=$EMULATOR_SPEED_KMH")
         }
         val mode = if (emulator) NaviType.EMULATOR else NaviType.GPS
+        disableBrowseLocationLayer()
+        AmapDrivingPresentation.applyDriving(navi, naviView)
         val accepted = runCatching { navi.startNavi(mode) }.getOrDefault(false)
-        if (accepted) synchronized(navLock) { navigationActive = true }
+        if (accepted) {
+            synchronized(navLock) { navigationActive = true }
+            AmapDrivingPresentation.lockCar(naviView)
+        } else if (!isNavigating) {
+            enableMyLocation()
+            AmapDrivingPresentation.applyIdle(naviView)
+        }
         DebugVoiceLog.log("nav_start accepted=$accepted mode=$mode")
         // Read AFTER startNavi. This is the route navigation is actually following and is
         // the only sound evidence that selectRouteId(id) took effect: the
@@ -557,6 +571,8 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         runCatching { navi.stopNavi() }
             .onSuccess { DebugVoiceLog.log("nav_stopped reached=true reason=$reason") }
             .onFailure { DebugVoiceLog.log("nav_stopped reached=false reason=$reason exception=true") }
+        AmapDrivingPresentation.applyIdle(naviView)
+        enableMyLocation()
         // Guidance cut off mid-sentence may never report its end; do not leave the mic gated.
         if (NavigationGuidanceVoice.speaking) NavigationGuidanceVoice.onPlayEnd()
         // Every termination path funnels through here -- arrival, emulator end, and the
@@ -569,6 +585,22 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
     /** True while an emulator or GPS navigation session is running. */
     val isNavigating: Boolean
         get() = synchronized(navLock) { navigationActive }
+
+    fun showOverview(): Boolean {
+        if (!isNavigating) return false
+        return AmapDrivingPresentation.showOverview(naviView)
+    }
+
+    fun resumeTracking(): Boolean {
+        if (!isNavigating) return false
+        return AmapDrivingPresentation.resumeTracking(naviView)
+    }
+
+    private fun disableBrowseLocationLayer() {
+        runCatching {
+            naviView.map?.isMyLocationEnabled = false
+        }
+    }
 
     /** Route ids from the most recent successful calculation; empty until stage 5. */
     @Volatile
@@ -589,6 +621,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         val listener = NavigationTraceListener(
             onRouteReady = { ids ->
                 lastRouteIds = ids
+                AmapDrivingPresentation.applyRoutePreview(naviView)
                 onRoutesCalculated?.invoke(ids)
             },
             // Completion -> the SAME stop path as the manual nav_stop fallback.
@@ -643,6 +676,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
 
     fun onCreate(savedInstanceState: Bundle?) {
         naviView.onCreate(savedInstanceState)
+        AmapDrivingPresentation.applyIdle(naviView)
     }
 
     fun onResume() {

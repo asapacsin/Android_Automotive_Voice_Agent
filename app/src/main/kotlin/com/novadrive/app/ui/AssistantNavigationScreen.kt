@@ -7,6 +7,7 @@ import android.widget.FrameLayout
 import com.novadrive.app.R
 import com.novadrive.app.nav.EmbeddedNavigation
 import com.novadrive.app.nav.NavigationHostGateway
+import com.novadrive.app.nav.NavigationPhase
 import com.novadrive.app.nav.RecenterOutcome
 import com.novadrive.app.nav.amap.AmapNaviViewHost
 import com.novadrive.app.ScreenControls
@@ -82,6 +83,11 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
         bottomBar.onRecenterClick = { recenterMap() }
         overlay.onOpenDeveloperSettings = { onOpenDeveloperSettings?.invoke() }
         choiceOverlay.bind(EmbeddedNavigation.shared(context))
+        uiScope.launch {
+            EmbeddedNavigation.shared(context).state().collect { phase ->
+                overlay.setDrivingChrome(phase == NavigationPhase.NAVIGATING)
+            }
+        }
     }
 
     /**

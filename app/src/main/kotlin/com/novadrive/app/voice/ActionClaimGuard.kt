@@ -1,5 +1,8 @@
 package com.novadrive.app.voice
 
+import com.novadrive.contracts.CapabilityCatalog
+import com.novadrive.contracts.CapabilityIds
+import com.novadrive.contracts.ProductCapabilities
 import com.novadrive.ingress.realtime.ResponseOutcome
 
 /**
@@ -144,13 +147,15 @@ class ActionClaimGuard {
             "路线", "第一", "第二", "第三", "第四", "第五", "最快", "最短", "免费", "红绿灯",
         )
         /**
-         * Requests with no tool. Measured 2026-09-17: the generic follow-up for 「音量调大。」 made the
-         * model call control_climate and raise the fan — a wrong action. These get a correction instead.
+         * Fallback heuristic only. Consulted after [UtteranceIntentResolver] and
+         * [CapabilityCatalog] have nothing to say. It is not capability truth — 电话 stays here
+         * so a registered `phone.place_call` can still prove the catalog wins.
+         *
+         * Measured 2026-09-17: the generic follow-up for 「音量调大。」 made the model call
+         * control_climate and raise the fan — a wrong action.
          */
-        private val UNSUPPORTED_WORDS = listOf(
+        private val FALLBACK_UNSUPPORTED_CUES = listOf(
             "音量", "声音", "大声", "小声", "车窗", "窗户", "天窗", "座椅", "电话", "后备箱", "车门", "车灯", "雨刷",
-            // media.next_track is `unsupported` in the registry and had no recogniser, so a skip
-            // request reached control_music and was answered as though a track had changed.
             "下一首", "上一首", "换一首", "换首歌", "切歌",
         )
 
@@ -195,23 +200,39 @@ class ActionClaimGuard {
         /**
          * A request this product can act on.
          *
-         * The word list alone is not enough: 「有点热」 names nothing in [CONTROL_WORDS] — no 空调,
-         * no 温度, no 调 — yet SPEC-006 handles it, and `ContextResolver` resolves it to a concrete
-         * adjustment. Measured on device 2026-09-20 with the list alone, the fallback told the
-         * driver 「刚才没听清楚」 about a sentence the app understands perfectly well.
+         * Structured intent + [catalog] first. The word list is not capability truth: 「打电话」
+         * maps to `phone.place_call` and is an action only while that id is supported.
          *
-         * One answer to "can we act on this", so the guard and the resolver cannot drift.
+         * 「有点热」 names nothing in [CONTROL_WORDS] — no 空调, no 温度, no 调 — yet SPEC-006
+         * handles it, and `ContextResolver` resolves it to a concrete adjustment.
          */
-        fun isControlRequest(text: String): Boolean =
-            CONTROL_WORDS.any { it in text } ||
+        fun isControlRequest(
+            text: String,
+            catalog: CapabilityCatalog = ProductCapabilities,
+        ): Boolean {
+            val intent = resolvedIntent(text)
+            if (intent != null) return catalog.isSupported(intent.capabilityId)
+            return CONTROL_WORDS.any { it in text } ||
                 ContextResolver.isImplicitComfortRequest(text) ||
-                // A relative request the context CAN resolve: 「再低一点」 after a temperature
-                // adjustment means temperature. Measured on device 2026-09-20 without this, the
-                // driver was told 「刚才没有听清楚」 for a request the app could have carried out.
                 ContextResolver.asksForClimateChange(text)
+        }
 
-        fun isUnsupportedRequest(text: String): Boolean =
-            UNSUPPORTED_WORDS.any { it in text } || isSpecificMediaRequest(text)
+        fun isUnsupportedRequest(
+            text: String,
+            catalog: CapabilityCatalog = ProductCapabilities,
+        ): Boolean {
+            val intent = resolvedIntent(text)
+            if (intent != null) return !catalog.isSupported(intent.capabilityId)
+            return fallbackUnsupportedHeuristic(text)
+        }
+
+        /** Exposed so tests can show the heuristic still contains 电话 while the catalog wins. */
+        fun fallbackUnsupportedHeuristic(text: String): Boolean =
+            FALLBACK_UNSUPPORTED_CUES.any { it in text }
+
+        private fun resolvedIntent(text: String): UtteranceIntent? =
+            UtteranceIntentResolver.product().resolve(text)
+                ?: if (isSpecificMediaRequest(text)) UtteranceIntent(CapabilityIds.MEDIA_LIBRARY) else null
 
         /**
          * A request for *particular* music. `media` is one bundled track with play/stop — there is

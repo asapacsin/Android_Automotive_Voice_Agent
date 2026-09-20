@@ -245,6 +245,8 @@ class DriverTurnTest {
         assertEquals(DriverTurn.Kind.REALTIME_INFO, DriverTurn.classify("今天天气怎么样"))
         assertEquals(DriverTurn.Kind.NO_TOOL_ACTION, DriverTurn.classify("把音量调大一点"))
         assertEquals(DriverTurn.Kind.ACTION, DriverTurn.classify("导航去珠海站"))
+        assertEquals(DriverTurn.Kind.ACTION, DriverTurn.classify("打电话给张三"))
+        assertEquals(DriverTurn.Kind.ACTION, DriverTurn.classify("拨打张三电话"))
         assertEquals(DriverTurn.Kind.CONVERSATION, DriverTurn.classify("你好，你是谁"))
     }
 

@@ -66,6 +66,10 @@ class SwitchingNavigationBackend(
 
     override fun stopNavigation(reason: String): Boolean = engine.stopNavigation(reason)
 
+    override fun showOverview(): Boolean = engine.showOverview()
+
+    override fun resumeTracking(): Boolean = engine.resumeTracking()
+
     override fun routeCandidates(): List<RouteCandidate> = engine.routeCandidates()
 
     override fun attachRouteCallbacks(onSuccess: (IntArray) -> Unit, onFailure: (Int) -> Unit) {
