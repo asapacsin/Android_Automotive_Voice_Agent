@@ -1,31 +1,31 @@
 {
-  "generated_at": "2026-09-21T23:21:05",
+  "generated_at": "2026-09-21T23:46:20",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "cae7b5c",
+    "commit": "9a2d9b0",
     "branch": "cursor/2026-09-21-acceptance-harness",
-    "subject": "Fix P31 emulator arrival and close NAV-E2E-ARRIVAL-001.",
+    "subject": "Refresh PROJECT_STATE after P31 arrival PASS.",
     "working_tree_clean": false,
-    "uncommitted_files": 1
+    "uncommitted_files": 7
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-21T23:02:36",
+    "collected_at": "2026-09-21T23:45:57",
     "total": {
-      "tests": 173,
+      "tests": 819,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "app": {
-        "tests": 31,
+        "tests": 592,
         "failures": 0,
         "errors": 0,
         "skipped": 0
       },
       "behavior-test": {
-        "tests": 18,
+        "tests": 103,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -121,24 +121,17 @@
     }
   ],
   "work_frontier": {
-    "AUTONOMOUS_ACTION_AVAILABLE": "YES",
-    "HUMAN_ACTION_REQUIRED": "NO",
-    "STOP_REASON": "NOT_STOPPING",
-    "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "PROJECT_STATE.json: records a6f968f, repository is at cae7b5c",
-    "actionable_count": 1,
+    "AUTONOMOUS_ACTION_AVAILABLE": "NO",
+    "HUMAN_ACTION_REQUIRED": "YES",
+    "STOP_REASON": "BLOCKED_ON_EXTERNAL_DEPENDENCY",
+    "BLOCKING_DEPENDENCY": "a person saying 「你好小诺」 at a stated distance with the car actually moving, which is",
+    "NEXT_ACTION": "NONE",
+    "actionable_count": 0,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "TRUE",
     "QUEUED_FOR_HUMAN": 9,
     "PHASE": "HUMAN_VALIDATION_READY",
     "candidates": [
-      {
-        "priority": 10,
-        "class": "stale state or harness defect",
-        "source": "state",
-        "item": "PROJECT_STATE.json",
-        "blocked_by": null
-      },
       {
         "priority": 11,
         "class": "next authorised backlog item",

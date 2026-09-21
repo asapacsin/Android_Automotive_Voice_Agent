@@ -101,7 +101,7 @@ Updated 2026-09-21 · 83 tests
 | PERM-CONTACTS-001 | permissions | Missing contacts permission is not reported as not-found | AUTONOMOUS | PASS | yes | 2026-09-20 TEST_REVIEW: AndroidContacts mapped READ_CONTACTS denial onto ContactMatchKi… |
 | PERM-DENY-001 | permissions | A revoked microphone permission fails honestly | AUTONOMOUS | PASS | yes | 2026-09-20: pm revoke RECORD_AUDIO -> voice start returns MicPermissionMissing, wake lo… |
 | SUITE-SCENARIO-001 | regression | The live scenario suite | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20, exit 0 |
-| SUITE-UNIT-001 | regression | The whole unit and architecture suite | AUTONOMOUS | PASS | yes | 2026-09-20: 737 tests, 0 failures |
+| SUITE-UNIT-001 | regression | The whole unit and architecture suite | AUTONOMOUS | PASS | yes | 2026-09-21: 819 tests, 0 failures, 0 skipped (post-P31 full suite --rerun-tasks) |
 | ABI-POLICY-001 | release | Must armeabi-v7a keep working? | HUMAN_DECISION | HUMAN_REQUIRED | no | — |
 | ABI-SIZE-001 | release | APK size per ABI | AUTONOMOUS | PASS | no | 2026-09-20: universal release APK 216.7 MB on disk, 228.0 MB uncompressed |
 | RELEASE-BUILD-001 | release | The release variant builds | AUTONOMOUS | PASS | yes | 2026-09-20: app-release-unsigned.apk, 227 MB |

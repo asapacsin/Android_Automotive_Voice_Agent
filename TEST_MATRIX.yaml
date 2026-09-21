@@ -502,10 +502,11 @@ tests:
     autonomous_evidence:
       - "NAV-SEARCH-001, NAV-PICK-001, NAV-CANCEL-001, NAV-CORRECT-001 PASS"
       - "the simulation benchmark drives arrival in a simulated world on every build"
-      - "the desk failure is code=3 for every destination, control included - not destination-specific"
+      - "NAV-E2E-ARRIVAL-001 PASS 2026-09-21: emulator drive to arrival via nav_proximity_arrival / nav_stopped reason=emulator_end; video D:/桌面/android_doc/nav_e2e_arrival_2026-09-21/nav_e2e_arrival.mp4"
+      - "Desk null-start code=3 mitigated for debug E2E by nav_desk_origin; live outdoor GNSS still required for real-GPS arrival"
     remaining_uncertainty:
-      - "route calculation and guidance with a real fix"
-      - "the guidance mic gate during a real drive"
+      - "route calculation and guidance with a real live GNSS fix (not desk_origin)"
+      - "the guidance mic gate during a real outdoor drive"
     returns: ["did it start", "was guidance audible", "did arrival leave a clean state"]
     related: [SPEC-005, ADR-007, P5, P13]
     last_run: {at: null, result: null}
@@ -1047,9 +1048,9 @@ tests:
     prerequisites: []
     procedure: ["scripts/dev.ps1 test"]
     pass_criteria: ["0 failures, 0 errors"]
-    evidence: ["2026-09-20: 737 tests, 0 failures"]
-    related: [P17, P18]
-    last_run: {at: 2026-09-20, result: PASS}
+    evidence: ["2026-09-21: 819 tests, 0 failures, 0 skipped (post-P31 full suite --rerun-tasks)"]
+    related: [P17, P18, P31]
+    last_run: {at: 2026-09-21, result: PASS}
 
   - id: SUITE-SCENARIO-001
     capability: regression

@@ -57,7 +57,8 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 - NAV-SEARCH-001, NAV-PICK-001, NAV-CANCEL-001, NAV-CORRECT-001 PASS
 - the simulation benchmark drives arrival in a simulated world on every build
-- the desk failure is code=3 for every destination, control included - not destination-specific
+- NAV-E2E-ARRIVAL-001 PASS 2026-09-21: emulator drive to arrival via nav_proximity_arrival / nav_stopped reason=emulator_end; video D:/桌面/android_doc/nav_e2e_arrival_2026-09-21/nav_e2e_arrival.mp4
+- Desk null-start code=3 mitigated for debug E2E by nav_desk_origin; live outdoor GNSS still required for real-GPS arrival
 
 **You will need:** the device outdoors with a real GPS fix; a destination a few minutes away
 
@@ -75,7 +76,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **Tell me back:** did it start; was guidance audible; did arrival leave a clean state
 
-**Still unknown until you do:** route calculation and guidance with a real fix; the guidance mic gate during a real drive
+**Still unknown until you do:** route calculation and guidance with a real live GNSS fix (not desk_origin); the guidance mic gate during a real outdoor drive
 
 *Release-blocking.*
 

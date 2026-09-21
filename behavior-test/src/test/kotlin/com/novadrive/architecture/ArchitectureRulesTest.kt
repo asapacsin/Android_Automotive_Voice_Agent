@@ -171,13 +171,13 @@ class ArchitectureRulesTest {
 
     @Test
     fun noFileGrowsWithoutNotice() {
-        // Budgets recorded 2026-09-18; AmapNaviViewHost raised 2026-09-21 after P31 arrival tracing
-        // landed in NavigationTraceListener / NavigationProgressTrace (host unchanged at ~767).
+        // Budgets recorded 2026-09-18; AmapNaviViewHost raised again 2026-09-21 after desk-origin
+        // + code-3 explicit-start retry (P31 E2E unblock) landed in the host (~883 lines).
         // Raising one is allowed — with a reason in the commit
         // message. See docs/AGENT_MAINTENANCE.md step 4 and docs/TECH_DEBT.md D-1.
         val budgets = mapOf(
             "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt" to 900,
-            "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapNaviViewHost.kt" to 780,
+            "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapNaviViewHost.kt" to 900,
             "app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt" to 450,
             "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt" to 500,
             "app/src/main/kotlin/com/novadrive/app/nav/EmbeddedNavigationController.kt" to 500,
