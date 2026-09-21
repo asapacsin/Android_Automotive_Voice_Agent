@@ -53,7 +53,7 @@ registry says so — every autonomous test settled, every remaining case owned a
 decision quantified, and two consecutive clean discovery/review passes. Check it with
 `python scripts/test_matrix.py --gate`, which prints every reason the gate is shut.
 
-The rules are [harness/CONSTITUTION.md](harness/CONSTITUTION.md) 12 and 17–19; the phase model is
+The rules are [harness/CONSTITUTION.md](harness/CONSTITUTION.md) 12 and 17–20; the phase model is
 [harness/PHASES.md](harness/PHASES.md); the procedure is [skills/continue.md](skills/continue.md).
 
 ## Where things are
