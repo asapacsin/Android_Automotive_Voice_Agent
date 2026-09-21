@@ -42,6 +42,23 @@ failure · cancellation race · duplicate execution. Say what the driver gets in
 What a person must be able to reconstruct from a log, and what must **never** appear in one
 ([I-8](../docs/INVARIANTS.md): no coordinate, address or transcript).
 
+## Evidence boundary
+
+For every criterion that claims a lifecycle, end-to-end flow, baseline, arrival, completion or other
+multi-step outcome, declare these **before implementation**:
+
+- **Start boundary:** the state/event where the claimed flow begins.
+- **Terminal oracle:** the observable event/state that proves the whole claimed flow completed.
+- **Abort conditions:** manual stop, timeout, recording end, crash, environment reset, unexpected
+  transition, or any domain-specific condition that prevents the terminal oracle from being seen.
+
+Evidence before the terminal oracle proves only the prefix that was observed. It may pass narrower
+subcriteria; it may not close the parent flow. A manual stop is not a successful terminal state unless
+manual stop itself is the behaviour under test. Lifecycle entries in `TEST_MATRIX.yaml` use
+`claim_scope: LIFECYCLE`, `terminal_oracle`, `abort_conditions`, `terminal_result`, and
+`terminal_evidence`; the registry validator rejects a lifecycle PASS whose terminal state was not
+observed.
+
 ## Acceptance criteria
 
 Executable wherever feasible, and separated by what each one actually proves. An unchecked box here

@@ -21,6 +21,11 @@ Before you consider a change complete: `.\gradlew.bat test --rerun-tasks :app:as
 device evidence for anything touching audio, the map or lifecycle (`ACCEPTANCE_TESTS.md` says what
 each level may claim). A green build is not evidence that anything works.
 
+**A claim may not be wider than its evidence.** For a lifecycle/E2E/baseline/arrival claim, define the
+terminal oracle first and observe it before PASS. Manual stop, timeout, recording end, crash, reset or
+an unexpected transition before that oracle leaves the parent claim PARTIAL/FAIL even if intermediate
+checks passed. See Constitution rule 20 and `skills/verify.md`.
+
 Starting a session? Follow [skills/start.md](skills/start.md). Finishing a *task*?
 [skills/handoff.md](skills/handoff.md) — and then keep going, because finishing a task is not
 finishing a run.
@@ -53,7 +58,7 @@ registry says so — every autonomous test settled, every remaining case owned a
 decision quantified, and two consecutive clean discovery/review passes. Check it with
 `python scripts/test_matrix.py --gate`, which prints every reason the gate is shut.
 
-The rules are [harness/CONSTITUTION.md](harness/CONSTITUTION.md) 12 and 17–19; the phase model is
+The rules are [harness/CONSTITUTION.md](harness/CONSTITUTION.md) 12 and 17–20; the phase model is
 [harness/PHASES.md](harness/PHASES.md); the procedure is [skills/continue.md](skills/continue.md).
 
 ## Where things are

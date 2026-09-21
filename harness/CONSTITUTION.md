@@ -75,3 +75,15 @@ about how work is done.
     take, measure the alternatives. "Should we drop armeabi-v7a?" is not a question anyone can
     answer; the sizes, the split behaviour and the device's own ABI are. An item with
     `owner: HUMAN_DECISION` and nothing under `quantified:` fails validation.
+
+20. **`CLAIM_SCOPE_MUST_MATCH_EVIDENCE`.** Evidence proves only the boundary it actually observed.
+    A point observation may close a point claim; it may not be promoted into a lifecycle,
+    end-to-end, baseline or completion claim merely because every intermediate observation was good.
+    Any claim that spans a flow must declare its start boundary, an observable **terminal oracle**,
+    and the conditions that abort the run. The parent claim is PASS only when that terminal oracle
+    is observed and recorded. A manual stop, timeout, recording end, crash, environment reset, or
+    unexpected transition before the terminal oracle leaves the parent claim PARTIAL/FAIL (or
+    unearned), even when lower-level subcriteria pass. Manual stop is success only when manual stop
+    itself is the behaviour under test. Prefix evidence remains valid for the narrower prefix claim.
+    *Procedure:* [../skills/verify.md](../skills/verify.md). *Schema enforcement:*
+    `scripts/test_matrix.py`. *Guarded by:* `EvidenceClosurePolicyTest`.

@@ -81,6 +81,13 @@ reconciliation. "Supports X" is not a criterion when an assertion can say what X
 works. A criterion whose state column says `not built` or `not earned` is picked up automatically by
 `scripts/discover_work.py`, so leaving it honest is what keeps it from being forgotten.
 
+A lifecycle, end-to-end, baseline, arrival or completion criterion is not compiled until its
+**terminal oracle** and abort conditions are written down. Intermediate success is prefix evidence,
+not proof of the parent flow. Manual stop, timeout, recording end or an unexpected transition before
+the terminal oracle cannot close the parent criterion. This is
+[CONSTITUTION.md](../harness/CONSTITUTION.md) rule 20 and is enforced for lifecycle registry entries by
+`scripts/test_matrix.py`.
+
 ### Finishing one SPEC must not hide another
 
 Closing a SPEC does not close: unfinished criteria in older SPECs · implemented-but-unwired code ·
