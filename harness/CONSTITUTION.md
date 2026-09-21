@@ -75,3 +75,17 @@ about how work is done.
     take, measure the alternatives. "Should we drop armeabi-v7a?" is not a question anyone can
     answer; the sizes, the split behaviour and the device's own ABI are. An item with
     `owner: HUMAN_DECISION` and nothing under `quantified:` fails validation.
+20. **A verdict may not claim more than its scope and terminal evidence earn.** Every scenario
+    declares `COMPONENT`, `INTERMEDIATE_FLOW` or `END_TO_END`, and a result claims at most its
+    declared scope. END_TO_END PASS requires the declared terminal success states observed, the
+    run ended naturally, and no unexplained regressions — a manual stop never satisfies a
+    natural termination requirement, and INCOMPLETE is never PASS. Checked by
+    `python scripts/test_matrix.py --validate` and `--verdict`; the framework is
+    `scripts/acceptance.py`. Added 2026-09-21 after the 0.6.4 run reported a navigation
+    baseline PASS without ever reaching the destination
+    ([proposal](proposals/HARNESS_PROPOSAL_001-verdict-scope.md)).
+    Hardened the same day: the capability registry owns each requirement's `required_scope`,
+    and no test below that scope may cover it (scope laundering fails validation); device
+    flow/E2E evidence must cite artifacts (`log:`/`video:`/`xml:`/`artifact:`), because a
+    claim about evidence is not a reference to evidence
+    ([proposal](proposals/HARNESS_PROPOSAL_002-required-scope-provenance.md)).

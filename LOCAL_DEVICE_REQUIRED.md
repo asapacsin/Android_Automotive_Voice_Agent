@@ -4,9 +4,11 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 
 Every case below **requires a physical Android device** (and usually a real cabin / GPS / human voice). Cloud agents must not block on these: record them here and continue autonomous work.
 
-Autonomous cloud work for the current frontier is settled. Run this batch locally in one sitting.
+> Autonomous work may still be open. Prefer finishing cloud-verifiable work first; this file is still the device queue.
+>
+> - NAV-E2E-ARRIVAL-001 is AUTONOMOUS and FAIL - run it or fix it
 
-**13 LOCAL_DEVICE_REQUIRED item(s).**
+**14 LOCAL_DEVICE_REQUIRED item(s).**
 
 Install tip (from a cloud-built APK, when one exists):
 
@@ -367,32 +369,78 @@ adb logcat -s NovaVoice:D
 
 *Release-blocking.*
 
-### LOCAL_DEVICE_REQUIRED — NAV-SIM-QA-001 — Owner wants a reusable navigation simulation clip for QA
+### LOCAL_DEVICE_REQUIRED — NAV-SIM-QA-001 — Owner wants a reusable navigation screen-recording movie for QA
 
 **Tag:** `LOCAL_DEVICE_REQUIRED`
 
-**Why this needs you.** Recording or choosing a drive clip is owner media; large videos stay out of git
+**Why this needs you.** Needs a connected phone for embedded nav + screenrecord; large mp4 stays out of git
 
 **Already established without you:**
 
-- SimulatedNavigationWorld + evaluation Level A already drive arrival without GPS
-- NAV-DRIVE-001 remains the outdoor gate
+- 2026-09-21: nav_qa_to_shizimen.mp4 (~45s, 1220x2712) pulled to D:\桌面\android_doc\
+- PNGs: destination list for 十字门 + route picker (推荐 4.8km/10min)
+- navigate DEBUG_TOOL Accepted; nav_resolve_candidates count=5
+- SimulatedNavigationWorld + evaluation Level A remain code gates
+- screenrecord needs display ON (INVALID_LAYER_STACK when OFF)
 
-**You will need:** Level A simulation benchmark already green on every build
+**You will need:** test phone on ADB; embedded Amap can open a route; D:\桌面\android_doc\ writable
 
 **What to do:**
 
-1. optionally record a short navigation run on device or reuse an existing local clip under android_doc (do not commit large files)
-2. use that clip for repeated UI+voice checks
-3. keep one real outdoor drive for final NAV-DRIVE-001 only
+1. start Nova Drive embedded navigation (preferred destination context: 十字門)
+2. adb shell screenrecord /sdcard/nav_qa_to_shizimen.mp4 (or device recorder)
+3. adb pull to D:\桌面\android_doc\nav_qa_to_shizimen.mp4
+4. owner watches the movie in that folder
 
 **It passes if:**
 
-- a local clip path is noted for the team, or the owner accepts Level A sim as enough for repeat QA
+- mp4 exists under D:\桌面\android_doc\ and shows navigation UI
 
-**Tell me back:** clip path or 'accept Level A only'
+**Tell me back:** owner watched? pass/fail / re-record needed
 
-**Still unknown until you do:** whether Level A sim alone is enough for the owner's QA cadence
+**Still unknown until you do:** whether this clip is enough for repeat QA cadence vs needing active guidance / arrival footage
+
+### LOCAL_DEVICE_REQUIRED — VOICE-STYLE-001 — Prefer a younger cute female voice (符玄-like)
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Ear check that Flex voice 4196 (now product default) sounds youthful/cute enough
+
+**Already established without you:**
+
+- Owner chose option B id 4196 on 2026-09-21
+- BaiduFlexVoices.PREFERRED_YOUTHFUL_FEMALE=4196 is product DEFAULT_VOICE
+- Developer settings spinner + free-text voice id
+- BaiduFlexClient records confirmedVoice from session.updated; falls back to default if rejected
+- Unit: BaiduFlexVoicesTest, BaiduFlexClientTest sessionUpdatedRecordsConfirmedVoiceMatchingRequest
+
+**Measured, so this is a choice and not a question:**
+
+- the app falls back to voice id default when a non-default id is refused
+- AUTO sample rate maps Flex to 24 kHz; pitch perception is ear-only
+
+**Options:**
+
+- A. Keep Flex default (superseded).
+- B. 4196 度清影-甜美女声 — CHOSEN 2026-09-21.
+- C. Stay on default for release (superseded).
+
+**You will need:** APK with DEFAULT_VOICE=4196; live Flex session
+
+**What to do:**
+
+1. Save/start voice session (default should be 4196)
+2. Test Connection should show voice requested=4196 and voice confirmed=4196
+3. Speak a short turn and listen
+
+**It passes if:**
+
+- session.updated confirms 4196
+- owner accepts timbre (or names another catalog id)
+
+**Tell me back:** pass/fail on timbre; alternate id if reject
+
+**Still unknown until you do:** whether 4196 sounds youthful/cute enough in a real cabin vs needing another catalog id
 
 ---
 

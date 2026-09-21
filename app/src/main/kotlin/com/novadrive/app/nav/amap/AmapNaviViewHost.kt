@@ -4,8 +4,10 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.view.Gravity
 import android.view.MotionEvent
 import android.widget.FrameLayout
+import kotlin.math.roundToInt
 import com.amap.api.maps.AMapUtils
 import com.amap.api.maps.CameraUpdateFactory
 import com.amap.api.maps.CoordinateConverter
@@ -62,11 +64,14 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
     private var lastPlatformRaw: LocationFix? = null
     private var cameraRetries = 0
     private var mapLoadedWatchAttached = false
+    private val speedHud = DrivingSpeedHudView(context)
+    private var reportedSpeedKmh = 0
+    private var fallbackSpeedKmh = 0
+    private var cameraLimitKmh = 0
+    private var facilityLimitKmh = 0
+    private var lastSpeedHud: DrivingSpeedHud.Snapshot? = null
 
     private companion object {
-        /** Emulator-only: fast enough to reach a nearby destination within a test cycle. */
-        const val EMULATOR_SPEED_KMH = 120
-
         /** Street level: close enough to recognise where you are, wide enough to orient. */
         const val IDLE_ZOOM = 16f
 
@@ -89,6 +94,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         naviView.setAMapNaviViewListener(AmapDrivingPresentation.listener { stopNavigation("ui_exit") })
         AmapDrivingPresentation.applyIdle(naviView)
         addView(naviView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        // Speed chip is attached by AssistantNavigationScreen above the assistant overlay.
     }
 
     /**
@@ -494,7 +500,10 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
      * is the only way to prove stages 7-8 render without physically driving.
      * [NaviType.GPS] is the real mode.
      */
-    fun startNavigation(emulator: Boolean): Boolean {
+    fun startNavigation(
+        emulator: Boolean,
+        speedKmh: Int = EmulatorNaviSpeed.DEFAULT_KMH,
+    ): Boolean {
         val navi = this.navi
         if (navi == null) {
             DebugVoiceLog.log("nav_start accepted=false reason=no_navi")
@@ -514,11 +523,14 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
             }
         }
         if (emulator) {
-            // Without this the emulator drives at the SDK default, so even a nearby
-            // destination takes minutes and the arrival/completion hook never gets
-            // exercised in a test cycle. Test-only concern: real GPS mode ignores it.
-            runCatching { navi.setEmulatorNaviSpeed(EMULATOR_SPEED_KMH) }
-            DebugVoiceLog.log("nav_emulator_speed kmh=$EMULATOR_SPEED_KMH")
+            // Posted limits come from Amap cameras/roads. This is only how fast the
+            // fake car moves. Default 50 km/h: overspeed on 30, legal on 80.
+            val speed = EmulatorNaviSpeed.clamp(speedKmh)
+            fallbackSpeedKmh = speed
+            runCatching { navi.setEmulatorNaviSpeed(speed) }
+            DebugVoiceLog.log("nav_emulator_speed kmh=$speed")
+        } else {
+            fallbackSpeedKmh = 0
         }
         val mode = if (emulator) NaviType.EMULATOR else NaviType.GPS
         disableBrowseLocationLayer()
@@ -527,6 +539,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         if (accepted) {
             synchronized(navLock) { navigationActive = true }
             AmapDrivingPresentation.lockCar(naviView)
+            refreshSpeedHud()
         } else if (!isNavigating) {
             enableMyLocation()
             AmapDrivingPresentation.applyIdle(naviView)
@@ -563,6 +576,11 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
             }
             navigationActive = false
         }
+        fallbackSpeedKmh = 0
+        cameraLimitKmh = 0
+        facilityLimitKmh = 0
+        reportedSpeedKmh = 0
+        refreshSpeedHud()
         val navi = this.navi
         if (navi == null) {
             DebugVoiceLog.log("nav_stopped reached=false reason=$reason no_navi=true")
@@ -632,12 +650,57 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
                 val fix = location.toFix()
                 checkConversion(fix)
                 applyFix(fix, source = "sdk")
+                reportedSpeedKmh = location.speed.roundToInt()
+                refreshSpeedHud()
+            },
+            onCameraLimits = { cameras ->
+                cameraLimitKmh = DrivingSpeedHud.postedLimitKmh(cameras)
+                refreshSpeedHud()
+            },
+            onFacilityLimit = { limit ->
+                facilityLimitKmh = limit
+                refreshSpeedHud()
             },
         )
         traceListener = listener
         runCatching { navi?.addAMapNaviListener(listener) }
         DebugVoiceLog.log("nav_listener_registered")
     }
+
+    private fun refreshSpeedHud() {
+        val snap = DrivingSpeedHud.snapshot(
+            navigating = isNavigating,
+            reportedSpeedKmh = reportedSpeedKmh,
+            fallbackSpeedKmh = fallbackSpeedKmh,
+            limitKmh = DrivingSpeedHud.mergeLimit(cameraLimitKmh, facilityLimitKmh),
+        )
+        if (snap == lastSpeedHud) return
+        lastSpeedHud = snap
+        post { speedHud.bind(snap) }
+        if (snap.visible) {
+            DebugVoiceLog.log(
+                "nav_speed kmh=${snap.speedKmh} limitKmh=${snap.limitKmh} over=${if (snap.overspeed) 1 else 0}",
+            )
+        }
+    }
+
+    /**
+     * Must sit above [com.novadrive.app.ui.AssistantOverlayView]. The overlay is a full-screen
+     * sibling of this host, so a child of the host would be painted underneath it.
+     */
+    fun attachSpeedHud(parent: FrameLayout) {
+        (speedHud.parent as? android.view.ViewGroup)?.removeView(speedHud)
+        parent.addView(
+            speedHud,
+            LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+                gravity = Gravity.BOTTOM or Gravity.START
+                leftMargin = dp(12)
+                bottomMargin = dp(76)
+            },
+        )
+    }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     /**
      * SDK fixes are already GCJ-02, so no conversion.

@@ -39,6 +39,7 @@ tests:
     name: MSC engine accepts app-fed audio
     purpose: "ADR-006 chose shared capture; the engine must honour AUDIO_SOURCE=-1 rather than opening its own recorder"
     type: device
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -60,6 +61,7 @@ tests:
     name: Synthesized 你好小诺 wakes the assistant
     purpose: "The wake model matches the phrase and the handover to a session works"
     type: device
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -78,6 +80,7 @@ tests:
     name: No false wakes with music playing
     purpose: "A false accept interrupts a driver who never asked, which is worse than a missed wake"
     type: measurement
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -95,6 +98,7 @@ tests:
     name: Moving-cabin wake-word recognition
     purpose: "Whether a real voice wakes the assistant in a real cabin, which is the only claim that matters to a driver"
     type: device
+    scope: COMPONENT
     owner: HUMAN_PHYSICAL
     status: HUMAN_REQUIRED
     release_blocking: true
@@ -127,6 +131,7 @@ tests:
     name: A claim no tool performed is never spoken
     purpose: "I-1 - a sentence is not evidence. The driver must not be told the car did something it did not do"
     type: unit
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -144,6 +149,7 @@ tests:
     name: A misheard driver is not told the car acted
     purpose: "Guards keyed on the transcript go blind when the transcript is wrong, which a noisy cabin guarantees"
     type: device
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -159,6 +165,7 @@ tests:
     name: One correction per response, not two
     purpose: "Two owners correcting the same response told the model twice and ran a tool twice"
     type: integration
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: false
@@ -176,6 +183,7 @@ tests:
     name: A song we cannot play is refused even when misheard
     purpose: "P22 returned through a mis-transcription: a style request played the bundled track and was called a success"
     type: device
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -191,6 +199,7 @@ tests:
     name: No invented weather, traffic or news
     purpose: "There is no source on this car for any of it, so any answer containing one is fabricated by definition"
     type: scenario
+    scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -206,6 +215,7 @@ tests:
     name: An explicit request to lie is not obeyed
     purpose: "The driver asks for a false confirmation; the product must refuse or stop the claim reaching the cabin"
     type: scenario
+    scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -223,6 +233,7 @@ tests:
     name: An address is resolved before it is stored
     purpose: "Storing an unresolvable string moves the failure to the moment the driver says 回家 while driving"
     type: device
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: false
@@ -238,6 +249,7 @@ tests:
     name: 回家 resolves from the saved place, not a POI search
     purpose: "Searching for 家 finds shops and strangers' addresses"
     type: scenario
+    scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
     status: PASS
     release_blocking: false
@@ -253,6 +265,7 @@ tests:
     name: An unset home is admitted, not guessed
     purpose: "Being routed somewhere confidently wrong takes longer to notice than being told nothing"
     type: device
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -270,6 +283,7 @@ tests:
     name: One match is never dialled on the first turn
     purpose: "Every other tool can be undone by saying the opposite; a wrong call has already rung someone"
     type: unit
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -285,6 +299,7 @@ tests:
     name: Two people with one name are offered, not chosen between
     purpose: "confirmed=true confirms a person, and nobody ever said which 张三"
     type: unit
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -300,6 +315,7 @@ tests:
     name: The phone number never reaches the model
     purpose: "It would end up in a transcript, and the driver already knows their own contacts"
     type: unit
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -315,6 +331,7 @@ tests:
     name: A car that cannot call says so
     purpose: "Starting the dialler and reporting success would be I-1's exact failure"
     type: device
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -330,6 +347,7 @@ tests:
     name: A call request is an action, not an unsupported refusal
     purpose: "B-018 added place_call while 电话 stayed in a keyword list that was treated as capability truth"
     type: unit
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -353,6 +371,7 @@ tests:
     name: A confirmed call reaches a real handset
     purpose: "The only thing that proves calling works is a phone ringing"
     type: device
+    scope: END_TO_END
     owner: HUMAN_ACCOUNT
     status: HUMAN_REQUIRED
     release_blocking: true
@@ -368,6 +387,9 @@ tests:
     pass_criteria:
       - "on confirmation, the correct number is dialled exactly once"
       - "on refusal, nothing is dialled"
+    terminal_success: [correct_number_dialled, handset_rings]
+    terminal_failure: [wrong_number_dialled, dial_on_refusal, crash]
+    covers: [phone.place_call]
     autonomous_evidence:
       - "CALL-CONFIRM-001, CALL-AMBIG-001, CALL-PRIVACY-001 PASS"
       - "CALL-NOSIM-001 PASS - the no-telephony refusal is honest"
@@ -387,6 +409,7 @@ tests:
     name: A destination produces candidates and does not start navigating
     purpose: "Navigation must not begin before the driver picks, and the assistant must not say it has"
     type: scenario
+    scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -402,6 +425,7 @@ tests:
     name: 第二个 picks from the on-screen list
     purpose: "The driver's ordinal must reach choose_navigation_option, not a spoken acknowledgement"
     type: scenario
+    scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -417,6 +441,7 @@ tests:
     name: 算了 really cancels
     purpose: "Agreeing out loud while the picker stays open is the failure this catches"
     type: scenario
+    scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -432,6 +457,7 @@ tests:
     name: A mid-flow destination change replaces the list
     purpose: "Interruption - the driver changes their mind while choosing"
     type: scenario
+    scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
     status: PASS
     release_blocking: false
@@ -447,6 +473,7 @@ tests:
     name: A route calculates and guides to arrival
     purpose: "Every navigation test above stops at the picker; nothing has driven a route to the end"
     type: device
+    scope: END_TO_END
     owner: HUMAN_PHYSICAL
     status: HUMAN_REQUIRED
     release_blocking: true
@@ -460,6 +487,9 @@ tests:
       - "nav_navigation_started"
       - "guidance is spoken during the route"
       - "arrival returns the app to a clean state"
+    terminal_success: [arrival_callback, arrival_handling, automatic_session_end]
+    terminal_failure: [terminal_regression, manual_stop_before_arrival, crash, wrong_destination]
+    covers: [navigation.arrival_lifecycle]
     autonomous_evidence:
       - "NAV-SEARCH-001, NAV-PICK-001, NAV-CANCEL-001, NAV-CORRECT-001 PASS"
       - "the simulation benchmark drives arrival in a simulated world on every build"
@@ -476,6 +506,7 @@ tests:
     name: 「开始导航」 enters ACTIVE_DRIVING_NAVIGATION, not route preview
     purpose: "P26: startNavi succeeded while the camera stayed in browse/preview"
     type: unit
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -495,6 +526,7 @@ tests:
     name: During GPS navigation the vehicle stays in lock-car tracking
     purpose: "The vehicle must not travel across an unmoving north-up map"
     type: device
+    scope: COMPONENT
     owner: HUMAN_PHYSICAL
     status: HUMAN_REQUIRED
     release_blocking: true
@@ -517,6 +549,7 @@ tests:
     name: Vehicle heading rotates the navigation map
     purpose: "CAR_UP_MODE must actually turn the map with the vehicle"
     type: device
+    scope: COMPONENT
     owner: HUMAN_PHYSICAL
     status: HUMAN_REQUIRED
     release_blocking: true
@@ -535,6 +568,7 @@ tests:
     name: Active route shows traffic-state colouring when Amap supplies it
     purpose: "A single static route colour is not traffic"
     type: device
+    scope: COMPONENT
     owner: HUMAN_PHYSICAL
     status: HUMAN_REQUIRED
     release_blocking: true
@@ -549,11 +583,70 @@ tests:
     related: [P26, SPEC-007]
     last_run: {at: null, result: null}
 
+  - id: NAV-MID-ROUTE-001
+    capability: navigation
+    name: Mid-route navigation baseline without countdown entitlement
+    purpose: "Launch, route, guidance, light icons and speed HUD work mid-route; arrival is NOT claimed here"
+    type: device
+    scope: INTERMEDIATE_FLOW
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: ["0.6.4-nav-baseline installed", "network"]
+    procedure: ["nav_route 十字门", "nav_start emulator (50 km/h)", "drive ~5 min", "nav_stop"]
+    pass_criteria: ["nav_start accepted=true", "guidance speaks", "light icons reported", "overspeed ring on 40-limit camera at 50 km/h", "no crash", "countdown seconds not required"]
+    evidence: ["2026-09-21: nav_traffic_countdown status=BLOCKED_EXTERNAL_AMAP_ENTITLEMENT", "nav_start accepted=true mode=2 route 9498 m; 4-7 nav_play_ring; ~20 guidance starts; nav_stopped reached=true", "nav_baseline_0_6_4.mp4 (~5 min, 72 MB) in D:/桌面/android_doc"]
+    acceptance:
+      - {criterion: navigation_start, required: true, observed: true, evidence: "log:NovaVoice/nav_start accepted=true mode=2"}
+      - {criterion: route_resolved, required: true, observed: true, evidence: "log:NovaVoice/nav_resolve ok 珠海十字门CBD + nav_calc_success routes=3 + nav_active_route meters=9498"}
+      - {criterion: guidance_progress, required: true, observed: true, evidence: "log:NovaVoice/nav_guidance_play_start x~20 over 12:29-12:33"}
+      - {criterion: traffic_light_icons, required: true, observed: true, evidence: "log:NovaVoice/nav_remain_lights + icons in video:nav_baseline_0_6_4.mp4"}
+      - {criterion: speed_hud_per_road_limit, required: true, observed: true, evidence: "log:NovaVoice/nav_camera_ahead limitKmh=40 + nav_speed over=1 + nav_play_ring x4-7"}
+      - {criterion: no_crash, required: true, observed: true, evidence: "log:NovaVoice/nav_stopped reached=true reason=manual; log:logcat no FATAL 12:28-12:34"}
+      - {criterion: countdown_absence_graceful, required: true, observed: true, evidence: "log:NovaVoice/nav_traffic_countdown status=BLOCKED_EXTERNAL_AMAP_ENTITLEMENT"}
+    ended_by: manual
+    covers: [navigation.guidance_voice]
+    related: [P26, P31, SPEC-007]
+    last_run: {at: 2026-09-21, result: PASS}
+
+  - id: NAV-E2E-ARRIVAL-001
+    capability: navigation
+    name: Navigation reaches the destination and terminates by arrival
+    purpose: "Full task E2E: start, follow, arrival callback, arrival handling, automatic session end"
+    type: device
+    scope: END_TO_END
+    owner: AUTONOMOUS
+    status: FAIL
+    release_blocking: true
+    prerequisites: ["network", "emulator or GPS drive to a reachable destination"]
+    procedure: ["nav_route 十字门", "nav_start emulator", "follow to arrival without manual stop", "observe arrival lifecycle"]
+    pass_criteria: ["arrival callback observed", "app arrival handling executed", "session ends automatically", "no terminal regression"]
+    evidence: ["2026-09-21: nav_baseline_0_6_4.mp4 never reached the destination; remaining distance jumped ~15 m -> ~3.7 km near the end and navigation continued; run ended by manual nav_stop"]
+    terminal_success: [arrival_callback, arrival_handling, automatic_session_end]
+    terminal_failure: [terminal_regression, manual_stop_before_arrival, crash, wrong_destination]
+    terminal_observed: []
+    failure_observed: [terminal_regression, manual_stop_before_arrival]
+    acceptance:
+      - {criterion: navigation_start, required: true, observed: true, evidence: "log:NovaVoice/nav_start accepted=true mode=2"}
+      - {criterion: route_resolved, required: true, observed: true, evidence: "log:NovaVoice/nav_active_route meters=9498"}
+      - {criterion: guidance_progress, required: true, observed: true, evidence: "log:NovaVoice/nav_guidance_play_start x~20"}
+      - {criterion: near_destination, required: true, observed: true, evidence: "video:nav_baseline_0_6_4.mp4@~end remaining ~15 m observed by owner"}
+      - {criterion: arrival_callback, required: true, observed: false, evidence: "log:NovaVoice/* polled 12:28-12:34: no nav_arrived / nav_emulator_end before manual stop"}
+      - {criterion: arrival_handling, required: true, observed: false, evidence: "log:NovaVoice/* 12:28-12:34: no arrival handling ran"}
+      - {criterion: automatic_session_end, required: true, observed: false, evidence: "log:NovaVoice/nav_stopped reached=true reason=manual: ended by hand, not arrival"}
+      - {criterion: no_terminal_regression, required: true, observed: false, evidence: "video:nav_baseline_0_6_4.mp4@~end remaining ~15 m -> ~3.7 km; navigation continued"}
+    ended_by: manual
+    regressions: ["remaining distance ~15 m -> ~3.7 km near destination, navigation continued (nav_baseline_0_6_4.mp4)"]
+    covers: [navigation.arrival_lifecycle]
+    related: [P26, P31, SPEC-007]
+    last_run: {at: 2026-09-21, result: FAIL}
+
   - id: NAV-UI-005
     capability: navigation
     name: Next-maneuver guidance is visible
     purpose: "Native HUD must show the upcoming turn"
     type: device
+    scope: COMPONENT
     owner: HUMAN_PHYSICAL
     status: HUMAN_REQUIRED
     release_blocking: true
@@ -573,6 +666,7 @@ tests:
     name: Lane or junction enlarge appears when Amap supplies it
     purpose: "Do not rebuild Gaode junction UI; confirm the native one can show"
     type: device
+    scope: COMPONENT
     owner: HUMAN_PHYSICAL
     status: HUMAN_REQUIRED
     release_blocking: false
@@ -593,6 +687,7 @@ tests:
     name: Overview then return restores vehicle tracking
     purpose: "Overview is allowed; it must not trap the camera in full-route fit"
     type: device
+    scope: INTERMEDIATE_FLOW
     owner: HUMAN_PHYSICAL
     status: HUMAN_REQUIRED
     release_blocking: true
@@ -615,6 +710,7 @@ tests:
     name: Spoken 「开始导航」 enters the same driving state as a route tap
     purpose: "Voice must not have a parallel start path that skips presentation"
     type: unit
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -630,6 +726,7 @@ tests:
     name: Arrival leaves ACTIVE_DRIVING_NAVIGATION
     purpose: "Idle browse must return after arrival; driving HUD must not stick"
     type: unit
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -645,6 +742,7 @@ tests:
     name: Route-selection voice commands are unchanged
     purpose: "Driving HUD must not break 第二条 / 最快的 / 最短的 / 免费的 / 红绿灯少的"
     type: unit
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -662,6 +760,7 @@ tests:
     name: An explicit temperature is set
     purpose: "The direct case: 把空调调到22度 must change the cabin, not be acknowledged"
     type: scenario
+    scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -677,6 +776,7 @@ tests:
     name: 有点热 produces a real adjustment
     purpose: "The vague case. Understanding is not execution - a sentence about cooling is not cooling"
     type: scenario
+    scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -692,6 +792,7 @@ tests:
     name: 关闭空调 turns it off
     purpose: "Chinese stop verbs were once unbound and 关闭 did nothing (P2)"
     type: scenario
+    scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -707,6 +808,7 @@ tests:
     name: An explicit fan level is set
     purpose: "Temperature had a scenario; fan is the other dimension SPEC-006 resolves, and had no registry case"
     type: unit
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: false
@@ -726,6 +828,7 @@ tests:
     name: 再凉一点 continues the previous adjustment
     purpose: "The model has no cross-turn memory; this only works if the app carried the referent"
     type: scenario
+    scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -741,6 +844,7 @@ tests:
     name: 再低一点 with no history asks which
     purpose: "True ambiguity: 低 could be temperature or fan, and guessing right is the same coin toss next time"
     type: scenario
+    scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -756,6 +860,7 @@ tests:
     name: 播放音乐 plays the bundled track
     purpose: "The generic request is exactly what the one bundled track satisfies"
     type: scenario
+    scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
     status: PASS
     release_blocking: false
@@ -771,6 +876,7 @@ tests:
     name: A named song is refused, not substituted
     purpose: "Playing the bundled track for a named song means ok=true says you got what you asked for"
     type: scenario
+    scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -788,6 +894,7 @@ tests:
     name: 闭嘴 stops speech without ending the session
     purpose: "Silence is not sleep; the next command must still be executed"
     type: scenario
+    scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
     status: PASS
     release_blocking: false
@@ -803,6 +910,7 @@ tests:
     name: 休眠 reaches SLEEP
     purpose: "Sleep must be a state change, not an acknowledgement"
     type: scenario
+    scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
     status: PASS
     release_blocking: false
@@ -818,6 +926,7 @@ tests:
     name: Inactivity releases the microphone and then the socket
     purpose: "P17: the mic used to stream to Baidu for the whole session; STANDBY and DEEP_IDLE are the fix"
     type: unit
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -837,6 +946,7 @@ tests:
     name: Room noise does not become a turn
     purpose: "Environmental noise once produced a spoken conversational turn (P20)"
     type: scenario
+    scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -852,6 +962,7 @@ tests:
     name: A cut connection recovers without the driver noticing
     purpose: "A product that needs the driver to notice a dropped socket and retry is not usable while driving"
     type: scenario
+    scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -867,6 +978,7 @@ tests:
     name: A dead session stops showing that it is listening
     purpose: "state=ERROR with listening=ACTIVE showed the driver an assistant listening to nothing"
     type: device
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -882,6 +994,7 @@ tests:
     name: Response latency from end of speech
     purpose: "A voice assistant that feels slow is not used"
     type: measurement
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: false
@@ -899,6 +1012,7 @@ tests:
     name: The whole unit and architecture suite
     purpose: "Every guard, boundary and policy in one gate"
     type: unit
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -914,6 +1028,7 @@ tests:
     name: The live scenario suite
     purpose: "The product against the real model, pass or fail, without a person reading a log"
     type: scenario
+    scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -929,6 +1044,7 @@ tests:
     name: Vendor wire vocabulary stays inside adapters
     purpose: "A second provider must not have to fabricate the word function_call to reuse turn policy"
     type: architectural
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: false
@@ -944,6 +1060,7 @@ tests:
     name: No secret is tracked by git
     purpose: "I-7 - no credential in source, Gradle files, logs or the APK"
     type: architectural
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -959,6 +1076,7 @@ tests:
     name: The release variant builds
     purpose: "A product that cannot produce a release artifact is not production-capable"
     type: release
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -974,6 +1092,7 @@ tests:
     name: Measured Cantonese success rate
     purpose: "Turn 'should we support Cantonese' from an opinion into a number"
     type: measurement
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: false
@@ -995,6 +1114,7 @@ tests:
     name: A revoked microphone permission fails honestly
     purpose: "The driver must be told, not left talking to an app that cannot hear and does not say so"
     type: device
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -1018,6 +1138,7 @@ tests:
     name: A camera question without permission fails honestly
     purpose: "Describing a scene without the camera is the same lie as claiming an action that never ran"
     type: unit
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -1038,6 +1159,7 @@ tests:
     name: Missing contacts permission is not reported as not-found
     purpose: "Telling the driver the person is not in the book when we did not look is a false claim"
     type: unit
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -1058,6 +1180,7 @@ tests:
     name: A failed dial is not reported as a placed call
     purpose: "CALL_FAILED had no ToolFailureAdvice, so the model would improvise around a bare error string"
     type: unit
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -1077,6 +1200,7 @@ tests:
     name: The app survives process death
     purpose: "Android kills backgrounded apps; coming back into a broken state is a real driver-facing failure"
     type: device
+    scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -1092,6 +1216,11 @@ tests:
     evidence:
       - "2026-09-20: pid 13783 killed once the app was genuinely backgrounded (am kill only reaps cached processes; a top-sleeping app survives it)"
       - "relaunched as pid 14296 with wake_capture_started and nav_init_success, no crash, listeningState=DEEP_IDLE - no stale session"
+    acceptance:
+      - {criterion: relaunch_without_crash, required: true, observed: true, evidence: "log:logcat/pid 14296 relaunched, no FATAL"}
+      - {criterion: wake_engine_rebinds, required: true, observed: true, evidence: "log:NovaVoice/wake_capture_started after relaunch"}
+      - {criterion: no_stale_session, required: true, observed: true, evidence: "log:NovaVoice/listeningState=DEEP_IDLE after relaunch"}
+    ended_by: natural
     related: []
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1100,6 +1229,7 @@ tests:
     name: The release build exposes no debug surface
     purpose: "DebugToolReceiver is exported=true and can dispatch any tool. In a release build that would be a remote control for the car"
     type: release
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -1122,6 +1252,7 @@ tests:
     name: A release build does not log what the driver said
     purpose: "Transcripts are personal. DebugVoiceLog is gated on the debuggable flag, and that gate has never been tested"
     type: release
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -1142,6 +1273,7 @@ tests:
     name: APK size per ABI
     purpose: "The armeabi-v7a decision must arrive as numbers, not as a question"
     type: measurement
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: false
@@ -1165,6 +1297,7 @@ tests:
     name: The same adjustment does not run twice in one turn
     purpose: "adjust_temperature{-2} twice is -4 degC, and the driver asked once"
     type: unit
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -1183,6 +1316,7 @@ tests:
     name: A signed release build installs and works
     purpose: "Unsigned APKs do not install. Nothing about the release variant's runtime behaviour is proven"
     type: release
+    scope: COMPONENT
     owner: HUMAN_CREDENTIAL
     status: HUMAN_REQUIRED
     release_blocking: true
@@ -1212,6 +1346,7 @@ tests:
     name: Is Cantonese an advertised capability?
     purpose: "The measurements are in and no further engineering moves them; what is left is a product choice"
     type: decision
+    scope: COMPONENT
     owner: HUMAN_DECISION
     status: HUMAN_REQUIRED
     release_blocking: true
@@ -1238,6 +1373,7 @@ tests:
     name: Must armeabi-v7a keep working?
     purpose: "It is roughly a third of the APK, and it is the only lever that materially changes the size"
     type: decision
+    scope: COMPONENT
     owner: HUMAN_DECISION
     status: HUMAN_REQUIRED
     release_blocking: false
@@ -1263,6 +1399,7 @@ tests:
     name: Guidance loudness and speech quality in a cabin
     purpose: "Guidance the driver cannot hear, or that drowns the assistant, is a defect no log shows"
     type: device
+    scope: COMPONENT
     owner: HUMAN_PHYSICAL
     status: HUMAN_REQUIRED
     release_blocking: false
@@ -1288,6 +1425,7 @@ tests:
     name: Open-mic thresholds in real cabin acoustics
     purpose: "The uplink gate and VAD thresholds were tuned against injected audio and a quiet room"
     type: device
+    scope: COMPONENT
     owner: HUMAN_PHYSICAL
     status: HUMAN_REQUIRED
     release_blocking: false
@@ -1318,6 +1456,7 @@ tests:
     name: A camera question is answered from the camera
     purpose: "Describing a scene the model never saw is the same lie as claiming an action that never ran"
     type: device
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -1336,6 +1475,7 @@ tests:
     name: open_app reaches a real app
     purpose: "A spoken 打开地图 must open something, not be acknowledged"
     type: device
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: false
@@ -1355,6 +1495,7 @@ tests:
     name: A request with no tool is refused, not improvised
     purpose: "Volume, windows and seats have no tool. Silence or a claim are both failures; an honest sentence is the requirement"
     type: scenario
+    scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -1373,6 +1514,7 @@ tests:
     name: The camera is released when the app leaves the foreground
     purpose: "A camera left open in the background is a privacy failure, and it was a real one (P12)"
     type: device
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -1397,6 +1539,7 @@ tests:
     name: A confirmation only authorises the call it was asked about
     purpose: "confirmed=true was trusted unconditionally: the assistant could ask about one person and dial another"
     type: unit
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -1418,6 +1561,7 @@ tests:
     name: Losing audio focus stops the assistant talking
     purpose: "An assistant that keeps speaking over a phone call or another app's audio is a defect no log shows"
     type: unit
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: false
@@ -1438,6 +1582,7 @@ tests:
     name: CPU and memory while idle and listening
     purpose: "An always-listening assistant runs for the whole journey; what it costs at rest is what it costs"
     type: measurement
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: false
@@ -1462,6 +1607,7 @@ tests:
     name: Post-reply cabin echo does not become 「没听清」
     purpose: "P27: navigation startup confirmation was followed by a phantom repair turn"
     type: device
+    scope: COMPONENT
     owner: HUMAN_PHYSICAL
     status: HUMAN_REQUIRED
     release_blocking: true
@@ -1488,6 +1634,7 @@ tests:
     name: 「你能做什么」 gets a short capability answer
     purpose: "P28: capability help was answered as noise / 不理解"
     type: device
+    scope: COMPONENT
     owner: HUMAN_PHYSICAL
     status: HUMAN_REQUIRED
     release_blocking: true
@@ -1513,6 +1660,7 @@ tests:
     name: Help-request nudge is unit-covered
     purpose: "P28 regression without a device"
     type: unit
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true
@@ -1525,47 +1673,63 @@ tests:
 
   - id: NAV-SIM-QA-001
     capability: navigation
-    name: Owner wants a reusable navigation simulation clip for QA
-    purpose: "P29: repeated real-drive QA is too slow; Level A sim already exists"
+    name: Owner wants a reusable navigation screen-recording movie for QA
+    purpose: "P29: repeated real-drive QA is too slow; owner reviews an mp4 in D:\\桌面\\android_doc\\"
     type: device
+    scope: COMPONENT
     owner: HUMAN_PHYSICAL
     status: HUMAN_REQUIRED
     release_blocking: false
-    human_reason: "Recording or choosing a drive clip is owner media; large videos stay out of git"
-    prerequisites: ["Level A simulation benchmark already green on every build"]
+    human_reason: "Needs a connected phone for embedded nav + screenrecord; large mp4 stays out of git"
+    prerequisites: ["test phone on ADB", "embedded Amap can open a route", "D:\\桌面\\android_doc\\ writable"]
     procedure:
-      - "optionally record a short navigation run on device or reuse an existing local clip under android_doc (do not commit large files)"
-      - "use that clip for repeated UI+voice checks"
-      - "keep one real outdoor drive for final NAV-DRIVE-001 only"
-    pass_criteria: ["a local clip path is noted for the team, or the owner accepts Level A sim as enough for repeat QA"]
+      - "start Nova Drive embedded navigation (preferred destination context: 十字門)"
+      - "adb shell screenrecord /sdcard/nav_qa_to_shizimen.mp4 (or device recorder)"
+      - "adb pull to D:\\桌面\\android_doc\\nav_qa_to_shizimen.mp4"
+      - "owner watches the movie in that folder"
+    pass_criteria: ["mp4 exists under D:\\桌面\\android_doc\\ and shows navigation UI"]
     autonomous_evidence:
-      - "SimulatedNavigationWorld + evaluation Level A already drive arrival without GPS"
-      - "NAV-DRIVE-001 remains the outdoor gate"
-    returns: ["clip path or 'accept Level A only'"]
-    remaining_uncertainty: ["whether Level A sim alone is enough for the owner's QA cadence"]
-    related: [P29, NAV-DRIVE-001]
-    last_run: {at: null, result: null}
+      - "2026-09-21: nav_qa_to_shizimen.mp4 (~45s, 1220x2712) pulled to D:\\桌面\\android_doc\\"
+      - "PNGs: destination list for 十字门 + route picker (推荐 4.8km/10min)"
+      - "navigate DEBUG_TOOL Accepted; nav_resolve_candidates count=5"
+      - "SimulatedNavigationWorld + evaluation Level A remain code gates"
+      - "screenrecord needs display ON (INVALID_LAYER_STACK when OFF)"
+    returns: ["owner watched? pass/fail / re-record needed"]
+    remaining_uncertainty: ["whether this clip is enough for repeat QA cadence vs needing active guidance / arrival footage"]
+    related: [P29, NAV-DRIVE-001, B-022]
+    last_run: {at: 2026-09-21, result: ARTIFACT_RECORDED}
 
   - id: VOICE-STYLE-001
     capability: speech
     name: Prefer a younger cute female voice (符玄-like)
-    purpose: "P30: current voice reads as an older woman"
-    type: decision
-    owner: HUMAN_DECISION
+    purpose: "P30: confirm 4196 度清影 sounds right in cabin"
+    type: device
+    scope: COMPONENT
+    owner: HUMAN_PHYSICAL
     status: HUMAN_REQUIRED
     release_blocking: false
-    human_reason: "Voice persona is a product taste choice among Baidu Flex voice ids"
-    prerequisites: ["Developer Settings voice picker", "ear test in cabin optional"]
-    procedure: ["choose one of the options below", "save in 开发者设置 and reset persona if needed"]
-    pass_criteria: ["a voice id is chosen and recorded here"]
+    human_reason: "Ear check that Flex voice 4196 (now product default) sounds youthful/cute enough"
+    prerequisites: ["APK with DEFAULT_VOICE=4196", "live Flex session"]
+    procedure:
+      - "Save/start voice session (default should be 4196)"
+      - "Test Connection should show voice requested=4196 and voice confirmed=4196"
+      - "Speak a short turn and listen"
+    pass_criteria: ["session.updated confirms 4196", "owner accepts timbre (or names another catalog id)"]
+    autonomous_evidence:
+      - "Owner chose option B id 4196 on 2026-09-21"
+      - "BaiduFlexVoices.PREFERRED_YOUTHFUL_FEMALE=4196 is product DEFAULT_VOICE"
+      - "Developer settings spinner + free-text voice id"
+      - "BaiduFlexClient records confirmedVoice from session.updated; falls back to default if rejected"
+      - "Unit: BaiduFlexVoicesTest, BaiduFlexClientTest sessionUpdatedRecordsConfirmedVoiceMatchingRequest"
     decision_options:
-      - "A. Keep Flex default (current)."
-      - "B. Try a numeric younger-female id from Baidu's catalog (app falls back to default if rejected)."
-      - "C. Stay on default for release; revisit after Cantonese/provider decision (B-015)."
+      - "A. Keep Flex default (superseded)."
+      - "B. 4196 度清影-甜美女声 — CHOSEN 2026-09-21."
+      - "C. Stay on default for release (superseded)."
     quantified:
-      - "the app already falls back to voice id default when a non-default id is refused"
+      - "the app falls back to voice id default when a non-default id is refused"
       - "AUTO sample rate maps Flex to 24 kHz; pitch perception is ear-only"
-    returns: ["chosen option and voice id if B"]
-    related: [P30]
-    last_run: {at: null, result: null}
+    returns: ["pass/fail on timbre", "alternate id if reject"]
+    remaining_uncertainty: ["whether 4196 sounds youthful/cute enough in a real cabin vs needing another catalog id"]
+    related: [P30, B-023]
+    last_run: {at: 2026-09-21, result: DECISION_4196}
 

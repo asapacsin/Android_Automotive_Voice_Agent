@@ -10,12 +10,15 @@ import android.os.Looper
 import android.provider.Settings
 import android.text.InputType
 import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.ScrollView
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import com.novadrive.app.voice.BaiduRealtimeClient
@@ -106,8 +109,22 @@ class DeveloperSettingsActivity : Activity() {
             setOnClickListener { instructions.setText(PersonaProfiles.DEFAULT_INSTRUCTIONS) }
         }
         val voice = EditText(this).apply {
-            setText(saved.voice)
-            hint = "音色 voice（默认 default；数字音色如 4157/4197 来自百度 TTS 音色表，实时模型未必支持，失败会自动回退 default）"
+            setText(saved.voice.ifBlank { BaiduAppSettings.DEFAULT_VOICE })
+            hint = "音色 voice id（产品默认 4196 度清影；失败回退 default）"
+        }
+        val voicePicker = Spinner(this).apply {
+            adapter = ArrayAdapter(
+                this@DeveloperSettingsActivity,
+                android.R.layout.simple_spinner_dropdown_item,
+                BaiduFlexVoices.spinnerLabels(),
+            )
+            setSelection(BaiduFlexVoices.indexOf(voice.text.toString().trim().ifBlank { BaiduAppSettings.DEFAULT_VOICE }))
+            onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                    voice.setText(BaiduFlexVoices.idAt(position))
+                }
+                override fun onNothingSelected(parent: AdapterView<*>?) = Unit
+            }
         }
         val speed = EditText(this).apply {
             setText(saved.speed.toString())
@@ -227,12 +244,22 @@ class DeveloperSettingsActivity : Activity() {
                             val client = BaiduFlexClient()
                             closeTestClient = client::disconnect
                             client.connect(candidate)
+                            val match = if (client.voiceConfirmedAsRequested) "MATCH" else "MISMATCH_OR_FALLBACK"
+                            result.text = "Connection successful\n" +
+                                "Authentication successful\n" +
+                                "Model: ${candidate.settings.model}\n" +
+                                "voice requested=${client.requestedVoice}\n" +
+                                "voice confirmed=${client.confirmedVoice}\n" +
+                                "voice check=$match\n" +
+                                "label=${BaiduFlexVoices.labelFor(client.confirmedVoice ?: "")}\n" +
+                                "Microphone was not started.\n" +
+                                "Start Voice Session to hear whether audio timbre changed."
                         } else {
                             val client = BaiduRealtimeClient()
                             closeTestClient = client::disconnect
                             client.connect(candidate)
+                            result.text = "Connection successful\nAuthentication successful\nModel: ${candidate.settings.model}\nMicrophone was not started."
                         }
-                        result.text = "Connection successful\nAuthentication successful\nModel: ${candidate.settings.model}\nMicrophone was not started."
                     } catch (failure: VoiceProviderException) {
                         result.text = "${failure.code}\n${failure.safeMessage}"
                     } catch (_: Exception) {
@@ -277,7 +304,8 @@ class DeveloperSettingsActivity : Activity() {
             addView(TextView(this@DeveloperSettingsActivity).apply { text = "人设 / Persona instructions (sent as session instructions)" })
             addView(instructions)
             addView(resetPersona)
-            addView("音色 voice（默认 default；数字音色如 4157/4197 来自百度 TTS 音色表，实时模型未必支持，失败会自动回退 default）".label())
+            addView("音色 voice（产品默认 4196 度清影-甜美女声；下拉选择或手填 id；不支持则回退 default）".label())
+            addView(voicePicker)
             addView(voice)
             addView("语速 speed 0.5–1.5（默认 1.1）".label())
             addView(speed)

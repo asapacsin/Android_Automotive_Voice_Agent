@@ -45,6 +45,60 @@ Use exactly these words in reports:
 
 Never write "fully verified" unless every required level was actually performed.
 
+## Acceptance scopes
+
+Levels say *how strong* the evidence is; scopes say *what* the verdict is allowed to claim.
+Every `TEST_MATRIX.yaml` entry declares one scope, and a result claims at most that scope:
+
+| Scope | Claims | Examples |
+| --- | --- | --- |
+| **COMPONENT** | One behaviour in isolation | speed HUD renders; null traffic data does not crash; route callback fires |
+| **INTERMEDIATE_FLOW** | A flow ran healthily without reaching its end | navigation starts; guidance continues N minutes; rerouting does not crash |
+| **END_TO_END** | The whole task completed | destination reached, arrival observed, session ended automatically |
+
+Rules (enforced by `scripts/test_matrix.py --validate`, framework in
+`scripts/acceptance.py`):
+
+- COMPONENT or INTERMEDIATE_FLOW evidence never produces an END_TO_END PASS.
+- END_TO_END PASS needs every declared `terminal_success` state observed, `ended_by:
+  natural`, and zero unexplained regressions. For navigation the minimum criteria are
+  `navigation_start`, `route_resolved`, `guidance_progress`, `near_destination`,
+  `arrival_callback`, `arrival_handling`, `automatic_session_end`.
+- **A manual stop never satisfies a natural termination requirement.** Arrival, playback or
+  call completion, automatic timeout/recovery — if the scenario is about a natural end, a
+  manual stop proves the end was NOT demonstrated. Manual stops are valid only for
+  INTERMEDIATE_FLOW stability runs.
+- If progress nears the terminal and then jumps materially back (e.g. remaining distance
+  ~15 m → ~3.7 km), that is a terminal regression: it invalidates any E2E PASS until
+  root-caused, and is recorded with before/after distance, route ids, timestamp and log.
+- Verdict words: PASS (every required criterion satisfied), FAIL (a criterion violated),
+  INCOMPLETE (ended before success/failure could be proven — never a PASS), BLOCKED,
+  PARTIAL_PASS (scoped subtests only, with a parent entry).
+- Never write an unscoped "stable baseline". `MID_ROUTE_NAVIGATION_BASELINE: PASS` is valid;
+  `NAVIGATION_BASELINE: PASS` requires demonstrated arrival.
+- Before reporting on a tracked scenario, run `python scripts/test_matrix.py --verdict <ID>`
+  and attach the earned verdict, not the hoped-for one.
+
+### Requirement-driven scope
+
+`config/capabilities.yaml` owns each requirement's `required_scope` (absent = COMPONENT).
+Matrix entries link what they verify with `covers:`, and validation enforces `test_scope >=
+required_scope`: an END_TO_END requirement covered only by lower-scope tests is reported
+UNCOVERED, never PASS. `python scripts/test_matrix.py --coverage` shows the table; uncovered
+flow/E2E requirements without queued human validation hold the human gate shut.
+
+### Evidence provenance
+
+For device flow/E2E acceptance rows, `observed: true` must cite an artifact, not prose:
+
+- `log:<tag>/<pattern>[@range]` — e.g. `log:NovaVoice/nav_arrived@12:31:02`
+- `video:<file>[@range]` — e.g. `video:nav_baseline_0_6_4.mp4@~end`
+- `xml:<file>#<test>` — structured result plus assertion id
+- `artifact:<name>` — another explicitly named runtime artifact
+
+"Arrival callback observed" by itself earns INCOMPLETE, never PASS. Absence claims
+(`observed: false`) may use prose. Component and sim verdicts keep the plain evidence rule.
+
 ## Required level by feature
 
 | Feature | Required | Notes |

@@ -107,6 +107,20 @@ def main():
     except Exception as exc:
         failures.append("the test registry could not be checked: %r" % (exc,))
 
+    # The verdict rules must hold: an incomplete run proving itself unable to be PASS is
+    # what keeps a future 0.6.4-shaped overclaim from ever reaching a report.
+    for script in ("acceptance.py", "test_matrix.py"):
+        try:
+            proc = subprocess.run(
+                [sys.executable, os.path.join(REPO, "scripts", script), "--selftest"],
+                cwd=REPO, capture_output=True, text=True,
+            )
+            if proc.returncode != 0:
+                failures.append("scripts/%s --selftest failed:\n%s%s"
+                                % (script, proc.stdout, proc.stderr))
+        except Exception as exc:
+            failures.append("scripts/%s --selftest could not run: %r" % (script, exc))
+
     for path in REQUIRED:
         if not os.path.isfile(os.path.join(REPO, path)):
             failures.append("missing: %s" % path)

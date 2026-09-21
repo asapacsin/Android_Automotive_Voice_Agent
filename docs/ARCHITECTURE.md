@@ -51,6 +51,7 @@ One behaviour, one owner. If you need to change one of these, change it **here**
 | **Cross-turn** context (what was adjusted, what is pending, what is stale) | `DriverContext`, built only from `ok=true` tool results; resolved by `ContextResolver`; carried to the model by `VoiceContextHints` | the model's memory — there is none, the conversation resets after every tool turn |
 | Navigation execution | `EmbeddedNavigationController` → `AmapNaviViewHost` | `NavigationAdapter` (legacy deep link, dormant) |
 | Navigation camera while driving | `AmapDrivingPresentation` (`AMapNaviView` lock-car, traffic line, native HUD) | idle `moveCamera(newLatLngZoom)`, a homemade tilt, `MapView` |
+| Current speed / posted limit while driving | `DrivingSpeedHud` in `AmapNaviViewHost` (Amap location + cameras) | assistant overlay, a second speed source |
 | Which candidate the driver picked | `NavigationChoiceResolver` | the model |
 | Turn-taking / interruption | server VAD for turn ends; `ListeningLifecycle` for ACTIVE / SILENT_WAIT / SLEEP / DEEP_IDLE; `VoiceCommandRouter` for 「闭嘴」「休眠」 | ad-hoc checks in the client |
 | Whether reply audio is heard | `AndroidPlaybackPort` (navigation mute, lifecycle) + `PhantomTurnGate` (phantom/false-claim holds) | the UI |

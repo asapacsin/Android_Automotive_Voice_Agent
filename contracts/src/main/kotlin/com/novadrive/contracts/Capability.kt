@@ -84,6 +84,7 @@ object ProductCapabilities : CapabilityCatalog {
             rec("navigation.save_place", "save_place", true),
             rec("navigation.stop_navigation", "exit_navigation_mode", true),
             rec("navigation.guidance_voice", null, true),
+            rec("navigation.arrival_lifecycle", null, true),
             rec("media.play_music", "control_music", true),
             rec("media.stop_music", "control_music", true),
             rec("media.next_track", null, false),

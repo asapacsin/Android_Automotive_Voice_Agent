@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.novadrive.app.nav.NavigationHostGateway
+import com.novadrive.app.nav.amap.EmulatorNaviSpeed
 
 class DebugToolReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -103,11 +104,16 @@ class DebugToolReceiver : BroadcastReceiver() {
         return "resolving $target"
     }
 
-    /** Stage 6. arg "emulator" simulates driving so rendering can be proven indoors. */
+    /**
+     * Stage 6. arg:
+     *  - blank / `emulator` — indoor drive at urban default (50 km/h)
+     *  - `emulator:80` — override fake-car speed (Amap clamps 40–120)
+     *  - `gps` — real GNSS
+     */
     private fun navStart(arg: String): String {
         val host = NavigationHostGateway.current() ?: return "no live map host"
-        val emulator = arg.isBlank() || arg.equals("emulator", ignoreCase = true)
-        return "startNavi accepted=" + host.startNavigation(emulator)
+        val request = EmulatorNaviSpeed.parseNavStart(arg)
+        return "startNavi accepted=" + host.startNavigation(request.emulator, request.speedKmh)
     }
 
     /** Manual fallback. Must keep working even after automatic completion has stopped it. */

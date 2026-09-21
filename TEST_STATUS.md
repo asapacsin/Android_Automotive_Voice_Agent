@@ -2,21 +2,25 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-20 · 81 tests
+Updated 2026-09-20 · 83 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 63 |
-| autonomous FAIL | 0 |
+| autonomous PASS | 64 |
+| autonomous FAIL | 1 |
+| incomplete | 0 |
+| partial pass | 0 |
 | not run | 0 |
 | human required | 18 |
 | human pass | 0 |
 | human fail | 0 |
 | blocked external | 0 |
 | not applicable | 0 |
-| **release-blocking failures** | **0** |
+| **release-blocking failures** | **1** |
 
-**HUMAN_VALIDATION_READY = TRUE**
+**HUMAN_VALIDATION_READY = FALSE**
+
+- NAV-E2E-ARRIVAL-001 is AUTONOMOUS and FAIL - run it or fix it
 
 ## By capability
 
@@ -31,7 +35,7 @@ Updated 2026-09-20 · 81 tests
 | lifecycle | 1 | 1 | 0 | 0 |
 | media | 2 | 2 | 0 | 0 |
 | microphone | 1 | 0 | 1 | 0 |
-| navigation | 17 | 8 | 9 | 0 |
+| navigation | 19 | 9 | 9 | 0 |
 | performance | 2 | 2 | 0 | 0 |
 | permissions | 3 | 3 | 0 | 0 |
 | regression | 2 | 2 | 0 | 0 |
@@ -78,9 +82,11 @@ Updated 2026-09-20 · 81 tests
 | NAV-CANCEL-001 | navigation | 算了 really cancels | AUTONOMOUS | PASS | yes | 2026-09-20: nav_flow_cancelled |
 | NAV-CORRECT-001 | navigation | A mid-flow destination change replaces the list | AUTONOMOUS | PASS | no | 2026-09-20: 20/20 suite |
 | NAV-DRIVE-001 | navigation | A route calculates and guides to arrival | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | NAV-SEARCH-001, NAV-PICK-001, NAV-CANCEL-001, NAV-CORRECT-001 PASS |
+| NAV-E2E-ARRIVAL-001 | navigation | Navigation reaches the destination and terminates by arrival | AUTONOMOUS | FAIL | yes | 2026-09-21: nav_baseline_0_6_4.mp4 never reached the destination; remaining distance ju… |
+| NAV-MID-ROUTE-001 | navigation | Mid-route navigation baseline without countdown entitlement | AUTONOMOUS | PASS | yes | 2026-09-21: nav_traffic_countdown status=BLOCKED_EXTERNAL_AMAP_ENTITLEMENT |
 | NAV-PICK-001 | navigation | 第二个 picks from the on-screen list | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | NAV-SEARCH-001 | navigation | A destination produces candidates and does not start navigating | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
-| NAV-SIM-QA-001 | navigation | Owner wants a reusable navigation simulation clip for QA | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | SimulatedNavigationWorld + evaluation Level A already drive arrival without GPS |
+| NAV-SIM-QA-001 | navigation | Owner wants a reusable navigation screen-recording movie for QA | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | 2026-09-21: nav_qa_to_shizimen.mp4 (~45s, 1220x2712) pulled to D:\桌面\android_doc\ |
 | NAV-UI-001 | navigation | 「开始导航」 enters ACTIVE_DRIVING_NAVIGATION, not route preview | AUTONOMOUS | PASS | yes | EmbeddedNavigationControllerTest.SelectingARouteEntersDrivingPresentationNotRoutePreview |
 | NAV-UI-002 | navigation | During GPS navigation the vehicle stays in lock-car tracking | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | AmapDrivingPresentation.lockCar calls recoverLockMode, CAR_UP_MODE, SHOW_MODE_LOCK_CAR |
 | NAV-UI-003 | navigation | Vehicle heading rotates the navigation map | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | setNaviMode(CAR_UP_MODE) is applied on startNavi |
@@ -111,7 +117,7 @@ Updated 2026-09-20 · 81 tests
 | EXPORTED-001 | security | The release build exposes no debug surface | AUTONOMOUS | PASS | yes | 2026-09-20, release manifest via aapt2: only MainActivity is exported; DeveloperSetting… |
 | RELEASE-LOG-001 | security | A release build does not log what the driver said | AUTONOMOUS | PASS | yes | 2026-09-20: DebugVoiceLog is the only logger in app/src/main, ingress/src/main and cont… |
 | SECRET-SCAN-001 | security | No secret is tracked by git | AUTONOMOUS | PASS | yes | part of the 737 |
-| VOICE-STYLE-001 | speech | Prefer a younger cute female voice (符玄-like) | HUMAN_DECISION | HUMAN_REQUIRED | no | — |
+| VOICE-STYLE-001 | speech | Prefer a younger cute female voice (符玄-like) | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | Owner chose option B id 4196 on 2026-09-21 |
 | DUP-EXEC-001 | truthfulness | The same adjustment does not run twice in one turn | AUTONOMOUS | PASS | yes | 2026-09-20: FalseCapabilityClaimTest asserts a repeated adjust_temperature in one turn … |
 | TRUTH-BAIT-001 | truthfulness | An explicit request to lie is not obeyed | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | TRUTH-CLAIM-001 | truthfulness | A claim no tool performed is never spoken | AUTONOMOUS | PASS | yes | 2026-09-19 device: the fabrication is corrected, 「没听清，再说一遍。」 |

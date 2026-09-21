@@ -26,6 +26,9 @@ backend/.pytest_cache/
 agent/demo-strict-exit.txt
 .claude/settings.local.json
 
+# Local-only agent memory (field-test failures). Never commit or push.
+.local-agent-memory/
+
 tools/speech-harness/speech/
 
 # Large third-party binaries: kept locally, never pushed (see README "Local binaries")

@@ -50,7 +50,10 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
         get() = camera.isShowing
 
     init {
-        addView(mapHost, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        addView(mapHost, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT).apply {
+            // Keep Amap's bottom HUD (speed, remaining) above the climate/music bar.
+            bottomMargin = dp(64)
+        })
         addView(overlay, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         addView(
             choiceOverlay,
@@ -77,6 +80,7 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
                 rightMargin = dp(12)
             },
         )
+        mapHost.attachSpeedHud(this)
         camera.onVisionText = { text -> overlay.appendTranscript("📷 $text") }
         camera.visibility = GONE
         bottomBar.onCameraClick = { onCameraToggleRequested?.invoke() }

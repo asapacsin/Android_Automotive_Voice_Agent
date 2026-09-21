@@ -1,31 +1,31 @@
 {
-  "generated_at": "2026-09-21T00:03:41",
+  "generated_at": "2026-09-21T14:10:44",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "5afbcd8",
+    "commit": "c44be4e",
     "branch": "cursor/recover-friday-sunday-dbe9",
-    "subject": "Fix spreadsheet P27/P28: post-speech echo hold and capability help",
-    "working_tree_clean": true,
-    "uncommitted_files": 0
+    "subject": "Refresh generated state after P27/P28",
+    "working_tree_clean": false,
+    "uncommitted_files": 41
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-21T00:01:58",
+    "collected_at": "2026-09-21T12:19:41",
     "total": {
-      "tests": 243,
+      "tests": 152,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "app": {
-        "tests": 36,
+        "tests": 15,
         "failures": 0,
         "errors": 0,
         "skipped": 0
       },
       "behavior-test": {
-        "tests": 83,
+        "tests": 13,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,13 +65,14 @@
   },
   "apk": {
     "built": true,
-    "bytes": 203424549,
-    "built_at": "2026-09-21T00:00:57"
+    "bytes": 228837721,
+    "built_at": "2026-09-21T12:21:51"
   },
   "capabilities": {
     "available": true,
     "by_level": {
       "device": 24,
+      "implemented": 1,
       "unsupported": 6,
       "human": 1,
       "unit": 1
@@ -84,14 +85,9 @@
   },
   "open_issues": [
     {
-      "id": "P29",
-      "title": "Real-drive-only navigation QA is too slow to repeat",
-      "status": "RECORDED 2026-09-20 — not a product defect; queued as [NAV-SIM-QA-001](TEST_MATRIX.yaml)"
-    },
-    {
-      "id": "P30",
-      "title": "Assistant voice sounds like an older woman; prefer a younger cute style",
-      "status": "HUMAN_REQUIRED 2026-09-20 — [VOICE-STYLE-001](TEST_MATRIX.yaml)"
+      "id": "P31",
+      "title": "Navigation reroutes near the destination instead of arriving",
+      "status": "OPEN 2026-09-21 — fix explicitly out of scope for the harness change that recorded it"
     }
   ],
   "tech_debt": [
@@ -132,30 +128,37 @@
     }
   ],
   "work_frontier": {
-    "AUTONOMOUS_ACTION_AVAILABLE": "NO",
-    "HUMAN_ACTION_REQUIRED": "YES",
-    "STOP_REASON": "BLOCKED_ON_EXTERNAL_DEPENDENCY",
-    "BLOCKING_DEPENDENCY": "the owner recording or naming a local navigation QA clip (kept out of git), or accepting Level A simulation as enough for repeat QA",
-    "NEXT_ACTION": "NONE",
-    "actionable_count": 0,
-    "blocked_count": 8,
-    "HUMAN_VALIDATION_READY": "TRUE",
+    "AUTONOMOUS_ACTION_AVAILABLE": "YES",
+    "HUMAN_ACTION_REQUIRED": "NO",
+    "STOP_REASON": "NOT_STOPPING",
+    "BLOCKING_DEPENDENCY": "none",
+    "NEXT_ACTION": "NAV-E2E-ARRIVAL-001: FAIL: Navigation reaches the destination and terminates by arrival",
+    "actionable_count": 3,
+    "blocked_count": 4,
+    "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 18,
-    "PHASE": "HUMAN_VALIDATION_READY",
+    "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
       {
-        "priority": 9,
-        "class": "unfinished or open problem",
-        "source": "OPEN_PROBLEMS.md",
-        "item": "P29",
-        "blocked_by": "the owner recording or naming a local navigation QA clip (kept out of git), or accepting Level A simulation as enough for repeat QA"
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-E2E-ARRIVAL-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 5,
+        "class": "implemented but not wired into production",
+        "source": "capabilities.yaml",
+        "item": "arrival_lifecycle",
+        "blocked_by": null
       },
       {
         "priority": 9,
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
-        "item": "P30",
-        "blocked_by": "the owner choosing a Baidu Flex voice id (default vs numeric younger-female vs defer)"
+        "item": "P31",
+        "blocked_by": null
       },
       {
         "priority": 11,
@@ -184,20 +187,6 @@
         "source": "BACKLOG.md",
         "item": "B-019",
         "blocked_by": "a signing keystore and its credentials, which only the owner can provide, plus a"
-      },
-      {
-        "priority": 11,
-        "class": "next authorised backlog item",
-        "source": "BACKLOG.md",
-        "item": "B-022",
-        "blocked_by": "the owner recording or naming a local navigation QA clip, or accepting Level A simulation as enough"
-      },
-      {
-        "priority": 11,
-        "class": "next authorised backlog item",
-        "source": "BACKLOG.md",
-        "item": "B-023",
-        "blocked_by": "the owner choosing between the quantified options in [VOICE-STYLE-001](TEST_MATRIX.yaml)"
       }
     ]
   }

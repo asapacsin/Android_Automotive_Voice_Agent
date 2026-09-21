@@ -27,17 +27,8 @@ that justifies it.
    must exist now.
 8. Check what the driver would actually see and hear — subtitle and audio together, not just a
    return value.
-9. Before reporting on any tracked scenario, run the verdict the evidence earns and attach it:
-   ```powershell
-   python scripts/test_matrix.py --verdict <ID>
-   ```
-   A stored verdict above the earned one is a harness violation, not a result. Manual stops,
-   missing terminal states and unscoped "baseline" wording fail validation — see
-   `ACCEPTANCE_TESTS.md` §Acceptance scopes. Device flow/E2E evidence must cite artifacts
-   (`log:` / `video:` / `xml:` / `artifact:`); bare prose earns INCOMPLETE.
 
 ## Output
 
-`PASS` / `FAIL` / `INCOMPLETE` / `PARTIAL`, the scope each verdict is claimed at, the exact
-counts, and the log lines. If anything failed, say so separately and plainly; do not fold it
-into a summary.
+`PASS` / `FAIL` / `PARTIAL`, the exact counts, and the log lines. If anything failed, say so
+separately and plainly; do not fold it into a summary.

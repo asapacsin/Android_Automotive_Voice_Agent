@@ -6,8 +6,8 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 
 | # | Demand | Raised | Status | Spec |
 | --- | --- | --- | --- | --- |
-| B-023 | **Voice style** — prefer a younger cute female voice (符玄-like), not an older-woman timbre | 2026-09-20 | Open — HUMAN_DECISION [VOICE-STYLE-001](TEST_MATRIX.yaml) | [P30](OPEN_PROBLEMS.md) |
-| B-022 | **Repeatable navigation QA without a real drive** — recorded route/video for UI+voice; keep one outdoor drive for final | 2026-09-20 | Recorded — Level A sim exists; clip is local-only [NAV-SIM-QA-001](TEST_MATRIX.yaml) | [P29](OPEN_PROBLEMS.md) |
+| B-023 | **Voice style** — prefer a younger cute female voice (符玄-like), not an older-woman timbre | 2026-09-20 | **Done** (code) 2026-09-21 — default **4196** 度清影; picker in developer settings; device ear-check [VOICE-STYLE-001](TEST_MATRIX.yaml) | [P30](OPEN_PROBLEMS.md) |
+| B-022 | **Repeatable navigation QA without a real drive** — **screen-recording movie** of nav UI under `D:\桌面\android_doc\`; owner reviews the video | 2026-09-20 | **Done** (artifact) 2026-09-21 — `nav_qa_to_shizimen.mp4` local; owner watch [NAV-SIM-QA-001](TEST_MATRIX.yaml) | [P29](OPEN_PROBLEMS.md) |
 | B-021 | **「你能做什么」 must list real capabilities** | 2026-09-20 | **Done** (code) 2026-09-20 — help nudge unit-covered; device retest [HELP-001](TEST_MATRIX.yaml) | [P28](OPEN_PROBLEMS.md) |
 | B-020 | **No phantom 「没听清」 after 小诺 speaks (esp. navigation start)** | 2026-09-20 | **Done** (code) 2026-09-20 — longer mic ungate + echo hold; device retest [ECHO-001](TEST_MATRIX.yaml) | [P27](OPEN_PROBLEMS.md) |
 | B-009 | **Provider-neutral realtime layer** — a second realtime provider must be addable by writing one adapter, without provider-name branches or vendor protocol vocabulary reaching voice/session/tool logic | 2026-09-19 | **Done** 2026-09-19 — breach fixed (`ResponseOutcome`), contract and capability model recorded, `RealtimeProviderContractTest` (25 cases across both in-repo providers), `ProviderBoundaryTest` checked against a reintroduced breach, harness rules and I-13 written | [ADR-009](DECISIONS/ADR-009-provider-neutral-realtime-contract.md) · [SPEC-007](SPECS/SPEC-007-provider-neutral-realtime.md) |
@@ -511,10 +511,9 @@ BLOCKED_BY: a person saying 「你能做什么」 on a live session ([HELP-001](
 
 ## B-022 — Repeatable navigation QA clip
 
-Level A simulation already exists. A recorded drive clip stays local (large-file policy).
-
-BLOCKED_BY: the owner recording or naming a local navigation QA clip, or accepting Level A simulation as enough
+**Done (artifact) 2026-09-21.** Screen movie at `D:\桌面\android_doc\nav_qa_to_shizimen.mp4` (十字门 UI). Owner watch remains [NAV-SIM-QA-001](TEST_MATRIX.yaml). Keep display ON for `adb screenrecord`.
 
 ## B-023 — Voice style
 
-BLOCKED_BY: the owner choosing between the quantified options in [VOICE-STYLE-001](TEST_MATRIX.yaml)
+**Done (code) 2026-09-21.** Owner chose Flex voice **4196** (度清影-甜美女声). Default + developer picker ship; cabin ear-check remains [VOICE-STYLE-001](TEST_MATRIX.yaml).
+

@@ -33,8 +33,7 @@ that justifies it.
    ```
    A stored verdict above the earned one is a harness violation, not a result. Manual stops,
    missing terminal states and unscoped "baseline" wording fail validation — see
-   `ACCEPTANCE_TESTS.md` §Acceptance scopes. Device flow/E2E evidence must cite artifacts
-   (`log:` / `video:` / `xml:` / `artifact:`); bare prose earns INCOMPLETE.
+   `ACCEPTANCE_TESTS.md` §Acceptance scopes.
 
 ## Output
 

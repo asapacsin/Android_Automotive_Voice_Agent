@@ -35,6 +35,9 @@
     <string name="map_recenter_no_service">设备定位已关闭，无法回到当前位置。</string>
     <string name="map_recenter_no_fix">还没有定位信号，请稍等。</string>
     <string name="camera_close_short">✕</string>
+    <string name="nav_speed_unit">km/h</string>
+    <string name="nav_speed_limit">限速 %1$d</string>
+    <string name="nav_speed_limit_unknown">限速 —</string>
     <string name="nav_choice_cancel">取消</string>
     <string name="nav_choice_pick_destination">选择目的地</string>
     <string name="nav_choice_pick_route">选择路线</string>

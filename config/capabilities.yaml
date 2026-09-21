@@ -13,9 +13,16 @@
 #   unsupported   - deliberately not provided; the app must say so and never pretend
 #
 # tool: the function name declared in BaiduFlexProtocol.sessionUpdate, or null when there is none.
+#
+# required_scope: the minimum test scope (COMPONENT < INTERMEDIATE_FLOW < END_TO_END) whose
+# verdict may cover this requirement. Owned HERE, not by the test entry: a test author scopes
+# their own test, but only this registry says what bar satisfies the requirement, so an E2E
+# requirement can never be laundered through an intermediate test. Absent means COMPONENT.
+# scripts/test_matrix.py --coverage reports per-requirement cover; UNCOVERED flow/E2E
+# requirements hold the human gate shut unless a human validation is already queued.
 
 meta:
-  updated: 2026-09-19
+  updated: 2026-09-21
   commit_at_update: 89c9338
   device: "Xiaomi 24069RA21C (2391ff70), Android SDK 36"
 
@@ -69,8 +76,18 @@ navigation:
   guidance_voice:
     tool: null
     verified: device
+    required_scope: INTERMEDIATE_FLOW
     evidence: "21 nav_guidance_play_start/end pairs on an emulator drive; mic gated while speaking"
     notes: "Amap SDK offline voice. Loudness and quality are a human judgement."
+  arrival_lifecycle:
+    tool: null
+    verified: implemented
+    required_scope: END_TO_END
+    evidence: "NAV-E2E-ARRIVAL-001 FAIL 2026-09-21: 0.6.4 run never arrived; remaining ~15 m -> ~3.7 km, manual stop"
+    notes: >
+      Start, follow, arrival callback, arrival handling and automatic session end. The code
+      exists (ended-callback resyncs NavigationPhase) but no drive has demonstrated the full
+      lifecycle; mid-route health is covered separately and never satisfies this.
 
 media:
   play_music:
@@ -161,6 +178,7 @@ phone:
   place_call:
     tool: place_call
     verified: unit
+    required_scope: END_TO_END
     evidence: "PhoneCallToolTest: confirm-before-dial, ambiguity, unknown name, and no-SIM refusal"
     human_gap: true
     notes: >

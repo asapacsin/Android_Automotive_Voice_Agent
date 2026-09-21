@@ -83,17 +83,40 @@ class BaiduFlexClientTest {
                 if (voice != "default") {
                     webSocket.send("""{"type":"error","error":{"code":"invalid_voice","message":"unsupported voice"}}""")
                 } else {
-                    webSocket.send("""{"type":"session.updated","session":{"model":"qianfan-realtime-flex-v1"}}""")
+                    webSocket.send("""{"type":"session.updated","session":{"model":"qianfan-realtime-flex-v1","voice":"default"}}""")
                 }
             }
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
         }))
         val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
         client.connect(config(voice = "4157"))
+        assertEquals("default", client.confirmedVoice)
+        assertEquals("4157", client.requestedVoice)
         client.disconnect()
         val updates = received.map(::JSONObject).filter { it.getString("type") == "session.update" }
         assertEquals(2, updates.size)
         assertEquals("default", updates[1].getJSONObject("session").getString("voice"))
+    }
+
+    @Test
+    fun sessionUpdatedRecordsConfirmedVoiceMatchingRequest() = runBlocking {
+        server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
+                webSocket.send("""{"type":"session.created","session":{"model":"qianfan-realtime-flex-v1"}}""")
+            }
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                if (JSONObject(text).optString("type") != "session.update") return
+                val voice = JSONObject(text).getJSONObject("session").getString("voice")
+                webSocket.send("""{"type":"session.updated","session":{"model":"qianfan-realtime-flex-v1","voice":"$voice"}}""")
+            }
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
+        }))
+        val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
+        client.connect(config(voice = "4196"))
+        assertEquals("4196", client.requestedVoice)
+        assertEquals("4196", client.confirmedVoice)
+        assertTrue(client.voiceConfirmedAsRequested)
+        client.disconnect()
     }
 
     @Test

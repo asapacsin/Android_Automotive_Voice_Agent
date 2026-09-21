@@ -171,9 +171,18 @@ class FeaturePresenceRegressionTest {
         assertContains(presentation, "setLayoutVisible(driving)", "default Amap navi chrome is shown while driving")
         assertContains(presentation, "SHOW_MODE_LOCK_CAR", "the camera mode is lock-car")
         assertContains(presentation, "setTrafficStatusUpdateEnabled(true)", "traffic must update during the drive")
+        assertContains(presentation, "setWidgetOverSpeedPulseEffective(driving)", "overspeed pulse is native HUD, not a homemade overlay")
+        assertContains(presentation, "setTrafficLightsVisible(true)", "light icons render when Amap supplies them")
+        assertContains(presentation, "setShowTrafficLightView(true)", "countdown bubble is the navi view, not our layout")
+        assertContains(presentation, "TRAFFIC_COUNTDOWN_STATUS", "countdown state is declared, not silently assumed")
         assertContains(presentation, "setPointToCenter(LOCK_CENTER_X, LOCK_CENTER_Y)", "vehicle sits in the lower-middle")
         val host = "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapNaviViewHost.kt"
         assertContains(host, "AmapDrivingPresentation.applyDriving", "startNavi must enter driving presentation")
+        assertContains(host, "EmulatorNaviSpeed.clamp", "emulator speed is urban default / debug override, not a hardcoded 120")
+        assertContains(host, "DrivingSpeedHud.snapshot", "current speed and posted limit must be shown from Amap data")
+        assertContains(host, "attachSpeedHud", "speed chip must sit above the assistant overlay, not under it")
+        val screen = "app/src/main/kotlin/com/novadrive/app/ui/AssistantNavigationScreen.kt"
+        assertContains(screen, "mapHost.attachSpeedHud(this)", "the speed chip is attached on the screen, above overlay")
         assertContains(host, "AmapDrivingPresentation.applyRoutePreview", "route pick is overview, not driving camera")
         assertContains(host, "AmapDrivingPresentation.applyIdle", "ending navi restores browse")
         assertContains(host, "lock_car", "📍 during a drive recovers lock-car, it does not 2D-recenter")
@@ -185,6 +194,29 @@ class FeaturePresenceRegressionTest {
         assertTrue(!text(resolver).contains("AMapNaviView")) {
             "NLU must not name AMapNaviView"
         }
+    }
+
+    // ---- traffic-light countdown baseline: blocked externally, never faked ----
+
+    @Test
+    fun missingCountdownSecondsAreNotAFailure() {
+        val presentation = "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapDrivingPresentation.kt"
+        assertContains(
+            presentation,
+            "BLOCKED_EXTERNAL_AMAP_ENTITLEMENT",
+            "countdown state is declared until Amap grants the trial",
+        )
+        assertTrue(!text(presentation).contains("navi.setIsOpenTrafficLight")) {
+            "quarantined 2026-09-21: setIsOpenTrafficLight(\"1\") never enabled anything"
+        }
+        assertTrue(!text(presentation).contains("navi.setTrafficSignalEnable")) {
+            "dead public stub in 11.2.100: nothing may rely on it"
+        }
+        assertContains(
+            presentation,
+            "setShowTrafficLightView(true)",
+            "the native bubble stays on so seconds appear unaided once entitled",
+        )
     }
 
     // ---- open mic: noise must not become a turn, and never an action ----

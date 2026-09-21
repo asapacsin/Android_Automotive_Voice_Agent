@@ -2,6 +2,43 @@
 
 Newest first. One line per change, with the evidence that motivated it.
 
+## 2026-09-21 — required_scope and evidence provenance close two verdict loopholes
+
+Follow-up to the verdict-scope change the same day: a test author could still satisfy an E2E
+requirement by declaring an intermediate test, and bare prose ("arrival callback observed")
+could pass as E2E evidence.
+
+- **`config/capabilities.yaml`** — owns `required_scope` per requirement (absent = COMPONENT);
+  new `navigation.arrival_lifecycle` (END_TO_END) alongside `guidance_voice` (INTERMEDIATE_FLOW)
+  and `phone.place_call` (END_TO_END). `ProductCapabilities` carries the matching id.
+- **Matrix `covers:` links** — validation rejects `test_scope < required_scope` (scope
+  laundering); `--coverage` reports per-requirement cover; uncovered flow/E2E requirements
+  without queued human validation hold the gate.
+- **Evidence provenance** — device flow/E2E `observed: true` rows must cite `log:` / `video:`
+  / `xml:` / `artifact:`; prose-only earns INCOMPLETE.
+- CONSTITUTION rule 20 extended; `HARNESS_PROPOSAL_002`; `ACCEPTANCE_TESTS.md` scope subsections.
+
+## 2026-09-21 — verdicts may not out-claim their scope
+
+The 0.6.4 navigation run showed healthy mid-route behaviour and a clean manual stop, and was
+reported as a stable navigation baseline — while the recording never reached the destination
+(~15 m → ~3.7 km near the end). Intermediate health stood in for end-to-end success because
+the registry checked verdict shape but never verdict scope.
+
+- **[scripts/acceptance.py](../scripts/acceptance.py)** — scope/verdict framework: COMPONENT /
+  INTERMEDIATE_FLOW / END_TO_END, terminal states, the manual-stop rule, evidence-completeness
+  matrix, near-terminal regression detector. Product-neutral; navigation supplies one
+  minimum-criteria row.
+- **[scripts/test_matrix.py](../scripts/test_matrix.py)** — `scope` on all 83 entries;
+  acceptance matrix + `ended_by` on device flow/E2E verdicts; `INCOMPLETE` / `PARTIAL_PASS`;
+  unscoped `baseline`/`e2e` wording rejected; `--verdict ID` self-check.
+- **[scripts/harness_check.py](../scripts/harness_check.py)** — runs both selftests, so the
+  0.6.4 verdict shape fails the gate instead of reaching a report.
+- Records: `NAV-MID-ROUTE-001` PASS (intermediate) + `NAV-E2E-ARRIVAL-001` FAIL (terminal
+  regression, P31); CONSTITUTION rule 20; `ACCEPTANCE_TESTS.md` scopes section.
+- **[skills/verify.md](../skills/verify.md)** — verdict-check step before reporting on tracked
+  scenarios (self-applied: the false PASS is the missing step made visible).
+
 ## 2026-09-20 — harness v2: human intervention is batched
 
 The harness asked for a person **at the moment of discovery**. Hit a test only a human could run,

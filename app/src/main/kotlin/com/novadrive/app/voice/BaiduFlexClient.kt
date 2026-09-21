@@ -53,6 +53,14 @@ class BaiduFlexClient(
     @Volatile private var speed: Double = BaiduAppSettings.DEFAULT_SPEED
     @Volatile private var sentVoice: String = BaiduAppSettings.DEFAULT_VOICE
     @Volatile private var voiceFallbackUsed = false
+    /** Voice id last requested in session.update (before any fallback). */
+    @Volatile var requestedVoice: String = BaiduAppSettings.DEFAULT_VOICE
+        private set
+    /** Voice echoed by the last session.updated (or FALLBACK_VOICE after recovery). */
+    @Volatile var confirmedVoice: String? = null
+        private set
+    val voiceConfirmedAsRequested: Boolean
+        get() = confirmedVoice != null && confirmedVoice == requestedVoice
     @Volatile private var vadThreshold: Double = BaiduFlexProtocol.DEFAULT_VAD_THRESHOLD
     @Volatile private var navigatingListener: ((Boolean) -> Unit)? = null
     private val emptyRetry = EmptyResponseRetryPolicy()
@@ -125,6 +133,8 @@ class BaiduFlexClient(
         voice = effective.settings.voice
         speed = effective.settings.speed
         sentVoice = voice
+        requestedVoice = voice
+        confirmedVoice = null
         voiceFallbackUsed = false
         val request = Request.Builder().url(endpoint).apply {
             if (effective.settings.authMode == BaiduAuthMode.BEARER_API_KEY) {
@@ -452,6 +462,14 @@ class BaiduFlexClient(
             if (type == "session.updated" && sessionCreated && !pending.isCompleted) {
                 Telemetry.record(EventType.SOCKET_CONNECTED)
             }
+            if (type == "session.updated") {
+                val echoed = JSONObject(text).optJSONObject("session")?.optString("voice").orEmpty()
+                confirmedVoice = echoed.ifBlank { sentVoice }
+                DebugVoiceLog.log(
+                    "flex_voice requested=$requestedVoice confirmed=$confirmedVoice " +
+                        "match=${confirmedVoice == requestedVoice} fallback=$voiceFallbackUsed",
+                )
+            }
             recordTelemetry(type, text)
             if (type == "session.updated" && sessionCreated) pending.complete(Unit)
             if (type == "response.audio.delta") assistantSpeaking = true
@@ -509,10 +527,10 @@ class BaiduFlexClient(
                 if (event is DomainVoiceEvent.ToolCall) onToolCallDispatched()
                 if (holdOrEmit(event)) return@forEach
                 if (event is DomainVoiceEvent.Error && !pending.isCompleted) {
-                    if (!voiceFallbackUsed && sentVoice != BaiduAppSettings.DEFAULT_VOICE) {
+                    if (!voiceFallbackUsed && sentVoice != BaiduAppSettings.FALLBACK_VOICE) {
                         voiceFallbackUsed = true
-                        sentVoice = BaiduAppSettings.DEFAULT_VOICE
-                        webSocket.send(BaiduFlexProtocol.sessionUpdate(instructionsWithContext(), BaiduAppSettings.DEFAULT_VOICE, speed, vadThreshold))
+                        sentVoice = BaiduAppSettings.FALLBACK_VOICE
+                        webSocket.send(BaiduFlexProtocol.sessionUpdate(instructionsWithContext(), BaiduAppSettings.FALLBACK_VOICE, speed, vadThreshold))
                         return
                     }
                     pending.completeExceptionally(VoiceProviderException(event.code, event.message))

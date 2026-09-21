@@ -62,7 +62,8 @@ class BaiduSettingsTest {
 
     @Test
     fun voiceAndSpeedDefaultAndRejectInvalidValues() {
-        assertEquals("default", BaiduAppSettings().voice)
+        assertEquals("4196", BaiduAppSettings().voice)
+        assertEquals("default", BaiduAppSettings.FALLBACK_VOICE)
         assertEquals(1.1, BaiduAppSettings().speed)
         assertEquals(
             "BAIDU_VOICE_INVALID",

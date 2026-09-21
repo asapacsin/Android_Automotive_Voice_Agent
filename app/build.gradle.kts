@@ -20,8 +20,8 @@ android {
         applicationId = "com.novadrive.app"
         minSdk = 28
         targetSdk = 34
-        versionCode = 7
-        versionName = "0.6.0-baidu-flex"
+        versionCode = 11
+        versionName = "0.6.4-nav-baseline"
         // Frozen backend compatibility receives no packaged host in the direct build.
         resValue("string", "nova_backend_url", "")
         manifestPlaceholders["AMAP_API_KEY"] = amapApiKey

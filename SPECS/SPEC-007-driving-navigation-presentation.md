@@ -18,7 +18,9 @@ During ACTIVE_DRIVING_NAVIGATION:
 - vehicle towards the lower-middle of the screen (`setPointToCenter`)
 - heading-up, auto zoom, tilt — **not** idle `moveCamera(newLatLngZoom)`
 - traffic-coloured route, live traffic updates
-- native HUD: layout, 3D turn arrows, lanes, junction enlarge, cameras, traffic lights
+- native HUD: layout, 3D turn arrows, lanes, junction enlarge, cameras, **overspeed pulse**, **traffic-light icons + countdown bubble switch** (`setWidgetOverSpeedPulseEffective`, `setTrafficLightsVisible`, `setShowTrafficLightView`)
+- live countdown *seconds*: **BLOCKED_EXTERNAL_AMAP_ENTITLEMENT** — bubble switch stays on, nothing is faked; `setIsOpenTrafficLight` quarantined and `setTrafficSignalEnable` unused (measured no-ops without Amap's trial, 2026-09-21)
+- current speed + posted limit from Amap location/cameras (`DrivingSpeedHud`); AMapNaviView has no speedometer widget
 - overview is allowed; returning from it restores tracking
 
 Voice still talks to `EmbeddedNavigationController` / `NaviEngine`. It must not name `AMapNaviView`.

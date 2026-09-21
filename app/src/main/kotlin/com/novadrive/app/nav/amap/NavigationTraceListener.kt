@@ -33,9 +33,13 @@ internal class NavigationTraceListener(
     private val onNavigationEnded: (reason: String) -> Unit,
     private val onRouteFailed: (errorCode: Int) -> Unit = {},
     private val onLocation: (AMapNaviLocation) -> Unit = {},
+    private val onCameraLimits: (List<DrivingSpeedHud.CameraLimit>) -> Unit = {},
+    private val onFacilityLimit: (Int) -> Unit = {},
 ) : AMapNaviListener {
 
     private var lastManeuverIcon: Int? = null
+    private var lastRemainLights: Int? = null
+    private var lastCameraFingerprint: String? = null
 
     // ---- stage 5: route calculation outcome -------------------------------
 
@@ -129,7 +133,13 @@ internal class NavigationTraceListener(
     }
 
     override fun onNaviInfoUpdate(info: NaviInfo?) {
-        val icon = info?.iconType ?: return
+        if (info == null) return
+        val lights = runCatching { info.routeRemainLightCount }.getOrNull()
+        if (lights != null && lights != lastRemainLights) {
+            lastRemainLights = lights
+            DebugVoiceLog.log("nav_remain_lights count=$lights")
+        }
+        val icon = info.iconType
         if (icon == lastManeuverIcon) return
         lastManeuverIcon = icon
         DebugVoiceLog.log(
@@ -147,7 +157,24 @@ internal class NavigationTraceListener(
 
     override fun onArrivedWayPoint(index: Int) = Unit
 
-    override fun updateCameraInfo(info: Array<out AMapNaviCameraInfo>?) = Unit
+    override fun updateCameraInfo(info: Array<out AMapNaviCameraInfo>?) {
+        if (info.isNullOrEmpty()) return
+        val summary = info.joinToString(",") { cam ->
+            "type=${cam.cameraType} limitKmh=${cam.cameraSpeed} distM=${cam.cameraDistance}"
+        }
+        if (summary == lastCameraFingerprint) return
+        lastCameraFingerprint = summary
+        DebugVoiceLog.log("nav_camera_ahead count=${info.size} $summary")
+        onCameraLimits(
+            info.map { cam ->
+                DrivingSpeedHud.CameraLimit(limitKmh = cam.cameraSpeed, distM = cam.cameraDistance)
+            },
+        )
+    }
+
+    override fun onPlayRing(type: Int) {
+        DebugVoiceLog.log("nav_play_ring type=$type")
+    }
 
     override fun updateIntervalCameraInfo(a: AMapNaviCameraInfo?, b: AMapNaviCameraInfo?, c: Int) = Unit
 
@@ -177,13 +204,17 @@ internal class NavigationTraceListener(
 
     override fun OnUpdateTrafficFacility(info: Array<out AMapNaviTrafficFacilityInfo>?) = Unit
 
-    override fun OnUpdateTrafficFacility(info: AMapNaviTrafficFacilityInfo?) = Unit
+    override fun OnUpdateTrafficFacility(info: AMapNaviTrafficFacilityInfo?) {
+        if (info == null) return
+        DebugVoiceLog.log(
+            "nav_facility type=${info.broadcastType} limitKmh=${info.limitSpeed}",
+        )
+        onFacilityLimit(info.limitSpeed)
+    }
 
     override fun updateAimlessModeStatistics(stat: AimLessModeStat?) = Unit
 
     override fun updateAimlessModeCongestionInfo(info: AimLessModeCongestionInfo?) = Unit
-
-    override fun onPlayRing(type: Int) = Unit
 
     override fun onNaviRouteNotify(data: AMapNaviRouteNotifyData?) = Unit
 }

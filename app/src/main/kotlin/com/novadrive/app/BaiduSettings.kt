@@ -51,7 +51,10 @@ data class BaiduAppSettings(
     companion object {
         const val DEFAULT_ENDPOINT = "wss://aip.baidubce.com/ws/2.0/speech/v1/realtime"
         const val DEFAULT_TOKEN_ENDPOINT = "https://aip.baidubce.com/oauth/2.0/token"
-        const val DEFAULT_VOICE = "default"
+        /** Owner pick: 度清影-甜美女声 — see [BaiduFlexVoices.PREFERRED_YOUTHFUL_FEMALE]. */
+        const val DEFAULT_VOICE = BaiduFlexVoices.PREFERRED_YOUTHFUL_FEMALE
+        /** Baidu Flex stock id used only when a requested numeric voice is rejected. */
+        const val FALLBACK_VOICE = "default"
         const val DEFAULT_SPEED = 1.1
     }
 }

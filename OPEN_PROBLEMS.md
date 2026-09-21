@@ -1237,23 +1237,44 @@ enforces).
 
 ## P29 — Real-drive-only navigation QA is too slow to repeat
 
-**Status:** RECORDED 2026-09-20 — not a product defect; queued as [NAV-SIM-QA-001](TEST_MATRIX.yaml)
-BLOCKED_BY: the owner recording or naming a local navigation QA clip (kept out of git), or accepting Level A simulation as enough for repeat QA
+**Status:** FIXED 2026-09-21 — screen-recording movie produced at local `D:\桌面\android_doc\nav_qa_to_shizimen.mp4` (十字门 destination/route UI). Owner watch → [NAV-SIM-QA-001](TEST_MATRIX.yaml) for VERIFIED. Not committed to git.
 **Found:** 2026-09-20, owner spreadsheet #3 (test improvement, not a product defect)
 
-The Level A simulation benchmark and `SimulatedNavigationWorld` already exercise arrival without a
-road. What is still missing is an owner-chosen recorded drive clip for UI+voice replay; that cannot
-be authored in the cloud without the owner's media and is not uploaded to git (large file policy).
+Owner wants a **real screen-recording movie** of the navigation UI under `D:\桌面\android_doc\`. Level A remains for automated code gates only. Note: `adb screenrecord` requires the phone display **ON** (otherwise `INVALID_LAYER_STACK`).
 
 ---
 
 ## P30 — Assistant voice sounds like an older woman; prefer a younger cute style
 
-**Status:** HUMAN_REQUIRED 2026-09-20 — [VOICE-STYLE-001](TEST_MATRIX.yaml)
-BLOCKED_BY: the owner choosing a Baidu Flex voice id (default vs numeric younger-female vs defer)
+**Status:** FIXED 2026-09-21 — owner chose Flex voice id **4196** (度清影-甜美女声); product default + developer picker; `session.updated` confirmation in Test Connection. Cabin ear-check still [VOICE-STYLE-001](TEST_MATRIX.yaml) / local FC-004 for VERIFIED.
 **Found:** 2026-09-20, owner spreadsheet #4
 
-Baidu Flex voice id is a product choice among vendor options (default / numeric ids with fallback).
-Not comparable on engineering grounds alone; quantify options in the matrix and wait for the owner.
+Owner decision 2026-09-21: use **4196**. App default is `BaiduFlexVoices.PREFERRED_YOUTHFUL_FEMALE`; unsupported ids still fall back to Flex `"default"`. No external TTS.
+
+---
+
+## P31 — Navigation reroutes near the destination instead of arriving
+
+**Status:** OPEN 2026-09-21 — fix explicitly out of scope for the harness change that recorded it
+**Found:** 2026-09-21, product owner watching `nav_baseline_0_6_4.mp4` (0.6.4 emulator run)
+
+### Symptom
+
+Near the end of the 十字门 drive, remaining distance showed ~15 m, then jumped back to ~3.7 km
+and navigation continued. The run ended by manual stop; no `nav_arrived` / `nav_emulator_end`
+was observed. Tracked as [NAV-E2E-ARRIVAL-001](TEST_MATRIX.yaml) FAIL (terminal_regression).
+
+### What is already known
+
+- Mid-route behaviour on the same run was healthy: launch accepted, 3 routes resolved,
+  guidance spoke, 40-limit camera flagged at 50 km/h, clean manual stop
+  ([NAV-MID-ROUTE-001](TEST_MATRIX.yaml) PASS).
+- Whether the jump is an SDK reroute, a route-id switch, or our own arrival handling is
+  unmeasured — the baseline poll loop only counted log lines near the end.
+
+### Next measurement (not this change)
+
+Reproduce with remaining-distance + route-id tracing through the arrival interval, then decide
+whether the defect is ours (arrival/reroute handling) or the SDK's (emulator reroute).
 
 

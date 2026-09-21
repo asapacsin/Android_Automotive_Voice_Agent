@@ -16,6 +16,15 @@ import com.novadrive.app.DebugVoiceLog
  */
 internal object AmapDrivingPresentation {
 
+    /**
+     * Live red/green countdown *seconds* are blocked on Amap entitlement, not on wiring.
+     * Measured 2026-09-21 against navi-3dmap 11.2.100: `setIsOpenTrafficLight` takes an
+     * entitlement string (our old `"1"` failed its check and did nothing), and public
+     * `setTrafficSignalEnable` is a dead stub. The native bubble switch below stays on so
+     * seconds appear with zero code change once Amap grants the trial. Do not fake them.
+     */
+    const val TRAFFIC_COUNTDOWN_STATUS = "BLOCKED_EXTERNAL_AMAP_ENTITLEMENT"
+
     /** Whole-route, north-up-ish overview while the driver picks a path. */
     fun applyRoutePreview(naviView: AMapNaviView) {
         applyOptions(naviView, driving = false, preview = true)
@@ -28,7 +37,7 @@ internal object AmapDrivingPresentation {
         navi?.let { enableLiveTraffic(it) }
         applyOptions(naviView, driving = true, preview = false)
         lockCar(naviView)
-        DebugVoiceLog.log("nav_presentation mode=driving naviMode=car_up trafficLine=true layout=true")
+        DebugVoiceLog.log("nav_presentation mode=driving naviMode=car_up trafficLine=true layout=true overspeedPulse=true trafficLightBubble=true trafficLightCountdown=$TRAFFIC_COUNTDOWN_STATUS")
     }
 
     /** Browse map after navigation ends. Native navi chrome is put away so it does not cover the bar. */
@@ -68,7 +77,12 @@ internal object AmapDrivingPresentation {
         runCatching { navi.setTrafficStatusUpdateEnabled(true) }
         runCatching { navi.setTrafficInfoUpdateEnabled(true) }
         runCatching { navi.setCameraInfoUpdateEnabled(true) }
-        runCatching { navi.setTrafficSignalEnable(true) }
+        // QUARANTINED 2026-09-21 — do not re-add without Amap's trial entitlement:
+        // setIsOpenTrafficLight("1") never enabled anything (it wants an entitlement
+        // string, not "1"), and setTrafficSignalEnable is a dead public stub in 11.2.100.
+        // The bubble switch (setShowTrafficLightView) stays on; seconds light up unaided
+        // once the key is entitled. Absence of seconds is not a defect in this baseline.
+        DebugVoiceLog.log("nav_traffic_countdown status=$TRAFFIC_COUNTDOWN_STATUS")
     }
 
     private fun applyOptions(naviView: AMapNaviView, driving: Boolean, preview: Boolean) {
@@ -88,6 +102,7 @@ internal object AmapDrivingPresentation {
             options.setAutoDisplayOverview(preview)
             options.setCameraBubbleShow(driving)
             options.setShowCameraDistance(driving)
+            options.setWidgetOverSpeedPulseEffective(driving)
             options.setSecondActionVisible(driving)
             options.setNaviStatusBarEnabled(driving)
             options.setCompassEnabled(java.lang.Boolean.valueOf(driving || preview))

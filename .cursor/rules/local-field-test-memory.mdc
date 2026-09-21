@@ -1,0 +1,27 @@
+---
+description: Consult local field-test failure memory before voice/nav/bug work
+alwaysApply: true
+---
+
+# Local field-test failure memory
+
+At the start of work on this project, check whether `.local-agent-memory/failure_cases.md` exists.
+If it exists, **read it** before implementation decisions involving:
+
+- voice interaction / turn-taking / open-mic
+- navigation (embedded Amap or guidance speech)
+- realtime conversation behavior (Baidu Flex end-to-end)
+- field testing, device QA, or bug fixing from real-world reports
+
+## How to treat statuses
+
+- `OPEN` and `INVESTIGATING` = **active known problems**
+- Do **not** claim `FIXED` only because code changed
+- `FIXED` only after an appropriate **automated** test succeeds
+- `VERIFIED` only after **real-device / field** evidence is recorded in that case
+- Prefer updating an existing case over creating a duplicate when a new report matches
+
+## When the owner reports a new real-world failure in chat
+
+Add it to `.local-agent-memory/failure_cases.md` unless they explicitly say not to.
+That directory is **gitignored** — never commit or push it; never put secrets, coordinates, or full transcripts into tracked docs as a substitute.
