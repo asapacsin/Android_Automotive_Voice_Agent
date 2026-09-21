@@ -2,6 +2,27 @@
 
 Newest first. One line per change, with the evidence that motivated it.
 
+## 2026-09-21 — evidence closure: a successful prefix is not a completed lifecycle
+
+A navigation recording proved launch, route calculation, guidance, speed/limit HUD and traffic-light
+icons, but never proved arrival: near the destination the remaining distance collapsed to metres,
+then jumped back to kilometres, and the run ended with a manual stop. The observations were valid;
+the summary promoted them beyond their evidence boundary.
+
+- **CONSTITUTION rule 20 — `CLAIM_SCOPE_MUST_MATCH_EVIDENCE`**: lifecycle/E2E/baseline claims need
+  an explicit terminal oracle; aborting before it leaves the parent claim unearned/partial/failed.
+- **`scripts/test_matrix.py`**: lifecycle-like IDs/names must use `claim_scope: LIFECYCLE`;
+  lifecycle PASS requires `terminal_result: OBSERVED` plus `terminal_evidence`.
+- **`NAV-DRIVE-001`** is explicitly lifecycle-scoped and remains `NOT_OBSERVED`; manual stop,
+  recording end or a route transition before natural arrival cannot close it.
+- **`skills/verify.md` + `SPECS/SPEC-TEMPLATE.md`** require the evidence boundary to be declared
+  before verification instead of inferred after seeing a mostly-good run.
+- **`EvidenceClosurePolicyTest`** guards the mechanism so a future harness cleanup cannot quietly
+  remove the rule.
+
+The motivating proposal is
+[`HARNESS_PROPOSAL_EVIDENCE_CLOSURE_2026_09_21.md`](proposals/HARNESS_PROPOSAL_EVIDENCE_CLOSURE_2026_09_21.md).
+
 ## 2026-09-20 — harness v2: human intervention is batched
 
 The harness asked for a person **at the moment of discovery**. Hit a test only a human could run,
