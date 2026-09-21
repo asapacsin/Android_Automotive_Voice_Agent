@@ -43,5 +43,9 @@ that justifies it.
 
 ## Output
 
-`PASS` / `FAIL` / `PARTIAL`, the exact counts, and the log lines. If anything failed, say so
-separately and plainly; do not fold it into a summary.
+For lifecycle claims, report `CLAIM`, `START_BOUNDARY`, `TERMINAL_ORACLE`, `TERMINAL_RESULT`
+(`OBSERVED` / `NOT_OBSERVED` / `ABORTED`), and the terminal evidence before the overall result.
+
+Then report `PASS` / `FAIL` / `PARTIAL`, the exact counts, and the log lines. If anything failed
+or the terminal oracle was not observed, say so separately and plainly; do not fold it into a
+summary.
