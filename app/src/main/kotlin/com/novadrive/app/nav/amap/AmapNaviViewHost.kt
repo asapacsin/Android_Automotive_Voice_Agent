@@ -83,6 +83,9 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
 
         /** Enough to cover a slow surface; not a loop that fights the SDK forever. */
         const val MAX_CAMERA_RETRIES = 3
+
+        /** Amap: start point not in supported range (desk / missing SDK fix). */
+        const val START_OUT_OF_RANGE_CODE = 3
     }
 
     init {
@@ -424,7 +427,36 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
      * Returns whether the SDK *accepted* the request — success or failure arrives
      * asynchronously on [NavigationTraceListener], which is why registering that
      * listener is a precondition rather than an optional extra.
+     *
+     * When the SDK returns **code 3** (起点不在支持范围内) with a null start — common at a
+     * desk when Amap's own fix is missing/unsupported while Android still has a last-known
+     * position — [ensureTraceListener] retries **once** with that last-known fix as an
+     * explicit start (GCJ-02). Coordinates are never logged.
      */
+    /**
+     * Debug / desk E2E only. When set, [calculateDriveRoute] uses this GCJ-02 point as an
+     * explicit start instead of the SDK's null-start (which fails with code 3 when Amap has
+     * no supported origin). Cleared on [clearDeskOriginForTest]. Never logged as coordinates.
+     */
+    @Volatile
+    private var deskOriginForTest: LocationFix? = null
+
+    fun setDeskOriginForTest(latitude: Double, longitude: Double): Boolean {
+        if (!latitude.isFinite() || !longitude.isFinite()) return false
+        if (latitude !in -90.0..90.0 || longitude !in -180.0..180.0) return false
+        // Adb / LocationManager supply WGS-84; Amap route calc expects GCJ-02.
+        val converted = LocationFix(latitude, longitude, ageMs = 0L, accuracyMeters = 10f).toGcj02()
+        deskOriginForTest = converted
+        lastFix = converted
+        DebugVoiceLog.log("nav_desk_origin set=true")
+        return true
+    }
+
+    fun clearDeskOriginForTest() {
+        deskOriginForTest = null
+        DebugVoiceLog.log("nav_desk_origin set=false")
+    }
+
     fun calculateDriveRoute(
         endLat: Double,
         endLon: Double,
@@ -432,19 +464,99 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         strategy: Int = PathPlanningStrategy.DRIVING_MULTIPLE_ROUTES_DEFAULT,
     ): Boolean {
         ensureTraceListener()
+        // Desk / cold-start: Amap's null-start path needs a supported origin. Seed from the
+        // platform last-known (GCJ-02) before the first request so a code-3 retry has a fix.
+        if (lastFix == null) {
+            platformLocation.lastKnownFix()?.let { raw ->
+                lastPlatformRaw = raw
+                applyFix(raw.toGcj02(), source = "last_known_pre_calc")
+                DebugVoiceLog.log("nav_calc_seeded_fix ageMs=${raw.ageMs}")
+            } ?: DebugVoiceLog.log("nav_calc_seeded_fix available=false")
+        }
+        startLocation()
         val navi = this.navi
         if (navi == null) {
             DebugVoiceLog.log("nav_calc_request accepted=false reason=no_navi")
             return false
         }
+        pendingRouteEnd = PendingRouteEnd(endLat, endLon, endName, strategy)
+        explicitStartRetryUsed = false
         val end = NaviPoi(endName, LatLng(endLat, endLon), null)
-        val accepted = runCatching {
-            navi.calculateDriveRoute(null, end, null, strategy)
-        }.getOrElse {
-            DebugVoiceLog.log("nav_calc_request accepted=false reason=exception")
-            false
+        val desk = deskOriginForTest
+        val accepted = if (desk != null) {
+            explicitStartRetryUsed = true
+            val start = NaviPoi("当前位置", LatLng(desk.latitude, desk.longitude), null)
+            DebugVoiceLog.log("nav_calc_using_desk_origin=true")
+            runCatching {
+                navi.calculateDriveRoute(start, end, null, strategy)
+            }.getOrElse {
+                DebugVoiceLog.log("nav_calc_request accepted=false reason=exception")
+                false
+            }
+        } else {
+            runCatching {
+                navi.calculateDriveRoute(null, end, null, strategy)
+            }.getOrElse {
+                DebugVoiceLog.log("nav_calc_request accepted=false reason=exception")
+                false
+            }
         }
         DebugVoiceLog.log("nav_calc_request accepted=$accepted")
+        return accepted
+    }
+
+    private data class PendingRouteEnd(
+        val endLat: Double,
+        val endLon: Double,
+        val endName: String,
+        val strategy: Int,
+    )
+
+    @Volatile
+    private var pendingRouteEnd: PendingRouteEnd? = null
+
+    @Volatile
+    private var explicitStartRetryUsed = false
+
+    /**
+     * One-shot recovery for Amap code 3 when null-start calculation fails but we already
+     * hold a usable GCJ-02 fix (SDK stream or converted platform last-known).
+     * @return true when a retry was issued (caller should defer the failure callback).
+     */
+    private fun retryRouteWithExplicitStartIfNeeded(errorCode: Int): Boolean {
+        if (errorCode != START_OUT_OF_RANGE_CODE) return false
+        if (explicitStartRetryUsed) return false
+        val pending = pendingRouteEnd ?: return false
+        val fix = deskOriginForTest
+            ?: lastFix
+            ?: platformLocation.lastKnownFix()?.toGcj02()
+        if (fix == null) {
+            DebugVoiceLog.log("nav_calc_retry_waiting_fix")
+            // Defer the failure: one fresh platform fix, then explicit-start retry.
+            if (pendingFixRequest == null) {
+                pendingFixRequest = platformLocation.requestSingleFix { raw ->
+                    pendingFixRequest = null
+                    lastPlatformRaw = raw
+                    applyFix(raw.toGcj02(), source = "platform_route_retry")
+                    if (!retryRouteWithExplicitStartIfNeeded(START_OUT_OF_RANGE_CODE)) {
+                        onRouteCalculationFailed?.invoke(START_OUT_OF_RANGE_CODE)
+                    }
+                }
+            }
+            // Still defer even if we could not register a listener — avoid a false permanent fail
+            // when the first code-3 races ahead of startGPS.
+            return pendingFixRequest != null
+        }
+        val navi = this.navi ?: return false
+        explicitStartRetryUsed = true
+        val start = NaviPoi("当前位置", LatLng(fix.latitude, fix.longitude), null)
+        val end = NaviPoi(pending.endName, LatLng(pending.endLat, pending.endLon), null)
+        val accepted = runCatching {
+            navi.calculateDriveRoute(start, end, null, pending.strategy)
+        }.getOrDefault(false)
+        DebugVoiceLog.log(
+            "nav_calc_retry_explicit_start accepted=$accepted ageMs=${fix.ageMs}",
+        )
         return accepted
     }
 
@@ -645,7 +757,11 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
             // Completion -> the SAME stop path as the manual nav_stop fallback.
             // No separate teardown implementation.
             onNavigationEnded = { reason -> stopNavigation(reason) },
-            onRouteFailed = { code -> onRouteCalculationFailed?.invoke(code) },
+            onRouteFailed = { code ->
+                if (!retryRouteWithExplicitStartIfNeeded(code)) {
+                    onRouteCalculationFailed?.invoke(code)
+                }
+            },
             onLocation = { location ->
                 val fix = location.toFix()
                 checkConversion(fix)

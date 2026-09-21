@@ -81,13 +81,13 @@ navigation:
     notes: "Amap SDK offline voice. Loudness and quality are a human judgement."
   arrival_lifecycle:
     tool: null
-    verified: implemented
+    verified: device
     required_scope: END_TO_END
-    evidence: "NAV-E2E-ARRIVAL-001 FAIL 2026-09-21: 0.6.4 run never arrived; remaining ~15 m -> ~3.7 km, manual stop"
+    evidence: "NAV-E2E-ARRIVAL-001 PASS 2026-09-21: nav_proximity_arrival + nav_stopped reason=emulator_end; artifact D:/桌面/android_doc/nav_e2e_arrival_2026-09-21/nav_e2e_arrival.mp4"
     notes: >
-      Start, follow, arrival callback, arrival handling and automatic session end. The code
-      exists (ended-callback resyncs NavigationPhase) but no drive has demonstrated the full
-      lifecycle; mid-route health is covered separately and never satisfies this.
+      Start, follow, arrival callback, arrival handling and automatic session end.
+      Emulator proximity completion closes the P31 gap when onEndEmulatorNavi is late;
+      debug nav_desk_origin unblocks desk route calc when Amap null-start returns code 3.
 
 media:
   play_music:

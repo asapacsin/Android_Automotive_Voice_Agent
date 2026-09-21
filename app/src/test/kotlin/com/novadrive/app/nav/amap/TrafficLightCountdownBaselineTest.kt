@@ -45,6 +45,25 @@ class TrafficLightCountdownBaselineTest {
     }
 
     @Test
+    fun emulatorProximityArrivalFiresWhenSdkEndNeverComes() {
+        var ended: String? = null
+        val listener = NavigationTraceListener(
+            onRouteReady = {},
+            onNavigationEnded = { ended = it },
+        )
+        listener.onStartNavi(NavigationProgressTrace.NAVI_TYPE_EMULATOR)
+        repeat(NavigationProgressTrace.PROXIMITY_SAMPLES_REQUIRED) {
+            listener.onNaviInfoUpdate(
+                com.amap.api.navi.model.NaviInfo().apply {
+                    pathRetainDistance = 20
+                    pathRetainTime = 5
+                },
+            )
+        }
+        assertEquals("emulator_end", ended)
+    }
+
+    @Test
     fun routeAndGuidanceCallbacksStillFireWithoutCountdown() {
         var routeIds: IntArray? = null
         var ended: String? = null

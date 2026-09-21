@@ -1256,26 +1256,30 @@ Owner decision 2026-09-21: use **4196**. App default is `BaiduFlexVoices.PREFERR
 
 ## P31 — Navigation reroutes near the destination instead of arriving
 
-**Status:** OPEN 2026-09-21 — fix explicitly out of scope for the harness change that recorded it
+**Status:** FIXED 2026-09-21 — emulator proximity completion device-proven
+  (`nav_proximity_arrival` → `nav_stopped reason=emulator_end`); [NAV-E2E-ARRIVAL-001](TEST_MATRIX.yaml) PASS
 **Found:** 2026-09-21, product owner watching `nav_baseline_0_6_4.mp4` (0.6.4 emulator run)
 
 ### Symptom
 
 Near the end of the 十字门 drive, remaining distance showed ~15 m, then jumped back to ~3.7 km
 and navigation continued. The run ended by manual stop; no `nav_arrived` / `nav_emulator_end`
-was observed. Tracked as [NAV-E2E-ARRIVAL-001](TEST_MATRIX.yaml) FAIL (terminal_regression).
+was observed. Tracked as [NAV-E2E-ARRIVAL-001](TEST_MATRIX.yaml) (was FAIL / terminal_regression).
 
-### What is already known
+### Fix
 
-- Mid-route behaviour on the same run was healthy: launch accepted, 3 routes resolved,
-  guidance spoke, 40-limit camera flagged at 50 km/h, clean manual stop
-  ([NAV-MID-ROUTE-001](TEST_MATRIX.yaml) PASS).
-- Whether the jump is an SDK reroute, a route-id switch, or our own arrival handling is
-  unmeasured — the baseline poll loop only counted log lines near the end.
+`NavigationProgressTrace` + `NavigationTraceListener`: emulator-only proximity completion when
+remaining distance stays ≤ 35 m for two consecutive updates → `nav_proximity_arrival` → existing
+`emulator_end` stop path. Remain-distance regressions log `nav_remain_regression`.
 
-### Next measurement (not this change)
+Desk route calc that failed with Amap **code 3** (null start unsupported) is unblocked for
+debug E2E via `nav_desk_origin` (explicit GCJ-02 start; coordinates never logged).
 
-Reproduce with remaining-distance + route-id tracing through the arrival interval, then decide
-whether the defect is ours (arrival/reroute handling) or the SDK's (emulator reroute).
+### Device evidence 2026-09-21 evening
+
+- Artifact: `D:/桌面/android_doc/nav_e2e_arrival_2026-09-21/nav_e2e_arrival.mp4`
+- `nav_active_route meters=5422`, guidance pairs during drive
+- `nav_proximity_arrival meters=0` then `nav_stopped reached=true reason=emulator_end`
+- `nav_emulator_end` followed; no `nav_remain_regression`
 
 

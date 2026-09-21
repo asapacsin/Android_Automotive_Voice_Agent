@@ -1,31 +1,31 @@
 {
-  "generated_at": "2026-09-21T18:46:53",
+  "generated_at": "2026-09-21T23:20:24",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "92e710d",
+    "commit": "a6f968f",
     "branch": "cursor/2026-09-21-acceptance-harness",
-    "subject": "2026-09-21 acceptance hardening: verdict scopes, provenance, nav baseline (Cursor)",
+    "subject": "Legal human blockers: enforce automation_blocker and rerun desk validation.",
     "working_tree_clean": false,
-    "uncommitted_files": 21
+    "uncommitted_files": 31
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-21T18:45:30",
+    "collected_at": "2026-09-21T23:02:36",
     "total": {
-      "tests": 156,
+      "tests": 173,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "app": {
-        "tests": 25,
+        "tests": 31,
         "failures": 0,
         "errors": 0,
         "skipped": 0
       },
       "behavior-test": {
-        "tests": 7,
+        "tests": 18,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,14 +65,13 @@
   },
   "apk": {
     "built": true,
-    "bytes": 229178519,
-    "built_at": "2026-09-21T18:29:46"
+    "bytes": 229126923,
+    "built_at": "2026-09-21T23:12:22"
   },
   "capabilities": {
     "available": true,
     "by_level": {
-      "device": 24,
-      "implemented": 1,
+      "device": 25,
       "unsupported": 6,
       "human": 1,
       "unit": 1
@@ -83,13 +82,7 @@
       "phone.place_call"
     ]
   },
-  "open_issues": [
-    {
-      "id": "P31",
-      "title": "Navigation reroutes near the destination instead of arriving",
-      "status": "OPEN 2026-09-21 — fix explicitly out of scope for the harness change that recorded it"
-    }
-  ],
+  "open_issues": [],
   "tech_debt": [
     {
       "id": "D-1",
@@ -128,38 +121,17 @@
     }
   ],
   "work_frontier": {
-    "AUTONOMOUS_ACTION_AVAILABLE": "YES",
-    "HUMAN_ACTION_REQUIRED": "NO",
-    "STOP_REASON": "NOT_STOPPING",
-    "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "NAV-E2E-ARRIVAL-001: FAIL: Navigation reaches the destination and terminates by arrival",
-    "actionable_count": 3,
+    "AUTONOMOUS_ACTION_AVAILABLE": "NO",
+    "HUMAN_ACTION_REQUIRED": "YES",
+    "STOP_REASON": "BLOCKED_ON_EXTERNAL_DEPENDENCY",
+    "BLOCKING_DEPENDENCY": "a person saying 「你好小诺」 at a stated distance with the car actually moving, which is",
+    "NEXT_ACTION": "NONE",
+    "actionable_count": 0,
     "blocked_count": 4,
-    "HUMAN_VALIDATION_READY": "FALSE",
+    "HUMAN_VALIDATION_READY": "TRUE",
     "QUEUED_FOR_HUMAN": 9,
-    "PHASE": "AUTONOMOUS_TEST",
+    "PHASE": "HUMAN_VALIDATION_READY",
     "candidates": [
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-E2E-ARRIVAL-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 5,
-        "class": "implemented but not wired into production",
-        "source": "capabilities.yaml",
-        "item": "arrival_lifecycle",
-        "blocked_by": null
-      },
-      {
-        "priority": 9,
-        "class": "unfinished or open problem",
-        "source": "OPEN_PROBLEMS.md",
-        "item": "P31",
-        "blocked_by": null
-      },
       {
         "priority": 11,
         "class": "next authorised backlog item",

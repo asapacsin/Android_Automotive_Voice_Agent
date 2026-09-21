@@ -2,9 +2,7 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --packet`. **Do not edit by hand.**
 
-> **Not ready yet.** This is a preview of the queue; autonomous work remains:
->
-> - NAV-E2E-ARRIVAL-001 is AUTONOMOUS and FAIL - run it or fix it
+Everything an agent could do has been done. What follows is the whole of what needs a person — **in one batch, to be handled in one sitting**, rather than one interruption per test.
 
 9 item(s) queued.
 

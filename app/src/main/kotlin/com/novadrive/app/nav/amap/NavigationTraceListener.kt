@@ -40,6 +40,10 @@ internal class NavigationTraceListener(
     private var lastManeuverIcon: Int? = null
     private var lastRemainLights: Int? = null
     private var lastCameraFingerprint: String? = null
+    private var lastRemainMeters: Int? = null
+    private var lastNaviType: Int? = null
+    private var proximityStreak = 0
+    private var completionSignaled = false
 
     // ---- stage 5: route calculation outcome -------------------------------
 
@@ -69,6 +73,10 @@ internal class NavigationTraceListener(
     // ---- stages 6-7: navigation start / engine state ----------------------
 
     override fun onStartNavi(type: Int) {
+        lastNaviType = type
+        lastRemainMeters = null
+        proximityStreak = 0
+        completionSignaled = false
         DebugVoiceLog.log("nav_started type=$type")
     }
 
@@ -112,11 +120,13 @@ internal class NavigationTraceListener(
     }
 
     override fun onReCalculateRouteForYaw() {
-        DebugVoiceLog.log("nav_recalc_yaw")
+        proximityStreak = 0
+        DebugVoiceLog.log("nav_recalc_yaw remainMeters=${lastRemainMeters ?: -1}")
     }
 
     override fun onReCalculateRouteForTrafficJam() {
-        DebugVoiceLog.log("nav_recalc_jam")
+        proximityStreak = 0
+        DebugVoiceLog.log("nav_recalc_jam remainMeters=${lastRemainMeters ?: -1}")
     }
 
     // ---- high-frequency callbacks: deliberately silent --------------------
@@ -134,16 +144,42 @@ internal class NavigationTraceListener(
 
     override fun onNaviInfoUpdate(info: NaviInfo?) {
         if (info == null) return
+        val remainMeters = info.pathRetainDistance
+        val remainSeconds = info.pathRetainTime
         val lights = runCatching { info.routeRemainLightCount }.getOrNull()
         if (lights != null && lights != lastRemainLights) {
             lastRemainLights = lights
             DebugVoiceLog.log("nav_remain_lights count=$lights")
         }
+        val previousRemain = lastRemainMeters
+        if (NavigationProgressTrace.shouldLogRemainUpdate(previousRemain, remainMeters)) {
+            DebugVoiceLog.log("nav_remain meters=$remainMeters seconds=$remainSeconds")
+        }
+        if (previousRemain != null &&
+            NavigationProgressTrace.isRemainRegression(previousRemain, remainMeters)
+        ) {
+            DebugVoiceLog.log("nav_remain_regression from=$previousRemain to=$remainMeters")
+            proximityStreak = 0
+        }
+        lastRemainMeters = remainMeters
+        proximityStreak = NavigationProgressTrace.proximityStreak(
+            proximityStreak,
+            lastNaviType,
+            remainMeters,
+        )
+        if (!completionSignaled &&
+            NavigationProgressTrace.shouldCompleteByProximity(lastNaviType, proximityStreak)
+        ) {
+            completionSignaled = true
+            DebugVoiceLog.log("nav_proximity_arrival meters=$remainMeters")
+            onNavigationEnded("emulator_end")
+            return
+        }
         val icon = info.iconType
         if (icon == lastManeuverIcon) return
         lastManeuverIcon = icon
         DebugVoiceLog.log(
-            "nav_maneuver iconType=$icon remainMeters=${info.pathRetainDistance} remainSeconds=${info.pathRetainTime}",
+            "nav_maneuver iconType=$icon remainMeters=$remainMeters remainSeconds=$remainSeconds",
         )
     }
 

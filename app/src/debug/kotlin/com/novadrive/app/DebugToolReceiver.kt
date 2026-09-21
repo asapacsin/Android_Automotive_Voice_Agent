@@ -19,6 +19,7 @@ class DebugToolReceiver : BroadcastReceiver() {
                 "exit_navigation_mode" -> format(SafeAndroidActionExecutor(context).exitNavigationMode())
                 "probe_playback" -> probePlayback(context, arg)
                 "nav_route" -> navRoute(context, arg)
+                "nav_desk_origin" -> navDeskOrigin(arg)
                 "nav_start" -> navStart(arg)
                 "nav_stop" -> navStop()
                 "nav_overview" -> navOverview()
@@ -36,7 +37,8 @@ class DebugToolReceiver : BroadcastReceiver() {
                 "voice" -> voice(context, arg)
                 else -> "unknown tool"
             }
-            Log.d("NovaVoice", "debug_tool tool=$tool arg=$arg result=$result")
+            val safeArg = if (tool == "nav_desk_origin") "<redacted>" else arg
+            Log.d("NovaVoice", "debug_tool tool=$tool arg=$safeArg result=$result")
         } catch (e: Exception) {
             Log.d("NovaVoice", "debug_tool failed: ${e.message}")
         }
@@ -104,6 +106,24 @@ class DebugToolReceiver : BroadcastReceiver() {
             host.calculateDriveRoute(poi.latitude, poi.longitude, poi.name)
         }.start()
         return "resolving $target"
+    }
+
+    /**
+     * Desk E2E only. Sets an explicit GCJ-02 start so Amap route calc can run when the SDK
+     * has no supported origin (code 3). Arg: `lat,lon` or `clear`. Coordinates are never logged.
+     */
+    private fun navDeskOrigin(arg: String): String {
+        val host = NavigationHostGateway.current()
+            ?: return "no live map host (open MainActivity first)"
+        if (arg.equals("clear", ignoreCase = true) || arg.isBlank()) {
+            host.clearDeskOriginForTest()
+            return "cleared"
+        }
+        val parts = arg.split(',', limit = 2)
+        if (parts.size != 2) return "usage: lat,lon | clear"
+        val lat = parts[0].trim().toDoubleOrNull() ?: return "bad lat"
+        val lon = parts[1].trim().toDoubleOrNull() ?: return "bad lon"
+        return if (host.setDeskOriginForTest(lat, lon)) "set=true" else "rejected"
     }
 
     /**

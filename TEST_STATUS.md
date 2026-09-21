@@ -6,8 +6,8 @@ Updated 2026-09-21 · 83 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 73 |
-| autonomous FAIL | 1 |
+| autonomous PASS | 74 |
+| autonomous FAIL | 0 |
 | incomplete | 0 |
 | partial pass | 0 |
 | not run | 0 |
@@ -16,11 +16,9 @@ Updated 2026-09-21 · 83 tests
 | human fail | 0 |
 | blocked external | 0 |
 | not applicable | 0 |
-| **release-blocking failures** | **1** |
+| **release-blocking failures** | **0** |
 
-**HUMAN_VALIDATION_READY = FALSE**
-
-- NAV-E2E-ARRIVAL-001 is AUTONOMOUS and FAIL - run it or fix it
+**HUMAN_VALIDATION_READY = TRUE**
 
 ## By capability
 
@@ -35,7 +33,7 @@ Updated 2026-09-21 · 83 tests
 | lifecycle | 1 | 1 | 0 | 0 |
 | media | 2 | 2 | 0 | 0 |
 | microphone | 1 | 0 | 1 | 0 |
-| navigation | 19 | 16 | 2 | 0 |
+| navigation | 19 | 17 | 2 | 0 |
 | performance | 2 | 2 | 0 | 0 |
 | permissions | 3 | 3 | 0 | 0 |
 | regression | 2 | 2 | 0 | 0 |
@@ -82,7 +80,7 @@ Updated 2026-09-21 · 83 tests
 | NAV-CANCEL-001 | navigation | 算了 really cancels | AUTONOMOUS | PASS | yes | 2026-09-20: nav_flow_cancelled |
 | NAV-CORRECT-001 | navigation | A mid-flow destination change replaces the list | AUTONOMOUS | PASS | no | 2026-09-20: 20/20 suite |
 | NAV-DRIVE-001 | navigation | A route calculates and guides to arrival | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | NAV-SEARCH-001, NAV-PICK-001, NAV-CANCEL-001, NAV-CORRECT-001 PASS |
-| NAV-E2E-ARRIVAL-001 | navigation | Navigation reaches the destination and terminates by arrival | AUTONOMOUS | FAIL | yes | 2026-09-21: nav_baseline_0_6_4.mp4 never reached the destination; remaining distance ju… |
+| NAV-E2E-ARRIVAL-001 | navigation | Navigation reaches the destination and terminates by arrival | AUTONOMOUS | PASS | yes | video:D:/桌面/android_doc/nav_e2e_arrival_2026-09-21/nav_e2e_arrival.mp4 |
 | NAV-MID-ROUTE-001 | navigation | Mid-route navigation baseline without countdown entitlement | AUTONOMOUS | PASS | yes | 2026-09-21: nav_traffic_countdown status=BLOCKED_EXTERNAL_AMAP_ENTITLEMENT |
 | NAV-PICK-001 | navigation | 第二个 picks from the on-screen list | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | NAV-SEARCH-001 | navigation | A destination produces candidates and does not start navigating | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |

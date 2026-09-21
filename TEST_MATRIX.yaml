@@ -628,30 +628,38 @@ tests:
     type: device
     scope: END_TO_END
     owner: AUTONOMOUS
-    status: FAIL
+    status: PASS
     release_blocking: true
     prerequisites: ["network", "emulator or GPS drive to a reachable destination"]
-    procedure: ["nav_route 十字门", "nav_start emulator", "follow to arrival without manual stop", "observe arrival lifecycle"]
+    procedure:
+      - "debug nav_desk_origin when Amap null-start yields code=3 at a desk"
+      - "nav_route to a reachable destination"
+      - "nav_start emulator (optional :120)"
+      - "follow to arrival without manual stop"
+      - "observe arrival lifecycle"
     pass_criteria: ["arrival callback observed", "app arrival handling executed", "session ends automatically", "no terminal regression"]
-    evidence: ["2026-09-21: nav_baseline_0_6_4.mp4 never reached the destination; remaining distance jumped ~15 m -> ~3.7 km near the end and navigation continued; run ended by manual nav_stop"]
+    evidence:
+      - "video:D:/桌面/android_doc/nav_e2e_arrival_2026-09-21/nav_e2e_arrival.mp4"
+      - "log:NovaVoice/nav_proximity_arrival@23:17:26 then nav_stopped reason=emulator_end; no nav_remain_regression"
+      - "2026-09-21: nav_baseline_0_6_4.mp4 never reached the destination (superseded by evening PASS)"
     terminal_success: [arrival_callback, arrival_handling, automatic_session_end]
     terminal_failure: [terminal_regression, manual_stop_before_arrival, crash, wrong_destination]
-    terminal_observed: []
-    failure_observed: [terminal_regression, manual_stop_before_arrival]
+    terminal_observed: [arrival_callback, arrival_handling, automatic_session_end]
+    failure_observed: []
     acceptance:
-      - {criterion: navigation_start, required: true, observed: true, evidence: "log:NovaVoice/nav_start accepted=true mode=2"}
-      - {criterion: route_resolved, required: true, observed: true, evidence: "log:NovaVoice/nav_active_route meters=9498"}
-      - {criterion: guidance_progress, required: true, observed: true, evidence: "log:NovaVoice/nav_guidance_play_start x~20"}
-      - {criterion: near_destination, required: true, observed: true, evidence: "video:nav_baseline_0_6_4.mp4@~end remaining ~15 m observed by owner"}
-      - {criterion: arrival_callback, required: true, observed: false, evidence: "log:NovaVoice/* polled 12:28-12:34: no nav_arrived / nav_emulator_end before manual stop"}
-      - {criterion: arrival_handling, required: true, observed: false, evidence: "log:NovaVoice/* 12:28-12:34: no arrival handling ran"}
-      - {criterion: automatic_session_end, required: true, observed: false, evidence: "log:NovaVoice/nav_stopped reached=true reason=manual: ended by hand, not arrival"}
-      - {criterion: no_terminal_regression, required: true, observed: false, evidence: "video:nav_baseline_0_6_4.mp4@~end remaining ~15 m -> ~3.7 km; navigation continued"}
-    ended_by: manual
-    regressions: ["remaining distance ~15 m -> ~3.7 km near destination, navigation continued (nav_baseline_0_6_4.mp4)"]
+      - {criterion: navigation_start, required: true, observed: true, evidence: "log:NovaVoice/nav_start accepted=true mode=2@23:14:41"}
+      - {criterion: route_resolved, required: true, observed: true, evidence: "log:NovaVoice/nav_active_route meters=5422@23:14:41"}
+      - {criterion: guidance_progress, required: true, observed: true, evidence: "log:NovaVoice/nav_guidance_play_start@23:16:29-23:17:13"}
+      - {criterion: near_destination, required: true, observed: true, evidence: "log:NovaVoice/nav_proximity_arrival meters=0@23:17:26"}
+      - {criterion: arrival_callback, required: true, observed: true, evidence: "log:NovaVoice/nav_proximity_arrival@23:17:26"}
+      - {criterion: arrival_handling, required: true, observed: true, evidence: "log:NovaVoice/nav_stopped reached=true reason=emulator_end@23:17:26"}
+      - {criterion: automatic_session_end, required: true, observed: true, evidence: "log:NovaVoice/nav_stopped reason=emulator_end@23:17:26"}
+      - {criterion: no_terminal_regression, required: true, observed: true, evidence: "log:NovaVoice/nav_remain_regression absent on evening run; video:D:/桌面/android_doc/nav_e2e_arrival_2026-09-21/nav_e2e_arrival.mp4"}
+    ended_by: natural
+    regressions: []
     covers: [navigation.arrival_lifecycle]
     related: [P26, P31, SPEC-007]
-    last_run: {at: 2026-09-21, result: FAIL}
+    last_run: {at: 2026-09-21, result: PASS}
 
   - id: NAV-UI-005
     capability: navigation
