@@ -23,8 +23,15 @@
 # is not passing are different facts and are acted on differently.
 #   NOT_RUN | RUNNING | PASS | FAIL | BLOCKED_AUTONOMOUS | HUMAN_REQUIRED
 #   BLOCKED_EXTERNAL | NOT_APPLICABLE | HUMAN_PASS | HUMAN_FAIL
+#
+# Broad-flow evidence closure:
+#   Any test whose ID/name claims a baseline, E2E/end-to-end flow, lifecycle, arrival or full route
+#   must declare claim_scope: LIFECYCLE.
+#   LIFECYCLE entries also carry terminal_oracle, abort_conditions and terminal_result.
+#   PASS/HUMAN_PASS additionally requires terminal_result: OBSERVED and terminal_evidence.
+#   A manual stop or recording end before the terminal oracle is ABORTED/NOT_OBSERVED, never PASS.
 
-harness_version: 2
+harness_version: 3
 meta:
   updated: 2026-09-20
   device: "Xiaomi 24069RA21C (2391ff70), Android SDK 36, no SIM"
@@ -450,6 +457,15 @@ tests:
     owner: HUMAN_PHYSICAL
     status: HUMAN_REQUIRED
     release_blocking: true
+    claim_scope: LIFECYCLE
+    terminal_oracle:
+      - "AMap reports natural route completion/arrival and the app leaves active navigation without manual nav_stop"
+    abort_conditions:
+      - "manual nav_stop before natural completion"
+      - "the test or recording ends before the arrival/completion event"
+      - "a crash, reset, or route transition prevents natural arrival from being observed"
+    terminal_result: NOT_OBSERVED
+    terminal_evidence: []
     human_reason: "Route calculation fails with code=3 起点不在支持范围内 from a desk. The Amap SDK serves its own fix and ignores mock providers, measured 2026-09-18 and again 2026-09-19"
     prerequisites: ["the device outdoors with a real GPS fix", "a destination a few minutes away"]
     procedure:
