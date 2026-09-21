@@ -15,6 +15,7 @@ python scripts/harness_check.py        # is the harness coherent?
 python scripts/discover_work.py        # what is left to do, and which phase this run is in
 python scripts/test_matrix.py --gate   # may a human be asked yet, and if not why not
 python scripts/test_matrix.py --work   # autonomous tests that have not settled
+python scripts/model_route.py --selftest  # hard-gate Cursor labor routing
 ```
 
 Before you consider a change complete: `.\gradlew.bat test --rerun-tasks :app:assembleDebug`, then
@@ -74,7 +75,7 @@ The rules are [harness/CONSTITUTION.md](harness/CONSTITUTION.md) 12 and 17–19;
 | **Capability truth**, machine-readable, with verification level | [config/capabilities.yaml](config/capabilities.yaml) |
 | How work is done here, and the agent harness | [harness/README.md](harness/README.md) |
 | Reusable procedures | [skills/](skills/) — start, **continue**, reproduce, fix, verify, handoff |
-| Cursor hybrid routing (Grok parent / Composer executors) | [`.cursor/rules/hybrid-model-routing.mdc`](.cursor/rules/hybrid-model-routing.mdc), [`.cursor/agents/`](.cursor/agents/) |
+| Cursor hybrid routing (hard gate; Composer default; Grok on GROK_REQUIRED / termination) | [`.cursor/rules/hybrid-model-routing.mdc`](.cursor/rules/hybrid-model-routing.mdc), [`scripts/model_route.py`](scripts/model_route.py), [`.cursor/agents/`](.cursor/agents/) |
 
 ## How to change things here
 
@@ -102,16 +103,24 @@ from the product owner does win — and when it does, update the affected docume
 ## Cursor hybrid-model routing
 
 This section does **not** change architecture ownership, invariants, capabilities, or
-who may certify work. It only splits Cursor labor:
+who may certify work. It only splits Cursor labor. The **authoritative** policy is
+[`.cursor/rules/hybrid-model-routing.mdc`](.cursor/rules/hybrid-model-routing.mdc);
+**enforcement** is [`scripts/model_route.py`](scripts/model_route.py) — do not keep a
+second A–F / H1–H8 list here.
 
-- **Parent (this chat):** select **Grok 4.6 High** in the Cursor model picker.
-- **Exploration:** project subagent `repo-explorer` — Composer 2.5 Standard
-  (`composer-2.5[fast=false]`, not Fast).
-- **Implementation / tests / build loops:** project subagent `implementer` — same Standard pin.
-
-When to keep vs delegate is in
-[`.cursor/rules/hybrid-model-routing.mdc`](.cursor/rules/hybrid-model-routing.mdc).
-An implementation subagent still may not certify its own work as complete; the parent reviews.
+- **DEFAULT EXECUTOR:** Composer 2.5 Standard (`composer-2.5[fast=false]`, never Fast) —
+  this chat when that is the picker, plus `repo-explorer` / `implementer`.
+- **HIGH-REASONING:** Cursor Grok 4.6 High (`cursor-grok-4.6-high`) via `grok-high`,
+  **only** when the classifier returns `GROK_REQUIRED` **or**
+  `TERMINATION_REVIEW_REQUIRED`. The ordinary executor must not
+  continue the gated portion; if Grok cannot be invoked the result is
+  `BLOCKED_GROK_UNAVAILABLE` (fail closed).
+- **Termination:** no agent may authorize ending a run. `discover_work.py`
+  `AUTONOMOUS_ACTION_AVAILABLE = NO` is an observation only. Legal end path:
+  `terminate-request` → MAX_GROK `terminate-review` → `TERMINAL_APPROVED` →
+  `terminate-consume`. Anything else continues or fails closed.
+- "Needs Grok High" is not "needs a human." An implementation subagent still may not
+  certify its own work as complete.
 
 ## Hard rules
 

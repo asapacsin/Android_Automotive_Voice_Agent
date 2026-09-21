@@ -2,6 +2,55 @@
 
 Newest first. One line per change, with the evidence that motivated it.
 
+## 2026-09-21 — Termination hard gate (MAX_GROK; no self-authorization)
+
+DEFAULT could treat `AUTONOMOUS_ACTION_AVAILABLE = NO`, task completion, or "standing by" as
+permission to end a run. That is forbidden.
+
+- **[scripts/model_route.py](../scripts/model_route.py)** — `terminate-request` /
+  `terminate-review` / `terminate-consume`. Verdicts: `CONTINUE` | `TERMINAL_APPROVED` |
+  `REVIEW_UNAVAILABLE`. Fingerprints bind HEAD + dirty tree + frontier; approvals are
+  single-use; `TERMINAL_APPROVED` rejected when `actionable_count != 0`. Fail closed when
+  Grok is unavailable or the verdict is malformed/stale.
+- **[scripts/discover_work.py](../scripts/discover_work.py)** — always prints
+  `TERMINATION_AUTHORIZED = NO` and the gate command.
+- Rule / `grok-high` / `continue.md` / `implementer` updated; `ModelRoutingPolicyTest` covers
+  the bypass paths.
+
+Does not change product behaviour.
+
+## 2026-09-21 — Cursor routing hard gate (DEFAULT / GROK_REQUIRED / BLOCKED)
+
+The H1–H8 split was a recommendation: a Composer parent could still reason through architecture
+or two failed fixes. Labor routing is now a fail-closed classifier.
+
+- **[scripts/model_route.py](../scripts/model_route.py)** — hard gate. `--action continue`
+  through `GROK_REQUIRED` exits 2; missing/unpinned/unlaunchable Grok is
+  `BLOCKED_GROK_UNAVAILABLE` (exit 3), never DEFAULT. Ledger prevents re-escalating the same
+  issue+evidence. `--role grok-high` cannot loop.
+- **[`.cursor/rules/hybrid-model-routing.mdc`](../.cursor/rules/hybrid-model-routing.mdc)** —
+  same policy, now names A–F triggers (H1–H8 aliases) and requires the script.
+- `grok-high` remains `cursor-grok-4.6-high` / readonly. `ModelRoutingPolicyTest` runs the
+  eight required scenarios plus fail-closed and anti-loop checks.
+- [HARNESS_PROPOSAL_003](proposals/HARNESS_PROPOSAL_003-model-route-hard-gate.md).
+
+Does not change product behaviour, acceptance, or human-gate rules.
+
+## 2026-09-21 — Cursor routing: Composer default, Grok High only on H1–H8
+
+The previous Cursor split kept Grok 4.6 High as the parent for every turn. That spent
+high-reasoning tokens on mechanical work. Labor routing now lives in one always-apply
+rule with explicit H1–H8 escalation, three routes, an output contract, and loop guards.
+
+- **[`.cursor/rules/hybrid-model-routing.mdc`](../.cursor/rules/hybrid-model-routing.mdc)** —
+  single policy. DEFAULT is Composer 2.5 Standard; Grok High is not "the task is large."
+- **`.cursor/agents/grok-high.md`** — `model: cursor-grok-4.6-high`, readonly planner/reviewer.
+- `implementer` / `repo-explorer` remain `composer-2.5[fast=false]`.
+- `ModelRoutingPolicyTest` asserts the pins, H-codes, contract fields, and
+  "needs Grok High ≠ needs a human."
+
+Does not change product behaviour, acceptance, or human-gate rules.
+
 ## 2026-09-21 — HUMAN_REQUIRED needs a concrete automation blocker
 
 A desk validation batch asked a person to run ADB, start emulator navi, watch logcat, and

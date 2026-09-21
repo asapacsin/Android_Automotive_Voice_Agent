@@ -1,60 +1,219 @@
 ---
-description: Hybrid routing — Grok 4.6 High parent, Composer 2.5 Standard subagents
+description: Hard-gate Cursor routing — Composer default; Grok only when the classifier requires it
 alwaysApply: true
 ---
 
-# Hybrid model routing
+# Hybrid model routing (hard gate)
 
 This rule routes **Cursor labor**. It does not replace [AGENTS.md](AGENTS.md),
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/INVARIANTS.md](docs/INVARIANTS.md),
-or [docs/CAPABILITIES.md](docs/CAPABILITIES.md). Those still own behavior.
+or [docs/CAPABILITIES.md](docs/CAPABILITIES.md). Those still own behaviour.
 
-**Parent (this chat):** Grok 4.6 High — selected in the Cursor model picker.
-**Executors:** custom subagents in `.cursor/agents/`, pinned to Composer 2.5 Standard
-(`composer-2.5[fast=false]`). Never Composer Fast. Never `composer-2.5-fast`.
+This file is the **only** routing policy. Do not keep a second A–F / H1–H8 list elsewhere.
 
-When launching `repo-explorer` or `implementer`, omit the Task tool `model` override
-so the agent file's `model` field applies. Do not pass Fast.
+**Enforcement** is [scripts/model_route.py](scripts/model_route.py), not this prose. Classify
+before gated reasoning or implementation, and again when new evidence appears:
 
-## Keep on Grok when any of these are true
+```powershell
+python scripts/model_route.py --eval architecture_decision=true --issue-id <id> --evidence-hash <hash>
+```
 
-- Requirement is ambiguous
-- Architecture must change
-- Root cause is unknown
-- Android lifecycle, concurrency, or state ownership is involved
-- AMap / Baidu SDK capability, API behavior, or entitlement is uncertain
-- Security, privacy, or credentials
-- Multiple implementations have significant trade-offs
-- A Composer subagent reported a blocker
-- Final acceptance / review
+JSON objects also work (`--eval '{"architecture_decision": true}'` with quotes the shell will not split).
 
-## Delegate
+If the gate says `GROK_REQUIRED`, the ordinary executor **must not** proceed with the gated
+portion. `--action continue` exits 2 for that reason. If Grok cannot be invoked, the route is
+`BLOCKED_GROK_UNAVAILABLE` (exit 3) — **fail closed**, never silently downgrade to `DEFAULT`.
 
-| Subagent | When |
+## Termination hard gate (no self-authorization)
+
+**No agent may authorize its own termination.** `discover_work.py` reporting
+`AUTONOMOUS_ACTION_AVAILABLE = NO`, `WORK_FRONTIER_EXHAUSTED`,
+`BLOCKED_ON_EXTERNAL_DEPENDENCY`, task/milestone completion, "standing by", or a final summary
+is **not** permission to end the run. Enforcement is the same script:
+
+```powershell
+python scripts/model_route.py --action terminate-request
+python scripts/model_route.py --action terminate-review --verdict CONTINUE|TERMINAL_APPROVED|REVIEW_UNAVAILABLE --role grok-high --fingerprint <fp> [--next-action …]
+python scripts/model_route.py --action terminate-consume --token <token>
+```
+
+| Verdict | Effect |
 | --- | --- |
-| `repo-explorer` | Broad search; file/class/call-path discovery; locate tests/config; gather evidence **before** planning. Prefer this over the built-in `explore` agent. |
-| `implementer` | Plan is already decided; mechanical/localized edits; tests; Gradle/build/fix loops; known regression with understood cause. |
+| `CONTINUE` | Termination forbidden. Reviewer must supply `NEXT_ACTION`. Resume DEFAULT (exit 5). |
+| `TERMINAL_APPROVED` | Allowed only when `actionable_count == 0` (mechanically enforced). Single-use token; fingerprints must still match on consume. |
+| `REVIEW_UNAVAILABLE` / malformed / stale / Grok missing | **Fail closed.** Termination forbidden. Never fall back to Composer/DEFAULT to self-approve. |
 
-Do not repeat exploration a subagent already returned. Review the final diff/evidence;
-do not redo every implementation step. Do not delegate hard reasoning merely to save tokens.
+Fingerprints bind **git HEAD + dirty working tree + discovered frontier**. Any change invalidates
+a prior approval. Approvals are single-use. A blocker narrows the frontier; it does not end the
+run while independent authorized work remains.
 
-## Android defaults (this repo)
+Legal terminal transition only:
 
-**Grok:** navigation lifecycle, voice state machine, interruption, concurrency, Baidu Flex
-architecture, AMap SDK capability, wake-word/runtime, permissions, architectural
-regressions, acceptance criteria.
+```
+DEFAULT EXECUTOR → terminate-request → MAX_GROK TERMINATION REVIEW → TERMINAL_APPROVED → terminate-consume → terminate
+```
 
-**Composer (`implementer`):** HUD/UI after design is known; straightforward Kotlin/Java;
-tests/mocks/fixtures; Gradle; imports/types; repetitive SDK plumbing after API usage is
-known; logging; docs; build/test iteration.
+## Roles
 
-Example — silent mode: Grok decides state ownership and semantics → implementer codes and
-tests → Grok reviews. Example — AMap live traffic-light countdown: Grok owns capability
-and entitlement first; do not have Composer implement before that is established.
+| Role | Who | Pin |
+| --- | --- | --- |
+| **DEFAULT EXECUTOR** | this chat when the picker is Composer, plus `repo-explorer` / `implementer` | `composer-2.5[fast=false]` — never Composer Fast, never `composer-2.5-fast` |
+| **HIGH-REASONING** | `grok-high` subagent, or this chat **only if** the picker is already Grok 4.6 High **and** the gate is `GROK_REQUIRED` | `cursor-grok-4.6-high` |
+
+Launch `repo-explorer`, `implementer`, and `grok-high` **without** a Task `model` override so the
+agent file's `model` field applies. `inherit` is wrong when the parent is Composer and the child
+must be Grok.
+
+The model **picker is not enforceable**. Subagent `model:` frontmatter **is** enforceable for
+Task-launched agents. The classifier **is** enforceable: non-zero exit, ledger, and
+`ModelRoutingPolicyTest`.
+
+"Needs Grok High" is **not** "needs a human." Human stops remain [CONSTITUTION](harness/CONSTITUTION.md) 17–19 / `automation_blocker` only.
+
+## Routes
+
+```
+ROUTE = DEFAULT | GROK_REQUIRED | BLOCKED_GROK_UNAVAILABLE | TERMINATION_REVIEW_REQUIRED
+TRIGGER = A|B|C|D|E|F|H6 plus H1–H8 aliases | TERMINATION
+REASON = short explanation
+```
+
+`GROK_REQUIRED` still prefers Grok **planning** then DEFAULT **execution**
+(`delegation_mode: GROK_HIGH_PLAN_THEN_DEFAULT_EXECUTE`). Use `GROK_HIGH` (review only) for
+F / H6 / H7 when that is the whole gated portion.
+
+**Prefer `DEFAULT`.** Size, file count, runtime, and prompt length never choose the route.
+
+## Hard-gate triggers — Grok if ANY is true
+
+Letters A–F are the gate names. H1–H8 are the same conditions (kept so existing agent files
+and tests do not fork a second list).
+
+| Trigger | H-code | Route to Grok when |
+| --- | --- | --- |
+| **A** | **H1** Architecture / design | architecture decision; major design choice; new subsystem; significant interface / contract change; choosing among implementation strategies with meaningful tradeoffs |
+| **B** | **H4** High-impact | cross-module / cross-subsystem change **with correctness risk**; repo-wide refactor with correctness risk; data migration; concurrency / async / threading; lifecycle / state-machine logic; security / auth / permissions; destructive or hard-to-reverse operations; release- or production-critical behaviour |
+| **C** | **H2** / **H3** Difficult debugging | root cause still unclear **after** initial inspection; same bug survives **2** reasonable fix attempts; contradictory or non-local symptoms; likely race, hidden state, environment, or subsystem interaction |
+| **D** | **H5** High uncertainty | no clear high-confidence path; requirements materially ambiguous and a wrong choice would cause significant rework; several plausible hypotheses remain |
+| **E** | **H8** Reasoning-intensive | complex algorithm choice; nontrivial optimization; difficult performance diagnosis; complicated dependency interaction; protocol / spec reasoning; scientific / statistical reasoning tied to correctness |
+| **F** | **H7** Critical review | before accepting a substantial implementation that alters architecture, changes a relied-upon contract, affects release-critical behaviour, or has substantial regression risk |
+| **H6** | **H6** Acceptance / governance | required scope cannot be met; evidence contradicts an expected PASS; an invariant would be violated; a pass would be earned only by weakening tests / evidence / scope |
+
+Cheap diagnosis is DEFAULT. Do **not** set C/H2 until inspection has actually happened.
+One failed fix is still DEFAULT; two failed fixes is **C / H3**.
+
+## Do **not** route to Grok only because
+
+- many files are touched but the work is mechanical (repo-wide rename with low uncertainty stays DEFAULT)
+- docs are long, or this is documentation generation
+- context is large, tests are slow, or the task has many tokens
+- the work is deterministic and low-uncertainty
+- an already-approved plan is being executed (unless a **new** C / F / H6 trigger appears)
+
+## Who does the work
+
+| Route | If parent picker is Composer 2.5 Standard | If parent picker is already Grok 4.6 High |
+| --- | --- | --- |
+| `DEFAULT` | Do it here, or `repo-explorer` / `implementer` | Still **delegate** to `repo-explorer` / `implementer`. Do not spend Grok on mechanical work |
+| `GROK_REQUIRED` | **Stop.** Task `grok-high` with context, evidence, constraints, attempted fixes, files. Wait. Then `implementer` for the routine remainder. `--action delegate --issue-id …` records the gate. If Task fails: `--grok-available false` → `BLOCKED_GROK_UNAVAILABLE` | Reason **in this chat** (`--already-grok`; do **not** launch `grok-high`). Then Task `implementer` |
+| `BLOCKED_GROK_UNAVAILABLE` | Stop the gated portion. Do not implement it. Do not downgrade to DEFAULT. Continue only independent ungated work | Same fail-closed rule |
+| `TERMINATION_REVIEW_REQUIRED` | **Do not end the run.** Task `grok-high` for MAX_GROK hostile termination review (`--action terminate-review`). Never self-approve | Perform the review in this chat (`--already-grok --role` not needed if already Grok; still use terminate-review) |
+
+Pass `--role grok-high` if you are already inside that subagent — the classifier will not
+re-delegate.
+
+## Fail-closed
+
+Grok is available only when `.cursor/agents/grok-high.md` exists and pins
+`model: cursor-grok-4.6-high` **and** the Task launch actually works. If either fails:
+
+1. `ROUTE = BLOCKED_GROK_UNAVAILABLE`
+2. do not bypass the gate
+3. do not silently continue as DEFAULT
+
+## Mid-task escalation
+
+The gate runs **before** execution and **again** when evidence changes:
+
+```
+DEFAULT → inspect / cheap diagnosis
+       → fix attempt 1 fails (still DEFAULT)
+       → fix attempt 2 fails → GROK_REQUIRED (C/H3)
+       → grok-high handles the hard part
+       → --action resume → DEFAULT for the routine remainder
+```
+
+New independent triggers or a new `--evidence-hash` may re-open the gate. The same issue plus
+the same evidence must not.
+
+## Observability
+
+Emit this block when the route is not a boring DEFAULT (always for GROK_REQUIRED / BLOCKED):
+
+```
+MODEL_ROUTING
+route: DEFAULT | GROK_REQUIRED | BLOCKED_GROK_UNAVAILABLE
+trigger: <trigger(s)>
+reason: <short reason>
+delegate: grok-high | this-chat | -
+status: continued | delegated | blocked
+```
+
+## Anti-loop
+
+Ledger: `.local-agent-memory/model_route_ledger.json` (gitignored). `--action delegate`
+marks `pending`; `--action resume` marks `handled`.
+
+- `grok-high` must **not** launch `grok-high` (no recursive Grok). `--role grok-high` enforces it.
+- After a plan, control returns to DEFAULT unless **new** evidence creates another trigger, or
+  validation of that plan fails.
+- Do not re-escalate the same unchanged evidence.
+- If `NEEDS_FURTHER_HIGH_REASONING=NO`, DEFAULT must not bounce the same question back.
+
+## Escalation output (Grok High must return this; DEFAULT consumes it and continues)
+
+```
+ESCALATION_REASON: H1|H2|H3|H4|H5|H6|H7|H8
+DIAGNOSIS:
+DECISION / PLAN:
+FILES_OR_COMPONENTS_AFFECTED:
+RISKS / INVARIANTS:
+EXECUTION_STEPS_FOR_DEFAULT_AGENT:
+VALIDATION_REQUIRED:
+NEEDS_FURTHER_HIGH_REASONING: YES|NO
+```
+
+Do not ask the user to copy this between agents. After the contract, DEFAULT executes automatically.
+
+## Android mapping (specializations of A–F / H1–H8, not a second always-Grok list)
+
+These are **A/B/E (H1/H4/H8)** when the design, lifecycle, or SDK capability is unsettled:
+navigation lifecycle, voice state machine, interruption, concurrency, Baidu Flex architecture,
+AMap entitlement/API, wake-word runtime, permissions, architectural regressions,
+acceptance-scope disputes (H6).
+
+They are **DEFAULT** when the plan is already decided: HUD/UI from a known design,
+straightforward Kotlin/Java, tests/mocks, Gradle, imports/types, SDK plumbing after the call
+is known, logging, docs, build/test loops.
 
 ## Parallelism
 
-Default: one Grok parent, at most one `repo-explorer`, at most one `implementer`.
-Launch extra Composer workers only for genuinely independent tasks. Do not start multiple
-agents that reread the same files or solve the same problem unless the user asked for
-competing approaches.
+At most one `repo-explorer`, one `implementer`, one `grok-high`. Do not start multiple agents
+on the same files/problem unless competing approaches were requested.
+
+## Examples
+
+| Task | Route |
+| --- | --- |
+| Rename a variable and run tests | `DEFAULT` |
+| Simple one-file obvious fix | `DEFAULT` |
+| Deterministic unit-test repair with obvious cause | `DEFAULT` |
+| Repo-wide mechanical rename with low uncertainty | `DEFAULT` |
+| Long documentation generation | `DEFAULT` |
+| Architecture redesign / new subsystem | `GROK_REQUIRED` (A/H1) |
+| Bug survives 2 reasonable fixes | `GROK_REQUIRED` (C/H3) |
+| Concurrency / lifecycle issue with unclear root cause | `GROK_REQUIRED` (B+C) |
+| Release-critical contract change | `GROK_REQUIRED` (A+B) |
+| Navigation lifecycle design requires changing several state machines | `GROK_REQUIRED` (A+B, then `GROK_HIGH_PLAN_THEN_DEFAULT_EXECUTE`) |
+| A reasonable fix was attempted but the failure remains unexplained after inspection | `GROK_REQUIRED` (C/H2) |
+| Acceptance PASS conflicts with missing E2E evidence | `GROK_REQUIRED` (H6, `GROK_HIGH`) |

@@ -34,5 +34,7 @@ Commands:
 Stop and report BLOCKED when:
 
 - JDK / SDK / Gradle remain unusable after reasonable local fixes
+- `scripts/model_route.py` returns `GROK_REQUIRED` or `BLOCKED_GROK_UNAVAILABLE` — do not implement the gated portion; do not downgrade to DEFAULT
+- `scripts/model_route.py --action terminate-request` returns `TERMINATION_REVIEW_REQUIRED` — do not end the run; MAX_GROK must `terminate-review` (CONTINUE resumes work; only TERMINAL_APPROVED + `terminate-consume` may stop)
 - A product-changing architecture choice cannot be inferred from accepted constraints
 - Credentials, external authorization, unavailable hardware, or destructive changes outside this workspace are required

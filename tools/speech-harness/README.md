@@ -17,6 +17,8 @@ read from the app's debug log (transcripts, tool calls, navigation and vision ev
 python tools\speech-harness\make_speech.py          # writes speech\*.pcm (16 kHz mono PCM16)
 adb push tools\speech-harness\speech\ac_on.pcm /sdcard/Android/data/com.novadrive.app/files/test_speech/ac_on.pcm
 tools\speech-harness\harness.ps1 -Steps @("launch","start","say:ac_on","say:temp_up","stop") -Wait 10
+# When using `powershell -File`, prefer a single string (CJK-safe):
+powershell -File tools\speech-harness\harness.ps1 -StepList "launch,nav_route:十字门,sleep:12,tap:推荐,nav_start:emulator"
 ```
 
 `make_speech.py` needs `edge-tts`, `truststore` and `ffmpeg` on the build PC; the phrases are

@@ -762,6 +762,11 @@ def main():
                 "HUMAN_ACTION_REQUIRED", "STOP_REASON", "BLOCKING_DEPENDENCY", "NEXT_ACTION"):
         if key in stop:
             print("%s = %s" % (key, stop[key]))
+    # discover_work never authorizes ending a run. AUTONOMOUS_ACTION_AVAILABLE=NO is a
+    # frontier observation only — termination requires MAX_GROK via model_route.py.
+    print("TERMINATION_AUTHORIZED = NO")
+    print("TERMINATION_GATE = python scripts/model_route.py --action terminate-request")
+    print("  (DEFAULT may not end the run; MAX_GROK terminate-review then terminate-consume)")
     if stop.get("QUEUED_FOR_HUMAN"):
         # Said out loud so it is never mistaken for a stop condition: these are waiting for a
         # batch, not holding anything up.

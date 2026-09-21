@@ -9,6 +9,7 @@ durable knowledge lives in `docs/`, the durable evidence in git and the test out
 | [../docs/INVARIANTS.md](../docs/INVARIANTS.md) | governance | rules the system must not break |
 | [../config/capabilities.yaml](../config/capabilities.yaml) | contract | machine-readable capability truth + verification level |
 | [../state/PROJECT_STATE.json](../state/PROJECT_STATE.json) | state | **generated**; never hand-written |
+| [../scripts/model_route.py](../scripts/model_route.py) | labor + termination routing | hard-gate Cursor DEFAULT vs GROK_REQUIRED; MAX_GROK termination review; fail-closed |
 | [../skills/](../skills/) | procedure | start / reproduce / fix / verify / handoff |
 | [HARNESS_POLICY.md](HARNESS_POLICY.md) | governance | what may change automatically, what needs a proposal |
 | [SKILL_POLICY.md](SKILL_POLICY.md) | governance | when a skill is added, changed, merged, deleted |
@@ -23,6 +24,7 @@ durable knowledge lives in `docs/`, the durable evidence in git and the test out
 python scripts/collect_state.py            # refresh generated state from evidence
 python scripts/collect_state.py --check    # fail if the stored state is stale
 python scripts/harness_check.py            # is the harness itself coherent?
+python scripts/model_route.py --selftest   # hard-gate Cursor labor routing
 python scripts/skill_event.py --help       # append a skill-review record at handoff
 python scripts/skill_metrics.py            # summarise the evidence, suggest action
 .\gradlew.bat test --rerun-tasks :app:assembleDebug   # the real gate

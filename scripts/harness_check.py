@@ -35,6 +35,9 @@ REQUIRED = [
     "skills/fix.md",
     "skills/verify.md",
     "skills/handoff.md",
+    "scripts/model_route.py",
+    ".cursor/rules/hybrid-model-routing.mdc",
+    ".cursor/agents/grok-high.md",
 ]
 
 # A skill must not hard-code project truth; it should read it. These patterns indicate a fact has
@@ -109,7 +112,7 @@ def main():
 
     # The verdict rules must hold: an incomplete run proving itself unable to be PASS is
     # what keeps a future 0.6.4-shaped overclaim from ever reaching a report.
-    for script in ("acceptance.py", "test_matrix.py"):
+    for script in ("acceptance.py", "test_matrix.py", "model_route.py"):
         try:
             proc = subprocess.run(
                 [sys.executable, os.path.join(REPO, "scripts", script), "--selftest"],
@@ -165,6 +168,26 @@ def main():
                     failures.append("state/PROJECT_STATE.json is missing %s" % field)
     except Exception as exc:
         failures.append("stop-state validation failed: %r" % exc)
+
+    # Routing rule must name the termination hard gate (no self-authorization).
+    routing_rule = os.path.join(REPO, ".cursor", "rules", "hybrid-model-routing.mdc")
+    if os.path.isfile(routing_rule):
+        body = open(routing_rule, encoding="utf-8").read()
+        for needle in (
+            "terminate-request",
+            "TERMINAL_APPROVED",
+            "REVIEW_UNAVAILABLE",
+            "No agent may authorize",
+        ):
+            if needle not in body:
+                failures.append(
+                    "hybrid-model-routing.mdc missing termination gate token %r" % needle
+                )
+    continue_skill = os.path.join(REPO, "skills", "continue.md")
+    if os.path.isfile(continue_skill):
+        cont = open(continue_skill, encoding="utf-8").read()
+        if "TERMINATION_AUTHORIZED" not in cont or "terminate-request" not in cont:
+            failures.append("skills/continue.md must require the termination hard gate")
 
     skills_dir = os.path.join(REPO, "skills")
     if os.path.isdir(skills_dir):

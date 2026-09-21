@@ -29,9 +29,15 @@ while true:
 ```bash
 python scripts/discover_work.py            # what is left, ranked, and may I stop?
 python scripts/discover_work.py --json     # the same for a machine
+python scripts/model_route.py --eval architecture_decision=true   # Cursor labor hard gate (not a human stop)
 ```
 
-The script answers the question from the documents; it does not replace judgement about *how* to do
+Before implementing a candidate, and again if a fix fails twice or root cause stays unclear,
+classify labor with `scripts/model_route.py`. `GROK_REQUIRED` means stop the gated portion and
+delegate `grok-high`; `BLOCKED_GROK_UNAVAILABLE` means fail closed — never continue as DEFAULT.
+The trigger table lives in `.cursor/rules/hybrid-model-routing.mdc`; do not copy it here.
+
+The discovery script answers the question from the documents; it does not replace judgement about *how* to do
 the work. If it lists something already finished, the document it read is wrong — fixing that
 document is itself the next work item, not a reason to ignore the tool.
 
@@ -161,8 +167,21 @@ BLOCKED_BY: the test phone has no network route to the provider
 
 ## The hostile stop audit
 
-Before returning control, try to prove that stopping is wrong. Walk every one of these and answer
-out loud:
+Before even *attempting* to return control, run the termination hard gate — prose alone is not
+enough:
+
+```powershell
+python scripts/model_route.py --action terminate-request
+```
+
+Then MAX_GROK (`grok-high` / `--already-grok`) must perform an independent hostile termination
+review over the **full** project frontier (SPECs, milestones, OPEN_PROBLEMS, TEST_MATRIX,
+backlog, tech debt, failing/skipped tests, missing E2E evidence, unwired code, unprotected
+production paths, build/artifacts, dirty tree, stale state, and blockers that leave independent
+work executable). The reviewer returns exactly one of `CONTINUE` | `TERMINAL_APPROVED` |
+`REVIEW_UNAVAILABLE` via `--action terminate-review`.
+
+Walk every one of these and answer out loud (the reviewer must; DEFAULT must not self-certify):
 
 - active SPECs and their acceptance criteria;
 - the active milestone rows;
@@ -174,10 +193,12 @@ out loud:
 - production paths with no test;
 - build and artifact status;
 - canonical state versus executable evidence;
-- items whose blocker may have disappeared since it was written.
+- items whose blocker may have disappeared since it was written;
+- blockers that only block one branch while independent authorized work remains.
 
 The question is: **is there any authorised action reachable from this machine that could plausibly
-improve correctness, verification, integration or completion?** If yes, stopping is forbidden.
+improve correctness, verification, integration or completion?** If yes, stopping is forbidden
+(`CONTINUE` + `NEXT_ACTION`).
 
 ## Stale state outranks generated summaries
 
@@ -188,8 +209,7 @@ a 631-test suite while every run was green.
 
 ## Stopping
 
-Report the machine-readable stop state, which `discover_work.py` prints and
-`state/PROJECT_STATE.json` carries:
+`discover_work.py` prints a machine-readable stop *observation*:
 
 ```
 AUTONOMOUS_ACTION_AVAILABLE = YES|NO
@@ -197,9 +217,30 @@ HUMAN_ACTION_REQUIRED       = YES|NO
 STOP_REASON                 = NOT_STOPPING | WORK_FRONTIER_EXHAUSTED | BLOCKED_ON_EXTERNAL_DEPENDENCY
 BLOCKING_DEPENDENCY         = none | <the concrete thing a person must supply>
 NEXT_ACTION                 = NONE | <the next item>
+TERMINATION_AUTHORIZED      = NO
+TERMINATION_GATE            = python scripts/model_route.py --action terminate-request
 ```
 
 `AUTONOMOUS_ACTION_AVAILABLE = YES` means the run may not end.
+
+`AUTONOMOUS_ACTION_AVAILABLE = NO` is **not** permission to terminate. No agent may authorize
+its own ending — not after frontier exhaustion, a human blocker, task/milestone completion,
+or a final summary / "standing by". The only legal terminal transition is:
+
+```
+DEFAULT → terminate-request → MAX_GROK terminate-review → TERMINAL_APPROVED → terminate-consume → end
+```
+
+```powershell
+python scripts/model_route.py --action terminate-request
+# Task grok-high (or --already-grok) with hostile frontier review, then:
+python scripts/model_route.py --action terminate-review --verdict CONTINUE|TERMINAL_APPROVED|REVIEW_UNAVAILABLE --role grok-high --fingerprint <fp> --next-action "…"
+python scripts/model_route.py --action terminate-consume --token <token>   # only after TERMINAL_APPROVED
+```
+
+`CONTINUE` forbids termination and returns `NEXT_ACTION` to DEFAULT. `REVIEW_UNAVAILABLE`,
+malformed/stale fingerprints, or Grok unavailable **fail closed** — never self-approve as
+Composer/DEFAULT. A blocker narrows the frontier; it does not end the run.
 
 ## Meeting something only a person can do
 
