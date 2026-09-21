@@ -210,7 +210,10 @@ arriving at the moment of discovery rather than at a time that suited them.
 2. Add it to [TEST_MATRIX.yaml](../TEST_MATRIX.yaml).
 3. Give it the owner that says *which kind* of human: `HUMAN_PHYSICAL`, `HUMAN_ACCOUNT`,
    `HUMAN_CREDENTIAL`, `HUMAN_DECISION`, or `EXTERNAL_RESOURCE`. Not one generic blocked.
-4. `status: HUMAN_REQUIRED`.
+4. `status: HUMAN_REQUIRED`, with `automation_blocker` set to exactly one of
+   `subjective_perception`, `physical_world`, `credential_permission`,
+   `hardware_interface`, `safety`. Tapping, ADB, emulator, logs, screenshots/video,
+   or inconvenience are not blockers.
 5. Record under `autonomous_evidence:` everything already established without them.
 6. Record under `remaining_uncertainty:` exactly what is still unknown, and under `returns:` what
    you need them to tell you.

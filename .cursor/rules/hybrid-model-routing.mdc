@@ -1,0 +1,60 @@
+---
+description: Hybrid routing — Grok 4.6 High parent, Composer 2.5 Standard subagents
+alwaysApply: true
+---
+
+# Hybrid model routing
+
+This rule routes **Cursor labor**. It does not replace [AGENTS.md](AGENTS.md),
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/INVARIANTS.md](docs/INVARIANTS.md),
+or [docs/CAPABILITIES.md](docs/CAPABILITIES.md). Those still own behavior.
+
+**Parent (this chat):** Grok 4.6 High — selected in the Cursor model picker.
+**Executors:** custom subagents in `.cursor/agents/`, pinned to Composer 2.5 Standard
+(`composer-2.5[fast=false]`). Never Composer Fast. Never `composer-2.5-fast`.
+
+When launching `repo-explorer` or `implementer`, omit the Task tool `model` override
+so the agent file's `model` field applies. Do not pass Fast.
+
+## Keep on Grok when any of these are true
+
+- Requirement is ambiguous
+- Architecture must change
+- Root cause is unknown
+- Android lifecycle, concurrency, or state ownership is involved
+- AMap / Baidu SDK capability, API behavior, or entitlement is uncertain
+- Security, privacy, or credentials
+- Multiple implementations have significant trade-offs
+- A Composer subagent reported a blocker
+- Final acceptance / review
+
+## Delegate
+
+| Subagent | When |
+| --- | --- |
+| `repo-explorer` | Broad search; file/class/call-path discovery; locate tests/config; gather evidence **before** planning. Prefer this over the built-in `explore` agent. |
+| `implementer` | Plan is already decided; mechanical/localized edits; tests; Gradle/build/fix loops; known regression with understood cause. |
+
+Do not repeat exploration a subagent already returned. Review the final diff/evidence;
+do not redo every implementation step. Do not delegate hard reasoning merely to save tokens.
+
+## Android defaults (this repo)
+
+**Grok:** navigation lifecycle, voice state machine, interruption, concurrency, Baidu Flex
+architecture, AMap SDK capability, wake-word/runtime, permissions, architectural
+regressions, acceptance criteria.
+
+**Composer (`implementer`):** HUD/UI after design is known; straightforward Kotlin/Java;
+tests/mocks/fixtures; Gradle; imports/types; repetitive SDK plumbing after API usage is
+known; logging; docs; build/test iteration.
+
+Example — silent mode: Grok decides state ownership and semantics → implementer codes and
+tests → Grok reviews. Example — AMap live traffic-light countdown: Grok owns capability
+and entitlement first; do not have Composer implement before that is established.
+
+## Parallelism
+
+Default: one Grok parent, at most one `repo-explorer`, at most one `implementer`.
+Launch extra Composer workers only for genuinely independent tasks. Do not start multiple
+agents that reread the same files or solve the same problem unless the user asked for
+competing approaches.

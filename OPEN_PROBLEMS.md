@@ -1200,7 +1200,7 @@ through `EmbeddedNavigationController` / `NaviEngine.showOverview` / `resumeTrac
 
 ## P27 — After navigation starts, 小诺 says 「没听清」 to her own voice
 
-**Status:** FIXED 2026-09-20 — unit/compile pending device retest (`ECHO-001`)
+**Status:** FIXED 2026-09-20; device [ECHO-001](TEST_MATRIX.yaml) PASS 2026-09-21 (5s after Flex confirmation / guidance; live mic + emulator navi)
 **Found:** 2026-09-20, owner spreadsheet `problem_record_filled_corrected.xlsx` #1
 **Severity:** High — every navigation start produces a phantom turn
 
@@ -1213,14 +1213,14 @@ user input.
 ### Fix
 
 `PLAYBACK_UNGATE_DELAY_MS` raised 350→1000 ms, plus `AndroidMicrophonePort.holdPostSpeechEcho(600)`
-so frames and uplink onset stay closed after the mic formally reopens. Visual/cabin confirmation is
-`LOCAL_DEVICE_REQUIRED` ([ECHO-001](TEST_MATRIX.yaml)).
+so frames and uplink onset stay closed after the mic formally reopens. Desk retest is autonomous
+[ECHO-001](TEST_MATRIX.yaml). Cabin loudness remains [AUDIO-QUALITY-001](TEST_MATRIX.yaml).
 
 ---
 
 ## P28 — 「你能做什么」 is answered as if it were noise
 
-**Status:** FIXED 2026-09-20 — guarded by `ActionClaimGuard` help nudge; device retest `HELP-001`
+**Status:** FIXED 2026-09-20; device [HELP-001](TEST_MATRIX.yaml) PASS 2026-09-21 (`TURN_RELEASE reason=capability_help`; reply listed 导航/音乐/空调)
 **Found:** 2026-09-20, owner spreadsheet #2
 
 ### Symptom
@@ -1230,14 +1230,15 @@ User asks what the AI can do; the reply is 「不理解」 / 「没听清」 ins
 ### Fix
 
 `ActionClaimGuard.isHelpRequest` + `HELP_CAPABILITY_NUDGE` when the reply refuses or names fewer
-than two real capabilities. Persona rule 5 also names the expected answer (tone only; the guard
-enforces).
+than two real capabilities. `DriverTurn` UNCLASSIFIED_CLAIM must release `capability_help` (or
+nudge `help_incomplete`) so a capability list is not dropped as `unverified_claim`. Persona
+rule 5 names the expected answer (tone only; the guard enforces).
 
 ---
 
 ## P29 — Real-drive-only navigation QA is too slow to repeat
 
-**Status:** FIXED 2026-09-21 — screen-recording movie produced at local `D:\桌面\android_doc\nav_qa_to_shizimen.mp4` (十字门 destination/route UI). Owner watch → [NAV-SIM-QA-001](TEST_MATRIX.yaml) for VERIFIED. Not committed to git.
+**Status:** FIXED 2026-09-21 — [NAV-SIM-QA-001](TEST_MATRIX.yaml) PASS (`D:\桌面\android_doc\nav_qa_to_shizimen.mp4` exists and shows nav UI). Not committed to git.
 **Found:** 2026-09-20, owner spreadsheet #3 (test improvement, not a product defect)
 
 Owner wants a **real screen-recording movie** of the navigation UI under `D:\桌面\android_doc\`. Level A remains for automated code gates only. Note: `adb screenrecord` requires the phone display **ON** (otherwise `INVALID_LAYER_STACK`).

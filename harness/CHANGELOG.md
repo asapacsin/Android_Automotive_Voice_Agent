@@ -2,6 +2,18 @@
 
 Newest first. One line per change, with the evidence that motivated it.
 
+## 2026-09-21 — HUMAN_REQUIRED needs a concrete automation blocker
+
+A desk validation batch asked a person to run ADB, start emulator navi, watch logcat, and
+take screenshots. Those are not reasons a human is required.
+
+- **CONSTITUTION rule 17** — `HUMAN_REQUIRED` is legal only with `automation_blocker` in
+  `subjective_perception` / `physical_world` / `credential_permission` / `hardware_interface` /
+  `safety`. Taps, ADB, emulator, logs, screenshots/video, and inconvenience stay AUTONOMOUS.
+- **[scripts/test_matrix.py](../scripts/test_matrix.py)** — validation rejects a missing blocker
+  or a `human_reason` that is only those illegal excuses.
+- `HumanBatchingPolicyTest.humanRequiredNeedsAConcreteAutomationBlocker` guards the mechanism.
+
 ## 2026-09-21 — required_scope and evidence provenance close two verdict loopholes
 
 Follow-up to the verdict-scope change the same day: a test author could still satisfy an E2E

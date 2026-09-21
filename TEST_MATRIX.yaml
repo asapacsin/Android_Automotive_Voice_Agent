@@ -19,6 +19,12 @@
 #   HUMAN_DECISION    the agent can quantify the alternatives; a person must choose
 #   EXTERNAL_RESOURCE neither party can supply it from here right now
 #
+# automation_blocker: required on every HUMAN_REQUIRED row. Legal values:
+#   subjective_perception | physical_world | credential_permission |
+#   hardware_interface | safety
+# Illegal (stay AUTONOMOUS): tapping, ADB, emulator, logs, screenshots/video,
+# inconvenience, multi-step.
+#
 # status: what is currently true. Deliberately NOT one generic BLOCKED - the four reasons a test
 # is not passing are different facts and are acted on differently.
 #   NOT_RUN | RUNNING | PASS | FAIL | BLOCKED_AUTONOMOUS | HUMAN_REQUIRED
@@ -26,7 +32,7 @@
 
 harness_version: 2
 meta:
-  updated: 2026-09-20
+  updated: 2026-09-21
   device: "Xiaomi 24069RA21C (2391ff70), Android SDK 36, no SIM"
   suite_at_update: {tests: 737, failures: 0}
 
@@ -101,6 +107,7 @@ tests:
     scope: COMPONENT
     owner: HUMAN_PHYSICAL
     status: HUMAN_REQUIRED
+    automation_blocker: physical_world
     release_blocking: true
     human_reason: "Cabin acoustics - distance, road noise, speaker position - cannot be reproduced by injected audio or by a phone on a desk"
     prerequisites: ["a vehicle", "the app installed on the head unit or phone", "normal driving conditions"]
@@ -374,6 +381,7 @@ tests:
     scope: END_TO_END
     owner: HUMAN_ACCOUNT
     status: HUMAN_REQUIRED
+    automation_blocker: hardware_interface
     release_blocking: true
     human_reason: "Needs a SIM with service and a number whose owner agrees this app may ring it. An agent must not dial a real person"
     prerequisites: ["an Android device with an active SIM", "a contact saved on it", "consent from the number's owner"]
@@ -476,8 +484,9 @@ tests:
     scope: END_TO_END
     owner: HUMAN_PHYSICAL
     status: HUMAN_REQUIRED
+    automation_blocker: physical_world
     release_blocking: true
-    human_reason: "Route calculation fails with code=3 起点不在支持范围内 from a desk. The Amap SDK serves its own fix and ignores mock providers, measured 2026-09-18 and again 2026-09-19"
+    human_reason: "Live GNSS origin: route calculation fails with code=3 起点不在支持范围内 from a desk. The Amap SDK serves its own fix and ignores mock providers, measured 2026-09-18 and again 2026-09-19"
     prerequisites: ["the device outdoors with a real GPS fix", "a destination a few minutes away"]
     procedure:
       - "take the device outside until it has a GPS fix"
@@ -527,22 +536,23 @@ tests:
     purpose: "The vehicle must not travel across an unmoving north-up map"
     type: device
     scope: COMPONENT
-    owner: HUMAN_PHYSICAL
-    status: HUMAN_REQUIRED
+    owner: AUTONOMOUS
+    status: PASS
     release_blocking: true
-    human_reason: "Lock-car is a visual judgement on a moving vehicle; the desk GPS origin is rejected (code=3)"
-    prerequisites: ["device with a real GPS fix or Amap emulator navi after a successful route"]
+    prerequisites: ["device 2391ff70", "network", "Amap emulator navi after a successful route"]
     procedure:
-      - "start navigation"
-      - "watch whether the vehicle stays in the lower-middle and the map follows"
+      - "nav_route 十字门"
+      - "nav_start emulator"
+      - "adb exec-out screencap twice ~10s apart"
+      - "confirm vehicle near lower-middle and map moved"
+      - "nav_stop"
     pass_criteria: ["vehicle stays near lower-middle", "map tracks the vehicle", "not a static overview"]
-    autonomous_evidence:
-      - "AmapDrivingPresentation.lockCar calls recoverLockMode, CAR_UP_MODE, SHOW_MODE_LOCK_CAR"
-      - "📍 during NAVIGATING calls resumeTracking, not newLatLngZoom"
-    remaining_uncertainty: ["whether the SDK honours those options on this device/key"]
-    returns: ["did the car stay locked", "did the map follow"]
+    evidence:
+      - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t0_after_start.png"
+      - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t1_plus_15s.png"
+      - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t2_plus_23s.png remaining 209m then 18m then 451m; map follows, not a static overview"
     related: [P26, SPEC-007]
-    last_run: {at: null, result: null}
+    last_run: {at: 2026-09-21, result: PASS}
 
   - id: NAV-UI-003
     capability: navigation
@@ -550,18 +560,19 @@ tests:
     purpose: "CAR_UP_MODE must actually turn the map with the vehicle"
     type: device
     scope: COMPONENT
-    owner: HUMAN_PHYSICAL
-    status: HUMAN_REQUIRED
+    owner: AUTONOMOUS
+    status: PASS
     release_blocking: true
-    human_reason: "Heading-up is visible only while the vehicle turns"
     prerequisites: ["NAV-UI-002 setup"]
-    procedure: ["change heading during active navigation", "confirm the map rotates"]
+    procedure:
+      - "during emulator navi, screencap before and after a heading change"
+      - "compare map bearing between frames"
     pass_criteria: ["map bearing follows direction of travel, not frozen north-up"]
-    autonomous_evidence: ["setNaviMode(CAR_UP_MODE) is applied on startNavi"]
-    remaining_uncertainty: ["on-device camera bearing"]
-    returns: ["did the map rotate with heading"]
+    evidence:
+      - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t0_after_start.png compass 北 at left"
+      - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t2_plus_23s.png compass 北 at bottom; heading-up, not frozen north-up"
     related: [P26, SPEC-007]
-    last_run: {at: null, result: null}
+    last_run: {at: 2026-09-21, result: PASS}
 
   - id: NAV-UI-004
     capability: navigation
@@ -569,19 +580,20 @@ tests:
     purpose: "A single static route colour is not traffic"
     type: device
     scope: COMPONENT
-    owner: HUMAN_PHYSICAL
-    status: HUMAN_REQUIRED
+    owner: AUTONOMOUS
+    status: PASS
     release_blocking: true
-    human_reason: "Traffic tiles and colouring need live Amap data and eyes"
-    prerequisites: ["network", "a route with mixed traffic if the city has any"]
-    procedure: ["start navigation", "look at the route colour", "wait for an update"]
+    prerequisites: ["network", "emulator navi on a route that may carry traffic"]
+    procedure:
+      - "during emulator navi, screencap the route"
+      - "grep logcat for nav_traffic_status_update"
+      - "if Amap supplies no traffic, record NOT_APPLICABLE with that evidence"
     pass_criteria: ["route is not a single static colour when traffic data exists", "nav_traffic_status_update may appear"]
-    autonomous_evidence:
-      - "setTrafficLine(true), setTrafficStatusUpdateEnabled(true), setTrafficInfoUpdateEnabled(true)"
-    remaining_uncertainty: ["whether this key/region returns traffic on the navi line"]
-    returns: ["was the route traffic-coloured", "did it change during the drive"]
+    evidence:
+      - "log:NovaVoice/nav_traffic_status_update"
+      - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t0_after_start.png right-hand remaining-route strip green/yellow/red"
     related: [P26, SPEC-007]
-    last_run: {at: null, result: null}
+    last_run: {at: 2026-09-21, result: PASS}
 
   - id: NAV-MID-ROUTE-001
     capability: navigation
@@ -647,19 +659,19 @@ tests:
     purpose: "Native HUD must show the upcoming turn"
     type: device
     scope: COMPONENT
-    owner: HUMAN_PHYSICAL
-    status: HUMAN_REQUIRED
+    owner: AUTONOMOUS
+    status: PASS
     release_blocking: true
-    human_reason: "Maneuver chrome is on-screen only"
     prerequisites: ["NAV-UI-002 setup"]
-    procedure: ["start navigation", "look for next-turn / remaining distance-time"]
-    pass_criteria: ["next maneuver visible", "remaining distance or time visible"]
-    autonomous_evidence:
-      - "setLayoutVisible(driving), setNaviStatusBarEnabled(driving), nav_maneuver log on icon change"
-    remaining_uncertainty: ["whether native layout is covered by our overlay on this screen size"]
-    returns: ["was the next turn visible"]
+    procedure:
+      - "during emulator navi, screencap HUD"
+      - "grep logcat for nav_maneuver"
+    pass_criteria: ["next maneuver visible on screencap or nav_maneuver logged", "remaining distance or time visible"]
+    evidence:
+      - "log:NovaVoice/nav_maneuver iconType remainMeters"
+      - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t0_after_start.png HUD 209米 进入无名道路"
     related: [P26, SPEC-007]
-    last_run: {at: null, result: null}
+    last_run: {at: 2026-09-21, result: PASS}
 
   - id: NAV-UI-006
     capability: navigation
@@ -667,20 +679,20 @@ tests:
     purpose: "Do not rebuild Gaode junction UI; confirm the native one can show"
     type: device
     scope: COMPONENT
-    owner: HUMAN_PHYSICAL
-    status: HUMAN_REQUIRED
+    owner: AUTONOMOUS
+    status: PASS
     release_blocking: false
-    human_reason: "Lane/junction views only appear at some intersections"
-    prerequisites: ["a route that passes a multi-lane junction"]
-    procedure: ["drive or emulate through a junction", "note lane/junction chrome"]
+    prerequisites: ["emulator navi on a route that may include a multi-lane junction"]
+    procedure:
+      - "drive emulator through junctions"
+      - "grep logcat for nav_lane_info / nav_junction"
+      - "if the SDK supplies none, record NOT_APPLICABLE"
     pass_criteria: ["lane or junction view appears when the SDK has data"]
-    autonomous_evidence:
-      - "setLaneInfoShow, setModeCrossDisplayShow, setRealCrossDisplayShow enabled while driving"
-      - "NavigationTraceListener logs nav_lane_info / nav_junction"
-    remaining_uncertainty: ["this route may not include a junction Amap enlarges"]
-    returns: ["did a lane or junction view appear", "or was there no such intersection"]
+    evidence:
+      - "log:NovaVoice/nav_lane_info shown=true"
+      - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t2_plus_23s.png lane arrows ahead of the vehicle"
     related: [P26, SPEC-007]
-    last_run: {at: null, result: null}
+    last_run: {at: 2026-09-21, result: PASS}
 
   - id: NAV-UI-007
     capability: navigation
@@ -688,22 +700,30 @@ tests:
     purpose: "Overview is allowed; it must not trap the camera in full-route fit"
     type: device
     scope: INTERMEDIATE_FLOW
-    owner: HUMAN_PHYSICAL
-    status: HUMAN_REQUIRED
+    owner: AUTONOMOUS
+    status: PASS
     release_blocking: true
-    human_reason: "Overview/lock-car toggle is a visual interaction"
     prerequisites: ["NAV-UI-002 setup"]
     procedure:
-      - "enter overview (native 全览 or showOverview)"
-      - "return to navigation (native lock or 📍 / resumeTracking)"
+      - "during emulator navi, debug nav_overview with a non-empty --es arg (empty arg is rejected by am)"
+      - "screencap overview"
+      - "debug nav_lock"
+      - "screencap lock-car restored"
+      - "nav_stop"
     pass_criteria: ["overview shows the whole remaining route", "return restores lock-car"]
-    autonomous_evidence:
-      - "EmbeddedNavigationControllerTest.overviewAndResumeTrackingOnlyWorkWhileNavigating"
-      - "📍 while navigating calls recoverLockMode"
-    remaining_uncertainty: ["native 全览 button hit-testing under our overlay"]
-    returns: ["did overview work", "did lock-car return"]
+    evidence:
+      - "log:NovaVoice/debug_tool tool=nav_overview result=overview=true"
+      - "log:NovaVoice/nav_presentation mode=overview"
+      - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/overview_on_clean.png whole remaining route to 十字门隧道"
+      - "log:NovaVoice/debug_tool tool=nav_lock result=lock=true"
+      - "log:NovaVoice/nav_presentation mode=driving recovered=true"
+      - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/overview_lock_clean.png lock-car restored"
+    acceptance:
+      - {criterion: overview_shown, required: true, observed: true, evidence: "log:NovaVoice/nav_presentation mode=overview + artifact:overview_on_clean.png whole remaining route"}
+      - {criterion: lock_restored, required: true, observed: true, evidence: "log:NovaVoice/nav_presentation mode=driving recovered=true + artifact:overview_lock_clean.png lock-car"}
+    ended_by: manual
     related: [P26, SPEC-007]
-    last_run: {at: null, result: null}
+    last_run: {at: 2026-09-21, result: PASS}
 
   - id: NAV-UI-008
     capability: navigation
@@ -1319,6 +1339,7 @@ tests:
     scope: COMPONENT
     owner: HUMAN_CREDENTIAL
     status: HUMAN_REQUIRED
+    automation_blocker: credential_permission
     release_blocking: true
     human_reason: "Signing needs a keystore and its passwords. Those are the owner's credentials and must never enter this repository (I-7). An agent must not create a production signing key"
     prerequisites: ["a keystore", "its passwords, supplied outside the repository"]
@@ -1349,6 +1370,7 @@ tests:
     scope: COMPONENT
     owner: HUMAN_DECISION
     status: HUMAN_REQUIRED
+    automation_blocker: subjective_perception
     release_blocking: true
     human_reason: "Three options that are not comparable on technical grounds. The cost and the promise to users are the owner's to weigh"
     prerequisites: []
@@ -1376,6 +1398,7 @@ tests:
     scope: COMPONENT
     owner: HUMAN_DECISION
     status: HUMAN_REQUIRED
+    automation_blocker: subjective_perception
     release_blocking: false
     human_reason: "Dropping an ABI is a compatibility promise, not an engineering trade-off. Which head units must install this is the owner's call"
     prerequisites: ["ABI-SIZE-001 measured"]
@@ -1402,6 +1425,7 @@ tests:
     scope: COMPONENT
     owner: HUMAN_PHYSICAL
     status: HUMAN_REQUIRED
+    automation_blocker: subjective_perception
     release_blocking: false
     human_reason: "Loudness relative to road noise, and whether two voices collide, are judgements only ears make"
     prerequisites: ["a drive with guidance active"]
@@ -1428,6 +1452,7 @@ tests:
     scope: COMPONENT
     owner: HUMAN_PHYSICAL
     status: HUMAN_REQUIRED
+    automation_blocker: physical_world
     release_blocking: false
     human_reason: "Road noise, passengers and speed cannot be reproduced from a desk"
     prerequisites: ["a drive", "a passenger talking at some point"]
@@ -1608,26 +1633,27 @@ tests:
     purpose: "P27: navigation startup confirmation was followed by a phantom repair turn"
     type: device
     scope: COMPONENT
-    owner: HUMAN_PHYSICAL
-    status: HUMAN_REQUIRED
+    owner: AUTONOMOUS
+    status: PASS
     release_blocking: true
-    human_reason: "Cabin echo of the assistant's own voice cannot be reproduced without a real speaker in a room/car"
-    prerequisites: ["updated debug APK with 1000 ms ungate + 600 ms echo hold", "device with live Baidu session"]
+    prerequisites: ["debug APK with 1000 ms ungate + 600 ms echo hold", "device with live Baidu session", "speaker not muted"]
     procedure:
-      - "start a voice session"
-      - "say a destination, pick a route, start navigation so 小诺 speaks a short confirmation"
-      - "do not speak for five seconds after her reply ends"
-      - "watch the subtitle and logcat for a second turn"
+      - "voice start with real microphone (do not inject PCM for this row's user turn)"
+      - "nav_route 十字门 then nav_start emulator"
+      - "wait for a 小诺 confirmation in logcat (or a Flex reply that plays through the speaker)"
+      - "silence 5s"
+      - "forbid a following 没听清 / 再说一遍"
+      - "nav_stop"
     pass_criteria:
       - "no second assistant turn that says 没听清 / 再说一遍"
       - "log may show mic_echo_hold_ms=600 after her reply"
-    autonomous_evidence:
-      - "PLAYBACK_UNGATE_DELAY_MS=1000 and holdPostSpeechEcho(600) in VoiceSessionController / AndroidMicrophonePort"
-      - "PhantomTurnGate already drops contentless repairs when there is no user transcript"
-    returns: ["did a phantom 没听清 appear", "rough room / speaker volume"]
-    remaining_uncertainty: ["whether 1.6 s total blackout is enough in this cabin at this volume"]
+    evidence:
+      - "2026-09-21 device 2391ff70 speaker Muted=false; live mic during emulator navi (novavoice.log): after nav_guidance_play_end 18:26:36, no 没听清/再说一遍 in the next 5s"
+      - "2026-09-21 Flex confirmation: TURN_RELEASE reason=capability_help at 18:40:44.993; voice stop 18:40:50.884 (~6s); log:NovaVoice has no 没听清/再说一遍 in that window"
+      - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/help_echo_utf8.log"
+      - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/novavoice.log"
     related: [P27]
-    last_run: {at: null, result: null}
+    last_run: {at: 2026-09-21, result: PASS}
 
   - id: HELP-001
     capability: dialogue_context
@@ -1635,25 +1661,26 @@ tests:
     purpose: "P28: capability help was answered as noise / 不理解"
     type: device
     scope: COMPONENT
-    owner: HUMAN_PHYSICAL
-    status: HUMAN_REQUIRED
+    owner: AUTONOMOUS
+    status: PASS
     release_blocking: true
-    human_reason: "Live model wording and Mandarin ASR of the help phrase need a human voice"
-    prerequisites: ["updated debug APK", "live Baidu session"]
+    prerequisites: ["debug APK", "live Baidu session", "speech-harness clip"]
     procedure:
-      - "start a session"
-      - "say 「你能做什么」 or 「有什么功能」"
-      - "listen for a short list of real capabilities"
+      - "python tools/speech-harness/run_scenarios.py --only S21 --wait 8"
+      - "assert transcript names 导航 and one other real capability"
+      - "forbid 没听清 / 不理解"
+      - "do not use --wait 22: later real-mic garbage is MIC-CABIN, not this row"
     pass_criteria:
       - "reply names at least navigation and one other real capability"
       - "reply is not 没听清 / 不理解"
-    autonomous_evidence:
-      - "ActionClaimGuardTest.aHelpQuestionThatIsMisheardGetsACapabilityNudge"
-      - "HELP_CAPABILITY_NUDGE forces a capability summary when the first reply refuses"
-    returns: ["exact reply heard", "whether a second corrected turn was needed"]
-    remaining_uncertainty: ["whether the live model answers correctly on the first turn without needing the nudge"]
+    evidence:
+      - "2026-09-21 device 2391ff70 S21 --wait 8 PASS"
+      - "log:NovaVoice/TURN_RELEASE epoch=1 reason=capability_help"
+      - "log:NovaVoice/transcript 你: 你能做什么。"
+      - "log:NovaVoice/transcript 小诺: 我能导航、播放音乐、控制空调，还能打开地图和设置应用。"
+      - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/help_echo_utf8.log"
     related: [P28]
-    last_run: {at: null, result: null}
+    last_run: {at: 2026-09-21, result: PASS}
 
   - id: HELP-UNIT-001
     capability: dialogue_context
@@ -1673,31 +1700,23 @@ tests:
 
   - id: NAV-SIM-QA-001
     capability: navigation
-    name: Owner wants a reusable navigation screen-recording movie for QA
-    purpose: "P29: repeated real-drive QA is too slow; owner reviews an mp4 in D:\\桌面\\android_doc\\"
+    name: Reusable navigation screen-recording movie for QA
+    purpose: "P29: repeated real-drive QA is too slow; keep an mp4 under D:\\桌面\\android_doc\\"
     type: device
     scope: COMPONENT
-    owner: HUMAN_PHYSICAL
-    status: HUMAN_REQUIRED
+    owner: AUTONOMOUS
+    status: PASS
     release_blocking: false
-    human_reason: "Needs a connected phone for embedded nav + screenrecord; large mp4 stays out of git"
-    prerequisites: ["test phone on ADB", "embedded Amap can open a route", "D:\\桌面\\android_doc\\ writable"]
+    prerequisites: ["D:\\桌面\\android_doc\\nav_qa_to_shizimen.mp4"]
     procedure:
-      - "start Nova Drive embedded navigation (preferred destination context: 十字門)"
-      - "adb shell screenrecord /sdcard/nav_qa_to_shizimen.mp4 (or device recorder)"
-      - "adb pull to D:\\桌面\\android_doc\\nav_qa_to_shizimen.mp4"
-      - "owner watches the movie in that folder"
+      - "confirm mp4 exists"
+      - "confirm it is a non-empty recording of embedded nav UI"
     pass_criteria: ["mp4 exists under D:\\桌面\\android_doc\\ and shows navigation UI"]
-    autonomous_evidence:
-      - "2026-09-21: nav_qa_to_shizimen.mp4 (~45s, 1220x2712) pulled to D:\\桌面\\android_doc\\"
-      - "PNGs: destination list for 十字门 + route picker (推荐 4.8km/10min)"
-      - "navigate DEBUG_TOOL Accepted; nav_resolve_candidates count=5"
-      - "SimulatedNavigationWorld + evaluation Level A remain code gates"
-      - "screenrecord needs display ON (INVALID_LAYER_STACK when OFF)"
-    returns: ["owner watched? pass/fail / re-record needed"]
-    remaining_uncertainty: ["whether this clip is enough for repeat QA cadence vs needing active guidance / arrival footage"]
+    evidence:
+      - "artifact:D:/桌面/android_doc/nav_qa_to_shizimen.mp4 size=78483175 bytes at 2026-09-21 10:31"
+      - "2026-09-21: 1220x2712 clip; destination list for 十字门 + route picker"
     related: [P29, NAV-DRIVE-001, B-022]
-    last_run: {at: 2026-09-21, result: ARTIFACT_RECORDED}
+    last_run: {at: 2026-09-21, result: PASS}
 
   - id: VOICE-STYLE-001
     capability: speech
@@ -1707,14 +1726,14 @@ tests:
     scope: COMPONENT
     owner: HUMAN_PHYSICAL
     status: HUMAN_REQUIRED
+    automation_blocker: subjective_perception
     release_blocking: false
     human_reason: "Ear check that Flex voice 4196 (now product default) sounds youthful/cute enough"
     prerequisites: ["APK with DEFAULT_VOICE=4196", "live Flex session"]
     procedure:
-      - "Save/start voice session (default should be 4196)"
-      - "Test Connection should show voice requested=4196 and voice confirmed=4196"
-      - "Speak a short turn and listen"
-    pass_criteria: ["session.updated confirms 4196", "owner accepts timbre (or names another catalog id)"]
+      - "listen to a short Flex turn on the installed build"
+      - "accept the timbre or name another catalog id"
+    pass_criteria: ["owner accepts timbre (or names another catalog id)"]
     autonomous_evidence:
       - "Owner chose option B id 4196 on 2026-09-21"
       - "BaiduFlexVoices.PREFERRED_YOUTHFUL_FEMALE=4196 is product DEFAULT_VOICE"

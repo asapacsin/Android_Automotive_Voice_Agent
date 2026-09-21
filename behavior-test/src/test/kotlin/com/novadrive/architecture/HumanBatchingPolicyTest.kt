@@ -112,6 +112,18 @@ class HumanBatchingPolicyTest {
     }
 
     @Test
+    fun humanRequiredNeedsAConcreteAutomationBlocker() {
+        val script = text("scripts/test_matrix.py")
+        assertTrue(script.contains("AUTOMATION_BLOCKERS"))
+        assertTrue(script.contains("subjective_perception"))
+        assertTrue(script.contains("not a legal automation blocker"))
+        assertTrue(
+            flat("harness/CONSTITUTION.md").contains("Tapping a device, ADB, starting an emulator"),
+            "constitution rule 17 must name the illegal human excuses",
+        )
+    }
+
+    @Test
     fun everyQueuedHumanItemTellsThePersonWhatToDoAndWhatToReport() {
         // A packet that sends someone away without the procedure or the expected result buys one
         // interruption and costs another.

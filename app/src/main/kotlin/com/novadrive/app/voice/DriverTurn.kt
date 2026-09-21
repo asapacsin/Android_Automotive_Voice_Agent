@@ -319,6 +319,13 @@ class DriverTurn(val epoch: Long) {
             HoldReason.UNCLASSIFIED_CLAIM -> when {
                 toolCalled || hadToolCallInResponse -> Verdict.Release("tool_called")
                 proven -> Verdict.Release("execution_proved")
+                // P28: a capability list names the same nouns as an action claim. The hold would
+                // silence 「我能帮你导航、放音乐」 before ActionClaimGuard's help exemption ran.
+                ActionClaimGuard.isHelpRequest(requestText) &&
+                    ActionClaimGuard.answersCapabilityHelp(reply) ->
+                    Verdict.Release("capability_help")
+                ActionClaimGuard.isHelpRequest(requestText) ->
+                    Verdict.Drop("help_incomplete", ActionClaimGuard.nudgeFor(requestText))
                 ActionClaimGuard.claimsDone(reply) || ActionClaimGuard.describesCarAction(reply) ->
                     Verdict.Drop("unverified_claim")
                 else -> Verdict.Release("no_claim_made")

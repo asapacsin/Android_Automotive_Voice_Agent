@@ -21,6 +21,8 @@ class DebugToolReceiver : BroadcastReceiver() {
                 "nav_route" -> navRoute(context, arg)
                 "nav_start" -> navStart(arg)
                 "nav_stop" -> navStop()
+                "nav_overview" -> navOverview()
+                "nav_lock" -> navLock()
                 "climate" -> climate(arg)
                 "wake" -> wake(context, arg)
                 // Cuts the realtime socket as a lost signal would, so recovery can be a scenario
@@ -121,6 +123,16 @@ class DebugToolReceiver : BroadcastReceiver() {
         val host = NavigationHostGateway.current() ?: return "no live map host"
         val stopped = host.stopNavigation("manual")
         return if (stopped) "stopped" else "already inactive"
+    }
+
+    private fun navOverview(): String {
+        val host = NavigationHostGateway.current() ?: return "no live map host"
+        return "overview=" + host.showOverview()
+    }
+
+    private fun navLock(): String {
+        val host = NavigationHostGateway.current() ?: return "no live map host"
+        return "lock=" + host.resumeTracking()
     }
 
     /**

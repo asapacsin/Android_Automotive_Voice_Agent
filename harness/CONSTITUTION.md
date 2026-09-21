@@ -64,6 +64,11 @@ about how work is done.
     without them and what uncertainty is left — then **keep going**. A `HUMAN_REQUIRED` item is a
     queued future validation, never a global blocker. The person is asked once, at a phase
     boundary, with the whole queue at hand.
+    A row may be `HUMAN_REQUIRED` only when it names a concrete `automation_blocker` from:
+    `subjective_perception`, `physical_world`, `credential_permission`, `hardware_interface`,
+    `safety`. Tapping a device, ADB, starting an emulator, watching logs, taking screenshots or
+    video, or a test being inconvenient or multi-step are **not** blockers — those stay
+    `AUTONOMOUS`. Checked by `python scripts/test_matrix.py --validate`.
     *Procedure:* [PHASES.md](PHASES.md).
 18. **The human gate is mechanical.** `PHASE = HUMAN_VALIDATION_READY` is legal only when the
     registry says so: every `AUTONOMOUS` test settled, every remaining case owned by a named human

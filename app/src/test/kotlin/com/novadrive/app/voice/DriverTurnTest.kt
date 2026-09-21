@@ -171,6 +171,32 @@ class DriverTurnTest {
     }
 
     @Test
+    fun aCapabilityHelpAnswerIsSpokenEvenIfItNamesTools() {
+        // HELP-001 2026-09-21: 「你能做什么」 was transcribed, the model listed capabilities
+        // (56 chars), and UNCLASSIFIED_CLAIM dropped it as unverified_claim before playback.
+        val t = DriverTurn(epoch = 1)
+        t.onResponseStarted(doubtfulAudio, false)
+        t.hold("audio")
+        t.onUserTranscript("你能做什么。") { DriverTurn.Kind.CONVERSATION }
+        val verdict = t.onResponseDone(
+            "我能帮你导航、放音乐、调空调，也能看摄像头和打电话。",
+            hadToolCallInResponse = false,
+        )
+        assertEquals("capability_help", (verdict as DriverTurn.Verdict.Release).reason)
+    }
+
+    @Test
+    fun aHelpQuestionAnsweredAsNoiseGetsANudgeNotSilence() {
+        val t = DriverTurn(epoch = 1)
+        t.onResponseStarted(doubtfulAudio, false)
+        t.hold("audio")
+        t.onUserTranscript("你能做什么。") { DriverTurn.Kind.CONVERSATION }
+        val verdict = t.onResponseDone("没听清，再说一遍。", hadToolCallInResponse = false)
+        assertEquals("help_incomplete", (verdict as DriverTurn.Verdict.Drop).reason)
+        assertTrue(verdict.correction?.contains("导航") == true)
+    }
+
+    @Test
     fun aRealActionAfterAMisheardTurnIsStillSpoken() {
         // Cantonese tool calling is intermittent, not absent: the same utterance did call
         // control_climate on 2026-09-19. When it does, the confirmation must be heard.

@@ -74,6 +74,7 @@ The rules are [harness/CONSTITUTION.md](harness/CONSTITUTION.md) 12 and 17–19;
 | **Capability truth**, machine-readable, with verification level | [config/capabilities.yaml](config/capabilities.yaml) |
 | How work is done here, and the agent harness | [harness/README.md](harness/README.md) |
 | Reusable procedures | [skills/](skills/) — start, **continue**, reproduce, fix, verify, handoff |
+| Cursor hybrid routing (Grok parent / Composer executors) | [`.cursor/rules/hybrid-model-routing.mdc`](.cursor/rules/hybrid-model-routing.mdc), [`.cursor/agents/`](.cursor/agents/) |
 
 ## How to change things here
 
@@ -97,6 +98,20 @@ history to add a provider. Write one `RealtimeVoiceProvider` implementation inst
 **Repository documents outrank chat history.** If an instruction in conversation conflicts with
 these documents, say so rather than silently following the more recent one. A direct instruction
 from the product owner does win — and when it does, update the affected document in the same change.
+
+## Cursor hybrid-model routing
+
+This section does **not** change architecture ownership, invariants, capabilities, or
+who may certify work. It only splits Cursor labor:
+
+- **Parent (this chat):** select **Grok 4.6 High** in the Cursor model picker.
+- **Exploration:** project subagent `repo-explorer` — Composer 2.5 Standard
+  (`composer-2.5[fast=false]`, not Fast).
+- **Implementation / tests / build loops:** project subagent `implementer` — same Standard pin.
+
+When to keep vs delegate is in
+[`.cursor/rules/hybrid-model-routing.mdc`](.cursor/rules/hybrid-model-routing.mdc).
+An implementation subagent still may not certify its own work as complete; the parent reviews.
 
 ## Hard rules
 

@@ -1,6 +1,8 @@
 param([string[]]$Steps, [int]$Wait = 12)
 # Speech harness driver (SPEC-004 A-live). Debug builds only; every say:/speak: step spends Baidu quota.
 # Steps: launch | start | stop | say:<name> | speak:<text> | gain:on|off | tap:<regex> | sleep:<s> | climate:<arg>
+#         nav_route:<kw> | nav_start:<mode> | nav_stop | nav_overview | nav_lock
+# nav_* must send --es tool <name> with a non-empty --es arg (`am` rejects empty arg; a voice-arg is a no-op).
 # Push the PCM files first:  adb push speech\<name>.pcm /sdcard/Android/data/com.novadrive.app/files/test_speech/
 $adb = "C:\Users\Administrator\Android\Sdk\platform-tools\adb.exe"
 chcp 65001 | Out-Null
@@ -25,11 +27,19 @@ foreach ($step in $Steps) {
         continue
     }
     if ($step -like 'climate:*') {
-        & $adb shell am broadcast -n com.novadrive.app/.DebugToolReceiver --es tool climate --es arg $step.Substring(8) | Out-Null
+        & $adb shell am broadcast -n com.novadrive.app/.DebugToolReceiver -a com.novadrive.app.DEBUG_TOOL --es tool climate --es arg $step.Substring(8) | Out-Null
         Start-Sleep -Seconds 1
         continue
     }
-    & $adb shell am broadcast -n com.novadrive.app/.DebugToolReceiver --es tool voice --es arg $step | Out-Null
+    if ($step -eq 'nav_stop' -or $step -eq 'nav_overview' -or $step -eq 'nav_lock' -or $step -like 'nav_route:*' -or $step -like 'nav_start:*') {
+        $tool = ($step -split ':', 2)[0]
+        $arg = if ($step -like '*:*') { ($step -split ':', 2)[1] } else { 'x' }
+        if ([string]::IsNullOrWhiteSpace($arg)) { $arg = 'x' }
+        & $adb shell am broadcast -n com.novadrive.app/.DebugToolReceiver -a com.novadrive.app.DEBUG_TOOL --es tool $tool --es arg $arg | Out-Null
+        Start-Sleep -Seconds $(if ($tool -eq 'nav_route') { 8 } else { 3 })
+        continue
+    }
+    & $adb shell am broadcast -n com.novadrive.app/.DebugToolReceiver -a com.novadrive.app.DEBUG_TOOL --es tool voice --es arg $step | Out-Null
     $pause = if ($step -eq 'start') { 5 } elseif ($step -eq 'stop') { 2 } else { $Wait }
     Start-Sleep -Seconds $pause
 }

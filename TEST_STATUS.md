@@ -2,16 +2,16 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-20 · 83 tests
+Updated 2026-09-21 · 83 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 64 |
+| autonomous PASS | 73 |
 | autonomous FAIL | 1 |
 | incomplete | 0 |
 | partial pass | 0 |
 | not run | 0 |
-| human required | 18 |
+| human required | 9 |
 | human pass | 0 |
 | human fail | 0 |
 | blocked external | 0 |
@@ -31,11 +31,11 @@ Updated 2026-09-20 · 83 tests
 | calling | 8 | 7 | 1 | 0 |
 | cantonese | 2 | 1 | 1 | 0 |
 | climate | 4 | 4 | 0 | 0 |
-| dialogue_context | 4 | 3 | 1 | 0 |
+| dialogue_context | 4 | 4 | 0 | 0 |
 | lifecycle | 1 | 1 | 0 | 0 |
 | media | 2 | 2 | 0 | 0 |
 | microphone | 1 | 0 | 1 | 0 |
-| navigation | 19 | 9 | 9 | 0 |
+| navigation | 19 | 16 | 2 | 0 |
 | performance | 2 | 2 | 0 | 0 |
 | permissions | 3 | 3 | 0 | 0 |
 | regression | 2 | 2 | 0 | 0 |
@@ -45,7 +45,7 @@ Updated 2026-09-20 · 83 tests
 | security | 3 | 3 | 0 | 0 |
 | speech | 1 | 0 | 1 | 0 |
 | truthfulness | 7 | 7 | 0 | 0 |
-| turn_taking | 5 | 4 | 1 | 0 |
+| turn_taking | 5 | 5 | 0 | 0 |
 | unsupported | 1 | 1 | 0 | 0 |
 | vision | 2 | 2 | 0 | 0 |
 | wake_word | 4 | 3 | 1 | 0 |
@@ -72,7 +72,7 @@ Updated 2026-09-20 · 83 tests
 | CLIMATE-SET-001 | climate | An explicit temperature is set | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | CTX-AMBIG-001 | dialogue_context | 再低一点 with no history asks which | AUTONOMOUS | PASS | yes | 2026-09-20: 「您是指温度还是风量呢？」 |
 | CTX-CHAIN-001 | dialogue_context | 再凉一点 continues the previous adjustment | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
-| HELP-001 | dialogue_context | 「你能做什么」 gets a short capability answer | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | ActionClaimGuardTest.aHelpQuestionThatIsMisheardGetsACapabilityNudge |
+| HELP-001 | dialogue_context | 「你能做什么」 gets a short capability answer | AUTONOMOUS | PASS | yes | 2026-09-21 device 2391ff70 S21 --wait 8 PASS |
 | HELP-UNIT-001 | dialogue_context | Help-request nudge is unit-covered | AUTONOMOUS | PASS | yes | ActionClaimGuardTest added 2026-09-20 |
 | PROCDEATH-001 | lifecycle | The app survives process death | AUTONOMOUS | PASS | yes | 2026-09-20: pid 13783 killed once the app was genuinely backgrounded (am kill only reap… |
 | MUSIC-NAMED-001 | media | A named song is refused, not substituted | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
@@ -86,14 +86,14 @@ Updated 2026-09-20 · 83 tests
 | NAV-MID-ROUTE-001 | navigation | Mid-route navigation baseline without countdown entitlement | AUTONOMOUS | PASS | yes | 2026-09-21: nav_traffic_countdown status=BLOCKED_EXTERNAL_AMAP_ENTITLEMENT |
 | NAV-PICK-001 | navigation | 第二个 picks from the on-screen list | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | NAV-SEARCH-001 | navigation | A destination produces candidates and does not start navigating | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
-| NAV-SIM-QA-001 | navigation | Owner wants a reusable navigation screen-recording movie for QA | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | 2026-09-21: nav_qa_to_shizimen.mp4 (~45s, 1220x2712) pulled to D:\桌面\android_doc\ |
+| NAV-SIM-QA-001 | navigation | Reusable navigation screen-recording movie for QA | AUTONOMOUS | PASS | no | artifact:D:/桌面/android_doc/nav_qa_to_shizimen.mp4 size=78483175 bytes at 2026-09-21 10:31 |
 | NAV-UI-001 | navigation | 「开始导航」 enters ACTIVE_DRIVING_NAVIGATION, not route preview | AUTONOMOUS | PASS | yes | EmbeddedNavigationControllerTest.SelectingARouteEntersDrivingPresentationNotRoutePreview |
-| NAV-UI-002 | navigation | During GPS navigation the vehicle stays in lock-car tracking | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | AmapDrivingPresentation.lockCar calls recoverLockMode, CAR_UP_MODE, SHOW_MODE_LOCK_CAR |
-| NAV-UI-003 | navigation | Vehicle heading rotates the navigation map | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | setNaviMode(CAR_UP_MODE) is applied on startNavi |
-| NAV-UI-004 | navigation | Active route shows traffic-state colouring when Amap supplies it | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | setTrafficLine(true), setTrafficStatusUpdateEnabled(true), setTrafficInfoUpdateEnabled(… |
-| NAV-UI-005 | navigation | Next-maneuver guidance is visible | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | setLayoutVisible(driving), setNaviStatusBarEnabled(driving), nav_maneuver log on icon c… |
-| NAV-UI-006 | navigation | Lane or junction enlarge appears when Amap supplies it | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | setLaneInfoShow, setModeCrossDisplayShow, setRealCrossDisplayShow enabled while driving |
-| NAV-UI-007 | navigation | Overview then return restores vehicle tracking | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | EmbeddedNavigationControllerTest.overviewAndResumeTrackingOnlyWorkWhileNavigating |
+| NAV-UI-002 | navigation | During GPS navigation the vehicle stays in lock-car tracking | AUTONOMOUS | PASS | yes | artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t0_after_start.png |
+| NAV-UI-003 | navigation | Vehicle heading rotates the navigation map | AUTONOMOUS | PASS | yes | artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t0_after_start.png compass 北 at left |
+| NAV-UI-004 | navigation | Active route shows traffic-state colouring when Amap supplies it | AUTONOMOUS | PASS | yes | log:NovaVoice/nav_traffic_status_update |
+| NAV-UI-005 | navigation | Next-maneuver guidance is visible | AUTONOMOUS | PASS | yes | log:NovaVoice/nav_maneuver iconType remainMeters |
+| NAV-UI-006 | navigation | Lane or junction enlarge appears when Amap supplies it | AUTONOMOUS | PASS | no | log:NovaVoice/nav_lane_info shown=true |
+| NAV-UI-007 | navigation | Overview then return restores vehicle tracking | AUTONOMOUS | PASS | yes | log:NovaVoice/debug_tool tool=nav_overview result=overview=true |
 | NAV-UI-008 | navigation | Spoken 「开始导航」 enters the same driving state as a route tap | AUTONOMOUS | PASS | yes | 2026-09-20 unit |
 | NAV-UI-009 | navigation | Arrival leaves ACTIVE_DRIVING_NAVIGATION | AUTONOMOUS | PASS | yes | 2026-09-20 unit plus existing arrival tests |
 | NAV-UI-010 | navigation | Route-selection voice commands are unchanged | AUTONOMOUS | PASS | yes | 2026-09-20 unit, pre-existing tests still green |
@@ -126,7 +126,7 @@ Updated 2026-09-20 · 83 tests
 | TRUTH-MISHEARD-001 | truthfulness | A misheard driver is not told the car acted | AUTONOMOUS | PASS | yes | 2026-09-19: 「返屋企啦」 -> 「发诺克拉。」 -> correction, not a claim |
 | TRUTH-WEATHER-001 | truthfulness | No invented weather, traffic or news | AUTONOMOUS | PASS | yes | 2026-09-20: refusal, 20/20 suite |
 | BARGEIN-001 | turn_taking | 闭嘴 stops speech without ending the session | AUTONOMOUS | PASS | no | 2026-09-20: 20/20 suite |
-| ECHO-001 | turn_taking | Post-reply cabin echo does not become 「没听清」 | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | PLAYBACK_UNGATE_DELAY_MS=1000 and holdPostSpeechEcho(600) in VoiceSessionController / A… |
+| ECHO-001 | turn_taking | Post-reply cabin echo does not become 「没听清」 | AUTONOMOUS | PASS | yes | 2026-09-21 device 2391ff70 speaker Muted=false; live mic during emulator navi (novavoic… |
 | LISTEN-IDLE-001 | turn_taking | Inactivity releases the microphone and then the socket | AUTONOMOUS | PASS | yes | ListeningLifecycleTest covers STANDBY, DEEP_IDLE, epoch-guarded timers, and meaningless… |
 | NOISE-001 | turn_taking | Room noise does not become a turn | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | SLEEP-001 | turn_taking | 休眠 reaches SLEEP | AUTONOMOUS | PASS | no | 2026-09-20: 20/20 suite |

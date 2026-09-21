@@ -47,6 +47,27 @@ STATUSES = (
 )
 HUMAN_OWNERS = tuple(o for o in OWNERS if o.startswith("HUMAN_") or o == "EXTERNAL_RESOURCE")
 
+# HUMAN_REQUIRED is legal only with one of these. ADB, taps, emulator, logs, screenshots,
+# video, and inconvenience are not blockers (CONSTITUTION rule 17).
+AUTOMATION_BLOCKERS = (
+    "subjective_perception",
+    "physical_world",
+    "credential_permission",
+    "hardware_interface",
+    "safety",
+)
+_INVALID_REASON = re.compile(
+    r"\b(adb|logcat|screenshot|screencap|screenrecord|emulator navi|tapping the device|"
+    r"requires tapping|watching logs|taking screenshots|inconvenient|multi-step)\b",
+    re.I,
+)
+_VALID_REASON = re.compile(
+    r"cabin|acoustics|road noise|gps|drive|vehicle|keystore|password|credential|\bsim\b|"
+    r"timbre|loudness|intelligib|perception|ear check|policy|choose|consent|"
+    r"hardware|safety|moving|signing",
+    re.I,
+)
+
 # Statuses an autonomous test may hold when the human gate opens. Anything else is work.
 # INCOMPLETE is deliberately absent: a run that never reached a verdict is unfinished work,
 # never a pass. PARTIAL_PASS is settled — a finished verdict at an explicitly declared scope,
@@ -225,8 +246,19 @@ def human_entry_problems(entry):
     """What a queued human item must carry so the person never has to come back and ask."""
     tid = entry["id"]
     problems = []
+    blocker = entry.get("automation_blocker")
+    if blocker not in AUTOMATION_BLOCKERS:
+        problems.append(
+            "%s: HUMAN_REQUIRED needs automation_blocker in %s"
+            % (tid, ", ".join(AUTOMATION_BLOCKERS)))
     if not entry.get("human_reason"):
         problems.append("%s: no human_reason - say why an agent cannot do it" % tid)
+    else:
+        reason = entry["human_reason"]
+        if _INVALID_REASON.search(reason) and not _VALID_REASON.search(reason):
+            problems.append(
+                "%s: human_reason is only ADB/taps/emulator/logs/screenshots/"
+                "inconvenience - that is not a legal automation blocker" % tid)
     if not entry.get("procedure"):
         problems.append("%s: no procedure" % tid)
     if not entry.get("pass_criteria"):
@@ -536,6 +568,9 @@ def _entry_section(entry, local_device=False):
         lines.append("")
     lines.append("**Why this needs you.** %s" % entry.get("human_reason", ""))
     lines.append("")
+    if entry.get("automation_blocker"):
+        lines.append("**Automation blocker:** `%s`" % entry["automation_blocker"])
+        lines.append("")
     if entry.get("autonomous_evidence"):
         lines.append("**Already established without you:**")
         lines.append("")
@@ -663,7 +698,9 @@ def selftest():
     doc = {"meta": {"updated": "x"}, "tests": [
         _entry(id="A-1"),
         _entry(id="H-1", owner="HUMAN_PHYSICAL", status="HUMAN_REQUIRED", evidence=None,
-               human_reason="a person must drive", returns=["what happened"],
+               human_reason="a person must drive the vehicle in a real cabin",
+               automation_blocker="physical_world",
+               returns=["what happened"],
                autonomous_evidence=["everything short of driving"],
                remaining_uncertainty=["the road"]),
     ]}
@@ -693,9 +730,24 @@ def selftest():
 
     # A decision with no numbers is not ready to be asked.
     undecided = _entry(id="D-1", owner="HUMAN_DECISION", status="HUMAN_REQUIRED", evidence=None,
-                       human_reason="policy", decision_options=["A", "B"])
+                       human_reason="policy choice the owner must make",
+                       automation_blocker="subjective_perception",
+                       decision_options=["A", "B"])
     check("a decision with nothing measured is rejected",
           any("reduce it to evidence" in p for p in human_entry_problems(undecided)))
+    illegal = _entry(
+        id="H-adb", owner="HUMAN_PHYSICAL", status="HUMAN_REQUIRED", evidence=None,
+        human_reason="requires ADB and watching logs",
+        automation_blocker="physical_world",
+        returns=["ok"], autonomous_evidence=["e"], remaining_uncertainty=["u"])
+    check("ADB/log watching is not a legal human_reason",
+          any("not a legal automation blocker" in p for p in human_entry_problems(illegal)))
+    missing_blocker = _entry(
+        id="H-nb", owner="HUMAN_PHYSICAL", status="HUMAN_REQUIRED", evidence=None,
+        human_reason="a person must drive the vehicle",
+        returns=["ok"], autonomous_evidence=["e"], remaining_uncertainty=["u"])
+    check("HUMAN_REQUIRED without automation_blocker is rejected",
+          any("automation_blocker" in p for p in human_entry_problems(missing_blocker)))
 
     # Owner and status must agree about who is waiting.
     mixed = {"meta": {"updated": "x"}, "tests": [
@@ -798,7 +850,8 @@ def selftest():
     human_queued = {"meta": {"updated": "x"}, "tests": [
         _entry(id="L-5", type="device", scope="END_TO_END", owner="HUMAN_PHYSICAL",
                status="HUMAN_REQUIRED", evidence=None, covers=["drive.task"],
-               terminal_success=["done"], human_reason="drive",
+               terminal_success=["done"], human_reason="a person must drive the vehicle",
+               automation_blocker="physical_world",
                returns=["done?"], autonomous_evidence=["sim"], remaining_uncertainty=["road"])]}
     check("a human-queued requirement is QUEUED, not a gate reason",
           coverage(human_queued, reqs)["drive.task"]["verdict"] == "QUEUED"

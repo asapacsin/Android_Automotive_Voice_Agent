@@ -1,31 +1,31 @@
 {
-  "generated_at": "2026-09-21T14:10:44",
+  "generated_at": "2026-09-21T18:46:53",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "c44be4e",
-    "branch": "cursor/recover-friday-sunday-dbe9",
-    "subject": "Refresh generated state after P27/P28",
+    "commit": "92e710d",
+    "branch": "cursor/2026-09-21-acceptance-harness",
+    "subject": "2026-09-21 acceptance hardening: verdict scopes, provenance, nav baseline (Cursor)",
     "working_tree_clean": false,
-    "uncommitted_files": 41
+    "uncommitted_files": 21
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-21T12:19:41",
+    "collected_at": "2026-09-21T18:45:30",
     "total": {
-      "tests": 152,
+      "tests": 156,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "app": {
-        "tests": 15,
+        "tests": 25,
         "failures": 0,
         "errors": 0,
         "skipped": 0
       },
       "behavior-test": {
-        "tests": 13,
+        "tests": 7,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 228837721,
-    "built_at": "2026-09-21T12:21:51"
+    "bytes": 229178519,
+    "built_at": "2026-09-21T18:29:46"
   },
   "capabilities": {
     "available": true,
@@ -136,7 +136,7 @@
     "actionable_count": 3,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
-    "QUEUED_FOR_HUMAN": 18,
+    "QUEUED_FOR_HUMAN": 9,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
       {

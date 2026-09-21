@@ -7,9 +7,9 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 | # | Demand | Raised | Status | Spec |
 | --- | --- | --- | --- | --- |
 | B-023 | **Voice style** — prefer a younger cute female voice (符玄-like), not an older-woman timbre | 2026-09-20 | **Done** (code) 2026-09-21 — default **4196** 度清影; picker in developer settings; device ear-check [VOICE-STYLE-001](TEST_MATRIX.yaml) | [P30](OPEN_PROBLEMS.md) |
-| B-022 | **Repeatable navigation QA without a real drive** — **screen-recording movie** of nav UI under `D:\桌面\android_doc\`; owner reviews the video | 2026-09-20 | **Done** (artifact) 2026-09-21 — `nav_qa_to_shizimen.mp4` local; owner watch [NAV-SIM-QA-001](TEST_MATRIX.yaml) | [P29](OPEN_PROBLEMS.md) |
-| B-021 | **「你能做什么」 must list real capabilities** | 2026-09-20 | **Done** (code) 2026-09-20 — help nudge unit-covered; device retest [HELP-001](TEST_MATRIX.yaml) | [P28](OPEN_PROBLEMS.md) |
-| B-020 | **No phantom 「没听清」 after 小诺 speaks (esp. navigation start)** | 2026-09-20 | **Done** (code) 2026-09-20 — longer mic ungate + echo hold; device retest [ECHO-001](TEST_MATRIX.yaml) | [P27](OPEN_PROBLEMS.md) |
+| B-022 | **Repeatable navigation QA without a real drive** — **screen-recording movie** of nav UI under `D:\桌面\android_doc\` | 2026-09-20 | **Done** 2026-09-21 — [NAV-SIM-QA-001](TEST_MATRIX.yaml) PASS | [P29](OPEN_PROBLEMS.md) |
+| B-021 | **「你能做什么」 must list real capabilities** | 2026-09-20 | **Done** 2026-09-21 — [HELP-001](TEST_MATRIX.yaml) PASS | [P28](OPEN_PROBLEMS.md) |
+| B-020 | **No phantom 「没听清」 after 小诺 speaks (esp. navigation start)** | 2026-09-20 | **Done** 2026-09-21 — [ECHO-001](TEST_MATRIX.yaml) PASS | [P27](OPEN_PROBLEMS.md) |
 | B-009 | **Provider-neutral realtime layer** — a second realtime provider must be addable by writing one adapter, without provider-name branches or vendor protocol vocabulary reaching voice/session/tool logic | 2026-09-19 | **Done** 2026-09-19 — breach fixed (`ResponseOutcome`), contract and capability model recorded, `RealtimeProviderContractTest` (25 cases across both in-repo providers), `ProviderBoundaryTest` checked against a reintroduced breach, harness rules and I-13 written | [ADR-009](DECISIONS/ADR-009-provider-neutral-realtime-contract.md) · [SPEC-007](SPECS/SPEC-007-provider-neutral-realtime.md) |
 | B-008 | **Complex / contextual voice commands** — the driver speaks naturally (「有点热」「再凉一点」「这个太远了，换个近一点的」) instead of like an API, and the assistant resolves it against what it already did — **bounded by the tools that exist**, never a spoken acknowledgement in place of an execution | 2026-09-19 | **Done** 2026-09-19 — context record, resolver, staleness, ambiguity, clarification and three execution guards, all device-verified, and the live model verified acting on them (CVC-04/09/27 + the named-song refusal). Multi-intent decomposition is deliberately the model's (SPEC-006 §On multi-intent). A human voice in a cabin remains a standing gap |
 | B-007 | **Assistant-on-map UI design** — avatar + state indicator + speech bubble upper-left, temporary action-feedback card, compact media/climate bottom bar, and a bottom-right **front-facing camera** button that must not end the assistant session | 2026-09-16 | **Done** 2026-09-19 as a *decision* — the layout is authoritative and folded into [SPEC-005-P1-design](SPECS/SPEC-005-P1-design.md) D2. Of its four open questions, **inert bottom-bar controls is closed**: the bar now executes through `ScreenControls`, the same route a spoken command takes (D-3). The rest are tracked where they belong — session entry point with B-003, `openApp(maps)` and camera-vs-§42 in that design | [DEMAND](SPECS/DEMAND-2026-09-16-ui-design.md) → [SPEC-005-P1-design](SPECS/SPEC-005-P1-design.md) |
@@ -499,19 +499,15 @@ ABI decision recorded. **Verification:** device, with the signed build.
 
 ## B-020 — No phantom 没听清 after 小诺 speaks
 
-Code done 2026-09-20 (mic ungate 1000 ms + echo hold 600 ms). Device retest is [ECHO-001](TEST_MATRIX.yaml).
-
-BLOCKED_BY: a person retesting ECHO-001 on device after installing the updated APK
+Code done 2026-09-20. Device [ECHO-001](TEST_MATRIX.yaml) PASS 2026-09-21.
 
 ## B-021 — Capability help answer
 
-Code done 2026-09-20 (ActionClaimGuard help nudge + unit tests). Device retest is [HELP-001](TEST_MATRIX.yaml).
-
-BLOCKED_BY: a person saying 「你能做什么」 on a live session ([HELP-001](TEST_MATRIX.yaml))
+Code done 2026-09-20. Device [HELP-001](TEST_MATRIX.yaml) PASS 2026-09-21 (S21 `--wait 8`).
 
 ## B-022 — Repeatable navigation QA clip
 
-**Done (artifact) 2026-09-21.** Screen movie at `D:\桌面\android_doc\nav_qa_to_shizimen.mp4` (十字门 UI). Owner watch remains [NAV-SIM-QA-001](TEST_MATRIX.yaml). Keep display ON for `adb screenrecord`.
+**Done 2026-09-21.** [NAV-SIM-QA-001](TEST_MATRIX.yaml) PASS — `D:\桌面\android_doc\nav_qa_to_shizimen.mp4` exists and shows nav UI.
 
 ## B-023 — Voice style
 
