@@ -40,6 +40,15 @@ STATUSES = (
 )
 HUMAN_OWNERS = tuple(o for o in OWNERS if o.startswith("HUMAN_") or o == "EXTERNAL_RESOURCE")
 
+CLAIM_SCOPES = ("POINT", "PREFIX", "LIFECYCLE", "MEASUREMENT", "DECISION")
+TERMINAL_RESULTS = ("NOT_OBSERVED", "OBSERVED", "ABORTED")
+# Limited to ID/name so ordinary benchmark terminology in free-form notes does not become a false
+# positive. These words make a broad completion claim and therefore require an explicit boundary.
+LIFECYCLE_HINTS = (
+    "E2E", "END-TO-END", "END TO END", "LIFECYCLE", "BASELINE", "ARRIVAL",
+    "FULL ROUTE", "COMPLETE ROUTE",
+)
+
 # Statuses an autonomous test may hold when the human gate opens. Anything else is work.
 AUTONOMOUS_SETTLED = ("PASS", "NOT_APPLICABLE", "BLOCKED_EXTERNAL")
 # Statuses that mean a human still owes us a result.
@@ -87,9 +96,50 @@ def validate(doc=None):
             found.append("%s: %s must use HUMAN_PASS/HUMAN_FAIL, not %s" % (tid, owner, status))
         if entry.get("status") == "PASS" and not entry.get("evidence"):
             found.append("%s: PASS with no evidence" % tid)
+        found.extend(lifecycle_claim_problems(entry))
         if owner in HUMAN_OWNERS:
             found.extend(human_entry_problems(entry))
     return found
+
+
+def lifecycle_claim_problems(entry):
+    """Broad flow claims need proof of their declared end, not just a successful prefix."""
+    tid = entry.get("id", "<no id>")
+    problems = []
+    scope = entry.get("claim_scope")
+    if scope is not None and scope not in CLAIM_SCOPES:
+        problems.append("%s: claim_scope %r is not one of %s"
+                        % (tid, scope, ", ".join(CLAIM_SCOPES)))
+
+    label = ("%s %s" % (entry.get("id", ""), entry.get("name", ""))).upper()
+    implied = any(hint in label for hint in LIFECYCLE_HINTS)
+    if implied and scope != "LIFECYCLE":
+        problems.append(
+            "%s: lifecycle-like id/name must declare claim_scope: LIFECYCLE" % tid
+        )
+
+    if scope != "LIFECYCLE":
+        return problems
+
+    for field in ("terminal_oracle", "abort_conditions"):
+        value = entry.get(field)
+        if not isinstance(value, list) or not value:
+            problems.append("%s: LIFECYCLE claim needs non-empty %s" % (tid, field))
+
+    terminal_result = entry.get("terminal_result")
+    if terminal_result not in TERMINAL_RESULTS:
+        problems.append("%s: terminal_result %r is not one of %s"
+                        % (tid, terminal_result, ", ".join(TERMINAL_RESULTS)))
+
+    if entry.get("status") in ("PASS", "HUMAN_PASS"):
+        if terminal_result != "OBSERVED":
+            problems.append(
+                "%s: lifecycle PASS requires terminal_result: OBSERVED, got %r"
+                % (tid, terminal_result)
+            )
+        if not entry.get("terminal_evidence"):
+            problems.append("%s: lifecycle PASS requires terminal_evidence" % tid)
+    return problems
 
 
 def human_entry_problems(entry):
@@ -504,6 +554,29 @@ def selftest():
           any("PASS with no evidence" in p
               for p in validate({"meta": {"updated": "x"},
                                  "tests": [_entry(id="E-1", evidence=[])]})))
+
+    # A broad flow claim must explicitly close its evidence window.
+    unscoped = _entry(id="NAV-BASELINE-TEST", name="Navigation baseline")
+    check("a lifecycle-like name without LIFECYCLE scope is rejected",
+          any("claim_scope: LIFECYCLE" in p
+              for p in validate({"meta": {"updated": "x"}, "tests": [unscoped]})))
+
+    aborted = _entry(
+        id="FLOW-1", name="flow", claim_scope="LIFECYCLE",
+        terminal_oracle=["natural completion callback"], abort_conditions=["manual stop"],
+        terminal_result="ABORTED", terminal_evidence=[],
+    )
+    check("an aborted lifecycle cannot be PASS",
+          any("requires terminal_result: OBSERVED" in p
+              for p in validate({"meta": {"updated": "x"}, "tests": [aborted]})))
+
+    closed = _entry(
+        id="FLOW-2", name="flow", claim_scope="LIFECYCLE",
+        terminal_oracle=["natural completion callback"], abort_conditions=["manual stop"],
+        terminal_result="OBSERVED", terminal_evidence=["completion callback at 12:34"],
+    )
+    check("an observed lifecycle with terminal evidence can validate",
+          validate({"meta": {"updated": "x"}, "tests": [closed]}) == [])
 
     # The real registry.
     real = load()
