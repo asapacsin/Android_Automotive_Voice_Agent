@@ -211,6 +211,21 @@ def _product_source(path):
     return "/src/test/" not in _repo_rel(path)
 
 
+def impact_capability_ids(entry, caps=None):
+    """Capabilities this PASS protects.
+
+    Explicit ``covers`` plus every registry id that lists the row in ``protected_by``.
+    A device row can be the protection anchor without repeating those ids on the row.
+    """
+    ids = set(entry.get("covers") or [])
+    tid = entry.get("id")
+    if tid:
+        for cap_id, cap in (caps or {}).items():
+            if isinstance(cap, dict) and tid in (cap.get("protected_by") or []):
+                ids.add(cap_id)
+    return sorted(ids)
+
+
 def impact_files(change_impact, covers):
     """Kotlin/Java paths for change_impact areas whose retest intersects covers."""
     covers_set = set(covers or [])
@@ -354,7 +369,8 @@ def compute_bind(entry, change_impact=None, use_cache=True, harness_extra=b"", c
             change_impact = loaded_change
         if caps is None:
             caps = loaded_caps
-    files = impact_files(change_impact, entry.get("covers") or [])
+    covered = impact_capability_ids(entry, caps)
+    files = impact_files(change_impact, covered)
     artifact_digests = {}
     for path in acceptance.local_artifact_paths(_evidence_strings(entry)):
         if os.path.isfile(path):
@@ -365,7 +381,7 @@ def compute_bind(entry, change_impact=None, use_cache=True, harness_extra=b"", c
         "code_digest": _sha256_files(files),
         "procedure_digest": _sha256_bytes(_procedure_payload(entry).encode("utf-8")),
         "registry_digest": _sha256_bytes(
-            _registry_payload(entry.get("covers") or [], change_impact, caps).encode("utf-8")),
+            _registry_payload(covered, change_impact, caps).encode("utf-8")),
         "harness_digest": _harness_digest(harness_extra),
         "artifact_digests": artifact_digests,
         "apk_digest": apk_digest,
@@ -501,9 +517,9 @@ def bind_entry(entry):
     """Compute evidence_bind when the stored verdict still earns PASS."""
     if not need_runtime_bind(entry):
         raise BindRefused("%s does not need runtime bind" % entry.get("id"), code=1)
-    _, change_impact = load_capability_registry()
+    caps, change_impact = load_capability_registry()
     blockers = dirty_bind_blockers(
-        impact_files(change_impact, entry.get("covers") or []),
+        impact_files(change_impact, impact_capability_ids(entry, caps)),
         git_porcelain(),
     )
     if blockers:
@@ -1565,6 +1581,19 @@ def selftest():
     check("L covered capability text changes registry_digest only for that cover",
           first["registry_digest"] != second["registry_digest"]
           and first["registry_digest"] == third["registry_digest"])
+    pb_caps = copy.deepcopy(caps)
+    pb_row = _entry(id="ADV-PB", type="device", scope="COMPONENT")
+    search = dict(pb_caps["navigation.search_place"])
+    search["protected_by"] = list(search.get("protected_by") or []) + ["ADV-PB"]
+    pb_caps["navigation.search_place"] = search
+    with_pb = compute_bind(pb_row, change_impact, use_cache=False, caps=pb_caps)
+    without_pb = compute_bind(
+        _entry(id="ADV-PB2", type="device", scope="COMPONENT"),
+        change_impact, use_cache=False, caps=pb_caps)
+    pb_files = impact_files(change_impact, impact_capability_ids(pb_row, pb_caps))
+    check("protected_by without covers still hashes that area",
+          with_pb["code_digest"] != without_pb["code_digest"]
+          and any(path.endswith("AmapDrivingPresentation.kt") for path in pb_files))
     missing_comp = {
         "voice_session_lifecycle": {"components": ["NoSuchTypeEver"], "retest": ["speech.wake_word"]},
         "watched_roots": [],

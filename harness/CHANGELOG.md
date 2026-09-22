@@ -6,7 +6,9 @@ Newest first. One line per change, with the evidence that motivated it.
 
 A device, flow, or end-to-end PASS counts only while `evidence_bind` matches the tree.
 `change_impact.watched_roots` fails closed (`UNKNOWN_IMPACT`) when a product Kotlin file
-is unmapped. `registry_digest` and `harness_digest` stale the rows those inputs affect.
+is unmapped. Code and registry digests follow `covers` and `protected_by`, so a PASS
+that anchors a capability goes stale when that capability's impact files change.
+`harness_digest` stales every bound row when the checker scripts change.
 `--apply-stale` requeues to `NOT_RUN`. There is no allowlist for missing artifacts.
 
 - **`scripts/test_matrix.py`** — digests, `bind_problems`, `--bind`, `--apply-stale`.
