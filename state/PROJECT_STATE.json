@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-09-22T09:42:07",
+  "generated_at": "2026-09-22T11:01:58",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "2cdc002",
+    "commit": "89595d5",
     "branch": "cursor/2026-09-22",
-    "subject": "Add speech.capability_help with catalog-driven help replies.",
+    "subject": "Tie PASS digests to the capabilities each row protects.",
     "working_tree_clean": false,
-    "uncommitted_files": 13
+    "uncommitted_files": 5
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-22T09:41:57",
+    "collected_at": "2026-09-22T10:55:57",
     "total": {
       "tests": 829,
       "failures": 0,
@@ -126,7 +126,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "HELP-001: NOT_RUN: 「你能做什么」 / 「你能干啥」 gets a short capability answer",
-    "actionable_count": 3,
+    "actionable_count": 2,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 9,
@@ -144,13 +144,6 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P28",
-        "blocked_by": null
-      },
-      {
-        "priority": 10,
-        "class": "stale state or harness defect",
-        "source": "state",
-        "item": "PROJECT_STATE.json",
         "blocked_by": null
       },
       {
