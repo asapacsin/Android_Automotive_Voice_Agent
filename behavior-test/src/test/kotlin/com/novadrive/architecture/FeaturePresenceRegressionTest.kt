@@ -244,6 +244,28 @@ class FeaturePresenceRegressionTest {
         assertContains(turn, "unproven_action_claim", "a claim without execution proof is never spoken")
     }
 
+    @Test
+    fun capabilityHelpGrammarAndHoldStayWired() {
+        val resolver = "app/src/main/kotlin/com/novadrive/app/voice/UtteranceIntentResolver.kt"
+        assertContains(resolver, "matchesCapabilityHelpGrammar", "help is grammar, not a synonym list")
+        assertContains(resolver, "CapabilityIds.SPEECH_CAPABILITY_HELP", "help maps to speech.capability_help")
+        val turn = "app/src/main/kotlin/com/novadrive/app/voice/DriverTurn.kt"
+        assertContains(turn, "Kind.CAPABILITY_HELP", "help is its own turn kind")
+        assertContains(turn, "HoldReason.CAPABILITY_HELP", "help holds until catalog copy is spoken")
+        val catalog = "contracts/src/main/kotlin/com/novadrive/contracts/Capability.kt"
+        assertContains(catalog, "spokenHelpSummary", "help copy comes from the catalog")
+    }
+
+    @Test
+    fun postSpeechEchoHoldStaysWired() {
+        val controller = "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt"
+        assertContains(controller, "PLAYBACK_UNGATE_DELAY_MS", "ungate delay must stay explicit")
+        assertContains(controller, "POST_SPEECH_ECHO_HOLD_MS", "extra echo hold after mic reopens")
+        assertContains(controller, "holdPostSpeechEcho", "echo hold must reach the microphone port")
+        val capture = "app/src/main/kotlin/com/novadrive/app/voice/PcmAudioCapture.kt"
+        assertContains(capture, "fun holdPostSpeechEcho", "capture must honour the echo blackout")
+    }
+
     // ---- permissions every main feature depends on ----
 
     @Test

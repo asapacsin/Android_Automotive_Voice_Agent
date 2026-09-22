@@ -4,7 +4,9 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 
 Every case below **requires a physical Android device** (and usually a real cabin / GPS / human voice). Cloud agents must not block on these: record them here and continue autonomous work.
 
-Autonomous cloud work for the current frontier is settled. Run this batch locally in one sitting.
+> Autonomous work may still be open. Prefer finishing cloud-verifiable work first; this file is still the device queue.
+>
+> - HELP-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 
 **5 LOCAL_DEVICE_REQUIRED item(s).**
 

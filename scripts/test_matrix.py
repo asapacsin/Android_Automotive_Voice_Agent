@@ -113,10 +113,82 @@ def capability_requirements(path=CAPABILITIES):
     return out
 
 
+REGISTRY_SKIP = ("meta", "human_verification_pending", "change_impact")
+FEATURE_PRESENCE = os.path.join(
+    REPO, "behavior-test/src/test/kotlin/com/novadrive/architecture/FeaturePresenceRegressionTest.kt")
+
+
+def load_capability_registry(path=CAPABILITIES):
+    with io.open(path, encoding="utf-8") as handle:
+        doc = yaml.safe_load(handle)
+    caps = {}
+    for group, entries in doc.items():
+        if group in REGISTRY_SKIP or not isinstance(entries, dict):
+            continue
+        for name, cap in entries.items():
+            if isinstance(cap, dict) and "verified" in cap:
+                caps["%s.%s" % (group, name)] = cap
+    return caps, doc.get("change_impact") or {}
+
+
+def protection_audit(doc=None, registry_path=CAPABILITIES):
+    """Every supported capability must keep PASS regression protection."""
+    caps, change = load_capability_registry(registry_path)
+    doc = doc or load()
+    by_id = {t["id"]: t for t in doc["tests"]}
+    cover_pass = {}
+    for entry in doc["tests"]:
+        if entry.get("status") != "PASS":
+            continue
+        for key in entry.get("covers") or []:
+            cover_pass.setdefault(key, []).append(entry["id"])
+    regression = open(FEATURE_PRESENCE, encoding="utf-8").read() if os.path.isfile(FEATURE_PRESENCE) else ""
+    problems = []
+    for cap_id, cap in sorted(caps.items()):
+        if cap.get("verified") == "unsupported":
+            continue
+        protected = set(cover_pass.get(cap_id, []))
+        for tid in cap.get("protected_by") or []:
+            if tid not in by_id:
+                problems.append("%s: protected_by references unknown test %s" % (cap_id, tid))
+            elif by_id[tid].get("status") == "PASS":
+                protected.add(tid)
+        rt = cap.get("regression_test")
+        if rt:
+            if rt not in regression:
+                problems.append("%s: regression_test %r missing from FeaturePresenceRegressionTest"
+                                % (cap_id, rt))
+            else:
+                protected.add("regression:" + rt)
+        if not protected:
+            problems.append("%s: no PASS cover, protected_by, or regression_test" % cap_id)
+    for area, spec in sorted((change or {}).items()):
+        if not isinstance(spec, dict):
+            continue
+        for rid in spec.get("retest") or []:
+            if rid not in caps:
+                problems.append("change_impact.%s retest unknown capability %r" % (area, rid))
+    return problems
+
+
+def protection_summary(doc=None):
+    """Counts for reporting: total supported, fully protected, gaps."""
+    caps, _ = load_capability_registry()
+    doc = doc or load()
+    problems = protection_audit(doc)
+    unprotected = {p.split(":")[0] for p in problems if "no PASS cover" in p}
+    supported = [cid for cid, cap in caps.items() if cap.get("verified") != "unsupported"]
+    return {
+        "supported": len(supported),
+        "unprotected": len(unprotected),
+        "problems": len(problems),
+    }
+
+
 # ---- validation ------------------------------------------------------------------------------
 
 
-def validate(doc=None, requirements=None):
+def validate(doc=None, requirements=None, audit_protection=None):
     """Everything that would make the registry lie. Returns a list of problems."""
     doc = doc or load()
     found = []
@@ -154,6 +226,10 @@ def validate(doc=None, requirements=None):
         if owner in HUMAN_OWNERS:
             found.extend(human_entry_problems(entry))
         found.extend(verdict_problems(entry, ids, requirements))
+    if audit_protection is None:
+        audit_protection = requirements is None
+    if audit_protection:
+        found.extend(protection_audit(doc))
     return found
 
 
@@ -881,7 +957,8 @@ def selftest():
 
     # The real registry.
     real = load()
-    check("the repository's own registry validates", validate(real) == [])
+    check("the repository's own registry validates", validate(real, audit_protection=True) == [])
+    check("every supported capability keeps regression protection", protection_audit(real) == [])
 
     width = max(len(n) for n, _ in results)
     for name, ok in results:
@@ -904,6 +981,8 @@ def main():
                     help="verdict the evidence for one entry actually earns")
     ap.add_argument("--coverage",
                     help="per-requirement scope coverage", action="store_true")
+    ap.add_argument("--protection", action="store_true",
+                    help="capability regression-protection audit")
     ap.add_argument("--record-pass", choices=["clean", "dirty"],
                     help="record a discovery/review pass result")
     ap.add_argument("--selftest", action="store_true")
@@ -951,6 +1030,15 @@ def main():
                 key, row["required_scope"], ", ".join(row["passing"]) or "—",
                 ", ".join(row["queued_human"]) or "—", row["verdict"]))
         return 0
+
+    if args.protection:
+        problems = protection_audit(doc)
+        summary = protection_summary(doc)
+        print("supported=%d unprotected=%d problems=%d"
+              % (summary["supported"], summary["unprotected"], summary["problems"]))
+        for problem in problems:
+            print("  %s" % problem)
+        return 1 if problems else 0
 
     if args.status:
         print("wrote %s" % write(STATUS_DOC, status_doc(doc)))

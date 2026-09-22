@@ -1220,10 +1220,9 @@ so frames and uplink onset stay closed after the mic formally reopens. Desk rete
 
 ## P28 — 「你能做什么」 / 「你能干啥」 is answered as if it were noise
 
-**Status:** INVESTIGATING 2026-09-22 — colloquial 「干啥」 regressed on device (`unverified_claim` /
-`kind=unheard`). Fix: `UtteranceIntentResolver` bounded grammar → `speech.capability_help`;
-`DriverTurn.Kind.CAPABILITY_HELP` + `HoldReason.CAPABILITY_HELP`; `ProductCapabilities.spokenHelpSummary`.
-Prior [HELP-001](TEST_MATRIX.yaml) PASS 2026-09-21 used 「你能做什么」 only; re-verify with 「你能干啥」.
+**Status:** OPEN 2026-09-22 — unit path fixed ([HELP-UNIT-001](TEST_MATRIX.yaml) PASS); colloquial
+「你能干啥」 device re-verify pending ([HELP-001](TEST_MATRIX.yaml) NOT_RUN). Do not call closed until
+HELP-001 PASS on device.
 **Found:** 2026-09-20, owner spreadsheet #2
 
 ### Symptom

@@ -2,6 +2,19 @@
 
 Newest first. One line per change, with the evidence that motivated it.
 
+## 2026-09-22 — Capability preservation audit wired into existing harness
+
+Prevent ADD FEATURE → LOSE EXISTING FEATURE without a second framework.
+
+- **`config/capabilities.yaml`** — nine navigation UI behaviours + echo/truthfulness as first-class
+  capabilities; `protected_by` / `regression_test` on every supported entry; `change_impact` retest map.
+- **`scripts/test_matrix.py`** — `protection_audit()` + `--protection`; validation fails when a
+  supported capability loses PASS cover.
+- **`CapabilityContractTest`** / **`FeaturePresenceRegressionTest`** — registry drift + help/echo wiring.
+- **`TEST_MATRIX.yaml`** — invalid `INVESTIGATING` removed; HELP-UNIT-001 PASS; HELP-001 NOT_RUN
+  until colloquial 「你能干啥」 device re-verify; `covers:` links for NAV-UI / ECHO / HELP rows.
+- P31 / NAV-E2E-ARRIVAL-001 preserved unchanged.
+
 ## 2026-09-22 — Prohibit all Fast labor modes
 
 Owner: never Composer Fast / `composer-2.5-fast` / any Grok `*-fast`.

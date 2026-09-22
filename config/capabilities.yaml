@@ -22,35 +22,45 @@
 # requirements hold the human gate shut unless a human validation is already queued.
 
 meta:
-  updated: 2026-09-21
-  commit_at_update: 89c9338
+  updated: 2026-09-22
+  commit_at_update: 2cdc002
   device: "Xiaomi 24069RA21C (2391ff70), Android SDK 36"
+  completion_invariant: >
+    NEW_FEATURE_WORKS AND AFFECTED_OLD_PROTECTED_CAPABILITIES_STILL_WORK AND NO_UNEXPLAINED_REGRESSION.
+    A change may complete only when every supported capability in this registry still has PASS
+    regression protection (protected_by, covers, or regression_test below).
 
 navigation:
   search_place:
     tool: navigate_to
     verified: device
+    protected_by: [NAV-SEARCH-001]
     evidence: "nav_resolve_candidates count=5 for 导航去珠海站 and 导航去附近的麦当劳"
     notes: "Returns candidates only. Navigation has NOT started at this point."
   search_nearby_brand:
     tool: navigate_to
     verified: device
+    protected_by: [NAV-SEARCH-001]
     evidence: "DestinationQuery strips 附近的; count=0 -> count=5 on device"
   select_candidate_by_ordinal:
     tool: choose_navigation_option
     verified: device
+    protected_by: [NAV-PICK-001]
     evidence: "第二个 -> choose_navigation_option index -> route list"
   select_candidate_by_name:
     tool: choose_navigation_option
     verified: device
+    protected_by: [NAV-PICK-001]
     evidence: "选择麦当劳创新方商场 -> routes; a name nobody offered returns NO_MATCH"
   select_route:
     tool: choose_navigation_option
     verified: device
+    protected_by: [NAV-PICK-001]
     evidence: "选最快的那条 -> nav_active_route matched the fastest"
   start_navigation:
     tool: choose_navigation_option
     verified: device
+    protected_by: [NAV-UI-001, NAV-UI-008]
     evidence: "nav_navigation_started routeId=12, spoken once after proof"
     notes: >
       Selecting a route calls startNavi. From 2026-09-20 the host then applies AmapDrivingPresentation
@@ -58,6 +68,7 @@ navigation:
   navigate_to_saved_place:
     tool: navigate_to
     verified: device
+    protected_by: [NAV-CORRECT-001]
     evidence: "2026-09-19: 回家 -> nav_saved_place slot=HOME set=true, count=1; 去公司 -> slot=WORK"
     notes: >
       「回家」「返屋企」「去公司」 resolve from the driver's saved places, never from a POI
@@ -65,6 +76,7 @@ navigation:
   save_place:
     tool: save_place
     verified: device
+    protected_by: [NAV-CORRECT-001]
     evidence: "2026-09-19: save_place{home,珠海站} -> ok=true place=珠海站, saved_place_set slot=HOME"
     notes: >
       An address that cannot be resolved is not saved. Storing the raw string would move the
@@ -72,54 +84,131 @@ navigation:
   stop_navigation:
     tool: exit_navigation_mode
     verified: device
+    protected_by: [NAV-CANCEL-001]
     evidence: "结束导航 -> nav_stopped reached=true; 算了 cancels the picker"
   guidance_voice:
     tool: null
     verified: device
     required_scope: INTERMEDIATE_FLOW
+    protected_by: [NAV-MID-ROUTE-001]
+    regression_test: navigationGuidanceIsSpokenAndGatesTheMicrophone
     evidence: "21 nav_guidance_play_start/end pairs on an emulator drive; mic gated while speaking"
     notes: "Amap SDK offline voice. Loudness and quality are a human judgement."
   arrival_lifecycle:
     tool: null
     verified: device
     required_scope: END_TO_END
+    protected_by: [NAV-E2E-ARRIVAL-001]
     evidence: "NAV-E2E-ARRIVAL-001 PASS 2026-09-21: nav_proximity_arrival + nav_stopped reason=emulator_end; artifact D:/桌面/android_doc/nav_e2e_arrival_2026-09-21/nav_e2e_arrival.mp4"
     notes: >
       Start, follow, arrival callback, arrival handling and automatic session end.
       Emulator proximity completion closes the P31 gap when onEndEmulatorNavi is late;
       debug nav_desk_origin unblocks desk route calc when Amap null-start returns code 3.
+  driving_presentation:
+    tool: null
+    verified: device
+    protected_by: [NAV-UI-001, NAV-UI-008]
+    regression_test: drivingNavigationUsesNativeAmapPresentationNotIdleCamera
+    required_behaviour: >
+      After startNavi the UI is native turn-by-turn driving (lock-car, heading-up, traffic line,
+      lane/junction HUD) — not idle map browse or route overview.
+    evidence: "NAV-UI-001 PASS; FeaturePresenceRegressionTest"
+  route_preview:
+    tool: null
+    verified: device
+    protected_by: [NAV-UI-001]
+    required_behaviour: >
+      Choosing a route shows full-route overview before the driver starts navigation.
+    evidence: "EmbeddedNavigationControllerTest route preview path"
+  lock_car_tracking:
+    tool: null
+    verified: device
+    protected_by: [NAV-UI-002]
+    required_behaviour: >
+      During GPS navigation the vehicle stays in lock-car tracking near the lower-middle of the map.
+    evidence: "NAV-UI-002 PASS"
+  heading_up_map:
+    tool: null
+    verified: device
+    protected_by: [NAV-UI-003]
+    required_behaviour: >
+      The map bearing follows direction of travel (CAR_UP_MODE), not frozen north-up.
+    evidence: "NAV-UI-003 PASS"
+  traffic_presentation:
+    tool: null
+    verified: device
+    protected_by: [NAV-UI-004]
+    required_behaviour: >
+      Active route shows traffic-state colouring when Amap supplies it.
+    evidence: "NAV-UI-004 PASS"
+  speed_hud:
+    tool: null
+    verified: device
+    protected_by: [NAV-MID-ROUTE-001]
+    regression_test: drivingNavigationUsesNativeAmapPresentationNotIdleCamera
+    required_behaviour: >
+      During active navigation the driver sees current speed and posted limit when Amap supplies them.
+    evidence: "DrivingSpeedHudTest; NAV-MID-ROUTE-001 speed_hud_per_road_limit"
+  maneuver_guidance:
+    tool: null
+    verified: device
+    protected_by: [NAV-UI-005]
+    required_behaviour: >
+      Next-maneuver guidance and remaining distance/time are visible in the native HUD.
+    evidence: "NAV-UI-005 PASS"
+  lane_junction_presentation:
+    tool: null
+    verified: device
+    protected_by: [NAV-UI-006]
+    required_behaviour: >
+      Lane or junction enlarge appears when Amap supplies it — native HUD, not a homemade overlay.
+    evidence: "NAV-UI-006 PASS"
+  return_to_tracking:
+    tool: null
+    verified: device
+    protected_by: [NAV-UI-007]
+    required_behaviour: >
+      Overview shows the whole remaining route; returning restores lock-car without trapping the camera.
+    evidence: "NAV-UI-007 PASS"
 
 media:
   play_music:
     tool: control_music
     verified: device
+    protected_by: [MUSIC-PLAY-001]
     evidence: "播放音乐 -> control_music -> AudioPlaybackConfiguration started"
   stop_music:
     tool: control_music
     verified: device
+    protected_by: [MUSIC-PLAY-001]
   next_track:
     tool: null
     verified: unsupported
     recognised_by: UtteranceIntentResolver
+    protected_by: [MUSIC-NAMED-001]
     notes: "One bundled track. The bottom-bar control is shown disabled."
 
 climate:
   power:
     tool: control_climate
     verified: device
+    protected_by: [CLIMATE-OFF-001]
     backend: SimulatedVehicleControl
     notes: "Simulated. Real vehicle = one new VehicleControlPort in VehicleControlProvider."
   set_temperature:
     tool: control_climate
     verified: device
+    protected_by: [CLIMATE-SET-001]
     backend: SimulatedVehicleControl
   set_fan:
     tool: control_climate
     verified: device
+    protected_by: [CLIMATE-FAN-001]
     backend: SimulatedVehicleControl
   relative_adjustment_from_context:
     tool: control_climate
     verified: device
+    protected_by: [CLIMATE-IMPLICIT-001]
     evidence: "ContextResolverTest, 23 cases (SPEC-006 CVC-04..46)"
     notes: >
       「再凉一点」「有点热」「刚才那个调回来一点」. The model has no cross-turn memory here
@@ -131,6 +220,7 @@ climate:
   ambiguous_relative_request:
     tool: null
     verified: device
+    protected_by: [CLIMATE-IMPLICIT-001]
     evidence: >
       ContextResolverTest CVC-11/12/13, and on 2391ff70 2026-09-19: temperature set to 24 and fan to
       3, then the neutral request was refused with AMBIGUOUS_REFERENT and get_state still read
@@ -143,6 +233,7 @@ vision:
   describe_camera_view:
     tool: describe_camera_view
     verified: device
+    protected_by: [VISION-001]
     evidence: "看看前面有什么 -> camera frame -> Qianfan vision -> spoken answer"
     notes: "Needs a Qianfan API key; a legacy OAuth token is rejected with 401."
 
@@ -150,14 +241,18 @@ speech:
   tts:
     tool: null
     verified: device
+    protected_by: [TRUTH-CLAIM-001]
+    regression_test: listeningLifecycleIsTheSwitchForCloudAudio
     notes: "The model's own audio; there is no separate TTS engine."
   silent_mode:
     tool: set_speech_output
     verified: device
+    protected_by: [BARGEIN-001]
     evidence: "闭嘴 -> SILENT_WAIT in 2 ms, reply cut off, listening continues"
   sleep:
     tool: end_conversation
     verified: device
+    protected_by: [SLEEP-001]
     evidence: "休眠 -> SLEEP; speech in SLEEP ignored; tap or wake word -> ACTIVE"
   interrupt_tts_by_voice:
     tool: null
@@ -168,6 +263,8 @@ speech:
   wake_word:
     tool: null
     verified: human
+    protected_by: [WAKE-REAL-001]
+    regression_test: wakeWordIsBoundAtAppStart
     evidence: "2026-09-19: the product owner said 你好小诺 to 2391ff70 and the session opened"
     notes: >
       Reached `human` the hard way. Two earlier claims here were false and are kept in mind rather
@@ -177,15 +274,34 @@ speech:
     tool: null
     verified: unit
     recognised_by: UtteranceIntentResolver
+    protected_by: [HELP-UNIT-001]
+    regression_test: capabilityHelpGrammarAndHoldStayWired
     required_behaviour: >
       When the driver asks what the assistant can do, reply with [ProductCapabilities.spokenHelpSummary]
       (or equivalent nouns from supported groups). Never 没听清 / 不理解 / invented 音量·天气.
+  post_speech_echo_protection:
+    tool: null
+    verified: device
+    protected_by: [ECHO-001]
+    regression_test: postSpeechEchoHoldStaysWired
+    required_behaviour: >
+      Residual cabin echo of the assistant's own reply must not become a phantom 「没听清」 turn.
+    evidence: "ECHO-001 PASS 2026-09-21"
+  action_claim_truthfulness:
+    tool: null
+    verified: unit
+    protected_by: [TRUTH-CLAIM-001, TRUTH-MISHEARD-001]
+    regression_test: strayNoiseIsGatedBeforeTheModelAndSilencedAfterIt
+    required_behaviour: >
+      Only executor results may be spoken as done; false claims and fabricated realtime info are dropped.
+    evidence: "ActionClaimGuardTest, DriverTurnTest, FalseCapabilityClaimTest"
 
 phone:
   place_call:
     tool: place_call
     verified: unit
     required_scope: END_TO_END
+    protected_by: [CALL-CONFIRM-001, CALL-CLASSIFY-001]
     evidence: "PhoneCallToolTest: confirm-before-dial, ambiguity, unknown name, and no-SIM refusal"
     human_gap: true
     notes: >
@@ -196,6 +312,7 @@ phone:
   call_without_sim:
     tool: place_call
     verified: device
+    protected_by: [CALL-NOSIM-001]
     evidence: "2026-09-20 on 2391ff70 (gsm.sim.state=ABSENT): NO_TELEPHONY, no dialler started"
     notes: "A car that cannot call says so. Starting the dialler and reporting success would be I-1's exact failure."
 
@@ -203,9 +320,11 @@ apps:
   open_maps:
     tool: open_app
     verified: device
+    protected_by: [APPS-001]
   open_settings:
     tool: open_app
     verified: device
+    protected_by: [APPS-001]
 
 # Requests the product must refuse honestly, once, with subtitle and speech identical.
 unsupported:
@@ -213,15 +332,18 @@ unsupported:
     tool: null
     verified: unsupported
     recognised_by: UtteranceIntentResolver
+    protected_by: [TRUTH-BAIT-001]
     required_behaviour: "One honest sentence. Never 正在调整音量."
   windows_seats_doors_lights_wipers:
     tool: null
     verified: unsupported
     recognised_by: UtteranceIntentResolver
+    protected_by: [TRUTH-BAIT-001]
   media_library:
     tool: null
     verified: unsupported
     recognised_by: ActionClaimGuard.isSpecificMediaRequest
+    protected_by: [MUSIC-NAMED-001, TRUTH-MEDIA-001]
     evidence: >
       FalseCapabilityClaimTest, and on 2391ff70 2026-09-19: the named-song request returned
       MEDIA_LIBRARY_UNSUPPORTED and nothing played, while 「播放音乐」 still returned music_playing.
@@ -234,7 +356,41 @@ unsupported:
     tool: null
     verified: unsupported
     recognised_by: ActionClaimGuard.REALTIME_INFO_WORDS
+    protected_by: [TRUTH-WEATHER-001]
     required_behaviour: "Refuse. Any non-refusal is fabricated: there is no source on this car."
+
+# Retest map for shared components — not product capabilities; validated by CapabilityContractTest.
+change_impact:
+  voice_session_lifecycle:
+    components: [VoiceSessionController, PcmAudioCapture, VoiceSessionGateway, ListeningLifecycle, AndroidMicrophonePort]
+    retest:
+      - speech.wake_word
+      - speech.silent_mode
+      - speech.sleep
+      - speech.post_speech_echo_protection
+      - navigation.guidance_voice
+  navigation_lifecycle:
+    components: [EmbeddedNavigationController, AmapNaviViewHost, AmapDrivingPresentation, NavigationProgressTrace]
+    retest:
+      - navigation.search_place
+      - navigation.select_candidate_by_ordinal
+      - navigation.select_route
+      - navigation.start_navigation
+      - navigation.driving_presentation
+      - navigation.speed_hud
+      - navigation.guidance_voice
+      - navigation.arrival_lifecycle
+      - navigation.stop_navigation
+      - navigation.return_to_tracking
+  utterance_truth:
+    components: [ActionClaimGuard, DriverTurn, UtteranceIntentResolver, ProductCapabilities]
+    retest:
+      - speech.capability_help
+      - speech.action_claim_truthfulness
+      - unsupported.volume_control
+      - unsupported.media_library
+      - unsupported.realtime_weather_traffic_news
+      - phone.place_call
 
 # Facts that cannot be established without a person or a place.
 human_verification_pending:

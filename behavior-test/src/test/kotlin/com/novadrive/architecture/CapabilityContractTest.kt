@@ -134,8 +134,40 @@ class CapabilityContractTest {
         }
     }
 
+    @Test
+    fun changeImpactRetestTargetsExistInTheRegistry() {
+        val yaml = File(root, "config/capabilities.yaml").readText()
+        val ids = yamlCapabilityIds()
+        val retest = Regex("change_impact:[\\s\\S]*?retest:\\s*\\n((?:\\s+- [a-z_.]+\\n)+)")
+            .findAll(yaml)
+            .flatMap { block ->
+                Regex("- ([a-z_.]+)").findAll(block.groupValues[1]).map { it.groupValues[1] }
+            }
+            .toSet()
+        val missing = retest.filter { it !in ids }
+        assertTrue(missing.isEmpty()) {
+            "change_impact retest lists unknown capabilities: $missing"
+        }
+    }
+
+    @Test
+    fun protectedByReferencesSettledTestsInTheMatrix() {
+        val matrix = File(root, "TEST_MATRIX.yaml").readText()
+        val testIds = Regex("""- id: ([A-Z0-9-]+)""").findAll(matrix).map { it.groupValues[1] }.toSet()
+        val protected = Regex("protected_by: \\[([^\\]]+)\\]")
+            .findAll(registry)
+            .flatMap { block ->
+                Regex("""([A-Z0-9-]+)""").findAll(block.groupValues[1]).map { it.groupValues[1] }
+            }
+            .toSet()
+        val unknown = protected.filter { it !in testIds }
+        assertTrue(unknown.isEmpty()) {
+            "protected_by references tests missing from TEST_MATRIX.yaml: $unknown"
+        }
+    }
+
     private fun yamlCapabilityIds(): Set<String> {
-        val skipGroups = setOf("meta", "human_verification_pending")
+        val skipGroups = setOf("meta", "human_verification_pending", "change_impact")
         var group: String? = null
         val ids = mutableSetOf<String>()
         File(root, "config/capabilities.yaml").readLines()

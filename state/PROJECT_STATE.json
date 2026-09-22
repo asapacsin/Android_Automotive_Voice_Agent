@@ -1,37 +1,37 @@
 {
-  "generated_at": "2026-09-21T23:46:20",
+  "generated_at": "2026-09-22T09:42:07",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "9a2d9b0",
-    "branch": "cursor/2026-09-21-acceptance-harness",
-    "subject": "Refresh PROJECT_STATE after P31 arrival PASS.",
+    "commit": "2cdc002",
+    "branch": "cursor/2026-09-22",
+    "subject": "Add speech.capability_help with catalog-driven help replies.",
     "working_tree_clean": false,
-    "uncommitted_files": 7
+    "uncommitted_files": 13
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-21T23:45:57",
+    "collected_at": "2026-09-22T09:41:57",
     "total": {
-      "tests": 819,
+      "tests": 829,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "app": {
-        "tests": 592,
+        "tests": 597,
         "failures": 0,
         "errors": 0,
         "skipped": 0
       },
       "behavior-test": {
-        "tests": 103,
+        "tests": 107,
         "failures": 0,
         "errors": 0,
         "skipped": 0
       },
       "contracts": {
-        "tests": 5,
+        "tests": 6,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,16 +65,16 @@
   },
   "apk": {
     "built": true,
-    "bytes": 229126923,
-    "built_at": "2026-09-21T23:12:22"
+    "bytes": 228854105,
+    "built_at": "2026-09-22T08:25:28"
   },
   "capabilities": {
     "available": true,
     "by_level": {
-      "device": 25,
+      "device": 35,
       "unsupported": 6,
       "human": 1,
-      "unit": 1
+      "unit": 3
     },
     "human_verification_pending": [
       "open_mic_thresholds",
@@ -121,17 +121,38 @@
     }
   ],
   "work_frontier": {
-    "AUTONOMOUS_ACTION_AVAILABLE": "NO",
-    "HUMAN_ACTION_REQUIRED": "YES",
-    "STOP_REASON": "BLOCKED_ON_EXTERNAL_DEPENDENCY",
-    "BLOCKING_DEPENDENCY": "a person saying 「你好小诺」 at a stated distance with the car actually moving, which is",
-    "NEXT_ACTION": "NONE",
-    "actionable_count": 0,
+    "AUTONOMOUS_ACTION_AVAILABLE": "YES",
+    "HUMAN_ACTION_REQUIRED": "NO",
+    "STOP_REASON": "NOT_STOPPING",
+    "BLOCKING_DEPENDENCY": "none",
+    "NEXT_ACTION": "HELP-001: NOT_RUN: 「你能做什么」 / 「你能干啥」 gets a short capability answer",
+    "actionable_count": 3,
     "blocked_count": 4,
-    "HUMAN_VALIDATION_READY": "TRUE",
+    "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 9,
-    "PHASE": "HUMAN_VALIDATION_READY",
+    "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "HELP-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P28",
+        "blocked_by": null
+      },
+      {
+        "priority": 10,
+        "class": "stale state or harness defect",
+        "source": "state",
+        "item": "PROJECT_STATE.json",
+        "blocked_by": null
+      },
       {
         "priority": 11,
         "class": "next authorised backlog item",

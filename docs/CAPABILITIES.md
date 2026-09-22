@@ -26,6 +26,16 @@ and keyword lists in `ActionClaimGuard` are not sources of truth
 | Stop talking / sleep | `set_speech_output(silent\|spoken)`, `end_conversation()` | `ListeningLifecycle` via `VoiceSessionGateway` | `ok=true` | `ok=false` `LISTENING_CONTROL_UNAVAILABLE` |
 | Explain what the assistant can do | *(none — spoken answer only)* | `UtteranceIntentResolver` → `speech.capability_help`; copy from `ProductCapabilities.spokenHelpSummary` | Short list naming supported groups (导航/音乐/空调/摄像头/电话/地图·设置 as wired) | `help_incomplete` nudge — never 「没听清」 for a recognised help question |
 
+**Driving navigation presentation (no separate tool).** After the driver starts navigation, the embedded
+map must enter native turn-by-turn driving — lock-car tracking, heading-up map, traffic colouring,
+maneuver/lane HUD, and a speed/limit chip from Amap data (`navigation.driving_presentation`,
+`navigation.speed_hud`, … in `config/capabilities.yaml`). Route pick before start remains overview
+(`navigation.route_preview`); overview must return to lock-car (`navigation.return_to_tracking`).
+
+**Truth and echo protection (no separate tool).** `speech.action_claim_truthfulness` and
+`speech.post_speech_echo_protection` are enforced by `DriverTurn` / `ActionClaimGuard` and the
+post-reply mic hold — not by persona rules alone.
+
 **Climate is simulated.** `SimulatedVehicleControl` is a real state machine with real limits, but it
 drives nothing physical. Swapping in a vehicle is one new `VehicleControlPort` implementation
 selected in `VehicleControlProvider`.
