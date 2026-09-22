@@ -93,4 +93,6 @@ about how work is done.
     and no test below that scope may cover it (scope laundering fails validation); device
     flow/E2E evidence must cite artifacts (`log:`/`video:`/`xml:`/`artifact:`), because a
     claim about evidence is not a reference to evidence
-    ([proposal](proposals/HARNESS_PROPOSAL_002-required-scope-provenance.md)).
+    ([proposal](proposals/HARNESS_PROPOSAL_002-required-scope-provenance.md)). A device,
+    flow, or end-to-end PASS counts only while its `evidence_bind` matches the tree;
+    `python scripts/test_matrix.py --validate` reports `STALE_BIND` when it does not.

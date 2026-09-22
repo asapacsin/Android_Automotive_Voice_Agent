@@ -360,9 +360,44 @@ unsupported:
     required_behaviour: "Refuse. Any non-refusal is fabricated: there is no source on this car."
 
 # Retest map for shared components — not product capabilities; validated by CapabilityContractTest.
+# watched_roots must be fully named by components or impact_exempt (UNKNOWN_IMPACT otherwise).
 change_impact:
+  watched_roots:
+    - app/src/main/kotlin/com/novadrive/app/voice
+    - app/src/main/kotlin/com/novadrive/app/nav
+    - contracts/src/main/kotlin/com/novadrive/contracts
+  impact_exempt: []
   voice_session_lifecycle:
-    components: [VoiceSessionController, PcmAudioCapture, VoiceSessionGateway, ListeningLifecycle, AndroidMicrophonePort]
+    components:
+      - VoiceSessionController
+      - PcmAudioCapture
+      - AndroidMicrophonePort
+      - VoiceSessionGateway
+      - ListeningLifecycle
+      - AudioFocusController
+      - SpeechUplinkGate
+      - GuidanceMicGate
+      - PcmAudioPlayer
+      - MicInputGain
+      - PhantomTurnGate
+      - ResponseTurnGate
+      - ListeningIntent
+      - VoiceCommandRouter
+      - EmptyResponseRetryPolicy
+      - NetworkFaults
+      - BaiduFlexClient
+      - BaiduRealtimeClient
+      - BaiduFlexProvider
+      - BaiduFlexProtocol
+      - BaiduProtocol
+      - BaiduAccessTokenClient
+      - BaiduDirectRealtimeProvider
+      - ConversationResetPolicy
+      - Results
+      - Policy
+      - StructuredCommand
+      - ObservedState
+      - ChinaFirstDefaults
     retest:
       - speech.wake_word
       - speech.silent_mode
@@ -370,7 +405,42 @@ change_impact:
       - speech.post_speech_echo_protection
       - navigation.guidance_voice
   navigation_lifecycle:
-    components: [EmbeddedNavigationController, AmapNaviViewHost, AmapDrivingPresentation, NavigationProgressTrace]
+    components:
+      - EmbeddedNavigationController
+      - AmapNaviViewHost
+      - AmapDrivingPresentation
+      - NavigationProgressTrace
+      - NavigationStateStore
+      - NavigationCandidates
+      - LiveDestinationCandidateSource
+      - NavigationHostGateway
+      - NavigationGuidanceVoice
+      - NaviPresentation
+      - DrivingSpeedHud
+      - DrivingSpeedHudView
+      - NaviEngine
+      - AmapPrivacyCompliance
+      - NavigationVoiceOutput
+      - SavedPlaceStore
+      - NavigationPhase
+      - DestinationQuery
+      - SavedPlaces
+      - NavigationChoice
+      - EmulatorNaviSpeed
+      - GatewayNaviEngine
+      - NavigationTraceListener
+      - NavigationBackends
+      - NoOpNaviViewListener
+      - NavigationController
+      - PhaseOneNavigationController
+      - NavigationModels
+      - InitialLocationRecenter
+      - Location
+      - Results
+      - Policy
+      - StructuredCommand
+      - ObservedState
+      - ChinaFirstDefaults
     retest:
       - navigation.search_place
       - navigation.select_candidate_by_ordinal
@@ -383,7 +453,21 @@ change_impact:
       - navigation.stop_navigation
       - navigation.return_to_tracking
   utterance_truth:
-    components: [ActionClaimGuard, DriverTurn, UtteranceIntentResolver, ProductCapabilities]
+    components:
+      - ActionClaimGuard
+      - DriverTurn
+      - UtteranceIntentResolver
+      - ProductCapabilities
+      - DriverContext
+      - ContextResolver
+      - VoiceContextHints
+      - PhonePort
+      - Contacts
+      - Results
+      - Policy
+      - StructuredCommand
+      - ObservedState
+      - ChinaFirstDefaults
     retest:
       - speech.capability_help
       - speech.action_claim_truthfulness

@@ -17,11 +17,14 @@ walks straight past it. The human is asked once, at a phase boundary, with every
     python scripts/test_matrix.py --selftest   the rules above, exercised
 """
 import argparse
+import copy
 import datetime
+import hashlib
 import io
 import json
 import os
 import re
+import subprocess
 import sys
 
 import yaml
@@ -131,19 +134,477 @@ def load_capability_registry(path=CAPABILITIES):
     return caps, doc.get("change_impact") or {}
 
 
+# ---- runtime evidence binding ---------------------------------------------------------------
+
+RUNTIME_BIND_STATUSES = ("PASS", "HUMAN_PASS", "PARTIAL_PASS")
+_SKIP_DIRS = {".git", "build", ".gradle", "node_modules", ".idea"}
+_SOURCE_INDEX = None
+_BIND_COMPUTE_CACHE = {}
+
+
+def need_runtime_bind(entry):
+    """Device/flow/E2E verdicts must carry evidence_bind digests."""
+    if entry.get("status") not in RUNTIME_BIND_STATUSES:
+        return False
+    if entry.get("type") in ("device", "human"):
+        return True
+    return entry.get("scope") in ("INTERMEDIATE_FLOW", "END_TO_END")
+
+
+def _source_index():
+    global _SOURCE_INDEX
+    if _SOURCE_INDEX is not None:
+        return _SOURCE_INDEX
+    index = {}
+    decl = re.compile(r"\b(?:class|object|interface)\s+(\w+)")
+    for root, dirs, files in os.walk(REPO):
+        dirs[:] = [d for d in dirs if d not in _SKIP_DIRS]
+        for name in files:
+            if not name.endswith((".kt", ".java")):
+                continue
+            path = os.path.join(root, name)
+            base = os.path.splitext(name)[0]
+            index.setdefault(base, []).append(path)
+            try:
+                with io.open(path, encoding="utf-8") as handle:
+                    text = handle.read()
+            except Exception:
+                continue
+            for match in decl.finditer(text):
+                index.setdefault(match.group(1), []).append(path)
+    _SOURCE_INDEX = {k: sorted(set(v)) for k, v in index.items()}
+    return _SOURCE_INDEX
+
+
+_IMPACT_META = ("watched_roots", "impact_exempt")
+BIND_GUARD_FILES = (
+    "config/capabilities.yaml",
+    "scripts/test_matrix.py",
+    "scripts/acceptance.py",
+)
+HARNESS_BIND_FILES = (
+    os.path.join(REPO, "scripts", "test_matrix.py"),
+    os.path.join(REPO, "scripts", "acceptance.py"),
+)
+
+
+class BindRefused(Exception):
+    def __init__(self, message, code=2):
+        super(BindRefused, self).__init__(message)
+        self.code = code
+
+
+def _areas(change_impact):
+    for name, spec in (change_impact or {}).items():
+        if name in _IMPACT_META or not isinstance(spec, dict):
+            continue
+        yield name, spec
+
+
+def _repo_rel(path):
+    if os.path.isabs(path):
+        path = os.path.relpath(path, REPO)
+    return path.replace("\\", "/")
+
+
+def _product_source(path):
+    return "/src/test/" not in _repo_rel(path)
+
+
+def impact_files(change_impact, covers):
+    """Kotlin/Java paths for change_impact areas whose retest intersects covers."""
+    covers_set = set(covers or [])
+    components = set()
+    for _, spec in _areas(change_impact):
+        retest = set(spec.get("retest") or [])
+        if retest & covers_set:
+            for comp in spec.get("components") or []:
+                components.add(comp)
+    index = _source_index()
+    paths = []
+    for comp in sorted(components):
+        for path in index.get(comp, []):
+            if _product_source(path):
+                paths.append(path)
+    return sorted(set(paths))
+
+
+def unmapped_product_files(change_impact=None, extra_files=None):
+    """Product sources under watched_roots that no component names."""
+    if change_impact is None:
+        _, change_impact = load_capability_registry()
+    roots = change_impact.get("watched_roots") or []
+    exempt = set((change_impact.get("impact_exempt") or []))
+    index = _source_index()
+    mapped = set()
+    for _, spec in _areas(change_impact):
+        for comp in spec.get("components") or []:
+            for path in index.get(comp, []):
+                if _product_source(path):
+                    mapped.add(_repo_rel(path))
+    found = []
+    for root in roots:
+        abs_root = os.path.join(REPO, root.replace("/", os.sep))
+        if not os.path.isdir(abs_root):
+            found.append(root)
+            continue
+        for dirpath, _, files in os.walk(abs_root):
+            for name in files:
+                if not name.endswith((".kt", ".java")):
+                    continue
+                rel = _repo_rel(os.path.join(dirpath, name))
+                if rel not in mapped and rel not in exempt:
+                    found.append(rel)
+    for extra in extra_files or []:
+        rel = str(extra).replace("\\", "/")
+        if rel not in mapped and rel not in exempt:
+            found.append(rel)
+    return sorted(set(found))
+
+
+def _sha256_bytes(data):
+    return "sha256:" + hashlib.sha256(data).hexdigest()
+
+
+def _sha256_file(path):
+    digest = hashlib.sha256()
+    with io.open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(65536), b""):
+            digest.update(chunk)
+    return "sha256:" + digest.hexdigest()
+
+
+def _sha256_files(paths):
+    digest = hashlib.sha256()
+    for path in sorted(paths):
+        digest.update(path.encode("utf-8"))
+        digest.update(b"\0")
+        with io.open(path, "rb") as handle:
+            digest.update(handle.read())
+    return "sha256:" + digest.hexdigest()
+
+
+def _procedure_payload(entry):
+    payload = {
+        "procedure": entry.get("procedure") or [],
+        "pass_criteria": entry.get("pass_criteria") or [],
+        "terminal_success": entry.get("terminal_success") or [],
+        "ended_by": entry.get("ended_by"),
+        "acceptance": [
+            {"criterion": row.get("criterion"), "required": row.get("required")}
+            for row in (entry.get("acceptance") or [])
+            if isinstance(row, dict)
+        ],
+    }
+    return yaml.dump(payload, sort_keys=True, default_flow_style=False)
+
+
+def _evidence_strings(entry):
+    strings = list(entry.get("evidence") or [])
+    for row in entry.get("acceptance") or []:
+        if isinstance(row, dict) and row.get("evidence"):
+            strings.append(row["evidence"])
+    return strings
+
+
+def _apk_path():
+    env = os.environ.get("NOVA_BUILD_DIR")
+    if env:
+        root = env
+    elif os.name == "nt":
+        root = r"C:\Users\Administrator\tools\nova-drive-build"
+    else:
+        root = os.path.join(os.path.expanduser("~"), "nova-drive-build")
+    return os.path.join(root, "app", "outputs", "apk", "debug", "app-debug.apk")
+
+
+def _git_head_short():
+    try:
+        return subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=REPO, capture_output=True, text=True, check=True,
+        ).stdout.strip()
+    except Exception:
+        return None
+
+
+def _registry_payload(covers, change_impact, caps):
+    covers = list(covers or [])
+    areas = {}
+    cover_set = set(covers)
+    for name, spec in _areas(change_impact):
+        if set(spec.get("retest") or []) & cover_set:
+            areas[name] = spec
+    subset = {cid: (caps or {}).get(cid) for cid in sorted(covers)}
+    return yaml.dump({"areas": areas, "caps": subset}, sort_keys=True, default_flow_style=False)
+
+
+def _harness_digest(extra=b""):
+    return _sha256_bytes(_sha256_files(list(HARNESS_BIND_FILES)).encode("utf-8") + (extra or b""))
+
+
+def compute_bind(entry, change_impact=None, use_cache=True, harness_extra=b"", caps=None):
+    """Fresh evidence_bind digests from the current tree and entry procedure."""
+    cache_key = (entry.get("id"), harness_extra, id(caps) if caps is not None else None)
+    if use_cache and cache_key in _BIND_COMPUTE_CACHE:
+        return _BIND_COMPUTE_CACHE[cache_key]
+    if change_impact is None or caps is None:
+        loaded_caps, loaded_change = load_capability_registry()
+        if change_impact is None:
+            change_impact = loaded_change
+        if caps is None:
+            caps = loaded_caps
+    files = impact_files(change_impact, entry.get("covers") or [])
+    artifact_digests = {}
+    for path in acceptance.local_artifact_paths(_evidence_strings(entry)):
+        if os.path.isfile(path):
+            artifact_digests[path] = _sha256_file(path)
+    apk = _apk_path()
+    apk_digest = _sha256_file(apk) if os.path.isfile(apk) else None
+    result = {
+        "code_digest": _sha256_files(files),
+        "procedure_digest": _sha256_bytes(_procedure_payload(entry).encode("utf-8")),
+        "registry_digest": _sha256_bytes(
+            _registry_payload(entry.get("covers") or [], change_impact, caps).encode("utf-8")),
+        "harness_digest": _harness_digest(harness_extra),
+        "artifact_digests": artifact_digests,
+        "apk_digest": apk_digest,
+        "bound_commit": _git_head_short(),
+    }
+    if use_cache:
+        _BIND_COMPUTE_CACHE[cache_key] = result
+    return result
+
+
+def bind_problems(entry, change_impact=None):
+    """STALE_BIND / missing-bind problems for device/flow/E2E verdict rows."""
+    if not need_runtime_bind(entry):
+        return []
+    tid = entry.get("id", "<no id>")
+    stored = entry.get("evidence_bind")
+    if not isinstance(stored, dict) or not stored:
+        return ["%s: STALE_BIND missing evidence_bind" % tid]
+    if change_impact is None:
+        _, change_impact = load_capability_registry()
+    current = compute_bind(entry, change_impact, use_cache=False)
+    problems = []
+    for key in ("code_digest", "procedure_digest", "registry_digest", "harness_digest"):
+        if stored.get(key) != current.get(key):
+            problems.append("%s: STALE_BIND %s mismatch" % (tid, key))
+    if stored.get("apk_digest") is not None and stored.get("apk_digest") != current.get("apk_digest"):
+        problems.append("%s: STALE_BIND apk_digest mismatch" % tid)
+    stored_art = stored.get("artifact_digests") or {}
+    current_art = current.get("artifact_digests") or {}
+    for path in acceptance.local_artifact_paths(_evidence_strings(entry)):
+        if not os.path.isfile(path):
+            problems.append("%s: STALE_BIND missing artifact %s" % (tid, path))
+        elif stored_art.get(path) != current_art.get(path):
+            problems.append("%s: STALE_BIND artifact %s mismatch" % (tid, path))
+    for path, _digest in stored_art.items():
+        if path not in current_art and os.path.isfile(path):
+            problems.append("%s: STALE_BIND artifact %s extra/mismatch" % (tid, path))
+    return problems
+
+
+def _bind_current(entry, change_impact=None):
+    return not bind_problems(entry, change_impact)
+
+
+def _needs_runtime_protection(cap, cap_id, requirements):
+    if cap.get("verified") in ("device", "human"):
+        return True
+    need = requirements.get(cap_id, "COMPONENT")
+    return need in ("INTERMEDIATE_FLOW", "END_TO_END")
+
+
+def _format_bind_yaml(bind):
+    lines = ["    evidence_bind:"]
+    for key in ("code_digest", "procedure_digest", "registry_digest", "harness_digest",
+                "artifact_digests", "apk_digest", "bound_commit"):
+        val = bind.get(key)
+        if key == "artifact_digests":
+            art = val or {}
+            if not art:
+                lines.append("      artifact_digests: {}")
+            else:
+                lines.append("      artifact_digests:")
+                for path, digest in sorted(art.items()):
+                    lines.append('        "%s": %s' % (path.replace("\\", "/"), digest))
+        elif val is None:
+            lines.append("      %s: null" % key)
+        else:
+            lines.append("      %s: %s" % (key, val))
+    return "\n".join(lines)
+
+
+def write_evidence_bind(entry_id, bind, path=MATRIX):
+    """Insert or replace evidence_bind on one matrix row without rewriting the whole file."""
+    block = _format_bind_yaml(bind) + "\n"
+    text = io.open(path, encoding="utf-8").read()
+    pattern = re.compile(
+        r"(  - id: %s\r?\n)(.*?)(?=\n  - id: |\n# ----|\Z)" % re.escape(entry_id),
+        re.DOTALL)
+    match = pattern.search(text)
+    if not match:
+        raise SystemExit("no such test: %s" % entry_id)
+    body = match.group(2)
+    if re.search(r"^    evidence_bind:", body, re.MULTILINE):
+        body = re.sub(
+            r"^    evidence_bind:\n(?:    [ ].*\n)*",
+            "",
+            body,
+            count=1,
+            flags=re.MULTILINE,
+        )
+    anchors = [a for a in ("    related:", "    last_run:", "    covers:") if a in body]
+    if anchors:
+        insert_at = min(body.index(a) for a in anchors)
+        body = body[:insert_at] + block + body[insert_at:]
+    else:
+        body = body.rstrip("\n") + "\n" + block
+    new_text = text[:match.start(2)] + body + text[match.end(2):]
+    with io.open(path, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(new_text)
+
+
+def _porcelain_paths(lines):
+    paths = []
+    for line in lines or []:
+        if len(line) < 4:
+            continue
+        path = line[3:].strip().replace("\\", "/")
+        if " -> " in path:
+            path = path.split(" -> ", 1)[1].strip()
+        paths.append(path)
+    return paths
+
+
+def dirty_bind_blockers(impact_paths, porcelain_lines):
+    """Paths that must be clean before --bind writes a digest."""
+    dirty = set(_porcelain_paths(porcelain_lines))
+    watched = [_repo_rel(path) for path in impact_paths] + list(BIND_GUARD_FILES)
+    return [path for path in watched if path in dirty]
+
+
+def git_porcelain():
+    try:
+        proc = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=REPO, capture_output=True, text=True, check=True,
+        )
+    except Exception:
+        return []
+    return proc.stdout.splitlines()
+
+
+def bind_entry(entry):
+    """Compute evidence_bind when the stored verdict still earns PASS."""
+    if not need_runtime_bind(entry):
+        raise BindRefused("%s does not need runtime bind" % entry.get("id"), code=1)
+    _, change_impact = load_capability_registry()
+    blockers = dirty_bind_blockers(
+        impact_files(change_impact, entry.get("covers") or []),
+        git_porcelain(),
+    )
+    if blockers:
+        raise BindRefused("refuse bind; dirty inputs: %s" % ", ".join(blockers), code=2)
+    for path in acceptance.local_artifact_paths(_evidence_strings(entry)):
+        if not os.path.isfile(path):
+            raise BindRefused("missing artifact %s" % path, code=1)
+    status = entry.get("status")
+    if status in ("PASS", "HUMAN_PASS", "PARTIAL_PASS") and entry.get("type") == "device":
+        rows = entry.get("acceptance") or []
+        provenance = entry.get("scope") != "COMPONENT"
+        earned = acceptance.evaluate(
+            entry.get("scope"), rows,
+            terminal_success=entry.get("terminal_success") or (),
+            terminal_observed=entry.get("terminal_observed") or (),
+            failure_observed=entry.get("failure_observed") or (),
+            ended_by=entry.get("ended_by"),
+            regressions=entry.get("regressions") or [],
+            require_provenance=provenance)["verdict"]
+        if earned != "PASS":
+            raise BindRefused("%s: evidence earns %s, cannot bind" % (entry.get("id"), earned), code=1)
+    return compute_bind(entry)
+
+
+def apply_stale(doc, dry_run=False):
+    """Requeue rows whose evidence_bind no longer matches the tree."""
+    _, change_impact = load_capability_registry()
+    changed = []
+    for entry in doc["tests"]:
+        problems = bind_problems(entry, change_impact)
+        if not problems:
+            continue
+        note = "STALE_BIND %s" % problems[0].split("STALE_BIND", 1)[-1].strip()
+        changed.append(entry["id"])
+        if dry_run:
+            continue
+        entry["status"] = "NOT_RUN"
+        evidence = list(entry.get("evidence") or [])
+        evidence.append(note)
+        entry["evidence"] = evidence
+        entry.pop("evidence_bind", None)
+    return changed
+
+
+def _append_evidence_note(body, note):
+    line = "      - \"%s\"\n" % note.replace('"', "'")
+    if re.search(r"^    evidence:\n", body, re.M):
+        return re.sub(r"^    evidence:\n", "    evidence:\n" + line, body, count=1, flags=re.M)
+    inline = re.search(r"^    evidence: \[(.*)\]\s*$", body, re.M)
+    if inline:
+        inner = inline.group(1).strip()
+        added = '"%s"' % note.replace('"', "'")
+        repl = "    evidence: [%s]" % (added if not inner else "%s, %s" % (inner, added))
+        return body[:inline.start()] + repl + body[inline.end():]
+    block = "    evidence:\n" + line
+    anchors = [a for a in ("    related:", "    last_run:", "    covers:") if a in body]
+    if anchors:
+        insert_at = min(body.index(a) for a in anchors)
+        return body[:insert_at] + block + body[insert_at:]
+    return body.rstrip("\n") + "\n" + block
+
+
+def persist_stale_row(entry_id, note, path=MATRIX):
+    """Set one matrix row to NOT_RUN and drop its evidence_bind. Never writes PASS."""
+    text = io.open(path, encoding="utf-8").read()
+    pattern = re.compile(
+        r"(  - id: %s\r?\n)(.*?)(?=\n  - id: |\n# ----|\Z)" % re.escape(entry_id),
+        re.DOTALL)
+    match = pattern.search(text)
+    if not match:
+        raise SystemExit("no such test: %s" % entry_id)
+    body = match.group(2)
+    body = re.sub(r"^    evidence_bind:\n(?:    [ ].*\n)*", "", body, count=1, flags=re.M)
+    if not re.search(r"^    status: ", body, re.M):
+        raise SystemExit("%s: no status line" % entry_id)
+    body = re.sub(r"^    status: .*$", "    status: NOT_RUN", body, count=1, flags=re.M)
+    body = _append_evidence_note(body, note)
+    new_text = text[:match.start(2)] + body + text[match.end(2):]
+    with io.open(path, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(new_text)
+
+
 def protection_audit(doc=None, registry_path=CAPABILITIES):
     """Every supported capability must keep PASS regression protection."""
     caps, change = load_capability_registry(registry_path)
+    requirements = capability_requirements(registry_path)
     doc = doc or load()
     by_id = {t["id"]: t for t in doc["tests"]}
     cover_pass = {}
     for entry in doc["tests"]:
-        if entry.get("status") != "PASS":
+        if entry.get("status") not in PASSING:
+            continue
+        if not _bind_current(entry, change):
             continue
         for key in entry.get("covers") or []:
             cover_pass.setdefault(key, []).append(entry["id"])
     regression = open(FEATURE_PRESENCE, encoding="utf-8").read() if os.path.isfile(FEATURE_PRESENCE) else ""
+    index = _source_index()
     problems = []
+    for path in unmapped_product_files(change):
+        problems.append("UNKNOWN_IMPACT %s" % path)
     for cap_id, cap in sorted(caps.items()):
         if cap.get("verified") == "unsupported":
             continue
@@ -151,23 +612,36 @@ def protection_audit(doc=None, registry_path=CAPABILITIES):
         for tid in cap.get("protected_by") or []:
             if tid not in by_id:
                 problems.append("%s: protected_by references unknown test %s" % (cap_id, tid))
-            elif by_id[tid].get("status") == "PASS":
-                protected.add(tid)
+            else:
+                ent = by_id[tid]
+                if ent.get("status") in PASSING and _bind_current(ent, change):
+                    protected.add(tid)
+                elif cap.get("verified") == "human" and ent.get("status") in AWAITING_HUMAN:
+                    protected.add("queued:" + tid)
         rt = cap.get("regression_test")
+        runtime_bar = _needs_runtime_protection(cap, cap_id, requirements)
         if rt:
             if rt not in regression:
                 problems.append("%s: regression_test %r missing from FeaturePresenceRegressionTest"
                                 % (cap_id, rt))
-            else:
+            elif not runtime_bar:
                 protected.add("regression:" + rt)
         if not protected:
-            problems.append("%s: no PASS cover, protected_by, or regression_test" % cap_id)
-    for area, spec in sorted((change or {}).items()):
-        if not isinstance(spec, dict):
-            continue
+            if runtime_bar and rt and rt in regression:
+                problems.append("%s: regression_test alone insufficient for device/flow/E2E"
+                                % cap_id)
+            else:
+                problems.append("%s: no bind-current PASS cover, protected_by, or regression_test"
+                                % cap_id)
+    for area, spec in _areas(change):
         for rid in spec.get("retest") or []:
             if rid not in caps:
                 problems.append("change_impact.%s retest unknown capability %r" % (area, rid))
+        for comp in spec.get("components") or []:
+            paths = [p for p in index.get(comp, []) if _product_source(p)]
+            if not paths:
+                problems.append("change_impact.%s component %r resolves to no source file"
+                                % (area, comp))
     return problems
 
 
@@ -188,8 +662,9 @@ def protection_summary(doc=None):
 # ---- validation ------------------------------------------------------------------------------
 
 
-def validate(doc=None, requirements=None, audit_protection=None):
+def validate(doc=None, requirements=None, audit_protection=None, extra_unmapped=None):
     """Everything that would make the registry lie. Returns a list of problems."""
+    _BIND_COMPUTE_CACHE.clear()
     doc = doc or load()
     found = []
     seen = set()
@@ -226,10 +701,17 @@ def validate(doc=None, requirements=None, audit_protection=None):
         if owner in HUMAN_OWNERS:
             found.extend(human_entry_problems(entry))
         found.extend(verdict_problems(entry, ids, requirements))
+        if need_runtime_bind(entry):
+            found.extend(bind_problems(entry))
     if audit_protection is None:
         audit_protection = requirements is None
     if audit_protection:
         found.extend(protection_audit(doc))
+    else:
+        for path in unmapped_product_files():
+            found.append("UNKNOWN_IMPACT %s" % path)
+    for path in extra_unmapped or []:
+        found.append("UNKNOWN_IMPACT %s" % path)
     return found
 
 
@@ -455,6 +937,7 @@ def coverage(doc=None, requirements=None):
         linked = [e for e in entries if key in (e.get("covers") or [])]
         passing = sorted(e["id"] for e in linked
                          if e.get("status") in PASSING
+                         and _bind_current(e)
                          and acceptance.SCOPE_RANK.get(e.get("scope"), -1)
                          >= acceptance.SCOPE_RANK[need])
         queued = sorted(e["id"] for e in linked
@@ -506,6 +989,13 @@ def counts(entries):
     for entry in entries:
         out[entry["status"]] = out.get(entry["status"], 0) + 1
     return out
+
+
+def _display_status(entry):
+    """YAML keeps PASS; a stale bind must not render as a current pass."""
+    if entry.get("status") in RUNTIME_BIND_STATUSES and bind_problems(entry):
+        return "STALE"
+    return entry.get("status")
 
 
 def status_doc(doc=None):
@@ -573,7 +1063,8 @@ def status_doc(doc=None):
         if len(first) > 90:
             first = first[:87] + "…"
         lines.append("| %s | %s | %s | %s | %s | %s | %s |" % (
-            entry["id"], entry["capability"], entry["name"], entry["owner"], entry["status"],
+            entry["id"], entry["capability"], entry["name"], entry["owner"],
+            _display_status(entry),
             "yes" if entry.get("release_blocking") else "no",
             first.replace("|", "\\|"),
         ))
@@ -764,6 +1255,15 @@ def _rows(*names, **kw):
             for name in names]
 
 
+def _bound(entry, change_impact=None):
+    """Selftest helper: attach a fresh evidence_bind when the row needs one."""
+    if not need_runtime_bind(entry):
+        return entry
+    row = dict(entry)
+    row["evidence_bind"] = compute_bind(row, change_impact)
+    return row
+
+
 def selftest():
     results = []
 
@@ -852,10 +1352,10 @@ def selftest():
     check("an E2E PASS without the terminal state is rejected",
           any("earns INCOMPLETE" in p
               for p in validate({"meta": {"updated": "x"}, "tests": [e2e_overclaim]})))
-    mid_ok = _entry(
+    mid_ok = _bound(_entry(
         id="V-2", type="device", scope="INTERMEDIATE_FLOW",
         acceptance=_rows("navigation_start", "route_resolved", "guidance_progress"),
-        ended_by="manual")
+        ended_by="manual"))
     check("the same evidence as an intermediate PASS is accepted",
           validate({"meta": {"updated": "x"}, "tests": [mid_ok]}) == [])
     check("INCOMPLETE is unsettled work",
@@ -912,9 +1412,9 @@ def selftest():
               {"meta": {"updated": "x"}, "tests": [
                   _entry(id="L-2", covers=["no.such.thing"])]}, reqs)))
     honest = {"meta": {"updated": "x"}, "tests": [
-        _entry(id="L-3", type="device", scope="END_TO_END", covers=["drive.task"],
-               terminal_success=["done"], terminal_observed=["done"],
-               acceptance=_rows("done"), ended_by="natural")]}
+        _bound(_entry(id="L-3", type="device", scope="END_TO_END", covers=["drive.task"],
+                      terminal_success=["done"], terminal_observed=["done"],
+                      acceptance=_rows("done"), ended_by="natural"))]}
     check("covering at sufficient scope is accepted",
           validate(honest, reqs) == [])
     check("an E2E requirement with only lower-scope passes is UNCOVERED",
@@ -948,17 +1448,169 @@ def selftest():
     check("prose-only device E2E evidence cannot earn PASS",
           any("earns INCOMPLETE" in p for p in validate(prose, reqs)))
     backed = {"meta": {"updated": "x"}, "tests": [
-        _entry(id="P-2", type="device", scope="END_TO_END",
-               terminal_success=["done"], terminal_observed=["done"],
-               acceptance=_rows("done", evidence="log:NovaVoice/done@12:00"),
-               ended_by="natural")]}
+        _bound(_entry(id="P-2", type="device", scope="END_TO_END",
+                      terminal_success=["done"], terminal_observed=["done"],
+                      acceptance=_rows("done", evidence="log:NovaVoice/done@12:00"),
+                      ended_by="natural"))]}
     check("artifact-backed device E2E evidence can earn PASS",
           validate(backed, reqs) == [])
 
-    # The real registry.
+    # Adversarial evidence-bind cases A–N. In-memory fixtures; digests use the real tree.
+    _, change_impact = load_capability_registry()
+    caps, _ = load_capability_registry()
+    nav_e2e = _entry(
+        id="ADV-A", type="device", scope="END_TO_END", covers=["navigation.arrival_lifecycle"],
+        terminal_success=["arrival_callback"], terminal_observed=["arrival_callback"],
+        acceptance=_rows("arrival_callback", evidence="log:NovaVoice/nav@1"),
+        ended_by="natural")
+    nav_e2e["evidence_bind"] = compute_bind(nav_e2e, change_impact, use_cache=False)
+    check("A bound row with unchanged digests stays valid",
+          bind_problems(nav_e2e, change_impact) == [])
+    nav_e2e["evidence_bind"]["code_digest"] = "sha256:dead"
+    check("B navigation code_digest mismatch is stale",
+          any("code_digest mismatch" in p for p in bind_problems(nav_e2e, change_impact)))
+    proc_row = _entry(id="ADV-C", type="device", scope="INTERMEDIATE_FLOW",
+                      covers=["navigation.arrival_lifecycle"],
+                      acceptance=_rows("navigation_start"), ended_by="manual")
+    proc_row["evidence_bind"] = compute_bind(proc_row, change_impact, use_cache=False)
+    proc_row["procedure"] = ["weakened step"]
+    check("C procedure change mismatches procedure_digest",
+          any("procedure_digest mismatch" in p for p in bind_problems(proc_row, change_impact)))
+    stale_doc = {"meta": {"updated": "x"}, "tests": [dict(proc_row)]}
+    apply_stale(stale_doc)
+    check("C apply-stale sets NOT_RUN and drops the bind",
+          stale_doc["tests"][0]["status"] == "NOT_RUN"
+          and "evidence_bind" not in stale_doc["tests"][0])
+    wake_files = set(impact_files(change_impact, ["speech.wake_word"]))
+    check("D files outside watched roots are not impact inputs",
+          not any(path.endswith("README.md") or path.endswith("AGENTS.md") for path in wake_files))
+    check("D unmapped scan ignores files outside watched roots",
+          not any(path.endswith("README.md") for path in unmapped_product_files(change_impact)))
+    arrival_files = set(_repo_rel(p) for p in impact_files(
+        change_impact, ["navigation.arrival_lifecycle"]))
+    speed_files = set(_repo_rel(p) for p in impact_files(
+        change_impact, ["navigation.speed_hud"]))
+    check("E shared navigation file is in every navigation-lifecycle cover",
+          any(path.endswith("AmapDrivingPresentation.kt") for path in arrival_files)
+          and any(path.endswith("AmapDrivingPresentation.kt") for path in speed_files)
+          and not any(path.endswith("AmapDrivingPresentation.kt") for path in
+                      (_repo_rel(p) for p in wake_files)))
+    voice_row = _entry(id="ADV-E", type="device", scope="COMPONENT", covers=["speech.wake_word"])
+    voice_row["evidence_bind"] = compute_bind(voice_row, change_impact, use_cache=False)
+    voice_row["evidence_bind"]["code_digest"] = "sha256:dead"
+    nav_only = _entry(id="ADV-E2", type="device", scope="COMPONENT", covers=["navigation.speed_hud"])
+    nav_only["evidence_bind"] = compute_bind(nav_only, change_impact, use_cache=False)
+    check("E voice drift does not stale an untouched navigation bind",
+          bind_problems(voice_row, change_impact) and not bind_problems(nav_only, change_impact))
+    harness_row = _entry(id="ADV-F", type="device", scope="COMPONENT", covers=["speech.wake_word"])
+    plain = compute_bind(harness_row, change_impact, use_cache=False, harness_extra=b"")
+    mutated = compute_bind(harness_row, change_impact, use_cache=False, harness_extra=b"mutated")
+    harness_row["evidence_bind"] = dict(plain)
+    harness_row["evidence_bind"]["harness_digest"] = mutated["harness_digest"]
+    check("F harness byte change mismatches harness_digest",
+          plain["harness_digest"] != mutated["harness_digest"]
+          and any("harness_digest mismatch" in p
+                  for p in bind_problems(harness_row, change_impact)))
+    extra = "app/src/main/kotlin/com/novadrive/app/nav/NewUnmapped.kt"
+    check("G unmapped watched-root file is UNKNOWN_IMPACT",
+          extra in unmapped_product_files(change_impact, extra_files=[extra])
+          and any("UNKNOWN_IMPACT" in p and "NewUnmapped.kt" in p
+                  for p in validate(
+                      {"meta": {"updated": "x"}, "tests": [
+                          _entry(id="ADV-G0", status="NOT_RUN", evidence=[])]},
+                      {"speech.wake_word": "COMPONENT"},
+                      extra_unmapped=[extra])))
+    missing_bind = _entry(id="ADV-H", type="device", scope="COMPONENT", covers=["speech.wake_word"])
+    check("H device PASS without evidence_bind is STALE_BIND",
+          any("missing evidence_bind" in p for p in bind_problems(missing_bind, change_impact)))
+    shown = _entry(id="ADV-I", type="device", scope="COMPONENT", covers=["speech.wake_word"])
+    shown["evidence_bind"] = compute_bind(shown, change_impact, use_cache=False)
+    shown["evidence_bind"]["code_digest"] = "sha256:dead"
+    rendered = status_doc({"meta": {"updated": "x"}, "tests": [shown]})
+    check("I status view prints STALE while YAML status is PASS",
+          "| ADV-I |" in rendered and "| STALE |" in rendered)
+    restored = _entry(id="ADV-J", type="device", scope="COMPONENT", covers=["speech.wake_word"])
+    restored["evidence_bind"] = compute_bind(restored, change_impact, use_cache=False)
+    restored["evidence_bind"]["code_digest"] = "sha256:dead"
+    apply_stale({"meta": {"updated": "x"}, "tests": [restored]})
+    check("J apply-stale clears a stale PASS",
+          restored["status"] == "NOT_RUN" and "evidence_bind" not in restored)
+    rebound = dict(restored)
+    rebound["status"] = "PASS"
+    rebound["evidence_bind"] = compute_bind(rebound, change_impact, use_cache=False)
+    check("J a fresh bind is valid again", bind_problems(rebound, change_impact) == [])
+    check("K dirty impact path blocks bind",
+          dirty_bind_blockers(
+              [os.path.join(REPO, "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapDrivingPresentation.kt")],
+              [" M app/src/main/kotlin/com/novadrive/app/nav/amap/AmapDrivingPresentation.kt"],
+          ) == ["app/src/main/kotlin/com/novadrive/app/nav/amap/AmapDrivingPresentation.kt"])
+    check("K dirty file outside impact and harness guards does not block bind",
+          dirty_bind_blockers(
+              [os.path.join(REPO, "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapDrivingPresentation.kt")],
+              [" M README.md"],
+          ) == [])
+    reg_row = _entry(id="ADV-L", type="device", scope="COMPONENT",
+                     covers=["navigation.arrival_lifecycle"])
+    base_caps = copy.deepcopy(caps)
+    first = compute_bind(reg_row, change_impact, use_cache=False, caps=base_caps)
+    changed_caps = copy.deepcopy(base_caps)
+    changed_caps["navigation.arrival_lifecycle"] = dict(changed_caps["navigation.arrival_lifecycle"])
+    changed_caps["navigation.arrival_lifecycle"]["notes"] = "changed-for-bind-test"
+    second = compute_bind(reg_row, change_impact, use_cache=False, caps=changed_caps)
+    unrelated = copy.deepcopy(base_caps)
+    if "speech.tts" in unrelated:
+        unrelated["speech.tts"] = dict(unrelated["speech.tts"])
+        unrelated["speech.tts"]["notes"] = "unrelated"
+    third = compute_bind(reg_row, change_impact, use_cache=False, caps=unrelated)
+    check("L covered capability text changes registry_digest only for that cover",
+          first["registry_digest"] != second["registry_digest"]
+          and first["registry_digest"] == third["registry_digest"])
+    missing_comp = {
+        "voice_session_lifecycle": {"components": ["NoSuchTypeEver"], "retest": ["speech.wake_word"]},
+        "watched_roots": [],
+        "impact_exempt": [],
+    }
+    missing_names = []
+    for area, spec in _areas(missing_comp):
+        for comp in spec.get("components") or []:
+            paths = [p for p in _source_index().get(comp, []) if _product_source(p)]
+            if not paths:
+                missing_names.append(comp)
+    check("M deleted component name resolves to no source file",
+          missing_names == ["NoSuchTypeEver"])
+    art_row = _entry(
+        id="ADV-M2", type="device", scope="END_TO_END", covers=["navigation.arrival_lifecycle"],
+        evidence=["video:/no/such/nav-evidence.mp4"],
+        terminal_success=["done"], terminal_observed=["done"],
+        acceptance=_rows("done", evidence="video:/no/such/nav-evidence.mp4"), ended_by="natural")
+    art_row["evidence_bind"] = compute_bind(art_row, change_impact, use_cache=False)
+    check("M missing artifact path is STALE_BIND",
+          any("missing artifact" in p for p in bind_problems(art_row, change_impact)))
+    apk_row = _entry(id="ADV-APK", type="device", scope="COMPONENT", covers=["navigation.speed_hud"])
+    apk_row["evidence_bind"] = compute_bind(apk_row, change_impact, use_cache=False)
+    apk_row["evidence_bind"]["apk_digest"] = "sha256:dead"
+    check("apk digest mismatch is stale when a digest was recorded",
+          any("apk_digest mismatch" in p for p in bind_problems(apk_row, change_impact)))
+    apk_row["evidence_bind"]["apk_digest"] = None
+    check("null apk_digest does not stale when an APK appears later",
+          not any("apk_digest" in p for p in bind_problems(apk_row, change_impact)))
+    check("M resolver returns nothing for a deleted component name",
+          _source_index().get("NoSuchTypeEver", []) == [])
+
     real = load()
-    check("the repository's own registry validates", validate(real, audit_protection=True) == [])
-    check("every supported capability keeps regression protection", protection_audit(real) == [])
+    help_device = next(t for t in real["tests"] if t["id"] == "HELP-001")
+    help_unit = next(t for t in real["tests"] if t["id"] == "HELP-UNIT-001")
+    check("N HELP-001 stays NOT_RUN", help_device["status"] == "NOT_RUN")
+    check("N HELP-UNIT-001 is an unbound unit PASS",
+          help_unit["status"] == "PASS" and not need_runtime_bind(help_unit)
+          and "evidence_bind" not in help_unit)
+    real_problems = validate(real, audit_protection=True)
+    check("N the repository registry validates", real_problems == [])
+    runtime_pass = [t for t in real["tests"] if need_runtime_bind(t)]
+    check("N every runtime PASS bind matches the tree",
+          all(not bind_problems(t) for t in runtime_pass))
+
+    width = max(len(n) for n, _ in results)
 
     width = max(len(n) for n, _ in results)
     for name, ok in results:
@@ -986,6 +1638,10 @@ def main():
     ap.add_argument("--record-pass", choices=["clean", "dirty"],
                     help="record a discovery/review pass result")
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--bind", metavar="ID", help="write evidence_bind for one runtime-bound row")
+    ap.add_argument("--apply-stale", action="store_true",
+                    help="requeue rows whose evidence_bind no longer matches")
+    ap.add_argument("--dry-run", action="store_true", help="with --apply-stale, report only")
     args = ap.parse_args()
 
     if args.selftest:
@@ -997,6 +1653,33 @@ def main():
         return 0
 
     doc = load()
+
+    if args.bind:
+        matches = [e for e in doc["tests"] if e["id"] == args.bind]
+        if not matches:
+            print("no such test: %s" % args.bind)
+            return 1
+        try:
+            bind = bind_entry(matches[0])
+        except BindRefused as exc:
+            print(exc)
+            return exc.code
+        write_evidence_bind(args.bind, bind)
+        print("bound %s at %s" % (args.bind, bind.get("bound_commit")))
+        return 0
+
+    if args.apply_stale:
+        stale = apply_stale(doc, dry_run=args.dry_run)
+        if not args.dry_run:
+            for entry in doc["tests"]:
+                if entry["id"] not in stale:
+                    continue
+                note = (entry.get("evidence") or ["STALE_BIND"])[-1]
+                persist_stale_row(entry["id"], note)
+        for tid in stale:
+            print("  stale: %s" % tid)
+        print("%d stale row(s)%s" % (len(stale), " (dry-run)" if args.dry_run else ""))
+        return 0
 
     if args.validate:
         problems = validate(doc)

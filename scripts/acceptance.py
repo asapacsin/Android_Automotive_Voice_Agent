@@ -58,6 +58,18 @@ def has_provenance(evidence):
     """True when the string references an actual evidence artifact, not just prose."""
     return bool(evidence and PROVENANCE_RE.search(str(evidence)))
 
+
+def local_artifact_paths(evidence_strings):
+    """Filesystem paths cited by video:/artifact: provenance strings (local bind inputs)."""
+    paths, seen = [], set()
+    for raw in evidence_strings or []:
+        for match in re.finditer(r"(?:video:|artifact:)([^\s|@]+)", str(raw)):
+            path = match.group(1).strip()
+            if path and path not in seen:
+                seen.add(path)
+                paths.append(path)
+    return paths
+
 # Minimum acceptance criteria for END_TO_END device verdicts, per capability. Generic
 # mechanism; the navigation row comes from the 0.6.4 post-mortem. Other capabilities add
 # their own rows instead of inventing a second framework.
@@ -288,6 +300,10 @@ def selftest():
           has_provenance("artifact:arrival-trace.json states=STARTED,ARRIVED"))
     check("bare prose carries no provenance",
           not has_provenance("arrival callback observed"))
+    check("local_artifact_paths finds video files",
+          local_artifact_paths(["video:run.mp4@end"]) == ["run.mp4"])
+    check("local_artifact_paths finds artifact names",
+          local_artifact_paths(["artifact:trace.json"]) == ["trace.json"])
     prose_e2e = evaluate(
         "END_TO_END", [_obs("arrival_callback", True, "arrival callback observed")],
         terminal_success=("arrival_callback",), terminal_observed=("arrival_callback",),

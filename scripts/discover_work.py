@@ -404,10 +404,18 @@ def unsettled_matrix_tests():
         return [candidate(P_HARNESS, "TEST_MATRIX.yaml", "test_matrix.py",
                           "the registry could not be loaded: %r" % (exc,))]
     out = []
+    seen = set()
     for entry in test_matrix.autonomous_work():
         priority = P_TESTS if entry["status"] == "FAIL" else P_UNGUARDED
+        seen.add(entry["id"])
         out.append(candidate(priority, "TEST_MATRIX.yaml", entry["id"],
                              "%s: %s" % (entry["status"], entry["name"])))
+    for entry in test_matrix.tests():
+        if entry.get("owner") != "AUTONOMOUS" or entry["id"] in seen:
+            continue
+        if test_matrix.bind_problems(entry):
+            out.append(candidate(P_TESTS, "TEST_MATRIX.yaml", entry["id"],
+                                 "STALE_BIND: %s" % entry["name"]))
     return out
 
 

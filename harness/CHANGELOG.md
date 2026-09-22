@@ -2,6 +2,18 @@
 
 Newest first. One line per change, with the evidence that motivated it.
 
+## 2026-09-22 — Runtime evidence_bind invalidates stale device/flow/E2E PASS rows
+
+A device, flow, or end-to-end PASS counts only while `evidence_bind` matches the tree.
+`change_impact.watched_roots` fails closed (`UNKNOWN_IMPACT`) when a product Kotlin file
+is unmapped. `registry_digest` and `harness_digest` stale the rows those inputs affect.
+`--apply-stale` requeues to `NOT_RUN`. There is no allowlist for missing artifacts.
+
+- **`scripts/test_matrix.py`** — digests, `bind_problems`, `--bind`, `--apply-stale`.
+- **`scripts/acceptance.py`** — `local_artifact_paths()`.
+- **`scripts/discover_work.py`** — bind-stale PASS rows are frontier work.
+- **`TEST_MATRIX.yaml`** — binds only where artifacts still hash; HELP-001 stays NOT_RUN.
+
 ## 2026-09-22 — Capability preservation audit wired into existing harness
 
 Prevent ADD FEATURE → LOSE EXISTING FEATURE without a second framework.
