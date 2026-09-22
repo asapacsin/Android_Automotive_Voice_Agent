@@ -51,4 +51,6 @@ class BaiduFlexProvider(
         injectWorkResult(WorkInjection(result.callId, result.ok, result.output))
     }
     override fun close() = client.close()
+
+    fun onPlaybackActiveChanged(active: Boolean) = client.onPlaybackActiveChanged(active)
 }

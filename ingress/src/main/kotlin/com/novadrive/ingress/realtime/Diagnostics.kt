@@ -63,12 +63,16 @@ class LatencyDiagnostics(
 class StructuredVoiceLog {
     val lines = mutableListOf<String>()
 
-    fun info(event: String, details: Map<String, Any?> = emptyMap()) {
-        lines += format("INFO", event, details)
+    fun info(event: String, details: Map<String, Any?> = emptyMap()): String {
+        val line = format("INFO", event, details)
+        lines += line
+        return line
     }
 
-    fun warn(event: String, details: Map<String, Any?> = emptyMap()) {
-        lines += format("WARN", event, details)
+    fun warn(event: String, details: Map<String, Any?> = emptyMap()): String {
+        val line = format("WARN", event, details)
+        lines += line
+        return line
     }
 
     companion object {

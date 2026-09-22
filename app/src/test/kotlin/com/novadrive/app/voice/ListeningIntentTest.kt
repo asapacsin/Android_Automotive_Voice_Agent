@@ -86,6 +86,14 @@ class ListeningIntentTest {
     }
 
     @Test
+    fun stopSpeakingPhraseGoesToTheModelNotLocalShutUp() {
+        for (text in listOf("停止说话", "停止說話", "小诺，停止说话")) {
+            assertEquals(PASS_TO_MODEL, classify(text), text)
+            assertEquals(PASS_TO_MODEL, classify(text, picker), "$text with picker")
+        }
+    }
+
+    @Test
     fun shutUpAndSleepAreNeverSynonyms() {
         assertEquals(SHUT_UP, classify("shut up"))
         assertEquals(SHUT_UP, classify("闭嘴"))

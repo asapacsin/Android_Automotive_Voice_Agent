@@ -130,9 +130,15 @@ class SpeechUplinkGate(
     val isOpen: Boolean
         @Synchronized get() = open
 
+    /** Diagnostics: RMS of the most recent frame offered to the gate. */
+    val lastFrameRms: Int
+        @Synchronized get() = lastRms
+
     /** Diagnostics: the current adaptive threshold a frame must beat to count as voiced. */
     val voicedThreshold: Int
         @Synchronized get() = maxOf(absoluteRmsFloor, (noiseRms * noiseFactor).toInt())
+
+    private var lastRms = 0
 
     /**
      * The microphone was gated (the assistant was speaking, or navigation guidance was) and has
@@ -159,6 +165,7 @@ class SpeechUplinkGate(
     @Synchronized
     fun offer(frame: ByteArray): Decision {
         val rms = rms(frame)
+        lastRms = rms
         val peak = peakAbs(frame)
         val voiced = rms >= voicedThreshold
         if (!voiced) {

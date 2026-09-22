@@ -37,6 +37,18 @@ classify labor with `scripts/model_route.py`. `GROK_REQUIRED` means stop the gat
 delegate `grok-high`; `BLOCKED_GROK_UNAVAILABLE` means fail closed — never continue as DEFAULT.
 The trigger table lives in `.cursor/rules/hybrid-model-routing.mdc`; do not copy it here.
 
+Before implementing a **non-trivial** candidate, establish the design basis:
+
+```bash
+python scripts/design_basis.py --eval '<json>'
+python scripts/design_basis.py --check <id>
+```
+
+Record cleared entries in [harness/design_basis.yaml](../harness/design_basis.yaml). Exit 2 from
+`--check` means the task is not implementation-cleared — `NEEDS_RESEARCH` and incomplete
+`NOVEL_REVIEW` stay on the frontier as compilation work. Enforcement:
+`.cursor/rules/design-basis-gate.mdc` and `scripts/design_basis.py --validate`.
+
 The discovery script answers the question from the documents; it does not replace judgement about *how* to do
 the work. If it lists something already finished, the document it read is wrong — fixing that
 document is itself the next work item, not a reason to ignore the tool.
@@ -101,7 +113,8 @@ between a plan and a guess.
 Then, in order, and not out of it:
 
 ```
-SPEC -> TEST -> IMPLEMENTATION -> VERIFICATION -> canonical state
+problem -> existing owner -> design basis (when gated) -> map onto architecture
+  -> SPEC -> TEST -> IMPLEMENTATION -> VERIFICATION -> canonical state
 ```
 
 A test existing is not the feature existing. A green build is not behaviour. The stages in

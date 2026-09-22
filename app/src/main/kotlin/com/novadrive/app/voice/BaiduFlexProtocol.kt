@@ -15,6 +15,8 @@ object BaiduFlexProtocol {
     const val MAX_ARGUMENT_BYTES = 4096
     const val DEFAULT_VAD_THRESHOLD = 0.62
     const val NAVIGATION_VAD_THRESHOLD = 0.75
+    /** Raised while assistant audio is still playing locally, to resist echo-only speech_started. */
+    const val PLAYBACK_VAD_THRESHOLD = 0.75
 
     fun sessionUpdate(
         instructions: String,
@@ -179,9 +181,9 @@ object BaiduFlexProtocol {
         )
         val setSpeechOutput = functionTool(
             name = SET_SPEECH_OUTPUT,
-            description = "用户让小诺别说了、别吵、保持安静时用 mode=silent：小诺立刻停止说话，但继续听，下一句指令照常执行，不需要再唤醒；" +
-                "这不是休眠（休眠用 end_conversation）。mode=spoken 表示恢复正常对话。不要用于音乐、导航播报或车辆音量。" +
-                "silent: stop talking now and wait for the next command (not sleep); spoken: talk normally.",
+            description = "用户让小诺别说了、别吵、保持安静、停止说话、停止說話时用 mode=silent：小诺立刻停止说话，但继续听，下一句指令照常执行，不需要再唤醒；" +
+                "调用后不要再说任何话（不要「好的」之类确认）。这不是休眠（休眠用 end_conversation）。mode=spoken 表示恢复正常对话。" +
+                "不要用于音乐、导航播报或车辆音量。silent: stop talking now, no acknowledgement, wait for the next command (not sleep); spoken: talk normally.",
             properties = JSONObject().put(
                 "mode",
                 JSONObject().put("type", "string").put("enum", JSONArray(listOf("silent", "spoken"))),

@@ -28,25 +28,25 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class VoiceSessionController(
-    context: Context,
+    private val appContext: Context,
     private val player: PcmAudioPlayer,
     private val onUiState: (VoiceUiState, String?) -> Unit,
     private val onTranscript: (String) -> Unit,
     private val onError: (String, String) -> Unit,
     private val onToolCall: ((DomainVoiceEvent.ToolCall) -> ToolDispatchResult)? = null,
     private val onListeningState: (ListeningState) -> Unit = {},
+    /** When a picker is on screen and the utterance matches one candidate, dispatch locally. */
+    private val onLocalNavigationPick: ((com.novadrive.app.nav.NavigationChoice) -> Unit)? = null,
     timeouts: ListeningTimeouts = ListeningTimeouts(),
 ) {
     private val job = SupervisorJob()
     private val scope = CoroutineScope(job + Dispatchers.Main.immediate)
     private val microphone = AndroidMicrophonePort(onError = { code -> onError(code, "microphone failed") })
-    private val audioFocus = AudioFocusController(context)
+    private val audioFocus = AudioFocusController(appContext)
     // Reply audio is only played while listening is ACTIVE: after 「关闭小诺」 the cancelled reply
     // must not start talking.
     // Replies are spoken only in ACTIVE: after 「闭嘴」 or 「休眠」 the cancelled reply stays silent.
     private val playback = AndroidPlaybackPort(player, audioFocus) { lifecycle.speaks }
-    private var ungateJob: Job? = null
-    private var ungateGeneration = 0
     @Volatile private var lastUiState: VoiceUiState = VoiceUiState.DISCONNECTED
     @Volatile private var playbackSpeaking = false
     @Volatile private var lastConfig: BaiduApiConfig? = null
@@ -68,6 +68,15 @@ class VoiceSessionController(
             onError = onError,
             onToolCall = onToolCall,
             onUserFinalTranscript = { text -> onUserUtterance(text) },
+            onSessionLog = { line -> com.novadrive.app.DebugVoiceLog.log(line) },
+            bargeInDiagnostics = {
+                mapOf(
+                    "uplinkGateOpen" to microphone.uplinkGateOpen,
+                    "lastRms" to microphone.lastFrameRms,
+                    "aec_enabled" to VoiceAudioSession.aecEnabled,
+                    "sessions_match" to VoiceAudioSession.sessionsMatch(),
+                )
+            },
         )
 
     /**
@@ -131,9 +140,11 @@ class VoiceSessionController(
 
     init {
         player.setOnPlaybackStateChanged { speaking ->
-            onPlaybackSpeaking(speaking)
             playbackSpeaking = speaking
             updateBusy()
+        }
+        player.setOnPlaybackActiveChanged { active ->
+            notifyPlaybackActiveForVad(active)
         }
         com.novadrive.app.nav.NavigationGuidanceVoice.addListener(guidanceListener)
     }
@@ -146,8 +157,7 @@ class VoiceSessionController(
 
     /**
      * Wake word, UI or an app prompt: resume listening (or restart the countdown). The wake word
-     * also cuts off a reply in progress: while 小诺 talks the microphone is closed to its own
-     * voice, so the wake word is the only way to interrupt it (「你好小诺」…「闭嘴」).
+     * also cuts off a reply in progress when the driver speaks over model audio.
      */
     fun activateListening(reason: String): Boolean {
         if (reason == "wake_word" && playbackSpeaking) {
@@ -177,6 +187,9 @@ class VoiceSessionController(
         lastConfig = apiConfig
         active.stop()
         provider?.close()
+        val sharedSessionId = VoiceAudioSession.allocate()
+        player.configureAudioSession(sharedSessionId)
+        microphone.configureAudioSession(sharedSessionId)
         val outputRate = apiConfig.settings.resolvedOutputSampleRateHz()
         player.configureSampleRate(outputRate)
         val selected: RealtimeVoiceProvider = when (apiConfig.settings.runtimeProvider) {
@@ -197,6 +210,10 @@ class VoiceSessionController(
         )
         active.start()
         startSessionDiagnostics()
+    }
+
+    private fun notifyPlaybackActiveForVad(active: Boolean) {
+        (provider as? BaiduFlexProvider)?.onPlaybackActiveChanged(active)
     }
 
     private var diagJob: Job? = null
@@ -264,7 +281,25 @@ class VoiceSessionController(
 
     /** The driver's finished utterance: listening-control phrases first (see [VoiceCommandRouter]). */
     private fun onUserUtterance(text: String) {
-        commandRouter.onUserUtterance(text)
+        com.novadrive.app.nav.NavigationLocalPickGuard.onUserTranscript()
+        val decision = commandRouter.onUserUtterance(text)
+        if (decision != ListeningIntent.Decision.PASS_TO_MODEL || !ListeningIntent.isMeaningful(text)) return
+        tryLocalNavigationPick(text)
+    }
+
+    private fun tryLocalNavigationPick(text: String) {
+        val pick = onLocalNavigationPick ?: return
+        val nav = com.novadrive.app.nav.EmbeddedNavigation.currentOrNull() ?: return
+        val choice = com.novadrive.app.nav.NavigationPickerIntercept.resolve(
+            text,
+            nav.state().value,
+            nav.destinationCandidates.value,
+            nav.routeCandidates.value,
+        ) ?: return
+        com.novadrive.app.DebugVoiceLog.log("nav_voice_local_pick")
+        active.cancelCurrentResponse()
+        com.novadrive.app.nav.NavigationLocalPickGuard.onLocalPickSucceeded()
+        pick(choice)
     }
 
     /**
@@ -317,35 +352,10 @@ class VoiceSessionController(
         active.release()
         provider?.close()
         provider = null
-        ungateJob?.cancel()
-        ungateJob = null
         microphone.gated = false
         com.novadrive.app.nav.NavigationGuidanceVoice.removeListener(guidanceListener)
         guidanceGate.reset()
         scope.cancel()
-    }
-
-    private fun onPlaybackSpeaking(speaking: Boolean) {
-        synchronized(this) {
-            ungateJob?.cancel()
-            ungateJob = null
-            if (speaking) {
-                ungateGeneration++
-                microphone.gated = true
-            } else {
-                val generation = ungateGeneration
-                ungateJob =
-                    scope.launch {
-                        delay(PLAYBACK_UNGATE_DELAY_MS)
-                        synchronized(this@VoiceSessionController) {
-                            if (generation == ungateGeneration) {
-                                microphone.gated = false
-                                microphone.holdPostSpeechEcho(POST_SPEECH_ECHO_HOLD_MS)
-                            }
-                        }
-                    }
-            }
-        }
     }
 
     private fun newCore(provider: RealtimeVoiceProvider, config: RealtimeSessionConfig): CoreVoiceSessionController =
@@ -366,11 +376,6 @@ class VoiceSessionController(
             VoiceUiState.CONNECTING,
             VoiceUiState.RECONNECTING,
         )
-        // Cabin echo of 小诺's own reply used to reopen the mic after 350 ms and become a phantom
-        // 「没听清」 turn (owner report 2026-09-20, navigation startup).
-        private const val PLAYBACK_UNGATE_DELAY_MS = 1_000L
-        /** Extra blackout after the mic reopens; see [AndroidMicrophonePort.holdPostSpeechEcho]. */
-        private const val POST_SPEECH_ECHO_HOLD_MS = 600L
         private const val SESSION_DIAG_INTERVAL_MS = 5_000L
         private const val TEST_FRAME_BYTES = 3_200 // 100 ms at 16 kHz mono PCM16
         private const val TEST_FRAME_MS = 100L

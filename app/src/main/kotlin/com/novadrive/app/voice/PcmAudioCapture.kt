@@ -1,6 +1,7 @@
 package com.novadrive.app.voice
 
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.media.audiofx.AcousticEchoCanceler
@@ -18,6 +19,7 @@ import kotlin.concurrent.thread
 class PcmAudioCapture(
     private val onFrame: (ByteArray) -> Unit,
     private val onError: (String) -> Unit,
+    private val audioSessionId: Int = android.media.AudioManager.AUDIO_SESSION_ID_GENERATE,
 ) {
     private val running = AtomicBoolean(false)
     private var record: AudioRecord? = null
@@ -44,13 +46,19 @@ class PcmAudioCapture(
             }
         val recorder =
             try {
-                AudioRecord(
-                    MediaRecorder.AudioSource.VOICE_COMMUNICATION,
-                    SAMPLE_RATE,
-                    AudioFormat.CHANNEL_IN_MONO,
-                    AudioFormat.ENCODING_PCM_16BIT,
-                    minBuf * 2,
-                )
+                val builder =
+                    AudioRecord.Builder()
+                        .setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
+                        .setAudioFormat(
+                            AudioFormat.Builder()
+                                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                                .setSampleRate(SAMPLE_RATE)
+                                .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
+                                .build(),
+                        )
+                        .setBufferSizeInBytes(minBuf * 2)
+                VoiceAudioSession.applyToRecordBuilder(builder, audioSessionId)
+                builder.build()
             } catch (security: SecurityException) {
                 running.set(false)
                 onError("MIC_PERMISSION_DENIED")
@@ -66,18 +74,28 @@ class PcmAudioCapture(
             onError("AUDIO_CAPTURE_FAILED")
             return
         }
+        val aecAvailable = AcousticEchoCanceler.isAvailable()
         echoCanceler =
-            if (AcousticEchoCanceler.isAvailable()) {
+            if (aecAvailable) {
                 runCatching { AcousticEchoCanceler.create(recorder.audioSessionId)?.also { it.enabled = true } }.getOrNull()
             } else {
                 null
             }
+        val nsAvailable = NoiseSuppressor.isAvailable()
         noiseSuppressor =
-            if (NoiseSuppressor.isAvailable()) {
+            if (nsAvailable) {
                 runCatching { NoiseSuppressor.create(recorder.audioSessionId)?.also { it.enabled = true } }.getOrNull()
             } else {
                 null
             }
+        VoiceAudioSession.recordCaptureSession(recorder.audioSessionId)
+        VoiceAudioSession.aecEnabled = echoCanceler?.enabled == true
+        VoiceAudioSession.nsEnabled = noiseSuppressor?.enabled == true
+        com.novadrive.app.DebugVoiceLog.log(
+            "capture_start aec_available=$aecAvailable aec_enabled=${VoiceAudioSession.aecEnabled} " +
+                "ns_enabled=${VoiceAudioSession.nsEnabled} captureSessionId=${recorder.audioSessionId} " +
+                "playbackSessionId=${VoiceAudioSession.playbackSessionId} sessions_match=${VoiceAudioSession.sessionsMatch()}",
+        )
         try {
             recorder.startRecording()
         } catch (_: Exception) {
@@ -144,7 +162,16 @@ class PcmAudioCapture(
 class AndroidMicrophonePort(
     private val onError: (String) -> Unit,
 ) : MicrophonePort {
+    @Volatile private var audioSessionId: Int = android.media.AudioManager.AUDIO_SESSION_ID_GENERATE
     private var capture: PcmAudioCapture? = null
+
+    fun configureAudioSession(sessionId: Int) {
+        audioSessionId = sessionId
+    }
+
+    val uplinkGateOpen: Boolean get() = uplinkGate.isOpen
+
+    val lastFrameRms: Int get() = uplinkGate.lastFrameRms
     override var muted: Boolean = false
     @Volatile var gated: Boolean = false
 
@@ -245,6 +272,7 @@ class AndroidMicrophonePort(
         inputGain.reset()
         capture =
             PcmAudioCapture(
+                audioSessionId = audioSessionId,
                 onFrame = { bytes ->
                     capturedFrames.incrementAndGet()
                     val peak = peakAbs(bytes)

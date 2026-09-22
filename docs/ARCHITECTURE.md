@@ -17,7 +17,7 @@ navigation are the Amap Navigation SDK embedded in our own Activity
 ```
 microphone
   → PcmAudioCapture (16 kHz PCM16, AEC + NS)
-  → AndroidMicrophonePort         gates: muted / assistant speaking / guidance / sleep
+  → AndroidMicrophonePort         gates: muted / guidance / sleep (model playback stays uplinked)
   → SpeechUplinkGate              200 ms of voice before anything is uploaded
   → BaiduFlexClient (WSS)         input_audio_buffer.append
         ↑ server VAD decides where a turn starts and ends
@@ -84,10 +84,13 @@ navigation actions directly, and `com.amap` may be imported by exactly one file.
 ## Subsystems
 
 ### Audio capture — `app/voice/PcmAudioCapture.kt`
-`VOICE_COMMUNICATION` at 16 kHz with AEC and noise suppression. `AndroidMicrophonePort` owns every
-reason a frame may not be sent: `muted`, `gated` (the assistant is speaking), `guidanceGated` (Amap
-is speaking), `suppressLive` (the debug harness is injecting), and the `SpeechUplinkGate`.
-`MicInputGain` lifts quiet speech above the server's VAD floor (max 3×, measured).
+`VOICE_COMMUNICATION` at 16 kHz with platform AEC and noise suppression on a **shared audio session**
+with reply playback (`VoiceAudioSession` binds `AudioRecord` and `AudioTrack` before `build()` so
+`AcousticEchoCanceler` can subtract assistant audio). `AndroidMicrophonePort` owns every reason a
+frame may not be sent: `muted`, `guidanceGated` (Amap is speaking), `suppressLive` (the debug
+harness is injecting), and the `SpeechUplinkGate`. Model reply playback does **not** gate the mic:
+the uplink stays open for full-duplex barge-in. `MicInputGain` lifts quiet speech above the server's
+VAD floor (max 3×, measured).
 
 ### Open-mic defence — `SpeechUplinkGate`, `PhantomTurnGate`
 Because the server decides what a turn is, every sustained cabin sound is a candidate turn. The

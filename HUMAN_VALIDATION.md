@@ -2,7 +2,10 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --packet`. **Do not edit by hand.**
 
-Everything an agent could do has been done. What follows is the whole of what needs a person — **in one batch, to be handled in one sitting**, rather than one interruption per test.
+> **Not ready yet.** This is a preview of the queue; autonomous work remains:
+>
+> - the registry does not validate: 55 problem(s)
+> - navigation.guidance_voice requires INTERMEDIATE_FLOW but has no passing cover (linked: NAV-MID-ROUTE-001)
 
 9 item(s) queued.
 

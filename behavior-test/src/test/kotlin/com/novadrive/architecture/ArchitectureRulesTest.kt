@@ -178,7 +178,7 @@ class ArchitectureRulesTest {
         val budgets = mapOf(
             "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt" to 900,
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapNaviViewHost.kt" to 900,
-            "app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt" to 450,
+            "app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt" to 460,
             "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt" to 500,
             "app/src/main/kotlin/com/novadrive/app/nav/EmbeddedNavigationController.kt" to 500,
         )

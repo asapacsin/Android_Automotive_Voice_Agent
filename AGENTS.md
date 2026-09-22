@@ -16,6 +16,7 @@ python scripts/discover_work.py        # what is left to do, and which phase thi
 python scripts/test_matrix.py --gate   # may a human be asked yet, and if not why not
 python scripts/test_matrix.py --work   # autonomous tests that have not settled
 python scripts/model_route.py --selftest  # hard-gate Cursor labor routing
+python scripts/design_basis.py --validate # design-basis gate before difficult implementation
 ```
 
 Before you consider a change complete: `.\gradlew.bat test --rerun-tasks :app:assembleDebug`, then

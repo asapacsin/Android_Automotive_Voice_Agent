@@ -1,0 +1,25 @@
+---
+description: Hard-gate design basis before difficult implementation — run the classifier script
+alwaysApply: true
+---
+
+# Design-basis gate (hard gate)
+
+Before implementing a **non-trivial** task, classify and record the design basis. **Enforcement**
+is [scripts/design_basis.py](scripts/design_basis.py), not this prose.
+
+```powershell
+python scripts/design_basis.py --eval '<json>'
+python scripts/design_basis.py --check <id>
+python scripts/design_basis.py --validate
+```
+
+- Exit **0** from `--check` or a cleared `--eval` → implementation may proceed for that entry.
+- Exit **2** → not cleared; do not treat the task as ready to implement.
+
+Registry: [harness/design_basis.yaml](harness/design_basis.yaml). Policy:
+[harness/proposals/HARNESS_PROPOSAL_004-design-basis-gate.md](harness/proposals/HARNESS_PROPOSAL_004-design-basis-gate.md).
+
+Statuses: `PASS` (established pattern), `NEEDS_RESEARCH` (design work first), `NOVEL_REVIEW`
+(custom architecture with explicit rationale). Suppressing required behaviour to dodge difficulty
+is never cleared without an explicit requirement change.

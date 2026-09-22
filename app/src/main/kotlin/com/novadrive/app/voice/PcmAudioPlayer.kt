@@ -4,6 +4,7 @@ import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
+import com.novadrive.app.DebugVoiceLog
 import com.novadrive.app.NavigationState
 import com.novadrive.ingress.realtime.AudioBufferGuard
 import com.novadrive.ingress.realtime.BoundedThreadCleanup
@@ -27,10 +28,15 @@ class PcmAudioPlayer(
     private var track: AudioTrack? = null
     private var worker: Thread? = null
     @Volatile private var sampleRateHz: Int = PcmAudioCapture.SAMPLE_RATE
+    @Volatile private var audioSessionId: Int = AudioManager.AUDIO_SESSION_ID_GENERATE
     private val stateLock = Any()
     @Volatile private var speaking = false
     @Volatile private var playbackPaused = false
+    @Volatile private var acceptEpoch = 0
+    @Volatile private var framesWritten: Long = 0
     private val playbackStateListeners = CopyOnWriteArrayList<(Boolean) -> Unit>()
+    private val playbackActiveListeners = CopyOnWriteArrayList<(Boolean) -> Unit>()
+    @Volatile private var lastNotifiedPlaybackActive = false
 
     val isPlaying: Boolean
         get() =
@@ -48,11 +54,27 @@ class PcmAudioPlayer(
         }
     }
 
+    fun setOnPlaybackActiveChanged(listener: ((Boolean) -> Unit)?) {
+        if (listener == null) {
+            playbackActiveListeners.clear()
+        } else {
+            playbackActiveListeners.add(listener)
+        }
+    }
+
     fun configureSampleRate(sampleRateHz: Int) {
         require(sampleRateHz in 8_000..48_000) { "AUDIO_SAMPLE_RATE_INVALID" }
         if (running.get()) return
         this.sampleRateHz = sampleRateHz
     }
+
+    fun configureAudioSession(sessionId: Int) {
+        if (running.get()) return
+        audioSessionId = sessionId
+    }
+
+    val playbackSessionId: Int
+        get() = track?.audioSessionId ?: audioSessionId
 
     fun start() {
         if (!running.compareAndSet(false, true)) return
@@ -73,29 +95,33 @@ class PcmAudioPlayer(
             }
         val player =
             try {
-                AudioTrack.Builder()
-                    .setAudioAttributes(
-                        AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_ASSISTANT)
-                            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                            .build(),
-                    )
-                    .setAudioFormat(
-                        AudioFormat.Builder()
-                            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                            .setSampleRate(sampleRateHz)
-                            .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                            .build(),
-                    )
-                    .setBufferSizeInBytes(maxOf(minBuf * 4, sampleRateHz * 2 /*bytes per sample*/ * 320 / 1000))
-                    .setTransferMode(AudioTrack.MODE_STREAM)
-                    .build()
+                val builder =
+                    AudioTrack.Builder()
+                        .setAudioAttributes(
+                            AudioAttributes.Builder()
+                                .setUsage(AudioAttributes.USAGE_ASSISTANT)
+                                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                                .build(),
+                        )
+                        .setAudioFormat(
+                            AudioFormat.Builder()
+                                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                                .setSampleRate(sampleRateHz)
+                                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                                .build(),
+                        )
+                        .setBufferSizeInBytes(maxOf(minBuf * 4, sampleRateHz * 2 /*bytes per sample*/ * 320 / 1000))
+                        .setTransferMode(AudioTrack.MODE_STREAM)
+                VoiceAudioSession.applyToTrackBuilder(builder, audioSessionId)
+                builder.build()
             } catch (_: Exception) {
                 running.set(false)
                 onError("AUDIO_PLAYBACK_FAILED")
                 return
             }
         playbackPaused = false
+        acceptEpoch = 0
+        framesWritten = 0
         try {
             player.play()
         } catch (_: Exception) {
@@ -108,6 +134,11 @@ class PcmAudioPlayer(
             return
         }
         track = player
+        VoiceAudioSession.recordPlaybackSession(player.audioSessionId)
+        DebugVoiceLog.log(
+            "playback_start playbackSessionId=${player.audioSessionId} captureSessionId=${VoiceAudioSession.captureSessionId} " +
+                "sessions_match=${VoiceAudioSession.sessionsMatch()}",
+        )
         worker =
             thread(name = "nova-pcm-play", isDaemon = true) {
                 while (running.get()) {
@@ -126,25 +157,54 @@ class PcmAudioPlayer(
                         onError("AUDIO_PLAYBACK_FAILED")
                         break
                     }
+                    if (written > 0) {
+                        framesWritten += written / 2
+                    }
                 }
             }
     }
 
-    fun enqueue(pcm16le: ByteArray) {
-        if (running.get()) {
-            queue.offer(pcm16le)
-            emitSpeaking(true)
-        }
+    fun enqueue(pcm16le: ByteArray, epoch: Int) {
+        if (!running.get() || epoch != acceptEpoch) return
+        queue.offer(pcm16le)
+        emitSpeaking(true)
+        notifyPlaybackActiveIfChanged()
     }
 
+    val queuedFrames: Int
+        get() {
+            val queued = queue.sumOf { it.size / 2 }
+            val track = track ?: return queued
+            return try {
+                val head = track.playbackHeadPosition.toLong()
+                val buffered = (framesWritten - head).coerceAtLeast(0)
+                (queued + buffered).toInt()
+            } catch (_: Exception) {
+                queued
+            }
+        }
+
+    val playbackActive: Boolean
+        get() = queuedFrames > 0 || speaking
+
+    @Volatile
+    var duckCount: Int = 0
+        private set
+
     fun duck() {
+        duckCount++
         try {
             track?.setVolume(0.2f)
         } catch (_: Exception) {
         }
     }
 
+    @Volatile
+    var unduckCount: Int = 0
+        private set
+
     fun unduck() {
+        unduckCount++
         try {
             track?.setVolume(1.0f)
         } catch (_: Exception) {
@@ -169,12 +229,15 @@ class PcmAudioPlayer(
 
     fun flush() {
         queue.clear()
+        framesWritten = 0
+        acceptEpoch += 1
         track?.pause()
         track?.flush()
         if (!playbackPaused) {
             track?.play()
         }
         emitSpeaking(false)
+        notifyPlaybackActiveIfChanged()
     }
 
     fun stop() {
@@ -194,10 +257,26 @@ class PcmAudioPlayer(
         }
         track = null
         playbackPaused = false
+        acceptEpoch = 0
+        framesWritten = 0
         val toJoin = worker
         worker = null
         BoundedThreadCleanup.terminate(toJoin)
         emitSpeaking(false)
+        notifyPlaybackActiveIfChanged()
+    }
+
+    private fun notifyPlaybackActiveIfChanged() {
+        val now = playbackActive
+        if (now == lastNotifiedPlaybackActive) return
+        lastNotifiedPlaybackActive = now
+        val listeners = playbackActiveListeners.toTypedArray()
+        for (listener in listeners) {
+            try {
+                listener(now)
+            } catch (_: Exception) {
+            }
+        }
     }
 
     private fun emitSpeaking(nowSpeaking: Boolean) {
@@ -215,6 +294,7 @@ class PcmAudioPlayer(
             speaking = false
         }
         dispatchPlaybackState(false)
+        notifyPlaybackActiveIfChanged()
     }
 
     private fun dispatchPlaybackState(nowSpeaking: Boolean) {
@@ -238,7 +318,10 @@ class AndroidPlaybackPort(
     private val playbackAllowed: () -> Boolean = { true },
 ) : PlaybackPort {
     override val queuedFrames: Int
-        get() = 0
+        get() = player.queuedFrames
+
+    override val playbackActive: Boolean
+        get() = player.playbackActive
 
     init {
         player.setOnPlaybackStateChanged { speaking ->
@@ -255,7 +338,12 @@ class AndroidPlaybackPort(
     fun applyFocusChange(change: Int) {
         try {
             when (focusAction(change)) {
-                FocusAction.DUCK -> player.duck()
+                FocusAction.DUCK -> {
+                    // A permitted confirmation during navigation must stay at full volume even when
+                    // Amap guidance transiently ducks other streams.
+                    if (NavigationState.navigating && !NavigationState.shouldMuteSpeech()) Unit
+                    else player.duck()
+                }
                 FocusAction.PAUSE -> player.pausePlayback()
                 FocusAction.STOP -> {
                     player.pausePlayback()
@@ -278,7 +366,7 @@ class AndroidPlaybackPort(
     @Volatile private var droppingReply = false
     @Volatile private var droppingForNavigation = false
 
-    override fun enqueue(pcm16le: ByteArray) {
+    override fun enqueue(pcm16le: ByteArray, epoch: Int) {
         if (NavigationState.shouldMuteSpeech()) {
             if (!droppingForNavigation) {
                 droppingForNavigation = true
@@ -296,7 +384,9 @@ class AndroidPlaybackPort(
             return
         }
         droppingReply = false
-        player.enqueue(pcm16le)
+        // A permitted reply during navigation may follow guidance ducking; restore full volume.
+        player.unduck()
+        player.enqueue(pcm16le, epoch)
     }
 
     override fun flush() {

@@ -390,6 +390,25 @@ def stale_state():
                       "records %s, repository is at %s" % (recorded, head))]
 
 
+def design_basis_gaps():
+    """Gated design-basis entries that are not implementation-cleared."""
+    try:
+        import design_basis
+    except Exception as exc:
+        return [candidate(P_HARNESS, "design_basis.yaml", "design_basis.py",
+                          "the design-basis checker could not be loaded: %r" % (exc,))]
+    out = []
+    for gap in design_basis.discover_gaps():
+        out.append(candidate(
+            P_SPEC,
+            "design_basis.yaml",
+            gap["id"],
+            gap["summary"],
+            needs_compilation=True,
+        ))
+    return out
+
+
 def unsettled_matrix_tests():
     """Autonomous tests in TEST_MATRIX.yaml that have not settled.
 
@@ -422,6 +441,7 @@ def unsettled_matrix_tests():
 SOURCES = (
     missing_artifact,
     failing_tests,
+    design_basis_gaps,
     unsettled_matrix_tests,
     unmet_spec_criteria,
     unwired_or_unverified_capabilities,

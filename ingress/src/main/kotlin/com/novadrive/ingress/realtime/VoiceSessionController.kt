@@ -21,6 +21,10 @@ data class VoiceSessionCallbacks(
     val onToolCall: ((DomainVoiceEvent.ToolCall) -> ToolDispatchResult)? = null,
     /** The driver's finished utterance, before the model's reply to it. */
     val onUserFinalTranscript: (String) -> Unit = {},
+    /** Structured session diagnostics (counts/flags only — never audio or transcript). */
+    val onSessionLog: (String) -> Unit = {},
+    /** Extra fields merged into playout_barge_in (uplink gate, RMS — never audio or transcript). */
+    val bargeInDiagnostics: () -> Map<String, Any> = { emptyMap() },
 )
 
 /**
@@ -52,6 +56,13 @@ class VoiceSessionController(
      */
     private val captureSuspended = AtomicBoolean(false)
     private val collectorGeneration = AtomicInteger(0)
+    /** Remote model still generating the current reply (until [DomainVoiceEvent.ResponseDone]). */
+    @Volatile private var generationActive = false
+    /** Bumped on interrupt; each [PlaybackPort.enqueue] chunk is stamped with this epoch. */
+    private var playbackEpoch = 0
+    private var replyOpen = false
+    private var replyEpoch = 0
+    private var acceptingReplyAudio = true
     private val mutex = Mutex()
     private var eventJob: Job? = null
     private var connectJob: Job? = null
@@ -192,7 +203,7 @@ class VoiceSessionController(
     /** Stops the assistant's current reply: local playback now, and the reply on the server. */
     fun cancelCurrentResponse() {
         if (!sessionActive.get()) return
-        playback.flush()
+        invalidatePlaybackEpoch()
         scope.launch {
             mutex.withLock {
                 machine.onInterrupted()
@@ -312,19 +323,22 @@ class VoiceSessionController(
                     }
                     resumeCapture = true
                 }
+                DomainVoiceEvent.ResponseStarted -> openReplyStamp()
                 is DomainVoiceEvent.AudioDelta -> {
+                    if (!ensureReplyStamp()) return@withLock
                     diagnostics.markFirstAudio()
+                    generationActive = true
                     val pcm = decodePcm(event.pcm16leBase64)
-                    playback.enqueue(pcm)
+                    playback.enqueue(pcm, replyEpoch)
                 }
                 DomainVoiceEvent.SpeechStopped -> diagnostics.markSpeechEnd()
                 is DomainVoiceEvent.Interrupted -> {
                     diagnostics.markInterruptDetected()
-                    playback.flush()
+                    invalidatePlaybackEpoch()
                     diagnostics.markPlaybackStopped()
                 }
                 DomainVoiceEvent.SpeechStarted -> {
-                    if (machine.state == VoiceUiState.SPEAKING || machine.state == VoiceUiState.THINKING) {
+                    if (playback.playbackActive) {
                         bargeIn()
                     }
                 }
@@ -354,6 +368,9 @@ class VoiceSessionController(
                 }
                 else -> Unit
             }
+            if (event is DomainVoiceEvent.ResponseDone) {
+                generationActive = false
+            }
             machine.apply(event)
             publish()
         }
@@ -369,12 +386,48 @@ class VoiceSessionController(
 
     private suspend fun bargeIn() {
         diagnostics.markInterruptDetected()
-        playback.flush()
+        val queuedBytes = playback.queuedFrames * 2
+        val cancelGeneration = generationActive
+        val fields =
+            buildMap {
+                put("epoch", playbackEpoch)
+                put("generationActive", generationActive)
+                put("playbackActive", playback.playbackActive)
+                put("queuedBytes", queuedBytes)
+                put("flush", true)
+                put("cancel", cancelGeneration)
+                putAll(callbacks.bargeInDiagnostics())
+            }
+        val line = log.info("playout_barge_in", fields)
+        callbacks.onSessionLog(line)
+        invalidatePlaybackEpoch()
         diagnostics.markPlaybackStopped()
-        if (VoiceCatalog.capabilities(config.provider).clientResponseCancel) {
+        if (cancelGeneration && VoiceCatalog.capabilities(config.provider).clientResponseCancel) {
             provider.cancelAssistantResponse()
         }
-        log.info("barge_in", mapOf("work_cancelled" to false))
+    }
+
+    private fun invalidatePlaybackEpoch() {
+        playback.flush()
+        playbackEpoch += 1
+        replyOpen = false
+        acceptingReplyAudio = false
+    }
+
+    private fun openReplyStamp() {
+        replyOpen = true
+        replyEpoch = playbackEpoch
+        acceptingReplyAudio = true
+        generationActive = true
+    }
+
+    private fun ensureReplyStamp(): Boolean {
+        if (!acceptingReplyAudio) return replyOpen
+        if (!replyOpen) {
+            replyOpen = true
+            replyEpoch = playbackEpoch
+        }
+        return true
     }
 
     private fun dispatchTool(call: DomainVoiceEvent.ToolCall) {
@@ -453,7 +506,7 @@ class VoiceSessionController(
             publish()
             diagnostics.markReconnectStart()
             stopCapture()
-            playback.flush()
+            invalidatePlaybackEpoch()
             emitReconnect()
             return delayMs
         }

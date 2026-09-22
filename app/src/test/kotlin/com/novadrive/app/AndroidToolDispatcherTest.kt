@@ -3,6 +3,7 @@ package com.novadrive.app
 import com.novadrive.app.nav.DestinationCandidate
 import com.novadrive.app.nav.EmbeddedNavigationController
 import com.novadrive.app.nav.NavigationChoice
+import com.novadrive.app.nav.NavigationLocalPickGuard
 import com.novadrive.app.nav.NavigationPhase
 import com.novadrive.app.vehicle.ClimateToolHandler
 import kotlinx.coroutines.runBlocking
@@ -89,6 +90,40 @@ class AndroidToolDispatcherTest {
     }
 
     @Test
+    fun navigateToRedirectsWhenSimplifiedHuiMatchesTraditionalRow() {
+        val executor = FakeExecutor()
+        executor.pickerMatch = NavigationChoice.Name("中交汇通")
+        val dispatcher = AndroidToolDispatcher(executor, ClimateToolHandler(SimulatedVehicleControl()), noCamera())
+        val result = dispatcher.dispatch(call("navigate_to", mapOf("destination" to "中交汇通")))
+        assertEquals(listOf(NavigationChoice.Name("中交汇通")), executor.choices)
+        assertEquals(null, executor.destination)
+        assertTrue(runBlocking { result.deferredOutput!!() }.contains("destination_list"))
+    }
+
+    @Test
+    fun navigateToIsSuppressedAfterLocalPickSucceeded() {
+        NavigationLocalPickGuard.onLocalPickSucceeded()
+        val executor = FakeExecutor()
+        val dispatcher = AndroidToolDispatcher(executor, ClimateToolHandler(SimulatedVehicleControl()), noCamera())
+        val result = dispatcher.dispatch(call("navigate_to", mapOf("destination" to "中交汇通")))
+        assertEquals(0, executor.executions)
+        assertEquals("destination_already_selected_locally", JSONObject(result.output!!).getString("status"))
+        NavigationLocalPickGuard.onUserTranscript()
+    }
+
+    @Test
+    fun navigateToRedirectsToPickerWhenNameMatchesOneCandidate() {
+        val executor = FakeExecutor()
+        executor.pickerMatch = NavigationChoice.Name("拱北口岸")
+        val dispatcher = AndroidToolDispatcher(executor, ClimateToolHandler(SimulatedVehicleControl()), noCamera())
+        val result = dispatcher.dispatch(call("navigate_to", mapOf("destination" to "拱北口岸")))
+        assertEquals(listOf(NavigationChoice.Name("拱北口岸")), executor.choices)
+        assertEquals(null, executor.destination, "must not start a new search")
+        val options = runBlocking { result.deferredOutput!!() }
+        assertEquals("destination_list", JSONObject(options).getString("screen"))
+    }
+
+    @Test
     fun chooseNavigationOptionParsesEachFormAndReportsRejections() {
         val executor = FakeExecutor()
         val dispatcher = AndroidToolDispatcher(executor, ClimateToolHandler(SimulatedVehicleControl()), noCamera())
@@ -117,7 +152,9 @@ class AndroidToolDispatcherTest {
     fun setSpeechOutputSwitchesSilentModeAndRejectsOtherModes() {
         val executor = FakeExecutor()
         val dispatcher = AndroidToolDispatcher(executor, ClimateToolHandler(SimulatedVehicleControl()), noCamera())
-        assertTrue(JSONObject(dispatcher.dispatch(call("set_speech_output", mapOf("mode" to "silent"))).output!!).getBoolean("ok"))
+        val silent = dispatcher.dispatch(call("set_speech_output", mapOf("mode" to "silent")))
+        assertTrue(JSONObject(silent.output!!).getBoolean("ok"))
+        assertEquals(listOf(true), executor.silentRequests)
         dispatcher.dispatch(call("set_speech_output", mapOf("mode" to "spoken")))
         assertEquals(listOf(true, false), executor.silentRequests)
         val bad = dispatcher.dispatch(call("set_speech_output", mapOf("mode" to "loud")))
@@ -133,7 +170,9 @@ class AndroidToolDispatcherTest {
             music = { error("unused") },
             speechSilent = { seen += it },
         )
-        assertTrue(core.setSpeechSilent(true) is AndroidActionResult.Accepted)
+        val silent = core.setSpeechSilent(true)
+        assertTrue(silent is AndroidActionResult.Accepted)
+        assertEquals("stopped_talking_still_listening", (silent as AndroidActionResult.Accepted).status)
         assertEquals(listOf(true), seen)
     }
 
@@ -152,6 +191,8 @@ class AndroidToolDispatcherTest {
         val silentRequests = mutableListOf<Boolean>()
         override fun setSpeechSilent(silent: Boolean): AndroidActionResult { silentRequests += silent; return AndroidActionResult.Accepted() }
         val choices = mutableListOf<NavigationChoice>()
+        var pickerMatch: NavigationChoice? = null
+        override fun matchPickerName(utterance: String): NavigationChoice? = pickerMatch
         override fun chooseNavigationOption(choice: NavigationChoice): AndroidActionResult { choices += choice; return next }
         override suspend fun awaitNavigationOptions() = EmbeddedNavigationController.OptionsSnapshot(
             NavigationPhase.AWAITING_DESTINATION_SELECTION,

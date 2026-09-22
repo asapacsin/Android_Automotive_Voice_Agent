@@ -70,6 +70,14 @@ class NavigationChoiceResolverTest {
     }
 
     @Test
+    fun simplifiedAndTraditionalHuiMatchTheSameCandidate() {
+        val list = listOf(poi("中交滙通"))
+        val picked = NavigationChoiceResolver.pickDestination(list, NavigationChoice.Name("中交汇通"))
+        assertEquals(1, (picked as ChoiceMatch.Picked).position)
+        assertEquals("中交滙通", picked.item.name)
+    }
+
+    @Test
     fun nameMatchesPartOfTheName() {
         assertEquals("c", picked(NavigationChoiceResolver.pickDestination(destinations, NavigationChoice.Name("拱北"))).id)
         assertEquals("c", picked(NavigationChoiceResolver.pickDestination(destinations, NavigationChoice.Name("就去拱北口岸那个"))).id)

@@ -62,6 +62,7 @@ class BaiduFlexClient(
     val voiceConfirmedAsRequested: Boolean
         get() = confirmedVoice != null && confirmedVoice == requestedVoice
     @Volatile private var vadThreshold: Double = BaiduFlexProtocol.DEFAULT_VAD_THRESHOLD
+    @Volatile private var playbackActive = false
     @Volatile private var navigatingListener: ((Boolean) -> Unit)? = null
     private val emptyRetry = EmptyResponseRetryPolicy()
     private val resetPolicy = ConversationResetPolicy()
@@ -143,11 +144,8 @@ class BaiduFlexClient(
         }.build()
         socket = http.newWebSocket(request, listener(current, pending))
         NetworkFaults.dropConnection = { socket?.cancel() }
-        vadThreshold = if (NavigationState.navigating) {
-            BaiduFlexProtocol.NAVIGATION_VAD_THRESHOLD
-        } else {
-            BaiduFlexProtocol.DEFAULT_VAD_THRESHOLD
-        }
+        playbackActive = false
+        vadThreshold = resolveVadThreshold()
         // Deliberately does NOT resend session.update. Measured on device 2026-09-16: Baidu
         // Flex rejects a turn-detection threshold change while input audio is in progress
         // ("Cannot update a session's turn detection threshold ..."), which is always the
@@ -246,6 +244,31 @@ class BaiduFlexClient(
     fun resumeListening() {
         listeningSuspended = false
     }
+
+    /**
+     * Assistant playout still audible locally. Raise server VAD only while [playbackActive] so echo
+     * is less likely to trip speech_started; restore the default threshold when playout drains.
+     */
+    fun onPlaybackActiveChanged(active: Boolean) {
+        if (playbackActive == active) return
+        playbackActive = active
+        val target = resolveVadThreshold()
+        if (target == vadThreshold) return
+        vadThreshold = target
+        if (!sessionCreated) {
+            DebugVoiceLog.log("vad_threshold_playback deferred active=$active threshold=$target")
+            return
+        }
+        val sent = trySend(BaiduFlexProtocol.sessionUpdate(instructionsWithContext(), voice, speed, vadThreshold))
+        DebugVoiceLog.log("vad_threshold_playback active=$active threshold=$target sent=$sent")
+    }
+
+    private fun resolveVadThreshold(): Double =
+        when {
+            NavigationState.navigating -> BaiduFlexProtocol.NAVIGATION_VAD_THRESHOLD
+            playbackActive -> BaiduFlexProtocol.PLAYBACK_VAD_THRESHOLD
+            else -> BaiduFlexProtocol.DEFAULT_VAD_THRESHOLD
+        }
 
     @Volatile private var listeningSuspended = false
 

@@ -116,6 +116,17 @@ class BaiduFlexProtocolTest {
     }
 
     @Test
+    fun setSpeechOutputToolNamesStopSpeakingIntent() {
+        val tools = JSONObject(BaiduFlexProtocol.sessionUpdate("x")).getJSONObject("session").getJSONArray("tools")
+        val description = (0 until tools.length()).map { tools.getJSONObject(it) }
+            .single { it.getString("name") == "set_speech_output" }
+            .getString("description")
+        assertTrue(description.contains("停止说话"))
+        assertTrue(description.contains("停止說話"))
+        assertTrue(description.contains("不要") || description.contains("确认"))
+    }
+
+    @Test
     fun setSpeechOutputAcceptsOnlySilentOrSpoken() {
         fun call(args: String): DomainVoiceEvent.ToolCall {
             val assembler = FlexFunctionCallAssembler().apply { consume(item("call_mode", "set_speech_output")) }

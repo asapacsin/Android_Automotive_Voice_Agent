@@ -257,13 +257,24 @@ class FeaturePresenceRegressionTest {
     }
 
     @Test
-    fun postSpeechEchoHoldStaysWired() {
-        val controller = "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt"
-        assertContains(controller, "PLAYBACK_UNGATE_DELAY_MS", "ungate delay must stay explicit")
-        assertContains(controller, "POST_SPEECH_ECHO_HOLD_MS", "extra echo hold after mic reopens")
-        assertContains(controller, "holdPostSpeechEcho", "echo hold must reach the microphone port")
-        val capture = "app/src/main/kotlin/com/novadrive/app/voice/PcmAudioCapture.kt"
-        assertContains(capture, "fun holdPostSpeechEcho", "capture must honour the echo blackout")
+    fun fullDuplexBargeInDoesNotMuteMicDuringModelPlayback() {
+        val controller = text("app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt")
+        assertTrue(!controller.contains("PLAYBACK_UNGATE_DELAY_MS")) {
+            "model playback must not delay mic reopen — full-duplex barge-in uses server VAD + AEC"
+        }
+        assertTrue(!controller.contains("microphone.gated = true")) {
+            "model playback must not drop uplink frames"
+        }
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexProtocol.kt",
+            "interrupt_response",
+            "Flex session must allow server-side interruption",
+        )
+        assertContains(
+            "ingress/src/main/kotlin/com/novadrive/ingress/realtime/VoiceSessionController.kt",
+            "private suspend fun bargeIn()",
+            "speech during reply must flush playback",
+        )
     }
 
     // ---- permissions every main feature depends on ----

@@ -96,3 +96,13 @@ about how work is done.
     ([proposal](proposals/HARNESS_PROPOSAL_002-required-scope-provenance.md)). A device,
     flow, or end-to-end PASS counts only while its `evidence_bind` matches the tree;
     `python scripts/test_matrix.py --validate` reports `STALE_BIND` when it does not.
+21. **`DESIGN_BASIS_BEFORE_DIFFICULT_IMPLEMENTATION`.** A non-trivial task must record its
+    design basis in [design_basis.yaml](design_basis.yaml) before it is treated as
+    implementation-cleared. Established repository, platform, vendor, industry, or adapted
+    patterns may clear as `PASS`; unresolved difficulty stays `NEEDS_RESEARCH`; intentional
+    custom architecture requires a complete `NOVEL_REVIEW` rationale — innovation is allowed,
+    not hidden inside `PASS`, and suppressing required behaviour to dodge difficulty is never
+    cleared without an explicit requirement change. Checked by
+    `python scripts/design_basis.py --validate` and `--check <id>`; uncleared entries surface
+    on the work frontier via `discover_work.py`
+    ([proposal](proposals/HARNESS_PROPOSAL_004-design-basis-gate.md)).

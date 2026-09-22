@@ -11,6 +11,8 @@ sealed interface DomainVoiceEvent {
     data class AssistantTranscript(val text: String, val final: Boolean) : DomainVoiceEvent
     data class AudioDelta(val pcm16leBase64: String) : DomainVoiceEvent
     data object AudioDone : DomainVoiceEvent
+    /** A new model reply started on the server (`response.created`). */
+    data object ResponseStarted : DomainVoiceEvent
     data class ResponseDone(val status: String, val reason: String? = null) : DomainVoiceEvent
     data class Interrupted(val reason: String) : DomainVoiceEvent
     data class Error(val code: String, val message: String) : DomainVoiceEvent

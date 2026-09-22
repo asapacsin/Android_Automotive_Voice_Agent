@@ -179,7 +179,9 @@ object NavigationChoiceResolver {
     }
 
     private fun normalise(text: String): String =
-        text.lowercase().filterNot { it.isWhitespace() || it in "。，,.!！?？、“”\"'「」（）()·-—_" }
+        text.lowercase()
+            .replace('滙', '汇')
+            .filterNot { it.isWhitespace() || it in "。，,.!！?？、“”\"'「」（）()·-—_" }
 
     /** What the model reads out: short, numbered, same order as the screen. */
     fun describeDestinations(candidates: List<DestinationCandidate>, limit: Int = 5): String =

@@ -1,0 +1,14 @@
+# Design-basis registry — enforced by scripts/design_basis.py
+#
+# Migration: only entries listed here are gated. Historical capabilities, TEST_MATRIX rows,
+# and existing PASS evidence are NOT backfilled. Absence of a record is not a violation.
+#
+# Add an entry when a non-trivial task needs a design basis before implementation may proceed.
+# Classify triggers with: python scripts/design_basis.py --eval '<json>'
+# Check clearance with:   python scripts/design_basis.py --check <id>
+#
+# status: NOT_REQUIRED | PASS | NEEDS_RESEARCH | NOVEL_REVIEW
+# selected_basis: repo | platform_sdk | vendor | industry | adaptation | custom
+
+schema: 1
+entries: []

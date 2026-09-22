@@ -64,7 +64,7 @@ class MainActivity : Activity() {
         )
         controller =
             VoiceSessionController(
-                context = this,
+                appContext = this,
                 player = player,
                 onUiState = { state, error ->
                     DebugVoiceLog.log("state=$state err=${error ?: "-"}")
@@ -94,6 +94,19 @@ class MainActivity : Activity() {
                     dispatched
                 },
                 onListeningState = { state -> mainHandler.post { if (::screen.isInitialized) screen.bindListening(state) } },
+                onLocalNavigationPick = { choice ->
+                    val args = when (choice) {
+                        is com.novadrive.app.nav.NavigationChoice.Name -> mapOf("name" to choice.text)
+                        is com.novadrive.app.nav.NavigationChoice.Index -> mapOf("index" to choice.position.toString())
+                        is com.novadrive.app.nav.NavigationChoice.Preference -> mapOf("preference" to choice.kind.wire)
+                    }
+                    val call = com.novadrive.ingress.realtime.DomainVoiceEvent.ToolCall(
+                        callId = "local_nav_${System.nanoTime()}",
+                        name = AndroidToolDispatcher.CHOOSE_NAVIGATION_OPTION,
+                        arguments = args,
+                    )
+                    toolDispatcher.dispatch(call)
+                },
             )
 
         VoiceSessionGateway.attach(

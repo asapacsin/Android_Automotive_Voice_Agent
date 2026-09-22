@@ -261,7 +261,7 @@ class SimulationDriver(
     private class RecordingPlayback : PlaybackPort {
         @Volatile private var frames = 0
         override fun start() = Unit
-        override fun enqueue(pcm16le: ByteArray) {
+        override fun enqueue(pcm16le: ByteArray, epoch: Int) {
             frames++
         }
         override fun flush() {

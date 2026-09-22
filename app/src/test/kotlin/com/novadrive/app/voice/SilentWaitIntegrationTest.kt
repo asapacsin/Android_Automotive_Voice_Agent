@@ -73,7 +73,7 @@ class SilentWaitIntegrationTest {
         }
 
         /**
-         * The finished utterance only. While 小诺 talks, the app's microphone is closed to its own
+         * The finished utterance only. While 小诺 talks, uplink stays open for full-duplex barge-in;
          * voice, so no speech-started barge-in precedes 「闭嘴」 here: the cancel must come from it.
          */
         fun transcriptOnly(text: String) {

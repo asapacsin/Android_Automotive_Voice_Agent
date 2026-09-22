@@ -6,6 +6,8 @@ import android.provider.Settings
 import com.novadrive.app.nav.EmbeddedNavigation
 import com.novadrive.app.nav.EmbeddedNavigationController
 import com.novadrive.app.nav.NavigationChoice
+import com.novadrive.app.nav.NavigationLocalPickGuard
+import com.novadrive.app.nav.NavigationPickerIntercept
 import com.novadrive.app.nav.NavigationVoiceOutput
 import com.novadrive.app.nav.NavigationBackends
 import com.novadrive.app.nav.NavigationHostGateway
@@ -37,6 +39,12 @@ interface AndroidActionExecutor {
     /** 「第二个」「选最快的」: picks from the on-screen destination or route list. */
     fun chooseNavigationOption(choice: NavigationChoice): AndroidActionResult =
         AndroidActionResult.Rejected("NAVIGATION_CHOICE_UNAVAILABLE")
+
+    /**
+     * When a picker is on screen, a spoken name that matches exactly one row, or null when the
+     * utterance should go to the model / a new search.
+     */
+    fun matchPickerName(utterance: String): NavigationChoice? = null
 
     /** true: stop talking and wait for the next command (SILENT_WAIT); false: talk normally again. */
     fun setSpeechSilent(silent: Boolean): AndroidActionResult = AndroidActionResult.Rejected("SPEECH_OUTPUT_UNAVAILABLE")
@@ -146,6 +154,29 @@ class AndroidToolDispatcher(
                 val destination = call.arguments["destination"]?.trim().orEmpty()
                 if (destination.isBlank()) return failed(call, "BLANK_DESTINATION")
                 if (destination.length > 120) return failed(call, "DESTINATION_TOO_LONG")
+                if (NavigationLocalPickGuard.consumeNavigateToSuppression()) {
+                    com.novadrive.app.DebugVoiceLog.log("nav_voice_suppress_navigate_to")
+                    return ToolDispatchResult(
+                        null,
+                        null,
+                        successChip = "✓ ${call.name}",
+                        output = JSONObject()
+                            .put("ok", true)
+                            .put("tool", call.name)
+                            .put("status", "destination_already_selected_locally")
+                            .toString(),
+                    )
+                }
+                executor.matchPickerName(destination)?.let { choice ->
+                    val action = executor.chooseNavigationOption(choice)
+                    if (action !is AndroidActionResult.Accepted) return result(call, action)
+                    val args = when (choice) {
+                        is NavigationChoice.Name -> mapOf("name" to choice.text)
+                        is NavigationChoice.Index -> mapOf("index" to choice.position.toString())
+                        is NavigationChoice.Preference -> mapOf("preference" to choice.kind.wire)
+                    }
+                    return navigationResult(call.copy(name = CHOOSE_NAVIGATION_OPTION, arguments = args), action)
+                }
                 // A saved place the driver has not given us is a question, not a search. Letting
                 // it through would send 「回家」 to a POI search, which on 2026-09-19 returned
                 // nothing - and on a different day could return a stranger's address.
@@ -320,6 +351,14 @@ open class CoreActionExecutor(
         } else {
             AndroidActionResult.Rejected("NO_ACTIVE_SESSION")
         }
+
+    override fun matchPickerName(utterance: String): NavigationChoice? =
+        NavigationPickerIntercept.resolve(
+            utterance,
+            navigationFlow.state().value,
+            navigationFlow.destinationCandidates.value,
+            navigationFlow.routeCandidates.value,
+        )
 
     override fun chooseNavigationOption(choice: NavigationChoice): AndroidActionResult =
         when (val outcome = navigationFlow.chooseByVoice(choice)) {

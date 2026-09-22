@@ -52,7 +52,7 @@ object BaiduProtocol {
             "conversation.item.input_audio_transcription.completed" ->
                 listOf(DomainVoiceEvent.UserTranscript(raw.optString("transcript"), true))
             "conversation.item.input_audio_transcription.failed", "error" -> listOf(parseError(raw))
-            "response.created" -> emptyList()
+            "response.created" -> listOf(DomainVoiceEvent.ResponseStarted)
             "response.audio.delta" -> listOf(DomainVoiceEvent.AudioDelta(raw.optString("delta").ifBlank { raw.optString("audio") }))
             "response.audio.done" -> listOf(DomainVoiceEvent.AudioDone)
             "response.audio_transcript.delta" ->

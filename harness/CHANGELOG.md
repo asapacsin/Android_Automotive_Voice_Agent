@@ -2,6 +2,20 @@
 
 Newest first. One line per change, with the evidence that motivated it.
 
+## 2026-09-22 — Best-practice design-basis gate
+
+Agents could invent locally plausible mechanisms (e.g. mute the mic during playback when barge-in
+requires duplex capture) and pass tests before the architecture was wrong.
+
+- **`harness/design_basis.yaml`** — forward-compatible registry; empty `entries` does not
+  invalidate historical evidence.
+- **`scripts/design_basis.py`** — `--validate`, `--eval`, `--check`, `--selftest`; clearance
+  semantics for `PASS` / `NEEDS_RESEARCH` / `NOVEL_REVIEW`; suppression anti-pattern.
+- **`scripts/harness_check.py`** / **`scripts/discover_work.py`** — wired into validation and
+  frontier (`needs_compilation` at `P_SPEC`).
+- **CONSTITUTION rule 21**, thin `.cursor/rules/design-basis-gate.mdc`,
+  **`DesignBasisPolicyTest`**.
+
 ## 2026-09-22 — Runtime evidence_bind invalidates stale device/flow/E2E PASS rows
 
 A device, flow, or end-to-end PASS counts only while `evidence_bind` matches the tree.

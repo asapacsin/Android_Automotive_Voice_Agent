@@ -35,14 +35,19 @@ fun interface MicrophonePort {
 interface PlaybackPort {
     fun start()
 
-    fun enqueue(pcm16le: ByteArray)
+    /** [epoch] must match the session's current [playbackEpoch] or the chunk is dropped. */
+    fun enqueue(pcm16le: ByteArray, epoch: Int)
 
     fun flush()
 
     fun stop()
 
+    /** PCM16 mono samples waiting in the app queue or the platform track buffer. */
     val queuedFrames: Int
         get() = 0
+
+    val playbackActive: Boolean
+        get() = queuedFrames > 0
 }
 
 class InMemoryMicrophonePort : MicrophonePort {
@@ -79,6 +84,8 @@ class InMemoryMicrophonePort : MicrophonePort {
 
 class InMemoryPlaybackPort : PlaybackPort {
     val played = mutableListOf<ByteArray>()
+    var droppedEpochMismatch = 0
+        private set
     var flushCount: Int = 0
         private set
     var started: Boolean = false
@@ -87,31 +94,46 @@ class InMemoryPlaybackPort : PlaybackPort {
         private set
     var lastFlushAtMs: Long? = null
     var clock: SessionClock = SystemSessionClock
+    /** Simulates [AudioTrack] buffer still draining after the app queue is empty. */
+    var trackBufferedFrames: Int = 0
 
     override val queuedFrames: Int
-        get() = played.size
+        get() = played.sumOf { it.size / 2 } + trackBufferedFrames
+
+    override val playbackActive: Boolean
+        get() = queuedFrames > 0
 
     override fun start() {
         started = true
         stopped = false
         played.clear()
+        trackBufferedFrames = 0
     }
 
-    override fun enqueue(pcm16le: ByteArray) {
-        if (started && !stopped) {
-            played += pcm16le
+    override fun enqueue(pcm16le: ByteArray, epoch: Int) {
+        if (!started || stopped) return
+        if (epoch != acceptEpoch) {
+            droppedEpochMismatch += 1
+            return
         }
+        played += pcm16le
     }
+
+    private var acceptEpoch = 0
 
     override fun flush() {
         flushCount += 1
         lastFlushAtMs = clock.nowMs()
         played.clear()
+        trackBufferedFrames = 0
+        acceptEpoch += 1
     }
 
     override fun stop() {
         stopped = true
         started = false
         played.clear()
+        trackBufferedFrames = 0
+        acceptEpoch = 0
     }
 }

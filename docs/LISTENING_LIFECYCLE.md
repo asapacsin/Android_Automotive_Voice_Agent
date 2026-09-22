@@ -15,10 +15,11 @@ session exists.
 session, `VoiceSessionController.setCaptureSuspended` (ingress), which stops capture, drops queued
 audio and blocks every path that would re-arm capture (including reconnect `SessionReady`).
 
-**Temporary suppression is a different thing** and is unchanged: while 小诺's reply plays
-(`gated`) or navigation guidance plays (`guidanceGated`, P13) frames are dropped, but the state stays
-ACTIVE and upload resumes when the audio ends. Neither gate touches the lifecycle, and the lifecycle
-does not touch them.
+**Temporary suppression is a different thing** and is unchanged: while navigation guidance plays
+(`guidanceGated`, P13) frames are dropped, but listening stays ACTIVE and upload resumes when guidance
+ends. Model reply audio does **not** mute the microphone: Flex `interrupt_response`, shared-session
+platform AEC (`VoiceAudioSession`), and a playback-scoped server VAD threshold handle barge-in and
+echo. Neither gate touches the lifecycle, and the lifecycle does not touch them.
 
 ## Timeouts (`ListeningTimeouts`)
 
@@ -144,8 +145,9 @@ Timeouts, all in `ListeningTimeouts` (app/voice/ListeningLifecycle.kt):
 - 「可以说话了」 is no longer a special phrase: in SILENT_WAIT it is simply the next command.
 - The status row shows 🎙 聆听中 / 🤫 静默中，仍在听 / 💤 休眠中 / 💤 休眠中（已断开）; a tap sleeps from
   ACTIVE and wakes from every other state.
-- While 小诺 talks the microphone is closed to its own voice, so 「闭嘴」 said over a reply is not
-  heard; the wake word cuts a reply off (`wake_interrupts_reply`), after which 「闭嘴」 is heard.
+- While 小诺 talks the microphone **stays open** to Baidu (full-duplex). Server VAD + `interrupt_response`
+  cancel the reply when the driver speaks; `response.cancel` and local playback flush follow
+  `input_audio_buffer.speech_started`. Echo is handled by shared-session AEC, not by muting the mic.
 
 Device (synthetic speech, 2026-09-17): 导航去珠海站 → 「闭嘴」 → SILENT_WAIT → 「第二个」 → ACTIVE, the
 choice executed and was answered, no wake word; 「闭嘴」 + 20 s → SLEEP (`silent_wait_timeout`);

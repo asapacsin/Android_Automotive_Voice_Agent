@@ -397,6 +397,37 @@ class VoiceSessionControllerTest {
         }
 
     @Test
+    fun flexSpeechStartedFlushesPlaybackCancelsProviderAndKeepsMic() =
+        runTest(UnconfinedTestDispatcher()) {
+            val clock = FakeClock(5_000)
+            val provider = FakeRealtimeVoiceProvider(clock)
+            val mic = InMemoryMicrophonePort()
+            val playback = InMemoryPlaybackPort().also { it.clock = clock }
+            val controller =
+                VoiceSessionController(
+                    provider = provider,
+                    microphone = mic,
+                    playback = playback,
+                    scope = this,
+                    clock = clock,
+                    config = RealtimeSessionConfig(VoiceProviderId.BAIDU_FLEX, VoiceCatalog.BAIDU_FLEX),
+                )
+            controller.start()
+            mic.emit(byteArrayOf(9, 8))
+            provider.emit(DomainVoiceEvent.AudioDelta("AAAA"))
+            clock.advance(40)
+            provider.emit(DomainVoiceEvent.SpeechStarted)
+            assertTrue(playback.flushCount >= 1)
+            assertEquals(1, provider.cancelCount)
+            mic.emit(byteArrayOf(7, 6))
+            assertEquals(
+                listOf(byteArrayOf(9, 8).toList(), byteArrayOf(7, 6).toList()),
+                provider.sentChunks.map { it.toList() },
+            )
+            controller.stop()
+        }
+
+    @Test
     fun baiduSpeechStartedFlushesPlaybackWithoutClientCancelAndKeepsMic() =
         runTest(UnconfinedTestDispatcher()) {
             val clock = FakeClock(5_000)

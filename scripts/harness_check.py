@@ -24,6 +24,8 @@ REQUIRED = [
     "harness/SKILL_POLICY.md",
     "harness/CHANGELOG.md",
     "harness/AUDIT.md",
+    "harness/design_basis.yaml",
+    "harness/proposals/HARNESS_PROPOSAL_004-design-basis-gate.md",
     "config/capabilities.yaml",
     "docs/ARCHITECTURE.md",
     "docs/INVARIANTS.md",
@@ -105,14 +107,16 @@ def main():
     try:
         sys.path.insert(0, os.path.join(REPO, "scripts"))
         import test_matrix
+        import design_basis
         failures.extend("TEST_MATRIX.yaml: %s" % p for p in test_matrix.validate())
+        failures.extend("design_basis.yaml: %s" % p for p in design_basis.validate_registry())
         failures.extend(generated_views_current())
     except Exception as exc:
         failures.append("the test registry could not be checked: %r" % (exc,))
 
     # The verdict rules must hold: an incomplete run proving itself unable to be PASS is
     # what keeps a future 0.6.4-shaped overclaim from ever reaching a report.
-    for script in ("acceptance.py", "test_matrix.py", "model_route.py"):
+    for script in ("acceptance.py", "test_matrix.py", "model_route.py", "design_basis.py"):
         try:
             proc = subprocess.run(
                 [sys.executable, os.path.join(REPO, "scripts", script), "--selftest"],
