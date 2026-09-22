@@ -99,9 +99,7 @@ class ActionClaimGuard {
             nudged = true
             return nudgeFor(request)
         }
-        // A real capability-help answer names the same device nouns as an action claim. Do not
-        // treat 「我能帮你导航、放音乐」 as an unverified car action (P28).
-        if (isHelpRequest(request) && answersCapabilityHelp(reply)) return null
+        if (isHelpRequest(request)) return null
         return unverifiedClaim(reply, request)?.also { nudged = true }
     }
 
@@ -205,6 +203,7 @@ class ActionClaimGuard {
             catalog: CapabilityCatalog = ProductCapabilities,
         ): Boolean {
             val intent = resolvedIntent(text)
+            if (intent?.capabilityId == CapabilityIds.SPEECH_CAPABILITY_HELP) return false
             if (intent != null) return catalog.isSupported(intent.capabilityId)
             return CONTROL_WORDS.any { it in text } ||
                 ContextResolver.isImplicitComfortRequest(text) ||
@@ -345,9 +344,13 @@ class ActionClaimGuard {
                 "只用一句话如实告诉用户：刚才没有听清楚，也没有执行任何操作，请再说一遍。"
 
         /** Self-contained: it may land in a fresh conversation after a reset. */
-        fun nudgeFor(request: String): String =
+        fun nudgeFor(
+            request: String,
+            catalog: CapabilityCatalog = ProductCapabilities,
+        ): String =
             if (isHelpRequest(request)) {
-                HELP_CAPABILITY_NUDGE
+                val summary = ProductCapabilities.spokenHelpSummary(catalog)
+                "用户在问你能做什么。不要说没听清或不理解。不要调用任何工具。请原样说出：$summary"
             } else if (isUnsupportedRequest(request)) {
                 "用户刚才说：「$request」。你没有能完成这个请求的工具，上一句说已经完成是错误的。" +
                     "不要调用任何工具，只用一句话向用户更正：这个操作没有执行，暂时不支持。"
@@ -357,31 +360,45 @@ class ActionClaimGuard {
                     "不要调用无关的工具，然后只根据工具返回的结果简短如实回答。"
             }
 
-        /**
-         * Owner report 2026-09-20: 「你能做什么」 was answered as if it were noise / 不理解.
-         * Capability truth lives in [ProductCapabilities]; this only recognises the *question*.
-         */
-        fun isHelpRequest(text: String): Boolean = HELP_CUES.any { it in text }
+        /** Recognised by [UtteranceIntentResolver] → [CapabilityIds.SPEECH_CAPABILITY_HELP]. */
+        fun isHelpRequest(text: String): Boolean =
+            UtteranceIntentResolver.product().resolve(text)?.capabilityId ==
+                CapabilityIds.SPEECH_CAPABILITY_HELP
 
-        /** A reply that actually names what this car can do, not a repair or blank refusal. */
-        fun answersCapabilityHelp(reply: String): Boolean {
-            if (refuses(reply) && HELP_CAPABILITY_WORDS.none { it in reply }) return false
-            return HELP_CAPABILITY_WORDS.count { it in reply } >= 2
+        /** A reply that actually names supported catalog groups, not a repair or blank refusal. */
+        fun answersCapabilityHelp(
+            reply: String,
+            catalog: CapabilityCatalog = ProductCapabilities,
+        ): Boolean {
+            val nouns = capabilityHelpNouns(catalog)
+            if (refuses(reply) && nouns.none { it in reply }) return false
+            return nouns.count { it in reply } >= 2
         }
 
-        const val HELP_CAPABILITY_NUDGE =
-            "用户在问你能做什么。不要说没听清或不理解。" +
-                "不要调用任何工具。用一两句口语说明你能：导航去某地或回家/公司、播放或关闭音乐、调节空调、" +
-                "看摄像头画面、打电话（需确认）、打开地图或设置；不要列长清单，不要提模型或提示词。"
-
-        private val HELP_CUES = listOf(
-            "你能做什么", "你会做什么", "你可以做什么", "你可以做什麼", "你能做什麼",
-            "有什么功能", "有什麼功能", "你会什么", "你会什麼", "能帮我做什么", "能幫我做什麼",
-            "what can you do", "what do you support",
-        )
-
-        private val HELP_CAPABILITY_WORDS = listOf(
-            "导航", "音乐", "空调", "摄像头", "电话", "地图", "设置", "回家", "公司",
-        )
+        private fun capabilityHelpNouns(catalog: CapabilityCatalog): List<String> {
+            val nouns = mutableListOf<String>()
+            if (catalog.isSupported("navigation.search_place") ||
+                catalog.isSupported("navigation.navigate_to_saved_place")
+            ) {
+                nouns += "导航"
+            }
+            if (catalog.isSupported("media.play_music") || catalog.isSupported("media.stop_music")) {
+                nouns += "音乐"
+            }
+            if (catalog.ids().any { it.startsWith("climate.") && catalog.isSupported(it) }) {
+                nouns += "空调"
+            }
+            if (catalog.isSupported("vision.describe_camera_view")) {
+                nouns += "摄像头"
+            }
+            if (catalog.isSupported("phone.place_call")) {
+                nouns += "电话"
+            }
+            if (catalog.isSupported("apps.open_maps") || catalog.isSupported("apps.open_settings")) {
+                nouns += "地图"
+                nouns += "设置"
+            }
+            return nouns
+        }
     }
 }

@@ -173,6 +173,13 @@ speech:
       Reached `human` the hard way. Two earlier claims here were false and are kept in mind rather
       than deleted: "Engine initialises" was recorded while the engine ended every session with
       code 200061, and `device` was recorded from synthesized audio. A real voice has now done it.
+  capability_help:
+    tool: null
+    verified: unit
+    recognised_by: UtteranceIntentResolver
+    required_behaviour: >
+      When the driver asks what the assistant can do, reply with [ProductCapabilities.spokenHelpSummary]
+      (or equivalent nouns from supported groups). Never 没听清 / 不理解 / invented 音量·天气.
 
 phone:
   place_call:

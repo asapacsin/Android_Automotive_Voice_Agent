@@ -12,7 +12,7 @@ import java.io.File
  * [.cursor/rules/hybrid-model-routing.mdc](../../.cursor/rules/hybrid-model-routing.mdc)).
  *
  * The failure this prevents: a session treats "difficult" or "large" as a reason to spend
- * Grok 4.6 High, or treats "needs Grok" as a human stop, or continues through GROK_REQUIRED
+ * Grok 4.7 Extra High, or treats "needs Grok" as a human stop, or continues through GROK_REQUIRED
  * without delegation, or silently downgrades when Grok is unavailable, or forks a second
  * A–F / H1–H8 list that drifts. The mechanism is the classifier script (non-zero exit,
  * fail-closed, ledger) plus the always-apply rule and pinned subagent `model:` fields.
@@ -90,13 +90,34 @@ class ModelRoutingPolicyTest {
         }
         val rule = text(".cursor/rules/hybrid-model-routing.mdc")
         assertTrue(rule.contains("composer-2.5[fast=false]"))
-        assertTrue(rule.contains("never Composer Fast") || rule.contains("Never Composer Fast"))
+        assertTrue(rule.contains("No Fast mode") || rule.contains("never Composer Fast"))
+        // Absolute ban: no labor agent may pin any *-fast slug.
+        for (path in listOf(
+            ".cursor/agents/implementer.md",
+            ".cursor/agents/repo-explorer.md",
+            ".cursor/agents/grok-high.md",
+        )) {
+            val modelLines = text(path).lines()
+                .dropWhile { it.trim() != "---" }
+                .drop(1)
+                .takeWhile { it.trim() != "---" }
+                .map { it.trim() }
+                .filter { it.startsWith("model:") }
+            assertTrue(modelLines.isNotEmpty(), "$path must declare model:")
+            for (line in modelLines) {
+                val value = line.substringAfter("model:").trim().lowercase()
+                assertFalse(
+                    value.endsWith("-fast") || value == "composer-2.5-fast",
+                    "$path must not pin Fast: $line",
+                )
+            }
+        }
     }
 
     @Test
     fun grokHighIsPinnedAndReadOnly() {
         val grok = text(".cursor/agents/grok-high.md")
-        assertTrue(grok.contains("model: cursor-grok-4.6-high"), "must match this Cursor build's slug")
+        assertTrue(grok.contains("model: grok-4.7-xhigh"), "must match this Cursor build's slug")
         assertTrue(grok.contains("readonly: true"), "Grok High plans/reviews; DEFAULT implements")
         assertTrue(
             grok.contains("must **not** launch `grok-high`") ||
@@ -105,7 +126,7 @@ class ModelRoutingPolicyTest {
             "grok-high must forbid launching itself",
         )
         val rule = text(".cursor/rules/hybrid-model-routing.mdc")
-        assertTrue(rule.contains("cursor-grok-4.6-high"))
+        assertTrue(rule.contains("grok-4.7-xhigh"))
         assertTrue(rule.contains("grok-high"))
         assertTrue(rule.contains("BLOCKED_GROK_UNAVAILABLE"))
         assertTrue(rule.contains("fail closed") || rule.contains("fail-closed") || rule.contains("Fail-closed"))

@@ -1,6 +1,7 @@
 package com.novadrive.app.voice
 
 import com.novadrive.contracts.CapabilityCatalog
+import com.novadrive.contracts.CapabilityIds
 import com.novadrive.contracts.ProductCapabilities
 
 /**
@@ -66,10 +67,20 @@ class DriverTurn(val epoch: Long) {
 
         /** Chat, a question, a choice from a list. Its truth does not depend on execution. */
         CONVERSATION,
+
+        /** 「你能做什么」 / capability inventory — reply must name supported groups, not claim action. */
+        CAPABILITY_HELP,
     }
 
     /** Why the reply is being held. Reported in logs so a future agent can see the mechanism. */
-    enum class HoldReason { NONE, PHANTOM_AUDIO, NO_TOOL_REQUEST, AWAITING_EXECUTION_PROOF, UNCLASSIFIED_CLAIM }
+    enum class HoldReason {
+        NONE,
+        PHANTOM_AUDIO,
+        NO_TOOL_REQUEST,
+        AWAITING_EXECUTION_PROOF,
+        UNCLASSIFIED_CLAIM,
+        CAPABILITY_HELP,
+    }
 
     sealed interface Verdict {
         /** Play and show what was held. */
@@ -141,6 +152,7 @@ class DriverTurn(val epoch: Long) {
 
     private fun decideHold(contextAwaitingAnswer: Boolean): HoldReason {
         if (proven) return HoldReason.NONE
+        if (kind == Kind.CAPABILITY_HELP) return HoldReason.CAPABILITY_HELP
         // An action claim always needs proof. Measured on device 2026-09-18: with a route list on
         // screen, `contextAwaitingAnswer` exempted the whole turn, and a second 「导航已开始。」 was
         // spoken for a navigation that had not started. What is on screen says nothing about
@@ -162,6 +174,7 @@ class DriverTurn(val epoch: Long) {
         }
         if (contextAwaitingAnswer) return HoldReason.NONE
         return when (kind) {
+            Kind.CAPABILITY_HELP -> HoldReason.CAPABILITY_HELP
             // No tool exists, so proof never can. Hold until the wording is known to be honest.
             Kind.NO_TOOL_ACTION, Kind.REALTIME_INFO -> HoldReason.NO_TOOL_REQUEST
             // Handled above: an action claim needs proof whatever is on screen.
@@ -192,10 +205,9 @@ class DriverTurn(val epoch: Long) {
         if (holdReason == HoldReason.PHANTOM_AUDIO) holdReason = HoldReason.NONE
         // The transcript is what classifies the turn, and it usually arrives after the response
         // has started - so a hold taken in ignorance is re-decided now that the kind is known.
-        // UNCLASSIFIED_CLAIM is exactly such a hold: leaving it in place would keep treating a
-        // known ACTION as unclassified, and an action claim released by execution proof mid-
-        // response would instead wait for the response to end.
-        if (holdReason == HoldReason.UNCLASSIFIED_CLAIM) holdReason = HoldReason.NONE
+            // UNCLASSIFIED_CLAIM is exactly such a hold: leaving it in place would keep treating a
+            // known CAPABILITY_HELP (or ACTION) as unclassified.
+            if (holdReason == HoldReason.UNCLASSIFIED_CLAIM) holdReason = HoldReason.NONE
         if (holdReason == HoldReason.NONE && phase == Phase.RESPONDING) {
             holdReason = decideHold(contextAwaitingAnswer = false)
         }
@@ -253,6 +265,7 @@ class DriverTurn(val epoch: Long) {
             HoldReason.NO_TOOL_REQUEST,
             HoldReason.AWAITING_EXECUTION_PROOF,
             HoldReason.UNCLASSIFIED_CLAIM,
+            HoldReason.CAPABILITY_HELP,
             -> Verdict.Wait
         }
     }
@@ -312,6 +325,13 @@ class DriverTurn(val epoch: Long) {
                 }
             }
 
+            HoldReason.CAPABILITY_HELP -> when {
+                ActionClaimGuard.answersCapabilityHelp(reply) ->
+                    Verdict.Release("capability_help")
+                else ->
+                    Verdict.Drop("help_incomplete", ActionClaimGuard.nudgeFor(requestText))
+            }
+
             // The driver said something the app could not classify - usually because the
             // transcript is wrong. The reply is judged on its own terms: if it describes acting on
             // something in this car and nothing ran, the driver never hears it. The correction is
@@ -319,13 +339,6 @@ class DriverTurn(val epoch: Long) {
             HoldReason.UNCLASSIFIED_CLAIM -> when {
                 toolCalled || hadToolCallInResponse -> Verdict.Release("tool_called")
                 proven -> Verdict.Release("execution_proved")
-                // P28: a capability list names the same nouns as an action claim. The hold would
-                // silence 「我能帮你导航、放音乐」 before ActionClaimGuard's help exemption ran.
-                ActionClaimGuard.isHelpRequest(requestText) &&
-                    ActionClaimGuard.answersCapabilityHelp(reply) ->
-                    Verdict.Release("capability_help")
-                ActionClaimGuard.isHelpRequest(requestText) ->
-                    Verdict.Drop("help_incomplete", ActionClaimGuard.nudgeFor(requestText))
                 ActionClaimGuard.claimsDone(reply) || ActionClaimGuard.describesCarAction(reply) ->
                     Verdict.Drop("unverified_claim")
                 else -> Verdict.Release("no_claim_made")
@@ -389,6 +402,8 @@ class DriverTurn(val epoch: Long) {
             text: String,
             catalog: CapabilityCatalog = ProductCapabilities,
         ): Kind = when {
+            UtteranceIntentResolver.product().resolve(text)?.capabilityId ==
+                CapabilityIds.SPEECH_CAPABILITY_HELP -> Kind.CAPABILITY_HELP
             ActionClaimGuard.isRealtimeInfoRequest(text) -> Kind.REALTIME_INFO
             ActionClaimGuard.isUnsupportedRequest(text, catalog) -> Kind.NO_TOOL_ACTION
             ActionClaimGuard.isControlRequest(text, catalog) ||

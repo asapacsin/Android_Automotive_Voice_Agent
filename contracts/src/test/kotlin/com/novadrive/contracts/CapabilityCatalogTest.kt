@@ -24,6 +24,22 @@ class CapabilityCatalogTest {
     }
 
     @Test
+    fun spokenHelpSummaryReflectsSupportedGroupsOnly() {
+        val full = ProductCapabilities.spokenHelpSummary()
+        assertTrue(full.contains("导航"))
+        assertTrue(full.contains("音乐"))
+        assertTrue(full.contains("空调"))
+        assertFalse(full.contains("音量"))
+        assertFalse(full.contains("天气"))
+        assertFalse(full.contains("下一首"))
+
+        val noPhone = ProductCapabilities.overlay(mapOf(CapabilityIds.PHONE_PLACE_CALL to false))
+        val summary = ProductCapabilities.spokenHelpSummary(noPhone)
+        assertFalse(summary.contains("电话"))
+        assertTrue(summary.contains("导航"))
+    }
+
+    @Test
     fun fakePhonePortDoesNotNeedAndroid() {
         val zhang = ResolvedContact("1", "张三", "13800000000")
         val port = FakePhonePort(contacts = listOf(zhang))

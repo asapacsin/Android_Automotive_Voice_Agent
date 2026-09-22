@@ -108,9 +108,10 @@ who may certify work. It only splits Cursor labor. The **authoritative** policy 
 **enforcement** is [`scripts/model_route.py`](scripts/model_route.py) — do not keep a
 second A–F / H1–H8 list here.
 
-- **DEFAULT EXECUTOR:** Composer 2.5 Standard (`composer-2.5[fast=false]`, never Fast) —
+- **DEFAULT EXECUTOR:** Composer 2.5 Standard (`composer-2.5[fast=false]`) —
   this chat when that is the picker, plus `repo-explorer` / `implementer`.
-- **HIGH-REASONING:** Cursor Grok 4.6 High (`cursor-grok-4.6-high`) via `grok-high`,
+  **No Fast mode** — never Composer Fast, never `composer-2.5-fast`, never any Grok `*-fast`.
+- **HIGH-REASONING:** Grok 4.7 Extra High (`grok-4.7-xhigh`) via `grok-high`,
   **only** when the classifier returns `GROK_REQUIRED` **or**
   `TERMINATION_REVIEW_REQUIRED`. The ordinary executor must not
   continue the gated portion; if Grok cannot be invoked the result is

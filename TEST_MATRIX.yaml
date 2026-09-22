@@ -1666,22 +1666,24 @@ tests:
 
   - id: HELP-001
     capability: dialogue_context
-    name: 「你能做什么」 gets a short capability answer
-    purpose: "P28: capability help was answered as noise / 不理解"
+    name: 「你能做什么」 / 「你能干啥」 gets a short capability answer
+    purpose: "P28: capability help was answered as noise / 不理解 (colloquial 干啥 included)"
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: PASS
+    status: INVESTIGATING
     release_blocking: true
-    prerequisites: ["debug APK", "live Baidu session", "speech-harness clip"]
+    prerequisites: ["debug APK", "live Baidu session", "speech-harness clip or live mic"]
     procedure:
-      - "python tools/speech-harness/run_scenarios.py --only S21 --wait 8"
+      - "python tools/speech-harness/run_scenarios.py --only S21 --wait 8 OR live speak:你能干啥"
       - "assert transcript names 导航 and one other real capability"
-      - "forbid 没听清 / 不理解"
+      - "forbid 没听清 / 不理解 / 没有听清楚"
+      - "log TURN_RELEASE reason=capability_help OR TURN_DROP help_incomplete then good second turn"
       - "do not use --wait 22: later real-mic garbage is MIC-CABIN, not this row"
     pass_criteria:
-      - "reply names at least navigation and one other real capability"
-      - "reply is not 没听清 / 不理解"
+      - "reply names at least navigation and one other real capability from supported groups"
+      - "reply is not 没听清 / 不理解 / 没有听清楚"
+      - "never TURN_DROP unverified_claim for a recognised help utterance"
     evidence:
       - "2026-09-21 device 2391ff70 S21 --wait 8 PASS"
       - "log:NovaVoice/TURN_RELEASE epoch=1 reason=capability_help"
@@ -1693,17 +1695,22 @@ tests:
 
   - id: HELP-UNIT-001
     capability: dialogue_context
-    name: Help-request nudge is unit-covered
-    purpose: "P28 regression without a device"
+    name: Help-request grammar and nudge are unit-covered
+    purpose: "P28 regression without a device — grammar, CAPABILITY_HELP kind, scripted speak"
     type: unit
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: PASS
+    status: INVESTIGATING
     release_blocking: true
     prerequisites: []
-    procedure: ["gradlew :app:testDebugUnitTest --tests *ActionClaimGuardTest*"]
-    pass_criteria: ["aHelpQuestionThatIsMisheardGetsACapabilityNudge and aHelpAnswerThatListsCapabilitiesIsLeftAlone pass"]
-    evidence: ["ActionClaimGuardTest added 2026-09-20"]
+    procedure:
+      - "gradlew :app:testDebugUnitTest --tests *ActionClaimGuardTest* *DriverTurnTest* *UtteranceIntentResolverTest*"
+      - "gradlew :contracts:test --tests *CapabilityCatalogTest.spokenHelpSummary*"
+    pass_criteria:
+      - "colloquialGanSha / colloquialGanShaMustNotBecomeUnheard assert CAPABILITY_HELP and help_incomplete with 原样"
+      - "UtteranceIntentResolver rejects 你干啥 / 干啥 / 你能帮我导航吗"
+      - "spokenHelpSummary never names 音量/天气"
+    evidence: ["UtteranceIntentResolver grammar + DriverTurn.CAPABILITY_HELP 2026-09-22"]
     related: [P28]
     last_run: {at: 2026-09-20, result: PASS}
 

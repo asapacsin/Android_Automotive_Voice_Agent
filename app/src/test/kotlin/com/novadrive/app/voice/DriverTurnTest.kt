@@ -177,7 +177,9 @@ class DriverTurnTest {
         val t = DriverTurn(epoch = 1)
         t.onResponseStarted(doubtfulAudio, false)
         t.hold("audio")
-        t.onUserTranscript("你能做什么。") { DriverTurn.Kind.CONVERSATION }
+        t.onUserTranscript("你能做什么。") { DriverTurn.classify(it) }
+        assertEquals(DriverTurn.Kind.CAPABILITY_HELP, t.kind)
+        assertEquals(DriverTurn.HoldReason.CAPABILITY_HELP, t.holdReason)
         val verdict = t.onResponseDone(
             "我能帮你导航、放音乐、调空调，也能看摄像头和打电话。",
             hadToolCallInResponse = false,
@@ -190,10 +192,29 @@ class DriverTurnTest {
         val t = DriverTurn(epoch = 1)
         t.onResponseStarted(doubtfulAudio, false)
         t.hold("audio")
-        t.onUserTranscript("你能做什么。") { DriverTurn.Kind.CONVERSATION }
+        t.onUserTranscript("你能做什么。") { DriverTurn.classify(it) }
+        assertEquals(DriverTurn.Kind.CAPABILITY_HELP, t.kind)
         val verdict = t.onResponseDone("没听清，再说一遍。", hadToolCallInResponse = false)
         assertEquals("help_incomplete", (verdict as DriverTurn.Verdict.Drop).reason)
         assertTrue(verdict.correction?.contains("导航") == true)
+        assertTrue(verdict.correction?.contains("原样") == true)
+        assertTrue(verdict.correction?.contains("没有听清楚") == false)
+    }
+
+    @Test
+    fun colloquialGanShaMustNotBecomeUnheard() {
+        // Device 2026-09-22: transcript=你能干啥 → TURN_DROP unverified_claim → unheard nudge.
+        val t = DriverTurn(epoch = 1)
+        t.onResponseStarted(doubtfulAudio, false)
+        t.hold("audio")
+        t.onUserTranscript("你能干啥。") { DriverTurn.classify(it) }
+        assertEquals(DriverTurn.Kind.CAPABILITY_HELP, t.kind)
+        assertEquals(DriverTurn.HoldReason.CAPABILITY_HELP, t.holdReason)
+        val verdict = t.onResponseDone("好的，我来帮你处理一下。", hadToolCallInResponse = false)
+        assertEquals("help_incomplete", (verdict as DriverTurn.Verdict.Drop).reason)
+        assertTrue(verdict.correction?.contains("不要说没听清") == true)
+        assertTrue(verdict.correction?.contains("原样") == true)
+        assertTrue(verdict.correction?.contains("没有听清楚") == false)
     }
 
     @Test
@@ -268,9 +289,11 @@ class DriverTurnTest {
 
     @Test
     fun classificationRoutesEachRequestToWhatItsTruthDependsOn() {
+        assertEquals(DriverTurn.Kind.CAPABILITY_HELP, DriverTurn.classify("你能干啥"))
         assertEquals(DriverTurn.Kind.REALTIME_INFO, DriverTurn.classify("今天天气怎么样"))
         assertEquals(DriverTurn.Kind.NO_TOOL_ACTION, DriverTurn.classify("把音量调大一点"))
         assertEquals(DriverTurn.Kind.ACTION, DriverTurn.classify("导航去珠海站"))
+        assertEquals(DriverTurn.Kind.ACTION, DriverTurn.classify("你能帮我导航吗"))
         assertEquals(DriverTurn.Kind.ACTION, DriverTurn.classify("打电话给张三"))
         assertEquals(DriverTurn.Kind.ACTION, DriverTurn.classify("拨打张三电话"))
         assertEquals(DriverTurn.Kind.CONVERSATION, DriverTurn.classify("你好，你是谁"))

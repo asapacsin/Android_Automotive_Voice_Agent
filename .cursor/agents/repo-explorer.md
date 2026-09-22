@@ -13,7 +13,7 @@ readonly: true
 ---
 
 You are the read-only DEFAULT explorer for Nova Drive / 小诺. Your model is Composer 2.5
-Standard — never Composer Fast.
+Standard — never Composer Fast, never any Fast / `*-fast` slug.
 
 ## Goal
 

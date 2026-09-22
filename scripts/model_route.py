@@ -16,7 +16,7 @@ GROK_REQUIRED, and a missing/unpinned Grok agent fails closed as BLOCKED_GROK_UN
 
 **No agent may authorize its own termination.** Any terminal-looking state (frontier exhausted,
 blocked on human/external, task/milestone done, standing by, final summary) requires a
-MAX_GROK (`cursor-grok-4.6-high`) hostile termination review. Only
+MAX_GROK (`grok-4.7-xhigh`) hostile termination review. Only
 `TERMINAL_APPROVED` + matching fingerprints + single-use consume may end a run. Anything else
 continues or fails closed — never silent DEFAULT self-approval.
 
@@ -40,7 +40,12 @@ from datetime import datetime, timezone
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GROK_AGENT = os.path.join(REPO, ".cursor", "agents", "grok-high.md")
-GROK_PIN = "model: cursor-grok-4.6-high"
+GROK_PIN = "model: grok-4.7-xhigh"
+DEFAULT_PIN = "model: composer-2.5[fast=false]"
+DEFAULT_AGENTS = (
+    os.path.join(REPO, ".cursor", "agents", "implementer.md"),
+    os.path.join(REPO, ".cursor", "agents", "repo-explorer.md"),
+)
 DEFAULT_LEDGER = os.path.join(REPO, ".local-agent-memory", "model_route_ledger.json")
 
 ROUTE_DEFAULT = "DEFAULT"
@@ -208,14 +213,54 @@ def normalize_features(raw):
     return out
 
 
+def _model_frontmatter_lines(body: str):
+    """Yield `model:` lines from Cursor agent frontmatter (between --- fences)."""
+    if not body.startswith("---"):
+        return
+    end = body.find("\n---", 3)
+    block = body[3:end] if end != -1 else body[3:]
+    for line in block.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("model:"):
+            yield stripped
+
+
+def _is_fast_model_pin(model_line: str) -> bool:
+    """True if the pin is any Fast / *-fast labor slug (Composer or Grok)."""
+    value = model_line.split(":", 1)[-1].strip().lower()
+    if "fast=false" in value:
+        return False
+    return value.endswith("-fast") or value == "composer-2.5-fast" or " fast" in value
+
+
+def probe_no_fast_pins(repo=REPO):
+    """Fail closed if any labor agent is pinned to a Fast model."""
+    paths = [
+        os.path.join(repo, ".cursor", "agents", "grok-high.md"),
+        os.path.join(repo, ".cursor", "agents", "implementer.md"),
+        os.path.join(repo, ".cursor", "agents", "repo-explorer.md"),
+    ]
+    for path in paths:
+        if not os.path.isfile(path):
+            return False, f"missing {os.path.relpath(path, repo)}"
+        body = open(path, encoding="utf-8").read()
+        for line in _model_frontmatter_lines(body):
+            if _is_fast_model_pin(line):
+                return False, f"{os.path.basename(path)} pins Fast model: {line}"
+    return True, "no Fast model pins on labor agents"
+
+
 def probe_grok(repo=REPO):
     path = os.path.join(repo, ".cursor", "agents", "grok-high.md")
     if not os.path.isfile(path):
         return False, "missing .cursor/agents/grok-high.md"
     body = open(path, encoding="utf-8").read()
     if GROK_PIN not in body:
-        return False, "grok-high is not pinned to cursor-grok-4.6-high"
-    return True, "grok-high pinned to cursor-grok-4.6-high"
+        return False, "grok-high is not pinned to grok-4.7-xhigh"
+    ok_fast, why_fast = probe_no_fast_pins(repo)
+    if not ok_fast:
+        return False, why_fast
+    return True, "grok-high pinned to grok-4.7-xhigh"
 
 
 def collect_triggers(features):
@@ -1485,6 +1530,15 @@ def selftest():
     # Probe: the pinned file in this repo must look available.
     available, why = probe_grok(REPO)
     check("probe_grok_pin", available, why)
+    no_fast, no_fast_why = probe_no_fast_pins(REPO)
+    check("probe_no_fast_pins", no_fast, no_fast_why)
+    check(
+        "fast_slug_detected",
+        _is_fast_model_pin("model: composer-2.5-fast")
+        and _is_fast_model_pin("model: grok-4.7-xhigh-fast")
+        and not _is_fast_model_pin("model: composer-2.5[fast=false]")
+        and not _is_fast_model_pin("model: grok-4.7-xhigh"),
+    )
 
     results.extend(_termination_selftest())
 
@@ -1531,7 +1585,7 @@ def main(argv=None):
     parser.add_argument(
         "--already-grok",
         action="store_true",
-        help="parent picker is already Grok 4.6 High; reason here, do not launch grok-high",
+        help="parent picker is already Grok 4.7 Extra High; reason here, do not launch grok-high",
     )
     parser.add_argument(
         "--verdict",

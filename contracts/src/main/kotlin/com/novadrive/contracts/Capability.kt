@@ -65,6 +65,7 @@ object CapabilityIds {
     const val MEDIA_LIBRARY = "unsupported.media_library"
     const val MEDIA_NEXT_TRACK = "media.next_track"
     const val REALTIME_INFO = "unsupported.realtime_weather_traffic_news"
+    const val SPEECH_CAPABILITY_HELP = "speech.capability_help"
 }
 
 /**
@@ -99,6 +100,7 @@ object ProductCapabilities : CapabilityCatalog {
             rec("speech.sleep", "end_conversation", true),
             rec("speech.interrupt_tts_by_voice", null, false),
             rec("speech.wake_word", null, true),
+            rec("speech.capability_help", null, true),
             rec("phone.place_call", "place_call", true),
             rec("phone.call_without_sim", "place_call", true),
             rec("apps.open_maps", "open_app", true),
@@ -113,6 +115,39 @@ object ProductCapabilities : CapabilityCatalog {
     override fun record(id: String) = backing.record(id)
     override fun ids() = backing.ids()
     override fun overlay(supported: Map<String, Boolean>) = backing.overlay(supported)
+
+    /**
+     * Spoken capability copy for help intent — only groups the catalog marks supported.
+     * Never names 音量/车窗/天气/下一首.
+     */
+    fun spokenHelpSummary(catalog: CapabilityCatalog = ProductCapabilities): String {
+        val parts = mutableListOf<String>()
+        if (catalog.isSupported("navigation.search_place") ||
+            catalog.isSupported("navigation.navigate_to_saved_place")
+        ) {
+            parts += "导航去某地或回家/公司"
+        }
+        if (catalog.isSupported("media.play_music") || catalog.isSupported("media.stop_music")) {
+            parts += "播放或关闭音乐"
+        }
+        if (catalog.ids().any { it.startsWith("climate.") && catalog.isSupported(it) }) {
+            parts += "调节空调"
+        }
+        if (catalog.isSupported("vision.describe_camera_view")) {
+            parts += "看摄像头"
+        }
+        if (catalog.isSupported("phone.place_call")) {
+            parts += "打电话（需确认）"
+        }
+        if (catalog.isSupported("apps.open_maps") || catalog.isSupported("apps.open_settings")) {
+            parts += "打开地图或设置"
+        }
+        return if (parts.isEmpty()) {
+            "我还能帮你做一些车上的事。"
+        } else {
+            "我能帮你" + parts.joinToString("、") + "。"
+        }
+    }
 
     private fun rec(id: String, tool: String?, supported: Boolean) = CapabilityRecord(
         id = id,

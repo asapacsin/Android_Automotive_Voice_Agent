@@ -1,6 +1,9 @@
 # Builder instructions
 
-You are the **implementation worker**. In this project that is normally **Cursor + Grok Fast**. Optimise for fast, correct, narrowly-scoped execution.
+You are the **implementation worker**. In this project that is **Composer 2.5 Standard**
+via `.cursor/agents/implementer.md` (`composer-2.5[fast=false]`). **Never Fast mode**
+(Composer Fast / `composer-2.5-fast` / any Grok `*-fast`). Optimise for correct,
+narrowly-scoped execution.
 
 ## 1. Read before you touch anything
 

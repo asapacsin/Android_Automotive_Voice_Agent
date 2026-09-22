@@ -41,7 +41,9 @@ One behaviour, one owner. If you need to change one of these, change it **here**
 | Behaviour | Canonical owner | Not owned by |
 | --- | --- | --- |
 | Whether a capability exists at all | `ProductCapabilities` / `config/capabilities.yaml` (kept in step by `CapabilityContractTest`) | the persona prompt, the UI, `ActionClaimGuard` keyword lists |
-| What an utterance names (intent → capability id) | `UtteranceIntentResolver` — parsing only | availability, Android APIs, the model |
+| What an utterance names (intent → capability id) | `UtteranceIntentResolver` — parsing only; bounded grammar for `speech.capability_help` (not synonym lists) | availability, Android APIs, the model |
+| Spoken capability-help copy | `ProductCapabilities.spokenHelpSummary` — supported catalog groups only | `ActionClaimGuard` keyword lists, the persona prompt |
+| Capability-help turn handling | `DriverTurn.Kind.CAPABILITY_HELP` + `HoldReason.CAPABILITY_HELP` — release when the reply names ≥2 supported groups; else `help_incomplete` with catalog scripted speak | `unverified_claim` / `UNVERIFIED_ACTION_CLAIM` for help utterances |
 | Calling a contact | `PhoneCallTool` via `PhonePort`; `PhoneProvider` selects `AndroidContacts` | NLU, the catalog, the UI |
 | Whether a tool call is well-formed | `FlexFunctionCallAssembler` (schema, bounds, enums) | the model, the dispatcher |
 | Whether an action may execute | `AndroidToolDispatcher` (+ `SafetyPolicy` in `orchestration` for the JVM path) | the model |

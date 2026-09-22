@@ -64,6 +64,18 @@ class CapabilityResolutionInvariantTest {
     }
 
     @Test
+    fun capabilityHelpIsNotAnActionOrUnsupportedRefusal() {
+        assertEquals(
+            CapabilityIds.SPEECH_CAPABILITY_HELP,
+            UtteranceIntentResolver.product().resolve("你能干啥")?.capabilityId,
+        )
+        assertFalse(ActionClaimGuard.isControlRequest("你能干啥"))
+        assertFalse(ActionClaimGuard.isUnsupportedRequest("你能干啥"))
+        assertEquals(DriverTurn.Kind.CAPABILITY_HELP, DriverTurn.classify("你能干啥"))
+        assertEquals(DriverTurn.Kind.ACTION, DriverTurn.classify("你能帮我导航吗"))
+    }
+
+    @Test
     fun availabilityFollowsTheCatalogEvenWhenKeywordsDisagree() {
         val volumeOn = ProductCapabilities.overlay(
             mapOf(CapabilityIds.VOLUME_CONTROL to true),

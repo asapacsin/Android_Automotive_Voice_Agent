@@ -301,7 +301,23 @@ class ActionClaimGuardTest {
         val nudge = guard.onResponseDone(message, "没听清，再说一遍。")
         assertNotNull(nudge)
         assertTrue(nudge!!.contains("导航"), nudge)
+        assertTrue(nudge.contains("原样"), nudge)
         assertTrue(nudge.contains("不要说没听清"), nudge)
+        assertFalse(nudge.contains("没有听清楚"), nudge)
+    }
+
+    @Test
+    fun colloquialGanShaIsAHelpRequestNotAnUnheardClaim() {
+        // Device 2391ff70 2026-09-22 07:55: live 「你能干啥」 → TURN_DROP unverified_claim →
+        // kind=unheard. Grammar must route to help_incomplete, never UNVERIFIED_ACTION_CLAIM.
+        assertTrue(ActionClaimGuard.isHelpRequest("你能干啥。"))
+        guard.onUserTranscript("你能干啥。")
+        val nudge = guard.onResponseDone(message, "好的，我来帮你处理一下。")
+        assertNotNull(nudge)
+        assertTrue(nudge!!.contains("导航"), nudge)
+        assertTrue(nudge.contains("原样"), nudge)
+        assertTrue(nudge.contains("不要说没听清"), nudge)
+        assertFalse(nudge.contains("没有听清楚"), nudge)
     }
 
     @Test

@@ -57,8 +57,14 @@ DEFAULT EXECUTOR → terminate-request → MAX_GROK TERMINATION REVIEW → TERMI
 
 | Role | Who | Pin |
 | --- | --- | --- |
-| **DEFAULT EXECUTOR** | this chat when the picker is Composer, plus `repo-explorer` / `implementer` | `composer-2.5[fast=false]` — never Composer Fast, never `composer-2.5-fast` |
-| **HIGH-REASONING** | `grok-high` subagent, or this chat **only if** the picker is already Grok 4.6 High **and** the gate is `GROK_REQUIRED` | `cursor-grok-4.6-high` |
+| **DEFAULT EXECUTOR** | this chat when the picker is Composer, plus `repo-explorer` / `implementer` | `composer-2.5[fast=false]` |
+| **HIGH-REASONING** | `grok-high` subagent, or this chat **only if** the picker is already Grok 4.7 Extra High **and** the gate is `GROK_REQUIRED` | `grok-4.7-xhigh` |
+
+**No Fast mode — absolute.** Never Composer Fast, never `composer-2.5-fast`, never any Grok
+`*-fast` slug (`grok-4.7-xhigh-fast`, `cursor-grok-4.6-high-fast`, …). Do not pass Task
+`model: composer-2.5-fast` / `inherit` when the parent is Fast. Subagent frontmatter must pin the
+Standard / Extra High slug above. If the UI picker is in Fast, switch it before gated work; do
+not silently continue on Fast.
 
 Launch `repo-explorer`, `implementer`, and `grok-high` **without** a Task `model` override so the
 agent file's `model` field applies. `inherit` is wrong when the parent is Composer and the child
@@ -112,7 +118,7 @@ One failed fix is still DEFAULT; two failed fixes is **C / H3**.
 
 ## Who does the work
 
-| Route | If parent picker is Composer 2.5 Standard | If parent picker is already Grok 4.6 High |
+| Route | If parent picker is Composer 2.5 Standard | If parent picker is already Grok 4.7 Extra High |
 | --- | --- | --- |
 | `DEFAULT` | Do it here, or `repo-explorer` / `implementer` | Still **delegate** to `repo-explorer` / `implementer`. Do not spend Grok on mechanical work |
 | `GROK_REQUIRED` | **Stop.** Task `grok-high` with context, evidence, constraints, attempted fixes, files. Wait. Then `implementer` for the routine remainder. `--action delegate --issue-id …` records the gate. If Task fails: `--grok-available false` → `BLOCKED_GROK_UNAVAILABLE` | Reason **in this chat** (`--already-grok`; do **not** launch `grok-high`). Then Task `implementer` |
@@ -125,7 +131,7 @@ re-delegate.
 ## Fail-closed
 
 Grok is available only when `.cursor/agents/grok-high.md` exists and pins
-`model: cursor-grok-4.6-high` **and** the Task launch actually works. If either fails:
+`model: grok-4.7-xhigh` **and** the Task launch actually works. If either fails:
 
 1. `ROUTE = BLOCKED_GROK_UNAVAILABLE`
 2. do not bypass the gate

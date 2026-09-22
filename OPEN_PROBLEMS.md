@@ -1218,21 +1218,25 @@ so frames and uplink onset stay closed after the mic formally reopens. Desk rete
 
 ---
 
-## P28 — 「你能做什么」 is answered as if it were noise
+## P28 — 「你能做什么」 / 「你能干啥」 is answered as if it were noise
 
-**Status:** FIXED 2026-09-20; device [HELP-001](TEST_MATRIX.yaml) PASS 2026-09-21 (`TURN_RELEASE reason=capability_help`; reply listed 导航/音乐/空调)
+**Status:** INVESTIGATING 2026-09-22 — colloquial 「干啥」 regressed on device (`unverified_claim` /
+`kind=unheard`). Fix: `UtteranceIntentResolver` bounded grammar → `speech.capability_help`;
+`DriverTurn.Kind.CAPABILITY_HELP` + `HoldReason.CAPABILITY_HELP`; `ProductCapabilities.spokenHelpSummary`.
+Prior [HELP-001](TEST_MATRIX.yaml) PASS 2026-09-21 used 「你能做什么」 only; re-verify with 「你能干啥」.
 **Found:** 2026-09-20, owner spreadsheet #2
 
 ### Symptom
 
-User asks what the AI can do; the reply is 「不理解」 / 「没听清」 instead of a short capability list.
+User asks what the AI can do (including colloquial 「你能干啥」); the reply is 「不理解」 / 「没听清」
+instead of a short capability list.
 
 ### Fix
 
-`ActionClaimGuard.isHelpRequest` + `HELP_CAPABILITY_NUDGE` when the reply refuses or names fewer
-than two real capabilities. `DriverTurn` UNCLASSIFIED_CLAIM must release `capability_help` (or
-nudge `help_incomplete`) so a capability list is not dropped as `unverified_claim`. Persona
-rule 5 names the expected answer (tone only; the guard enforces).
+`UtteranceIntentResolver` grammar (not `HELP_CUES`) owns help recognition.
+`DriverTurn` holds `CAPABILITY_HELP` until the reply names ≥2 supported groups or drops
+`help_incomplete` with `ProductCapabilities.spokenHelpSummary` scripted speak — never
+`unverified_claim` / `UNVERIFIED_ACTION_CLAIM` for this kind.
 
 ---
 

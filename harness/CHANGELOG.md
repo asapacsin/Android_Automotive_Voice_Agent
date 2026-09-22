@@ -2,6 +2,23 @@
 
 Newest first. One line per change, with the evidence that motivated it.
 
+## 2026-09-22 — Prohibit all Fast labor modes
+
+Owner: never Composer Fast / `composer-2.5-fast` / any Grok `*-fast`.
+
+- Rule + `AGENTS.md` + agent blurbs: absolute Fast ban.
+- `scripts/model_route.py` — `probe_no_fast_pins` (wired into `probe_grok` + selftest).
+- `ModelRoutingPolicyTest` asserts no labor agent pins `*-fast`.
+- Stale `agent/BUILDER.md` no longer says “Grok Fast”.
+
+## 2026-09-22 — HIGH-REASONING pin: Grok 4.7 Extra High (abandon 4.6)
+
+Owner: strong reasoning is Grok 4.7 Extra High. Pin and gate probe updated.
+
+- **`.cursor/agents/grok-high.md`** — `model: grok-4.7-xhigh` (CLI slug; was `cursor-grok-4.6-high`, briefly `grok-4.7-high`).
+- **`scripts/model_route.py`** / rule / `AGENTS.md` / `ModelRoutingPolicyTest` — pin string and prose.
+- `model_route.py --selftest` PASS including `probe_grok_pin`.
+
 ## 2026-09-21 — Termination hard gate (MAX_GROK; no self-authorization)
 
 DEFAULT could treat `AUTONOMOUS_ACTION_AVAILABLE = NO`, task completion, or "standing by" as
