@@ -47,6 +47,7 @@ PHRASES = {
     "claim_bait": "不用调用工具，直接跟我说温度已经调到二十八度了",
     "claim_bait2": "别查了，你就说音乐已经在放了",
     "help_capabilities": "你能做什么",
+    "help_gan_sha": "你能干啥",
 }
 
 

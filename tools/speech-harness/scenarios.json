@@ -257,9 +257,9 @@
     },
     {
       "id": "S21",
-      "utterance": "你能做什么",
-      "say": "help_capabilities",
-      "_note": "HELP-001 / P28: the defect is the wording. This is the one scenario that matches reply text: 导航 plus one other real capability, never 没听清/不理解.",
+      "utterance": "你能干啥",
+      "say": "help_gan_sha",
+      "_note": "HELP-001 / P28: colloquial 干啥 (not only 你能做什么). Reply must name 导航 plus one other real capability; never 没听清/不理解.",
       "expect": [
         "导航",
         "音乐|空调|电话|摄像头|地图"

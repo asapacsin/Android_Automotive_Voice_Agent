@@ -1220,9 +1220,9 @@ so frames and uplink onset stay closed after the mic formally reopens. Desk rete
 
 ## P28 — 「你能做什么」 / 「你能干啥」 is answered as if it were noise
 
-**Status:** OPEN 2026-09-22 — unit path fixed ([HELP-UNIT-001](TEST_MATRIX.yaml) PASS); colloquial
-「你能干啥」 device re-verify pending ([HELP-001](TEST_MATRIX.yaml) NOT_RUN). Do not call closed until
-HELP-001 PASS on device.
+**Status:** FIXED 2026-09-22 — [HELP-001](TEST_MATRIX.yaml) PASS on `2391ff70`: transcript=你能干啥 →
+spoken summary names 导航, 音乐, 空调, 地图/设置; `TURN_RELEASE reason=capability_help`. Unit path
+[HELP-UNIT-001](TEST_MATRIX.yaml) PASS. S21 scenario now uses `help_gan_sha` clip.
 **Found:** 2026-09-20, owner spreadsheet #2
 
 ### Symptom

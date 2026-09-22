@@ -2029,7 +2029,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["debug APK", "live Baidu session", "speech-harness clip or live mic"]
     procedure:
@@ -2043,11 +2043,12 @@ tests:
       - "reply is not 没听清 / 不理解 / 没有听清楚"
       - "never TURN_DROP unverified_claim for a recognised help utterance"
     evidence:
-      - "2026-09-21 device 2391ff70 S21 --wait 8 PASS for 你能做什么 only — colloquial 干啥 not yet re-run on device"
-      - "2026-09-22 unit: UtteranceIntentResolver + DriverTurn.CAPABILITY_HELP for 你能干啥"
+      - "2026-09-22 device 2391ff70: transcript=你能干啥 → 导航+音乐+空调+地图/设置; TURN_RELEASE reason=capability_help"
+      - "2026-09-22 unit: UtteranceIntentResolver + DriverTurn.CAPABILITY_HELP for 你能干啥 (HELP-UNIT-001)"
+      - "2026-09-21 device: formal 你能做什么 also passed S21 with help_capabilities clip"
     covers: [speech.capability_help]
     related: [P28]
-    last_run: {at: null, result: null}
+    last_run: {at: 2026-09-22, result: PASS}
 
   - id: HELP-UNIT-001
     capability: dialogue_context

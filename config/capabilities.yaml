@@ -272,9 +272,9 @@ speech:
       code 200061, and `device` was recorded from synthesized audio. A real voice has now done it.
   capability_help:
     tool: null
-    verified: unit
+    verified: device
     recognised_by: UtteranceIntentResolver
-    protected_by: [HELP-UNIT-001]
+    protected_by: [HELP-UNIT-001, HELP-001]
     regression_test: capabilityHelpGrammarAndHoldStayWired
     required_behaviour: >
       When the driver asks what the assistant can do, reply with [ProductCapabilities.spokenHelpSummary]

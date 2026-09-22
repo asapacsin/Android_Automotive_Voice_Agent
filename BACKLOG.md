@@ -8,7 +8,7 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 | --- | --- | --- | --- | --- |
 | B-023 | **Voice style** — prefer a younger cute female voice (符玄-like), not an older-woman timbre | 2026-09-20 | **Done** (code) 2026-09-21 — default **4196** 度清影; picker in developer settings; device ear-check [VOICE-STYLE-001](TEST_MATRIX.yaml) | [P30](OPEN_PROBLEMS.md) |
 | B-022 | **Repeatable navigation QA without a real drive** — **screen-recording movie** of nav UI under `D:\桌面\android_doc\` | 2026-09-20 | **Done** 2026-09-21 — [NAV-SIM-QA-001](TEST_MATRIX.yaml) PASS | [P29](OPEN_PROBLEMS.md) |
-| B-021 | **「你能做什么」 must list real capabilities** | 2026-09-20 | **Done** 2026-09-21 — [HELP-001](TEST_MATRIX.yaml) PASS | [P28](OPEN_PROBLEMS.md) |
+| B-021 | **「你能做什么」 / 「你能干啥」 must list real capabilities** | 2026-09-20 | **Done** 2026-09-22 — [HELP-001](TEST_MATRIX.yaml) PASS (colloquial 干啥 on 2391ff70) | [P28](OPEN_PROBLEMS.md) |
 | B-020 | **No phantom 「没听清」 after 小诺 speaks (esp. navigation start)** | 2026-09-20 | **Done** 2026-09-21 — [ECHO-001](TEST_MATRIX.yaml) PASS | [P27](OPEN_PROBLEMS.md) |
 | B-009 | **Provider-neutral realtime layer** — a second realtime provider must be addable by writing one adapter, without provider-name branches or vendor protocol vocabulary reaching voice/session/tool logic | 2026-09-19 | **Done** 2026-09-19 — breach fixed (`ResponseOutcome`), contract and capability model recorded, `RealtimeProviderContractTest` (25 cases across both in-repo providers), `ProviderBoundaryTest` checked against a reintroduced breach, harness rules and I-13 written | [ADR-009](DECISIONS/ADR-009-provider-neutral-realtime-contract.md) · [SPEC-007](SPECS/SPEC-007-provider-neutral-realtime.md) |
 | B-008 | **Complex / contextual voice commands** — the driver speaks naturally (「有点热」「再凉一点」「这个太远了，换个近一点的」) instead of like an API, and the assistant resolves it against what it already did — **bounded by the tools that exist**, never a spoken acknowledgement in place of an execution | 2026-09-19 | **Done** 2026-09-19 — context record, resolver, staleness, ambiguity, clarification and three execution guards, all device-verified, and the live model verified acting on them (CVC-04/09/27 + the named-song refusal). Multi-intent decomposition is deliberately the model's (SPEC-006 §On multi-intent). A human voice in a cabin remains a standing gap |
@@ -503,7 +503,9 @@ Code done 2026-09-20. Device [ECHO-001](TEST_MATRIX.yaml) PASS 2026-09-21.
 
 ## B-021 — Capability help answer
 
-Code done 2026-09-20. Device [HELP-001](TEST_MATRIX.yaml) PASS 2026-09-21 (S21 `--wait 8`).
+**Done 2026-09-22.** Device [HELP-001](TEST_MATRIX.yaml) PASS on `2391ff70`: `help_gan_sha` clip →
+transcript=你能干啥 → reply names 导航 and other supported groups; `TURN_RELEASE reason=capability_help`.
+Unit [HELP-UNIT-001](TEST_MATRIX.yaml) PASS. [P28](OPEN_PROBLEMS.md) closed. S21 uses `help_gan_sha`.
 
 ## B-022 — Repeatable navigation QA clip
 
