@@ -1629,7 +1629,9 @@ def selftest():
     real = load()
     help_device = next(t for t in real["tests"] if t["id"] == "HELP-001")
     help_unit = next(t for t in real["tests"] if t["id"] == "HELP-UNIT-001")
-    check("N HELP-001 stays NOT_RUN", help_device["status"] == "NOT_RUN")
+    check("N HELP-001 is a bind-current device PASS",
+          help_device["status"] == "PASS" and need_runtime_bind(help_device)
+          and not bind_problems(help_device))
     check("N HELP-UNIT-001 is an unbound unit PASS",
           help_unit["status"] == "PASS" and not need_runtime_bind(help_unit)
           and "evidence_bind" not in help_unit)
