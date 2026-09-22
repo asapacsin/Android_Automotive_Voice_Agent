@@ -1,37 +1,37 @@
 {
-  "generated_at": "2026-09-22T11:01:58",
+  "generated_at": "2026-09-22T12:04:33",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "89595d5",
+    "commit": "628e8bc",
     "branch": "cursor/2026-09-22",
-    "subject": "Tie PASS digests to the capabilities each row protects.",
+    "subject": "Expect HELP-001 device PASS in matrix selftest case N.",
     "working_tree_clean": false,
-    "uncommitted_files": 5
+    "uncommitted_files": 7
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-22T10:55:57",
+    "collected_at": "2026-09-22T11:48:58",
     "total": {
-      "tests": 829,
+      "tests": 218,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "app": {
-        "tests": 597,
+        "tests": 71,
         "failures": 0,
         "errors": 0,
         "skipped": 0
       },
       "behavior-test": {
-        "tests": 107,
+        "tests": 24,
         "failures": 0,
         "errors": 0,
         "skipped": 0
       },
       "contracts": {
-        "tests": 6,
+        "tests": 4,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -71,10 +71,10 @@
   "capabilities": {
     "available": true,
     "by_level": {
-      "device": 35,
+      "device": 36,
       "unsupported": 6,
       "human": 1,
-      "unit": 3
+      "unit": 2
     },
     "human_verification_pending": [
       "open_mic_thresholds",
@@ -125,25 +125,18 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "HELP-001: NOT_RUN: 「你能做什么」 / 「你能干啥」 gets a short capability answer",
-    "actionable_count": 2,
+    "NEXT_ACTION": "PROJECT_STATE.json: records d36ab6a, repository is at 628e8bc",
+    "actionable_count": 1,
     "blocked_count": 4,
-    "HUMAN_VALIDATION_READY": "FALSE",
+    "HUMAN_VALIDATION_READY": "TRUE",
     "QUEUED_FOR_HUMAN": 9,
-    "PHASE": "AUTONOMOUS_TEST",
+    "PHASE": "HUMAN_VALIDATION_READY",
     "candidates": [
       {
-        "priority": 6,
-        "class": "behaviour without regression protection",
-        "source": "TEST_MATRIX.yaml",
-        "item": "HELP-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 9,
-        "class": "unfinished or open problem",
-        "source": "OPEN_PROBLEMS.md",
-        "item": "P28",
+        "priority": 10,
+        "class": "stale state or harness defect",
+        "source": "state",
+        "item": "PROJECT_STATE.json",
         "blocked_by": null
       },
       {

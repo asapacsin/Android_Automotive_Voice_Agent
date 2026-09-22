@@ -63,10 +63,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:e47dcf8f31f072fb313bacea5f14cb8848b3d39b6a354e85164fdc029527286a
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [B-003, ADR-006, "FINDINGS-2026-09-16"]
     last_run: {at: 2026-09-19, result: PASS}
 
@@ -90,10 +90,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:05097fe2509072f009b52f5ecaa97a06c9a62d5826c19e855fd77a06d1606f2f
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [B-003, SPEC-001, P6]
     last_run: {at: 2026-09-19, result: PASS}
 
@@ -184,10 +184,10 @@ tests:
       code_digest: sha256:74cd1ca1dbab432d22cbcdfe6c98d4153e60aea3353af943a0a9b23e346b2a5f
       procedure_digest: sha256:9dab374b62e393aeee4370d4c00bca6416d0aa888942f4b7eea62026af260808
       registry_digest: sha256:bbf3dbbdbbc7eb7c8f1762c790c0748f2f9ccab055903bd004390c4bc5f7ff90
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [P23]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -226,10 +226,10 @@ tests:
       code_digest: sha256:74cd1ca1dbab432d22cbcdfe6c98d4153e60aea3353af943a0a9b23e346b2a5f
       procedure_digest: sha256:b427f7296e9939ee563c770b7fab8414cdd5d1d07b7ebfb590384f21d5046b5f
       registry_digest: sha256:2f9687d6b596e332039e9b386800142f7f4c6ea160c4e3d73b81642cbcc050ed
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [P22, P25]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -250,10 +250,10 @@ tests:
       code_digest: sha256:74cd1ca1dbab432d22cbcdfe6c98d4153e60aea3353af943a0a9b23e346b2a5f
       procedure_digest: sha256:6801691786051e0d0cca9e0c604233550612ee89efd63399cfb5f2c7a9251569
       registry_digest: sha256:f15e95ed00afc1b157b9c5c7add4fc3e6c2ef8971c5f1b986add0f44fcbfacb3
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [P21]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -274,10 +274,10 @@ tests:
       code_digest: sha256:74cd1ca1dbab432d22cbcdfe6c98d4153e60aea3353af943a0a9b23e346b2a5f
       procedure_digest: sha256:d3378d79edf324ee10300df4fd4feba109ea5cab3c99d088ab031180e2377d71
       registry_digest: sha256:7e906aa618892dc9201656fa2f490326af8f8233f36147499a1d29c3e5aee136
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [I-1]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -300,10 +300,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:157ec0e4cef8d9960f1a42717963fe7b97c67f7bf11281a0ea6d1bc32d51c58a
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [B-010]
     last_run: {at: 2026-09-19, result: PASS}
 
@@ -324,10 +324,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:8ba04e3ac67da8f542131d4b40650ad80c8f43c467377025a42dc711e8d22d42
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [B-010]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -348,10 +348,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:d0604ec6bee49e6e45bfd056b8bdeb4a5f8b75b6f088b2c874919045fc4b9b14
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [B-010]
     last_run: {at: 2026-09-19, result: PASS}
 
@@ -422,10 +422,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:231e63469e3f92e8e35a4276ace418ec98737f9f9559e677465d1d6fdf298c5b
       registry_digest: sha256:70f11ea24a42a2c740bdbf2d11a7a18f5631714875078402db2f316f6e3f6ba6
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [B-018]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -509,10 +509,10 @@ tests:
       code_digest: sha256:2b7a808f9dc860fa186299435bf3ed83c9d34ee3e9f65bff9e1ded29bed40ee0
       procedure_digest: sha256:0f41f318f5818a19bb531fbe94fae651fcc073f54090ab528099901dade4afde
       registry_digest: sha256:8722a16b180495267068889b7fac00281f522f76952b01ac42746c3dc16f50bd
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [SPEC-005, P7]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -533,10 +533,10 @@ tests:
       code_digest: sha256:2b7a808f9dc860fa186299435bf3ed83c9d34ee3e9f65bff9e1ded29bed40ee0
       procedure_digest: sha256:2848c32658f7a3d134d60b143d11add5ad59e111f4d76de91cbb3b5395610126
       registry_digest: sha256:d892fc4c21f484382d5e9cb4bc0ee29c645e5bd2c0f28d36c555e8bdf18928e0
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [SPEC-005, P16]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -557,10 +557,10 @@ tests:
       code_digest: sha256:2b7a808f9dc860fa186299435bf3ed83c9d34ee3e9f65bff9e1ded29bed40ee0
       procedure_digest: sha256:23565134e5356b7656ced80e08e74b12f79e1aa2290953bbbcf721dad6f396f1
       registry_digest: sha256:2ed859932f3f467146bb159ece2099f15ec8acc1af2fefd2a6b05343cde526fd
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [SPEC-005, P11, P4]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -581,10 +581,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:9f483854c9742e42b436e33f00165abd28343f3bbcff8548f8fb0c858fd3b786
       registry_digest: sha256:6db5b0e5506ab18d6c9de6d800e39628c964e263eb8f97c5bc128caafa805167
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [SPEC-006]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -669,13 +669,13 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:b74d385a2176eedd9ac924b3d3ba9234c478d1b894b21562c9a00310b465afed
       registry_digest: sha256:d94b10f6a164113d870829d82b2438290dceca906e8ffeb081a41712f055c939
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests:
         "D:/桌面/android_doc/nav_ui_desk_2026-09-21/t0_after_start.png": sha256:682d71d73bb7e3500bc81f67867e4d167f2c83de6290fa889aab5fc5a35d85bd
         "D:/桌面/android_doc/nav_ui_desk_2026-09-21/t1_plus_15s.png": sha256:bc8054ef2f2eddbb075080c015be691cd7fdc1a8ed7e32c075ca14087a47db97
         "D:/桌面/android_doc/nav_ui_desk_2026-09-21/t2_plus_23s.png": sha256:58ac3dbbf666f00395d7d8668f3ce58976899fb52c9b1734f0e48414284395d7
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     covers: [navigation.lock_car_tracking]
     related: [P26, SPEC-007]
     last_run: {at: 2026-09-21, result: PASS}
@@ -701,12 +701,12 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:9462f47ca7654ba6780a4dc6b2ef4df6473611b4ac1977c85eedfcba6af5b107
       registry_digest: sha256:eff6f3ff2af443c9ab1a14e0b5df1b5ce4f9a12e85ed0bb94df04aacaf7a9fc4
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests:
         "D:/桌面/android_doc/nav_ui_desk_2026-09-21/t0_after_start.png": sha256:682d71d73bb7e3500bc81f67867e4d167f2c83de6290fa889aab5fc5a35d85bd
         "D:/桌面/android_doc/nav_ui_desk_2026-09-21/t2_plus_23s.png": sha256:58ac3dbbf666f00395d7d8668f3ce58976899fb52c9b1734f0e48414284395d7
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     covers: [navigation.heading_up_map]
     related: [P26, SPEC-007]
     last_run: {at: 2026-09-21, result: PASS}
@@ -733,11 +733,11 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:38f1c63118e647bbf397746839ad7302015ccd978b5751d8eca16f23131a0778
       registry_digest: sha256:a00a8c8f01e2fbd2ffde3ccfff4bf11aa1bb1cb2ccdf1110715c8f8c63edb1ee
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests:
         "D:/桌面/android_doc/nav_ui_desk_2026-09-21/t0_after_start.png": sha256:682d71d73bb7e3500bc81f67867e4d167f2c83de6290fa889aab5fc5a35d85bd
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     covers: [navigation.traffic_presentation]
     related: [P26, SPEC-007]
     last_run: {at: 2026-09-21, result: PASS}
@@ -768,11 +768,11 @@ tests:
       code_digest: sha256:5fa5026c94e4d66cde4e17e75d8dc16f8d79f40b4670679eaed96b1652050d7a
       procedure_digest: sha256:87a82228c7d02b62913407ed2e9b0fb088ca226b7a358058bee4f2f21cfa6296
       registry_digest: sha256:d260f477b122e0c278c1da7196436baca1ffdd123760cc55c956dd2f7e958ef0
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests:
         "D:/桌面/android_doc/nav_baseline_0_6_4.mp4": sha256:17a5f76a1449f6dbdaff8fbb721690dddd201170ebcc951a471d25951ea1db58
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     covers: [navigation.guidance_voice, navigation.speed_hud, navigation.maneuver_guidance]
     related: [P26, P31, SPEC-007]
     last_run: {at: 2026-09-21, result: PASS}
@@ -817,11 +817,11 @@ tests:
       code_digest: sha256:2b7a808f9dc860fa186299435bf3ed83c9d34ee3e9f65bff9e1ded29bed40ee0
       procedure_digest: sha256:5e87199d84803a2726797c2880dbfdf6544778a1c8b3f483471bef673ac2e54b
       registry_digest: sha256:f76c5d5bb5f01c9637ccc1fe201b18bd9f6766ef16de6fee79c0133a1cd9e4a7
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests:
         "D:/桌面/android_doc/nav_e2e_arrival_2026-09-21/nav_e2e_arrival.mp4": sha256:3e2101d0fd001b8aca8a1cbd98c997a9e0249d67d9e24c63c4a06bd339601032
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     covers: [navigation.arrival_lifecycle]
     related: [P26, P31, SPEC-007]
     last_run: {at: 2026-09-21, result: PASS}
@@ -847,11 +847,11 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:2bb18fc79e81fdc4d40f4148b4fea570f441428849f89d9e613055d92b176c0f
       registry_digest: sha256:9a6326285e1a1a5b20a0a8fdd2a4b9057a858c442645074355586f5306197f9d
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests:
         "D:/桌面/android_doc/nav_ui_desk_2026-09-21/t0_after_start.png": sha256:682d71d73bb7e3500bc81f67867e4d167f2c83de6290fa889aab5fc5a35d85bd
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     covers: [navigation.maneuver_guidance]
     related: [P26, SPEC-007]
     last_run: {at: 2026-09-21, result: PASS}
@@ -878,11 +878,11 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:cb995940e078458c8253b79ece0c8ad57b90e13b3acfcd852483c4ea4727e43d
       registry_digest: sha256:c2e10bf1dc4a2c5d6b092b64517cded36a237d30737d11526646932e54037f74
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests:
         "D:/桌面/android_doc/nav_ui_desk_2026-09-21/t2_plus_23s.png": sha256:58ac3dbbf666f00395d7d8668f3ce58976899fb52c9b1734f0e48414284395d7
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     covers: [navigation.lane_junction_presentation]
     related: [P26, SPEC-007]
     last_run: {at: 2026-09-21, result: PASS}
@@ -919,12 +919,12 @@ tests:
       code_digest: sha256:2b7a808f9dc860fa186299435bf3ed83c9d34ee3e9f65bff9e1ded29bed40ee0
       procedure_digest: sha256:caa86bda4983aa479e911fc0789a5d30fa7917bae84e685a641cd7ce08f7e22b
       registry_digest: sha256:fe16365faa675c005bb07d4e07a9825267d0a9a6740cb901198038ba9fd1ba7f
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests:
         "D:/桌面/android_doc/nav_ui_desk_2026-09-21/overview_lock_clean.png": sha256:07a552b9c8b1e0934fb3443683a19d2d30963a0e11393b46707bb11c648fc702
         "D:/桌面/android_doc/nav_ui_desk_2026-09-21/overview_on_clean.png": sha256:92e47af1c13ce88b25e75a81b365dd6f4b55e949c630fd17fe4657ebe4bad9ed
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     covers: [navigation.return_to_tracking]
     related: [P26, SPEC-007]
     last_run: {at: 2026-09-21, result: PASS}
@@ -996,10 +996,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:d9a79cc6f8b0f8752eb8fd35385c459298965b17e2a4c942eb38bd74452b9260
       registry_digest: sha256:c986b4831db3ec0e4da914bc58cf2abf20d53e78f4bb86929cb24a20687d0164
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [SPEC-006]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1020,10 +1020,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:33538348b9515af8cc0bdda4f765844150a61cad27bdffb83e093b20a273319f
       registry_digest: sha256:a4063b41a81d6d4d1cc9e13a1a5dd45dd3fabe248826b79f87aa68116597e2cd
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [SPEC-006]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1044,10 +1044,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:7763ae0ecdf2cd439c1d944f3dc07531a64ae324ac4c9df7d54ec337a20fd23e
       registry_digest: sha256:74c0b3b1ecf1117a94a8c385fcce5888c05053c564cae7c2ff80232007f5a959
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [P2]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1088,10 +1088,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:43af5b8595c93c4b4434bbe64b4c044eb3f2903c92bf520102070770ad780244
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [SPEC-006, ADR-002, P10]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1112,10 +1112,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:8e982672571c1ca2320fc6c38e221ba6c17367ef0a829f95114865ced2b93f42
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [SPEC-006]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1136,10 +1136,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:bd40a15500a4a24e1413d88337d4b802306c917981efce336a0e0e911d3757e0
       registry_digest: sha256:04402de1a39165fc4c52e4b7d9e35dfa0a7121eb21169948ad8afbabc8258597
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [P8]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1160,10 +1160,10 @@ tests:
       code_digest: sha256:74cd1ca1dbab432d22cbcdfe6c98d4153e60aea3353af943a0a9b23e346b2a5f
       procedure_digest: sha256:d80c51ad584043745d387ee7077bf2df3624f9ffec8ad93683cffe1703e48fd8
       registry_digest: sha256:11bab098bb612b8b018b73136e8c190ab967b1db17f6dd187ebcc85314b6ad62
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [P22]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1186,10 +1186,10 @@ tests:
       code_digest: sha256:0d04c9f339418536532329a81797037062a756b0bdf0aa6c3e118964451c3afe
       procedure_digest: sha256:b3bbd41aefd24a6960dbae829c7c8bcd57ac09f19d33d2398dfc8757ea30fb00
       registry_digest: sha256:760d164700ca165c796304d8d08108316db5a3d314664a46829537db5db613de
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [SPEC-003]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1210,10 +1210,10 @@ tests:
       code_digest: sha256:0d04c9f339418536532329a81797037062a756b0bdf0aa6c3e118964451c3afe
       procedure_digest: sha256:0be4335a04847266202d003b87876fd4d7dd8e8470f4e6663ba6d3c71e42649f
       registry_digest: sha256:5e1060f5534c72624ec7018bf8810a06aac3f7b87810f452ab58843e45b9d9e7
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: []
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1254,10 +1254,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:44d3528eddb2a3423cab1000692049fb9b06e77efffcfedd1f5a5f4f1c12c8f6
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [P20]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1278,10 +1278,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:e59356977cea4f13a18443a093c87f8f5612dae7147008e2061d52029babd6fb
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [P19]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1302,10 +1302,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:aaa12b939b741ef958afce5a1fc9d11f075df09d99cc268c623add20169cb609
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [B-016]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1360,10 +1360,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:6b36a67eaf4b44ebfe3e9b47c5e0703e64ee9c630b9f952854549cef6b6a5487
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [SPEC-008]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1462,10 +1462,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:ea0c12924c4dcb7bb99ef7c520b706ae719a292f9dcbb04ab614bb108e1fb2fc
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [I-1]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1561,10 +1561,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:25fbe2d2840c268000643d3af1c9c806270c0accdcf9c25c8e3bacc39f0b1336
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: []
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1820,10 +1820,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:f3828f94226baf57f191ffcea5687bc86d8b2b0cdb72a22cb952f2ca902b1b17
       registry_digest: sha256:1e76c8b2747212ea63da18c1508ea087b3c81e9edc17a14cece1c163e095b290
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [P21, P14]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1848,10 +1848,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:3b3d9198d887ad794bc41d3e8093ff77c03000d45dbb3855457b7b76ce450d24
       registry_digest: sha256:b349474b2e41e9f157fe3ca798484e86a054d41feffa45c38824560a3debac67
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: []
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1875,10 +1875,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:0a82bcc91faa61f3ddf996835fb5826cfe556ea59d36ca1bb2f12645fa41b18c
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [P21]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1904,10 +1904,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:c3a571d5959fc2f8526e066a30c0be0f3cd6dd2d37060ac00c2ee3f46e5745ab
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests: {}
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [P12]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -2012,12 +2012,12 @@ tests:
       code_digest: sha256:0d04c9f339418536532329a81797037062a756b0bdf0aa6c3e118964451c3afe
       procedure_digest: sha256:1df0abf34496de4777dc4ed0b6a2d35508c993adb847f7e9f1bd8c3433fd9a6b
       registry_digest: sha256:0790d0d1ebb3788241eb47a8b51d881381ee4096f99f8e5a8c350382bda62064
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests:
         "D:/桌面/android_doc/nav_ui_desk_2026-09-21/help_echo_utf8.log": sha256:e71c426802e83568edfdff0eaff7466008ca31439e849ec6478fd0d2e9d92e65
         "D:/桌面/android_doc/nav_ui_desk_2026-09-21/novavoice.log": sha256:dde28e09b4f7361cc7e3356ebbc1e58720530f016c411d6edc098e31ed6a213b
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     covers: [speech.post_speech_echo_protection]
     related: [P27]
     last_run: {at: 2026-09-21, result: PASS}
@@ -2046,6 +2046,14 @@ tests:
       - "2026-09-22 device 2391ff70: transcript=你能干啥 → 导航+音乐+空调+地图/设置; TURN_RELEASE reason=capability_help"
       - "2026-09-22 unit: UtteranceIntentResolver + DriverTurn.CAPABILITY_HELP for 你能干啥 (HELP-UNIT-001)"
       - "2026-09-21 device: formal 你能做什么 also passed S21 with help_capabilities clip"
+    evidence_bind:
+      code_digest: sha256:74cd1ca1dbab432d22cbcdfe6c98d4153e60aea3353af943a0a9b23e346b2a5f
+      procedure_digest: sha256:75a7c4772ebe512fa6f0ac16563d43c9193f7db0c9fe2fdfd7ad6c5424666be7
+      registry_digest: sha256:a1da5cc2a022da32f40981c1a7275f3e34395cb7274a5417b01cefee3299841d
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
+      artifact_digests: {}
+      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
+      bound_commit: 628e8bc
     covers: [speech.capability_help]
     related: [P28]
     last_run: {at: 2026-09-22, result: PASS}
@@ -2093,11 +2101,11 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:5633b46ce1e9a06c94565c581ea053d3e51ab43744df78da7efe5dc8b2827879
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:971ac0a8352e348f018eccdd92ac8c5641bc52b90a02a113a7d57e601f61e941
+      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
       artifact_digests:
         "D:/桌面/android_doc/nav_qa_to_shizimen.mp4": sha256:faa7d422a4939d4726c226ba57ca6fd281bd2795e4bf153d904eeb72b762b7f3
       apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 89595d5
+      bound_commit: 628e8bc
     related: [P29, NAV-DRIVE-001, B-022]
     last_run: {at: 2026-09-21, result: PASS}
 

@@ -6,11 +6,11 @@ Updated 2026-09-21 · 83 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 73 |
+| autonomous PASS | 74 |
 | autonomous FAIL | 0 |
 | incomplete | 0 |
 | partial pass | 0 |
-| not run | 1 |
+| not run | 0 |
 | human required | 9 |
 | human pass | 0 |
 | human fail | 0 |
@@ -18,9 +18,7 @@ Updated 2026-09-21 · 83 tests
 | not applicable | 0 |
 | **release-blocking failures** | **0** |
 
-**HUMAN_VALIDATION_READY = FALSE**
-
-- HELP-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+**HUMAN_VALIDATION_READY = TRUE**
 
 ## By capability
 
@@ -31,7 +29,7 @@ Updated 2026-09-21 · 83 tests
 | calling | 8 | 7 | 1 | 0 |
 | cantonese | 2 | 1 | 1 | 0 |
 | climate | 4 | 4 | 0 | 0 |
-| dialogue_context | 4 | 3 | 0 | 1 |
+| dialogue_context | 4 | 4 | 0 | 0 |
 | lifecycle | 1 | 1 | 0 | 0 |
 | media | 2 | 2 | 0 | 0 |
 | microphone | 1 | 0 | 1 | 0 |
@@ -72,7 +70,7 @@ Updated 2026-09-21 · 83 tests
 | CLIMATE-SET-001 | climate | An explicit temperature is set | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | CTX-AMBIG-001 | dialogue_context | 再低一点 with no history asks which | AUTONOMOUS | PASS | yes | 2026-09-20: 「您是指温度还是风量呢？」 |
 | CTX-CHAIN-001 | dialogue_context | 再凉一点 continues the previous adjustment | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
-| HELP-001 | dialogue_context | 「你能做什么」 / 「你能干啥」 gets a short capability answer | AUTONOMOUS | NOT_RUN | yes | 2026-09-21 device 2391ff70 S21 --wait 8 PASS for 你能做什么 only — colloquial 干啥 not yet re-… |
+| HELP-001 | dialogue_context | 「你能做什么」 / 「你能干啥」 gets a short capability answer | AUTONOMOUS | PASS | yes | 2026-09-22 device 2391ff70: transcript=你能干啥 → 导航+音乐+空调+地图/设置; TURN_RELEASE reason=capab… |
 | HELP-UNIT-001 | dialogue_context | Help-request grammar and nudge are unit-covered | AUTONOMOUS | PASS | yes | UtteranceIntentResolver grammar + DriverTurn.CAPABILITY_HELP 2026-09-22 unit PASS |
 | PROCDEATH-001 | lifecycle | The app survives process death | AUTONOMOUS | PASS | yes | 2026-09-20: pid 13783 killed once the app was genuinely backgrounded (am kill only reap… |
 | MUSIC-NAMED-001 | media | A named song is refused, not substituted | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
