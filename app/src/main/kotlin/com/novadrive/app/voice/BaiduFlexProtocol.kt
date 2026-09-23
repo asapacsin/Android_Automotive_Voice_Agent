@@ -18,6 +18,13 @@ object BaiduFlexProtocol {
     /** Raised while assistant audio is still playing locally, to resist echo-only speech_started. */
     const val PLAYBACK_VAD_THRESHOLD = 0.75
 
+    internal fun playbackScopedVadThreshold(playbackActive: Boolean, navigating: Boolean): Double =
+        when {
+            navigating -> NAVIGATION_VAD_THRESHOLD
+            playbackActive -> PLAYBACK_VAD_THRESHOLD
+            else -> DEFAULT_VAD_THRESHOLD
+        }
+
     fun sessionUpdate(
         instructions: String,
         voice: String = BaiduAppSettings.DEFAULT_VOICE,

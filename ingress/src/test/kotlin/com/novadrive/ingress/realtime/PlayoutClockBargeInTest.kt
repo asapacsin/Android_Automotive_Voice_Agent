@@ -230,6 +230,32 @@ class PlayoutClockBargeInTest {
         }
 
     @Test
+    fun residualEchoSuppressesBargeInFlush() =
+        runTest(UnconfinedTestDispatcher()) {
+            val provider = FakeRealtimeVoiceProvider()
+            val playback = InMemoryPlaybackPort()
+            val controller =
+                VoiceSessionController(
+                    provider = provider,
+                    microphone = InMemoryMicrophonePort(),
+                    playback = playback,
+                    scope = this,
+                    config = RealtimeSessionConfig(VoiceProviderId.BAIDU_FLEX, VoiceCatalog.BAIDU_FLEX),
+                    callbacks =
+                        VoiceSessionCallbacks(
+                            qualifyPlayoutBargeIn = { false },
+                        ),
+                )
+            controller.start()
+            provider.emit(DomainVoiceEvent.AudioDelta("AAAA"))
+            val flushBefore = playback.flushCount
+            provider.emit(DomainVoiceEvent.SpeechStarted)
+            assertEquals(flushBefore, playback.flushCount)
+            assertTrue(controller.logs.any { it.contains("residual_echo") && it.contains("flush=false") })
+            controller.stop()
+        }
+
+    @Test
     fun userFramesBeforeAndAfterSpeechStartedStillUpload() =
         runTest(UnconfinedTestDispatcher()) {
             val provider = FakeRealtimeVoiceProvider()

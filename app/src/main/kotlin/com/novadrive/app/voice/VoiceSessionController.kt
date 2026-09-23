@@ -69,11 +69,22 @@ class VoiceSessionController(
             onToolCall = onToolCall,
             onUserFinalTranscript = { text -> onUserUtterance(text) },
             onSessionLog = { line -> com.novadrive.app.DebugVoiceLog.log(line) },
+            qualifyPlayoutBargeIn = { AecMetrics.shouldFlushBargeIn() },
             bargeInDiagnostics = {
+                val flush = AecMetrics.shouldFlushBargeIn()
+                VoiceAec.instance?.let { aec ->
+                    AecMetrics.logBargeIn(
+                        aec.streamDelayMs,
+                        aec.snapshotStats(),
+                        flush = flush,
+                        suppressed = !flush,
+                    )
+                }
                 mapOf(
                     "uplinkGateOpen" to microphone.uplinkGateOpen,
                     "lastRms" to microphone.lastFrameRms,
                     "aec_enabled" to VoiceAudioSession.aecEnabled,
+                    "aec_backend" to VoiceAudioSession.aecBackend,
                     "sessions_match" to VoiceAudioSession.sessionsMatch(),
                 )
             },
@@ -187,6 +198,8 @@ class VoiceSessionController(
         lastConfig = apiConfig
         active.stop()
         provider?.close()
+        VoiceAec.release()
+        VoiceAec.open()
         val sharedSessionId = VoiceAudioSession.allocate()
         player.configureAudioSession(sharedSessionId)
         microphone.configureAudioSession(sharedSessionId)
@@ -242,6 +255,7 @@ class VoiceSessionController(
     fun stop() {
         NavigationState.reset()
         active.stop()
+        VoiceAec.release()
         lifecycle.onSessionStopped("stopped")
     }
 
@@ -251,6 +265,7 @@ class VoiceSessionController(
         provider?.close()
         provider = null
         playbackSpeaking = false
+        VoiceAec.release()
     }
 
     /**

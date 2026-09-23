@@ -245,30 +245,13 @@ class BaiduFlexClient(
         listeningSuspended = false
     }
 
-    /**
-     * Assistant playout still audible locally. Raise server VAD only while [playbackActive] so echo
-     * is less likely to trip speech_started; restore the default threshold when playout drains.
-     */
+    /** Tracks local assistant playout for barge-in; echo is cancelled client-side via WebRTC AEC3. */
     fun onPlaybackActiveChanged(active: Boolean) {
-        if (playbackActive == active) return
         playbackActive = active
-        val target = resolveVadThreshold()
-        if (target == vadThreshold) return
-        vadThreshold = target
-        if (!sessionCreated) {
-            DebugVoiceLog.log("vad_threshold_playback deferred active=$active threshold=$target")
-            return
-        }
-        val sent = trySend(BaiduFlexProtocol.sessionUpdate(instructionsWithContext(), voice, speed, vadThreshold))
-        DebugVoiceLog.log("vad_threshold_playback active=$active threshold=$target sent=$sent")
     }
 
     private fun resolveVadThreshold(): Double =
-        when {
-            NavigationState.navigating -> BaiduFlexProtocol.NAVIGATION_VAD_THRESHOLD
-            playbackActive -> BaiduFlexProtocol.PLAYBACK_VAD_THRESHOLD
-            else -> BaiduFlexProtocol.DEFAULT_VAD_THRESHOLD
-        }
+        BaiduFlexProtocol.playbackScopedVadThreshold(false, NavigationState.navigating)
 
     @Volatile private var listeningSuspended = false
 

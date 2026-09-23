@@ -19,13 +19,14 @@ import kotlin.concurrent.thread
 class PcmAudioCapture(
     private val onFrame: (ByteArray) -> Unit,
     private val onError: (String) -> Unit,
-    private val audioSessionId: Int = android.media.AudioManager.AUDIO_SESSION_ID_GENERATE,
+    private val audioSessionId: Int = VoiceAudioSession.SESSION_ID_GENERATE,
 ) {
     private val running = AtomicBoolean(false)
     private var record: AudioRecord? = null
     private var worker: Thread? = null
     private var echoCanceler: AcousticEchoCanceler? = null
     private var noiseSuppressor: NoiseSuppressor? = null
+    @Volatile private var captureBufferDelayMs: Int = 0
 
     fun start() {
         if (!running.compareAndSet(false, true)) return
@@ -74,27 +75,30 @@ class PcmAudioCapture(
             onError("AUDIO_CAPTURE_FAILED")
             return
         }
+        captureBufferDelayMs = (recorder.bufferSizeInFrames * 1000) / SAMPLE_RATE / 2
+        val useWebRtcAec = VoiceAec.instance?.isAvailable == true
         val aecAvailable = AcousticEchoCanceler.isAvailable()
         echoCanceler =
-            if (aecAvailable) {
+            if (!useWebRtcAec && aecAvailable) {
                 runCatching { AcousticEchoCanceler.create(recorder.audioSessionId)?.also { it.enabled = true } }.getOrNull()
             } else {
                 null
             }
         val nsAvailable = NoiseSuppressor.isAvailable()
         noiseSuppressor =
-            if (nsAvailable) {
+            if (!useWebRtcAec && nsAvailable) {
                 runCatching { NoiseSuppressor.create(recorder.audioSessionId)?.also { it.enabled = true } }.getOrNull()
             } else {
                 null
             }
         VoiceAudioSession.recordCaptureSession(recorder.audioSessionId)
-        VoiceAudioSession.aecEnabled = echoCanceler?.enabled == true
+        VoiceAudioSession.aecEnabled = useWebRtcAec || echoCanceler?.enabled == true
         VoiceAudioSession.nsEnabled = noiseSuppressor?.enabled == true
         com.novadrive.app.DebugVoiceLog.log(
-            "capture_start aec_available=$aecAvailable aec_enabled=${VoiceAudioSession.aecEnabled} " +
-                "ns_enabled=${VoiceAudioSession.nsEnabled} captureSessionId=${recorder.audioSessionId} " +
-                "playbackSessionId=${VoiceAudioSession.playbackSessionId} sessions_match=${VoiceAudioSession.sessionsMatch()}",
+            "capture_start aec_backend=${VoiceAudioSession.aecBackend} aec_available=$aecAvailable " +
+                "aec_enabled=${VoiceAudioSession.aecEnabled} ns_enabled=${VoiceAudioSession.nsEnabled} " +
+                "captureSessionId=${recorder.audioSessionId} playbackSessionId=${VoiceAudioSession.playbackSessionId} " +
+                "sessions_match=${VoiceAudioSession.sessionsMatch()}",
         )
         try {
             recorder.startRecording()
@@ -112,7 +116,17 @@ class PcmAudioCapture(
                 while (running.get()) {
                     val read = recorder.read(buf, 0, buf.size)
                     if (read > 0) {
-                        onFrame(buf.copyOf(read))
+                        val raw = buf.copyOf(read)
+                        val cleaned =
+                            VoiceAec.instance?.let { aec ->
+                                if (!aec.isAvailable) {
+                                    raw
+                                } else {
+                                    refreshStreamDelay(aec)
+                                    aec.processCapture(raw)
+                                }
+                            } ?: raw
+                        onFrame(cleaned)
                     } else if (read < 0) {
                         onError("AUDIO_CAPTURE_FAILED")
                         break
@@ -140,6 +154,24 @@ class PcmAudioCapture(
         BoundedThreadCleanup.terminate(toJoin)
     }
 
+    @Volatile private var lastDelayUnavailableLogMs: Long = 0L
+
+    private fun refreshStreamDelay(aec: WebRtcAcousticEcho) {
+        val playout = VoicePlayoutDelay.snapshot()
+        val playoutMs = playout?.playoutDelayMs
+        if (playoutMs == null) {
+            val now = android.os.SystemClock.elapsedRealtime()
+            if (now - lastDelayUnavailableLogMs >= 5000L) {
+                lastDelayUnavailableLogMs = now
+                com.novadrive.app.DebugVoiceLog.log("delay_unavailable")
+            }
+            return
+        }
+        val resamplerMs =
+            playout.let { VoicePlayoutDelay.resamplerDelayMs(it.outputSampleRateHz) }
+        aec.streamDelayMs = (playoutMs + captureBufferDelayMs + resamplerMs).coerceIn(0, 500)
+    }
+
     private fun releaseCaptureEffects() {
         try {
             echoCanceler?.release()
@@ -162,7 +194,7 @@ class PcmAudioCapture(
 class AndroidMicrophonePort(
     private val onError: (String) -> Unit,
 ) : MicrophonePort {
-    @Volatile private var audioSessionId: Int = android.media.AudioManager.AUDIO_SESSION_ID_GENERATE
+    @Volatile private var audioSessionId: Int = VoiceAudioSession.SESSION_ID_GENERATE
     private var capture: PcmAudioCapture? = null
 
     fun configureAudioSession(sessionId: Int) {

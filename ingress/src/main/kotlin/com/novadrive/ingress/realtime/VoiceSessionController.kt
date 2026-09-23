@@ -25,6 +25,11 @@ data class VoiceSessionCallbacks(
     val onSessionLog: (String) -> Unit = {},
     /** Extra fields merged into playout_barge_in (uplink gate, RMS — never audio or transcript). */
     val bargeInDiagnostics: () -> Map<String, Any> = { emptyMap() },
+    /**
+     * Return false to suppress flush when server VAD fires on residual echo after AEC attenuation.
+     * Real near-end speech (post-AEC ≈ raw) must still return true.
+     */
+    val qualifyPlayoutBargeIn: () -> Boolean = { true },
 )
 
 /**
@@ -339,7 +344,11 @@ class VoiceSessionController(
                 }
                 DomainVoiceEvent.SpeechStarted -> {
                     if (playback.playbackActive) {
-                        bargeIn()
+                        if (callbacks.qualifyPlayoutBargeIn()) {
+                            bargeIn()
+                        } else {
+                            suppressBargeIn()
+                        }
                     }
                 }
                 is DomainVoiceEvent.Error -> {
@@ -405,6 +414,24 @@ class VoiceSessionController(
         if (cancelGeneration && VoiceCatalog.capabilities(config.provider).clientResponseCancel) {
             provider.cancelAssistantResponse()
         }
+    }
+
+    private suspend fun suppressBargeIn() {
+        val queuedBytes = playback.queuedFrames * 2
+        val fields =
+            buildMap {
+                put("epoch", playbackEpoch)
+                put("generationActive", generationActive)
+                put("playbackActive", playback.playbackActive)
+                put("queuedBytes", queuedBytes)
+                put("flush", false)
+                put("suppressed", true)
+                put("reason", "residual_echo")
+                put("cancel", false)
+                putAll(callbacks.bargeInDiagnostics())
+            }
+        val line = log.info("playout_barge_in", fields)
+        callbacks.onSessionLog(line)
     }
 
     private fun invalidatePlaybackEpoch() {

@@ -18,8 +18,8 @@ audio and blocks every path that would re-arm capture (including reconnect `Sess
 **Temporary suppression is a different thing** and is unchanged: while navigation guidance plays
 (`guidanceGated`, P13) frames are dropped, but listening stays ACTIVE and upload resumes when guidance
 ends. Model reply audio does **not** mute the microphone: Flex `interrupt_response`, shared-session
-platform AEC (`VoiceAudioSession`), and a playback-scoped server VAD threshold handle barge-in and
-echo. Neither gate touches the lifecycle, and the lifecycle does not touch them.
+WebRTC AEC3 (`WebRtcAcousticEcho`) handle echo while the uplink stays open for barge-in. Neither gate
+touches the lifecycle, and the lifecycle does not touch them.
 
 ## Timeouts (`ListeningTimeouts`)
 

@@ -31,6 +31,10 @@ agent/demo-strict-exit.txt
 
 tools/speech-harness/speech/
 
+# WebRTC AEC3 sources: run scripts/fetch_webrtc_aec3.ps1 before native build
+app/src/main/cpp/third_party/webrtc-aec3/
+app/src/main/cpp/third_party/webrtc-aec3-kmp-jni/
+
 # Large third-party binaries: kept locally, never pushed (see README "Local binaries")
 app/src/main/jniLibs/
 app/libs/*.jar

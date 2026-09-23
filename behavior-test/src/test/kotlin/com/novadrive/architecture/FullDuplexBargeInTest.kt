@@ -17,15 +17,16 @@ class FullDuplexBargeInTest {
     }.readText()
 
     @Test
-    fun captureUsesVoiceCommunicationWithSharedSessionAec() {
+    fun captureUsesVoiceCommunicationWithWebRtcAec() {
         val capture = text("app/src/main/kotlin/com/novadrive/app/voice/PcmAudioCapture.kt")
         val player = text("app/src/main/kotlin/com/novadrive/app/voice/PcmAudioPlayer.kt")
-        val session = text("app/src/main/kotlin/com/novadrive/app/voice/VoiceAudioSession.kt")
+        val aec = text("app/src/main/kotlin/com/novadrive/app/voice/WebRtcAcousticEcho.kt")
         assertTrue(capture.contains("VOICE_COMMUNICATION") || capture.contains("AudioSource.VOICE_COMMUNICATION"))
-        assertTrue(capture.contains("AcousticEchoCanceler"))
+        assertTrue(capture.contains("processCapture"))
+        assertTrue(player.contains("processRender"))
+        assertTrue(aec.contains("aec_backend=webrtc"))
         assertTrue(capture.contains("VoiceAudioSession.applyToRecordBuilder"))
         assertTrue(player.contains("VoiceAudioSession.applyToTrackBuilder"))
-        assertTrue(session.contains("sessionsMatch"))
     }
 
     @Test
@@ -40,6 +41,15 @@ class FullDuplexBargeInTest {
                 line.contains("response.audio.delta") && line.contains("sendAudio")
             },
         )
+    }
+
+    @Test
+    fun playbackActiveTrackedForBargeInWithoutPlaybackVadThreshold() {
+        val flexClient = text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt")
+        val controller = text("app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt")
+        assertFalse(flexClient.contains("vad_threshold_playback"))
+        assertTrue(flexClient.contains("onPlaybackActiveChanged"))
+        assertTrue(controller.contains("setOnPlaybackActiveChanged"))
     }
 
     @Test

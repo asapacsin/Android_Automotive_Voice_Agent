@@ -16,7 +16,7 @@ navigation are the Amap Navigation SDK embedded in our own Activity
 
 ```
 microphone
-  → PcmAudioCapture (16 kHz PCM16, AEC + NS)
+  → PcmAudioCapture (16 kHz PCM16, WebRTC AEC3 before gain/gate)
   → AndroidMicrophonePort         gates: muted / guidance / sleep (model playback stays uplinked)
   → SpeechUplinkGate              200 ms of voice before anything is uploaded
   → BaiduFlexClient (WSS)         input_audio_buffer.append
@@ -84,9 +84,12 @@ navigation actions directly, and `com.amap` may be imported by exactly one file.
 ## Subsystems
 
 ### Audio capture — `app/voice/PcmAudioCapture.kt`
-`VOICE_COMMUNICATION` at 16 kHz with platform AEC and noise suppression on a **shared audio session**
-with reply playback (`VoiceAudioSession` binds `AudioRecord` and `AudioTrack` before `build()` so
-`AcousticEchoCanceler` can subtract assistant audio). `AndroidMicrophonePort` owns every reason a
+`VOICE_COMMUNICATION` at 16 kHz. Speaker echo is cancelled by **WebRTC AEC3** (`WebRtcAcousticEcho`):
+render PCM is fed immediately before `AudioTrack.write` (including 24 kHz → 16 kHz resample for the
+far-end reference); capture PCM is cleaned on the capture thread before `SpeechUplinkGate` and
+`MicInputGain`. Platform `AcousticEchoCanceler` / `NoiseSuppressor` stay off when the native backend
+loads; otherwise the app falls back to the legacy platform path and logs `aec_backend=unavailable`.
+`AndroidMicrophonePort` owns every reason a
 frame may not be sent: `muted`, `guidanceGated` (Amap is speaking), `suppressLive` (the debug
 harness is injecting), and the `SpeechUplinkGate`. Model reply playback does **not** gate the mic:
 the uplink stays open for full-duplex barge-in. `MicInputGain` lifts quiet speech above the server's

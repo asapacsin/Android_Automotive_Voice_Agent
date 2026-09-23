@@ -3,7 +3,9 @@ package com.novadrive.app.voice
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioManager
+import android.media.AudioTimestamp
 import android.media.AudioTrack
+import android.os.Build
 import com.novadrive.app.DebugVoiceLog
 import com.novadrive.app.NavigationState
 import com.novadrive.ingress.realtime.AudioBufferGuard
@@ -28,12 +30,16 @@ class PcmAudioPlayer(
     private var track: AudioTrack? = null
     private var worker: Thread? = null
     @Volatile private var sampleRateHz: Int = PcmAudioCapture.SAMPLE_RATE
-    @Volatile private var audioSessionId: Int = AudioManager.AUDIO_SESSION_ID_GENERATE
+    @Volatile private var audioSessionId: Int = VoiceAudioSession.SESSION_ID_GENERATE
     private val stateLock = Any()
     @Volatile private var speaking = false
     @Volatile private var playbackPaused = false
     @Volatile private var acceptEpoch = 0
     @Volatile private var framesWritten: Long = 0
+    @Volatile private var headOrigin: Long = 0
+    @Volatile private var timestampAvailable = false
+    private var latencyBuffer: LowLatencyPlaybackBuffer? = null
+    private val sliceRemainder = java.io.ByteArrayOutputStream()
     private val playbackStateListeners = CopyOnWriteArrayList<(Boolean) -> Unit>()
     private val playbackActiveListeners = CopyOnWriteArrayList<(Boolean) -> Unit>()
     @Volatile private var lastNotifiedPlaybackActive = false
@@ -41,7 +47,7 @@ class PcmAudioPlayer(
     val isPlaying: Boolean
         get() =
             try {
-                running.get() && (speaking || queue.isNotEmpty())
+                running.get() && (speaking || queue.isNotEmpty() || sliceRemainder.size() > 0)
             } catch (_: Exception) {
                 false
             }
@@ -93,6 +99,8 @@ class PcmAudioPlayer(
                 onError("AUDIO_PLAYBACK_FAILED")
                 return
             }
+        val bufferManager = LowLatencyPlaybackBuffer(sampleRateHz, minBuf)
+        latencyBuffer = bufferManager
         val player =
             try {
                 val builder =
@@ -110,7 +118,7 @@ class PcmAudioPlayer(
                                 .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
                                 .build(),
                         )
-                        .setBufferSizeInBytes(maxOf(minBuf * 4, sampleRateHz * 2 /*bytes per sample*/ * 320 / 1000))
+                        .setBufferSizeInBytes(bufferManager.initialBufferBytes())
                         .setTransferMode(AudioTrack.MODE_STREAM)
                 VoiceAudioSession.applyToTrackBuilder(builder, audioSessionId)
                 builder.build()
@@ -122,6 +130,9 @@ class PcmAudioPlayer(
         playbackPaused = false
         acceptEpoch = 0
         framesWritten = 0
+        headOrigin = 0
+        timestampAvailable = false
+        sliceRemainder.reset()
         try {
             player.play()
         } catch (_: Exception) {
@@ -133,32 +144,57 @@ class PcmAudioPlayer(
             onError("AUDIO_PLAYBACK_FAILED")
             return
         }
+        bufferManager.reset(player)
         track = player
         VoiceAudioSession.recordPlaybackSession(player.audioSessionId)
         DebugVoiceLog.log(
             "playback_start playbackSessionId=${player.audioSessionId} captureSessionId=${VoiceAudioSession.captureSessionId} " +
-                "sessions_match=${VoiceAudioSession.sessionsMatch()}",
+                "sessions_match=${VoiceAudioSession.sessionsMatch()} playback_buffer_ms=${bufferManager.bufferMs}",
         )
         worker =
             thread(name = "nova-pcm-play", isDaemon = true) {
+                val sliceBytes = sampleRateHz * 2 / 100
+                val slice = ByteArray(sliceBytes)
                 while (running.get()) {
-                    val frame =
-                        try {
-                            queue.poll(20, TimeUnit.MILLISECONDS)
-                        } catch (_: InterruptedException) {
-                            break
-                        }
-                    if (frame == null) {
+                    if (!fillSlice(sliceBytes, slice)) {
                         emitIdleIfDrained()
+                        publishPlayoutDelay(player, null)
                         continue
                     }
-                    val written = player.write(frame, 0, frame.size)
+                    VoiceAec.instance?.let { aec ->
+                        if (aec.isAvailable) {
+                            aec.processRender(slice, sampleRateHz)
+                        }
+                    }
+                    val written =
+                        try {
+                            player.write(slice, 0, slice.size, AudioTrack.WRITE_BLOCKING)
+                        } catch (_: Exception) {
+                            onError("AUDIO_PLAYBACK_FAILED")
+                            break
+                        }
                     if (written < 0) {
                         onError("AUDIO_PLAYBACK_FAILED")
                         break
                     }
                     if (written > 0) {
                         framesWritten += written / 2
+                    }
+                    val playoutDelayMs = measuredPlayoutDelayMs(player)
+                    publishPlayoutDelay(player, playoutDelayMs)
+                    bufferManager.afterWrite(player)
+                    VoiceAec.instance?.let { aec ->
+                        if (aec.isAvailable) {
+                            val stats = aec.snapshotStats()
+                            AecMetrics.maybeLog(
+                                playbackActive = playbackActive,
+                                streamDelayMs = playoutDelayMs,
+                                stats = stats,
+                                appQueueMs = appQueueDelayMs(),
+                                trackBufferMs = bufferManager.bufferMs,
+                                underrunCount = underrunCount(player),
+                            )
+                        }
                     }
                 }
             }
@@ -173,11 +209,12 @@ class PcmAudioPlayer(
 
     val queuedFrames: Int
         get() {
-            val queued = queue.sumOf { it.size / 2 }
+            val queued = queue.sumOf { it.size / 2 } + sliceRemainder.size() / 2
             val track = track ?: return queued
             return try {
-                val head = track.playbackHeadPosition.toLong()
-                val buffered = (framesWritten - head).coerceAtLeast(0)
+                val head = playbackHeadFrames(track) ?: return queued
+                val played = (head - headOrigin).coerceAtLeast(0)
+                val buffered = (framesWritten - played).coerceAtLeast(0)
                 (queued + buffered).toInt()
             } catch (_: Exception) {
                 queued
@@ -229,20 +266,25 @@ class PcmAudioPlayer(
 
     fun flush() {
         queue.clear()
-        framesWritten = 0
+        sliceRemainder.reset()
         acceptEpoch += 1
         track?.pause()
         track?.flush()
+        framesWritten = 0
+        headOrigin = track?.let { playbackHeadFrames(it) ?: 0L } ?: 0L
+        timestampAvailable = false
         if (!playbackPaused) {
             track?.play()
         }
         emitSpeaking(false)
         notifyPlaybackActiveIfChanged()
+        publishPlayoutDelay(track, null)
     }
 
     fun stop() {
         running.set(false)
         queue.clear()
+        sliceRemainder.reset()
         track?.run {
             try {
                 pause()
@@ -256,14 +298,84 @@ class PcmAudioPlayer(
             }
         }
         track = null
+        latencyBuffer = null
         playbackPaused = false
         acceptEpoch = 0
         framesWritten = 0
+        headOrigin = 0
+        timestampAvailable = false
+        VoicePlayoutDelay.clear()
         val toJoin = worker
         worker = null
         BoundedThreadCleanup.terminate(toJoin)
         emitSpeaking(false)
         notifyPlaybackActiveIfChanged()
+    }
+
+    private fun fillSlice(sliceBytes: Int, slice: ByteArray): Boolean {
+        while (sliceRemainder.size() < sliceBytes) {
+            val frame =
+                try {
+                    queue.poll(20, TimeUnit.MILLISECONDS)
+                } catch (_: InterruptedException) {
+                    return false
+                }
+            if (frame == null) {
+                break
+            }
+            sliceRemainder.write(frame)
+        }
+        if (sliceRemainder.size() < sliceBytes) {
+            return false
+        }
+        val data = sliceRemainder.toByteArray()
+        System.arraycopy(data, 0, slice, 0, sliceBytes)
+        sliceRemainder.reset()
+        if (data.size > sliceBytes) {
+            sliceRemainder.write(data, sliceBytes, data.size - sliceBytes)
+        }
+        return true
+    }
+
+    private fun measuredPlayoutDelayMs(player: AudioTrack): Int? {
+        if (framesWritten == 0L) return null
+        val head = playbackHeadFrames(player) ?: return null
+        val played = (head - headOrigin).coerceAtLeast(0)
+        val buffered = (framesWritten - played).coerceAtLeast(0)
+        return ((buffered * 1000) / sampleRateHz).toInt().coerceIn(0, 500)
+    }
+
+    private fun appQueueDelayMs(): Int = ((queue.sumOf { it.size } + sliceRemainder.size()) * 1000) / (sampleRateHz * 2)
+
+    private fun publishPlayoutDelay(player: AudioTrack?, playoutDelayMs: Int?) {
+        val bufferMs = latencyBuffer?.bufferMs ?: 0
+        VoicePlayoutDelay.publish(
+            VoicePlayoutDelay.Snapshot(
+                playoutDelayMs = playoutDelayMs,
+                appQueueMs = appQueueDelayMs(),
+                trackBufferMs = bufferMs,
+                underrunCount = if (player != null) underrunCount(player) else 0,
+                outputSampleRateHz = sampleRateHz,
+                playbackActive = playbackActive,
+            ),
+        )
+    }
+
+    private fun underrunCount(player: AudioTrack): Int =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) player.underrunCount else 0
+
+    private fun playbackHeadFrames(player: AudioTrack): Long? {
+        val stamp = AudioTimestamp()
+        return try {
+            if (player.getTimestamp(stamp)) {
+                timestampAvailable = true
+                stamp.framePosition
+            } else {
+                player.playbackHeadPosition.toLong() and 0xffffffffL
+            }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun notifyPlaybackActiveIfChanged() {
@@ -289,7 +401,7 @@ class PcmAudioPlayer(
 
     private fun emitIdleIfDrained() {
         synchronized(stateLock) {
-            if (!queue.isEmpty()) return
+            if (!queue.isEmpty() || sliceRemainder.size() > 0) return
             if (!speaking) return
             speaking = false
         }
