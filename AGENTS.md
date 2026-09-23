@@ -124,6 +124,27 @@ second A–F / H1–H8 list here.
 - "Needs Grok High" is not "needs a human." An implementation subagent still may not
   certify its own work as complete.
 
+## Codex multi-model routing
+
+This section applies to Codex, not Cursor. The Cursor classifier and its Grok termination
+gate above remain Cursor-specific; do not invoke them merely to select a Codex subagent.
+Codex agent definitions and model pins live in the user's `~/.codex/agents/` directory.
+
+- The root/default Codex agent is `planner`: GPT-6 Astra at low reasoning. It understands the
+  request, maps relevant owners and files, defines implementation steps and acceptance criteria,
+  coordinates handoffs, reviews the result, and verifies end-to-end product behavior.
+- Delegate clear implementation, known-pattern edits, test writing/repair, build and lint runs,
+  mechanical refactors, and straightforward debugging to `executor` (GPT-6 Luna, medium).
+  Executor must return architectural uncertainty to Planner, not silently redesign the system.
+- Escalate only a genuine major decision to `architect` (GPT-6 Astra, high): new subsystem or
+  foundation, high-impact cross-module tradeoff, SDK/framework selection, or a difficult root
+  cause remaining after normal investigation. Send objective, evidence, attempts, constraints,
+  unresolved decision, and consequences; Architect returns decision and boundaries to Planner.
+- Normal substantial work flows Planner → Executor → Planner review; after escalation it flows
+  Architect → Planner → Executor → Planner review. Do not spawn every role automatically.
+  Planner checks the original user-facing requirement and failure cases, not just compilation.
+  An implementation subagent does not certify its own work.
+
 ## Hard rules
 
 - Never commit, print, log or package credentials. No coordinate, address or transcript in a log.
