@@ -112,3 +112,6 @@ Large third-party files are kept out of the repository. A fresh clone needs them
 | `app/src/main/jniLibs/{arm64-v8a,armeabi-v7a}/libmsc.so`, `libw_ivw.so` | iFlytek native libraries (wake word) | same SDK package |
 | `app/src/main/assets/ivw/wakeword.jet` | 「你好小诺」 wake-word resource | iFlytek console, bound to the App ID |
 | `app/src/main/res/raw/bach_air_usaf.mp3` | Bundled public-domain music track | US Air Force Band public-domain recording |
+
+Cloud sessions (Claude Code on the web) install the toolchain and fetch these from environment
+variables at session start: see [docs/CLOUD_BUILD.md](docs/CLOUD_BUILD.md).
