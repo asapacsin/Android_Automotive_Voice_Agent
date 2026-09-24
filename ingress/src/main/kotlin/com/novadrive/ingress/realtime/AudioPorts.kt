@@ -35,10 +35,20 @@ fun interface MicrophonePort {
 interface PlaybackPort {
     fun start()
 
+    /** Starts a session synchronized to the controller's current output epoch. */
+    fun start(epoch: Int) = start()
+
     /** [epoch] must match the session's current [playbackEpoch] or the chunk is dropped. */
     fun enqueue(pcm16le: ByteArray, epoch: Int)
 
-    fun flush()
+    /** Opens a new reply epoch without interrupting already accepted playout from the prior reply. */
+    fun beginReply(epoch: Int) {}
+
+    /** Invalidates all prior output and begins accepting [epoch] only after the flush returns. */
+    fun flush(epoch: Int)
+
+    /** Signals that no more PCM belongs to [epoch], allowing a final partial device frame to drain. */
+    fun complete(epoch: Int) {}
 
     fun stop()
 
@@ -108,10 +118,17 @@ class InMemoryPlaybackPort : PlaybackPort {
         stopped = false
         played.clear()
         trackBufferedFrames = 0
+        completedThroughEpoch = Int.MIN_VALUE
+    }
+
+    override fun start(epoch: Int) {
+        start()
+        acceptEpoch = epoch
+        completedThroughEpoch = epoch - 1
     }
 
     override fun enqueue(pcm16le: ByteArray, epoch: Int) {
-        if (!started || stopped) return
+        if (!started || stopped || epoch <= completedThroughEpoch) return
         if (epoch != acceptEpoch) {
             droppedEpochMismatch += 1
             return
@@ -120,13 +137,25 @@ class InMemoryPlaybackPort : PlaybackPort {
     }
 
     private var acceptEpoch = 0
+    private var completedThroughEpoch = Int.MIN_VALUE
 
-    override fun flush() {
+    override fun beginReply(epoch: Int) {
+        if (started && !stopped) {
+            acceptEpoch = epoch
+        }
+    }
+
+    override fun flush(epoch: Int) {
         flushCount += 1
         lastFlushAtMs = clock.nowMs()
         played.clear()
         trackBufferedFrames = 0
-        acceptEpoch += 1
+        acceptEpoch = epoch
+        completedThroughEpoch = maxOf(completedThroughEpoch, epoch - 1)
+    }
+
+    override fun complete(epoch: Int) {
+        if (started && !stopped && epoch == acceptEpoch) completedThroughEpoch = maxOf(completedThroughEpoch, epoch)
     }
 
     override fun stop() {
@@ -135,5 +164,6 @@ class InMemoryPlaybackPort : PlaybackPort {
         played.clear()
         trackBufferedFrames = 0
         acceptEpoch = 0
+        completedThroughEpoch = Int.MIN_VALUE
     }
 }

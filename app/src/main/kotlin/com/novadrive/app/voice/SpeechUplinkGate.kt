@@ -1,5 +1,7 @@
 package com.novadrive.app.voice
 
+import com.novadrive.ingress.realtime.AudioFrameTiming
+
 /**
  * Deterministic local gate on the microphone uplink: sound only reaches Baidu once it has
  * behaved like speech for long enough to be worth a turn.
@@ -25,7 +27,7 @@ package com.novadrive.app.voice
  *   the driver. If the gate does close during a long pause, the continuation re-opens on its own
  *   onset and the pre-roll covers its first 300 ms.
  *
- * Thresholds are frame-count based and derived from the 100 ms capture frame, so they hold
+ * Thresholds are frame-count based and derived from the capture frame duration, so they hold
  * whatever the buffer size is. Loudness is judged against an adaptive noise floor, not a fixed
  * number, so a quiet cabin and a noisy one both work.
  *
@@ -171,7 +173,8 @@ class SpeechUplinkGate(
         if (!voiced) {
             // Only quiet frames teach the noise floor, so a long sentence cannot raise it until
             // the speaker is talking to a wall.
-            noiseRms = noiseRms * (1 - NOISE_ADAPT) + rms * NOISE_ADAPT
+            val adapt = AudioFrameTiming.scaledNoiseAdapt(NOISE_ADAPT, frameMs)
+            noiseRms = noiseRms * (1 - adapt) + rms * adapt
         }
 
         if (open) {
@@ -245,17 +248,14 @@ class SpeechUplinkGate(
     }
 
     companion object {
-        /** 3200 bytes of 16 kHz PCM16 — the capture frame this app uses. */
-        const val DEFAULT_FRAME_MS = 100
+        /** 320 bytes of 16 kHz PCM16 — the 10 ms capture frame this app uses. */
+        const val DEFAULT_FRAME_MS = AudioFrameTiming.CAPTURE_FRAME_MS
 
-        /**
-         * 200 ms of sustained voice. A finger tap, a mouse click or a switch is 20–60 ms and never
-         * reaches two consecutive frames; the shortest real Chinese command (「停」) is ~300 ms.
-         */
-        const val MIN_ONSET_FRAMES = 2
+        /** 200 ms of sustained voice at the configured frame duration. */
+        const val MIN_ONSET_FRAMES = 200 / DEFAULT_FRAME_MS
 
-        /** 300 ms, matching the server's own `prefix_padding_ms`, so nothing is clipped. */
-        const val PRE_ROLL_FRAMES = 3
+        /** 300 ms pre-roll at the configured frame duration. */
+        const val PRE_ROLL_FRAMES = 300 / DEFAULT_FRAME_MS
 
         /**
          * Six times the server's 200 ms `silence_duration_ms`. Long enough that the server always

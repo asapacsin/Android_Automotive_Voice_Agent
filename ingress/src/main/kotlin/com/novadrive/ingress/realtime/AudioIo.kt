@@ -34,3 +34,40 @@ object BoundedThreadCleanup {
         return !thread.isAlive
     }
 }
+
+/**
+ * Application-owned PCM waiting to reach AudioTrack: queued chunks, slice remainder, and any
+ * partially written device slice. Platform track buffering is excluded — see SPEC-009.
+ */
+object AppPlaybackQueuePolicy {
+    const val MAX_PENDING_MS = 500
+
+    fun pendingBytes(
+        queuedBytes: Int,
+        remainderBytes: Int,
+        unwrittenSliceBytes: Int,
+    ): Int = (queuedBytes + remainderBytes + unwrittenSliceBytes).coerceAtLeast(0)
+
+    fun pendingMs(
+        pendingBytes: Int,
+        sampleRateHz: Int,
+    ): Int {
+        if (sampleRateHz <= 0 || pendingBytes <= 0) return 0
+        val bytesPerSecond = sampleRateHz * 2
+        // Round up so enforcement never underestimates elapsed audio at the 500 ms ceiling.
+        return (pendingBytes * 1000 + bytesPerSecond - 1) / bytesPerSecond
+    }
+
+    /** True when accepting [incomingBytes] would push pending audio past [limitMs]. */
+    fun wouldExceedLimit(
+        queuedBytes: Int,
+        remainderBytes: Int,
+        unwrittenSliceBytes: Int,
+        incomingBytes: Int,
+        sampleRateHz: Int,
+        limitMs: Int = MAX_PENDING_MS,
+    ): Boolean = pendingMs(
+        pendingBytes(queuedBytes, remainderBytes, unwrittenSliceBytes) + incomingBytes.coerceAtLeast(0),
+        sampleRateHz,
+    ) > limitMs
+}

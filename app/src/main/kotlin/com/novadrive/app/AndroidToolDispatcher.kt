@@ -7,6 +7,7 @@ import com.novadrive.app.nav.EmbeddedNavigation
 import com.novadrive.app.nav.EmbeddedNavigationController
 import com.novadrive.app.nav.NavigationChoice
 import com.novadrive.app.nav.NavigationLocalPickGuard
+import com.novadrive.app.nav.NavigationPickSession
 import com.novadrive.app.nav.NavigationPickerIntercept
 import com.novadrive.app.nav.NavigationVoiceOutput
 import com.novadrive.app.nav.NavigationBackends
@@ -154,7 +155,10 @@ class AndroidToolDispatcher(
                 val destination = call.arguments["destination"]?.trim().orEmpty()
                 if (destination.isBlank()) return failed(call, "BLANK_DESTINATION")
                 if (destination.length > 120) return failed(call, "DESTINATION_TOO_LONG")
-                if (NavigationLocalPickGuard.consumeNavigateToSuppression()) {
+                val authority = NavigationLocalPickGuard.current()
+                if (authority != null &&
+                    NavigationLocalPickGuard.consumeNavigateToSuppression(authority.listKey, authority.turnKey)
+                ) {
                     com.novadrive.app.DebugVoiceLog.log("nav_voice_suppress_navigate_to")
                     return ToolDispatchResult(
                         null,
@@ -362,12 +366,18 @@ open class CoreActionExecutor(
 
     override fun chooseNavigationOption(choice: NavigationChoice): AndroidActionResult =
         when (val outcome = navigationFlow.chooseByVoice(choice)) {
-            is EmbeddedNavigationController.VoiceChoiceResult.DestinationChosen ->
+            is EmbeddedNavigationController.VoiceChoiceResult.DestinationChosen -> {
+                NavigationPickSession.recordExecutorResult(outcome)
                 AndroidActionResult.Accepted("destination_selected")
-            is EmbeddedNavigationController.VoiceChoiceResult.RouteChosen ->
+            }
+            is EmbeddedNavigationController.VoiceChoiceResult.RouteChosen -> {
+                NavigationPickSession.recordExecutorResult(outcome)
                 AndroidActionResult.Accepted("navigation_started")
-            is EmbeddedNavigationController.VoiceChoiceResult.Rejected ->
+            }
+            is EmbeddedNavigationController.VoiceChoiceResult.Rejected -> {
+                NavigationPickSession.recordExecutorResult(outcome)
                 AndroidActionResult.Rejected(outcome.code)
+            }
         }
 
     override suspend fun awaitNavigationOptions(): EmbeddedNavigationController.OptionsSnapshot {

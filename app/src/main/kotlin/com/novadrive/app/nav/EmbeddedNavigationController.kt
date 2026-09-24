@@ -56,6 +56,7 @@ class EmbeddedNavigationController(
         if (store.phase.value == NavigationPhase.NAVIGATING) {
             engine.stopNavigation("replaced")
         }
+        NavigationLocalPickGuard.onListReplaced()
         val seq = synchronized(lock) {
             generation += 1
             clearCandidatesLocked()
@@ -205,6 +206,12 @@ class EmbeddedNavigationController(
         val destinationName: String?,
     )
 
+    /** Stable identity for the list currently on screen. */
+    fun currentListKey(): String =
+        synchronized(lock) {
+            "${generation}_${store.phase.value}_${_destinationCandidates.value.size}_${_routeCandidates.value.size}"
+        }
+
     /** Waits (bounded) until destinations or routes are no longer being computed, then reports them. */
     suspend fun awaitOptions(timeoutMs: Long): OptionsSnapshot {
         kotlinx.coroutines.withTimeoutOrNull(timeoutMs) {
@@ -249,6 +256,7 @@ class EmbeddedNavigationController(
             ) {
                 return
             }
+            NavigationLocalPickGuard.invalidate()
             generation += 1
             clearCandidatesLocked()
             selectedDestination = null

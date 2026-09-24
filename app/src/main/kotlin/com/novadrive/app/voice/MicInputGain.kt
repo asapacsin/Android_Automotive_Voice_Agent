@@ -1,5 +1,7 @@
 package com.novadrive.app.voice
 
+import com.novadrive.ingress.realtime.AudioFrameTiming
+
 /**
  * Adaptive input gain for the live microphone, applied before audio is sent to Baidu.
  *
@@ -27,13 +29,17 @@ class MicInputGain(
     var gain: Double = maxGain
         private set
 
-    fun process(frame: ByteArray): ByteArray {
+    fun process(
+        frame: ByteArray,
+        frameMs: Int = AudioFrameTiming.CAPTURE_FRAME_MS,
+    ): ByteArray {
         val peak = peakAbs(frame)
+        val scaledRise = AudioFrameTiming.scaledRiseFactor(riseFactor, frameMs)
         gain = if (peak > noiseFloor) {
             val desired = (targetPeak.toDouble() / peak).coerceIn(1.0, maxGain)
-            if (desired < gain) desired else minOf(desired, gain * riseFactor)
+            if (desired < gain) desired else minOf(desired, gain * scaledRise)
         } else {
-            minOf(maxGain, gain * riseFactor)
+            minOf(maxGain, gain * scaledRise)
         }
         if (gain <= 1.0) return frame
         val out = ByteArray(frame.size)

@@ -817,8 +817,9 @@ internal fun releaseNavigatingListenerIfOwned(installed: ((Boolean) -> Unit)?) {
 }
 
 /** Streaming chunks: logging every one would flood logcat and could carry content. */
-/** About 10 s of 100 ms audio frames. */
-private const val MAX_HELD_OUTBOUND = 100
+/** About 10 s of capture frames at the current mic cadence. */
+private val MAX_HELD_OUTBOUND =
+    com.novadrive.ingress.realtime.AudioFrameTiming.heldOutboundMessagesForDuration(10_000)
 
 private val NOISY_EVENT_TYPES = setOf(
     "response.audio.delta",

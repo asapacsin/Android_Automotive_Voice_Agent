@@ -93,7 +93,7 @@ class VoiceSessionController(
         reconnectPolicy.reset()
         machine.userStartSession()
         publish()
-        playback.start()
+        playback.start(playbackEpoch)
         diagnostics.markConnectStart()
         log.info("session_start", mapOf("provider" to config.provider.wireName, "model" to config.model))
         eventJob?.cancel()
@@ -372,12 +372,18 @@ class VoiceSessionController(
                 is DomainVoiceEvent.WorkFailed -> {
                     workCoordinator.fail(event.workId, event.message)
                 }
+                DomainVoiceEvent.AudioDone -> {
+                    if (replyOpen && acceptingReplyAudio) playback.complete(replyEpoch)
+                }
                 is DomainVoiceEvent.WorkProgress -> {
                     workCoordinator.updateProgress(event.workId, event.message)
                 }
                 else -> Unit
             }
             if (event is DomainVoiceEvent.ResponseDone) {
+                if (event.status != "cancelled" && event.status != "failed" && replyOpen && acceptingReplyAudio) {
+                    playback.complete(replyEpoch)
+                }
                 generationActive = false
             }
             machine.apply(event)
@@ -435,13 +441,15 @@ class VoiceSessionController(
     }
 
     private fun invalidatePlaybackEpoch() {
-        playback.flush()
         playbackEpoch += 1
+        playback.flush(playbackEpoch)
         replyOpen = false
         acceptingReplyAudio = false
     }
 
     private fun openReplyStamp() {
+        playbackEpoch += 1
+        playback.beginReply(playbackEpoch)
         replyOpen = true
         replyEpoch = playbackEpoch
         acceptingReplyAudio = true
@@ -451,8 +459,7 @@ class VoiceSessionController(
     private fun ensureReplyStamp(): Boolean {
         if (!acceptingReplyAudio) return replyOpen
         if (!replyOpen) {
-            replyOpen = true
-            replyEpoch = playbackEpoch
+            openReplyStamp()
         }
         return true
     }

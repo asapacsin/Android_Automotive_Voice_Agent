@@ -378,6 +378,12 @@ change_impact:
       - SpeechUplinkGate
       - GuidanceMicGate
       - PcmAudioPlayer
+      - AecMetrics
+      - LowLatencyPlaybackBuffer
+      - PcmAecFraming
+      - VoiceAudioSession
+      - VoicePlayoutDelay
+      - WebRtcAcousticEcho
       - MicInputGain
       - PhantomTurnGate
       - ResponseTurnGate
@@ -426,6 +432,10 @@ change_impact:
       - DestinationQuery
       - SavedPlaces
       - NavigationChoice
+      - NavigationLocalPickGuard
+      - NavigationPickSession
+      - NavigationPhoneticConfirmation
+      - NavigationPickerIntercept
       - EmulatorNaviSpeed
       - GatewayNaviEngine
       - NavigationTraceListener

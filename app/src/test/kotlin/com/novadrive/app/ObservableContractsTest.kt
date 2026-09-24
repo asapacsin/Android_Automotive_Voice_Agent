@@ -117,8 +117,9 @@ class ObservableContractsTest {
     @Test
     fun anImpulseNeverReachesTheModel() {
         val gate = SpeechUplinkGate()
-        val loudTap = ByteArray(3200) { if (it % 2 == 0) 0xFF.toByte() else 0x3F }
-        val quiet = ByteArray(3200)
+        val frameBytes = com.novadrive.app.voice.PcmAudioCapture.FRAME_BYTES
+        val loudTap = ByteArray(frameBytes) { if (it % 2 == 0) 0xFF.toByte() else 0x3F }
+        val quiet = ByteArray(frameBytes)
         val sent = listOf(quiet, loudTap, quiet, quiet).flatMap { gate.offer(it).send }
         assertTrue(sent.isEmpty(), "a single-frame impulse must not be uploaded")
     }

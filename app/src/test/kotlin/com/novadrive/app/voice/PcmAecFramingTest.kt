@@ -5,11 +5,11 @@ import org.junit.jupiter.api.Test
 
 class PcmAecFramingTest {
     @Test
-    fun captureFrameSplitsIntoTen10MsChunks() {
+    fun captureFrameMatchesOneAecChunk() {
         val frame = ByteArray(PcmAudioCapture.FRAME_BYTES) { (it % 256).toByte() }
         val chunks = PcmAecFraming.splitInto10MsFrames(frame)
-        assertEquals(10, chunks.size)
-        chunks.forEach { chunk -> assertEquals(PcmAecFraming.BYTES_PER_FRAME, chunk.size) }
+        assertEquals(1, chunks.size)
+        assertEquals(PcmAecFraming.BYTES_PER_FRAME, chunks.single().size)
         assertEquals(frame.size, PcmAecFraming.mergeFrames(chunks).size)
     }
 

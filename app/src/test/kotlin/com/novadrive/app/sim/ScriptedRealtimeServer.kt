@@ -1,5 +1,6 @@
 package com.novadrive.app.sim
 
+import com.novadrive.app.voice.PcmAudioCapture
 import com.novadrive.evaluation.ModelBehavior
 import com.novadrive.evaluation.ToolCallSpec
 import okhttp3.Response
@@ -412,6 +413,6 @@ class ScriptedRealtimeServer(seed: Long) {
     }
 
     private companion object {
-        val AUDIO: String = Base64.getEncoder().encodeToString(ByteArray(3200))
+        val AUDIO: String = Base64.getEncoder().encodeToString(ByteArray(PcmAudioCapture.FRAME_BYTES))
     }
 }

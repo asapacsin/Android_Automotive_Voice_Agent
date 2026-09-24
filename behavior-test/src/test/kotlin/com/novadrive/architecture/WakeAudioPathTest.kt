@@ -50,10 +50,10 @@ class WakeAudioPathTest {
     }
 
     @Test
-    fun theWakeEngineStandsDownWhileASessionOwnsTheMicrophone() {
+    fun theWakeEngineStandsDownWhileConversationalCaptureRuns() {
         val controller = source("app/src/main/kotlin/com/novadrive/app/wake/WakeWordController.kt")
-        assertTrue(controller.contains("VoiceSessionGateway.isActive")) {
-            "wake must release the microphone while a voice session runs; two owners is the original defect"
+        assertTrue(controller.contains("VoiceSessionGateway.listeningState.uploads")) {
+            "wake must release the microphone while conversational capture runs; two owners is the original defect"
         }
     }
 }

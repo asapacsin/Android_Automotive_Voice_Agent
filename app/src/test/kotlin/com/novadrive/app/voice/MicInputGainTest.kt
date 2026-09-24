@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class MicInputGainTest {
-    private fun frame(peak: Int, samples: Int = 1600): ByteArray {
+    private fun frame(peak: Int, samples: Int = PcmAudioCapture.FRAME_BYTES / 2): ByteArray {
         val out = ByteArray(samples * 2)
         for (i in 0 until samples) {
             // Alternating ±peak so the frame's peak is exactly `peak`.
@@ -21,7 +21,7 @@ class MicInputGainTest {
     fun quietSpeechIsLiftedAboveTheMeasuredVadFloor() {
         val gain = MicInputGain()
         var out = frame(1900)
-        repeat(20) { out = gain.process(frame(1900)) }
+        repeat(200) { out = gain.process(frame(1900)) }
         // Device floor: ~3800 heard, ~2700 ignored. 1900 * 3 = 5700.
         assertTrue(peakAbs(out) >= 5_000, "peak=${peakAbs(out)}")
         assertEquals(MicInputGain.DEFAULT_MAX_GAIN, gain.gain, 1e-9)
@@ -48,7 +48,7 @@ class MicInputGainTest {
         val gain = MicInputGain()
         repeat(5) { gain.process(frame(15_000)) }
         assertEquals(1.0, gain.gain, 1e-9)
-        repeat(12) { gain.process(frame(100)) } // ~1.2 s of silence
+        repeat(120) { gain.process(frame(100)) } // ~1.2 s of silence
         assertEquals(MicInputGain.DEFAULT_MAX_GAIN, gain.gain, 1e-9)
     }
 

@@ -412,7 +412,7 @@ class BaiduFlexClientTest {
 
         // The reset has opened a second conversation and is waiting for it to be ready.
         assertTrue(secondUpdateSeen.await(3, TimeUnit.SECONDS), "a fresh conversation was opened")
-        client.sendAudio(ByteArray(3200)) // spoken during the reset: must be held, not dropped
+        client.sendAudio(ByteArray(PcmAudioCapture.FRAME_BYTES)) // spoken during the reset: must be held, not dropped
         releaseSecond.countDown()
         assertTrue(audioOnSecond.await(3, TimeUnit.SECONDS), "held audio reached the new conversation")
         client.disconnect()

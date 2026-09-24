@@ -10,13 +10,17 @@ import org.junit.jupiter.api.Test
  * interesting cases are the ones that must still be spoken.
  */
 class PhantomTurnGateTest {
-    private fun segment(durationMs: Int, voicedFrames: Int = durationMs / 100, peak: Int = 5_000) =
+    private fun segment(
+        durationMs: Int,
+        voicedFrames: Int = durationMs / SpeechUplinkGate.DEFAULT_FRAME_MS,
+        peak: Int = 5_000,
+    ) =
         SpeechUplinkGate.Segment(durationMs = durationMs, voicedFrames = voicedFrames, peak = peak)
 
     private fun turn(
         hadToolCall: Boolean = false,
         contextAwaitingAnswer: Boolean = false,
-        audio: SpeechUplinkGate.Segment? = segment(300, voicedFrames = 2),
+        audio: SpeechUplinkGate.Segment? = segment(300, voicedFrames = 20),
         assistantText: String = "没听清，再说一遍。",
         hadUserTranscript: Boolean = true,
     ) = PhantomTurnGate.Turn(hadToolCall, contextAwaitingAnswer, audio, assistantText, hadUserTranscript)
@@ -47,7 +51,7 @@ class PhantomTurnGateTest {
     @Test
     fun aRepairIsSpokenWhenTheDriverClearlySaidSomething() {
         // Long, well-voiced audio: the driver spoke and deserves to know they were not understood.
-        val spoken = PhantomTurnGate.judge(turn(audio = segment(1_800, voicedFrames = 15)))
+        val spoken = PhantomTurnGate.judge(turn(audio = segment(1_800, voicedFrames = 150)))
         assertEquals(PhantomTurnGate.Verdict.Speak, spoken)
     }
 
@@ -67,7 +71,7 @@ class PhantomTurnGateTest {
     @Test
     fun sparseAudioIsReportedAsWeakVoicedRatio() {
         // Long but mostly silent: a door closing inside a quiet stretch.
-        val verdict = PhantomTurnGate.judge(turn(audio = segment(2_000, voicedFrames = 2)))
+        val verdict = PhantomTurnGate.judge(turn(audio = segment(2_000, voicedFrames = 20)))
         assertEquals("generic_repair_no_action_weak_voiced_ratio", (verdict as PhantomTurnGate.Verdict.Drop).reason)
     }
 

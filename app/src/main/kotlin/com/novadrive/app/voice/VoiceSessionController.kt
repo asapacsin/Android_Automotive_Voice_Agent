@@ -69,9 +69,11 @@ class VoiceSessionController(
             onToolCall = onToolCall,
             onUserFinalTranscript = { text -> onUserUtterance(text) },
             onSessionLog = { line -> com.novadrive.app.DebugVoiceLog.log(line) },
-            qualifyPlayoutBargeIn = { AecMetrics.shouldFlushBargeIn() },
+            qualifyPlayoutBargeIn = {
+                VoiceAudioSession.aecBackend != "webrtc" || microphone.uplinkGateOpen
+            },
             bargeInDiagnostics = {
-                val flush = AecMetrics.shouldFlushBargeIn()
+                val flush = VoiceAudioSession.aecBackend != "webrtc" || microphone.uplinkGateOpen
                 VoiceAec.instance?.let { aec ->
                     AecMetrics.logBargeIn(
                         aec.streamDelayMs,
@@ -121,7 +123,12 @@ class VoiceSessionController(
             )
             if (reason == "inactivity_timeout") Telemetry.record(EventType.INACTIVITY_TIMEOUT)
             if (reason == "silent_wait_timeout") Telemetry.record(EventType.SILENT_WAIT_TIMEOUT)
+            if (to == ListeningState.SLEEP || to == ListeningState.DEEP_IDLE) {
+                com.novadrive.app.nav.NavigationLocalPickGuard.invalidate()
+                com.novadrive.app.nav.NavigationPickSession.clear()
+            }
             onListeningState(to)
+            com.novadrive.app.wake.WakeWordController.reconcile(appContext)
         },
     )
 
@@ -305,16 +312,52 @@ class VoiceSessionController(
     private fun tryLocalNavigationPick(text: String) {
         val pick = onLocalNavigationPick ?: return
         val nav = com.novadrive.app.nav.EmbeddedNavigation.currentOrNull() ?: return
+        val turnKey = com.novadrive.app.nav.NavigationLocalPickGuard.nextTurnKey()
+        val listKey = nav.currentListKey()
+        val phase = nav.state().value
+        val destinations = nav.destinationCandidates.value
+        val routes = nav.routeCandidates.value
         val choice = com.novadrive.app.nav.NavigationPickerIntercept.resolve(
             text,
-            nav.state().value,
-            nav.destinationCandidates.value,
-            nav.routeCandidates.value,
-        ) ?: return
-        com.novadrive.app.DebugVoiceLog.log("nav_voice_local_pick")
-        active.cancelCurrentResponse()
-        com.novadrive.app.nav.NavigationLocalPickGuard.onLocalPickSucceeded()
-        pick(choice)
+            phase,
+            destinations,
+            routes,
+        )
+        if (choice != null) {
+            com.novadrive.app.DebugVoiceLog.log("nav_voice_local_pick")
+            active.cancelCurrentResponse()
+            com.novadrive.app.nav.NavigationPickSession.begin(listKey, turnKey)
+            pick(choice)
+            return
+        }
+        when (phase) {
+            com.novadrive.app.nav.NavigationPhase.AWAITING_DESTINATION_SELECTION -> {
+                when (
+                    val match = com.novadrive.app.nav.NavigationChoiceResolver.pickDestination(
+                        destinations,
+                        com.novadrive.app.nav.NavigationChoice.Name(text),
+                    )
+                ) {
+                    is com.novadrive.app.nav.ChoiceMatch.Rejected ->
+                        when (match.code) {
+                            "AMBIGUOUS" ->
+                                com.novadrive.app.nav.NavigationLocalPickGuard.record(
+                                    listKey,
+                                    turnKey,
+                                    com.novadrive.app.nav.NavigationLocalPickGuard.Outcome.AMBIGUOUS,
+                                )
+                            "NO_MATCH" ->
+                                com.novadrive.app.nav.NavigationLocalPickGuard.record(
+                                    listKey,
+                                    turnKey,
+                                    com.novadrive.app.nav.NavigationLocalPickGuard.Outcome.NO_MATCH,
+                                )
+                        }
+                    else -> Unit
+                }
+            }
+            else -> Unit
+        }
     }
 
     /**
@@ -392,7 +435,7 @@ class VoiceSessionController(
             VoiceUiState.RECONNECTING,
         )
         private const val SESSION_DIAG_INTERVAL_MS = 5_000L
-        private const val TEST_FRAME_BYTES = 3_200 // 100 ms at 16 kHz mono PCM16
+        private const val TEST_FRAME_BYTES = PcmAudioCapture.FRAME_BYTES
         private const val TEST_FRAME_MS = 100L
         private const val TEST_TRAILING_SILENCE_FRAMES = 15
     }

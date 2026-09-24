@@ -6,10 +6,16 @@ Every case below **requires a physical Android device** (and usually a real cabi
 
 > Autonomous work may still be open. Prefer finishing cloud-verifiable work first; this file is still the device queue.
 >
-> - the registry does not validate: 55 problem(s)
-> - navigation.guidance_voice requires INTERMEDIATE_FLOW but has no passing cover (linked: NAV-MID-ROUTE-001)
+> - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - TRUTH-MISHEARD-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - TRUTH-MEDIA-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - TRUTH-WEATHER-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - TRUTH-BAIT-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - PLACE-SAVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - PLACE-NAV-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 
-**5 LOCAL_DEVICE_REQUIRED item(s).**
+**11 LOCAL_DEVICE_REQUIRED item(s).**
 
 Install tip (from a cloud-built APK, when one exists):
 
@@ -190,6 +196,188 @@ adb logcat -s NovaVoice:D
 **Tell me back:** pass/fail on timbre; alternate id if reject
 
 **Still unknown until you do:** whether 4196 sounds youthful/cute enough in a real cabin vs needing another catalog id
+
+### LOCAL_DEVICE_REQUIRED — ASTRA-ECHO-PLAYBACK-001 — Playback-only cabin echo does not self-trigger replies
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Playback-only echo and cabin acoustics cannot be certified from JVM tests or a desk
+
+**Automation blocker:** `physical_world`
+
+**Already established without you:**
+
+- qualified barge-in uses uplinkGateOpen instead of RMS ratio veto
+- AEC-FRAME-CONTINUITY-001 and PLAYBACK-FLUSH-001 JVM seams passed 2026-09-24
+
+**You will need:** installed debug APK from this commit; vehicle or bench with cabin speakers
+
+**What to do:**
+
+1. play a Flex reply with no driver speech for the full reply and tail
+2. observe whether a new assistant turn starts without a wake word or command
+
+**It passes if:**
+
+- zero self-triggered audible reply chains in the playback-only trial
+- driver speech still interrupts when spoken after playback starts
+
+**Tell me back:** any self-triggered reply after playback-only silence; whether genuine speech still interrupts
+
+**Still unknown until you do:** cabin echo path, route and volume combinations
+
+*Release-blocking.*
+
+### LOCAL_DEVICE_REQUIRED — ASTRA-DOUBLE-TALK-001 — Real double-talk and route-change acoustics
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Near-end-only and real double-talk need the vehicle microphone and speakers
+
+**Automation blocker:** `physical_world`
+
+**Already established without you:**
+
+- SpeechUplinkGate + qualifyPlayoutBargeIn uplinkGateOpen wiring
+
+**You will need:** installed debug APK; moving or idling cabin
+
+**What to do:**
+
+1. during assistant playback, speak a short command at normal volume
+2. repeat after a Bluetooth or volume route change if available
+
+**It passes if:**
+
+- genuine speech interrupts playback and reaches a successful next command
+- echo-only energy does not open an audible turn
+
+**Tell me back:** did genuine speech interrupt; did echo-only energy stay silent; audio route used
+
+**Still unknown until you do:** route-change tail and hardware-buffer delay
+
+*Release-blocking.*
+
+### LOCAL_DEVICE_REQUIRED — ASTRA-WAKE-CYCLES-001 — Ten ACTIVE to SLEEP to wake microphone handoffs
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Real wake-word recognition and microphone ownership need the device microphone
+
+**Automation blocker:** `physical_world`
+
+**Already established without you:**
+
+- WakeWordController uses listeningState.uploads instead of session isActive
+- WakeWordController.reconcile on lifecycle transitions
+
+**You will need:** wake enabled; installed debug APK
+
+**What to do:**
+
+1. repeat ten cycles: ACTIVE conversation, sleep command, wake phrase
+2. include at least one DEEP_IDLE recovery cycle
+
+**It passes if:**
+
+- wake succeeds after each SLEEP without manual app restart
+- no simultaneous recorders or missing wake capture in SLEEP
+
+**Tell me back:** successful wake count of ten; any cycle that needed manual restart; DEEP_IDLE recovery result
+
+**Still unknown until you do:** cabin noise and MSC false accepts
+
+*Release-blocking.*
+
+### LOCAL_DEVICE_REQUIRED — ASTRA-DEMO-REHEARSAL-001 — No-touch demo rehearsal — wake search choice route
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Demo rehearsals require live Flex, map, and cabin audio
+
+**Automation blocker:** `physical_world`
+
+**Already established without you:**
+
+- NavigationLocalPickGuard turn/list authority + NavigationPickSession executor results
+
+**You will need:** installed debug APK; network; map entitlement
+
+**What to do:**
+
+1. wake, search a destination, pick from the list by voice, start a route
+2. do not touch the screen
+
+**It passes if:**
+
+- correct destination and route selected once
+- no duplicate navigate_to after local pick
+
+**Tell me back:** destination and route reached; whether any touch was required; duplicate tool calls observed
+
+**Still unknown until you do:** live map entitlement and cabin microphone quality
+
+*Release-blocking.*
+
+### LOCAL_DEVICE_REQUIRED — ASTRA-DEMO-REHEARSAL-002 — No-touch demo rehearsal — climate confirmation and stop-output
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Audible confirmation and stop-output timing are ear checks
+
+**Automation blocker:** `physical_world`
+
+**Already established without you:**
+
+- ListeningLifecycle SILENT_WAIT path unchanged
+
+**You will need:** installed debug APK
+
+**What to do:**
+
+1. request a climate change, confirm when prompted, then say stop-output
+2. issue a follow-up command without wake
+
+**It passes if:**
+
+- climate action confirmed once
+- stop-output reaches SILENT_WAIT and the follow-up command succeeds
+
+**Tell me back:** climate confirmation heard once; listening state after stop-output; follow-up command result
+
+**Still unknown until you do:** audible stop-output latency in cabin
+
+*Release-blocking.*
+
+### LOCAL_DEVICE_REQUIRED — ASTRA-DEMO-REHEARSAL-003 — No-touch demo rehearsal — replacement search after ambiguous pick
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Phonetic and ambiguous navigation picks need live speech in cabin
+
+**Automation blocker:** `physical_world`
+
+**Already established without you:**
+
+- NavigationLocalPickGuard AMBIGUOUS/NO_MATCH/SELECTED outcomes
+- NavigationPhoneticConfirmation API-29+ proposal path
+
+**You will need:** installed debug APK; ambiguous POI list on screen
+
+**What to do:**
+
+1. open a multi-candidate list, speak an ambiguous name, then replace with a new destination
+
+**It passes if:**
+
+- ambiguous utterance keeps the list and asks for ordinal or confirmation
+- explicit new destination replaces the pending choice
+
+**Tell me back:** whether the list stayed open after ambiguity; replacement destination result
+
+**Still unknown until you do:** phonetic confusion cases beyond exact-name matching
+
+*Release-blocking.*
 
 ---
 

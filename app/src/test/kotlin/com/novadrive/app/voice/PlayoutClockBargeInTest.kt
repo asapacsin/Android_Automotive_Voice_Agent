@@ -15,7 +15,9 @@ class PlayoutClockBargeInTest {
         assertTrue(player.contains("fun enqueue(pcm16le: ByteArray, epoch: Int)"))
         assertTrue(player.contains("val queuedFrames: Int"))
         assertTrue(player.contains("val playbackActive: Boolean"))
-        assertTrue(player.contains("acceptEpoch += 1"))
+        assertTrue(player.contains("fun flush(epoch: Int)"))
+        assertTrue(player.contains("epochEngine.acceptEpoch") || player.contains("acceptEpoch = epoch"))
+        assertTrue(player.contains("private val outputLock = Any()"))
         assertTrue(player.contains("VoiceAudioSession.applyToTrackBuilder"))
     }
 

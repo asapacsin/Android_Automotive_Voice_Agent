@@ -264,7 +264,7 @@ class SimulationDriver(
         override fun enqueue(pcm16le: ByteArray, epoch: Int) {
             frames++
         }
-        override fun flush() {
+        override fun flush(epoch: Int) {
             frames = 0
             Telemetry.record(EventType.AUDIO_STOPPED)
         }

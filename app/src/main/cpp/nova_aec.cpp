@@ -76,6 +76,7 @@ struct NovaAec::Impl {
 
     std::unique_ptr<RenderResampler> render_resampler;
     int render_source_rate_hz = kAecSampleRateHz;
+    bool render_rate_initialized = false;
 
     int stream_delay_ms = 0;
     NovaAec::Stats stats{};
@@ -115,10 +116,13 @@ void NovaAec::SetStreamDelayMs(int delay_ms) {
 }
 
 void NovaAec::EnsureRenderResampler(int sample_rate_hz) {
-    if (impl_->render_source_rate_hz == sample_rate_hz && impl_->render_resampler != nullptr) {
+    // 16 kHz intentionally has no resampler object. Use an explicit initialization bit so each
+    // 16 kHz call does not clear the partial 10 ms frame retained from the prior call.
+    if (impl_->render_rate_initialized && impl_->render_source_rate_hz == sample_rate_hz) {
         return;
     }
     impl_->render_source_rate_hz = sample_rate_hz;
+    impl_->render_rate_initialized = true;
     impl_->render_source_leftover.clear();
     impl_->render_aec_leftover.clear();
     if (sample_rate_hz == kAecSampleRateHz) {

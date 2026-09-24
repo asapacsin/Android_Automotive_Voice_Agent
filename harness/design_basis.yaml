@@ -11,4 +11,24 @@
 # selected_basis: repo | platform_sdk | vendor | industry | adaptation | custom
 
 schema: 1
-entries: []
+entries:
+  - id: DB-ASTRA-AUDIO-001
+    problem_class: full-duplex audio lifecycle and AEC integration
+    triggers:
+      concurrency: true
+      async_lifecycle: true
+      audio_media: true
+      hardware: true
+      prior_failure: true
+      declared_uncertain: true
+    status: PASS
+    selected_basis: adaptation
+    selected_pattern: >-
+      Preserve the existing PCM ports and WebRTC AEC3; serialize device writes, flush and teardown
+      under explicit session/output identity, then migrate cadence and duration accounting by samples.
+    evidence: >-
+      docs/ASTRA_ARCHITECTURE_SELECTION.md Decisions 1-4 cites official WebRTC AudioProcessing,
+      AudioTrack lifecycle, and AOSP desired-versus-actual reconciliation patterns; docs/ASTRA_IMPLEMENTATION_PLAN.md
+      adds source-boundary review and Astra High contract review. This clears architecture selection,
+      not numerical tuning or acoustic verification.
+    suppresses_required_behavior: false

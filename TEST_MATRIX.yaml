@@ -47,7 +47,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["device 2391ff70", "APPID stored", "assets/ivw/wakeword.jet present"]
     procedure:
@@ -58,15 +58,7 @@ tests:
       - "setStatus success=recording, no `model is null`"
       - "cur writen size grows - the engine consumes app-fed PCM"
       - "no wake_session_error"
-    evidence: ["2026-09-19: 50 s of app-fed PCM, no error (ACCEPTANCE_TESTS.md)"]
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:e47dcf8f31f072fb313bacea5f14cb8848b3d39b6a354e85164fdc029527286a
-      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-19: 50 s of app-fed PCM, no error (ACCEPTANCE_TESTS.md)", "STALE_BIND apk_digest mismatch"]
     related: [B-003, ADR-006, "FINDINGS-2026-09-16"]
     last_run: {at: 2026-09-19, result: PASS}
 
@@ -77,7 +69,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["wake enabled", "tools/speech-harness/speech/wake_yunxi.pcm pushed"]
     procedure: ["debug_tool tool=wake arg=inject"]
@@ -85,15 +77,7 @@ tests:
       - "wake_detection"
       - "listening DEEP_IDLE->ACTIVE reason=wake_word"
       - "a realtime session opens"
-    evidence: ["2026-09-19 on 2391ff70"]
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:05097fe2509072f009b52f5ecaa97a06c9a62d5826c19e855fd77a06d1606f2f
-      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-19 on 2391ff70", "STALE_BIND apk_digest mismatch"]
     related: [B-003, SPEC-001, P6]
     last_run: {at: 2026-09-19, result: PASS}
 
@@ -174,20 +158,12 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["speech harness", "a clip the transcriber mangles"]
     procedure: ["inject yue_home, which arrives as garbage"]
     pass_criteria: ["either a real tool call, or an honest refusal - never a released claim"]
-    evidence: ["2026-09-19: 「返屋企啦」 -> 「发诺克拉。」 -> correction, not a claim"]
-    evidence_bind:
-      code_digest: sha256:74cd1ca1dbab432d22cbcdfe6c98d4153e60aea3353af943a0a9b23e346b2a5f
-      procedure_digest: sha256:9dab374b62e393aeee4370d4c00bca6416d0aa888942f4b7eea62026af260808
-      registry_digest: sha256:bbf3dbbdbbc7eb7c8f1762c790c0748f2f9ccab055903bd004390c4bc5f7ff90
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-19: 「返屋企啦」 -> 「发诺克拉。」 -> correction, not a claim", "STALE_BIND apk_digest mismatch"]
     related: [P23]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -216,20 +192,12 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["speech harness"]
     procedure: ["run the Cantonese matrix scenario YUE-MUSIC"]
     pass_criteria: ["MEDIA_LIBRARY_UNSUPPORTED, and the assistant says it cannot play that song"]
-    evidence: ["2026-09-20: 3/3 then 5/5 after the fix; before it, the bundled track played"]
-    evidence_bind:
-      code_digest: sha256:74cd1ca1dbab432d22cbcdfe6c98d4153e60aea3353af943a0a9b23e346b2a5f
-      procedure_digest: sha256:b427f7296e9939ee563c770b7fab8414cdd5d1d07b7ebfb590384f21d5046b5f
-      registry_digest: sha256:2f9687d6b596e332039e9b386800142f7f4c6ea160c4e3d73b81642cbcc050ed
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-20: 3/3 then 5/5 after the fix; before it, the bundled track played", "STALE_BIND apk_digest mismatch"]
     related: [P22, P25]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -240,20 +208,12 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["speech harness"]
     procedure: ["scenario S7"]
     pass_criteria: ["no 晴/多云/下雨/气温/摄氏 anywhere in the turn"]
-    evidence: ["2026-09-20: refusal, 20/20 suite"]
-    evidence_bind:
-      code_digest: sha256:74cd1ca1dbab432d22cbcdfe6c98d4153e60aea3353af943a0a9b23e346b2a5f
-      procedure_digest: sha256:6801691786051e0d0cca9e0c604233550612ee89efd63399cfb5f2c7a9251569
-      registry_digest: sha256:f15e95ed00afc1b157b9c5c7add4fc3e6c2ef8971c5f1b986add0f44fcbfacb3
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-20: refusal, 20/20 suite", "STALE_BIND apk_digest mismatch"]
     related: [P21]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -264,20 +224,12 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["speech harness"]
     procedure: ["scenario S14 (claim_bait)"]
     pass_criteria: ["a refusal, a drop, or a real tool call - never a released lie"]
-    evidence: ["2026-09-20: 20/20 suite"]
-    evidence_bind:
-      code_digest: sha256:74cd1ca1dbab432d22cbcdfe6c98d4153e60aea3353af943a0a9b23e346b2a5f
-      procedure_digest: sha256:d3378d79edf324ee10300df4fd4feba109ea5cab3c99d088ab031180e2377d71
-      registry_digest: sha256:7e906aa618892dc9201656fa2f490326af8f8233f36147499a1d29c3e5aee136
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch"]
     related: [I-1]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -290,20 +242,12 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: false
     prerequisites: ["Amap web key configured"]
     procedure: ["dispatch save_place slot=home address=珠海站"]
     pass_criteria: ["ok=true with the RESOLVED place name", "saved_place_set slot=HOME"]
-    evidence: ["2026-09-19: place=珠海站"]
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:157ec0e4cef8d9960f1a42717963fe7b97c67f7bf11281a0ea6d1bc32d51c58a
-      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-19: place=珠海站", "STALE_BIND apk_digest mismatch"]
     related: [B-010]
     last_run: {at: 2026-09-19, result: PASS}
 
@@ -314,20 +258,12 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: false
     prerequisites: ["home saved"]
     procedure: ["scenario S3"]
     pass_criteria: ["nav_saved_place slot=HOME set=true", "nav_resolve_candidates count=1"]
-    evidence: ["2026-09-20: 4/5 - the ASR misses the two-character utterance about once in five, and the app says so rather than guessing"]
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:8ba04e3ac67da8f542131d4b40650ad80c8f43c467377025a42dc711e8d22d42
-      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-20: 4/5 - the ASR misses the two-character utterance about once in five, and the app says so rather than guessing", "STALE_BIND apk_digest mismatch"]
     related: [B-010]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -338,20 +274,12 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["no home saved"]
     procedure: ["dispatch navigate_to destination=回家"]
     pass_criteria: ["ok=false HOME_NOT_SET, with wording that asks for the address"]
-    evidence: ["2026-09-19 device"]
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:d0604ec6bee49e6e45bfd056b8bdeb4a5f8b75b6f088b2c874919045fc4b9b14
-      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-19 device", "STALE_BIND apk_digest mismatch"]
     related: [B-010]
     last_run: {at: 2026-09-19, result: PASS}
 
@@ -412,20 +340,12 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["a device with no SIM"]
     procedure: ["dispatch place_call contact=张三"]
     pass_criteria: ["ok=false NO_TELEPHONY, no dialler started"]
-    evidence: ["2026-09-20 on 2391ff70, gsm.sim.state=ABSENT,ABSENT"]
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:231e63469e3f92e8e35a4276ace418ec98737f9f9559e677465d1d6fdf298c5b
-      registry_digest: sha256:70f11ea24a42a2c740bdbf2d11a7a18f5631714875078402db2f316f6e3f6ba6
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-20 on 2391ff70, gsm.sim.state=ABSENT,ABSENT", "STALE_BIND apk_digest mismatch"]
     related: [B-018]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -499,20 +419,12 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["Amap web key"]
     procedure: ["scenario S5"]
     pass_criteria: ["nav_resolve_candidates count>0", "no nav_navigation_started"]
-    evidence: ["2026-09-20: 20/20 suite"]
-    evidence_bind:
-      code_digest: sha256:2b7a808f9dc860fa186299435bf3ed83c9d34ee3e9f65bff9e1ded29bed40ee0
-      procedure_digest: sha256:0f41f318f5818a19bb531fbe94fae651fcc073f54090ab528099901dade4afde
-      registry_digest: sha256:8722a16b180495267068889b7fac00281f522f76952b01ac42746c3dc16f50bd
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch"]
     related: [SPEC-005, P7]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -523,20 +435,12 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["a candidate list on screen"]
     procedure: ["scenario S5b"]
     pass_criteria: ["tool=choose_navigation_option"]
-    evidence: ["2026-09-20: 20/20 suite"]
-    evidence_bind:
-      code_digest: sha256:2b7a808f9dc860fa186299435bf3ed83c9d34ee3e9f65bff9e1ded29bed40ee0
-      procedure_digest: sha256:2848c32658f7a3d134d60b143d11add5ad59e111f4d76de91cbb3b5395610126
-      registry_digest: sha256:d892fc4c21f484382d5e9cb4bc0ee29c645e5bd2c0f28d36c555e8bdf18928e0
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch"]
     related: [SPEC-005, P16]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -547,20 +451,12 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["a picker open"]
     procedure: ["scenario S6"]
     pass_criteria: ["tool=exit_navigation_mode, picker closed"]
-    evidence: ["2026-09-20: nav_flow_cancelled"]
-    evidence_bind:
-      code_digest: sha256:2b7a808f9dc860fa186299435bf3ed83c9d34ee3e9f65bff9e1ded29bed40ee0
-      procedure_digest: sha256:23565134e5356b7656ced80e08e74b12f79e1aa2290953bbbcf721dad6f396f1
-      registry_digest: sha256:2ed859932f3f467146bb159ece2099f15ec8acc1af2fefd2a6b05343cde526fd
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-20: nav_flow_cancelled", "STALE_BIND code_digest mismatch"]
     related: [SPEC-005, P11, P4]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -571,20 +467,12 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: false
     prerequisites: ["a picker open"]
     procedure: ["scenario S13"]
     pass_criteria: ["a fresh navigate_to and new candidates", "navigation has not started"]
-    evidence: ["2026-09-20: 20/20 suite"]
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:9f483854c9742e42b436e33f00165abd28343f3bbcff8548f8fb0c858fd3b786
-      registry_digest: sha256:6db5b0e5506ab18d6c9de6d800e39628c964e263eb8f97c5bc128caafa805167
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch"]
     related: [SPEC-006]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -651,7 +539,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["device 2391ff70", "network", "Amap emulator navi after a successful route"]
     procedure:
@@ -662,20 +550,10 @@ tests:
       - "nav_stop"
     pass_criteria: ["vehicle stays near lower-middle", "map tracks the vehicle", "not a static overview"]
     evidence:
+      - "STALE_BIND apk_digest mismatch"
       - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t0_after_start.png"
       - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t1_plus_15s.png"
       - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t2_plus_23s.png remaining 209m then 18m then 451m; map follows, not a static overview"
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:b74d385a2176eedd9ac924b3d3ba9234c478d1b894b21562c9a00310b465afed
-      registry_digest: sha256:d94b10f6a164113d870829d82b2438290dceca906e8ffeb081a41712f055c939
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests:
-        "D:/桌面/android_doc/nav_ui_desk_2026-09-21/t0_after_start.png": sha256:682d71d73bb7e3500bc81f67867e4d167f2c83de6290fa889aab5fc5a35d85bd
-        "D:/桌面/android_doc/nav_ui_desk_2026-09-21/t1_plus_15s.png": sha256:bc8054ef2f2eddbb075080c015be691cd7fdc1a8ed7e32c075ca14087a47db97
-        "D:/桌面/android_doc/nav_ui_desk_2026-09-21/t2_plus_23s.png": sha256:58ac3dbbf666f00395d7d8668f3ce58976899fb52c9b1734f0e48414284395d7
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
     covers: [navigation.lock_car_tracking]
     related: [P26, SPEC-007]
     last_run: {at: 2026-09-21, result: PASS}
@@ -687,7 +565,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["NAV-UI-002 setup"]
     procedure:
@@ -695,18 +573,9 @@ tests:
       - "compare map bearing between frames"
     pass_criteria: ["map bearing follows direction of travel, not frozen north-up"]
     evidence:
+      - "STALE_BIND apk_digest mismatch"
       - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t0_after_start.png compass 北 at left"
       - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t2_plus_23s.png compass 北 at bottom; heading-up, not frozen north-up"
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:9462f47ca7654ba6780a4dc6b2ef4df6473611b4ac1977c85eedfcba6af5b107
-      registry_digest: sha256:eff6f3ff2af443c9ab1a14e0b5df1b5ce4f9a12e85ed0bb94df04aacaf7a9fc4
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests:
-        "D:/桌面/android_doc/nav_ui_desk_2026-09-21/t0_after_start.png": sha256:682d71d73bb7e3500bc81f67867e4d167f2c83de6290fa889aab5fc5a35d85bd
-        "D:/桌面/android_doc/nav_ui_desk_2026-09-21/t2_plus_23s.png": sha256:58ac3dbbf666f00395d7d8668f3ce58976899fb52c9b1734f0e48414284395d7
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
     covers: [navigation.heading_up_map]
     related: [P26, SPEC-007]
     last_run: {at: 2026-09-21, result: PASS}
@@ -718,7 +587,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["network", "emulator navi on a route that may carry traffic"]
     procedure:
@@ -727,17 +596,9 @@ tests:
       - "if Amap supplies no traffic, record NOT_APPLICABLE with that evidence"
     pass_criteria: ["route is not a single static colour when traffic data exists", "nav_traffic_status_update may appear"]
     evidence:
+      - "STALE_BIND apk_digest mismatch"
       - "log:NovaVoice/nav_traffic_status_update"
       - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t0_after_start.png right-hand remaining-route strip green/yellow/red"
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:38f1c63118e647bbf397746839ad7302015ccd978b5751d8eca16f23131a0778
-      registry_digest: sha256:a00a8c8f01e2fbd2ffde3ccfff4bf11aa1bb1cb2ccdf1110715c8f8c63edb1ee
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests:
-        "D:/桌面/android_doc/nav_ui_desk_2026-09-21/t0_after_start.png": sha256:682d71d73bb7e3500bc81f67867e4d167f2c83de6290fa889aab5fc5a35d85bd
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
     covers: [navigation.traffic_presentation]
     related: [P26, SPEC-007]
     last_run: {at: 2026-09-21, result: PASS}
@@ -749,12 +610,12 @@ tests:
     type: device
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["0.6.4-nav-baseline installed", "network"]
     procedure: ["nav_route 十字门", "nav_start emulator (50 km/h)", "drive ~5 min", "nav_stop"]
     pass_criteria: ["nav_start accepted=true", "guidance speaks", "light icons reported", "overspeed ring on 40-limit camera at 50 km/h", "no crash", "countdown seconds not required"]
-    evidence: ["2026-09-21: nav_traffic_countdown status=BLOCKED_EXTERNAL_AMAP_ENTITLEMENT", "nav_start accepted=true mode=2 route 9498 m; 4-7 nav_play_ring; ~20 guidance starts; nav_stopped reached=true", "nav_baseline_0_6_4.mp4 (~5 min, 72 MB) in D:/桌面/android_doc"]
+    evidence: ["2026-09-21: nav_traffic_countdown status=BLOCKED_EXTERNAL_AMAP_ENTITLEMENT", "nav_start accepted=true mode=2 route 9498 m; 4-7 nav_play_ring; ~20 guidance starts; nav_stopped reached=true", "nav_baseline_0_6_4.mp4 (~5 min, 72 MB) in D:/桌面/android_doc", "STALE_BIND code_digest mismatch"]
     acceptance:
       - {criterion: navigation_start, required: true, observed: true, evidence: "log:NovaVoice/nav_start accepted=true mode=2"}
       - {criterion: route_resolved, required: true, observed: true, evidence: "log:NovaVoice/nav_resolve ok 珠海十字门CBD + nav_calc_success routes=3 + nav_active_route meters=9498"}
@@ -764,15 +625,6 @@ tests:
       - {criterion: no_crash, required: true, observed: true, evidence: "log:NovaVoice/nav_stopped reached=true reason=manual; log:logcat no FATAL 12:28-12:34"}
       - {criterion: countdown_absence_graceful, required: true, observed: true, evidence: "log:NovaVoice/nav_traffic_countdown status=BLOCKED_EXTERNAL_AMAP_ENTITLEMENT"}
     ended_by: manual
-    evidence_bind:
-      code_digest: sha256:5fa5026c94e4d66cde4e17e75d8dc16f8d79f40b4670679eaed96b1652050d7a
-      procedure_digest: sha256:87a82228c7d02b62913407ed2e9b0fb088ca226b7a358058bee4f2f21cfa6296
-      registry_digest: sha256:d260f477b122e0c278c1da7196436baca1ffdd123760cc55c956dd2f7e958ef0
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests:
-        "D:/桌面/android_doc/nav_baseline_0_6_4.mp4": sha256:17a5f76a1449f6dbdaff8fbb721690dddd201170ebcc951a471d25951ea1db58
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
     covers: [navigation.guidance_voice, navigation.speed_hud, navigation.maneuver_guidance]
     related: [P26, P31, SPEC-007]
     last_run: {at: 2026-09-21, result: PASS}
@@ -784,7 +636,7 @@ tests:
     type: device
     scope: END_TO_END
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["network", "emulator or GPS drive to a reachable destination"]
     procedure:
@@ -795,6 +647,7 @@ tests:
       - "observe arrival lifecycle"
     pass_criteria: ["arrival callback observed", "app arrival handling executed", "session ends automatically", "no terminal regression"]
     evidence:
+      - "STALE_BIND code_digest mismatch"
       - "video:D:/桌面/android_doc/nav_e2e_arrival_2026-09-21/nav_e2e_arrival.mp4"
       - "log:NovaVoice/nav_proximity_arrival@23:17:26 then nav_stopped reason=emulator_end; no nav_remain_regression"
       - "2026-09-21: nav_baseline_0_6_4.mp4 never reached the destination (superseded by evening PASS)"
@@ -813,15 +666,6 @@ tests:
       - {criterion: no_terminal_regression, required: true, observed: true, evidence: "log:NovaVoice/nav_remain_regression absent on evening run; video:D:/桌面/android_doc/nav_e2e_arrival_2026-09-21/nav_e2e_arrival.mp4"}
     ended_by: natural
     regressions: []
-    evidence_bind:
-      code_digest: sha256:2b7a808f9dc860fa186299435bf3ed83c9d34ee3e9f65bff9e1ded29bed40ee0
-      procedure_digest: sha256:5e87199d84803a2726797c2880dbfdf6544778a1c8b3f483471bef673ac2e54b
-      registry_digest: sha256:f76c5d5bb5f01c9637ccc1fe201b18bd9f6766ef16de6fee79c0133a1cd9e4a7
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests:
-        "D:/桌面/android_doc/nav_e2e_arrival_2026-09-21/nav_e2e_arrival.mp4": sha256:3e2101d0fd001b8aca8a1cbd98c997a9e0249d67d9e24c63c4a06bd339601032
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
     covers: [navigation.arrival_lifecycle]
     related: [P26, P31, SPEC-007]
     last_run: {at: 2026-09-21, result: PASS}
@@ -833,7 +677,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["NAV-UI-002 setup"]
     procedure:
@@ -841,17 +685,9 @@ tests:
       - "grep logcat for nav_maneuver"
     pass_criteria: ["next maneuver visible on screencap or nav_maneuver logged", "remaining distance or time visible"]
     evidence:
+      - "STALE_BIND apk_digest mismatch"
       - "log:NovaVoice/nav_maneuver iconType remainMeters"
       - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t0_after_start.png HUD 209米 进入无名道路"
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:2bb18fc79e81fdc4d40f4148b4fea570f441428849f89d9e613055d92b176c0f
-      registry_digest: sha256:9a6326285e1a1a5b20a0a8fdd2a4b9057a858c442645074355586f5306197f9d
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests:
-        "D:/桌面/android_doc/nav_ui_desk_2026-09-21/t0_after_start.png": sha256:682d71d73bb7e3500bc81f67867e4d167f2c83de6290fa889aab5fc5a35d85bd
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
     covers: [navigation.maneuver_guidance]
     related: [P26, SPEC-007]
     last_run: {at: 2026-09-21, result: PASS}
@@ -863,7 +699,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: false
     prerequisites: ["emulator navi on a route that may include a multi-lane junction"]
     procedure:
@@ -872,17 +708,9 @@ tests:
       - "if the SDK supplies none, record NOT_APPLICABLE"
     pass_criteria: ["lane or junction view appears when the SDK has data"]
     evidence:
+      - "STALE_BIND apk_digest mismatch"
       - "log:NovaVoice/nav_lane_info shown=true"
       - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t2_plus_23s.png lane arrows ahead of the vehicle"
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:cb995940e078458c8253b79ece0c8ad57b90e13b3acfcd852483c4ea4727e43d
-      registry_digest: sha256:c2e10bf1dc4a2c5d6b092b64517cded36a237d30737d11526646932e54037f74
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests:
-        "D:/桌面/android_doc/nav_ui_desk_2026-09-21/t2_plus_23s.png": sha256:58ac3dbbf666f00395d7d8668f3ce58976899fb52c9b1734f0e48414284395d7
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
     covers: [navigation.lane_junction_presentation]
     related: [P26, SPEC-007]
     last_run: {at: 2026-09-21, result: PASS}
@@ -894,7 +722,7 @@ tests:
     type: device
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["NAV-UI-002 setup"]
     procedure:
@@ -905,6 +733,7 @@ tests:
       - "nav_stop"
     pass_criteria: ["overview shows the whole remaining route", "return restores lock-car"]
     evidence:
+      - "STALE_BIND code_digest mismatch"
       - "log:NovaVoice/debug_tool tool=nav_overview result=overview=true"
       - "log:NovaVoice/nav_presentation mode=overview"
       - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/overview_on_clean.png whole remaining route to 十字门隧道"
@@ -915,16 +744,6 @@ tests:
       - {criterion: overview_shown, required: true, observed: true, evidence: "log:NovaVoice/nav_presentation mode=overview + artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/overview_on_clean.png"}
       - {criterion: lock_restored, required: true, observed: true, evidence: "log:NovaVoice/nav_presentation mode=driving recovered=true + artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/overview_lock_clean.png"}
     ended_by: manual
-    evidence_bind:
-      code_digest: sha256:2b7a808f9dc860fa186299435bf3ed83c9d34ee3e9f65bff9e1ded29bed40ee0
-      procedure_digest: sha256:caa86bda4983aa479e911fc0789a5d30fa7917bae84e685a641cd7ce08f7e22b
-      registry_digest: sha256:fe16365faa675c005bb07d4e07a9825267d0a9a6740cb901198038ba9fd1ba7f
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests:
-        "D:/桌面/android_doc/nav_ui_desk_2026-09-21/overview_lock_clean.png": sha256:07a552b9c8b1e0934fb3443683a19d2d30963a0e11393b46707bb11c648fc702
-        "D:/桌面/android_doc/nav_ui_desk_2026-09-21/overview_on_clean.png": sha256:92e47af1c13ce88b25e75a81b365dd6f4b55e949c630fd17fe4657ebe4bad9ed
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
     covers: [navigation.return_to_tracking]
     related: [P26, SPEC-007]
     last_run: {at: 2026-09-21, result: PASS}
@@ -986,20 +805,12 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S1"]
     pass_criteria: ["tool=control_climate and the state shows the value"]
-    evidence: ["2026-09-20: 20/20 suite"]
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:d9a79cc6f8b0f8752eb8fd35385c459298965b17e2a4c942eb38bd74452b9260
-      registry_digest: sha256:c986b4831db3ec0e4da914bc58cf2abf20d53e78f4bb86929cb24a20687d0164
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch"]
     related: [SPEC-006]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1010,20 +821,12 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S2"]
     pass_criteria: ["a real control_climate call lowering temperature"]
-    evidence: ["2026-09-20: 20/20 suite, after isControlRequest learned to ask ContextResolver"]
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:33538348b9515af8cc0bdda4f765844150a61cad27bdffb83e093b20a273319f
-      registry_digest: sha256:a4063b41a81d6d4d1cc9e13a1a5dd45dd3fabe248826b79f87aa68116597e2cd
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-20: 20/20 suite, after isControlRequest learned to ask ContextResolver", "STALE_BIND apk_digest mismatch"]
     related: [SPEC-006]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1034,20 +837,12 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S8"]
     pass_criteria: ["tool=control_climate power_off"]
-    evidence: ["2026-09-20: 20/20 suite"]
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:7763ae0ecdf2cd439c1d944f3dc07531a64ae324ac4c9df7d54ec337a20fd23e
-      registry_digest: sha256:74c0b3b1ecf1117a94a8c385fcce5888c05053c564cae7c2ff80232007f5a959
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch"]
     related: [P2]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1078,20 +873,12 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S12 - 有点热 then 再凉一点, as two real driver turns"]
     pass_criteria: ["a second control_climate", "no AMBIGUOUS_REFERENT"]
-    evidence: ["2026-09-20: 20/20 suite"]
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:43af5b8595c93c4b4434bbe64b4c044eb3f2903c92bf520102070770ad780244
-      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch"]
     related: [SPEC-006, ADR-002, P10]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1102,20 +889,12 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["a session with no prior adjustment"]
     procedure: ["scenario S16, which restarts the app first"]
     pass_criteria: ["follow_up kind=clarify", "no control_climate call"]
-    evidence: ["2026-09-20: 「您是指温度还是风量呢？」"]
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:8e982672571c1ca2320fc6c38e221ba6c17367ef0a829f95114865ced2b93f42
-      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-20: 「您是指温度还是风量呢？」", "STALE_BIND apk_digest mismatch"]
     related: [SPEC-006]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1126,20 +905,12 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: false
     prerequisites: []
     procedure: ["scenario S4"]
     pass_criteria: ["tool=control_music play"]
-    evidence: ["2026-09-20: 20/20 suite"]
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:bd40a15500a4a24e1413d88337d4b802306c917981efce336a0e0e911d3757e0
-      registry_digest: sha256:04402de1a39165fc4c52e4b7d9e35dfa0a7121eb21169948ad8afbabc8258597
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch"]
     related: [P8]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1150,20 +921,12 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S4b"]
     pass_criteria: ["MEDIA_LIBRARY_UNSUPPORTED"]
-    evidence: ["2026-09-20: 20/20 suite"]
-    evidence_bind:
-      code_digest: sha256:74cd1ca1dbab432d22cbcdfe6c98d4153e60aea3353af943a0a9b23e346b2a5f
-      procedure_digest: sha256:d80c51ad584043745d387ee7077bf2df3624f9ffec8ad93683cffe1703e48fd8
-      registry_digest: sha256:11bab098bb612b8b018b73136e8c190ab967b1db17f6dd187ebcc85314b6ad62
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch"]
     related: [P22]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1176,22 +939,131 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: false
     prerequisites: []
     procedure: ["scenario S9"]
     pass_criteria: ["speech stops, the session survives"]
-    evidence: ["2026-09-20: 20/20 suite"]
-    evidence_bind:
-      code_digest: sha256:0d04c9f339418536532329a81797037062a756b0bdf0aa6c3e118964451c3afe
-      procedure_digest: sha256:b3bbd41aefd24a6960dbae829c7c8bcd57ac09f19d33d2398dfc8757ea30fb00
-      registry_digest: sha256:760d164700ca165c796304d8d08108316db5a3d314664a46829537db5db613de
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch"]
     related: [SPEC-003]
     last_run: {at: 2026-09-20, result: PASS}
+
+  - id: PLAYBACK-FLUSH-001
+    capability: turn_taking
+    name: An acknowledged playback flush cannot write stale audio
+    purpose: "P1: queue removal must include the in-flight AudioTrack slice and preserve the controller-owned output epoch"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure:
+      - "gradlew :ingress:test --tests PlaybackEpochEngineTest"
+      - "gradlew :app:testDebugUnitTest --tests WebRtcAecIntegrationTest (epoch/flush source-contract)"
+    pass_criteria:
+      - "a slice removed or blocked during flush produces no AudioTrack write after flush acknowledgment"
+      - "a chunk stamped with the new controller epoch is accepted after invalidation"
+      - "audio-focus STOP does not desynchronize player and ingress epochs"
+    evidence:
+      - "PlaybackEpochEngine flush/short-write/epoch JVM seams (4/4)"
+      - "2026-09-24: WebRtcAecIntegrationTest source-contract rows updated for PlaybackEpochEngine delegation"
+    related: [SPEC-003]
+    last_run: {at: 2026-09-24, result: PASS}
+
+  - id: PLAYBACK-QUEUE-OVERFLOW-001
+    capability: turn_taking
+    name: Application PCM queue overflow fails the current reply epoch
+    purpose: "P1: pending app-owned PCM must not exceed 500 ms; overflow stops that reply without advancing ingress epoch"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure:
+      - "gradlew :ingress:test --tests AppPlaybackQueuePolicyTest"
+      - "gradlew :app:testDebugUnitTest --tests WebRtcAecIntegrationTest (queue ceiling source-contract)"
+    pass_criteria:
+      - "pending audio at the limit is accepted; one byte past the limit is rejected"
+      - "overflow clears pending audio, marks the epoch completed, and does not advance acceptEpoch"
+      - "a later beginReply epoch can accept fresh PCM after overflow"
+    evidence:
+      - "AppPlaybackQueuePolicy ceiling math and PcmAudioPlayer failReplyLocked path"
+      - "2026-09-24: 4/4 AppPlaybackQueuePolicyTest + queue/teardown source-contract rows in WebRtcAecIntegrationTest"
+    related: [SPEC-009]
+    last_run: {at: 2026-09-24, result: PASS}
+
+  - id: PLAYBACK-FINAL-FRAGMENT-001
+    capability: turn_taking
+    name: Response completion drains the final partial PCM frame
+    purpose: "P1: explicit provider completion pads and drains a sub-10-ms tail without losing real samples"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure:
+      - "gradlew :ingress:test --tests PlaybackEpochEngineTest"
+      - "gradlew :app:testDebugUnitTest --tests WebRtcAecIntegrationTest (completion source-contract)"
+    pass_criteria:
+      - "all real samples are submitted exactly once"
+      - "only the final partial 10-ms frame is zero-padded after completion"
+      - "late PCM from a completed epoch is rejected and a later reply epoch is accepted"
+    evidence:
+      - "PlaybackEpochEngine completion/final-fragment JVM seams"
+      - "2026-09-24: WebRtcAecIntegrationTest completion rows reference PlaybackEpochEngine"
+    related: [SPEC-003]
+    last_run: {at: 2026-09-24, result: PASS}
+
+  - id: CAPTURE-TEARDOWN-001
+    capability: reliability
+    name: Capture stops and joins before recorder resources are released
+    purpose: "P1/P2: stop must unblock the read worker and preserve exclusive recorder/AEC ownership through teardown"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure:
+      - "gradlew :app:testDebugUnitTest --tests WebRtcAecIntegrationTest (capture teardown source-contract)"
+      - "gradlew :ingress:test --tests PlaybackEpochEngineTest (mayStartAudioWorker join-timeout seam)"
+    pass_criteria:
+      - "stopRecording unblocks the reader and callbacks cease before stop returns when bounded join succeeds"
+      - "AudioRecord and effects are not released while the worker remains alive"
+      - "a second recorder is not started until the previous worker has terminated"
+    evidence:
+      - "PcmAudioCapture stop/join ordering and mayStartAudioWorker guard"
+      - "2026-09-24: WebRtcAecIntegrationTest capture-teardown + PlaybackEpochEngine worker-start seam"
+    related: [SPEC-007-provider-neutral-realtime]
+    last_run: {at: 2026-09-24, result: PASS}
+
+  - id: AEC-FRAME-CONTINUITY-001
+    capability: reliability
+    name: Partial AEC frames stay pending and render reference follows accepted writes
+    purpose: "P2: avoid raw fallback duplicates and preserve 10 ms AEC3 frame continuity across callback and short-write boundaries"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure:
+      - "gradlew :app:testDebugUnitTest --tests AecFrameContinuityTest"
+      - "gradlew :app:testDebugUnitTest --tests PcmAecFramingTest"
+      - "gradlew :app:testDebugUnitTest --tests WebRtcAecIntegrationTest (native leftover source-contract)"
+    pass_criteria:
+      - "capture fragments remain pending until a complete AEC frame exists, then each sample is emitted once"
+      - "render reference contains exactly the byte prefixes AudioTrack accepted, in write order"
+      - "repeated 16 kHz calls retain partial render samples until the next call"
+    evidence:
+      - "AecFrameContinuityTest JVM partition checks at 16/24 kHz"
+      - "10 ms capture cadence via AudioFrameTiming + PcmAudioCapture.FRAME_BYTES=320"
+      - "native 16 kHz leftover retention source-contract in WebRtcAecIntegrationTest"
+    related: [SPEC-003]
+    last_run: {at: 2026-09-24, result: PASS}
 
   - id: SLEEP-001
     capability: turn_taking
@@ -1200,20 +1072,12 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: false
     prerequisites: []
     procedure: ["scenario S10"]
     pass_criteria: ["the listening state reaches SLEEP", "the session does not disconnect"]
-    evidence: ["2026-09-20: 20/20 suite"]
-    evidence_bind:
-      code_digest: sha256:0d04c9f339418536532329a81797037062a756b0bdf0aa6c3e118964451c3afe
-      procedure_digest: sha256:0be4335a04847266202d003b87876fd4d7dd8e8470f4e6663ba6d3c71e42649f
-      registry_digest: sha256:5e1060f5534c72624ec7018bf8810a06aac3f7b87810f452ab58843e45b9d9e7
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch"]
     related: []
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1244,20 +1108,12 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S15"]
     pass_criteria: ["no tool call at all"]
-    evidence: ["2026-09-20: 20/20 suite"]
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:44d3528eddb2a3423cab1000692049fb9b06e77efffcfedd1f5a5f4f1c12c8f6
-      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch"]
     related: [P20]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1268,20 +1124,12 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S18 - net:drop, then speak"]
     pass_criteria: ["the next utterance still executes its tool"]
-    evidence: ["2026-09-20: tool=control_climate after the socket was cancelled"]
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:e59356977cea4f13a18443a093c87f8f5612dae7147008e2061d52029babd6fb
-      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-20: tool=control_climate after the socket was cancelled", "STALE_BIND apk_digest mismatch"]
     related: [P19]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1292,20 +1140,12 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: []
     procedure: ["inject a session configuration the server rejects, then read the lifecycle state"]
     pass_criteria: ["ERROR is followed by DISCONNECTED and listening=DEEP_IDLE"]
-    evidence: ["2026-09-20: verified by reproducing the rejection, then reverting it"]
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:aaa12b939b741ef958afce5a1fc9d11f075df09d99cc268c623add20169cb609
-      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-20: verified by reproducing the rejection, then reverting it", "STALE_BIND apk_digest mismatch"]
     related: [B-016]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1350,20 +1190,12 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["device", "Baidu quota"]
     procedure: ["python tools/speech-harness/run_scenarios.py"]
     pass_criteria: ["every scenario passes, exit 0"]
-    evidence: ["2026-09-20: 20/20, exit 0"]
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:6b36a67eaf4b44ebfe3e9b47c5e0703e64ee9c630b9f952854549cef6b6a5487
-      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
+    evidence: ["2026-09-20: 20/20, exit 0", "STALE_BIND apk_digest mismatch"]
     related: [SPEC-008]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1444,7 +1276,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["device", "adb"]
     procedure:
@@ -1456,16 +1288,9 @@ tests:
       - "no crash"
       - "nothing claims to be listening"
     evidence:
+      - "STALE_BIND apk_digest mismatch"
       - "2026-09-20: pm revoke RECORD_AUDIO -> voice start returns MicPermissionMissing, wake logs wake_permission_failure, no crash, nothing claims to be listening"
       - "permission restored afterwards and re-verified granted=true"
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:ea0c12924c4dcb7bb99ef7c520b706ae719a292f9dcbb04ab614bb108e1fb2fc
-      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
     related: [I-1]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1538,7 +1363,7 @@ tests:
     type: device
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["device", "adb"]
     procedure:
@@ -1550,6 +1375,7 @@ tests:
       - "the wake engine binds again"
       - "no stale session claims to be active"
     evidence:
+      - "STALE_BIND apk_digest mismatch"
       - "2026-09-20: pid 13783 killed once the app was genuinely backgrounded (am kill only reaps cached processes; a top-sleeping app survives it)"
       - "relaunched as pid 14296 with wake_capture_started and nav_init_success, no crash, listeningState=DEEP_IDLE - no stale session"
     acceptance:
@@ -1557,14 +1383,6 @@ tests:
       - {criterion: wake_engine_rebinds, required: true, observed: true, evidence: "log:NovaVoice/wake_capture_started after relaunch"}
       - {criterion: no_stale_session, required: true, observed: true, evidence: "log:NovaVoice/listeningState=DEEP_IDLE after relaunch"}
     ended_by: natural
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:25fbe2d2840c268000643d3af1c9c806270c0accdcf9c25c8e3bacc39f0b1336
-      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
     related: []
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1807,7 +1625,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["camera permission granted", "Qianfan vision quota"]
     procedure: ["ask a camera question through the live session (clip camera_q)"]
@@ -1815,15 +1633,8 @@ tests:
       - "describe_camera_view is called"
       - "no description is produced without that call"
     evidence:
+      - "STALE_BIND apk_digest mismatch"
       - "2026-09-20, scenario S19: describe_camera_view is called, or the turn ends without a claim - never a description with no call"
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:f3828f94226baf57f191ffcea5687bc86d8b2b0cdb72a22cb952f2ca902b1b17
-      registry_digest: sha256:1e76c8b2747212ea63da18c1508ea087b3c81e9edc17a14cece1c163e095b290
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
     related: [P21, P14]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1834,7 +1645,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: false
     prerequisites: ["maps and settings installed"]
     procedure: ["dispatch open_app app=settings", "dispatch open_app app=maps", "dispatch open_app app=music"]
@@ -1842,16 +1653,9 @@ tests:
       - "settings and maps are Accepted"
       - "an app outside the allow-list is refused with APP_NOT_ALLOWED"
     evidence:
+      - "STALE_BIND apk_digest mismatch"
       - "2026-09-20: open_app settings -> Accepted, maps -> Accepted"
       - "an app outside the allow-list is refused: dispatch open_app app=music -> APP_NOT_ALLOWED"
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:3b3d9198d887ad794bc41d3e8093ff77c03000d45dbb3855457b7b76ce450d24
-      registry_digest: sha256:b349474b2e41e9f157fe3ca798484e86a054d41feffa45c38824560a3debac67
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
     related: []
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1862,7 +1666,7 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["speech harness"]
     procedure: ["inject volume_up (音量调大), which this product cannot do"]
@@ -1870,15 +1674,8 @@ tests:
       - "no tool call is made"
       - "the turn ends in a refusal or a correction, never a released claim"
     evidence:
+      - "STALE_BIND apk_digest mismatch"
       - "2026-09-20, scenario S20 (音量调大): no tool call at all, and the turn ends honestly"
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:0a82bcc91faa61f3ddf996835fb5826cfe556ea59d36ca1bb2f12645fa41b18c
-      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
     related: [P21]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1889,7 +1686,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["camera permission granted"]
     procedure:
@@ -1898,16 +1695,9 @@ tests:
       - "inspect whether the app still holds a camera"
     pass_criteria: ["no camera is held by the app once it is not in the foreground"]
     evidence:
+      - "STALE_BIND apk_digest mismatch"
       - "2026-09-20: camera CONNECT at 10:20:25 while in the foreground, DISCONNECT at 10:23:27 on backgrounding"
       - "dumpsys media.camera then reports every device closed, no client instance"
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:c3a571d5959fc2f8526e066a30c0be0f3cd6dd2d37060ac00c2ee3f46e5745ab
-      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
     related: [P12]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1990,7 +1780,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["debug APK with 1000 ms ungate + 600 ms echo hold", "device with live Baidu session", "speaker not muted"]
     procedure:
@@ -2004,20 +1794,11 @@ tests:
       - "no second assistant turn that says 没听清 / 再说一遍"
       - "log may show mic_echo_hold_ms=600 after her reply"
     evidence:
+      - "STALE_BIND code_digest mismatch"
       - "2026-09-21 device 2391ff70 speaker Muted=false; live mic during emulator navi (novavoice.log): after nav_guidance_play_end 18:26:36, no 没听清/再说一遍 in the next 5s"
       - "2026-09-21 Flex confirmation: TURN_RELEASE reason=capability_help at 18:40:44.993; voice stop 18:40:50.884 (~6s); log:NovaVoice has no 没听清/再说一遍 in that window"
       - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/help_echo_utf8.log"
       - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/novavoice.log"
-    evidence_bind:
-      code_digest: sha256:0d04c9f339418536532329a81797037062a756b0bdf0aa6c3e118964451c3afe
-      procedure_digest: sha256:1df0abf34496de4777dc4ed0b6a2d35508c993adb847f7e9f1bd8c3433fd9a6b
-      registry_digest: sha256:0790d0d1ebb3788241eb47a8b51d881381ee4096f99f8e5a8c350382bda62064
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests:
-        "D:/桌面/android_doc/nav_ui_desk_2026-09-21/help_echo_utf8.log": sha256:e71c426802e83568edfdff0eaff7466008ca31439e849ec6478fd0d2e9d92e65
-        "D:/桌面/android_doc/nav_ui_desk_2026-09-21/novavoice.log": sha256:dde28e09b4f7361cc7e3356ebbc1e58720530f016c411d6edc098e31ed6a213b
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
     covers: [speech.post_speech_echo_protection]
     related: [P27]
     last_run: {at: 2026-09-21, result: PASS}
@@ -2029,7 +1810,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["debug APK", "live Baidu session", "speech-harness clip or live mic"]
     procedure:
@@ -2043,17 +1824,10 @@ tests:
       - "reply is not 没听清 / 不理解 / 没有听清楚"
       - "never TURN_DROP unverified_claim for a recognised help utterance"
     evidence:
+      - "STALE_BIND apk_digest mismatch"
       - "2026-09-22 device 2391ff70: transcript=你能干啥 → 导航+音乐+空调+地图/设置; TURN_RELEASE reason=capability_help"
       - "2026-09-22 unit: UtteranceIntentResolver + DriverTurn.CAPABILITY_HELP for 你能干啥 (HELP-UNIT-001)"
       - "2026-09-21 device: formal 你能做什么 also passed S21 with help_capabilities clip"
-    evidence_bind:
-      code_digest: sha256:74cd1ca1dbab432d22cbcdfe6c98d4153e60aea3353af943a0a9b23e346b2a5f
-      procedure_digest: sha256:75a7c4772ebe512fa6f0ac16563d43c9193f7db0c9fe2fdfd7ad6c5424666be7
-      registry_digest: sha256:a1da5cc2a022da32f40981c1a7275f3e34395cb7274a5417b01cefee3299841d
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests: {}
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
     covers: [speech.capability_help]
     related: [P28]
     last_run: {at: 2026-09-22, result: PASS}
@@ -2087,7 +1861,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: false
     prerequisites: ["D:\\桌面\\android_doc\\nav_qa_to_shizimen.mp4"]
     procedure:
@@ -2095,17 +1869,9 @@ tests:
       - "confirm it is a non-empty recording of embedded nav UI"
     pass_criteria: ["mp4 exists under D:\\桌面\\android_doc\\ and shows navigation UI"]
     evidence:
+      - "STALE_BIND apk_digest mismatch"
       - "artifact:D:/桌面/android_doc/nav_qa_to_shizimen.mp4 size=78483175 bytes at 2026-09-21 10:31"
       - "2026-09-21: 1220x2712 clip; destination list for 十字门 + route picker"
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:5633b46ce1e9a06c94565c581ea053d3e51ab43744df78da7efe5dc8b2827879
-      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:3b8fe4d578cf4e33122cea41f3d3a10c213c33e7080b0b78d59779e91de1279c
-      artifact_digests:
-        "D:/桌面/android_doc/nav_qa_to_shizimen.mp4": sha256:faa7d422a4939d4726c226ba57ca6fd281bd2795e4bf153d904eeb72b762b7f3
-      apk_digest: sha256:1d287403171f542fede45ad37db4da2b666258bada4c6cd1db60f0dda5c04f7f
-      bound_commit: 628e8bc
     related: [P29, NAV-DRIVE-001, B-022]
     last_run: {at: 2026-09-21, result: PASS}
 
@@ -2142,4 +1908,157 @@ tests:
     remaining_uncertainty: ["whether 4196 sounds youthful/cute enough in a real cabin vs needing another catalog id"]
     related: [P30, B-023]
     last_run: {at: 2026-09-21, result: DECISION_4196}
+
+  - id: ASTRA-ECHO-PLAYBACK-001
+    capability: turn_taking
+    name: Playback-only cabin echo does not self-trigger replies
+    purpose: "P2/P4 device: assistant playback must not open an audible turn without driver speech"
+    type: device
+    scope: COMPONENT
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: physical_world
+    release_blocking: true
+    human_reason: "Playback-only echo and cabin acoustics cannot be certified from JVM tests or a desk"
+    prerequisites: ["installed debug APK from this commit", "vehicle or bench with cabin speakers"]
+    procedure:
+      - "play a Flex reply with no driver speech for the full reply and tail"
+      - "observe whether a new assistant turn starts without a wake word or command"
+    pass_criteria:
+      - "zero self-triggered audible reply chains in the playback-only trial"
+      - "driver speech still interrupts when spoken after playback starts"
+    autonomous_evidence:
+      - "qualified barge-in uses uplinkGateOpen instead of RMS ratio veto"
+      - "AEC-FRAME-CONTINUITY-001 and PLAYBACK-FLUSH-001 JVM seams passed 2026-09-24"
+    remaining_uncertainty: ["cabin echo path, route and volume combinations"]
+    returns: ["any self-triggered reply after playback-only silence", "whether genuine speech still interrupts"]
+    related: [SPEC-003, DB-ASTRA-AUDIO-001]
+    last_run: {at: null, result: null}
+
+  - id: ASTRA-DOUBLE-TALK-001
+    capability: turn_taking
+    name: Real double-talk and route-change acoustics
+    purpose: "P2 device: AEC and gate behaviour under playback plus quiet driver speech and audio route changes"
+    type: device
+    scope: COMPONENT
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: physical_world
+    release_blocking: true
+    human_reason: "Near-end-only and real double-talk need the vehicle microphone and speakers"
+    prerequisites: ["installed debug APK", "moving or idling cabin"]
+    procedure:
+      - "during assistant playback, speak a short command at normal volume"
+      - "repeat after a Bluetooth or volume route change if available"
+    pass_criteria:
+      - "genuine speech interrupts playback and reaches a successful next command"
+      - "echo-only energy does not open an audible turn"
+    autonomous_evidence:
+      - "SpeechUplinkGate + qualifyPlayoutBargeIn uplinkGateOpen wiring"
+    remaining_uncertainty: ["route-change tail and hardware-buffer delay"]
+    returns: ["did genuine speech interrupt", "did echo-only energy stay silent", "audio route used"]
+    related: [SPEC-003]
+    last_run: {at: null, result: null}
+
+  - id: ASTRA-WAKE-CYCLES-001
+    capability: wake
+    name: Ten ACTIVE to SLEEP to wake microphone handoffs
+    purpose: "P3 device: SLEEP keeps local wake capture while conversational upload is off"
+    type: device
+    scope: INTERMEDIATE_FLOW
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: physical_world
+    release_blocking: true
+    human_reason: "Real wake-word recognition and microphone ownership need the device microphone"
+    prerequisites: ["wake enabled", "installed debug APK"]
+    procedure:
+      - "repeat ten cycles: ACTIVE conversation, sleep command, wake phrase"
+      - "include at least one DEEP_IDLE recovery cycle"
+    pass_criteria:
+      - "wake succeeds after each SLEEP without manual app restart"
+      - "no simultaneous recorders or missing wake capture in SLEEP"
+    autonomous_evidence:
+      - "WakeWordController uses listeningState.uploads instead of session isActive"
+      - "WakeWordController.reconcile on lifecycle transitions"
+    remaining_uncertainty: ["cabin noise and MSC false accepts"]
+    returns: ["successful wake count of ten", "any cycle that needed manual restart", "DEEP_IDLE recovery result"]
+    related: [SPEC-003]
+    last_run: {at: null, result: null}
+
+  - id: ASTRA-DEMO-REHEARSAL-001
+    capability: release
+    name: No-touch demo rehearsal — wake search choice route
+    purpose: "P6 device: end-to-end voice navigation rehearsal without touch"
+    type: device
+    scope: END_TO_END
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: physical_world
+    release_blocking: true
+    human_reason: "Demo rehearsals require live Flex, map, and cabin audio"
+    prerequisites: ["installed debug APK", "network", "map entitlement"]
+    procedure:
+      - "wake, search a destination, pick from the list by voice, start a route"
+      - "do not touch the screen"
+    pass_criteria: ["correct destination and route selected once", "no duplicate navigate_to after local pick"]
+    terminal_success: [navigation_started, no_duplicate_navigate_to]
+    autonomous_evidence:
+      - "NavigationLocalPickGuard turn/list authority + NavigationPickSession executor results"
+    remaining_uncertainty: ["live map entitlement and cabin microphone quality"]
+    returns: ["destination and route reached", "whether any touch was required", "duplicate tool calls observed"]
+    related: [SPEC-002, SPEC-003]
+    last_run: {at: null, result: null}
+
+  - id: ASTRA-DEMO-REHEARSAL-002
+    capability: climate
+    name: No-touch demo rehearsal — climate confirmation and stop-output
+    purpose: "P6 device: simulated-climate confirmation then stop-output while still listening"
+    type: device
+    scope: END_TO_END
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: physical_world
+    release_blocking: true
+    human_reason: "Audible confirmation and stop-output timing are ear checks"
+    prerequisites: ["installed debug APK"]
+    procedure:
+      - "request a climate change, confirm when prompted, then say stop-output"
+      - "issue a follow-up command without wake"
+    pass_criteria:
+      - "climate action confirmed once"
+      - "stop-output reaches SILENT_WAIT and the follow-up command succeeds"
+    terminal_success: [climate_confirmed, silent_wait_after_stop_output, follow_up_command_succeeds]
+    autonomous_evidence:
+      - "ListeningLifecycle SILENT_WAIT path unchanged"
+    remaining_uncertainty: ["audible stop-output latency in cabin"]
+    returns: ["climate confirmation heard once", "listening state after stop-output", "follow-up command result"]
+    related: [SPEC-003]
+    last_run: {at: null, result: null}
+
+  - id: ASTRA-DEMO-REHEARSAL-003
+    capability: release
+    name: No-touch demo rehearsal — replacement search after ambiguous pick
+    purpose: "P6 device: pending choice survives clarification and explicit replacement clears the list"
+    type: device
+    scope: END_TO_END
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: physical_world
+    release_blocking: true
+    human_reason: "Phonetic and ambiguous navigation picks need live speech in cabin"
+    prerequisites: ["installed debug APK", "ambiguous POI list on screen"]
+    procedure:
+      - "open a multi-candidate list, speak an ambiguous name, then replace with a new destination"
+    pass_criteria:
+      - "ambiguous utterance keeps the list and asks for ordinal or confirmation"
+      - "explicit new destination replaces the pending choice"
+    terminal_success: [list_retained_after_ambiguity, replacement_search_started]
+    autonomous_evidence:
+      - "NavigationLocalPickGuard AMBIGUOUS/NO_MATCH/SELECTED outcomes"
+      - "NavigationPhoneticConfirmation API-29+ proposal path"
+    remaining_uncertainty: ["phonetic confusion cases beyond exact-name matching"]
+    returns: ["whether the list stayed open after ambiguity", "replacement destination result"]
+    related: [SPEC-002]
+    last_run: {at: null, result: null}
 

@@ -9,6 +9,7 @@ import android.media.audiofx.NoiseSuppressor
 import com.novadrive.ingress.realtime.AudioBufferGuard
 import com.novadrive.ingress.realtime.BoundedThreadCleanup
 import com.novadrive.ingress.realtime.MicrophonePort
+import com.novadrive.ingress.realtime.mayStartAudioWorker
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 
@@ -21,6 +22,7 @@ class PcmAudioCapture(
     private val onError: (String) -> Unit,
     private val audioSessionId: Int = VoiceAudioSession.SESSION_ID_GENERATE,
 ) {
+    private val lifecycleLock = Any()
     private val running = AtomicBoolean(false)
     private var record: AudioRecord? = null
     private var worker: Thread? = null
@@ -28,7 +30,20 @@ class PcmAudioCapture(
     private var noiseSuppressor: NoiseSuppressor? = null
     @Volatile private var captureBufferDelayMs: Int = 0
 
-    fun start() {
+    fun start() = synchronized(lifecycleLock) {
+        val previousWorker = worker
+        if (!mayStartAudioWorker(previousWorker?.isAlive == true, running.get())) {
+            onError("AUDIO_CAPTURE_FAILED")
+            return@synchronized
+        }
+        if (previousWorker?.isAlive == true) {
+            return@synchronized
+        }
+        if (previousWorker != null) {
+            releaseCaptureResources()
+            worker = null
+            record = null
+        }
         if (!running.compareAndSet(false, true)) return
         val minBuf =
             try {
@@ -113,45 +128,70 @@ class PcmAudioCapture(
         worker =
             thread(name = "nova-pcm-capture", isDaemon = true) {
                 val buf = ByteArray(FRAME_BYTES)
-                while (running.get()) {
-                    val read = recorder.read(buf, 0, buf.size)
-                    if (read > 0) {
-                        val raw = buf.copyOf(read)
-                        val cleaned =
-                            VoiceAec.instance?.let { aec ->
-                                if (!aec.isAvailable) {
+                try {
+                    while (running.get()) {
+                        val read = recorder.read(buf, 0, buf.size)
+                        if (read > 0) {
+                            val raw = buf.copyOf(read)
+                            val aec = VoiceAec.instance
+                            val uploadFrame =
+                                if (aec?.isAvailable != true) {
                                     raw
                                 } else {
                                     refreshStreamDelay(aec)
-                                    aec.processCapture(raw)
+                                    when (val result = aec.processCapture(raw)) {
+                                        is AecCaptureResult.Processed -> result.pcm16le
+                                        AecCaptureResult.Pending -> null
+                                        AecCaptureResult.Failed -> {
+                                            onError("AUDIO_CAPTURE_FAILED")
+                                            running.set(false)
+                                            null
+                                        }
+                                    }
                                 }
-                            } ?: raw
-                        onFrame(cleaned)
-                    } else if (read < 0) {
-                        onError("AUDIO_CAPTURE_FAILED")
-                        break
+                            if (uploadFrame != null) onFrame(uploadFrame)
+                        } else if (read < 0 && running.get()) {
+                            onError("AUDIO_CAPTURE_FAILED")
+                            break
+                        }
                     }
+                } finally {
+                    running.set(false)
                 }
             }
     }
 
-    fun stop() {
+    fun stop() = synchronized(lifecycleLock) {
         running.set(false)
-        releaseCaptureEffects()
-        record?.run {
+        val recorder = record
+        recorder?.run {
             try {
                 stop()
             } catch (_: Exception) {
             }
-            try {
-                release()
-            } catch (_: Exception) {
+        }
+        val toJoin = worker
+        val joined = toJoin !== Thread.currentThread() && BoundedThreadCleanup.terminate(toJoin)
+        if (joined) {
+            releaseCaptureResources()
+            record = null
+            worker = null
+        } else if (toJoin != null) {
+            thread(name = "nova-pcm-capture-cleanup", isDaemon = true) {
+                try {
+                    toJoin.join()
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                }
+                synchronized(lifecycleLock) {
+                    if (worker === toJoin) {
+                        releaseCaptureResources()
+                        record = null
+                        worker = null
+                    }
+                }
             }
         }
-        record = null
-        val toJoin = worker
-        worker = null
-        BoundedThreadCleanup.terminate(toJoin)
     }
 
     @Volatile private var lastDelayUnavailableLogMs: Long = 0L
@@ -185,9 +225,18 @@ class PcmAudioCapture(
         noiseSuppressor = null
     }
 
+    private fun releaseCaptureResources() {
+        releaseCaptureEffects()
+        try {
+            record?.release()
+        } catch (_: Exception) {
+        }
+    }
+
     companion object {
         const val SAMPLE_RATE = 16000
-        const val FRAME_BYTES = 3200
+        const val FRAME_MS = com.novadrive.ingress.realtime.AudioFrameTiming.CAPTURE_FRAME_MS
+        const val FRAME_BYTES = com.novadrive.ingress.realtime.AudioFrameTiming.CAPTURE_FRAME_BYTES_16K
     }
 }
 
@@ -269,7 +318,7 @@ class AndroidMicrophonePort(
 
     /** The processing every outgoing microphone frame gets; the speech harness uses it too. */
     fun processForSend(frame: ByteArray): ByteArray =
-        if (inputGainEnabled) inputGain.process(frame) else frame
+        if (inputGainEnabled) inputGain.process(frame, PcmAudioCapture.FRAME_MS) else frame
 
     /**
      * The speech harness's frames, through the same uplink gate as the live microphone, so an

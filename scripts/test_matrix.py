@@ -1629,9 +1629,17 @@ def selftest():
     real = load()
     help_device = next(t for t in real["tests"] if t["id"] == "HELP-001")
     help_unit = next(t for t in real["tests"] if t["id"] == "HELP-UNIT-001")
-    check("N HELP-001 is a bind-current device PASS",
-          help_device["status"] == "PASS" and need_runtime_bind(help_device)
-          and not bind_problems(help_device))
+    help_device_current = (
+        help_device["status"] == "PASS" and need_runtime_bind(help_device)
+        and not bind_problems(help_device)
+    )
+    help_device_requeued = (
+        help_device["status"] == "NOT_RUN"
+        and any("STALE_BIND" in str(item) for item in help_device.get("evidence") or [])
+        and "evidence_bind" not in help_device
+    )
+    check("N HELP-001 is current or accurately requeued after its bind goes stale",
+          help_device_current or help_device_requeued)
     check("N HELP-UNIT-001 is an unbound unit PASS",
           help_unit["status"] == "PASS" and not need_runtime_bind(help_unit)
           and "evidence_bind" not in help_unit)

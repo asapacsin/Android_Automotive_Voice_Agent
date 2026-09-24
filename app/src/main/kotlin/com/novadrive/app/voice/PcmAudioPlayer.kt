@@ -10,10 +10,10 @@ import com.novadrive.app.DebugVoiceLog
 import com.novadrive.app.NavigationState
 import com.novadrive.ingress.realtime.AudioBufferGuard
 import com.novadrive.ingress.realtime.BoundedThreadCleanup
+import com.novadrive.ingress.realtime.PlaybackEpochEngine
 import com.novadrive.ingress.realtime.PlaybackPort
+import com.novadrive.ingress.realtime.mayStartAudioWorker
 import java.util.concurrent.CopyOnWriteArrayList
-import java.util.concurrent.LinkedBlockingQueue
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 
@@ -25,32 +25,32 @@ import kotlin.concurrent.thread
 class PcmAudioPlayer(
     private val onError: (String) -> Unit,
 ) {
-    private val queue = LinkedBlockingQueue<ByteArray>()
+    private val epochEngine = PlaybackEpochEngine()
     private val running = AtomicBoolean(false)
     private var track: AudioTrack? = null
     private var worker: Thread? = null
     @Volatile private var sampleRateHz: Int = PcmAudioCapture.SAMPLE_RATE
     @Volatile private var audioSessionId: Int = VoiceAudioSession.SESSION_ID_GENERATE
     private val stateLock = Any()
+    /** Serializes queue extraction, track writes, and flush acknowledgement. */
+    private val outputLock = Any()
+    private enum class SliceResult { CONTINUE, RETRY, STOP }
     @Volatile private var speaking = false
     @Volatile private var playbackPaused = false
-    @Volatile private var acceptEpoch = 0
     @Volatile private var framesWritten: Long = 0
     @Volatile private var headOrigin: Long = 0
     @Volatile private var timestampAvailable = false
     private var latencyBuffer: LowLatencyPlaybackBuffer? = null
-    private val sliceRemainder = java.io.ByteArrayOutputStream()
     private val playbackStateListeners = CopyOnWriteArrayList<(Boolean) -> Unit>()
     private val playbackActiveListeners = CopyOnWriteArrayList<(Boolean) -> Unit>()
     @Volatile private var lastNotifiedPlaybackActive = false
 
     val isPlaying: Boolean
-        get() =
-            try {
-                running.get() && (speaking || queue.isNotEmpty() || sliceRemainder.size() > 0)
-            } catch (_: Exception) {
-                false
+        get() = runCatching {
+            running.get() && synchronized(outputLock) {
+                speaking || epochEngine.queuedBytes() > 0
             }
+        }.getOrDefault(false)
 
     fun setOnPlaybackStateChanged(listener: ((Boolean) -> Unit)?) {
         if (listener == null) {
@@ -72,6 +72,7 @@ class PcmAudioPlayer(
         require(sampleRateHz in 8_000..48_000) { "AUDIO_SAMPLE_RATE_INVALID" }
         if (running.get()) return
         this.sampleRateHz = sampleRateHz
+        epochEngine.configureSampleRate(sampleRateHz)
     }
 
     fun configureAudioSession(sessionId: Int) {
@@ -82,7 +83,21 @@ class PcmAudioPlayer(
     val playbackSessionId: Int
         get() = track?.audioSessionId ?: audioSessionId
 
-    fun start() {
+    fun start(epoch: Int = 0) {
+        synchronized(outputLock) {
+            val previousWorker = worker
+            if (!mayStartAudioWorker(previousWorker?.isAlive == true, running.get())) {
+                onError("AUDIO_PLAYBACK_FAILED")
+                return
+            }
+            if (previousWorker?.isAlive == true) {
+                return
+            }
+            if (previousWorker != null) {
+                releaseTrackLocked()
+                worker = null
+            }
+        }
         if (!running.compareAndSet(false, true)) return
         val minBuf =
             try {
@@ -128,11 +143,12 @@ class PcmAudioPlayer(
                 return
             }
         playbackPaused = false
-        acceptEpoch = 0
+        synchronized(outputLock) {
+            epochEngine.resetForStart(epoch)
+        }
         framesWritten = 0
         headOrigin = 0
         timestampAvailable = false
-        sliceRemainder.reset()
         try {
             player.play()
         } catch (_: Exception) {
@@ -156,60 +172,109 @@ class PcmAudioPlayer(
                 val sliceBytes = sampleRateHz * 2 / 100
                 val slice = ByteArray(sliceBytes)
                 while (running.get()) {
-                    if (!fillSlice(sliceBytes, slice)) {
-                        emitIdleIfDrained()
-                        publishPlayoutDelay(player, null)
-                        continue
-                    }
-                    VoiceAec.instance?.let { aec ->
-                        if (aec.isAvailable) {
-                            aec.processRender(slice, sampleRateHz)
+                    val result =
+                        synchronized(outputLock) {
+                            if (running.get()) processSliceUnderLock(player, bufferManager, sliceBytes, slice)
+                            else SliceResult.STOP
                         }
-                    }
-                    val written =
+                    if (result == SliceResult.STOP) break
+                    if (result == SliceResult.RETRY) {
                         try {
-                            player.write(slice, 0, slice.size, AudioTrack.WRITE_BLOCKING)
-                        } catch (_: Exception) {
-                            onError("AUDIO_PLAYBACK_FAILED")
-                            break
-                        }
-                    if (written < 0) {
-                        onError("AUDIO_PLAYBACK_FAILED")
-                        break
-                    }
-                    if (written > 0) {
-                        framesWritten += written / 2
-                    }
-                    val playoutDelayMs = measuredPlayoutDelayMs(player)
-                    publishPlayoutDelay(player, playoutDelayMs)
-                    bufferManager.afterWrite(player)
-                    VoiceAec.instance?.let { aec ->
-                        if (aec.isAvailable) {
-                            val stats = aec.snapshotStats()
-                            AecMetrics.maybeLog(
-                                playbackActive = playbackActive,
-                                streamDelayMs = playoutDelayMs,
-                                stats = stats,
-                                appQueueMs = appQueueDelayMs(),
-                                trackBufferMs = bufferManager.bufferMs,
-                                underrunCount = underrunCount(player),
-                            )
+                            Thread.sleep(2)
+                        } catch (_: InterruptedException) {
+                            if (!running.get()) break
                         }
                     }
                 }
             }
     }
 
+    /** Must be called with [outputLock] held so a flush cannot acknowledge before this write ends. */
+    private fun processSliceUnderLock(
+        player: AudioTrack,
+        bufferManager: LowLatencyPlaybackBuffer,
+        sliceBytes: Int,
+        slice: ByteArray,
+    ): SliceResult {
+        if (playbackPaused) return SliceResult.RETRY
+        if (epochEngine.pendingSlice == null && epochEngine.stagePendingSlice(sliceBytes, slice)) {
+            // staged on engine
+        }
+        val pending = epochEngine.pendingSlice
+        if (pending == null) {
+            emitIdleIfDrained()
+            publishPlayoutDelay(player, null)
+            return SliceResult.RETRY
+        }
+        val written =
+            try {
+                player.write(
+                    pending,
+                    epochEngine.pendingSliceOffset,
+                    pending.size - epochEngine.pendingSliceOffset,
+                    AudioTrack.WRITE_NON_BLOCKING,
+                )
+            } catch (_: Exception) {
+                onError("AUDIO_PLAYBACK_FAILED")
+                return SliceResult.STOP
+            }
+        if (written < 0) {
+            onError("AUDIO_PLAYBACK_FAILED")
+            return SliceResult.STOP
+        }
+        if (written == 0) return SliceResult.RETRY
+        if (written % 2 != 0) {
+            onError("AUDIO_PLAYBACK_FAILED")
+            return SliceResult.STOP
+        }
+
+        VoiceAec.instance?.let { aec ->
+            if (aec.isAvailable) {
+                val accepted = pending.copyOfRange(epochEngine.pendingSliceOffset, epochEngine.pendingSliceOffset + written)
+                if (!aec.processRender(accepted, sampleRateHz)) {
+                    onError("AUDIO_PLAYBACK_FAILED")
+                    return SliceResult.STOP
+                }
+            }
+        }
+        epochEngine.acceptShortWrite(written)
+        framesWritten += written / 2
+        val playoutDelayMs = measuredPlayoutDelayMs(player)
+        publishPlayoutDelay(player, playoutDelayMs)
+        bufferManager.afterWrite(player)
+        VoiceAec.instance?.let { aec ->
+            if (aec.isAvailable) {
+                AecMetrics.maybeLog(
+                    playbackActive = playbackActive,
+                    streamDelayMs = playoutDelayMs,
+                    stats = aec.snapshotStats(),
+                    appQueueMs = appQueueDelayMs(),
+                    trackBufferMs = bufferManager.bufferMs,
+                    underrunCount = underrunCount(player),
+                )
+            }
+        }
+        return SliceResult.CONTINUE
+    }
+
     fun enqueue(pcm16le: ByteArray, epoch: Int) {
-        if (!running.get() || epoch != acceptEpoch) return
-        queue.offer(pcm16le)
+        synchronized(outputLock) {
+            when (epochEngine.enqueue(pcm16le, epoch, running.get())) {
+                com.novadrive.ingress.realtime.PlaybackEnqueueResult.Accepted -> Unit
+                com.novadrive.ingress.realtime.PlaybackEnqueueResult.OverflowFailed -> {
+                    failReplyLocked(epoch)
+                    return
+                }
+                else -> return
+            }
+        }
         emitSpeaking(true)
         notifyPlaybackActiveIfChanged()
     }
 
     val queuedFrames: Int
-        get() {
-            val queued = queue.sumOf { it.size / 2 } + sliceRemainder.size() / 2
+        get() = synchronized(outputLock) {
+            val queued = epochEngine.queuedBytes() / 2
             val track = track ?: return queued
             return try {
                 val head = playbackHeadFrames(track) ?: return queued
@@ -229,10 +294,12 @@ class PcmAudioPlayer(
         private set
 
     fun duck() {
-        duckCount++
-        try {
-            track?.setVolume(0.2f)
-        } catch (_: Exception) {
+        synchronized(outputLock) {
+            duckCount++
+            try {
+                track?.setVolume(0.2f)
+            } catch (_: Exception) {
+            }
         }
     }
 
@@ -241,33 +308,59 @@ class PcmAudioPlayer(
         private set
 
     fun unduck() {
-        unduckCount++
-        try {
-            track?.setVolume(1.0f)
-        } catch (_: Exception) {
+        synchronized(outputLock) {
+            unduckCount++
+            try {
+                track?.setVolume(1.0f)
+            } catch (_: Exception) {
+            }
         }
     }
 
     fun pausePlayback() {
-        try {
-            playbackPaused = true
-            track?.pause()
-        } catch (_: Exception) {
+        synchronized(outputLock) {
+            try {
+                playbackPaused = true
+                track?.pause()
+            } catch (_: Exception) {
+            }
         }
     }
 
     fun resumePlayback() {
-        try {
-            playbackPaused = false
-            track?.play()
-        } catch (_: Exception) {
+        synchronized(outputLock) {
+            try {
+                playbackPaused = false
+                track?.play()
+            } catch (_: Exception) {
+            }
         }
     }
 
-    fun flush() {
-        queue.clear()
-        sliceRemainder.reset()
-        acceptEpoch += 1
+    fun flush(epoch: Int) {
+        synchronized(outputLock) { flushLocked(epoch) }
+    }
+
+    fun beginReply(epoch: Int) {
+        synchronized(outputLock) {
+            epochEngine.beginReply(epoch)
+        }
+    }
+
+    fun complete(epoch: Int) {
+        synchronized(outputLock) {
+            if (!running.get()) return
+            epochEngine.complete(epoch)
+        }
+    }
+
+    /** Audio-focus STOP physically flushes output without changing the ingress epoch. */
+    fun flushCurrentEpoch() {
+        synchronized(outputLock) { flushLocked(epochEngine.acceptEpoch) }
+    }
+
+    private fun flushLocked(epoch: Int) {
+        epochEngine.flush(epoch)
         track?.pause()
         track?.flush()
         framesWritten = 0
@@ -283,58 +376,79 @@ class PcmAudioPlayer(
 
     fun stop() {
         running.set(false)
-        queue.clear()
-        sliceRemainder.reset()
-        track?.run {
-            try {
-                pause()
-                flush()
-                stop()
-            } catch (_: Exception) {
+        synchronized(outputLock) {
+            epochEngine.flush(epochEngine.acceptEpoch)
+            track?.run {
+                try {
+                    pause()
+                    flush()
+                    stop()
+                } catch (_: Exception) {
+                }
             }
+        }
+        latencyBuffer = null
+        playbackPaused = false
+        framesWritten = 0
+        headOrigin = 0
+        timestampAvailable = false
+        VoicePlayoutDelay.clear()
+        val toJoin = worker
+        val joined = toJoin !== Thread.currentThread() && BoundedThreadCleanup.terminate(toJoin)
+        if (joined) {
+            synchronized(outputLock) {
+                releaseTrackLocked()
+                worker = null
+            }
+        } else if (toJoin != null) {
+            thread(name = "nova-pcm-play-cleanup", isDaemon = true) {
+                try {
+                    toJoin.join()
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                }
+                synchronized(outputLock) {
+                    if (worker === toJoin) {
+                        releaseTrackLocked()
+                        worker = null
+                    }
+                }
+            }
+        } else {
+            synchronized(outputLock) {
+                releaseTrackLocked()
+                worker = null
+            }
+        }
+        emitSpeaking(false)
+        notifyPlaybackActiveIfChanged()
+    }
+
+    private fun releaseTrackLocked() {
+        track?.run {
             try {
                 release()
             } catch (_: Exception) {
             }
         }
         track = null
-        latencyBuffer = null
-        playbackPaused = false
-        acceptEpoch = 0
-        framesWritten = 0
-        headOrigin = 0
-        timestampAvailable = false
-        VoicePlayoutDelay.clear()
-        val toJoin = worker
-        worker = null
-        BoundedThreadCleanup.terminate(toJoin)
-        emitSpeaking(false)
-        notifyPlaybackActiveIfChanged()
     }
 
-    private fun fillSlice(sliceBytes: Int, slice: ByteArray): Boolean {
-        while (sliceRemainder.size() < sliceBytes) {
-            val frame =
-                try {
-                    queue.poll(20, TimeUnit.MILLISECONDS)
-                } catch (_: InterruptedException) {
-                    return false
-                }
-            if (frame == null) {
-                break
-            }
-            sliceRemainder.write(frame)
+    /** Overflow or explicit failure for the current reply epoch; ingress still owns the next epoch. */
+    private fun failReplyLocked(epoch: Int) {
+        epochEngine.failReply(epoch)
+        track?.pause()
+        track?.flush()
+        framesWritten = 0
+        headOrigin = track?.let { playbackHeadFrames(it) ?: 0L } ?: 0L
+        timestampAvailable = false
+        if (!playbackPaused) {
+            track?.play()
         }
-        if (sliceRemainder.size() < sliceBytes) {
-            return false
-        }
-        val data = sliceRemainder.toByteArray()
-        System.arraycopy(data, 0, slice, 0, sliceBytes)
-        sliceRemainder.reset()
-        if (data.size > sliceBytes) {
-            sliceRemainder.write(data, sliceBytes, data.size - sliceBytes)
-        }
-        return true
+        emitSpeaking(false)
+        notifyPlaybackActiveIfChanged()
+        publishPlayoutDelay(track, null)
+        onError("AUDIO_PLAYBACK_FAILED")
     }
 
     private fun measuredPlayoutDelayMs(player: AudioTrack): Int? {
@@ -345,7 +459,11 @@ class PcmAudioPlayer(
         return ((buffered * 1000) / sampleRateHz).toInt().coerceIn(0, 500)
     }
 
-    private fun appQueueDelayMs(): Int = ((queue.sumOf { it.size } + sliceRemainder.size()) * 1000) / (sampleRateHz * 2)
+    private fun appQueueDelayMs(): Int =
+        com.novadrive.ingress.realtime.AppPlaybackQueuePolicy.pendingMs(
+            epochEngine.queuedBytes(),
+            sampleRateHz,
+        )
 
     private fun publishPlayoutDelay(player: AudioTrack?, playoutDelayMs: Int?) {
         val bufferMs = latencyBuffer?.bufferMs ?: 0
@@ -400,8 +518,9 @@ class PcmAudioPlayer(
     }
 
     private fun emitIdleIfDrained() {
+        if (epochEngine.queuedBytes() > 0 || queuedFrames > 0) return
         synchronized(stateLock) {
-            if (!queue.isEmpty() || sliceRemainder.size() > 0) return
+            if (epochEngine.queuedBytes() > 0) return
             if (!speaking) return
             speaking = false
         }
@@ -459,7 +578,7 @@ class AndroidPlaybackPort(
                 FocusAction.PAUSE -> player.pausePlayback()
                 FocusAction.STOP -> {
                     player.pausePlayback()
-                    player.flush()
+                    player.flushCurrentEpoch()
                 }
                 FocusAction.RESUME -> {
                     player.unduck()
@@ -473,6 +592,18 @@ class AndroidPlaybackPort(
 
     override fun start() {
         player.start()
+    }
+
+    override fun start(epoch: Int) {
+        player.start(epoch)
+    }
+
+    override fun beginReply(epoch: Int) {
+        player.beginReply(epoch)
+    }
+
+    override fun complete(epoch: Int) {
+        player.complete(epoch)
     }
 
     @Volatile private var droppingReply = false
@@ -501,8 +632,8 @@ class AndroidPlaybackPort(
         player.enqueue(pcm16le, epoch)
     }
 
-    override fun flush() {
-        player.flush()
+    override fun flush(epoch: Int) {
+        player.flush(epoch)
         com.novadrive.evaluation.Telemetry.record(com.novadrive.evaluation.EventType.AUDIO_STOPPED)
     }
 

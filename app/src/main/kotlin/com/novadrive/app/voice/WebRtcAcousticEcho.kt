@@ -6,34 +6,50 @@ import com.novadrive.app.DebugVoiceLog
  * WebRTC AEC3 echo cancellation for the Baidu PCM path. Render is fed immediately before
  * [android.media.AudioTrack.write]; capture is cleaned before gain and [SpeechUplinkGate].
  */
-class WebRtcAcousticEcho private constructor(private val nativeHandle: Long) {
-    val isAvailable: Boolean = nativeHandle != 0L
+class WebRtcAcousticEcho private constructor(@Volatile private var nativeHandle: Long) {
+    val isAvailable: Boolean get() = nativeHandle != 0L
 
     @Volatile
     var streamDelayMs: Int = 0
 
-    fun processRender(pcm16le: ByteArray, sampleRateHz: Int) {
-        if (!isAvailable || pcm16le.isEmpty()) return
-        nativeProcessRender(nativeHandle, pcm16le, sampleRateHz)
-        AecMetrics.noteRender(pcmRms(pcm16le))
+    @Synchronized
+    fun processRender(pcm16le: ByteArray, sampleRateHz: Int): Boolean {
+        if (!isAvailable || (sampleRateHz != 16_000 && sampleRateHz != 24_000) || pcm16le.isEmpty() || pcm16le.size % 2 != 0) return false
+        return runCatching {
+            nativeProcessRender(nativeHandle, pcm16le, sampleRateHz)
+            AecMetrics.noteRender(pcmRms(pcm16le))
+            true
+        }.getOrDefault(false)
     }
 
-    fun processCapture(pcm16le: ByteArray): ByteArray {
-        if (!isAvailable || pcm16le.isEmpty()) return pcm16le
-        nativeSetStreamDelayMs(nativeHandle, streamDelayMs)
-        val rawRms = pcmRms(pcm16le)
-        val processed = nativeProcessCapture(nativeHandle, pcm16le)
-        val out = if (processed.isEmpty()) pcm16le else processed
-        AecMetrics.noteCapture(rawRms, pcmRms(out))
-        return out
+    @Synchronized
+    fun processCapture(pcm16le: ByteArray): AecCaptureResult {
+        if (!isAvailable || pcm16le.isEmpty() || pcm16le.size % 2 != 0) return AecCaptureResult.Failed
+        return runCatching {
+            nativeSetStreamDelayMs(nativeHandle, streamDelayMs)
+            val rawRms = pcmRms(pcm16le)
+            val processed = nativeProcessCapture(nativeHandle, pcm16le)
+            when {
+                processed.isEmpty() -> AecCaptureResult.Pending
+                processed.size % 2 != 0 -> AecCaptureResult.Failed
+                else -> {
+                    AecMetrics.noteCapture(rawRms, pcmRms(processed))
+                    AecCaptureResult.Processed(processed)
+                }
+            }
+        }.getOrDefault(AecCaptureResult.Failed)
     }
 
+    @Synchronized
     fun release() {
-        if (nativeHandle != 0L) {
-            nativeRelease(nativeHandle)
+        val handle = nativeHandle
+        if (handle != 0L) {
+            nativeHandle = 0L
+            nativeRelease(handle)
         }
     }
 
+    @Synchronized
     fun snapshotStats(): AecStats {
         if (!isAvailable) return AecStats()
         val values = nativeGetStats(nativeHandle)
@@ -80,6 +96,12 @@ class WebRtcAcousticEcho private constructor(private val nativeHandle: Long) {
         @JvmStatic private external fun nativeProcessCapture(handle: Long, pcm16le: ByteArray): ByteArray
         @JvmStatic private external fun nativeGetStats(handle: Long): DoubleArray
     }
+}
+
+sealed interface AecCaptureResult {
+    data class Processed(val pcm16le: ByteArray) : AecCaptureResult
+    data object Pending : AecCaptureResult
+    data object Failed : AecCaptureResult
 }
 
 data class AecStats(

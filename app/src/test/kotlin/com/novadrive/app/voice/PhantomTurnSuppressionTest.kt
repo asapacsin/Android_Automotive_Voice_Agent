@@ -194,8 +194,8 @@ class PhantomTurnSuppressionTest {
         )
     }
 
-    private val noiseSegment = SpeechUplinkGate.Segment(durationMs = 300, voicedFrames = 2, peak = 9_000)
-    private val speechSegment = SpeechUplinkGate.Segment(durationMs = 1_900, voicedFrames = 16, peak = 6_000)
+    private val noiseSegment = SpeechUplinkGate.Segment(durationMs = 300, voicedFrames = 20, peak = 9_000)
+    private val speechSegment = SpeechUplinkGate.Segment(durationMs = 1_900, voicedFrames = 160, peak = 6_000)
 
     @Test
     fun aRepairReplyToNoiseIsNeverPlayed() {

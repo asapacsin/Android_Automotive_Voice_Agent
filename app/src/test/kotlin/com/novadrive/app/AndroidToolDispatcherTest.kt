@@ -102,7 +102,7 @@ class AndroidToolDispatcherTest {
 
     @Test
     fun navigateToIsSuppressedAfterLocalPickSucceeded() {
-        NavigationLocalPickGuard.onLocalPickSucceeded()
+        NavigationLocalPickGuard.onLocalPickSucceeded("list-a", NavigationLocalPickGuard.nextTurnKey())
         val executor = FakeExecutor()
         val dispatcher = AndroidToolDispatcher(executor, ClimateToolHandler(SimulatedVehicleControl()), noCamera())
         val result = dispatcher.dispatch(call("navigate_to", mapOf("destination" to "中交汇通")))

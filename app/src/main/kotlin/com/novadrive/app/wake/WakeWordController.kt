@@ -23,6 +23,8 @@ object WakeWordController {
     private var detector: IflytekWakeWordDetector? = null
     private var idleCapture: PcmAudioCapture? = null
     private var reconcile: Runnable? = null
+    @Volatile
+    private var appContext: Context? = null
 
     /** While a harness clip is playing, live microphone frames are held back so the two do not interleave. */
     @Volatile
@@ -31,6 +33,7 @@ object WakeWordController {
 
     fun bind(context: Context) {
         val app = context.applicationContext
+        appContext = app
         synchronized(lock) {
             val current = detector ?: IflytekWakeWordDetector(app).also { created ->
                 created.onWake = { onDetected(app) }
@@ -43,6 +46,12 @@ object WakeWordController {
     fun setEnabled(context: Context, enabled: Boolean) {
         val app = context.applicationContext
         WakeWordSettings.from(app).setEnabled(enabled)
+        bind(app)
+    }
+
+    /** Reconcile wake ownership after listening lifecycle or permission changes. */
+    fun reconcile(context: Context? = appContext) {
+        val app = context?.applicationContext ?: return
         bind(app)
     }
 
@@ -75,10 +84,9 @@ object WakeWordController {
             DebugVoiceLog.log("wake_permission_failure")
             return
         }
-        // While a session runs the assistant is already listening, and its capture owns the
-        // microphone. Two owners is the failure this class exists to avoid, so wake stands down
-        // and the reconcile below re-arms it once the session is gone.
-        if (VoiceSessionGateway.isActive) {
+        // Conversational capture owns the microphone in ACTIVE/SILENT_WAIT. SLEEP and DEEP_IDLE may
+        // keep local wake capture when enabled; two simultaneous recorders is the original defect.
+        if (VoiceSessionGateway.listeningState.uploads) {
             stopListeningLocked()
             startReconcileLocked(app)
             return
@@ -193,7 +201,7 @@ object WakeWordController {
 
     private const val RECONCILE_INTERVAL_MS = 1_500L
     private const val FRAME_BYTES = PcmAudioCapture.FRAME_BYTES
-    private const val FRAME_MS = 100L
+    private const val FRAME_MS = PcmAudioCapture.FRAME_MS.toLong()
 }
 
 internal fun logForStartResult(result: StartResult): String? =

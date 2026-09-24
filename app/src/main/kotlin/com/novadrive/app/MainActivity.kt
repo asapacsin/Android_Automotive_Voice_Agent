@@ -93,7 +93,10 @@ class MainActivity : Activity() {
                     )
                     dispatched
                 },
-                onListeningState = { state -> mainHandler.post { if (::screen.isInitialized) screen.bindListening(state) } },
+                onListeningState = { state ->
+                    com.novadrive.app.wake.WakeWordController.reconcile(this)
+                    mainHandler.post { if (::screen.isInitialized) screen.bindListening(state) }
+                },
                 onLocalNavigationPick = { choice ->
                     val args = when (choice) {
                         is com.novadrive.app.nav.NavigationChoice.Name -> mapOf("name" to choice.text)

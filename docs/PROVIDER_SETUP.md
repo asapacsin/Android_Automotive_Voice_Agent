@@ -1,47 +1,48 @@
-# Provider setup — Nova Drive / 小诺
+# Voice provider setup — Nova Drive / 小诺
 
-Default provider is **Qwen Flash** (`qwen-audio-3.0-realtime-flash`). Qwen Plus is selectable. GPT-Live and Baidu remain optional adapters. When Baidu is explicitly selected, Lite Near (`audio-mini-realtime-near`) is that provider family's default. Fake is a quota-free local test provider and is never the product default.
+Nova Drive connects to Baidu Qianfan directly from the Android app. There is no PC backend in the current runtime. `VoiceSessionController` selects the configured Baidu runtime; a fresh install defaults to **Baidu Flex** (`qianfan-realtime-flex-v1`), which provides end-to-end speech-to-speech and function calling.
 
-## 1. Copy env
+## Configure local Android build settings
 
-```powershell
-cd backend
-copy .env.example .env
+Create or edit the ignored `local.properties` file at the repository root. It is used by Gradle for the Amap Navigation SDK key, not Baidu voice credentials:
+
+```properties
+AMAP_API_KEY=your_amap_navigation_sdk_key
 ```
 
-Edit `backend/.env` only. Never put keys in the APK, `local.properties`, or chat.
+`local.properties` is excluded by `.gitignore`. Do not commit it, copy credentials into source code, or paste secret values into chat or logs. The Amap Web-service key used for place search is entered separately in the app's Developer Settings and stored with Android Keystore.
 
-## 2. Choose provider
+## Build, install, and configure voice
 
-| `VOICE_PROVIDER` | Model | Secret |
+Build the debug APK from the repository root:
+
+```powershell
+.\gradlew.bat :app:assembleDebug
+```
+
+On this Windows setup, the APK is written to:
+
+```text
+C:\Users\Administrator\tools\nova-drive-build\app\outputs\apk\debug\app-debug.apk
+```
+
+Install to a connected Android device with USB debugging enabled:
+
+```powershell
+adb install -r C:\Users\Administrator\tools\nova-drive-build\app\outputs\apk\debug\app-debug.apk
+```
+
+Launch Nova Drive, open **开发者设置**, and enter the Baidu credentials there. The app stores App ID, API Key, and Secret Key encrypted with Android Keystore; credential values are not echoed back. With the default **App ID + API Key + Secret Key** authentication mode, all three values are required. The optional **Bearer API Key** mode uses the API Key only.
+
+Use **测试连接** to verify the selected realtime session. This opens and closes the provider session without starting microphone capture. Then start a voice session from the main screen and grant microphone permission when Android requests it.
+
+## Runtime and model choices
+
+| Runtime | Model | Behavior |
 | --- | --- | --- |
-| `qwen` (default) | `qwen-audio-3.0-realtime-flash` (Flash, product default) or `qwen-audio-3.0-realtime-plus` (Plus) | `DASHSCOPE_API_KEY` |
-| `gpt_live` (optional) | `gpt-live-1` | `OPENAI_API_KEY` |
-| `baidu` (optional compatibility) | `audio-mini-realtime-near` (Lite Near, Baidu-family default when selected), also Lite Far / Pro Near / Pro Far | `BAIDU_APP_ID` + `BAIDU_API_KEY` + `BAIDU_SECRET_KEY` |
-| `fake` / `mock` (test-only) | any catalog id | none |
+| Baidu Flex (default) | `qianfan-realtime-flex-v1` | End-to-end audio with the app's supported function-calling tools. |
+| Baidu Lite / Pro (compatibility) | Lite Near, Lite Far, Pro Near, or Pro Far | Direct Baidu realtime audio conversation; this documented API path does not support the app's function calling. |
 
-Missing Baidu or GPT-Live credentials **must not** block Qwen or Fake startup. Select `baidu` / `gpt_live` only when you intend to use them. Placeholder Qwen keys fail as `QWEN_CREDENTIALS_MISSING`. Placeholder Baidu keys fail as `BAIDU_CREDENTIALS_MISSING`. Fake needs no credentials and is never the product default.
+The Developer Settings model choice selects Flex or the Lite/Pro compatibility runtime. Existing installations with an older Lite/Pro selection may keep that selection after settings migration; select Flex there to use the current default. Credentials are never required from a PC service, and there is no `VOICE_PROVIDER`, `.env`, backend URL, emulator alias, or backend startup step in the Android voice path.
 
-## 3. Start backend
-
-```powershell
-cd backend
-python -m pip install -r requirements.txt
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
-
-Android emulator: `NOVA_BACKEND_URL=http://10.0.2.2:8000` in `local.properties`.
-Physical device: use the PC LAN IP.
-
-DEBUG developer settings expose Backend URL + Qwen Flash/Plus (product default Flash), plus optional GPT-Live, Baidu Lite Near/Far and Pro Near/Far, and Fake (test-only). No credential fields.
-
-## 4. Quota-free checks
-
-```powershell
-cd backend
-python -m pytest -p no:warnings -q
-python scripts/fake_provider_demo.py
-python scripts/fake_provider_demo.py --benchmark
-```
-
-Do not set `RUN_BAIDU_LIVE_TESTS`, `RUN_QWEN_LIVE_TESTS`, or `RUN_GPT_LIVE_TESTS` for normal work.
+See [BAIDU_DIRECT_ANDROID.md](BAIDU_DIRECT_ANDROID.md) for runtime details and [BAIDU_E2E_SETUP.md](BAIDU_E2E_SETUP.md) for the device setup and troubleshooting procedure.
