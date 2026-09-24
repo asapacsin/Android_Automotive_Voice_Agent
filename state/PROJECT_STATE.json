@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-24T12:09:49",
+  "generated_at": "2026-09-24T12:40:41",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "4fa3630",
-    "branch": "cursor/9-24-9zmkd1",
-    "subject": "Astra P1: adapt the playback buffer to applied sizes and real underruns",
+    "commit": "846d116",
+    "branch": "claude/9-24",
+    "subject": "Backlog: record the three reliably buildable directions (B-024..B-026)",
     "working_tree_clean": false,
-    "uncommitted_files": 1
+    "uncommitted_files": 5
   },
   "tests": {
     "available": true,
@@ -125,13 +125,195 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "AEC-DELAY-DEVICE-001: NOT_RUN: Measured echo delay and its sources on the test phone",
-    "actionable_count": 47,
+    "NEXT_ACTION": "A1: | A1 | Every published label and alias matches alone, with each verb and particle | functional | `AffordanceMatcherTest` | not built |",
+    "actionable_count": 89,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 16,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-010-screen-affordances.md",
+        "item": "A1",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-011-amap-live-info.md",
+        "item": "A1",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-012-speech-arbiter.md",
+        "item": "A1",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-011-amap-live-info.md",
+        "item": "A10",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-010-screen-affordances.md",
+        "item": "A2",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-011-amap-live-info.md",
+        "item": "A2",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-012-speech-arbiter.md",
+        "item": "A2",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-010-screen-affordances.md",
+        "item": "A3",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-011-amap-live-info.md",
+        "item": "A3",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-012-speech-arbiter.md",
+        "item": "A3",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-010-screen-affordances.md",
+        "item": "A4",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-011-amap-live-info.md",
+        "item": "A4",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-012-speech-arbiter.md",
+        "item": "A4",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-010-screen-affordances.md",
+        "item": "A5",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-011-amap-live-info.md",
+        "item": "A5",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-012-speech-arbiter.md",
+        "item": "A5",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-010-screen-affordances.md",
+        "item": "A6",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-011-amap-live-info.md",
+        "item": "A6",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-012-speech-arbiter.md",
+        "item": "A6",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-010-screen-affordances.md",
+        "item": "A7",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-011-amap-live-info.md",
+        "item": "A7",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-012-speech-arbiter.md",
+        "item": "A7",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-010-screen-affordances.md",
+        "item": "A8",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-011-amap-live-info.md",
+        "item": "A8",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-012-speech-arbiter.md",
+        "item": "A8",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-011-amap-live-info.md",
+        "item": "A9",
+        "blocked_by": null
+      },
       {
         "priority": 6,
         "class": "behaviour without regression protection",
@@ -455,6 +637,97 @@
         "blocked_by": null
       },
       {
+        "priority": 7,
+        "class": "active milestone row",
+        "source": "CURRENT_MILESTONE.md",
+        "item": "Affordance registry and whole-utterance matcher",
+        "blocked_by": null
+      },
+      {
+        "priority": 7,
+        "class": "active milestone row",
+        "source": "CURRENT_MILESTONE.md",
+        "item": "One execution per turn across the local and model paths",
+        "blocked_by": null
+      },
+      {
+        "priority": 7,
+        "class": "active milestone row",
+        "source": "CURRENT_MILESTONE.md",
+        "item": "P1 and P3 re-pass on a simulated drive through the arbiter",
+        "blocked_by": null
+      },
+      {
+        "priority": 7,
+        "class": "active milestone row",
+        "source": "CURRENT_MILESTONE.md",
+        "item": "SPEC-008 baseline selection rate recorded before any new dec",
+        "blocked_by": null
+      },
+      {
+        "priority": 7,
+        "class": "active milestone row",
+        "source": "CURRENT_MILESTONE.md",
+        "item": "Screen and picker publish affordances; the old local-pick pa",
+        "blocked_by": null
+      },
+      {
+        "priority": 7,
+        "class": "active milestone row",
+        "source": "CURRENT_MILESTONE.md",
+        "item": "Speech rules characterised against today's classes",
+        "blocked_by": null
+      },
+      {
+        "priority": 7,
+        "class": "active milestone row",
+        "source": "CURRENT_MILESTONE.md",
+        "item": "Spoken control names act on the phone without a model tool c",
+        "blocked_by": null
+      },
+      {
+        "priority": 7,
+        "class": "active milestone row",
+        "source": "CURRENT_MILESTONE.md",
+        "item": "Weather selected from speech ≥ 9/10 with no SPEC-008 regress",
+        "blocked_by": null
+      },
+      {
+        "priority": 7,
+        "class": "active milestone row",
+        "source": "CURRENT_MILESTONE.md",
+        "item": "Workload hold before manoeuvres",
+        "blocked_by": null
+      },
+      {
+        "priority": 7,
+        "class": "active milestone row",
+        "source": "CURRENT_MILESTONE.md",
+        "item": "`ScreenControls` owns recentre and camera, so tap and voice ",
+        "blocked_by": null
+      },
+      {
+        "priority": 7,
+        "class": "active milestone row",
+        "source": "CURRENT_MILESTONE.md",
+        "item": "`SpeechArbiter` owns every speak/uplink decision; `VoicePoli",
+        "blocked_by": null
+      },
+      {
+        "priority": 7,
+        "class": "active milestone row",
+        "source": "CURRENT_MILESTONE.md",
+        "item": "`query_live_info` weather: parser, tool, truth guard, capabi",
+        "blocked_by": null
+      },
+      {
+        "priority": 7,
+        "class": "active milestone row",
+        "source": "CURRENT_MILESTONE.md",
+        "item": "`route_traffic`, `along_route`, `place_details`",
+        "blocked_by": null
+      },
+      {
         "priority": 10,
         "class": "stale state or harness defect",
         "source": "state",
@@ -488,6 +761,27 @@
         "source": "BACKLOG.md",
         "item": "B-019",
         "blocked_by": "a signing keystore and its credentials, which only the owner can provide, plus a"
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-024",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-025",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-026",
+        "blocked_by": null
       }
     ]
   }
