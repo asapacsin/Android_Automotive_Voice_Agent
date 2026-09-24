@@ -383,6 +383,7 @@ change_impact:
       - PcmAecFraming
       - VoiceAudioSession
       - VoicePlayoutDelay
+      - EchoDelayEstimator
       - WebRtcAcousticEcho
       - MicInputGain
       - PhantomTurnGate

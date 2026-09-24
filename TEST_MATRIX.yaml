@@ -1186,6 +1186,52 @@ tests:
     related: [SPEC-007-provider-neutral-realtime]
     last_run: {at: 2026-09-24, result: PASS}
 
+  - id: AEC-DELAY-CLOCK-001
+    capability: reliability
+    name: AEC3 stream delay comes from the audio clocks, with named fallbacks
+    purpose: "Astra P2: render latency from AudioTrack timestamps extrapolated to now, capture latency from AudioRecord monotonic timestamps; head position and half-buffer only as reported fallbacks"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure:
+      - "gradlew :app:testDebugUnitTest --tests EchoDelayEstimatorTest"
+    pass_criteria:
+      - "an old render timestamp is extrapolated to now; the head position is used as-is and reported HEAD_POSITION"
+      - "capture latency is the age of the latest frame read; without a timestamp half the record buffer is used and reported BUFFER_ESTIMATE"
+      - "the delay is render + capture + resampler, clamped to 0..500 ms, never negative"
+      - "without any output clock the previous delay stands (0 ms is never reported)"
+    evidence:
+      - "2026-09-24: EchoDelayEstimatorTest 7/7 (cloud Linux build)"
+    remaining_uncertainty: ["real timestamp availability and values per device and route: AEC-DELAY-DEVICE-001"]
+    related: [ASTRA-P2, AEC-DELAY-DEVICE-001]
+    last_run: {at: 2026-09-24, result: PASS}
+
+  - id: AEC-DELAY-DEVICE-001
+    capability: reliability
+    name: Measured echo delay and its sources on the test phone
+    purpose: "Astra P2: record which clock each half of the AEC3 delay rests on, and the delay range, on the phone speaker and one other route"
+    type: device
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    prerequisites: ["debug APK from this commit", "test phone on ADB", "live Baidu session so replies play"]
+    procedure:
+      - "start a voice session and ask two questions with spoken answers"
+      - "collect echo_delay lines from the debug voice log (every 5 s while replies play)"
+      - "repeat on a second output route if one is available (Bluetooth or wired)"
+    pass_criteria:
+      - "echo_delay lines report render=TIMESTAMP and capture=TIMESTAMP, or the fallback in use is recorded"
+      - "ms stays within 0..500 and is stable (record min/median/max per route)"
+      - "no delay_unavailable while a reply is playing"
+    evidence: []
+    remaining_uncertainty: ["whether this device's AudioRecord timestamps are available in VOICE_COMMUNICATION mode"]
+    related: [ASTRA-P2, AEC-DELAY-CLOCK-001, ASTRA-ECHO-PLAYBACK-001]
+    last_run: {at: null, result: null}
+
   - id: AEC-FRAME-CONTINUITY-001
     capability: reliability
     name: Partial AEC frames stay pending and render reference follows accepted writes
