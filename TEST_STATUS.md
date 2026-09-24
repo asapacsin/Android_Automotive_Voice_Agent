@@ -2,15 +2,15 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-21 · 100 tests
+Updated 2026-09-21 · 104 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 40 |
+| autonomous PASS | 42 |
 | autonomous FAIL | 0 |
 | incomplete | 0 |
 | partial pass | 0 |
-| not run | 44 |
+| not run | 46 |
 | human required | 16 |
 | human pass | 0 |
 | human fail | 0 |
@@ -50,6 +50,8 @@ Updated 2026-09-21 · 100 tests
 - MUSIC-PLAY-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - MUSIC-NAMED-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - BARGEIN-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- AEC-DELAY-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- PLAYBACK-BUFFER-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - SLEEP-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - NOISE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - NET-RECOVER-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -84,12 +86,12 @@ Updated 2026-09-21 · 100 tests
 | permissions | 3 | 2 | 0 | 1 |
 | regression | 2 | 1 | 0 | 1 |
 | release | 6 | 2 | 4 | 0 |
-| reliability | 5 | 3 | 0 | 2 |
+| reliability | 7 | 4 | 0 | 3 |
 | saved_places | 3 | 0 | 0 | 3 |
 | security | 3 | 3 | 0 | 0 |
 | speech | 1 | 0 | 1 | 0 |
 | truthfulness | 8 | 4 | 0 | 4 |
-| turn_taking | 11 | 5 | 2 | 4 |
+| turn_taking | 13 | 6 | 2 | 5 |
 | unsupported | 1 | 0 | 0 | 1 |
 | vision | 2 | 0 | 0 | 2 |
 | wake | 2 | 1 | 1 | 0 |
@@ -159,6 +161,8 @@ Updated 2026-09-21 · 100 tests
 | ASTRA-DEMO-REHEARSAL-003 | release | No-touch demo rehearsal — replacement search after ambiguous pick | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | NavigationLocalPickGuard AMBIGUOUS/NO_MATCH/SELECTED outcomes |
 | RELEASE-BUILD-001 | release | The release variant builds | AUTONOMOUS | PASS | yes | 2026-09-20: app-release-unsigned.apk, 227 MB |
 | RELEASE-SIGN-001 | release | A signed release build installs and works | HUMAN_CREDENTIAL | HUMAN_REQUIRED | yes | RELEASE-BUILD-001 PASS - the release variant compiles and packages |
+| AEC-DELAY-CLOCK-001 | reliability | AEC3 stream delay comes from the audio clocks, with named fallbacks | AUTONOMOUS | PASS | yes | 2026-09-24: EchoDelayEstimatorTest 7/7 (cloud Linux build) |
+| AEC-DELAY-DEVICE-001 | reliability | Measured echo delay and its sources on the test phone | AUTONOMOUS | NOT_RUN | no | — |
 | AEC-FRAME-CONTINUITY-001 | reliability | Partial AEC frames stay pending and render reference follows accepted writes | AUTONOMOUS | PASS | yes | AecFrameContinuityTest JVM partition checks at 16/24 kHz |
 | AUDIOFOCUS-001 | reliability | Losing audio focus stops the assistant talking | AUTONOMOUS | PASS | no | 2026-09-20: the handling already existed in AndroidPlaybackPort and had no test, becaus… |
 | CAPTURE-TEARDOWN-001 | reliability | Capture stops and joins before recorder resources are released | AUTONOMOUS | PASS | yes | PcmAudioCapture stop/join ordering and mayStartAudioWorker guard |
@@ -186,6 +190,8 @@ Updated 2026-09-21 · 100 tests
 | ECHO-001 | turn_taking | Post-reply cabin echo does not become 「没听清」 | AUTONOMOUS | NOT_RUN | yes | STALE_BIND code_digest mismatch |
 | LISTEN-IDLE-001 | turn_taking | Inactivity releases the microphone and then the socket | AUTONOMOUS | PASS | yes | ListeningLifecycleTest covers STANDBY, DEEP_IDLE, epoch-guarded timers, and meaningless… |
 | NOISE-001 | turn_taking | Room noise does not become a turn | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite |
+| PLAYBACK-BUFFER-ADAPT-001 | turn_taking | Playback buffer adapts to the size the platform applied and to real underruns only | AUTONOMOUS | PASS | yes | 2026-09-24: LowLatencyPlaybackBufferTest 7/7 with a clamping fake track (cloud Linux bu… |
+| PLAYBACK-BUFFER-DEVICE-001 | turn_taking | Measured playback buffer and underruns on the test phone | AUTONOMOUS | NOT_RUN | no | — |
 | PLAYBACK-FINAL-FRAGMENT-001 | turn_taking | Response completion drains the final partial PCM frame | AUTONOMOUS | PASS | yes | PlaybackEpochEngine completion/final-fragment JVM seams |
 | PLAYBACK-FLUSH-001 | turn_taking | An acknowledged playback flush cannot write stale audio | AUTONOMOUS | PASS | yes | PlaybackEpochEngine flush/short-write/epoch JVM seams (4/4) |
 | PLAYBACK-QUEUE-OVERFLOW-001 | turn_taking | Application PCM queue overflow fails the current reply epoch | AUTONOMOUS | PASS | yes | AppPlaybackQueuePolicy ceiling math and PcmAudioPlayer failReplyLocked path |

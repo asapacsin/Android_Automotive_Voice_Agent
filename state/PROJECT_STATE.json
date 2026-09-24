@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-09-24T11:36:03",
+  "generated_at": "2026-09-24T12:09:49",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "32b059c",
+    "commit": "4fa3630",
     "branch": "cursor/9-24-9zmkd1",
-    "subject": "Astra P4: time-scoped barge-in evidence; hold unconfirmed echo turns",
+    "subject": "Astra P1: adapt the playback buffer to applied sizes and real underruns",
     "working_tree_clean": false,
-    "uncommitted_files": 5
+    "uncommitted_files": 1
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-24T11:35:20",
+    "collected_at": "2026-09-24T12:09:40",
     "total": {
-      "tests": 942,
+      "tests": 268,
       "failures": 0,
       "errors": 0,
       "skipped": 0
@@ -25,7 +25,7 @@
         "skipped": 0
       },
       "app": {
-        "tests": 677,
+        "tests": 1,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -43,7 +43,7 @@
         "skipped": 0
       },
       "behavior-test": {
-        "tests": 117,
+        "tests": 119,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 223332847,
-    "built_at": "2026-09-24T11:34:10"
+    "bytes": 223349191,
+    "built_at": "2026-09-24T12:06:35"
   },
   "capabilities": {
     "available": true,
@@ -125,13 +125,20 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "APPS-001: NOT_RUN: open_app reaches a real app",
-    "actionable_count": 44,
+    "NEXT_ACTION": "AEC-DELAY-DEVICE-001: NOT_RUN: Measured echo delay and its sources on the test phone",
+    "actionable_count": 47,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 16,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "AEC-DELAY-DEVICE-001",
+        "blocked_by": null
+      },
       {
         "priority": 6,
         "class": "behaviour without regression protection",
@@ -367,6 +374,13 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "PLAYBACK-BUFFER-DEVICE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "PROCDEATH-001",
         "blocked_by": null
       },
@@ -438,6 +452,13 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "WAKE-SYNTH-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 10,
+        "class": "stale state or harness defect",
+        "source": "state",
+        "item": "PROJECT_STATE.json",
         "blocked_by": null
       },
       {
