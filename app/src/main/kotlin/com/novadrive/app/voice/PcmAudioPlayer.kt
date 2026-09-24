@@ -202,6 +202,8 @@ class PcmAudioPlayer(
         }
         val pending = epochEngine.pendingSlice
         if (pending == null) {
+            // Nothing to write: the track running dry now says nothing about its buffer size.
+            bufferManager.onStarved(player)
             emitIdleIfDrained()
             publishPlayoutDelay(player, null)
             return SliceResult.RETRY

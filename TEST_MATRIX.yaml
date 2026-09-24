@@ -1232,6 +1232,51 @@ tests:
     related: [ASTRA-P2, AEC-DELAY-CLOCK-001, ASTRA-ECHO-PLAYBACK-001]
     last_run: {at: null, result: null}
 
+  - id: PLAYBACK-BUFFER-ADAPT-001
+    capability: turn_taking
+    name: Playback buffer adapts to the size the platform applied and to real underruns only
+    purpose: "Astra P1: grow 10 ms per underrun while writing (max 5), record the applied (clamped) size, cap growth the platform refuses, ignore idle starvation"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure:
+      - "gradlew :app:testDebugUnitTest --tests LowLatencyPlaybackBufferTest"
+    pass_criteria:
+      - "an underrun while writing grows the buffer by 10 ms, at most five times"
+      - "the size recorded is the size setBufferSizeInFrames applied, not the size requested"
+      - "a grow the platform refuses stops further grow requests"
+      - "underruns while the app had nothing to write (onStarved) do not grow the buffer"
+    evidence:
+      - "2026-09-24: LowLatencyPlaybackBufferTest 7/7 with a clamping fake track (cloud Linux build)"
+    remaining_uncertainty: ["real underrun rates and applied sizes per device: PLAYBACK-BUFFER-DEVICE-001"]
+    related: [ASTRA-P1, PLAYBACK-BUFFER-DEVICE-001]
+    last_run: {at: 2026-09-24, result: PASS}
+
+  - id: PLAYBACK-BUFFER-DEVICE-001
+    capability: turn_taking
+    name: Measured playback buffer and underruns on the test phone
+    purpose: "Astra P1 device: record the applied buffer size, counted underruns and first-audio latency over real replies"
+    type: device
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    prerequisites: ["debug APK from this commit", "test phone on ADB", "live Baidu session"]
+    procedure:
+      - "start a voice session and hold a ten-turn conversation with spoken replies"
+      - "collect playback_buffer_ms lines (initial and each grow/shrink) and reply_timing firstAudioMs from the debug voice log"
+    pass_criteria:
+      - "initial playback_buffer_ms and every change are recorded; counted underruns per reply are reported"
+      - "no grow between replies (idle starvation excluded)"
+      - "choose and record a latency budget from these numbers before any latency acceptance"
+    evidence: []
+    remaining_uncertainty: ["underrun behaviour under CPU load and Bluetooth routes"]
+    related: [ASTRA-P1, PLAYBACK-BUFFER-ADAPT-001]
+    last_run: {at: null, result: null}
+
   - id: AEC-FRAME-CONTINUITY-001
     capability: reliability
     name: Partial AEC frames stay pending and render reference follows accepted writes
