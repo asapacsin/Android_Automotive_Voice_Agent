@@ -320,6 +320,15 @@ class ActionClaimGuard {
         fun claimsDone(reply: String): Boolean =
             !declines(reply) && DONE_WORDS.any { it in reply } && ACTION_WORDS.any { it in reply }
 
+        /**
+         * The tool said it failed and the reply claiming success was dropped before the driver
+         * heard it. Unlike [correctionForFailure] there is no heard sentence to retract, and the
+         * conversation may have been reset since, so this names the failure on its own terms.
+         */
+        fun reportFailure(reason: String): String =
+            "工具返回的结果是失败（$reason），操作没有完成。" +
+                "不要调用任何工具，只用一句话如实告诉用户：这个操作没有成功，并简单说明原因。"
+
         /** The tool said it failed; the reply said it worked. */
         fun correctionForFailure(reason: String): String =
             "工具返回的结果是失败（$reason），你上一句说已经完成是错误的。" +

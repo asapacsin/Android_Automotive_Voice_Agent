@@ -70,6 +70,33 @@ class DriverTurnTest {
     }
 
     @Test
+    fun aDroppedClaimAfterAFailedExecutionReportsTheFailureInsteadOfRetrying() {
+        // Simulation benchmark, 2026-09-24 (HVAC_MODEL_IGNORES_ERROR): the tool failed, the model
+        // said 「已经为你调好了」, the claim was dropped unheard - and the follow-up asked the model to
+        // perform the action again, so the driver never learned it had failed.
+        val t = turn(DriverTurn.Kind.ACTION)
+        t.onResponseStarted(goodAudio, false)
+        t.hold("audio")
+        t.onExecutionResult(ok = false, failure = "VEHICLE_UNAVAILABLE")
+        assertTrue(t.executionFailed)
+        val verdict = t.onResponseDone("好的，已经为你调好了。", hadToolCallInResponse = false)
+        assertTrue(verdict is DriverTurn.Verdict.Drop)
+        val correction = (verdict as DriverTurn.Verdict.Drop).correction.orEmpty()
+        assertTrue("VEHICLE_UNAVAILABLE" in correction, "the reason reaches the model: $correction")
+        assertTrue("没有成功" in correction && "不要调用任何工具" in correction, "report, do not retry: $correction")
+    }
+
+    @Test
+    fun aDroppedClaimWithNoExecutionStillAsksForTheAction() {
+        val t = turn(DriverTurn.Kind.ACTION)
+        t.onResponseStarted(goodAudio, false)
+        t.hold("audio")
+        val verdict = t.onResponseDone("导航已开始。", hadToolCallInResponse = false) as DriverTurn.Verdict.Drop
+        assertFalse(t.executionFailed)
+        assertEquals(ActionClaimGuard.nudgeFor(requestFor(DriverTurn.Kind.ACTION)), verdict.correction)
+    }
+
+    @Test
     fun anActionReplyThatClaimsNothingIsNeverDelayedPastItsResponse() {
         // 「找到5个地点，请说第几个。」 asserts no execution; it is released even without proof.
         val t = turn(DriverTurn.Kind.ACTION)

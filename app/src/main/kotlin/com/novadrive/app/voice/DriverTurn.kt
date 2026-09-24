@@ -115,6 +115,10 @@ class DriverTurn(val epoch: Long) {
     var lastFailure: String? = null
         private set
 
+    /** A tool result with `ok=false` came back: the action was attempted and did not happen. */
+    var executionFailed: Boolean = false
+        private set
+
     /** What the uplink gate measured about the audio that caused this turn. */
     var audio: SpeechUplinkGate.Segment? = null
         private set
@@ -233,6 +237,7 @@ class DriverTurn(val epoch: Long) {
         }
         if (!ok) {
             lastFailure = failure
+            executionFailed = true
             return Verdict.Wait
         }
         proven = true
@@ -350,6 +355,12 @@ class DriverTurn(val epoch: Long) {
                     proven -> Verdict.Release("execution_proved")
                     // The model asserted an action that nothing has proved. This is the case that
                     // used to be corrected *after* the driver heard it.
+                    // The tool already ran and failed: asking the model to perform it again is
+                    // a retry nobody asked for. The driver must hear that it did not work.
+                    // Found 2026-09-24 (HVAC_MODEL_IGNORES_ERROR): the nudge re-requested the
+                    // action and the failure was never reported.
+                    ActionClaimGuard.claimsDone(reply) && executionFailed ->
+                        Verdict.Drop("unproven_action_claim", ActionClaimGuard.reportFailure(lastFailure ?: "操作失败"))
                     ActionClaimGuard.claimsDone(reply) ->
                         Verdict.Drop("unproven_action_claim", ActionClaimGuard.nudgeFor(requestText))
                     // A question, a refusal, a request to choose: its truth needs no execution.

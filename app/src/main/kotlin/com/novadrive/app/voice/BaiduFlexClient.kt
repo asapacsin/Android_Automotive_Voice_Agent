@@ -71,6 +71,14 @@ class BaiduFlexClient(
     )
     @Volatile private var lastConfig: BaiduApiConfig? = null
     @Volatile private var resetting = false
+
+    /**
+     * The reset policy has decided to reset, but [resetConversation] has not started yet. Text
+     * turns are held from this point, not from [resetting]: found 2026-09-24 by the simulation
+     * benchmark, a correction sent by DriverTurn while the finished response was still being
+     * judged went out on the socket the reset closed a moment later, and the driver heard nothing.
+     */
+    @Volatile private var resetPending = false
     @Volatile private var resetJob: kotlinx.coroutines.Job? = null
 
     /** Outbound messages held while the conversation is being reset; flushed to the new one. */
@@ -175,9 +183,21 @@ class BaiduFlexClient(
      * text sent meanwhile are held and flushed afterwards. See [ConversationResetPolicy].
      */
     private fun resetConversation() {
-        val config = lastConfig ?: return
-        if (resetting) return
+        val config = lastConfig
+        if (config == null) {
+            resetPending = false
+            while (true) {
+                val message = heldOutbound.poll() ?: break
+                if (!trySend(message)) break
+            }
+            return
+        }
+        if (resetting) {
+            resetPending = false
+            return
+        }
         resetting = true
+        resetPending = false
         conversationEpoch++
         val started = System.currentTimeMillis()
         DebugVoiceLog.log("flex_context_reset")
@@ -204,6 +224,7 @@ class BaiduFlexClient(
         resetJob?.cancel()
         resetJob = null
         resetting = false
+        resetPending = false
         heldOutbound.clear()
     }
 
@@ -261,13 +282,13 @@ class BaiduFlexClient(
      * know a turn has settled; changes nothing.
      */
     internal val ownWorkInFlight: Int
-        get() = turnGate.pending() + heldOutbound.size + (if (resetting) 1 else 0)
+        get() = turnGate.pending() + heldOutbound.size + (if (resetting || resetPending) 1 else 0)
 
     fun sendUserText(text: String) {
         DebugVoiceLog.log("flex_user_text chars=${text.length}")
         listeningSuspended = false
         val messages = listOf(BaiduFlexProtocol.userTextMessage(text), BaiduFlexProtocol.responseCreate())
-        if (resetting) {
+        if (resetting || resetPending) {
             heldOutbound += messages
             return
         }
@@ -392,8 +413,12 @@ class BaiduFlexClient(
             val outcome = toOutcome(kinds, outputs)
             // A turn that asked for an action is real by definition; only actionless turns can be
             // phantoms. Decided here, where the outputs are already parsed.
+            // Decided before the verdict: a correction the verdict sends must wait for the new
+            // conversation rather than go out on the socket the reset is about to close.
+            val resetNow = resetPolicy.onResponseDone(outcome)
+            if (resetNow) resetPending = true
             finishResponse(hadToolCall = outcome.requestedTool)
-            if (resetPolicy.onResponseDone(outcome)) resetConversation()
+            if (resetNow) resetConversation()
             val spoken = assistantText.toString()
             assistantText.setLength(0)
             // DriverTurn may already have corrected this response when it dropped the reply. Two
