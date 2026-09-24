@@ -5,7 +5,7 @@
 #
 # Always installed: JDK 17, Gradle 8.11.1 (~/tools, where ./gradlew looks), Android SDK platform 34,
 # build-tools 34.0.0, NDK 27.0.12077973, CMake 3.22.1 (/opt/android-sdk), and the WebRTC AEC3
-# sources (the Linux equivalent of scripts/fetch_webrtc_aec3.ps1).
+# sources at the pinned revision (the Linux equivalent of scripts/fetch_webrtc_aec3.ps1).
 #
 # Optional, from the environment's variables — each one missing only disables what needs it:
 #   NOVA_VENDOR_ZIP_URL      zip laid out repo-relative (app/libs/Msc.jar,
@@ -28,6 +28,8 @@ JDK=/usr/lib/jvm/java-17-openjdk-amd64
 GRADLE_DIR="$HOME/tools/gradle-8.11.1"
 CMDLINE_TOOLS_ZIP=commandlinetools-linux-11076708_latest.zip
 SDK_PACKAGES=("platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;27.0.12077973" "cmake;3.22.1")
+# docs/THIRD_PARTY_NATIVE.md; scripts/fetch_webrtc_aec3.ps1 pins the same revision.
+WEBRTC_AEC3_PIN=2cec2f52e26646f93bd2d5498bbabf59cba18da9
 MUSIC=app/src/main/res/raw/bach_air_usaf.mp3
 MUSIC_URL="https://upload.wikimedia.org/wikipedia/commons/e/ec/Air_-_Air_Force_Strings_-_United_States_Air_Force_Band.mp3"
 
@@ -88,10 +90,14 @@ install_sdk() {
 
 fetch_webrtc() {
   local dest="$ROOT/app/src/main/cpp/third_party/webrtc-aec3"
-  if [ -d "$dest/src" ]; then return; fi
-  log "cloning WebRTC AEC3 sources"
+  if [ "$(git -C "$dest" rev-parse HEAD 2>/dev/null)" = "$WEBRTC_AEC3_PIN" ]; then return; fi
+  log "fetching WebRTC AEC3 sources at the pinned revision"
   rm -rf "$dest"
-  retry git clone -q --depth 1 https://github.com/Enaium/webrtc-aec3.git "$dest"
+  mkdir -p "$dest"
+  git -C "$dest" init -q
+  git -C "$dest" remote add origin https://github.com/Enaium/webrtc-aec3.git
+  retry git -C "$dest" fetch -q --depth 1 origin "$WEBRTC_AEC3_PIN"
+  git -C "$dest" checkout -q --detach FETCH_HEAD
   # CMake globs these sources at configure time; a configuration cached without them links nothing.
   rm -rf "$ROOT/app/.cxx"
 }

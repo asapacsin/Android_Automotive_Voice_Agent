@@ -14,7 +14,7 @@ is idempotent and never prints a credential. It installs:
 | JDK 17 | `/usr/lib/jvm/java-17-openjdk-amd64` (the version `./gradlew` requires) |
 | Gradle 8.11.1 | `~/tools/gradle-8.11.1` (where `./gradlew` looks) |
 | Android platform 34, build-tools 34.0.0, NDK 27.0.12077973, CMake 3.22.1 | `/opt/android-sdk` |
-| WebRTC AEC3 sources | `app/src/main/cpp/third_party/webrtc-aec3` (as `scripts/fetch_webrtc_aec3.ps1`) |
+| WebRTC AEC3 sources, pinned ([THIRD_PARTY_NATIVE.md](THIRD_PARTY_NATIVE.md)) | `app/src/main/cpp/third_party/webrtc-aec3` (as `scripts/fetch_webrtc_aec3.ps1`) |
 | `local.properties` | `sdk.dir`, plus `AMAP_API_KEY` when the variable is set |
 
 Measured 2026-09-24: 56 s on a fresh SDK directory; seconds when everything is present.
