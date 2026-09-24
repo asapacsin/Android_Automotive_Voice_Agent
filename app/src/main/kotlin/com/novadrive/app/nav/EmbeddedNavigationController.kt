@@ -23,8 +23,18 @@ class EmbeddedNavigationController(
     private val onFlowEnded: () -> Unit = { com.novadrive.app.NavigationState.reset() },
     /** Guidance started (by voice or tap): the speech mute applies from here. */
     private val onGuidanceStarted: () -> Unit = { com.novadrive.app.NavigationState.begin() },
+    /** Monotonic milliseconds; decides when a list on screen is too old for an ordinal. */
+    nowMs: () -> Long = { System.nanoTime() / 1_000_000 },
+    /** Phonetic recovery for a spoken name that matches nothing (API 29+ ICU; see its guard). */
+    phoneticProposer: (List<DestinationCandidate>, String) -> NavigationPhoneticConfirmation.Proposal? =
+        { candidates, utterance ->
+            runCatching { NavigationPhoneticConfirmation.proposeDestination(candidates, utterance) }.getOrNull()
+        },
 ) : NavigationController {
     private val lock = Any()
+
+    /** Guarded by [lock]. */
+    private val authority = NavigationChoiceAuthority(nowMs, phoneticProposer)
 
     @Volatile
     private var generation = 0L
@@ -82,6 +92,7 @@ class EmbeddedNavigationController(
                 }
                 else -> {
                     _destinationCandidates.value = resolved
+                    authority.onListPresented()
                     store.update(NavigationPhase.AWAITING_DESTINATION_SELECTION)
                     null
                 }
@@ -161,18 +172,27 @@ class EmbeddedNavigationController(
         data class DestinationChosen(val name: String, val position: Int) : VoiceChoiceResult
         data class RouteChosen(val position: Int, val started: Boolean) : VoiceChoiceResult
         data class Rejected(val code: String) : VoiceChoiceResult
+
+        /** Nothing was selected; the driver is asked whether they meant this row. */
+        data class ConfirmNeeded(val position: Int, val name: String) : VoiceChoiceResult
     }
 
     /**
      * 「第二个」「选最快的」「就去拱北口岸」: picks from whichever list is on screen, through the same
      * [selectDestination] / [selectRoute] paths a tap uses.
      */
-    fun chooseByVoice(choice: NavigationChoice): VoiceChoiceResult =
-        when (store.phase.value) {
+    fun chooseByVoice(choice: NavigationChoice): VoiceChoiceResult {
+        val stale = synchronized(lock) { store.phase.value.hasChoices() && authority.refuseStale(choice) }
+        if (stale) return VoiceChoiceResult.Rejected(NavigationChoiceAuthority.OPTIONS_STALE)
+        return when (store.phase.value) {
             NavigationPhase.AWAITING_DESTINATION_SELECTION ->
                 when (val match = NavigationChoiceResolver.pickDestination(_destinationCandidates.value, choice)) {
-                    is ChoiceMatch.Rejected -> VoiceChoiceResult.Rejected(match.code)
+                    is ChoiceMatch.Rejected ->
+                        synchronized(lock) { authority.propose(generation, _destinationCandidates.value, choice, match.code) }
+                            ?.let { VoiceChoiceResult.ConfirmNeeded(it.position, it.name) }
+                            ?: VoiceChoiceResult.Rejected(match.code)
                     is ChoiceMatch.Picked -> {
+                        synchronized(lock) { authority.withdraw() }
                         DebugVoiceLog.log("nav_voice_choice kind=destination position=${match.position}")
                         selectDestination(match.item.id)
                         if (store.phase.value == NavigationPhase.ERROR) {
@@ -198,6 +218,21 @@ class EmbeddedNavigationController(
             -> VoiceChoiceResult.Rejected("OPTIONS_NOT_READY")
             else -> VoiceChoiceResult.Rejected("NO_OPTIONS_ON_SCREEN")
         }
+    }
+
+    private fun NavigationPhase.hasChoices() =
+        this == NavigationPhase.AWAITING_DESTINATION_SELECTION || this == NavigationPhase.AWAITING_ROUTE_SELECTION
+
+    /** Listening slept: see [NavigationChoiceAuthority.onListeningSuspended]. */
+    fun onListeningSuspended() = synchronized(lock) { authority.onListeningSuspended(store.phase.value.hasChoices()) }
+
+    /** The phonetic question still awaiting the driver's answer for the list on screen, if any. */
+    fun activeConfirmation(): NavigationChoiceAuthority.PendingConfirmation? = synchronized(lock) {
+        authority.active(generation, store.phase.value == NavigationPhase.AWAITING_DESTINATION_SELECTION)
+    }
+
+    /** The driver answered something other than yes. */
+    fun withdrawConfirmation() = synchronized(lock) { authority.withdraw() }
 
     data class OptionsSnapshot(
         val phase: NavigationPhase,
@@ -391,6 +426,7 @@ class EmbeddedNavigationController(
                 )
             }
             _routeCandidates.value = built
+            authority.onListPresented()
             store.update(NavigationPhase.AWAITING_ROUTE_SELECTION, selectedDestination?.toDestination())
         }
     }
@@ -412,6 +448,7 @@ class EmbeddedNavigationController(
     private fun clearCandidatesLocked() {
         _destinationCandidates.value = emptyList()
         _routeCandidates.value = emptyList()
+        authority.onListCleared()
     }
 }
 

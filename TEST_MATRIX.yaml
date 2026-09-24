@@ -994,6 +994,152 @@ tests:
     related: [SPEC-009]
     last_run: {at: 2026-09-24, result: PASS}
 
+  - id: NAV-CHOICE-STALE-001
+    capability: navigation
+    name: A spoken ordinal on a stale list is re-presented before it is accepted
+    purpose: "Astra P5: after CHOICE_EXPIRY_MS (120 s) or a sleep, 「第二个」 is refused once with OPTIONS_STALE and the options are re-read"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure:
+      - "gradlew :app:testDebugUnitTest --tests NavigationPendingChoiceTest"
+    pass_criteria:
+      - "an ordinal or preference after expiry or sleep selects nothing and returns OPTIONS_STALE"
+      - "the list stays on screen and the next ordinal is accepted"
+      - "an exact name is never refused; a new list clears the stale mark"
+      - "the tool result carries options_on_screen and a next instruction"
+    evidence:
+      - "2026-09-24: NavigationPendingChoiceTest 10/10 (cloud Linux build)"
+    remaining_uncertainty: ["whether 120 s suits drivers; a starting value, not a cabin measurement"]
+    related: [ASTRA-P5, DB-ASTRA-AUDIO-001]
+    last_run: {at: 2026-09-24, result: PASS}
+
+  - id: NAV-PHONETIC-CONFIRM-001
+    capability: navigation
+    name: A phonetic lead asks for confirmation and never navigates
+    purpose: "Astra P5: a spoken name matching no row but sounding like one yields CONFIRM_CANDIDATE; a whole short yes selects it locally"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure:
+      - "gradlew :app:testDebugUnitTest --tests NavigationPendingChoiceTest"
+    pass_criteria:
+      - "Confirm proposal returns ConfirmNeeded; no route is calculated"
+      - "AskOrdinal (tie, API 28, no ICU) stays a plain NO_MATCH"
+      - "the pending question dies with sleep, expiry, a different answer and a new list"
+      - "only a whole short affirmative answers it (对了我想去别处 does not)"
+      - "the model receives candidate_position and candidate_name with its wording"
+    evidence:
+      - "2026-09-24: NavigationPendingChoiceTest 10/10 with an injected proposer"
+    remaining_uncertainty: ["ICU Han-Latin on the device and the similarity threshold (0.55) against real ASR errors"]
+    related: [ASTRA-P5, NAV-PHONETIC-DEVICE-001]
+    last_run: {at: 2026-09-24, result: PASS}
+
+  - id: NAV-PHONETIC-DEVICE-001
+    capability: navigation
+    name: Misheard destination name is confirmed by voice on the device
+    purpose: "Astra P5 device: real ASR mishearing of a listed name leads to one confirmation question and, on 对, exactly one selection"
+    type: device
+    scope: INTERMEDIATE_FLOW
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: physical_world
+    release_blocking: false
+    human_reason: "Needs live Baidu ASR on real speech and the device's ICU data; injected text cannot reproduce the mishearing"
+    prerequisites: ["installed debug APK from this commit", "Amap key authorised for its signature", "a search that lists several similar names"]
+    procedure:
+      - "search a destination that returns several candidates"
+      - "say a listed name slightly wrong (a near-homophone)"
+      - "answer 对 to the question"
+      - "repeat once answering 不是, and once letting the list sit over two minutes before saying 第二个"
+    pass_criteria:
+      - "one question naming a row, no navigation before the answer"
+      - "对 selects that row exactly once; 不是 selects nothing"
+      - "an ordinal after two minutes is answered by re-reading the options first"
+    autonomous_evidence:
+      - "NAV-CHOICE-STALE-001 and NAV-PHONETIC-CONFIRM-001 passed 2026-09-24"
+    remaining_uncertainty: ["how often real mishearings clear the 0.55 similarity threshold"]
+    returns: ["question wording heard", "selection count after 对", "behaviour after 不是 and after two minutes"]
+    related: [ASTRA-P5]
+    last_run: {at: null, result: null}
+
+  - id: FAILED-ACTION-REPORTED-001
+    capability: truthfulness
+    name: A failed action is reported after its false success claim is dropped
+    purpose: "I-1: when the tool returns ok=false and the model still claims success, the claim is dropped unheard and the driver is told it failed"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure:
+      - "gradlew :app:testDebugUnitTest --tests DriverTurnTest"
+      - "gradlew :app:testDebugUnitTest --tests *SimulationBenchmarkTest* -PbenchSuite=REGRESSION -PbenchScenario=HVAC_MODEL_IGNORES_ERROR -PbenchRepeat=20"
+    pass_criteria:
+      - "the follow-up names the failure (reportFailure), not a retry (nudgeFor)"
+      - "the follow-up is held across the conversation reset and reaches the new socket"
+      - "HVAC_MODEL_IGNORES_ERROR, UNSUPPORTED_FALSE_CLAIM_CORRECTED, HVAC_FALSE_CLAIM_RESCUED pass 20/20"
+    evidence:
+      - "2026-09-24: 20/20 each; failed every run before the fix (also on 0ea4885)"
+    remaining_uncertainty: ["simulated model; live Flex wording after a reset"]
+    related: [I-1, DriverTurn]
+    last_run: {at: 2026-09-24, result: PASS}
+
+  - id: WAKE-ARMING-001
+    capability: wake
+    name: A stale wake event starts nothing; a failed wake start is retried within a bound
+    purpose: "Astra P3: detections count only while armed; capture and engine failures back off (1.5 s doubling to 30 s, 6 attempts) and reset on lifecycle change"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure:
+      - "gradlew :app:testDebugUnitTest --tests WakeArmingTest"
+      - "gradlew :behavior-test:test --tests WakeAudioPathTest"
+    pass_criteria:
+      - "a detection before arming, after disarming, or reported twice starts nothing"
+      - "a detection while conversation owns the microphone or wake is off is ignored"
+      - "failures back off exponentially with a cap, stop after the budget, and restart after reconcile"
+      - "WakeWordController gates onDetected on acceptWake and frees a failed recorder's slot"
+    evidence:
+      - "2026-09-24: WakeArmingTest 6/6, WakeAudioPathTest source contract (cloud Linux build)"
+    remaining_uncertainty: ["MSC engine error timing on the device; covered by ASTRA-WAKE-CYCLES-001"]
+    related: [ASTRA-P3, ASTRA-WAKE-CYCLES-001]
+    last_run: {at: 2026-09-24, result: PASS}
+
+  - id: BARGE-IN-EVIDENCE-001
+    capability: turn_taking
+    name: Barge-in needs time-scoped speech evidence; an unconfirmed echo turn is never heard
+    purpose: "Astra P4: speech over playback qualifies only with >=200 ms voiced post-AEC audio in the last 600 ms; a turn that began without it is held as ECHO_CANDIDATE until the driver's own words, a tool call or proof confirm it"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure:
+      - "gradlew :app:testDebugUnitTest --tests BargeInEvidenceTest --tests WebRtcAecIntegrationTest"
+    pass_criteria:
+      - "an echo burst that ended is not evidence although the gate is still open in its hangover"
+      - "an unconfirmed candidate is dropped at response end even when its reply claims nothing"
+      - "the assistant's own words transcribed back do not confirm the turn"
+      - "the driver's own words, a tool call or execution proof confirm it (quiet double-talk still works)"
+      - "playback flush and turn candidacy use the same bargeInQualified answer"
+    evidence:
+      - "2026-09-24: BargeInEvidenceTest 11/11; full suite 1618/0; REGRESSION 41/41, CHAOS 26/26, RELEASE 63/63 simulated"
+    remaining_uncertainty: ["600 ms window and 60% bigram echo share are starting values; cabin echo is ASTRA-ECHO-PLAYBACK-001"]
+    related: [ASTRA-P4, ASTRA-ECHO-PLAYBACK-001, ASTRA-DOUBLE-TALK-001]
+    last_run: {at: 2026-09-24, result: PASS}
+
   - id: PLAYBACK-FINAL-FRAGMENT-001
     capability: turn_taking
     name: Response completion drains the final partial PCM frame
@@ -1039,6 +1185,97 @@ tests:
       - "2026-09-24: WebRtcAecIntegrationTest capture-teardown + PlaybackEpochEngine worker-start seam"
     related: [SPEC-007-provider-neutral-realtime]
     last_run: {at: 2026-09-24, result: PASS}
+
+  - id: AEC-DELAY-CLOCK-001
+    capability: reliability
+    name: AEC3 stream delay comes from the audio clocks, with named fallbacks
+    purpose: "Astra P2: render latency from AudioTrack timestamps extrapolated to now, capture latency from AudioRecord monotonic timestamps; head position and half-buffer only as reported fallbacks"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure:
+      - "gradlew :app:testDebugUnitTest --tests EchoDelayEstimatorTest"
+    pass_criteria:
+      - "an old render timestamp is extrapolated to now; the head position is used as-is and reported HEAD_POSITION"
+      - "capture latency is the age of the latest frame read; without a timestamp half the record buffer is used and reported BUFFER_ESTIMATE"
+      - "the delay is render + capture + resampler, clamped to 0..500 ms, never negative"
+      - "without any output clock the previous delay stands (0 ms is never reported)"
+    evidence:
+      - "2026-09-24: EchoDelayEstimatorTest 7/7 (cloud Linux build)"
+    remaining_uncertainty: ["real timestamp availability and values per device and route: AEC-DELAY-DEVICE-001"]
+    related: [ASTRA-P2, AEC-DELAY-DEVICE-001]
+    last_run: {at: 2026-09-24, result: PASS}
+
+  - id: AEC-DELAY-DEVICE-001
+    capability: reliability
+    name: Measured echo delay and its sources on the test phone
+    purpose: "Astra P2: record which clock each half of the AEC3 delay rests on, and the delay range, on the phone speaker and one other route"
+    type: device
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    prerequisites: ["debug APK from this commit", "test phone on ADB", "live Baidu session so replies play"]
+    procedure:
+      - "start a voice session and ask two questions with spoken answers"
+      - "collect echo_delay lines from the debug voice log (every 5 s while replies play)"
+      - "repeat on a second output route if one is available (Bluetooth or wired)"
+    pass_criteria:
+      - "echo_delay lines report render=TIMESTAMP and capture=TIMESTAMP, or the fallback in use is recorded"
+      - "ms stays within 0..500 and is stable (record min/median/max per route)"
+      - "no delay_unavailable while a reply is playing"
+    evidence: []
+    remaining_uncertainty: ["whether this device's AudioRecord timestamps are available in VOICE_COMMUNICATION mode"]
+    related: [ASTRA-P2, AEC-DELAY-CLOCK-001, ASTRA-ECHO-PLAYBACK-001]
+    last_run: {at: null, result: null}
+
+  - id: PLAYBACK-BUFFER-ADAPT-001
+    capability: turn_taking
+    name: Playback buffer adapts to the size the platform applied and to real underruns only
+    purpose: "Astra P1: grow 10 ms per underrun while writing (max 5), record the applied (clamped) size, cap growth the platform refuses, ignore idle starvation"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure:
+      - "gradlew :app:testDebugUnitTest --tests LowLatencyPlaybackBufferTest"
+    pass_criteria:
+      - "an underrun while writing grows the buffer by 10 ms, at most five times"
+      - "the size recorded is the size setBufferSizeInFrames applied, not the size requested"
+      - "a grow the platform refuses stops further grow requests"
+      - "underruns while the app had nothing to write (onStarved) do not grow the buffer"
+    evidence:
+      - "2026-09-24: LowLatencyPlaybackBufferTest 7/7 with a clamping fake track (cloud Linux build)"
+    remaining_uncertainty: ["real underrun rates and applied sizes per device: PLAYBACK-BUFFER-DEVICE-001"]
+    related: [ASTRA-P1, PLAYBACK-BUFFER-DEVICE-001]
+    last_run: {at: 2026-09-24, result: PASS}
+
+  - id: PLAYBACK-BUFFER-DEVICE-001
+    capability: turn_taking
+    name: Measured playback buffer and underruns on the test phone
+    purpose: "Astra P1 device: record the applied buffer size, counted underruns and first-audio latency over real replies"
+    type: device
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    prerequisites: ["debug APK from this commit", "test phone on ADB", "live Baidu session"]
+    procedure:
+      - "start a voice session and hold a ten-turn conversation with spoken replies"
+      - "collect playback_buffer_ms lines (initial and each grow/shrink) and reply_timing firstAudioMs from the debug voice log"
+    pass_criteria:
+      - "initial playback_buffer_ms and every change are recorded; counted underruns per reply are reported"
+      - "no grow between replies (idle starvation excluded)"
+      - "choose and record a latency budget from these numbers before any latency acceptance"
+    evidence: []
+    remaining_uncertainty: ["underrun behaviour under CPU load and Bluetooth routes"]
+    related: [ASTRA-P1, PLAYBACK-BUFFER-ADAPT-001]
+    last_run: {at: null, result: null}
 
   - id: AEC-FRAME-CONTINUITY-001
     capability: reliability
@@ -1930,6 +2167,7 @@ tests:
     autonomous_evidence:
       - "qualified barge-in uses uplinkGateOpen instead of RMS ratio veto"
       - "AEC-FRAME-CONTINUITY-001 and PLAYBACK-FLUSH-001 JVM seams passed 2026-09-24"
+      - "BARGE-IN-EVIDENCE-001 (time-scoped evidence, echo-candidate hold) passed 2026-09-24"
     remaining_uncertainty: ["cabin echo path, route and volume combinations"]
     returns: ["any self-triggered reply after playback-only silence", "whether genuine speech still interrupts"]
     related: [SPEC-003, DB-ASTRA-AUDIO-001]
@@ -1955,6 +2193,7 @@ tests:
       - "echo-only energy does not open an audible turn"
     autonomous_evidence:
       - "SpeechUplinkGate + qualifyPlayoutBargeIn uplinkGateOpen wiring"
+      - "BARGE-IN-EVIDENCE-001 (time-scoped evidence, echo-candidate hold) passed 2026-09-24"
     remaining_uncertainty: ["route-change tail and hardware-buffer delay"]
     returns: ["did genuine speech interrupt", "did echo-only energy stay silent", "audio route used"]
     related: [SPEC-003]
@@ -1981,6 +2220,7 @@ tests:
     autonomous_evidence:
       - "WakeWordController uses listeningState.uploads instead of session isActive"
       - "WakeWordController.reconcile on lifecycle transitions"
+      - "WAKE-ARMING-001 (stale-event guard, bounded capture/engine retry) passed 2026-09-24"
     remaining_uncertainty: ["cabin noise and MSC false accepts"]
     returns: ["successful wake count of ten", "any cycle that needed manual restart", "DEEP_IDLE recovery result"]
     related: [SPEC-003]

@@ -37,7 +37,10 @@ class WebRtcAecIntegrationTest {
         val controller = text("app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt")
         assertTrue(ingress.contains("qualifyPlayoutBargeIn"))
         assertTrue(ingress.contains("residual_echo"))
-        assertTrue(controller.contains("uplinkGateOpen"))
+        // Astra P4: time-scoped evidence, one answer for the playback owner and the turn.
+        assertTrue(controller.contains("microphone.recentSpeech"))
+        assertTrue(controller.contains("qualifyPlayoutBargeIn = { bargeInQualified() }"))
+        assertTrue(controller.contains("::bargeInQualified"))
     }
 
     @Test

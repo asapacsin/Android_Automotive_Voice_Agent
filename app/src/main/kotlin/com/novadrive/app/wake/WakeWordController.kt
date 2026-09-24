@@ -26,6 +26,9 @@ object WakeWordController {
     @Volatile
     private var appContext: Context? = null
 
+    /** Armed state, stale-event guard and bounded retries (see [WakeArming]). */
+    private val arming = WakeArming(nowMs = { android.os.SystemClock.elapsedRealtime() })
+
     /** While a harness clip is playing, live microphone frames are held back so the two do not interleave. */
     @Volatile
     private var injecting = false
@@ -46,12 +49,14 @@ object WakeWordController {
     fun setEnabled(context: Context, enabled: Boolean) {
         val app = context.applicationContext
         WakeWordSettings.from(app).setEnabled(enabled)
+        arming.onReconciled()
         bind(app)
     }
 
     /** Reconcile wake ownership after listening lifecycle or permission changes. */
     fun reconcile(context: Context? = appContext) {
         val app = context?.applicationContext ?: return
+        arming.onReconciled()
         bind(app)
     }
 
@@ -93,8 +98,15 @@ object WakeWordController {
         }
         val credentials = settings.loadCredentials()
         when (current.state) {
-            WakeWordState.IDLE, WakeWordState.ERROR ->
+            WakeWordState.IDLE -> current.initialize(credentials, app.filesDir)
+            WakeWordState.ERROR -> {
+                // The reconcile tick keeps running; each retry waits longer, and gives up for good
+                // (until the next lifecycle or settings change) instead of re-initialising forever.
+                startReconcileLocked(app)
+                if (!arming.engine.mayAttempt()) return
+                if (arming.engine.recordFailure()) DebugVoiceLog.log("wake_engine_retry_exhausted")
                 current.initialize(credentials, app.filesDir)
+            }
             WakeWordState.AUTHORISING, WakeWordState.READY, WakeWordState.LISTENING -> Unit
         }
         if (current.state != WakeWordState.LISTENING) {
@@ -109,14 +121,47 @@ object WakeWordController {
      * session is listening, so capture may start before the engine has finished authorising.
      */
     private fun startCaptureLocked(current: IflytekWakeWordDetector) {
-        if (idleCapture != null) return
-        val capture = PcmAudioCapture(
-            onFrame = { frame -> if (!injecting) current.writeFrame(frame, first = false, last = false) },
-            onError = { code -> DebugVoiceLog.log("wake_capture_failure code=$code") },
+        if (idleCapture != null) {
+            arming.onArmed()
+            return
+        }
+        if (!arming.capture.mayAttempt()) return
+        var healthy = false
+        lateinit var capture: PcmAudioCapture
+        capture = PcmAudioCapture(
+            onFrame = { frame ->
+                if (!healthy) {
+                    healthy = true
+                    arming.capture.reset()
+                    arming.engine.reset()
+                }
+                if (!injecting) current.writeFrame(frame, first = false, last = false)
+            },
+            onError = { code ->
+                DebugVoiceLog.log("wake_capture_failure code=$code")
+                // Off the capture's own thread: stop() joins the worker that may be calling us.
+                handler.post { onCaptureFailed(capture) }
+            },
         )
         idleCapture = capture
         capture.start()
+        arming.onArmed()
         DebugVoiceLog.log("wake_capture_started")
+    }
+
+    /**
+     * A failed recorder gives up its ownership, so the reconcile tick can start a new one after
+     * the retry delay. Only the current capture: a late error from a replaced one changes nothing.
+     */
+    private fun onCaptureFailed(failed: PcmAudioCapture) {
+        synchronized(lock) {
+            if (idleCapture !== failed) return
+            idleCapture = null
+            failed.stop()
+            arming.onDisarmed()
+            detector?.takeIf { it.state == WakeWordState.LISTENING }?.stopListening()
+            if (arming.capture.recordFailure()) DebugVoiceLog.log("wake_capture_retry_exhausted")
+        }
     }
 
     private fun stopCaptureLocked() {
@@ -131,6 +176,7 @@ object WakeWordController {
      * `send msg failed while status is exited` on every tick of every session.
      */
     private fun stopListeningLocked() {
+        arming.onDisarmed()
         val wasCapturing = idleCapture != null
         stopCaptureLocked()
         val current = detector ?: return
@@ -166,6 +212,17 @@ object WakeWordController {
     }
 
     private fun onDetected(app: Context) {
+        // A detection after wake stood down is stale: the engine can report a phrase after
+        // stopListening, or twice for one phrase. Starting a session from it would be a second
+        // owner for the microphone, or a session nobody asked for.
+        val accepted = arming.acceptWake(
+            conversationOwnsMicrophone = VoiceSessionGateway.listeningState.uploads,
+            enabled = WakeWordSettings.from(app).isEnabled(),
+        )
+        if (!accepted) {
+            DebugVoiceLog.log("wake_event_ignored reason=not_armed")
+            return
+        }
         // Hand the microphone over before the session opens its own capture.
         synchronized(lock) { stopListeningLocked() }
         com.novadrive.evaluation.Telemetry.record(com.novadrive.evaluation.EventType.WAKE_DETECTED)

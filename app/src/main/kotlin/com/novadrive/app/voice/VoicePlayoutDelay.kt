@@ -13,6 +13,8 @@ object VoicePlayoutDelay {
         val underrunCount: Int,
         val outputSampleRateHz: Int,
         val playbackActive: Boolean,
+        /** The output clock behind [playoutDelayMs], extrapolated by the capture side to its own now. */
+        val renderClock: EchoDelayEstimator.RenderClock? = null,
     )
 
     @Volatile

@@ -17,6 +17,12 @@ object ToolFailureAdvice {
         "OUT_OF_RANGE" to "屏幕上没有这一项。请如实说没有这一项，并说明一共有几个。",
         "NO_OPTIONS_ON_SCREEN" to "现在屏幕上没有候选列表。请如实说明，不要假装已经选择。",
         "OPTIONS_NOT_READY" to "候选还在计算中。请让用户稍等，不要假装已经选择。",
+        "OPTIONS_STALE" to
+            "这个列表已经显示了一段时间（或刚从休眠中醒来），为了不选错，这次没有选择。" +
+                "请用一句话按 options_on_screen 简要重新说一遍有哪几项，再请用户说要第几个。不要说已经选好了。",
+        "CONFIRM_CANDIDATE" to
+            "没有完全同名的选项，但第 candidate_position 项「candidate_name」读音相近，没有选择任何一项。" +
+                "请只用一句话问用户是不是这一项（说出序号和名称），等用户确认；不要说已经选好了。",
         "DISTANCE_UNKNOWN" to "这些候选没有距离信息，无法判断最近的。请用户说第几个。",
         "PREFERENCE_NOT_FOR_DESTINATIONS" to "这个偏好只能用于路线，不能用于地点。请用户说第几个。",
         "PREFERENCE_NOT_FOR_ROUTES" to "这个偏好只能用于地点，不能用于路线。请用户说第几条。",

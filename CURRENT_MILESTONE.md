@@ -1,8 +1,46 @@
 # Current Milestone
 
-**M3 — Contextual voice commands: the driver stops speaking like an API** — ✅ **CLOSED 2026-09-19**, all six rows earned
+**M4 — More voice coverage without depending on the model** — opened 2026-09-24 by the product owner
 
-> **No milestone is open.** The only unclosed backlog item is [B-003](BACKLOG.md) (wake word), which is blocked on credentials an agent cannot obtain, so the next milestone is the product owner's to choose. Opening one without a demand would be inventing scope — see [skills/continue.md](skills/continue.md).
+Date opened: 2026-09-24 · Source: [B-024, B-025, B-026](BACKLOG.md) · Specs:
+[SPEC-010](SPECS/SPEC-010-screen-affordances.md), [SPEC-011](SPECS/SPEC-011-amap-live-info.md),
+[SPEC-012](SPECS/SPEC-012-speech-arbiter.md)
+
+Chosen from six directions reviewed on 2026-09-24 because each can be built and verified on the
+phone with no server of our own, and none rests on unmeasured provider behaviour. The talker/planner
+split, offline mode and real vehicle control were set aside; the reasons are under
+[B-026](BACKLOG.md#b-026--one-owner-for-who-may-speak).
+
+**Order and why.** SPEC-010 first: it adds commands with no model decision at all, and its per-turn
+capability claim is what SPEC-011's fallback needs. SPEC-011 second: most visible value, and its
+baseline measurement must be taken before its tool declaration changes the prompt. SPEC-012 last:
+a pure consolidation of device-verified behaviour, so it goes where a regression is cheapest to see.
+Each SPEC's steps are separate verified commits; a device row never blocks the next autonomous step.
+
+| # | Required | Level | State |
+| --- | --- | --- | --- |
+| 1 | `ScreenControls` owns recentre and camera, so tap and voice share a route | L2 | **not built** — SPEC-010 step 1 |
+| 2 | Affordance registry and whole-utterance matcher | L2 | **not built** — SPEC-010 step 2 |
+| 3 | One execution per turn across the local and model paths | L2 | **not built** — SPEC-010 step 3 |
+| 4 | Screen and picker publish affordances; the old local-pick path is deleted | L2–L4 | **not built** — SPEC-010 step 4 |
+| 5 | Spoken control names act on the phone without a model tool call | **L5** | **not earned** — SPEC-010 A7, needs the phone |
+| 6 | SPEC-008 baseline selection rate recorded before any new declaration | **L5** | **not earned** — SPEC-011 step 0, needs the phone |
+| 7 | `query_live_info` weather: parser, tool, truth guard, capability split | L2–L4 | **not built** — SPEC-011 steps 1–3 |
+| 8 | Weather selected from speech ≥ 9/10 with no SPEC-008 regression; live Amap data | **L5–L6** | **not earned** — SPEC-011 step 4 |
+| 9 | `route_traffic`, `along_route`, `place_details` | L2–L6 | **not built** — SPEC-011 step 5 |
+| 10 | Speech rules characterised against today's classes | L2 | **not built** — SPEC-012 step 1 |
+| 11 | `SpeechArbiter` owns every speak/uplink decision; `VoicePolicy` deleted | L2–L4 | **not built** — SPEC-012 steps 2–3 |
+| 12 | P1 and P3 re-pass on a simulated drive through the arbiter | **L5** | **not earned** — SPEC-012 A6 |
+| 13 | Workload hold before manoeuvres | L2, **L5** | **not built** — SPEC-012 step 4 |
+
+**Completion rule.** Every row earned at its level, the SPEC acceptance tables have no `not built`
+row, and the device rows are either earned or queued in [HUMAN_VALIDATION.md](HUMAN_VALIDATION.md)
+with their owner. Cloud sessions can do rows 1–4, 7, 9 (code), 10, 11 and 13 (code); the device
+rows need the phone and the owner's PC.
+
+# M3 — Contextual voice commands (CLOSED 2026-09-19 — record kept, do not reopen)
+
+**M3 — Contextual voice commands: the driver stops speaking like an API** — ✅ **CLOSED 2026-09-19**, all six rows earned
 
 Date opened: 2026-09-19 · Source: [B-008](BACKLOG.md) · Spec: [SPEC-006](SPECS/SPEC-006-complex-voice-commands.md)
 

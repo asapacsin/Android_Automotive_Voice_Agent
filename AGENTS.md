@@ -19,6 +19,9 @@ python scripts/model_route.py --selftest  # hard-gate Cursor labor routing
 python scripts/design_basis.py --validate # design-basis gate before difficult implementation
 ```
 
+Cloud (Linux) sessions: `./gradlew` with the same tasks; the session-start hook installs the
+toolchain — see [docs/CLOUD_BUILD.md](docs/CLOUD_BUILD.md).
+
 Before you consider a change complete: `.\gradlew.bat test --rerun-tasks :app:assembleDebug`, then
 device evidence for anything touching audio, the map or lifecycle (`ACCEPTANCE_TESTS.md` says what
 each level may claim). A green build is not evidence that anything works.

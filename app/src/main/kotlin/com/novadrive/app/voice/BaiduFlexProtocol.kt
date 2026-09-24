@@ -160,7 +160,7 @@ object BaiduFlexProtocol {
                     "「不要收费」「免费的」→ no_toll；路线列表显示时说「开始导航」「好的」「就这条」→ recommended；「红绿灯少的」→ fewest_lights；「最近的那个地点」→ nearest；「就去拱北口岸」「选万达广场那个」→ name。" +
                     "三个参数只填一个。根据返回结果如实回答：destination_selected 时不要逐条念路线，按返回的 next 只说一句并请用户选路线；" +
                     "navigation_started 时说导航已开始；ok=false 时按 error 说明（OUT_OF_RANGE=没有这一项，NO_OPTIONS_ON_SCREEN=现在没有可选的列表，" +
-                    "OPTIONS_NOT_READY=还在计算，AMBIGUOUS=有多个匹配请说第几个）。" +
+                    "OPTIONS_NOT_READY=还在计算，AMBIGUOUS=有多个匹配请说第几个，OPTIONS_STALE=列表太久了请重新说一遍选项再问第几个，CONFIRM_CANDIDATE=问用户是不是 candidate_position 那一项）。" +
                     "Pick from the on-screen destination or route list, exactly like a tap. Fill exactly one field.",
             )
             .put(

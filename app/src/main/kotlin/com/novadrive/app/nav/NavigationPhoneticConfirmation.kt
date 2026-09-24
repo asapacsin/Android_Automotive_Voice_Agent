@@ -41,6 +41,18 @@ object NavigationPhoneticConfirmation {
         return Proposal.Confirm(best.first, candidate.name)
     }
 
+    /**
+     * The driver's answer to 「你是说第N个X吗」 is a plain yes. Deliberately exact: 「对了我想去别处」
+     * starts with 对 and is not a yes, so only the whole short utterance counts.
+     */
+    fun isAffirmative(utterance: String): Boolean =
+        utterance.trim().trimEnd('。', '！', '!', '.', '，', ',', '～', '~') in AFFIRMATIVE
+
+    private val AFFIRMATIVE = setOf(
+        "对", "对的", "对啊", "对呀", "是", "是的", "是啊", "是呀", "没错", "嗯", "嗯嗯", "好", "好的",
+        "可以", "就是它", "就是这个", "就这个", "确定", "确认",
+    )
+
     private fun latinKey(transliterator: Transliterator, text: String): String =
         transliterator.transliterate(text)
             .lowercase()

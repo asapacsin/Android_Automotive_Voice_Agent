@@ -56,4 +56,15 @@ class WakeAudioPathTest {
             "wake must release the microphone while conversational capture runs; two owners is the original defect"
         }
     }
+
+    @Test
+    fun aStaleWakeEventIsIgnoredAndAFailedCaptureIsRetried() {
+        val controller = source("app/src/main/kotlin/com/novadrive/app/wake/WakeWordController.kt")
+        assertTrue(controller.contains("arming.acceptWake(")) {
+            "a detection must be checked against the armed state before it starts a session (Astra P3)"
+        }
+        assertTrue(controller.contains("onCaptureFailed(") && controller.contains("arming.capture.recordFailure()")) {
+            "a failed wake recorder must give up its slot and be retried within a bound, not stay deaf (Astra P3)"
+        }
+    }
 }

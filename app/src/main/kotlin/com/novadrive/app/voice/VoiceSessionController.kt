@@ -69,11 +69,9 @@ class VoiceSessionController(
             onToolCall = onToolCall,
             onUserFinalTranscript = { text -> onUserUtterance(text) },
             onSessionLog = { line -> com.novadrive.app.DebugVoiceLog.log(line) },
-            qualifyPlayoutBargeIn = {
-                VoiceAudioSession.aecBackend != "webrtc" || microphone.uplinkGateOpen
-            },
+            qualifyPlayoutBargeIn = { bargeInQualified() },
             bargeInDiagnostics = {
-                val flush = VoiceAudioSession.aecBackend != "webrtc" || microphone.uplinkGateOpen
+                val flush = bargeInQualified()
                 VoiceAec.instance?.let { aec ->
                     AecMetrics.logBargeIn(
                         aec.streamDelayMs,
@@ -84,6 +82,7 @@ class VoiceSessionController(
                 }
                 mapOf(
                     "uplinkGateOpen" to microphone.uplinkGateOpen,
+                    "recentSpeech" to microphone.recentSpeech,
                     "lastRms" to microphone.lastFrameRms,
                     "aec_enabled" to VoiceAudioSession.aecEnabled,
                     "aec_backend" to VoiceAudioSession.aecBackend,
@@ -126,6 +125,7 @@ class VoiceSessionController(
             if (to == ListeningState.SLEEP || to == ListeningState.DEEP_IDLE) {
                 com.novadrive.app.nav.NavigationLocalPickGuard.invalidate()
                 com.novadrive.app.nav.NavigationPickSession.clear()
+                com.novadrive.app.nav.EmbeddedNavigation.currentOrNull()?.onListeningSuspended()
             }
             onListeningState(to)
             com.novadrive.app.wake.WakeWordController.reconcile(appContext)
@@ -213,7 +213,8 @@ class VoiceSessionController(
         val outputRate = apiConfig.settings.resolvedOutputSampleRateHz()
         player.configureSampleRate(outputRate)
         val selected: RealtimeVoiceProvider = when (apiConfig.settings.runtimeProvider) {
-            BaiduRuntimeProvider.FLEX -> BaiduFlexProvider(apiConfig) { microphone.measuredSegment() }
+            BaiduRuntimeProvider.FLEX ->
+                BaiduFlexProvider(apiConfig, { microphone.measuredSegment() }, ::bargeInQualified)
             BaiduRuntimeProvider.LITE -> BaiduDirectRealtimeProvider(apiConfig)
         }
         val providerId = if (apiConfig.settings.runtimeProvider == BaiduRuntimeProvider.FLEX) {
@@ -309,6 +310,13 @@ class VoiceSessionController(
         tryLocalNavigationPick(text)
     }
 
+    /**
+     * Speech over playback is a barge-in only with time-scoped post-AEC evidence (Astra P4). The
+     * same answer goes to the playback owner (flush or not) and to the turn (candidate or not).
+     */
+    private fun bargeInQualified(): Boolean =
+        VoiceAudioSession.aecBackend != "webrtc" || microphone.recentSpeech
+
     private fun tryLocalNavigationPick(text: String) {
         val pick = onLocalNavigationPick ?: return
         val nav = com.novadrive.app.nav.EmbeddedNavigation.currentOrNull() ?: return
@@ -317,12 +325,23 @@ class VoiceSessionController(
         val phase = nav.state().value
         val destinations = nav.destinationCandidates.value
         val routes = nav.routeCandidates.value
-        val choice = com.novadrive.app.nav.NavigationPickerIntercept.resolve(
-            text,
-            phase,
-            destinations,
-            routes,
-        )
+        // 「对」 answering 「你是说第二个X吗」 selects that row here, exactly as a tap would; any other
+        // answer withdraws the question and the model takes the utterance as usual.
+        val confirmation = nav.activeConfirmation()
+        if (confirmation != null) nav.withdrawConfirmation()
+        val confirmed = confirmation?.takeIf {
+            com.novadrive.app.nav.NavigationPhoneticConfirmation.isAffirmative(text)
+        }
+        val choice = if (confirmed != null) {
+            com.novadrive.app.nav.NavigationChoice.Index(confirmed.position)
+        } else {
+            com.novadrive.app.nav.NavigationPickerIntercept.resolve(
+                text,
+                phase,
+                destinations,
+                routes,
+            )
+        }
         if (choice != null) {
             com.novadrive.app.DebugVoiceLog.log("nav_voice_local_pick")
             active.cancelCurrentResponse()

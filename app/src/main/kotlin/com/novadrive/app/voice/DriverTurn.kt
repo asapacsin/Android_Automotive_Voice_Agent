@@ -80,6 +80,13 @@ class DriverTurn(val epoch: Long) {
         AWAITING_EXECUTION_PROOF,
         UNCLASSIFIED_CLAIM,
         CAPABILITY_HELP,
+
+        /**
+         * The turn began as speech over the assistant's own playback that did not qualify as a
+         * barge-in (Astra P4): most likely the cabin echo of the reply. Nothing from it is heard
+         * until the turn is confirmed by the driver's own words, a tool call or execution proof.
+         */
+        ECHO_CANDIDATE,
     }
 
     sealed interface Verdict {
@@ -107,12 +114,23 @@ class DriverTurn(val epoch: Long) {
     var toolCalled: Boolean = false
         private set
 
+    /**
+     * Speech started over playback without post-AEC speech evidence. Cleared once a transcript
+     * that is not the assistant's own recent words arrives.
+     */
+    var echoCandidate: Boolean = false
+        private set
+
     /** A tool result with `ok=true` came back. This, and only this, is proof. */
     var proven: Boolean = false
         private set
 
     /** The last failure reason delivered for this turn, if any. */
     var lastFailure: String? = null
+        private set
+
+    /** A tool result with `ok=false` came back: the action was attempted and did not happen. */
+    var executionFailed: Boolean = false
         private set
 
     /** What the uplink gate measured about the audio that caused this turn. */
@@ -150,8 +168,19 @@ class DriverTurn(val epoch: Long) {
         return holdReason
     }
 
+    /**
+     * The provider heard speech while the assistant's reply was playing. [qualified] is the
+     * app's own time-scoped post-AEC evidence; without it this turn is only a candidate, and the
+     * no-claim release path must not make a reply to the cabin's echo audible.
+     */
+    fun onSpeechDuringPlayback(qualified: Boolean) {
+        if (!accepts()) return
+        if (!qualified) echoCandidate = true
+    }
+
     private fun decideHold(contextAwaitingAnswer: Boolean): HoldReason {
         if (proven) return HoldReason.NONE
+        if (echoCandidate && !toolCalled) return HoldReason.ECHO_CANDIDATE
         if (kind == Kind.CAPABILITY_HELP) return HoldReason.CAPABILITY_HELP
         // An action claim always needs proof. Measured on device 2026-09-18: with a route list on
         // screen, `contextAwaitingAnswer` exempted the whole turn, and a second 「导航已开始。」 was
@@ -192,12 +221,18 @@ class DriverTurn(val epoch: Long) {
      * The provider transcribed the driver. This is what classifies the turn, and it usually
      * arrives *after* the response has started — so the hold is re-evaluated here.
      */
-    fun onUserTranscript(text: String, classify: (String) -> Kind): HoldReason {
+    fun onUserTranscript(text: String, echoOf: String = "", classify: (String) -> Kind): HoldReason {
         if (!accepts()) {
             rejectedEvents++
             return holdReason
         }
         if (!PhantomTurnGate.isMeaningfulTranscript(text)) return holdReason
+        if (echoCandidate) {
+            // The recogniser transcribing the assistant's own reply back is the echo, not a driver.
+            if (isEchoOf(text, echoOf)) return holdReason
+            echoCandidate = false
+            if (holdReason == HoldReason.ECHO_CANDIDATE) holdReason = HoldReason.NONE
+        }
         userSpoke = true
         requestText = text
         if (kind == Kind.UNKNOWN) kind = classify(text)
@@ -233,10 +268,13 @@ class DriverTurn(val epoch: Long) {
         }
         if (!ok) {
             lastFailure = failure
+            executionFailed = true
             return Verdict.Wait
         }
         proven = true
-        if (holdReason == HoldReason.AWAITING_EXECUTION_PROOF || holdReason == HoldReason.PHANTOM_AUDIO) {
+        if (holdReason == HoldReason.AWAITING_EXECUTION_PROOF || holdReason == HoldReason.PHANTOM_AUDIO ||
+            holdReason == HoldReason.ECHO_CANDIDATE
+        ) {
             holdReason = HoldReason.NONE
             return Verdict.Release("execution_proved")
         }
@@ -262,6 +300,7 @@ class DriverTurn(val epoch: Long) {
                     Verdict.Wait
                 }
             // These can only be settled once the response is complete.
+            HoldReason.ECHO_CANDIDATE,
             HoldReason.NO_TOOL_REQUEST,
             HoldReason.AWAITING_EXECUTION_PROOF,
             HoldReason.UNCLASSIFIED_CLAIM,
@@ -280,6 +319,13 @@ class DriverTurn(val epoch: Long) {
         val reply = assistantText.trim()
         val verdict = when (holdReason) {
             HoldReason.NONE -> Verdict.Release("not_held")
+
+            // Nothing confirmed a driver: no words of their own, no tool, no proof. A reply that
+            // claims nothing is exactly what used to be released here and heard as a self-loop.
+            HoldReason.ECHO_CANDIDATE -> when {
+                toolCalled || hadToolCallInResponse -> Verdict.Release("tool_called")
+                else -> Verdict.Drop("unconfirmed_echo_candidate")
+            }
 
             HoldReason.PHANTOM_AUDIO -> {
                 val judgement = PhantomTurnGate.judge(
@@ -350,6 +396,12 @@ class DriverTurn(val epoch: Long) {
                     proven -> Verdict.Release("execution_proved")
                     // The model asserted an action that nothing has proved. This is the case that
                     // used to be corrected *after* the driver heard it.
+                    // The tool already ran and failed: asking the model to perform it again is
+                    // a retry nobody asked for. The driver must hear that it did not work.
+                    // Found 2026-09-24 (HVAC_MODEL_IGNORES_ERROR): the nudge re-requested the
+                    // action and the failure was never reported.
+                    ActionClaimGuard.claimsDone(reply) && executionFailed ->
+                        Verdict.Drop("unproven_action_claim", ActionClaimGuard.reportFailure(lastFailure ?: "操作失败"))
                     ActionClaimGuard.claimsDone(reply) ->
                         Verdict.Drop("unproven_action_claim", ActionClaimGuard.nudgeFor(requestText))
                     // A question, a refusal, a request to choose: its truth needs no execution.
@@ -397,6 +449,22 @@ class DriverTurn(val epoch: Long) {
             "proven=$proven hold=$holdReason held=${held.size})"
 
     companion object {
+        /**
+         * Whether [transcript] is the assistant's own [reply] heard back. Compares word characters
+         * only, and only against what this app just said: never a list of driver phrases.
+         */
+        fun isEchoOf(transcript: String, reply: String): Boolean {
+            val heard = transcript.filter { it.isLetterOrDigit() }
+            val said = reply.filter { it.isLetterOrDigit() }
+            if (heard.length < 2 || said.isEmpty()) return false
+            if (said.contains(heard)) return true
+            val bigrams = heard.windowed(2)
+            return bigrams.count { said.contains(it) } >= bigrams.size * ECHO_BIGRAM_SHARE
+        }
+
+        /** Share of the heard bigrams that must appear in the reply; recognition is not verbatim. */
+        private const val ECHO_BIGRAM_SHARE = 0.6
+
         /** Classifies a transcript into what its reply's truth depends on. */
         fun classify(
             text: String,

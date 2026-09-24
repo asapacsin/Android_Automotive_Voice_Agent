@@ -383,6 +383,7 @@ change_impact:
       - PcmAecFraming
       - VoiceAudioSession
       - VoicePlayoutDelay
+      - EchoDelayEstimator
       - WebRtcAcousticEcho
       - MicInputGain
       - PhantomTurnGate
@@ -435,6 +436,7 @@ change_impact:
       - NavigationLocalPickGuard
       - NavigationPickSession
       - NavigationPhoneticConfirmation
+      - NavigationChoiceAuthority
       - NavigationPickerIntercept
       - EmulatorNaviSpeed
       - GatewayNaviEngine

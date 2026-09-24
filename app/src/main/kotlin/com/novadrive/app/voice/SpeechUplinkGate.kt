@@ -115,6 +115,20 @@ class SpeechUplinkGate(
 
     private var lastFinished: Segment? = null
 
+    /** Voiced/unvoiced for the last [EVIDENCE_WINDOW_MS] of frames, whatever the gate's state. */
+    private val recent = ArrayDeque<Boolean>()
+    private var recentVoiced = 0
+    private val evidenceWindowFrames = maxOf(1, EVIDENCE_WINDOW_MS / frameMs)
+
+    /**
+     * Post-AEC speech evidence scoped in time (Astra P4): at least [minOnsetFrames] of voiced
+     * audio within the last [EVIDENCE_WINDOW_MS]. [isOpen] is not that: an open gate stays open
+     * for [hangoverMs] of silence, so a short burst of residual echo kept any `speech_started` in
+     * the following 1.2 s qualified as a barge-in. This asks whether somebody is speaking *now*.
+     */
+    @Synchronized
+    fun hasRecentSpeech(): Boolean = recentVoiced >= minOnsetFrames
+
     /**
      * The shape of the turn being judged right now.
      *
@@ -150,6 +164,8 @@ class SpeechUplinkGate(
      */
     @Synchronized
     fun onCaptureInterrupted() {
+        recent.clear()
+        recentVoiced = 0
         preRoll.clear()
         consecutiveVoiced = 0
         strayVoiced = 0
@@ -170,6 +186,11 @@ class SpeechUplinkGate(
         lastRms = rms
         val peak = peakAbs(frame)
         val voiced = rms >= voicedThreshold
+        recent.addLast(voiced)
+        if (voiced) recentVoiced++
+        while (recent.size > evidenceWindowFrames) {
+            if (recent.removeFirst()) recentVoiced--
+        }
         if (!voiced) {
             // Only quiet frames teach the noise floor, so a long sentence cannot raise it until
             // the speaker is talking to a wall.
@@ -263,6 +284,13 @@ class SpeechUplinkGate(
          * open gate.
          */
         const val HANGOVER_MS = 1_200
+
+        /**
+         * How far back barge-in evidence may reach. The server reports `speech_started` a few
+         * hundred milliseconds after the onset, while the driver is still talking; 600 ms covers
+         * that delay and still excludes an echo burst that ended before it.
+         */
+        const val EVIDENCE_WINDOW_MS = 600
 
         /**
          * Quiet speech at arm's length measured ~1300–1900 peak on this device, roughly 200+ RMS.

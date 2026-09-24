@@ -30,6 +30,10 @@ class PcmAudioCapture(
     private var noiseSuppressor: NoiseSuppressor? = null
     @Volatile private var captureBufferDelayMs: Int = 0
 
+    /** Frames read since the recorder started: the base of its timestamps. Capture thread only. */
+    private var framesRead = 0L
+    private val captureStamp = android.media.AudioTimestamp()
+
     fun start() = synchronized(lifecycleLock) {
         val previousWorker = worker
         if (!mayStartAudioWorker(previousWorker?.isAlive == true, running.get())) {
@@ -91,6 +95,7 @@ class PcmAudioCapture(
             return
         }
         captureBufferDelayMs = (recorder.bufferSizeInFrames * 1000) / SAMPLE_RATE / 2
+        framesRead = 0L
         val useWebRtcAec = VoiceAec.instance?.isAvailable == true
         val aecAvailable = AcousticEchoCanceler.isAvailable()
         echoCanceler =
@@ -132,13 +137,14 @@ class PcmAudioCapture(
                     while (running.get()) {
                         val read = recorder.read(buf, 0, buf.size)
                         if (read > 0) {
+                            framesRead += read / 2
                             val raw = buf.copyOf(read)
                             val aec = VoiceAec.instance
                             val uploadFrame =
                                 if (aec?.isAvailable != true) {
                                     raw
                                 } else {
-                                    refreshStreamDelay(aec)
+                                    refreshStreamDelay(aec, recorder)
                                     when (val result = aec.processCapture(raw)) {
                                         is AecCaptureResult.Processed -> result.pcm16le
                                         AecCaptureResult.Pending -> null
@@ -196,20 +202,46 @@ class PcmAudioCapture(
 
     @Volatile private var lastDelayUnavailableLogMs: Long = 0L
 
-    private fun refreshStreamDelay(aec: WebRtcAcousticEcho) {
+    @Volatile private var lastDelayLogMs: Long = 0L
+
+    /**
+     * AEC3's stream delay from both audio clocks (see [EchoDelayEstimator]). Without an output
+     * clock the previous delay stands: 0 ms is never reported as a measurement.
+     */
+    private fun refreshStreamDelay(aec: WebRtcAcousticEcho, recorder: AudioRecord) {
         val playout = VoicePlayoutDelay.snapshot()
-        val playoutMs = playout?.playoutDelayMs
-        if (playoutMs == null) {
-            val now = android.os.SystemClock.elapsedRealtime()
-            if (now - lastDelayUnavailableLogMs >= 5000L) {
-                lastDelayUnavailableLogMs = now
+        val render = playout?.renderClock
+        val nowMs = android.os.SystemClock.elapsedRealtime()
+        if (render == null) {
+            if (nowMs - lastDelayUnavailableLogMs >= 5000L) {
+                lastDelayUnavailableLogMs = nowMs
                 com.novadrive.app.DebugVoiceLog.log("delay_unavailable")
             }
             return
         }
-        val resamplerMs =
-            playout.let { VoicePlayoutDelay.resamplerDelayMs(it.outputSampleRateHz) }
-        aec.streamDelayMs = (playoutMs + captureBufferDelayMs + resamplerMs).coerceIn(0, 500)
+        val stamped = try {
+            recorder.getTimestamp(captureStamp, android.media.AudioTimestamp.TIMEBASE_MONOTONIC) == AudioRecord.SUCCESS
+        } catch (_: Exception) {
+            false
+        }
+        val capture = EchoDelayEstimator.CaptureClock(
+            framesRead = framesRead,
+            stampFrames = if (stamped) captureStamp.framePosition else null,
+            stampNanos = if (stamped) captureStamp.nanoTime else null,
+            sampleRateHz = SAMPLE_RATE,
+            bufferFallbackMs = captureBufferDelayMs,
+        )
+        val estimate = EchoDelayEstimator.estimate(
+            render, capture, VoicePlayoutDelay.resamplerDelayMs(playout.outputSampleRateHz), System.nanoTime(),
+        )
+        aec.streamDelayMs = estimate.streamDelayMs
+        if (nowMs - lastDelayLogMs >= 5000L) {
+            lastDelayLogMs = nowMs
+            com.novadrive.app.DebugVoiceLog.log(
+                "echo_delay ms=${estimate.streamDelayMs} renderMs=${estimate.renderMs} captureMs=${estimate.captureMs} " +
+                    "render=${estimate.renderSource} capture=${estimate.captureSource}",
+            )
+        }
     }
 
     private fun releaseCaptureEffects() {
@@ -251,6 +283,9 @@ class AndroidMicrophonePort(
     }
 
     val uplinkGateOpen: Boolean get() = uplinkGate.isOpen
+
+    /** Time-scoped post-AEC speech evidence; see [SpeechUplinkGate.hasRecentSpeech]. */
+    val recentSpeech: Boolean get() = uplinkGate.hasRecentSpeech()
 
     val lastFrameRms: Int get() = uplinkGate.lastFrameRms
     override var muted: Boolean = false

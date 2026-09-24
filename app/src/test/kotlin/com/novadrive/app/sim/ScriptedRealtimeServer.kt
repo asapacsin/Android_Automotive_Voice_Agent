@@ -73,11 +73,20 @@ class ScriptedRealtimeServer(seed: Long) {
 
     /**
      * The server's side of "settled": no response running, nothing scheduled or streaming, no tool
-     * result owed. This alone is NOT enough — frames are delivered asynchronously — so the driver
+     * result owed, and no received tool result or user text still waiting for the reply that
+     * reads it. This alone is NOT enough — frames are delivered asynchronously — so the driver
      * also waits for the client to have recorded [responsesCompleted] completions.
+     *
+     * Found 2026-09-24 (HVAC_FAULT_EXECUTION failed ~1 run in 10): the client writes
+     * `function_call_output` and `response.create` back to back, and on loopback the second small
+     * frame regularly arrived ~40 ms later (Nagle plus delayed ACK). With the result consumed from
+     * [openCalls] but not yet answered, the server looked idle for exactly the driver's quiet
+     * window and the turn was scored before its spoken reply.
      */
     val idle: Boolean
-        get() = synchronized(lock) { !responseActive && openCalls.isEmpty() } && pendingEmissions.get() == 0
+        get() = synchronized(lock) {
+            !responseActive && openCalls.isEmpty() && outputs.isEmpty() && pendingUserText.isEmpty()
+        } && pendingEmissions.get() == 0
 
     /** response.done events sent on live connections (including cancelled replies). */
     val responsesCompleted: Int get() = responsesDone.get()

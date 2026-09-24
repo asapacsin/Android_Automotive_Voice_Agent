@@ -202,6 +202,8 @@ class PcmAudioPlayer(
         }
         val pending = epochEngine.pendingSlice
         if (pending == null) {
+            // Nothing to write: the track running dry now says nothing about its buffer size.
+            bufferManager.onStarved(player)
             emitIdleIfDrained()
             publishPlayoutDelay(player, null)
             return SliceResult.RETRY
@@ -239,8 +241,9 @@ class PcmAudioPlayer(
         }
         epochEngine.acceptShortWrite(written)
         framesWritten += written / 2
-        val playoutDelayMs = measuredPlayoutDelayMs(player)
-        publishPlayoutDelay(player, playoutDelayMs)
+        val clock = renderClock(player)
+        val playoutDelayMs = clock?.let { EchoDelayEstimator.renderLatency(it, System.nanoTime()).first }
+        publishPlayoutDelay(player, playoutDelayMs, clock)
         bufferManager.afterWrite(player)
         VoiceAec.instance?.let { aec ->
             if (aec.isAvailable) {
@@ -451,12 +454,30 @@ class PcmAudioPlayer(
         onError("AUDIO_PLAYBACK_FAILED")
     }
 
-    private fun measuredPlayoutDelayMs(player: AudioTrack): Int? {
+    /**
+     * Where the output clock stands, for [EchoDelayEstimator]: the presented frame and the
+     * monotonic time it was presented when the platform timestamps it, else the head position.
+     */
+    private fun renderClock(player: AudioTrack): EchoDelayEstimator.RenderClock? {
         if (framesWritten == 0L) return null
-        val head = playbackHeadFrames(player) ?: return null
-        val played = (head - headOrigin).coerceAtLeast(0)
-        val buffered = (framesWritten - played).coerceAtLeast(0)
-        return ((buffered * 1000) / sampleRateHz).toInt().coerceIn(0, 500)
+        val stamp = AudioTimestamp()
+        val stamped = try {
+            player.getTimestamp(stamp)
+        } catch (_: Exception) {
+            false
+        }
+        if (stamped) {
+            timestampAvailable = true
+            return EchoDelayEstimator.RenderClock(
+                framesWritten, (stamp.framePosition - headOrigin).coerceAtLeast(0), stamp.nanoTime, sampleRateHz,
+            )
+        }
+        val head = try {
+            player.playbackHeadPosition.toLong() and 0xffffffffL
+        } catch (_: Exception) {
+            return null
+        }
+        return EchoDelayEstimator.RenderClock(framesWritten, (head - headOrigin).coerceAtLeast(0), null, sampleRateHz)
     }
 
     private fun appQueueDelayMs(): Int =
@@ -465,7 +486,11 @@ class PcmAudioPlayer(
             sampleRateHz,
         )
 
-    private fun publishPlayoutDelay(player: AudioTrack?, playoutDelayMs: Int?) {
+    private fun publishPlayoutDelay(
+        player: AudioTrack?,
+        playoutDelayMs: Int?,
+        renderClock: EchoDelayEstimator.RenderClock? = null,
+    ) {
         val bufferMs = latencyBuffer?.bufferMs ?: 0
         VoicePlayoutDelay.publish(
             VoicePlayoutDelay.Snapshot(
@@ -475,6 +500,7 @@ class PcmAudioPlayer(
                 underrunCount = if (player != null) underrunCount(player) else 0,
                 outputSampleRateHz = sampleRateHz,
                 playbackActive = playbackActive,
+                renderClock = renderClock,
             ),
         )
     }
