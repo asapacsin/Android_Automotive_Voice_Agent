@@ -435,6 +435,7 @@ change_impact:
       - NavigationLocalPickGuard
       - NavigationPickSession
       - NavigationPhoneticConfirmation
+      - NavigationChoiceAuthority
       - NavigationPickerIntercept
       - EmulatorNaviSpeed
       - GatewayNaviEngine

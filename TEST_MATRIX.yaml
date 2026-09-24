@@ -1092,6 +1092,30 @@ tests:
     related: [I-1, DriverTurn]
     last_run: {at: 2026-09-24, result: PASS}
 
+  - id: WAKE-ARMING-001
+    capability: wake
+    name: A stale wake event starts nothing; a failed wake start is retried within a bound
+    purpose: "Astra P3: detections count only while armed; capture and engine failures back off (1.5 s doubling to 30 s, 6 attempts) and reset on lifecycle change"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure:
+      - "gradlew :app:testDebugUnitTest --tests WakeArmingTest"
+      - "gradlew :behavior-test:test --tests WakeAudioPathTest"
+    pass_criteria:
+      - "a detection before arming, after disarming, or reported twice starts nothing"
+      - "a detection while conversation owns the microphone or wake is off is ignored"
+      - "failures back off exponentially with a cap, stop after the budget, and restart after reconcile"
+      - "WakeWordController gates onDetected on acceptWake and frees a failed recorder's slot"
+    evidence:
+      - "2026-09-24: WakeArmingTest 6/6, WakeAudioPathTest source contract (cloud Linux build)"
+    remaining_uncertainty: ["MSC engine error timing on the device; covered by ASTRA-WAKE-CYCLES-001"]
+    related: [ASTRA-P3, ASTRA-WAKE-CYCLES-001]
+    last_run: {at: 2026-09-24, result: PASS}
+
   - id: PLAYBACK-FINAL-FRAGMENT-001
     capability: turn_taking
     name: Response completion drains the final partial PCM frame
@@ -2079,6 +2103,7 @@ tests:
     autonomous_evidence:
       - "WakeWordController uses listeningState.uploads instead of session isActive"
       - "WakeWordController.reconcile on lifecycle transitions"
+      - "WAKE-ARMING-001 (stale-event guard, bounded capture/engine retry) passed 2026-09-24"
     remaining_uncertainty: ["cabin noise and MSC false accepts"]
     returns: ["successful wake count of ten", "any cycle that needed manual restart", "DEEP_IDLE recovery result"]
     related: [SPEC-003]
