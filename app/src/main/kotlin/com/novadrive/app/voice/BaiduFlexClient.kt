@@ -40,6 +40,8 @@ class BaiduFlexClient(
     private val lastAudioSegment: () -> SpeechUplinkGate.Segment? = { null },
     /** True when something on screen is waiting for the driver's answer; such turns are never held. */
     private val contextAwaitingAnswer: () -> Boolean = { VoiceContextHints.current() != null },
+    /** Time-scoped post-AEC speech evidence for speech over playback (Astra P4). */
+    private val speechEvidence: () -> Boolean = { true },
 ) {
     private val eventFlow = MutableSharedFlow<RealtimeEvent>(replay = 0, extraBufferCapacity = 64)
     private val generation = AtomicLong(0)
@@ -421,6 +423,7 @@ class BaiduFlexClient(
             if (resetNow) resetConversation()
             val spoken = assistantText.toString()
             assistantText.setLength(0)
+            if (spoken.isNotBlank()) lastSpokenReply = spoken
             // DriverTurn may already have corrected this response when it dropped the reply. Two
             // corrections mean the model is told the same thing twice: measured on device
             // 2026-09-19, 「算了」 produced two identical follow-ups and `exit_navigation_mode` ran
@@ -695,7 +698,11 @@ class BaiduFlexClient(
             driverContext.cancel(previous.epoch)
         }
         turn = DriverTurn(turnEpoch.incrementAndGet())
+        if (playbackActive || assistantSpeaking) turn.onSpeechDuringPlayback(qualified = speechEvidence())
     }
+
+    /** What the assistant last said, so its own words heard back are not taken for a driver. */
+    @Volatile private var lastSpokenReply = ""
 
     @Synchronized
     private fun onResponseCreated() {
@@ -711,7 +718,7 @@ class BaiduFlexClient(
     @Synchronized
     private fun onUserTranscript(text: String) {
         val before = turn.isHolding
-        val reason = turn.onUserTranscript(text) { DriverTurn.classify(it) }
+        val reason = turn.onUserTranscript(text, echoOf = lastSpokenReply) { DriverTurn.classify(it) }
         if (turn.userSpoke) driverContext.onDriverUtterance(text, turn.epoch)
         if (before && reason == DriverTurn.HoldReason.NONE) {
             applyVerdict(turn, DriverTurn.Verdict.Release("user_spoke"))

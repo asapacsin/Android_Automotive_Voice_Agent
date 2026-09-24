@@ -69,11 +69,9 @@ class VoiceSessionController(
             onToolCall = onToolCall,
             onUserFinalTranscript = { text -> onUserUtterance(text) },
             onSessionLog = { line -> com.novadrive.app.DebugVoiceLog.log(line) },
-            qualifyPlayoutBargeIn = {
-                VoiceAudioSession.aecBackend != "webrtc" || microphone.uplinkGateOpen
-            },
+            qualifyPlayoutBargeIn = { bargeInQualified() },
             bargeInDiagnostics = {
-                val flush = VoiceAudioSession.aecBackend != "webrtc" || microphone.uplinkGateOpen
+                val flush = bargeInQualified()
                 VoiceAec.instance?.let { aec ->
                     AecMetrics.logBargeIn(
                         aec.streamDelayMs,
@@ -84,6 +82,7 @@ class VoiceSessionController(
                 }
                 mapOf(
                     "uplinkGateOpen" to microphone.uplinkGateOpen,
+                    "recentSpeech" to microphone.recentSpeech,
                     "lastRms" to microphone.lastFrameRms,
                     "aec_enabled" to VoiceAudioSession.aecEnabled,
                     "aec_backend" to VoiceAudioSession.aecBackend,
@@ -214,7 +213,8 @@ class VoiceSessionController(
         val outputRate = apiConfig.settings.resolvedOutputSampleRateHz()
         player.configureSampleRate(outputRate)
         val selected: RealtimeVoiceProvider = when (apiConfig.settings.runtimeProvider) {
-            BaiduRuntimeProvider.FLEX -> BaiduFlexProvider(apiConfig) { microphone.measuredSegment() }
+            BaiduRuntimeProvider.FLEX ->
+                BaiduFlexProvider(apiConfig, { microphone.measuredSegment() }, ::bargeInQualified)
             BaiduRuntimeProvider.LITE -> BaiduDirectRealtimeProvider(apiConfig)
         }
         val providerId = if (apiConfig.settings.runtimeProvider == BaiduRuntimeProvider.FLEX) {
@@ -309,6 +309,13 @@ class VoiceSessionController(
         if (decision != ListeningIntent.Decision.PASS_TO_MODEL || !ListeningIntent.isMeaningful(text)) return
         tryLocalNavigationPick(text)
     }
+
+    /**
+     * Speech over playback is a barge-in only with time-scoped post-AEC evidence (Astra P4). The
+     * same answer goes to the playback owner (flush or not) and to the turn (candidate or not).
+     */
+    private fun bargeInQualified(): Boolean =
+        VoiceAudioSession.aecBackend != "webrtc" || microphone.recentSpeech
 
     private fun tryLocalNavigationPick(text: String) {
         val pick = onLocalNavigationPick ?: return

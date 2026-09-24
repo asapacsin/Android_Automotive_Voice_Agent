@@ -1116,6 +1116,30 @@ tests:
     related: [ASTRA-P3, ASTRA-WAKE-CYCLES-001]
     last_run: {at: 2026-09-24, result: PASS}
 
+  - id: BARGE-IN-EVIDENCE-001
+    capability: turn_taking
+    name: Barge-in needs time-scoped speech evidence; an unconfirmed echo turn is never heard
+    purpose: "Astra P4: speech over playback qualifies only with >=200 ms voiced post-AEC audio in the last 600 ms; a turn that began without it is held as ECHO_CANDIDATE until the driver's own words, a tool call or proof confirm it"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure:
+      - "gradlew :app:testDebugUnitTest --tests BargeInEvidenceTest --tests WebRtcAecIntegrationTest"
+    pass_criteria:
+      - "an echo burst that ended is not evidence although the gate is still open in its hangover"
+      - "an unconfirmed candidate is dropped at response end even when its reply claims nothing"
+      - "the assistant's own words transcribed back do not confirm the turn"
+      - "the driver's own words, a tool call or execution proof confirm it (quiet double-talk still works)"
+      - "playback flush and turn candidacy use the same bargeInQualified answer"
+    evidence:
+      - "2026-09-24: BargeInEvidenceTest 11/11; full suite 1618/0; REGRESSION 41/41, CHAOS 26/26, RELEASE 63/63 simulated"
+    remaining_uncertainty: ["600 ms window and 60% bigram echo share are starting values; cabin echo is ASTRA-ECHO-PLAYBACK-001"]
+    related: [ASTRA-P4, ASTRA-ECHO-PLAYBACK-001, ASTRA-DOUBLE-TALK-001]
+    last_run: {at: 2026-09-24, result: PASS}
+
   - id: PLAYBACK-FINAL-FRAGMENT-001
     capability: turn_taking
     name: Response completion drains the final partial PCM frame
@@ -2052,6 +2076,7 @@ tests:
     autonomous_evidence:
       - "qualified barge-in uses uplinkGateOpen instead of RMS ratio veto"
       - "AEC-FRAME-CONTINUITY-001 and PLAYBACK-FLUSH-001 JVM seams passed 2026-09-24"
+      - "BARGE-IN-EVIDENCE-001 (time-scoped evidence, echo-candidate hold) passed 2026-09-24"
     remaining_uncertainty: ["cabin echo path, route and volume combinations"]
     returns: ["any self-triggered reply after playback-only silence", "whether genuine speech still interrupts"]
     related: [SPEC-003, DB-ASTRA-AUDIO-001]
@@ -2077,6 +2102,7 @@ tests:
       - "echo-only energy does not open an audible turn"
     autonomous_evidence:
       - "SpeechUplinkGate + qualifyPlayoutBargeIn uplinkGateOpen wiring"
+      - "BARGE-IN-EVIDENCE-001 (time-scoped evidence, echo-candidate hold) passed 2026-09-24"
     remaining_uncertainty: ["route-change tail and hardware-buffer delay"]
     returns: ["did genuine speech interrupt", "did echo-only energy stay silent", "audio route used"]
     related: [SPEC-003]

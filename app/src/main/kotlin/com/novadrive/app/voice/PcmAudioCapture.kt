@@ -252,6 +252,9 @@ class AndroidMicrophonePort(
 
     val uplinkGateOpen: Boolean get() = uplinkGate.isOpen
 
+    /** Time-scoped post-AEC speech evidence; see [SpeechUplinkGate.hasRecentSpeech]. */
+    val recentSpeech: Boolean get() = uplinkGate.hasRecentSpeech()
+
     val lastFrameRms: Int get() = uplinkGate.lastFrameRms
     override var muted: Boolean = false
     @Volatile var gated: Boolean = false

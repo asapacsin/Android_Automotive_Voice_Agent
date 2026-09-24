@@ -21,7 +21,8 @@ class BaiduFlexProvider(
     constructor(
         apiConfig: BaiduApiConfig,
         lastAudioSegment: () -> SpeechUplinkGate.Segment?,
-    ) : this(apiConfig, BaiduFlexClient(lastAudioSegment = lastAudioSegment))
+        speechEvidence: () -> Boolean = { true },
+    ) : this(apiConfig, BaiduFlexClient(lastAudioSegment = lastAudioSegment, speechEvidence = speechEvidence))
 
     override val providerId = "baidu.flex.realtime.direct"
     override val capabilities: ProviderCapabilities = VoiceCatalog.capabilities(VoiceProviderId.BAIDU_FLEX)
