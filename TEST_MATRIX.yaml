@@ -994,6 +994,104 @@ tests:
     related: [SPEC-009]
     last_run: {at: 2026-09-24, result: PASS}
 
+  - id: NAV-CHOICE-STALE-001
+    capability: navigation
+    name: A spoken ordinal on a stale list is re-presented before it is accepted
+    purpose: "Astra P5: after CHOICE_EXPIRY_MS (120 s) or a sleep, 「第二个」 is refused once with OPTIONS_STALE and the options are re-read"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure:
+      - "gradlew :app:testDebugUnitTest --tests NavigationPendingChoiceTest"
+    pass_criteria:
+      - "an ordinal or preference after expiry or sleep selects nothing and returns OPTIONS_STALE"
+      - "the list stays on screen and the next ordinal is accepted"
+      - "an exact name is never refused; a new list clears the stale mark"
+      - "the tool result carries options_on_screen and a next instruction"
+    evidence:
+      - "2026-09-24: NavigationPendingChoiceTest 10/10 (cloud Linux build)"
+    remaining_uncertainty: ["whether 120 s suits drivers; a starting value, not a cabin measurement"]
+    related: [ASTRA-P5, DB-ASTRA-AUDIO-001]
+    last_run: {at: 2026-09-24, result: PASS}
+
+  - id: NAV-PHONETIC-CONFIRM-001
+    capability: navigation
+    name: A phonetic lead asks for confirmation and never navigates
+    purpose: "Astra P5: a spoken name matching no row but sounding like one yields CONFIRM_CANDIDATE; a whole short yes selects it locally"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure:
+      - "gradlew :app:testDebugUnitTest --tests NavigationPendingChoiceTest"
+    pass_criteria:
+      - "Confirm proposal returns ConfirmNeeded; no route is calculated"
+      - "AskOrdinal (tie, API 28, no ICU) stays a plain NO_MATCH"
+      - "the pending question dies with sleep, expiry, a different answer and a new list"
+      - "only a whole short affirmative answers it (对了我想去别处 does not)"
+      - "the model receives candidate_position and candidate_name with its wording"
+    evidence:
+      - "2026-09-24: NavigationPendingChoiceTest 10/10 with an injected proposer"
+    remaining_uncertainty: ["ICU Han-Latin on the device and the similarity threshold (0.55) against real ASR errors"]
+    related: [ASTRA-P5, NAV-PHONETIC-DEVICE-001]
+    last_run: {at: 2026-09-24, result: PASS}
+
+  - id: NAV-PHONETIC-DEVICE-001
+    capability: navigation
+    name: Misheard destination name is confirmed by voice on the device
+    purpose: "Astra P5 device: real ASR mishearing of a listed name leads to one confirmation question and, on 对, exactly one selection"
+    type: device
+    scope: INTERMEDIATE_FLOW
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: physical_world
+    release_blocking: false
+    human_reason: "Needs live Baidu ASR on real speech and the device's ICU data; injected text cannot reproduce the mishearing"
+    prerequisites: ["installed debug APK from this commit", "Amap key authorised for its signature", "a search that lists several similar names"]
+    procedure:
+      - "search a destination that returns several candidates"
+      - "say a listed name slightly wrong (a near-homophone)"
+      - "answer 对 to the question"
+      - "repeat once answering 不是, and once letting the list sit over two minutes before saying 第二个"
+    pass_criteria:
+      - "one question naming a row, no navigation before the answer"
+      - "对 selects that row exactly once; 不是 selects nothing"
+      - "an ordinal after two minutes is answered by re-reading the options first"
+    autonomous_evidence:
+      - "NAV-CHOICE-STALE-001 and NAV-PHONETIC-CONFIRM-001 passed 2026-09-24"
+    remaining_uncertainty: ["how often real mishearings clear the 0.55 similarity threshold"]
+    returns: ["question wording heard", "selection count after 对", "behaviour after 不是 and after two minutes"]
+    related: [ASTRA-P5]
+    last_run: {at: null, result: null}
+
+  - id: FAILED-ACTION-REPORTED-001
+    capability: truthfulness
+    name: A failed action is reported after its false success claim is dropped
+    purpose: "I-1: when the tool returns ok=false and the model still claims success, the claim is dropped unheard and the driver is told it failed"
+    type: simulation
+    scope: INTERMEDIATE_FLOW
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure:
+      - "gradlew :app:testDebugUnitTest --tests DriverTurnTest"
+      - "gradlew :app:testDebugUnitTest --tests *SimulationBenchmarkTest* -PbenchSuite=REGRESSION -PbenchScenario=HVAC_MODEL_IGNORES_ERROR -PbenchRepeat=20"
+    pass_criteria:
+      - "the follow-up names the failure (reportFailure), not a retry (nudgeFor)"
+      - "the follow-up is held across the conversation reset and reaches the new socket"
+      - "HVAC_MODEL_IGNORES_ERROR, UNSUPPORTED_FALSE_CLAIM_CORRECTED, HVAC_FALSE_CLAIM_RESCUED pass 20/20"
+    evidence:
+      - "2026-09-24: 20/20 each; failed every run before the fix (also on 0ea4885)"
+    remaining_uncertainty: ["simulated model; live Flex wording after a reset"]
+    related: [I-1, DriverTurn]
+    last_run: {at: 2026-09-24, result: PASS}
+
   - id: PLAYBACK-FINAL-FRAGMENT-001
     capability: turn_taking
     name: Response completion drains the final partial PCM frame

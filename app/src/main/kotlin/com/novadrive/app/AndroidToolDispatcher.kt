@@ -7,7 +7,6 @@ import com.novadrive.app.nav.EmbeddedNavigation
 import com.novadrive.app.nav.EmbeddedNavigationController
 import com.novadrive.app.nav.NavigationChoice
 import com.novadrive.app.nav.NavigationLocalPickGuard
-import com.novadrive.app.nav.NavigationPickSession
 import com.novadrive.app.nav.NavigationPickerIntercept
 import com.novadrive.app.nav.NavigationVoiceOutput
 import com.novadrive.app.nav.NavigationBackends
@@ -27,7 +26,8 @@ enum class AllowedApp { MAPS, SETTINGS }
 
 sealed interface AndroidActionResult {
     data class Accepted(val status: String = "accepted") : AndroidActionResult
-    data class Rejected(val code: String) : AndroidActionResult
+    /** [details] reach the model next to the error: facts it needs to say what did not happen. */
+    data class Rejected(val code: String, val details: Map<String, Any> = emptyMap()) : AndroidActionResult
 }
 
 interface AndroidActionExecutor {
@@ -255,6 +255,9 @@ class AndroidToolDispatcher(
     companion object {
         const val CHOOSE_NAVIGATION_OPTION = com.novadrive.app.voice.BaiduFlexProtocol.CHOOSE_NAVIGATION_OPTION
 
+        /** A spoken name matched no row but sounds like one: ask, do not select. */
+        const val CONFIRM_CANDIDATE = "CONFIRM_CANDIDATE"
+
     }
 
     private fun result(call: DomainVoiceEvent.ToolCall, action: AndroidActionResult): ToolDispatchResult =
@@ -266,7 +269,7 @@ class AndroidToolDispatcher(
                     output = JSONObject().put("ok", true).put("tool", call.name).put("status", action.status).toString(),
                 )
             }
-            is AndroidActionResult.Rejected -> failed(call, action.code)
+            is AndroidActionResult.Rejected -> failed(call, action.code, action.details)
         }
 
     /**
@@ -283,9 +286,14 @@ class AndroidToolDispatcher(
         return code?.let { failed(call, it) }
     }
 
-    private fun failed(call: DomainVoiceEvent.ToolCall, code: String) = ToolDispatchResult(
+    private fun failed(
+        call: DomainVoiceEvent.ToolCall,
+        code: String,
+        details: Map<String, Any> = emptyMap(),
+    ) = ToolDispatchResult(
         null, null, blockedReason = code,
         output = JSONObject().put("ok", false).put("tool", call.name).put("error", code)
+            .apply { details.forEach { (key, value) -> put(key, value) } }
             .apply { ToolFailureAdvice.forCode(code)?.let { put("next", it) } }
             .toString(),
     )
@@ -365,20 +373,7 @@ open class CoreActionExecutor(
         )
 
     override fun chooseNavigationOption(choice: NavigationChoice): AndroidActionResult =
-        when (val outcome = navigationFlow.chooseByVoice(choice)) {
-            is EmbeddedNavigationController.VoiceChoiceResult.DestinationChosen -> {
-                NavigationPickSession.recordExecutorResult(outcome)
-                AndroidActionResult.Accepted("destination_selected")
-            }
-            is EmbeddedNavigationController.VoiceChoiceResult.RouteChosen -> {
-                NavigationPickSession.recordExecutorResult(outcome)
-                AndroidActionResult.Accepted("navigation_started")
-            }
-            is EmbeddedNavigationController.VoiceChoiceResult.Rejected -> {
-                NavigationPickSession.recordExecutorResult(outcome)
-                AndroidActionResult.Rejected(outcome.code)
-            }
-        }
+        navigationChoiceAction(navigationFlow, navigationFlow.chooseByVoice(choice))
 
     override suspend fun awaitNavigationOptions(): EmbeddedNavigationController.OptionsSnapshot {
         lastRequest?.let { kotlinx.coroutines.withTimeoutOrNull(REQUEST_WAIT_MS) { it.await() } }

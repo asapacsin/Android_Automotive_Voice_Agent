@@ -27,6 +27,9 @@ object NavigationPickSession {
                         "NO_MATCH", "OUT_OF_RANGE" -> NavigationLocalPickGuard.Outcome.NO_MATCH
                         else -> NavigationLocalPickGuard.Outcome.REFINE
                     }
+                // A question back to the driver: nothing was selected, so nothing may be claimed.
+                is EmbeddedNavigationController.VoiceChoiceResult.ConfirmNeeded ->
+                    NavigationLocalPickGuard.Outcome.AMBIGUOUS
             }
         NavigationLocalPickGuard.record(current.listKey, current.turnKey, recorded)
     }
