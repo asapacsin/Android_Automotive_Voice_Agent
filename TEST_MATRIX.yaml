@@ -1073,8 +1073,8 @@ tests:
     capability: truthfulness
     name: A failed action is reported after its false success claim is dropped
     purpose: "I-1: when the tool returns ok=false and the model still claims success, the claim is dropped unheard and the driver is told it failed"
-    type: simulation
-    scope: INTERMEDIATE_FLOW
+    type: unit
+    scope: COMPONENT
     owner: AUTONOMOUS
     status: PASS
     release_blocking: true

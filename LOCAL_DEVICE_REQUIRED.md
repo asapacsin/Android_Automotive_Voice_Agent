@@ -15,7 +15,7 @@ Every case below **requires a physical Android device** (and usually a real cabi
 > - PLACE-SAVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - PLACE-NAV-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 
-**11 LOCAL_DEVICE_REQUIRED item(s).**
+**12 LOCAL_DEVICE_REQUIRED item(s).**
 
 Install tip (from a cloud-built APK, when one exists):
 
@@ -93,6 +93,37 @@ adb logcat -s NovaVoice:D
 **Still unknown until you do:** route calculation and guidance with a real live GNSS fix (not desk_origin); the guidance mic gate during a real outdoor drive
 
 *Release-blocking.*
+
+### LOCAL_DEVICE_REQUIRED — NAV-PHONETIC-DEVICE-001 — Misheard destination name is confirmed by voice on the device
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Needs live Baidu ASR on real speech and the device's ICU data; injected text cannot reproduce the mishearing
+
+**Automation blocker:** `physical_world`
+
+**Already established without you:**
+
+- NAV-CHOICE-STALE-001 and NAV-PHONETIC-CONFIRM-001 passed 2026-09-24
+
+**You will need:** installed debug APK from this commit; Amap key authorised for its signature; a search that lists several similar names
+
+**What to do:**
+
+1. search a destination that returns several candidates
+2. say a listed name slightly wrong (a near-homophone)
+3. answer 对 to the question
+4. repeat once answering 不是, and once letting the list sit over two minutes before saying 第二个
+
+**It passes if:**
+
+- one question naming a row, no navigation before the answer
+- 对 selects that row exactly once; 不是 selects nothing
+- an ordinal after two minutes is answered by re-reading the options first
+
+**Tell me back:** question wording heard; selection count after 对; behaviour after 不是 and after two minutes
+
+**Still unknown until you do:** how often real mishearings clear the 0.55 similarity threshold
 
 ### LOCAL_DEVICE_REQUIRED — AUDIO-QUALITY-001 — Guidance loudness and speech quality in a cabin
 
@@ -209,6 +240,7 @@ adb logcat -s NovaVoice:D
 
 - qualified barge-in uses uplinkGateOpen instead of RMS ratio veto
 - AEC-FRAME-CONTINUITY-001 and PLAYBACK-FLUSH-001 JVM seams passed 2026-09-24
+- BARGE-IN-EVIDENCE-001 (time-scoped evidence, echo-candidate hold) passed 2026-09-24
 
 **You will need:** installed debug APK from this commit; vehicle or bench with cabin speakers
 
@@ -239,6 +271,7 @@ adb logcat -s NovaVoice:D
 **Already established without you:**
 
 - SpeechUplinkGate + qualifyPlayoutBargeIn uplinkGateOpen wiring
+- BARGE-IN-EVIDENCE-001 (time-scoped evidence, echo-candidate hold) passed 2026-09-24
 
 **You will need:** installed debug APK; moving or idling cabin
 
@@ -270,6 +303,7 @@ adb logcat -s NovaVoice:D
 
 - WakeWordController uses listeningState.uploads instead of session isActive
 - WakeWordController.reconcile on lifecycle transitions
+- WAKE-ARMING-001 (stale-event guard, bounded capture/engine retry) passed 2026-09-24
 
 **You will need:** wake enabled; installed debug APK
 

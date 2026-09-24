@@ -1,49 +1,37 @@
 {
-  "generated_at": "2026-09-24T15:31:29",
+  "generated_at": "2026-09-24T11:36:03",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "0ea4885",
-    "branch": "codex/9-23",
-    "subject": "docs: plan implementation of Astra architecture selections",
+    "commit": "32b059c",
+    "branch": "cursor/9-24-9zmkd1",
+    "subject": "Astra P4: time-scoped barge-in evidence; hold unconfirmed echo turns",
     "working_tree_clean": false,
-    "uncommitted_files": 57
+    "uncommitted_files": 5
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-24T15:30:26",
+    "collected_at": "2026-09-24T11:35:20",
     "total": {
-      "tests": 912,
+      "tests": 942,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
-      "app": {
-        "tests": 648,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "behavior-test": {
-        "tests": 116,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "contracts": {
-        "tests": 6,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
       "evaluation": {
         "tests": 27,
         "failures": 0,
         "errors": 0,
         "skipped": 0
       },
-      "ingress": {
-        "tests": 98,
+      "app": {
+        "tests": 677,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "simulator": {
+        "tests": 15,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -54,8 +42,20 @@
         "errors": 0,
         "skipped": 0
       },
-      "simulator": {
-        "tests": 15,
+      "behavior-test": {
+        "tests": 117,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "contracts": {
+        "tests": 6,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "ingress": {
+        "tests": 98,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 223300079,
-    "built_at": "2026-09-24T15:29:04"
+    "bytes": 223332847,
+    "built_at": "2026-09-24T11:34:10"
   },
   "capabilities": {
     "available": true,
@@ -129,7 +129,7 @@
     "actionable_count": 44,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
-    "QUEUED_FOR_HUMAN": 15,
+    "QUEUED_FOR_HUMAN": 16,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
       {

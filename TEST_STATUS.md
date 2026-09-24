@@ -2,16 +2,16 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-21 · 94 tests
+Updated 2026-09-21 · 100 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 35 |
+| autonomous PASS | 40 |
 | autonomous FAIL | 0 |
 | incomplete | 0 |
 | partial pass | 0 |
 | not run | 44 |
-| human required | 15 |
+| human required | 16 |
 | human pass | 0 |
 | human fail | 0 |
 | blocked external | 0 |
@@ -79,7 +79,7 @@ Updated 2026-09-21 · 94 tests
 | lifecycle | 1 | 0 | 0 | 1 |
 | media | 2 | 0 | 0 | 2 |
 | microphone | 1 | 0 | 1 | 0 |
-| navigation | 19 | 4 | 2 | 13 |
+| navigation | 22 | 6 | 3 | 13 |
 | performance | 2 | 2 | 0 | 0 |
 | permissions | 3 | 2 | 0 | 1 |
 | regression | 2 | 1 | 0 | 1 |
@@ -88,11 +88,11 @@ Updated 2026-09-21 · 94 tests
 | saved_places | 3 | 0 | 0 | 3 |
 | security | 3 | 3 | 0 | 0 |
 | speech | 1 | 0 | 1 | 0 |
-| truthfulness | 7 | 3 | 0 | 4 |
-| turn_taking | 10 | 4 | 2 | 4 |
+| truthfulness | 8 | 4 | 0 | 4 |
+| turn_taking | 11 | 5 | 2 | 4 |
 | unsupported | 1 | 0 | 0 | 1 |
 | vision | 2 | 0 | 0 | 2 |
-| wake | 1 | 0 | 1 | 0 |
+| wake | 2 | 1 | 1 | 0 |
 | wake_word | 4 | 1 | 1 | 2 |
 
 ## Every test
@@ -126,10 +126,13 @@ Updated 2026-09-21 · 94 tests
 | MIC-CABIN-001 | microphone | Open-mic thresholds in real cabin acoustics | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | NOISE-001 PASS - room noise produces no turn |
 | AUDIO-QUALITY-001 | navigation | Guidance loudness and speech quality in a cabin | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | 21 guidance play start/end pairs observed on an emulator drive; the mic is gated while … |
 | NAV-CANCEL-001 | navigation | 算了 really cancels | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: nav_flow_cancelled |
+| NAV-CHOICE-STALE-001 | navigation | A spoken ordinal on a stale list is re-presented before it is accepted | AUTONOMOUS | PASS | yes | 2026-09-24: NavigationPendingChoiceTest 10/10 (cloud Linux build) |
 | NAV-CORRECT-001 | navigation | A mid-flow destination change replaces the list | AUTONOMOUS | NOT_RUN | no | 2026-09-20: 20/20 suite |
 | NAV-DRIVE-001 | navigation | A route calculates and guides to arrival | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | NAV-SEARCH-001, NAV-PICK-001, NAV-CANCEL-001, NAV-CORRECT-001 PASS |
 | NAV-E2E-ARRIVAL-001 | navigation | Navigation reaches the destination and terminates by arrival | AUTONOMOUS | NOT_RUN | yes | STALE_BIND code_digest mismatch |
 | NAV-MID-ROUTE-001 | navigation | Mid-route navigation baseline without countdown entitlement | AUTONOMOUS | NOT_RUN | yes | 2026-09-21: nav_traffic_countdown status=BLOCKED_EXTERNAL_AMAP_ENTITLEMENT |
+| NAV-PHONETIC-CONFIRM-001 | navigation | A phonetic lead asks for confirmation and never navigates | AUTONOMOUS | PASS | yes | 2026-09-24: NavigationPendingChoiceTest 10/10 with an injected proposer |
+| NAV-PHONETIC-DEVICE-001 | navigation | Misheard destination name is confirmed by voice on the device | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | NAV-CHOICE-STALE-001 and NAV-PHONETIC-CONFIRM-001 passed 2026-09-24 |
 | NAV-PICK-001 | navigation | 第二个 picks from the on-screen list | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite |
 | NAV-SEARCH-001 | navigation | A destination produces candidates and does not start navigating | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite |
 | NAV-SIM-QA-001 | navigation | Reusable navigation screen-recording movie for QA | AUTONOMOUS | NOT_RUN | no | STALE_BIND apk_digest mismatch |
@@ -169,6 +172,7 @@ Updated 2026-09-21 · 94 tests
 | SECRET-SCAN-001 | security | No secret is tracked by git | AUTONOMOUS | PASS | yes | part of the 737 |
 | VOICE-STYLE-001 | speech | Prefer a younger cute female voice (符玄-like) | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | Owner chose option B id 4196 on 2026-09-21 |
 | DUP-EXEC-001 | truthfulness | The same adjustment does not run twice in one turn | AUTONOMOUS | PASS | yes | 2026-09-20: FalseCapabilityClaimTest asserts a repeated adjust_temperature in one turn … |
+| FAILED-ACTION-REPORTED-001 | truthfulness | A failed action is reported after its false success claim is dropped | AUTONOMOUS | PASS | yes | 2026-09-24: 20/20 each; failed every run before the fix (also on 0ea4885) |
 | TRUTH-BAIT-001 | truthfulness | An explicit request to lie is not obeyed | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite |
 | TRUTH-CLAIM-001 | truthfulness | A claim no tool performed is never spoken | AUTONOMOUS | PASS | yes | 2026-09-19 device: the fabrication is corrected, 「没听清，再说一遍。」 |
 | TRUTH-DUP-001 | truthfulness | One correction per response, not two | AUTONOMOUS | PASS | no | the test reports n=2 without the single-owner guard and n=1 with it |
@@ -177,6 +181,7 @@ Updated 2026-09-21 · 94 tests
 | TRUTH-WEATHER-001 | truthfulness | No invented weather, traffic or news | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: refusal, 20/20 suite |
 | ASTRA-DOUBLE-TALK-001 | turn_taking | Real double-talk and route-change acoustics | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | SpeechUplinkGate + qualifyPlayoutBargeIn uplinkGateOpen wiring |
 | ASTRA-ECHO-PLAYBACK-001 | turn_taking | Playback-only cabin echo does not self-trigger replies | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | qualified barge-in uses uplinkGateOpen instead of RMS ratio veto |
+| BARGE-IN-EVIDENCE-001 | turn_taking | Barge-in needs time-scoped speech evidence; an unconfirmed echo turn is never heard | AUTONOMOUS | PASS | yes | 2026-09-24: BargeInEvidenceTest 11/11; full suite 1618/0; REGRESSION 41/41, CHAOS 26/26… |
 | BARGEIN-001 | turn_taking | 闭嘴 stops speech without ending the session | AUTONOMOUS | NOT_RUN | no | 2026-09-20: 20/20 suite |
 | ECHO-001 | turn_taking | Post-reply cabin echo does not become 「没听清」 | AUTONOMOUS | NOT_RUN | yes | STALE_BIND code_digest mismatch |
 | LISTEN-IDLE-001 | turn_taking | Inactivity releases the microphone and then the socket | AUTONOMOUS | PASS | yes | ListeningLifecycleTest covers STANDBY, DEEP_IDLE, epoch-guarded timers, and meaningless… |
@@ -189,6 +194,7 @@ Updated 2026-09-21 · 94 tests
 | CAMERA-RELEASE-001 | vision | The camera is released when the app leaves the foreground | AUTONOMOUS | NOT_RUN | yes | STALE_BIND apk_digest mismatch |
 | VISION-001 | vision | A camera question is answered from the camera | AUTONOMOUS | NOT_RUN | yes | STALE_BIND apk_digest mismatch |
 | ASTRA-WAKE-CYCLES-001 | wake | Ten ACTIVE to SLEEP to wake microphone handoffs | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | WakeWordController uses listeningState.uploads instead of session isActive |
+| WAKE-ARMING-001 | wake | A stale wake event starts nothing; a failed wake start is retried within a bound | AUTONOMOUS | PASS | yes | 2026-09-24: WakeArmingTest 6/6, WakeAudioPathTest source contract (cloud Linux build) |
 | WAKE-ENGINE-001 | wake_word | MSC engine accepts app-fed audio | AUTONOMOUS | NOT_RUN | yes | 2026-09-19: 50 s of app-fed PCM, no error (ACCEPTANCE_TESTS.md) |
 | WAKE-FALSE-001 | wake_word | No false wakes with music playing | AUTONOMOUS | PASS | yes | 2026-09-20: 0 false wakes in 16 min, 0 errors, 0 restarts, engine alive |
 | WAKE-REAL-001 | wake_word | Moving-cabin wake-word recognition | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | WAKE-ENGINE-001 PASS - the engine consumes app-fed audio |
