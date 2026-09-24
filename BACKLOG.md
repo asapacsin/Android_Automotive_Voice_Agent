@@ -6,6 +6,9 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 
 | # | Demand | Raised | Status | Spec |
 | --- | --- | --- | --- | --- |
+| B-026 | **One owner for who may speak** — a single arbiter decides between Amap guidance, calls and 小诺's replies, using a driver-workload signal (distance to the next manoeuvre), replacing today's separate special cases. *Not* the assistant speaking first | 2026-09-24 | Recorded | §B-026 below |
+| B-025 | **Live information from Amap** — weather at the destination, traffic on the route, along-route search (fuel, charging, service areas, toilets), place details (hours, parking); one tool each with an honest failure result | 2026-09-24 | Recorded | §B-025 below |
+| B-024 | **Say anything on screen (可见即可说)** — every visible control publishes id, label, aliases, position and action; a deterministic matcher resolves the driver's words without the model | 2026-09-24 | Recorded | §B-024 below |
 | B-023 | **Voice style** — prefer a younger cute female voice (符玄-like), not an older-woman timbre | 2026-09-20 | **Done** (code) 2026-09-21 — default **4196** 度清影; picker in developer settings; device ear-check [VOICE-STYLE-001](TEST_MATRIX.yaml) | [P30](OPEN_PROBLEMS.md) |
 | B-022 | **Repeatable navigation QA without a real drive** — **screen-recording movie** of nav UI under `D:\桌面\android_doc\` | 2026-09-20 | **Done** 2026-09-21 — [NAV-SIM-QA-001](TEST_MATRIX.yaml) PASS | [P29](OPEN_PROBLEMS.md) |
 | B-021 | **「你能做什么」 / 「你能干啥」 must list real capabilities** | 2026-09-20 | **Done** 2026-09-22 — [HELP-001](TEST_MATRIX.yaml) PASS (colloquial 干啥 on 2391ff70) | [P28](OPEN_PROBLEMS.md) |
@@ -515,3 +518,48 @@ Unit [HELP-UNIT-001](TEST_MATRIX.yaml) PASS. [P28](OPEN_PROBLEMS.md) closed. S21
 
 **Done (code) 2026-09-21.** Owner chose Flex voice **4196** (度清影-甜美女声). Default + developer picker ship; cabin ear-check remains [VOICE-STYLE-001](TEST_MATRIX.yaml).
 
+## B-024 — Say anything on screen
+
+Raised 2026-09-24 as the most reliable of six directions reviewed that day (the others are not
+recorded: they depend on unmeasured provider behaviour or cannot work on a real car — see below).
+
+Generalise `NavigationChoiceResolver` into a registry of screen affordances. Each visible control
+publishes its id, label, aliases, position number and action; the driver's transcript
+(`conversation.item.input_audio_transcription.completed`, already received) is matched
+deterministically, and the current list goes into `VoiceContextHints`. Execution goes through the
+existing owners (`ScreenControls`, `AndroidToolDispatcher`) — no second route.
+
+Why reliable: no model decision is involved, so it is unit-testable end to end. Limit: it covers only
+what is on screen, and a transcription error still misses.
+
+## B-025 — Live information from Amap
+
+Raised 2026-09-24. New tools on the Amap web-service API that `AmapPoiClient` already calls with the
+separate web-service key (`AmapSettings.loadWebKey`, `AMAP_WEB_KEY_MISSING` when absent): weather,
+route traffic, along-route search, place details.
+
+Why reliable: each call is a deterministic lookup with a checkable failure. Limit, to measure before
+claiming the feature: every new tool still depends on Flex *choosing* to call it — the failure class of
+[P2](OPEN_PROBLEMS.md) — and adding tools may lower selection accuracy for existing ones. Personal
+Amap keys have daily quotas.
+
+## B-026 — One owner for who may speak
+
+Raised 2026-09-24. Consolidate the guidance/assistant/call speech rules (today `GuidanceMicGate` and
+the P1/P3 fixes) into one arbiter, modelled on Android Automotive's audio-focus interaction table, with
+a workload input from the navigation state. Per AGENTS.md, extend the existing owner rather than add a
+parallel mechanism, and delete what it replaces.
+
+Deliberately excluded: proactive prompts (「前方拥堵，换路线吗？」). There is no TTS, so the
+assistant speaking first would mean asking Flex to say a line, which it may reword; that needs its own
+measurement first. Amap's voice is its built-in one (`setUseInnerVoice`) — it can be muted or deferred,
+not re-spoken by us.
+
+### Not recorded, and why (2026-09-24)
+
+- **Talker/planner split** — unknown whether Flex honours `create_response: false`; without it the
+  hand-off itself rests on function calling. Needs a one-day spike before any ADR.
+- **Offline mode** — on-device ASR must share the microphone with the iFlytek wake word and AEC3, and
+  phone TTS quality varies by vendor; reopens the no-separate-ASR/TTS rule.
+- **Real vehicle control** — HVAC and window properties need signature/privileged permissions a normal
+  app cannot hold on a real car; emulator-only demo.
