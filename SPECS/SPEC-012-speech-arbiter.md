@@ -102,7 +102,7 @@ B2's log line. Distances are logged only as a bucket (`<150`, `≥150`), never w
 | A2 | The same tests pass against `SpeechArbiter` | functional | `SpeechRulesCharacterizationTest` (arbiter mode) | **built** |
 | A3 | Player, focus and guidance paths ask only the arbiter; `VoicePolicy` and the mute window in `NavigationState` are gone | architectural | `ArchitectureRulesTest.speechDecisionsAskOnlyTheArbiter` + `FeaturePresenceRegressionTest.speechArbiterKeepsP1AndP3` | **built** (L2; device A6 pending) |
 | A4 | Every pair of simultaneous inputs has a tested outcome | negative | `SpeechArbiterPairTest` | **built** |
-| A5 | Workload hold: held under 150 m, released on passing or at 8 s, never cuts a playing reply | functional | `SpeechArbiterWorkloadTest` | not built |
+| A5 | Workload hold: held under 150 m, released on passing or at 8 s, never cuts a playing reply | functional | `SpeechArbiterWorkloadTest` | **built** (pure arbiter; not wired) |
 | A6 | On a simulated drive, guidance and a reply never overlap and P1 still drops unprompted replies | device | `SPEECH-ARBITER-DEVICE-001` (emulator drive, LOCAL_DEVICE) | not built |
 | A7 | No reply starts inside 150 m of a manoeuvre on a simulated drive | device | `SPEECH-WORKLOAD-DEVICE-001` (LOCAL_DEVICE) | not built |
 | A8 | Registry and capabilities agree | reconciliation | `harness_check.py`, `test_matrix.py --validate` | not built |
