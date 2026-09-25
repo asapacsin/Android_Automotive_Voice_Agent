@@ -63,3 +63,10 @@ about 220 MB, almost all of it the Amap navigation SDK's native libraries.
 A KVM-capable host (the Windows PC, see [EMULATOR_TESTING.md](EMULATOR_TESTING.md)) with a Google
 APIs image that includes ARM translation is the minimum for emulator runs. Audio, echo
 cancellation and wake-word behaviour still require the physical device.
+
+## Speech harness on Linux
+
+The speech-harness Python scripts run here too: `pip install edge-tts truststore imageio-ffmpeg`,
+then run the `make_*.py` generators in `tools/speech-harness/` to create the (gitignored) clips.
+adb is taken from `$ADB` or PATH; choose the target emulator with `ANDROID_SERIAL`. See
+[tools/speech-harness/README.md](../tools/speech-harness/README.md#linux--cloud).

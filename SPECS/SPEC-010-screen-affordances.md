@@ -123,29 +123,43 @@ Never the transcript or a place name (I-8): picker row ids are opaque (`i2`, POI
 
 | # | Criterion | Kind | Proven by | State |
 | --- | --- | --- | --- | --- |
-| A1 | Every published label and alias matches alone, with each verb and particle | functional | `AffordanceMatcherTest` | not built |
-| A2 | A label inside a longer sentence does not match | negative | `AffordanceMatcherTest` | not built |
-| A3 | A local match and a model call for the same capability in one turn execute once, in both orders | regression protection | `AffordanceTurnClaimTest` | not built |
-| A4 | Recentre and camera go through `ScreenControls` for both tap and voice | architectural | `ArchitectureRulesTest.uiDoesNotReachIntoExecution` + `ScreenRouteParityTest` | not built |
-| A5 | Picker selection uses the registry; `tryLocalNavigationPick` is gone | production wiring | `FeaturePresenceRegressionTest` + existing picker tests green | not built |
-| A6 | `VoiceContextHints` lists the affordances on screen | functional | `VoiceContextHintsTest` | not built |
-| A7 | Spoken 「暂停」「空调」「回到当前位置」 act on the phone with no tool call from the model | device | `AFFORDANCE-DEVICE-001` (speech harness, LOCAL_DEVICE) | not built |
-| A8 | Registry, capabilities, TEST_MATRIX rows agree | reconciliation | `harness_check.py`, `test_matrix.py --validate` | not built |
+| A1 | Every published label and alias matches alone, with each verb and particle | functional | `AffordanceMatcherTest` | **built** |
+| A2 | A label inside a longer sentence does not match | negative | `AffordanceMatcherTest` | **built** |
+| A3 | A local match and a model call for the same capability in one turn execute once, in both orders | regression protection | `AffordanceTurnClaimTest` | **built** |
+| A4 | Recentre and camera go through `ScreenControls` for both tap and voice | architectural | `ArchitectureRulesTest.uiDoesNotReachIntoExecution` + `ScreenRouteParityTest` | **built** |
+| A5 | Picker selection uses the registry; `tryLocalNavigationPick` is gone | production wiring | `FeaturePresenceRegressionTest` + existing picker tests green | not built — **deferred on purpose** to go with A7 on the phone (step 4b: the picker path is device-verified and its fuzzy/phonetic matching must be re-verified there) |
+| A6 | `VoiceContextHints` lists the affordances on screen | functional | `VoiceContextHintsTest` | **built** |
+| A7 | Spoken 「暂停」「空调」「回到当前位置」 act on the phone with no tool call from the model | device | `AFFORDANCE-DEVICE-001` (speech harness, LOCAL_DEVICE) | queued, NOT_RUN |
+| A8 | Registry, capabilities, TEST_MATRIX rows agree | reconciliation | `harness_check.py`, `test_matrix.py --validate` | **built** 2026-09-25 — `AFFORDANCE-UNIT-001` + `AFFORDANCE-DEVICE-001` referenced from the affordance capabilities; `--validate` 0 problems |
 
 ## Open product decisions
 
 - **Spoken names.** The defaults in the table, kept in `strings.xml` and used as `contentDescription`.
   The owner can add more; no escalation needed.
 - **Speak on success?** Default **no** (B5). Changeable later without touching the matcher.
+- **「停止」 alone means stop music.** While music plays during navigation, 「停止」 is taken
+  locally and never reaches the model, even if the driver meant navigation. Default kept because
+  「结束导航」 is the navigation phrase and 「停止」 is the bar's word; drop the alias from
+  `voice_music_stop` if device use says otherwise. Raised by review 2026-09-25.
+- **Model call before its transcript.** Claims key on `DriverContext.capabilityEpoch()`, which
+  advances at speech start, so a model call that precedes `transcription.completed` still blocks
+  the local path for that utterance (`AffordanceTurnClaimTest`). Whether a refused model call
+  then says something contradictory is checked on the phone (AFFORDANCE-DEVICE-001).
 
 ## Implementation status
 
-Nothing built. Steps, each a separate verified commit:
+Steps, each a separate verified commit (steps 1–3 done 2026-09-25):
 
 1. `ScreenControls.recenter()` / `toggleCamera()`; move the two callbacks onto it; A4.
 2. `Affordance`, `ScreenAffordances`, `AffordanceMatcher` + A1/A2 (pure, no wiring).
 3. `DriverContext.claimCapability` + `ToolCallGuards` change + A3.
-4. Wire: `BottomBarView`, `NavigationChoiceOverlay` publish; `onUserUtterance` calls the matcher;
-   delete `tryLocalNavigationPick` and fold `NavigationPickerIntercept` into picker affordances; A5, A6.
+4. **4a (done 2026-09-25):** `BottomBarView` publishes; `onUserUtterance` calls
+   `ScreenAffordanceRunner` before the picker path; names in `strings.xml` double as
+   `contentDescription`; A6. `VoiceContextHints.awaitingAnswer()` excludes the always-present bar,
+   so turn holding is unchanged. Tests: `ScreenAffordanceRunnerTest`, `VoiceContextHintsTest`.
+   **4b (open):** fold the picker into affordances and delete `tryLocalNavigationPick`; A5.
+   Deferred on purpose: picker names use `NavigationChoiceResolver`'s fuzzy name match and
+   phonetic confirmation, which the exact matcher does not reproduce, and the picker path is
+   device-verified — replacing it needs the phone to re-verify, so it goes with A7.
 5. `TEST_MATRIX.yaml` rows (unit + `AFFORDANCE-DEVICE-001` as `LOCAL_DEVICE`), capabilities,
    `./gradlew test --rerun-tasks :app:assembleDebug`, then device run A7.

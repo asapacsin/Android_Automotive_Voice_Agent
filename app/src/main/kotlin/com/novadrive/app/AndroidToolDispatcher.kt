@@ -78,6 +78,8 @@ class AndroidToolDispatcher(
     private val places: SavedPlaceTool = SavedPlaceTool.none(),
     /** Calling someone is the one action here that reaches a person; see [PhoneCallTool]. */
     private val phone: PhoneCallTool = PhoneCallTool.none(),
+    /** `query_live_info` (SPEC-011): weather, route traffic, along-route POIs, place details. */
+    private val liveInfo: LiveInfoTool = LiveInfoTool.none(),
     /**
      * Last so the common test call site can pass it as a trailing lambda. Everything above has a
      * default; this one is what nearly every dispatcher test overrides.
@@ -125,7 +127,7 @@ class AndroidToolDispatcher(
                     successChip = "📷 正在看",
                     deferredOutput = {
                         val outcome = camera.ask(question)
-                        NavigationState.allowConfirmation()
+                        com.novadrive.app.voice.SpeechAuthority.arbiter.onConfirmation()
                         outcome.output
                     },
                 )
@@ -142,7 +144,7 @@ class AndroidToolDispatcher(
                 }
                 // Failures are worth hearing too, even while navigating: the driver must not
                 // assume the climate changed when it did not.
-                NavigationState.allowConfirmation()
+                com.novadrive.app.voice.SpeechAuthority.arbiter.onConfirmation()
                 ToolDispatchResult(
                     null,
                     null,
@@ -220,6 +222,7 @@ class AndroidToolDispatcher(
             }
             "save_place" -> places.save(call, ::failed)
             "place_call" -> phone.call(call, ::failed)
+            "query_live_info" -> liveInfo.dispatch(call, ::failed)
             "exit_navigation_mode" -> result(call, executor.exitNavigationMode())
             com.novadrive.app.voice.BaiduFlexProtocol.END_CONVERSATION -> result(call, executor.endConversation())
             com.novadrive.app.voice.BaiduFlexProtocol.SET_SPEECH_OUTPUT -> when (call.arguments["mode"]) {
@@ -239,7 +242,7 @@ class AndroidToolDispatcher(
             successChip = "✓ ${call.name}",
             deferredOutput = {
                 val snapshot = executor.awaitNavigationOptions()
-                NavigationState.allowConfirmation()
+                com.novadrive.app.voice.SpeechAuthority.arbiter.onConfirmation()
                 NavigationVoiceOutput.build(call.name, action.status, snapshot)
             },
         )
@@ -263,7 +266,7 @@ class AndroidToolDispatcher(
     private fun result(call: DomainVoiceEvent.ToolCall, action: AndroidActionResult): ToolDispatchResult =
         when (action) {
             is AndroidActionResult.Accepted -> {
-                NavigationState.allowConfirmation()
+                com.novadrive.app.voice.SpeechAuthority.arbiter.onConfirmation()
                 ToolDispatchResult(
                     null, null, successChip = "✓ ${call.name}",
                     output = JSONObject().put("ok", true).put("tool", call.name).put("status", action.status).toString(),
@@ -325,7 +328,7 @@ open class CoreActionExecutor(
      * Voice path into the EMBEDDED navigation. Resolves candidates and waits for the
      * driver to pick a destination and a route — it does not jump straight to startNavi.
      *
-     * Sets the [NavigationState] speech mute before the search starts; the controller clears it
+     * Marks navigating (the arbiter's P1 input) before the search starts; the controller clears it
      * whenever the flow ends. The authoritative outcome arrives asynchronously
      * (`nav_resolve_candidates` / `nav_route_candidates` / `nav_flow_error`).
      */

@@ -7,11 +7,14 @@ here means the assistant interrupts the driver unprompted, which is worse than a
     python tools/speech-harness/measure_false_wake.py --minutes 15
 """
 import argparse
+import os
 import re
+import shutil
 import subprocess
 import time
 
-ADB = r"C:\Users\Administrator\Android\Sdk\platform-tools\adb.exe"
+# ADB env, else adb on PATH (Linux/cloud), else the Windows build PC. Device choice: ANDROID_SERIAL.
+ADB = os.environ.get("ADB") or shutil.which("adb") or r"C:\Users\Administrator\Android\Sdk\platform-tools\adb.exe"
 PKG = "com.novadrive.app"
 RECEIVER = f"{PKG}/.DebugToolReceiver"
 

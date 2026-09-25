@@ -1,5 +1,7 @@
 package com.novadrive.app
 
+import com.novadrive.app.voice.SpeechArbiter
+import com.novadrive.app.voice.SpeechAuthority
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -7,88 +9,101 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
+/**
+ * `NavigationState` is now only the navigating flag; the P1 window it used to hold lives in
+ * `SpeechArbiter` (SPEC-012 step 3). These are the same cases, asked of the process arbiter that
+ * `NavigationState` informs, on a controlled clock.
+ */
 class NavigationStateTest {
+    private var now = 0L
+
     @BeforeEach
     fun clearState() {
+        SpeechAuthority.resetForTest { now }
         NavigationState.reset()
     }
 
     @AfterEach
     fun clearListener() {
         NavigationState.onNavigatingChanged = null
+        NavigationState.reset()
+        SpeechAuthority.resetForTest()
     }
+
+    private fun mutedAt(t: Long): Boolean { now = t; return SpeechAuthority.arbiter.navigationMuted() }
+    private fun at(t: Long, event: SpeechArbiter.() -> Unit) { now = t; SpeechAuthority.arbiter.event() }
 
     @Test
     fun notNavigatingDoesNotMuteSpeech() {
-        assertFalse(NavigationState.shouldMuteSpeech(1_000L))
+        assertFalse(mutedAt(1_000L))
     }
 
     @Test
     fun beginMutesSpeech() {
         NavigationState.begin()
-        assertTrue(NavigationState.shouldMuteSpeech(1_000L))
+        assertTrue(mutedAt(1_000L))
     }
 
     @Test
     fun allowConfirmationUnmutesInsideWindow() {
         val now = 5_000L
         NavigationState.begin()
-        NavigationState.allowConfirmation(now)
-        assertFalse(NavigationState.shouldMuteSpeech(now + 1_000L))
+        at(now) { onConfirmation() }
+        assertFalse(mutedAt(now + 1_000L))
     }
 
     @Test
     fun allowConfirmationMutesAfterWindowExpires() {
         val now = 5_000L
         NavigationState.begin()
-        NavigationState.allowConfirmation(now)
-        assertTrue(NavigationState.shouldMuteSpeech(now + 11_000L))
+        at(now) { onConfirmation() }
+        assertTrue(mutedAt(now + 11_000L))
     }
 
     @Test
     fun theAnswerToTheDriversQuestionIsSpokenDuringNavigation() {
         NavigationState.begin()
-        assertTrue(NavigationState.shouldMuteSpeech(20_000L), "unprompted speech stays muted")
-        NavigationState.allowReply(20_000L)
-        assertFalse(NavigationState.shouldMuteSpeech(20_500L))
+        assertTrue(mutedAt(20_000L), "unprompted speech stays muted")
+        at(20_000L) { onDriverRequest() }
+        assertFalse(mutedAt(20_500L))
     }
 
     @Test
     fun aPermittedReplyIsNeverCutOffMidSentence() {
         NavigationState.begin()
-        NavigationState.allowReply(0L)
+        at(0L) { onDriverRequest() }
         // A long reply: frames keep arriving past the original 10 s window.
         for (t in 0L..25_000L step 500L) {
-            assertFalse(NavigationState.shouldMuteSpeech(t), "t=$t")
-            NavigationState.extendWhileSpeaking(t)
+            assertFalse(mutedAt(t), "t=$t")
+            at(t) { onReplyAudio() }
         }
         // After it ends, the window closes and unprompted speech is muted again.
-        assertTrue(NavigationState.shouldMuteSpeech(36_000L))
+        assertTrue(mutedAt(36_000L))
     }
 
     @Test
     fun speakingCannotOpenAClosedWindow() {
         NavigationState.begin()
-        NavigationState.extendWhileSpeaking(20_000L)
-        assertTrue(NavigationState.shouldMuteSpeech(20_001L))
+        at(20_000L) { onReplyAudio() }
+        assertTrue(mutedAt(20_001L))
     }
 
     @Test
     fun beginThenResetUnmutesSpeech() {
         NavigationState.begin()
         NavigationState.reset()
-        assertFalse(NavigationState.shouldMuteSpeech())
+        assertFalse(mutedAt(now))
     }
 
     @Test
     fun resetClearsNavigatingAndConfirmationWindow() {
         val now = 5_000L
         NavigationState.begin()
-        NavigationState.allowConfirmation(now)
+        at(now) { onConfirmation() }
         NavigationState.reset()
         assertFalse(NavigationState.navigating)
-        assertFalse(NavigationState.shouldMuteSpeech(now + 1_000L))
-        assertFalse(NavigationState.shouldMuteSpeech(now + 11_000L))
+        assertFalse(mutedAt(now + 1_000L))
+        assertFalse(mutedAt(now + 11_000L))
     }
 
     @Test

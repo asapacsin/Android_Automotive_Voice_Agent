@@ -532,6 +532,8 @@ existing owners (`ScreenControls`, `AndroidToolDispatcher`) — no second route.
 Why reliable: no model decision is involved, so it is unit-testable end to end. Limit: it covers only
 what is on screen, and a transcription error still misses.
 
+Specced in [SPEC-010](SPECS/SPEC-010-screen-affordances.md). Status 2026-09-25: steps 1–4a built (L2); step 4b and A7 wait for the phone.
+
 ## B-025 — Live information from Amap
 
 Raised 2026-09-24. New tools on the Amap web-service API that `AmapPoiClient` already calls with the
@@ -543,12 +545,16 @@ claiming the feature: every new tool still depends on Flex *choosing* to call it
 [P2](OPEN_PROBLEMS.md) — and adding tools may lower selection accuracy for existing ones. Personal
 Amap keys have daily quotas.
 
+Specced in [SPEC-011](SPECS/SPEC-011-amap-live-info.md). Status 2026-09-25: steps 1–3 and 5 built (L2); device steps 0, 4 and 6 wait for the phone.
+
 ## B-026 — One owner for who may speak
 
 Raised 2026-09-24. Consolidate the guidance/assistant/call speech rules (today `GuidanceMicGate` and
 the P1/P3 fixes) into one arbiter, modelled on Android Automotive's audio-focus interaction table, with
 a workload input from the navigation state. Per AGENTS.md, extend the existing owner rather than add a
 parallel mechanism, and delete what it replaces.
+
+**Status 2026-09-25:** built at L2 as [SPEC-012](SPECS/SPEC-012-speech-arbiter.md) steps 1–4 — `SpeechArbiter` via `SpeechAuthority` replaces `GuidanceMicGate`, `VoicePolicy` and the `NavigationState` window (deleted); the workload hold is wired. Device rows A6/A7 open.
 
 Deliberately excluded: proactive prompts (「前方拥堵，换路线吗？」). There is no TTS, so the
 assistant speaking first would mean asking Flex to say a line, which it may reword; that needs its own

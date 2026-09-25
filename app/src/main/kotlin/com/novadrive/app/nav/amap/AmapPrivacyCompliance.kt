@@ -3,6 +3,7 @@ package com.novadrive.app.nav.amap
 import android.content.Context
 import com.amap.api.maps.MapsInitializer
 import com.amap.api.navi.NaviSetting
+import com.amap.api.services.core.ServiceSettings
 
 /**
  * Idempotent Amap privacy-compliance calls that must run before any SDK object is constructed.
@@ -23,6 +24,9 @@ object AmapPrivacyCompliance {
             MapsInitializer.updatePrivacyAgree(app, true)
             NaviSetting.updatePrivacyShow(app, true, true)
             NaviSetting.updatePrivacyAgree(app, true)
+            // The Search SDK has its own switch; RoutePOISearch (SPEC-011) refuses without it.
+            ServiceSettings.updatePrivacyShow(app, true, true)
+            ServiceSettings.updatePrivacyAgree(app, true)
             acknowledged = true
         }
     }

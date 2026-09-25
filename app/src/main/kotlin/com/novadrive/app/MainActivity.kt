@@ -23,6 +23,10 @@ class MainActivity : Activity() {
     private lateinit var settingsRepository: BaiduSettingsRepository
     private lateinit var screen: AssistantNavigationScreen
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val affordanceScope = kotlinx.coroutines.CoroutineScope(
+        kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main.immediate,
+    )
+    private lateinit var affordanceRunner: ScreenAffordanceRunner
     @Volatile
     private var lastUiStateLabel: String = VoiceUiState.DISCONNECTED.label
 
@@ -44,6 +48,7 @@ class MainActivity : Activity() {
             climateHandler,
             VisionProvider.handler(this),
             phone = PhoneCallTool(com.novadrive.app.phone.PhoneProvider.port(this)),
+            liveInfo = LiveInfoTool.live(this),
             places = SavedPlaceTool(
                 read = savedPlaces::get,
                 write = savedPlaces::set,
@@ -61,6 +66,18 @@ class MainActivity : Activity() {
             climatePort = VehicleControlProvider.port,
             climateHandler = climateHandler,
             musicPlaying = BundledMusicPlayer.playing,
+            // Tap and voice both come here (I-6); the screen only renders the result.
+            recenterMap = { screen.recenterMap() },
+            cameraToggle = { toggleCamera() },
+            cameraOpen = { ::screen.isInitialized && screen.cameraShowing },
+        )
+        affordanceRunner = ScreenAffordanceRunner(
+            affordances = com.novadrive.app.ui.ScreenAffordances.shared,
+            controls = screenControls,
+            context = { com.novadrive.app.voice.DriverContext.currentOrNull() },
+            scope = affordanceScope,
+            log = { DebugVoiceLog.log(it) },
+            reportFailure = { code -> controller.sendText(ScreenAffordanceRunner.failureMessage(code)) },
         )
         controller =
             VoiceSessionController(
@@ -110,6 +127,7 @@ class MainActivity : Activity() {
                     )
                     toolDispatcher.dispatch(call)
                 },
+                onScreenAffordance = { text -> affordanceRunner.tryHandle(text) },
             )
 
         VoiceSessionGateway.attach(
@@ -128,7 +146,6 @@ class MainActivity : Activity() {
                 onOpenDeveloperSettings = {
                     startActivity(Intent(this@MainActivity, DeveloperSettingsActivity::class.java))
                 }
-                onCameraToggleRequested = { toggleCamera() }
                 onCameraPermissionNeeded = { runOnUiThread { requestCameraPermission() } }
                 onListeningToggle = { toggleListening() }
             }
@@ -176,6 +193,7 @@ class MainActivity : Activity() {
         VoiceSessionService.stop(this)
         if (::controller.isInitialized) controller.release()
         if (::screen.isInitialized) screen.onDestroy()
+        affordanceScope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
         super.onDestroy()
     }
 
@@ -241,16 +259,17 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun toggleCamera() {
+    private fun toggleCamera(): ScreenControls.Outcome {
         if (screen.cameraShowing) {
             screen.hideCamera()
-            return
+            return ScreenControls.Outcome(true)
         }
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             requestCameraPermission()
-            return
+            return ScreenControls.Outcome(false, "CAMERA_PERMISSION_REQUIRED")
         }
         screen.showCamera()
+        return ScreenControls.Outcome(true)
     }
 
     /**

@@ -56,7 +56,8 @@ One behaviour, one owner. If you need to change one of these, change it **here**
 | Current speed / posted limit while driving | `DrivingSpeedHud` in `AmapNaviViewHost` (Amap location + cameras) | assistant overlay, a second speed source |
 | Which candidate the driver picked | `NavigationChoiceResolver` | the model |
 | Turn-taking / interruption | server VAD for turn ends; `ListeningLifecycle` for ACTIVE / SILENT_WAIT / SLEEP / DEEP_IDLE; `VoiceCommandRouter` for 「闭嘴」「休眠」 | ad-hoc checks in the client |
-| Whether reply audio is heard | `AndroidPlaybackPort` (navigation mute, lifecycle) + `PhantomTurnGate` (phantom/false-claim holds) | the UI |
+| Whether 小诺 may speak / whether the mic reaches Baidu | `SpeechArbiter` via `SpeechAuthority` (P1 window, guidance hold, focus, guidance uplink gate, workload hold R6a fed the next-manoeuvre distance by `NavigationTraceListener` → `NavigationState`; `SpeechAuthority.syncPlaybackHold` is the one place the player is paused or resumed for a hold), applied by `AndroidPlaybackPort` (+ lifecycle) + `PhantomTurnGate` (phantom/false-claim holds) | the UI |
+| Live information (weather, route traffic, along-route, place details) | `LiveInfoTool` (`query_live_info`) — REST kinds via `AmapPoiClient` / `AmapLiveInfoParser`; SDK kinds via the `RouteLiveInfo` port / `nav/amap/AmapRouteLiveInfo` (SPEC-011) | the model's own knowledge |
 | Conversation lifetime | `ConversationResetPolicy` (reset after tool turns) + `ResponseTurnGate` (one reply at a time) | the model |
 | Credentials | `AndroidKeystoreCredentialStore` | source, Gradle files, logs |
 
@@ -90,7 +91,7 @@ far-end reference); capture PCM is cleaned on the capture thread before `SpeechU
 `MicInputGain`. Platform `AcousticEchoCanceler` / `NoiseSuppressor` stay off when the native backend
 loads; otherwise the app falls back to the legacy platform path and logs `aec_backend=unavailable`.
 `AndroidMicrophonePort` owns every reason a
-frame may not be sent: `muted`, `guidanceGated` (Amap is speaking), `suppressLive` (the debug
+frame may not be sent: `muted`, `guidanceGated` (the `SpeechArbiter` uplink answer via `SpeechAuthority`: Amap is speaking, plus tail/cap), `suppressLive` (the debug
 harness is injecting), and the `SpeechUplinkGate`. Model reply playback does **not** gate the mic:
 the uplink stays open for full-duplex barge-in. `MicInputGain` lifts quiet speech above the server's
 VAD floor (max 3×, measured).

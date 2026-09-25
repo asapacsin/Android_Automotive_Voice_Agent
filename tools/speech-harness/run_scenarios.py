@@ -11,11 +11,13 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
 
-ADB = r"C:\Users\Administrator\Android\Sdk\platform-tools\adb.exe"
+# ADB env, else adb on PATH (Linux/cloud), else the Windows build PC. Device choice: ANDROID_SERIAL.
+ADB = os.environ.get("ADB") or shutil.which("adb") or r"C:\Users\Administrator\Android\Sdk\platform-tools\adb.exe"
 PKG = "com.novadrive.app"
 RECEIVER = f"{PKG}/.DebugToolReceiver"
 HERE = os.path.dirname(os.path.abspath(__file__))

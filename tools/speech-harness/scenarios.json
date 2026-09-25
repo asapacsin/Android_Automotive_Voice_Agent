@@ -97,11 +97,12 @@
       "id": "S7",
       "utterance": "今天天气怎么样",
       "say": "chat_q",
-      "_note": "The refusal is the assertion, and it is the forbid list: there is no source on this car for any of those words. How the app arrives at the refusal is not this scenario's business.",
-      "expect": [],
-      "forbid": [
-        "晴|多云|下雨|气温|摄氏"
-      ]
+      "_note": "SPEC-011: weather now has a source, so the assertion is that the answer comes from it - a query_live_info call whose result the app logs as live_info kind=weather. A forecast with no lookup is dropped by DriverTurn (TRUTH-WEATHER-001). Before SPEC-011 this scenario forbade any forecast word.",
+      "expect": [
+        "tool=query_live_info",
+        "live_info kind=weather"
+      ],
+      "forbid": []
     },
     {
       "id": "S8",

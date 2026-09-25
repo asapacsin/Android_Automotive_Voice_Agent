@@ -1,10 +1,15 @@
 package com.novadrive.app
 
+import com.novadrive.app.voice.SpeechAuthority
+
+/**
+ * The legacy "are we navigating" flag (VAD profile, `session.update`). Whether 小诺 may speak is not
+ * decided here: since SPEC-012 step 3 the permitted-reply window lives in `SpeechArbiter`, which
+ * this object only informs.
+ */
 object NavigationState {
     @Volatile var navigating: Boolean = false
     @Volatile var onNavigatingChanged: ((Boolean) -> Unit)? = null
-    @Volatile private var confirmUntilMs: Long = 0L
-    const val CONFIRM_WINDOW_MS = 10_000L
     private val lock = Any()
 
     fun begin() {
@@ -14,34 +19,23 @@ object NavigationState {
                 true
             }
         }
+        SpeechAuthority.arbiter.onNavigating(true)
         if (changed) notifyNavigatingChanged(true)
     }
-
-    fun end() { navigating = false }
-
-    fun allowConfirmation(nowMs: Long = System.currentTimeMillis()) { confirmUntilMs = nowMs + CONFIRM_WINDOW_MS }
-
-    /**
-     * The driver asked something: its answer may be spoken during navigation. Only unprompted
-     * speech stays muted (product rule P1); an answer the driver asked for never is.
-     */
-    fun allowReply(nowMs: Long = System.currentTimeMillis()) = allowConfirmation(nowMs)
-
-    /** A permitted reply is playing: keep the window open until it has finished. */
-    fun extendWhileSpeaking(nowMs: Long = System.currentTimeMillis()) {
-        if (nowMs <= confirmUntilMs) confirmUntilMs = maxOf(confirmUntilMs, nowMs + CONFIRM_WINDOW_MS)
-    }
-
-    fun shouldMuteSpeech(nowMs: Long = System.currentTimeMillis()): Boolean = navigating && nowMs > confirmUntilMs
 
     fun reset() {
         val changed = synchronized(lock) {
             val wasNavigating = navigating
             navigating = false
-            confirmUntilMs = 0L
             wasNavigating
         }
+        SpeechAuthority.arbiter.onNavigating(false)
         if (changed) notifyNavigatingChanged(false)
+    }
+
+    /** SPEC-012 R6a: metres to the next manoeuvre (null when unknown), forwarded to the arbiter. */
+    fun onManeuverDistance(meters: Int?) {
+        SpeechAuthority.onManeuverDistance(meters)
     }
 
     private fun notifyNavigatingChanged(value: Boolean) {

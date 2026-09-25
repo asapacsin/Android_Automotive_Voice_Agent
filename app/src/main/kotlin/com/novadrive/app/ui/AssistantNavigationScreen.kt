@@ -12,7 +12,6 @@ import com.novadrive.app.nav.RecenterOutcome
 import com.novadrive.app.nav.amap.AmapNaviViewHost
 import com.novadrive.app.ScreenControls
 import com.novadrive.app.DebugVoiceLog
-import com.novadrive.app.NavigationState
 import com.novadrive.app.vision.CameraQuestionHandler
 import com.novadrive.app.vision.CameraVisionGateway
 import com.novadrive.app.voice.VoiceSessionGateway
@@ -25,8 +24,6 @@ import kotlinx.coroutines.launch
 import com.novadrive.ingress.realtime.VoiceUiState
 
 class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
-    var onCameraToggleRequested: (() -> Unit)? = null
-
     /** Asked by the camera when a vision request finds no camera permission. */
     var onCameraPermissionNeeded: (() -> Unit)?
         get() = camera.onPermissionNeeded
@@ -83,8 +80,6 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
         mapHost.attachSpeedHud(this)
         camera.onVisionText = { text -> overlay.appendTranscript("📷 $text") }
         camera.visibility = GONE
-        bottomBar.onCameraClick = { onCameraToggleRequested?.invoke() }
-        bottomBar.onRecenterClick = { recenterMap() }
         overlay.onOpenDeveloperSettings = { onOpenDeveloperSettings?.invoke() }
         choiceOverlay.bind(EmbeddedNavigation.shared(context))
         uiScope.launch {
@@ -216,7 +211,7 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
         if (lookJob?.isActive == true) return
         lookJob = uiScope.launch {
             val outcome = VisionProvider.handler(context).ask(null)
-            NavigationState.allowConfirmation()
+            com.novadrive.app.voice.SpeechAuthority.arbiter.onConfirmation()
             val prompt = if (outcome.ok) {
                 CameraQuestionHandler.cameraOpenedPrompt(outcome.spokenText)
             } else {

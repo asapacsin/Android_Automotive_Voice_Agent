@@ -27,6 +27,8 @@ So the rule is stricter than audio ducking: while navigation is running, 小诺'
 
 Implementation: `NavigationState` (`navigating`, `allowConfirmation()`, `shouldMuteSpeech()`, `reset()`), with `AndroidToolDispatcher` opening a 10 s confirmation window on any Accepted tool, `AndroidPlaybackPort.enqueue` dropping frames while muted, and the flag cleared on session stop/release.
 
+**2026-09-25:** this rule now lives in `SpeechArbiter` (via `SpeechAuthority`, SPEC-012 step 3); `allowConfirmation()` / `shouldMuteSpeech()` were deleted and `NavigationState` only reports `navigating` to the arbiter. The description above is the historical implementation.
+
 **Known limitation:** nothing detects when navigation *ends*. The flag clears when the voice session stops. If the driver finishes navigating but keeps the same session open, 小诺 stays muted until the session ends. A `stop_navigation` tool would resolve this; not yet specced.
 
 **Update 2026-09-16 — partially addressed, and deliberately NOT closed.** The *embedded* navigation lifecycle now detects arrival: `onArriveDestination` / `onEndEmulatorNavi` reach `AmapNaviViewHost.stopNavigation`, and a new ended-callback resyncs `NavigationPhase` to `ARRIVED`/`STOPPED`. Device-verified 2026-09-16 (`nav_stopped reached=true reason=emulator_end`, then `nav_flow_ended phase=STOPPED` on the manual path).
@@ -124,7 +126,7 @@ The fix was binding the Chinese stop verbs into the tool description plus a pers
 
 ## P3 — Amap's guidance is transcribed as the driver's speech
 
-**Status:** FIXED 2026-09-19 (reconciled; the fix landed earlier and the entry was never updated) — `GuidanceMicGate` closes the uplink the moment Amap starts speaking, reopens 500 ms after it stops, and reopens anyway after a cap so a lost callback cannot leave the assistant deaf for the rest of the drive. Unit-proven by `GuidanceMicGateTest` (6 cases); the wiring (`NavigationGuidanceVoice.addListener(guidanceListener)`) is guarded by `FeaturePresenceRegressionTest` so it cannot be removed silently; device evidence is recorded in [capabilities.yaml](config/capabilities.yaml) `navigation.guidance_voice` — 21 `nav_guidance_play_start/end` pairs on an emulator drive with the mic gated throughout. ADR-007 is what made this possible: with the SDK embedded, guidance is started by our own process and its speaking state is observable, which is exactly the signal SPEC-002 could not get from outside.
+**Status:** FIXED 2026-09-19 (reconciled; the fix landed earlier and the entry was never updated) — `GuidanceMicGate` closes the uplink the moment Amap starts speaking, reopens 500 ms after it stops, and reopens anyway after a cap so a lost callback cannot leave the assistant deaf for the rest of the drive. Unit-proven by `GuidanceMicGateTest` (6 cases); the wiring (`NavigationGuidanceVoice.addListener(guidanceListener)`) is guarded by `FeaturePresenceRegressionTest` so it cannot be removed silently; device evidence is recorded in [capabilities.yaml](config/capabilities.yaml) `navigation.guidance_voice` — 21 `nav_guidance_play_start/end` pairs on an emulator drive with the mic gated throughout. ADR-007 is what made this possible: with the SDK embedded, guidance is started by our own process and its speaking state is observable, which is exactly the signal SPEC-002 could not get from outside. **2026-09-25:** the gate's rules (close, 500 ms tail, 20 s cap) now live in `SpeechArbiter` (R1–R3, `SpeechArbiterUplinkTest`); `GuidanceMicGate` was deleted in SPEC-012 step 3.
 
 ### History
 
@@ -610,6 +612,7 @@ Turning the voice on alone would reopen **P3** (guidance heard by the mic and tr
 The SDK's `TTSPlayListener` reports start/end, so `NavigationGuidanceVoice` → `GuidanceMicGate` stops
 microphone frames reaching Baidu while guidance plays, plus 500 ms of echo, and reopens after 20 s if
 the end is never reported. Frames dropped this way are counted as `droppedGuidance` in `session_diag`.
+(2026-09-25: `GuidanceMicGate` was replaced by `SpeechArbiter` R1–R3 in SPEC-012 step 3; same timings.)
 
 Device evidence (emulator drive to 横琴口岸, ~2.5 min): `nav_guidance_voice enabled=true`; 21
 `nav_guidance_play_start` each paired with `play_end`; the gate closed and reopened around each;
@@ -1215,6 +1218,9 @@ user input.
 `PLAYBACK_UNGATE_DELAY_MS` raised 350→1000 ms, plus `AndroidMicrophonePort.holdPostSpeechEcho(600)`
 so frames and uplink onset stay closed after the mic formally reopens. Desk retest is autonomous
 [ECHO-001](TEST_MATRIX.yaml). Cabin loudness remains [AUDIO-QUALITY-001](TEST_MATRIX.yaml).
+
+2026-09-25: `holdPostSpeechEcho` removed as dead code; replaced 2026-09-22 (28c42f2) by
+full-duplex barge-in + DriverTurn `ECHO_CANDIDATE` hold.
 
 ---
 

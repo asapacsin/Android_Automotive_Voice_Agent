@@ -88,6 +88,81 @@ class FeaturePresenceRegressionTest {
         )
     }
 
+    /** SPEC-012 A3: P1 and P3 still exist after the rules moved into the arbiter. */
+    @Test
+    fun speechArbiterKeepsP1AndP3() {
+        val arbiter = "app/src/main/kotlin/com/novadrive/app/voice/SpeechArbiter.kt"
+        assertContains(arbiter, "muted() -> Reply.DROP", "P1: unprompted replies are dropped while navigating")
+        assertContains(arbiter, "guidanceSpeaking -> Reply.HOLD", "R1: the reply waits while Amap speaks")
+        assertContains(arbiter, "const val TAIL_MS = 500L", "P3: uplink stays closed 500 ms after guidance")
+        assertContains(arbiter, "const val MAX_CLOSED_MS = 20_000L", "R3: a lost guidance end reopens the uplink")
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/NavigationState.kt",
+            "SpeechAuthority.arbiter.onNavigating(true)",
+            "navigating must reach the arbiter",
+        )
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt",
+            "SpeechAuthority.arbiter.onDriverRequest()",
+            "an asked-for answer must open the window",
+        )
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt",
+            "SpeechAuthority.arbiter.onConfirmation()",
+            "tool confirmations must stay audible during navigation",
+        )
+    }
+
+    /**
+     * speech.post_speech_echo_protection: since 28c42f2 (full-duplex barge-in) residual echo is
+     * handled by DriverTurn's ECHO_CANDIDATE hold, not by blacking out the microphone.
+     */
+    @Test
+    fun echoCandidateHoldStaysWired() {
+        val turn = "app/src/main/kotlin/com/novadrive/app/voice/DriverTurn.kt"
+        assertContains(turn, "ECHO_CANDIDATE,", "the echo-candidate hold reason must exist")
+        assertContains(turn, "if (!qualified) echoCandidate = true", "unqualified speech over playback is only a candidate")
+        assertContains(
+            turn,
+            "if (echoCandidate && !toolCalled) return HoldReason.ECHO_CANDIDATE",
+            "a reply to an echo candidate must be held",
+        )
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt",
+            "turn.onSpeechDuringPlayback(qualified = speechEvidence())",
+            "the client must mark speech over playback with its post-AEC evidence",
+        )
+    }
+
+    @Test
+    fun workloadHoldStaysWired() {
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/nav/amap/NavigationTraceListener.kt",
+            "NavigationState.onManeuverDistance(info?.curStepRetainDistance)",
+            "R6a: the distance to the next manoeuvre must reach the arbiter",
+        )
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/NavigationState.kt",
+            "SpeechAuthority.onManeuverDistance(meters)",
+            "NavigationState forwards the manoeuvre distance",
+        )
+        val authority = "app/src/main/kotlin/com/novadrive/app/voice/SpeechAuthority.kt"
+        assertContains(authority, "arbiter.onManeuverDistance(meters)\n        syncPlaybackHold()", "a distance update re-checks the hold")
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/voice/PcmAudioPlayer.kt",
+            "SpeechAuthority.playbackHold =",
+            "the playback port registers the one hold hook",
+        )
+        val enqueue = text("app/src/main/kotlin/com/novadrive/app/voice/PcmAudioPlayer.kt")
+            .substringAfter("override fun enqueue(").substringBefore("override fun flush(")
+        val holdSync = enqueue.indexOf("if (decision == SpeechArbiter.Reply.HOLD) SpeechAuthority.syncPlaybackHold()")
+        assertTrue(holdSync >= 0 && holdSync < enqueue.indexOf("player.enqueue("), "a held chunk is paused before it is queued")
+        val controller = text("app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt")
+        val listener = controller.substringAfter("private val guidanceListener").substringBefore("init {")
+        assertTrue(listener.contains("SpeechAuthority.syncPlaybackHold()"), "guidance end must go through the hold owner")
+        assertTrue(!listener.contains("resumePlayback"), "guidance end must not resume the player directly")
+    }
+
     @Test
     fun wakeWordEngineArtifactsArePackaged() {
         assertContains("app/build.gradle.kts", "files(\"libs/Msc.jar\")", "iFlytek MSC classes")

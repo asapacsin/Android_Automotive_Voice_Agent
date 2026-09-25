@@ -1,5 +1,6 @@
 package com.novadrive.architecture
 
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.io.File
@@ -36,6 +37,8 @@ class ArchitectureRulesTest {
             "app/src/main/kotlin/com/novadrive/app/nav/amap/NoOpNaviViewListener.kt",
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapPrivacyCompliance.kt",
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapDrivingPresentation.kt",
+            // SPEC-011: getTrafficStatuses and RoutePOISearch, behind the SDK-free RouteLiveInfoSource.
+            "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapRouteLiveInfo.kt",
         )
         val unexpected = importers - allowed
         assertTrue(unexpected.isEmpty()) {
@@ -136,10 +139,25 @@ class ArchitectureRulesTest {
             file.readLines().forEachIndexed { index, line ->
                 if (!line.contains("DebugVoiceLog.log")) return@forEachIndexed
                 // A log line that interpolates a coordinate-shaped property.
-                val leaks = Regex("\\$\\{?[A-Za-z.]*(latitude|longitude|\\blat\\b|\\blon\\b)").containsMatchIn(line)
+                val leaks = Regex("\\$\\{?[A-Za-z.]*(latitude|longitude|\\blat\\b|\\blon\\b)").containsMatchIn(line) ||
+                    // SPEC-011 A5: nor anything else that identifies a place - an adcode, a city, an
+                    // address, a POI id or name, or a REST URL (regeo carries `location=`).
+                    Regex("\\$\\{?[A-Za-z.]*(adcode|city|address|poiId|poiName|candidate\\.name|destination\\.name|\\burl\\b|httpUrl)", RegexOption.IGNORE_CASE)
+                        .containsMatchIn(line)
                 if (leaks) offenders += "${file.relativeTo(root).path.replace('\\', '/')}:${index + 1}"
             }
         }
+        // SPEC-011 observability: `query_live_info` logs through an injected sink, so its one log
+        // shape is checked here - `live_info kind= ok= code= ms= cached=` and nothing else.
+        val liveInfo = text("app/src/main/kotlin/com/novadrive/app/LiveInfoTool.kt")
+        val logged = Regex("\\blog\\(\\s*\"(live_info[^)]*)\\)", RegexOption.DOT_MATCHES_ALL).findAll(liveInfo).map { it.groupValues[1] }.toList()
+        assertTrue(logged.isNotEmpty()) { "LiveInfoTool must log its outcome (SPEC-011 observability)" }
+        val fields = logged.flatMap { Regex("\\b([a-z_]+)=").findAll(it).map { m -> m.groupValues[1] }.toList() }.toSet()
+        assertTrue(fields.all { it in setOf("kind", "ok", "code", "ms", "cached") }) {
+            "SPEC-011 / I-8: live_info may log only kind, ok, code, ms and cached; found $fields"
+        }
+        offenders += logged.filter { Regex("(?i)(adcode|city|where|address|name|poi|location|lat|lon|url)").containsMatchIn(it) }
+            .map { "LiveInfoTool.kt: $it" }
         assertTrue(offenders.isEmpty()) {
             "INVARIANT I-8: no coordinate may be logged. Found: $offenders"
         }
@@ -284,6 +302,42 @@ class ArchitectureRulesTest {
         }.map { it.relativeTo(root).path.replace('\\', '/') }
         assertTrue(offenders.isEmpty()) {
             "PhonePort implementations are selected in PhoneProvider, like VehicleControlPort. Found: $offenders"
+        }
+    }
+
+    // ---- SPEC-012 A3: one owner decides who may speak ----
+
+    @Test
+    fun speechDecisionsAskOnlyTheArbiter() {
+        val gone = listOf(
+            "app/src/main/kotlin/com/novadrive/app/voicepolicy/VoicePolicy.kt",
+            "app/src/main/kotlin/com/novadrive/app/voice/GuidanceMicGate.kt",
+        )
+        for (path in gone) assertFalse(File(root, path).exists(), "SPEC-012 deleted $path; do not revive it")
+        val retired = listOf(
+            "shouldMuteSpeech", "allowConfirmation", "allowReply(", "extendWhileSpeaking",
+            "confirmUntilMs", "VoicePolicy", "GuidanceMicGate(",
+        )
+        val offenders = kotlinFiles("app/src/main").flatMap { file ->
+            val body = file.readText()
+            retired.filter { body.contains(it) }.map { "${file.relativeTo(root).path.replace('\\', '/')}: $it" }
+        }
+        assertTrue(offenders.isEmpty()) {
+            "Speak/uplink decisions belong to SpeechArbiter (via SpeechAuthority); found a parallel rule: $offenders"
+        }
+        val player = text("app/src/main/kotlin/com/novadrive/app/voice/PcmAudioPlayer.kt")
+        val enqueue = player.substringAfter("override fun enqueue(pcm16le").substringBefore("override fun flush(")
+        assertTrue(enqueue.contains("SpeechAuthority.reply()")) { "the player must ask the arbiter before playing a chunk" }
+        val focus = player.substringAfter("fun applyFocusChange(").substringBefore("override fun start()")
+        assertTrue(focus.contains("arbiter.volume()") && !focus.contains("NavigationState")) {
+            "the focus path must ask the arbiter, not the navigation flag"
+        }
+        val controller = text("app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt")
+        val guidance = controller.substringAfter("private val guidanceListener").substringBefore("init {")
+        assertTrue(guidance.contains("arbiter.onGuidanceSpeaking(speaking)")) { "guidance must reach the arbiter" }
+        val capture = text("app/src/main/kotlin/com/novadrive/app/voice/PcmAudioCapture.kt")
+        assertTrue(capture.contains("val guidanceGated: Boolean get() = SpeechAuthority.uplinkClosed()")) {
+            "the uplink gate must be the arbiter's answer"
         }
     }
 

@@ -29,6 +29,7 @@ object VoiceContextHints {
         climate: DriverContext.Climate? = null,
         referents: List<DriverContext.Dimension> = emptyList(),
         pendingClarification: List<DriverContext.Dimension>? = null,
+        screenControls: List<String> = emptyList(),
     ): String? {
         val listed = options?.takeIf { it.isNotBlank() }?.let { "（已显示，不要念出：$it）" }.orEmpty()
         val parts = buildList {
@@ -56,6 +57,10 @@ object VoiceContextHints {
             climate?.let { add(describeClimate(it)) }
             describeReferents(referents)?.let(::add)
             pendingClarification?.let { add(describePending(it)) }
+            // SPEC-010 B1/A6: the model knows the bar's names too, in case the local match missed.
+            if (screenControls.isNotEmpty()) {
+                add("屏幕底部按钮可以直接说名字操作：${screenControls.joinToString("、")}。")
+            }
         }
         return if (parts.isEmpty()) null else "当前状态：" + parts.joinToString("")
     }
@@ -102,8 +107,20 @@ object VoiceContextHints {
     fun current(): String? =
         describe(EmbeddedNavigation.currentOrNull(), CameraVisionGateway.current()?.isOpen == true)
 
+    /**
+     * Whether the screen is waiting for the driver's answer (a list, a question, the camera). The
+     * bottom bar is always on screen, so its names must not count, or every turn would look like
+     * an answer (SPEC-010 A6).
+     */
+    fun awaitingAnswer(): Boolean =
+        describe(EmbeddedNavigation.currentOrNull(), CameraVisionGateway.current()?.isOpen == true, withControls = false) != null
+
     /** The hint for a given navigation flow and camera state (also used by the simulation). */
-    fun describe(navigation: com.novadrive.app.nav.EmbeddedNavigationController?, cameraOpen: Boolean): String? =
+    fun describe(
+        navigation: com.novadrive.app.nav.EmbeddedNavigationController?,
+        cameraOpen: Boolean,
+        withControls: Boolean = true,
+    ): String? =
         runCatching {
             val phase = navigation?.state()?.value
             val options = when (phase) {
@@ -130,6 +147,13 @@ object VoiceContextHints {
                 climate = context?.climateState(),
                 referents = referents,
                 pendingClarification = pending,
+                screenControls = if (!withControls) {
+                    emptyList()
+                } else {
+                    com.novadrive.app.ui.ScreenAffordances.shared.current.value
+                        .filter { it.position == null }
+                        .mapNotNull { it.names.firstOrNull() }
+                },
             )
         }.getOrNull()
 }

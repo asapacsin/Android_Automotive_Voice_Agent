@@ -12,6 +12,8 @@ data class DestinationCandidate(
     val longitude: Double,
     val distanceMeters: Int? = null,
     val poiId: String? = null,
+    /** Amap district code; lets 「目的地天气」 skip a reverse-geocode (SPEC-011). */
+    val adcode: String? = null,
 ) {
     init {
         require(latitude in -90.0..90.0) { "latitude $latitude is outside -90..90" }
@@ -24,6 +26,7 @@ data class DestinationCandidate(
         longitude = longitude,
         poiId = poiId,
         address = address.takeIf { it.isNotBlank() },
+        adcode = adcode,
     )
 }
 

@@ -24,6 +24,7 @@ and keyword lists in `ActionClaimGuard` are not sources of truth
 | Look through the camera | `describe_camera_view(question)` | `CameraQuestionHandler` → `CameraVisionGateway` + `QianfanVisionClient` | `ok=true` with the answer | `ok=false` — no camera, no permission, no frame, not configured, auth, request |
 | Open an app | `open_app(maps\|settings)` | `SafeAndroidActionExecutor` intents | `ok=true` | `ok=false` `APP_UNAVAILABLE` |
 | Stop talking / sleep | `set_speech_output(silent\|spoken)`, `end_conversation()` | `ListeningLifecycle` via `VoiceSessionGateway` | `ok=true` | `ok=false` `LISTENING_CONTROL_UNAVAILABLE` |
+| Live information (SPEC-011) | `query_live_info(kind, where?, day?, category?, target?)` — `weather`, `route_traffic`, `along_route`, `place_details` | `LiveInfoTool` → `AmapPoiClient` (REST weather / regeo / place detail) or `RouteLiveInfoSource` → `AmapRouteLiveInfo` (Navi `getTrafficStatuses`, Search `RoutePOISearch`); along-route results go to `EmbeddedNavigationController.requestCandidates`, the existing picker | `ok=true` with only the fields the source returned and `reported_at`; route traffic is counts and distances, never coordinates. `DriverTurn` releases a weather/traffic answer only when a lookup of that kind succeeded this turn | `ok=false` `AMAP_WEB_KEY_MISSING`, `NO_LOCATION`, `NO_DESTINATION`, `NOT_NAVIGATING`, `LIVE_INFO_UNAVAILABLE` (4 s timeout, HTTP, status≠1), `LIVE_INFO_QUOTA`, `NO_RESULTS`, `DUPLICATE_IN_TURN`, each with `next`. Weather and place details are unit-verified; route traffic and along-route have not run on a device |
 | Explain what the assistant can do | *(none — spoken answer only)* | `UtteranceIntentResolver` → `speech.capability_help`; copy from `ProductCapabilities.spokenHelpSummary` | Short list naming supported groups (导航/音乐/空调/摄像头/电话/地图·设置 as wired) | `help_incomplete` nudge — never 「没听清」 for a recognised help question |
 
 **Driving navigation presentation (no separate tool).** After the driver starts navigation, the embedded
@@ -48,7 +49,7 @@ the speaker, with no intermediate claim ([INVARIANTS.md](INVARIANTS.md) I-2, I-3
 | Request | Recognised by | Required response |
 | --- | --- | --- |
 | Volume, windows, sunroof, seats, doors, boot, lights, wipers | `UtteranceIntentResolver` → `CapabilityCatalog` (`unsupported.*`) | 「这个操作没有执行，暂时不支持。」 — never 「正在调整」 |
-| Weather, air quality, traffic, fuel prices, stocks, news, exchange rates | `ActionClaimGuard.REALTIME_INFO_WORDS` | An honest refusal with **no** city, temperature or forecast |
+| News, stocks, fuel prices, exchange rates, air quality, driving restrictions | `ActionClaimGuard.NO_SOURCE_INFO_WORDS` | An honest refusal with **no** figure, city or forecast. Weather and traffic moved to `query_live_info` (SPEC-011); a successful lookup never unlocks these |
 
 Adding a capability: declare the tool, route it in `AndroidToolDispatcher`, give it a real executor
 and an honest failure result, add a row here **and** in `ProductCapabilities` /

@@ -29,8 +29,12 @@ import org.json.JSONObject
  */
 object ToolCallGuards {
 
-    /** Tools whose effect accumulates, so running one twice is not the same as running it once. */
-    private val REPEAT_SENSITIVE = setOf(ClimateToolHandler.TOOL, "control_music")
+    /**
+     * Tools whose effect accumulates, so running one twice is not the same as running it once —
+     * and `query_live_info`, where a second identical lookup costs the owner's daily quota and
+     * re-opens the picker for nothing (SPEC-011 failure table: DUPLICATE_IN_TURN).
+     */
+    private val REPEAT_SENSITIVE = setOf(ClimateToolHandler.TOOL, "control_music", LiveInfoTool.TOOL)
 
     private val TEMPERATURE_OR_FAN = setOf(
         ClimateToolActions.ADJUST_TEMPERATURE,
@@ -56,9 +60,17 @@ object ToolCallGuards {
     fun repeatedInTurn(call: DomainVoiceEvent.ToolCall, context: DriverContext?): String? {
         if (call.name !in REPEAT_SENSITIVE) return null
         if (context == null) return null
+        val arguments = call.arguments.filterKeys { it != "_validation_error" }
+        // SPEC-010 B4: the on-screen matcher may already have run this capability for this
+        // utterance. Keyed on the utterance that started, since the call can precede its transcript.
+        val capabilityEpoch = context.capabilityEpoch()
+        if (capabilityEpoch > 0 &&
+            !context.claimCapability(capabilityEpoch, call.name, arguments["action"], DriverContext.ClaimSource.MODEL)
+        ) {
+            return DUPLICATE_IN_TURN
+        }
         val epoch = context.currentEpoch()
         if (epoch <= 0) return null
-        val arguments = call.arguments.filterKeys { it != "_validation_error" }
         return if (context.claimDispatch(epoch, call.name, arguments)) null else DUPLICATE_IN_TURN
     }
 

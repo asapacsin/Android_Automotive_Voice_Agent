@@ -143,4 +143,11 @@ class VoiceContextHintsTest {
         assertTrue(hint.contains("adjust_temperature"))
         assertFalse(hint.contains("set_temperature"), "relative changes must not become arithmetic")
     }
+
+    @Test
+    fun onScreenControlsAreListedByName() {
+        // SPEC-010 A6: the model knows the bar's names too, in case the local match missed.
+        val hint = VoiceContextHints.compose(null, cameraOpen = false, screenControls = listOf("上一首", "空调"))!!
+        assertTrue(hint.contains("上一首、空调"))
+    }
 }

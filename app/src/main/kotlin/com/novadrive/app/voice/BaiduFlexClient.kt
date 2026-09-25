@@ -39,7 +39,7 @@ class BaiduFlexClient(
     /** Shape of the audio that caused the current turn, measured by [SpeechUplinkGate]. */
     private val lastAudioSegment: () -> SpeechUplinkGate.Segment? = { null },
     /** True when something on screen is waiting for the driver's answer; such turns are never held. */
-    private val contextAwaitingAnswer: () -> Boolean = { VoiceContextHints.current() != null },
+    private val contextAwaitingAnswer: () -> Boolean = { VoiceContextHints.awaitingAnswer() },
     /** Time-scoped post-AEC speech evidence for speech over playback (Astra P4). */
     private val speechEvidence: () -> Boolean = { true },
 ) {
@@ -698,6 +698,7 @@ class BaiduFlexClient(
             driverContext.cancel(previous.epoch)
         }
         turn = DriverTurn(turnEpoch.incrementAndGet())
+        driverContext.onSpeechStarted(turn.epoch)
         if (playbackActive || assistantSpeaking) turn.onSpeechDuringPlayback(qualified = speechEvidence())
     }
 
@@ -735,8 +736,13 @@ class BaiduFlexClient(
     private fun onExecutionResult(output: String) {
         val ok = output.contains("\"ok\":true")
         val failure = if (ok) null else Regex("\"error\":\"([^\"]+)\"").find(output)?.groupValues?.get(1)
-        applyVerdict(turn, turn.onExecutionResult(ok, failure))
+        applyVerdict(turn, turn.onExecutionResult(ok, failure, liveInfoKindOf(output)))
     }
+
+    /** The `kind` of a `query_live_info` result, or null for any other tool (SPEC-011 B3). */
+    private fun liveInfoKindOf(output: String): String? =
+        if (!output.contains("\"tool\":\"${BaiduFlexProtocol.QUERY_LIVE_INFO}\"")) null
+        else runCatching { JSONObject(output).optString("kind").ifEmpty { null } }.getOrNull()
 
     @Synchronized
     private fun onAssistantText(text: String) {
