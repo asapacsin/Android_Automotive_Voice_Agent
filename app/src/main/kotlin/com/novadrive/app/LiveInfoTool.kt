@@ -91,7 +91,7 @@ class LiveInfoTool(
                 val ms = nowMs() - started
                 val cached = result.optBoolean("cached")
                 log("live_info kind=$kindTag ok=$ok code=$code ms=$ms cached=$cached")
-                NavigationState.allowConfirmation()
+                com.novadrive.app.voice.SpeechAuthority.arbiter.onConfirmation()
                 result.put("tool", TOOL).toString()
             },
         )
