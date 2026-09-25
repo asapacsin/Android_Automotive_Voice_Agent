@@ -95,7 +95,7 @@ class CapabilityContractTest {
         val prose = File(root, "docs/CAPABILITIES.md").readText()
         // The two documents may word things differently, but a capability the registry calls
         // unsupported must not be advertised as supported in the prose table.
-        listOf("volume_control" to "音量", "realtime_weather_traffic_news" to "weather").forEach { (key, _) ->
+        listOf("volume_control" to "音量", "realtime_news_prices" to "news").forEach { (key, _) ->
             assertTrue(registry.contains(key)) { "$key missing from the registry" }
         }
         assertTrue(prose.contains("Not supported")) {

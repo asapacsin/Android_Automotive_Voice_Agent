@@ -327,6 +327,41 @@ apps:
     protected_by: [APPS-001]
 
 # Requests the product must refuse honestly, once, with subtitle and speech identical.
+# SPEC-011: live information from Amap, one tool (query_live_info) with a kind. Each answer must
+# come from a lookup this turn; DriverTurn drops a forecast or traffic report with none behind it.
+live_info:
+  weather:
+    tool: query_live_info
+    verified: unit
+    required_scope: END_TO_END
+    protected_by: [TRUTH-WEATHER-001]
+    evidence: >
+      AmapLiveInfoParserTest (fixtures recorded live 2026-09-25), LiveInfoToolTest (every failure
+      code), FalseCapabilityClaimTest (answer released only with a weather result this turn). Live
+      REST from the container with the owner's web key returned real weather on 2026-09-25; not yet
+      selected from speech on the phone (SPEC-011 A7/A8).
+    notes: "REST v3/weather/weatherInfo; adcode from the destination POI or v3/geocode/regeo. Cached 10 min per city."
+  route_traffic:
+    tool: query_live_info
+    verified: implemented
+    required_scope: END_TO_END
+    evidence: >
+      LiveInfoToolTest covers the tool against a fake RouteLiveInfoSource; the SDK read
+      (AmapRouteLiveInfo, AMapNavi.getTrafficStatuses) has never run on a device.
+  along_route:
+    tool: query_live_info
+    verified: implemented
+    required_scope: END_TO_END
+    evidence: >
+      LiveInfoAlongRouteWiringTest: results open the existing picker and index 1 calculates a route
+      to the first. The RoutePOISearch call itself has never run on a device.
+    notes: "Showing the picker ends active guidance, exactly as a new navigate_to does."
+  place_details:
+    tool: query_live_info
+    verified: unit
+    required_scope: END_TO_END
+    evidence: "AmapLiveInfoParserTest + LiveInfoToolTest; live REST v3/place/detail returned data on 2026-09-25."
+
 unsupported:
   volume_control:
     tool: null
@@ -352,12 +387,17 @@ unsupported:
       the bundled track: something would play, the result would be ok=true, and the driver would be
       told they got what they asked for. Refused at AndroidToolDispatcher with
       MEDIA_LIBRARY_UNSUPPORTED, so a prompt rule is not the only thing preventing it (I-11).
-  realtime_weather_traffic_news:
+  # SPEC-011 split realtime_weather_traffic_news: weather and route traffic moved to live_info.*;
+  # what is left has no source at all.
+  realtime_news_prices:
     tool: null
     verified: unsupported
     recognised_by: ActionClaimGuard.REALTIME_INFO_WORDS
     protected_by: [TRUTH-WEATHER-001]
-    required_behaviour: "Refuse. Any non-refusal is fabricated: there is no source on this car."
+    required_behaviour: >
+      News, stock prices, fuel prices, exchange rates, air quality, driving restrictions: refuse.
+      Any non-refusal is fabricated - there is no source, and no query_live_info result can make it
+      true (ActionClaimGuard.liveInfoKindFor returns null for these words).
 
 # Retest map for shared components — not product capabilities; validated by CapabilityContractTest.
 # watched_roots must be fully named by components or impact_exempt (UNKNOWN_IMPACT otherwise).
@@ -448,6 +488,8 @@ change_impact:
       - PhaseOneNavigationController
       - NavigationModels
       - InitialLocationRecenter
+      - RouteLiveInfo
+      - AmapRouteLiveInfo
       - Location
       - Results
       - Policy
@@ -465,6 +507,8 @@ change_impact:
       - navigation.arrival_lifecycle
       - navigation.stop_navigation
       - navigation.return_to_tracking
+      - live_info.route_traffic
+      - live_info.along_route
   utterance_truth:
     components:
       - ActionClaimGuard
@@ -486,7 +530,8 @@ change_impact:
       - speech.action_claim_truthfulness
       - unsupported.volume_control
       - unsupported.media_library
-      - unsupported.realtime_weather_traffic_news
+      - unsupported.realtime_news_prices
+      - live_info.weather
       - phone.place_call
 
 # Facts that cannot be established without a person or a place.

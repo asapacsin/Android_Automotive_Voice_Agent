@@ -92,17 +92,17 @@ class AmapPoiClient(
     private val aroundUrl: String = "https://restapi.amap.com/v3/place/around",
     /** Root of the web-service endpoints `query_live_info` reads (SPEC-011). */
     private val liveBaseUrl: String = "https://restapi.amap.com/v3",
-) {
+) : AmapLiveInfoRest {
     // ---- query_live_info (SPEC-011). No URL here is ever logged: regeo carries `location=`. ----
 
     /** [city] is an adcode or a city name; the weather endpoint accepts both. */
-    fun weatherNow(city: String, key: String): LiveInfoFetch<WeatherNow> =
+    override fun weatherNow(city: String, key: String): LiveInfoFetch<WeatherNow> =
         live("weather/weatherInfo", key, mapOf("city" to city, "extensions" to "base"), AmapLiveInfoParser::weatherNow)
 
-    fun weatherForecast(city: String, key: String): LiveInfoFetch<WeatherForecast> =
+    override fun weatherForecast(city: String, key: String): LiveInfoFetch<WeatherForecast> =
         live("weather/weatherInfo", key, mapOf("city" to city, "extensions" to "all"), AmapLiveInfoParser::weatherForecast)
 
-    fun regeoAdcode(latitude: Double, longitude: Double, key: String): LiveInfoFetch<String> =
+    override fun regeoAdcode(latitude: Double, longitude: Double, key: String): LiveInfoFetch<String> =
         live(
             "geocode/regeo",
             key,
@@ -110,7 +110,7 @@ class AmapPoiClient(
             AmapLiveInfoParser::regeoAdcode,
         )
 
-    fun placeDetail(poiId: String, key: String): LiveInfoFetch<PlaceDetail> =
+    override fun placeDetail(poiId: String, key: String): LiveInfoFetch<PlaceDetail> =
         live("place/detail", key, mapOf("id" to poiId, "extensions" to "all"), AmapLiveInfoParser::placeDetail)
 
     private fun <T> live(

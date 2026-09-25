@@ -29,8 +29,12 @@ import org.json.JSONObject
  */
 object ToolCallGuards {
 
-    /** Tools whose effect accumulates, so running one twice is not the same as running it once. */
-    private val REPEAT_SENSITIVE = setOf(ClimateToolHandler.TOOL, "control_music")
+    /**
+     * Tools whose effect accumulates, so running one twice is not the same as running it once —
+     * and `query_live_info`, where a second identical lookup costs the owner's daily quota and
+     * re-opens the picker for nothing (SPEC-011 failure table: DUPLICATE_IN_TURN).
+     */
+    private val REPEAT_SENSITIVE = setOf(ClimateToolHandler.TOOL, "control_music", LiveInfoTool.TOOL)
 
     private val TEMPERATURE_OR_FAN = setOf(
         ClimateToolActions.ADJUST_TEMPERATURE,

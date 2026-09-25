@@ -64,7 +64,8 @@ object CapabilityIds {
     const val WINDOWS_SEATS_DOORS_LIGHTS_WIPERS = "unsupported.windows_seats_doors_lights_wipers"
     const val MEDIA_LIBRARY = "unsupported.media_library"
     const val MEDIA_NEXT_TRACK = "media.next_track"
-    const val REALTIME_INFO = "unsupported.realtime_weather_traffic_news"
+    const val REALTIME_INFO = "unsupported.realtime_news_prices"
+    const val LIVE_INFO_WEATHER = "live_info.weather"
     const val SPEECH_CAPABILITY_HELP = "speech.capability_help"
 }
 
@@ -119,7 +120,11 @@ object ProductCapabilities : CapabilityCatalog {
             rec("unsupported.volume_control", null, false),
             rec("unsupported.windows_seats_doors_lights_wipers", null, false),
             rec("unsupported.media_library", null, false),
-            rec("unsupported.realtime_weather_traffic_news", null, false),
+            rec("live_info.weather", "query_live_info", true),
+            rec("live_info.route_traffic", "query_live_info", true),
+            rec("live_info.along_route", "query_live_info", true),
+            rec("live_info.place_details", "query_live_info", true),
+            rec("unsupported.realtime_news_prices", null, false),
         ),
     )
 

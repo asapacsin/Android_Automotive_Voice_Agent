@@ -53,6 +53,25 @@ object ToolFailureAdvice {
         "MEDIA_LIBRARY_UNSUPPORTED" to
             "车上只有一首内置曲目，没有音乐库，无法搜索或指定歌曲。" +
             "请用一句话如实告诉用户放不了他要的那首歌，不要谎称已经播放，也不要改放其它曲子。",
+        // SPEC-011 query_live_info. Each one says what did not happen and forbids the guess.
+        LiveInfoTool.AMAP_WEB_KEY_MISSING to
+            "高德的查询服务还没有配置，所以没有查。请用一句话如实说这个功能还没有配置好（例如「天气查询还没有配置」），不要编造任何结果。",
+        LiveInfoTool.NO_LOCATION to
+            "还没有定位，所以查不了这里的情况。请用一句话如实说还没有定位，可以请用户说一个城市名；不要猜一个城市。",
+        LiveInfoTool.NO_DESTINATION to
+            "现在没有目的地，所以没有查。请用一句话问用户要查哪里，不要猜一个地方。",
+        LiveInfoTool.NOT_NAVIGATING to
+            "现在没有在导航，也没有算好的路线，所以查不了路上的情况。请用一句话如实说现在没有在导航。",
+        AmapLiveInfoParser.UNAVAILABLE to
+            "这次查询没有拿到结果（超时或服务出错）。请用一句话如实说现在查不到，绝对不要猜测或编造天气、路况或地点信息。",
+        AmapLiveInfoParser.QUOTA to
+            "今天的查询次数已经用完了，没有查到。请用一句话如实告诉用户今天的查询次数用完了，不要编造结果。",
+        AmapLiveInfoParser.NO_RESULTS to
+            "查询成功，但没有找到结果（category 是要找的东西，若有）。请用一句话如实说没有找到，例如「沿途没有找到加油站」，不要编造一个。",
+        LiveInfoTool.INVALID_KIND to
+            "这类实时信息没有数据来源，没有查询。请用一句话如实说无法回答，不要编造。",
+        LiveInfoTool.INVALID_ARGUMENT to
+            "查询参数不对，没有查询。请用一句话问清楚用户要查什么，不要编造结果。",
         ToolCallGuards.HOME_NOT_SET to
             "用户还没有设置家的地址，所以没有导航。" +
             "请用一句话如实说还不知道他家在哪里，请他直接说出地址，不要猜一个地方。",
