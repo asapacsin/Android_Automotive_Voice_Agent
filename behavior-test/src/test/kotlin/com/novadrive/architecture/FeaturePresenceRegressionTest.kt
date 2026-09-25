@@ -114,6 +114,31 @@ class FeaturePresenceRegressionTest {
     }
 
     @Test
+    fun workloadHoldStaysWired() {
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/nav/amap/NavigationTraceListener.kt",
+            "NavigationState.onManeuverDistance(info?.curStepRetainDistance)",
+            "R6a: the distance to the next manoeuvre must reach the arbiter",
+        )
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/NavigationState.kt",
+            "SpeechAuthority.onManeuverDistance(meters)",
+            "NavigationState forwards the manoeuvre distance",
+        )
+        val authority = "app/src/main/kotlin/com/novadrive/app/voice/SpeechAuthority.kt"
+        assertContains(authority, "arbiter.onManeuverDistance(meters)\n        syncPlaybackHold()", "a distance update re-checks the hold")
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/voice/PcmAudioPlayer.kt",
+            "SpeechAuthority.playbackHold =",
+            "the playback port registers the one hold hook",
+        )
+        val controller = text("app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt")
+        val listener = controller.substringAfter("private val guidanceListener").substringBefore("init {")
+        assertTrue(listener.contains("SpeechAuthority.syncPlaybackHold()"), "guidance end must go through the hold owner")
+        assertTrue(!listener.contains("resumePlayback"), "guidance end must not resume the player directly")
+    }
+
+    @Test
     fun wakeWordEngineArtifactsArePackaged() {
         assertContains("app/build.gradle.kts", "files(\"libs/Msc.jar\")", "iFlytek MSC classes")
         for (path in listOf(

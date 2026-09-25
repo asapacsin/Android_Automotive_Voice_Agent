@@ -33,6 +33,11 @@ object NavigationState {
         if (changed) notifyNavigatingChanged(false)
     }
 
+    /** SPEC-012 R6a: metres to the next manoeuvre (null when unknown), forwarded to the arbiter. */
+    fun onManeuverDistance(meters: Int?) {
+        SpeechAuthority.onManeuverDistance(meters)
+    }
+
     private fun notifyNavigatingChanged(value: Boolean) {
         runCatching { onNavigatingChanged?.invoke(value) }
     }
