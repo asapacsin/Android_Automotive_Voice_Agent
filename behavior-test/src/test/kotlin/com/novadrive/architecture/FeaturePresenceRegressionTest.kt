@@ -113,6 +113,27 @@ class FeaturePresenceRegressionTest {
         )
     }
 
+    /**
+     * speech.post_speech_echo_protection: since 28c42f2 (full-duplex barge-in) residual echo is
+     * handled by DriverTurn's ECHO_CANDIDATE hold, not by blacking out the microphone.
+     */
+    @Test
+    fun echoCandidateHoldStaysWired() {
+        val turn = "app/src/main/kotlin/com/novadrive/app/voice/DriverTurn.kt"
+        assertContains(turn, "ECHO_CANDIDATE,", "the echo-candidate hold reason must exist")
+        assertContains(turn, "if (!qualified) echoCandidate = true", "unqualified speech over playback is only a candidate")
+        assertContains(
+            turn,
+            "if (echoCandidate && !toolCalled) return HoldReason.ECHO_CANDIDATE",
+            "a reply to an echo candidate must be held",
+        )
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt",
+            "turn.onSpeechDuringPlayback(qualified = speechEvidence())",
+            "the client must mark speech over playback with its post-AEC evidence",
+        )
+    }
+
     @Test
     fun workloadHoldStaysWired() {
         assertContains(
