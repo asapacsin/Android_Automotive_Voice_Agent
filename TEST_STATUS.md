@@ -2,15 +2,15 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-21 · 106 tests
+Updated 2026-09-21 · 114 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 43 |
+| autonomous PASS | 45 |
 | autonomous FAIL | 0 |
 | incomplete | 0 |
 | partial pass | 0 |
-| not run | 47 |
+| not run | 53 |
 | human required | 16 |
 | human pass | 0 |
 | human fail | 0 |
@@ -67,6 +67,16 @@ Updated 2026-09-21 · 106 tests
 - HELP-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - NAV-SIM-QA-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - AFFORDANCE-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- TRUTH-LIVEINFO-NEWS-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- LIVE-INFO-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- LIVE-INFO-L6-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- LIVE-INFO-REGRESSION-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- SPEECH-ARBITER-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- SPEECH-WORKLOAD-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- live_info.along_route requires END_TO_END but has no passing cover (linked: none)
+- live_info.place_details requires END_TO_END but has no passing cover (linked: none)
+- live_info.route_traffic requires END_TO_END but has no passing cover (linked: none)
+- live_info.weather requires END_TO_END but has no passing cover (linked: none)
 - navigation.guidance_voice requires INTERMEDIATE_FLOW but has no passing cover (linked: NAV-MID-ROUTE-001)
 
 ## By capability
@@ -80,6 +90,7 @@ Updated 2026-09-21 · 106 tests
 | climate | 5 | 1 | 1 | 3 |
 | dialogue_context | 4 | 1 | 0 | 3 |
 | lifecycle | 1 | 0 | 0 | 1 |
+| live_info | 4 | 1 | 0 | 3 |
 | media | 2 | 0 | 0 | 2 |
 | microphone | 1 | 0 | 1 | 0 |
 | navigation | 22 | 6 | 3 | 13 |
@@ -91,8 +102,8 @@ Updated 2026-09-21 · 106 tests
 | saved_places | 3 | 0 | 0 | 3 |
 | security | 3 | 3 | 0 | 0 |
 | speech | 1 | 0 | 1 | 0 |
-| truthfulness | 8 | 4 | 0 | 4 |
-| turn_taking | 13 | 6 | 2 | 5 |
+| truthfulness | 9 | 4 | 0 | 5 |
+| turn_taking | 16 | 7 | 2 | 7 |
 | unsupported | 1 | 0 | 0 | 1 |
 | vision | 2 | 0 | 0 | 2 |
 | wake | 2 | 1 | 1 | 0 |
@@ -126,6 +137,10 @@ Updated 2026-09-21 · 106 tests
 | HELP-001 | dialogue_context | 「你能做什么」 / 「你能干啥」 gets a short capability answer | AUTONOMOUS | NOT_RUN | yes | STALE_BIND apk_digest mismatch |
 | HELP-UNIT-001 | dialogue_context | Help-request grammar and nudge are unit-covered | AUTONOMOUS | PASS | yes | UtteranceIntentResolver grammar + DriverTurn.CAPABILITY_HELP 2026-09-22 unit PASS |
 | PROCDEATH-001 | lifecycle | The app survives process death | AUTONOMOUS | NOT_RUN | yes | STALE_BIND apk_digest mismatch |
+| LIVE-INFO-DEVICE-001 | live_info | Each live_info kind is selected from speech | AUTONOMOUS | NOT_RUN | yes | — |
+| LIVE-INFO-L6-001 | live_info | Every live_info source returns real data with the owner's key | AUTONOMOUS | NOT_RUN | yes | 2026-09-25 partial: REST weatherInfo base/all, regeo and place/detail returned real dat… |
+| LIVE-INFO-REGRESSION-001 | live_info | SPEC-008 suite does not regress with query_live_info added | AUTONOMOUS | NOT_RUN | yes | — |
+| LIVE-INFO-UNIT-001 | live_info | query_live_info parses, fails honestly and opens the picker for along-route results | AUTONOMOUS | PASS | yes | 2026-09-25 cloud: :app ran in a stub-iFlytek mirror because vendor Msc.jar is absent in… |
 | MUSIC-NAMED-001 | media | A named song is refused, not substituted | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite |
 | MUSIC-PLAY-001 | media | 播放音乐 plays the bundled track | AUTONOMOUS | NOT_RUN | no | 2026-09-20: 20/20 suite |
 | MIC-CABIN-001 | microphone | Open-mic thresholds in real cabin acoustics | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | NOISE-001 PASS - room noise produces no turn |
@@ -183,9 +198,10 @@ Updated 2026-09-21 · 106 tests
 | TRUTH-BAIT-001 | truthfulness | An explicit request to lie is not obeyed | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite |
 | TRUTH-CLAIM-001 | truthfulness | A claim no tool performed is never spoken | AUTONOMOUS | PASS | yes | 2026-09-19 device: the fabrication is corrected, 「没听清，再说一遍。」 |
 | TRUTH-DUP-001 | truthfulness | One correction per response, not two | AUTONOMOUS | PASS | no | the test reports n=2 without the single-owner guard and n=1 with it |
+| TRUTH-LIVEINFO-NEWS-001 | truthfulness | News and prices stay refused even with a live result in the turn | AUTONOMOUS | NOT_RUN | yes | — |
 | TRUTH-MEDIA-001 | truthfulness | A song we cannot play is refused even when misheard | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 3/3 then 5/5 after the fix; before it, the bundled track played |
 | TRUTH-MISHEARD-001 | truthfulness | A misheard driver is not told the car acted | AUTONOMOUS | NOT_RUN | yes | 2026-09-19: 「返屋企啦」 -> 「发诺克拉。」 -> correction, not a claim |
-| TRUTH-WEATHER-001 | truthfulness | No invented weather, traffic or news | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: refusal, 20/20 suite |
+| TRUTH-WEATHER-001 | truthfulness | Weather and traffic answers come only from a live lookup | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: refusal, 20/20 suite (pre-SPEC-011 criterion, superseded) |
 | ASTRA-DOUBLE-TALK-001 | turn_taking | Real double-talk and route-change acoustics | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | SpeechUplinkGate + qualifyPlayoutBargeIn uplinkGateOpen wiring |
 | ASTRA-ECHO-PLAYBACK-001 | turn_taking | Playback-only cabin echo does not self-trigger replies | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | qualified barge-in uses uplinkGateOpen instead of RMS ratio veto |
 | BARGE-IN-EVIDENCE-001 | turn_taking | Barge-in needs time-scoped speech evidence; an unconfirmed echo turn is never heard | AUTONOMOUS | PASS | yes | 2026-09-24: BargeInEvidenceTest 11/11; full suite 1618/0; REGRESSION 41/41, CHAOS 26/26… |
@@ -199,6 +215,9 @@ Updated 2026-09-21 · 106 tests
 | PLAYBACK-FLUSH-001 | turn_taking | An acknowledged playback flush cannot write stale audio | AUTONOMOUS | PASS | yes | PlaybackEpochEngine flush/short-write/epoch JVM seams (4/4) |
 | PLAYBACK-QUEUE-OVERFLOW-001 | turn_taking | Application PCM queue overflow fails the current reply epoch | AUTONOMOUS | PASS | yes | AppPlaybackQueuePolicy ceiling math and PcmAudioPlayer failReplyLocked path |
 | SLEEP-001 | turn_taking | 休眠 reaches SLEEP | AUTONOMOUS | NOT_RUN | no | 2026-09-20: 20/20 suite |
+| SPEECH-ARBITER-DEVICE-001 | turn_taking | Arbiter keeps replies and guidance apart on the phone | AUTONOMOUS | NOT_RUN | yes | — |
+| SPEECH-ARBITER-UNIT-001 | turn_taking | SpeechArbiter owns every speak and uplink decision | AUTONOMOUS | PASS | yes | 2026-09-25 cloud: :app ran in a stub-iFlytek mirror because vendor Msc.jar is absent in… |
+| SPEECH-WORKLOAD-DEVICE-001 | turn_taking | Replies wait out close manoeuvres and never get lost | AUTONOMOUS | NOT_RUN | yes | — |
 | UNSUPPORTED-001 | unsupported | A request with no tool is refused, not improvised | AUTONOMOUS | NOT_RUN | yes | STALE_BIND apk_digest mismatch |
 | CAMERA-RELEASE-001 | vision | The camera is released when the app leaves the foreground | AUTONOMOUS | NOT_RUN | yes | STALE_BIND apk_digest mismatch |
 | VISION-001 | vision | A camera question is answered from the camera | AUTONOMOUS | NOT_RUN | yes | STALE_BIND apk_digest mismatch |

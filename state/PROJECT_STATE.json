@@ -1,31 +1,25 @@
 {
-  "generated_at": "2026-09-25T06:51:10",
+  "generated_at": "2026-09-25T08:23:04",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "073b00f",
+    "commit": "a1e86cc",
     "branch": "claude/9-25",
-    "subject": "SPEC-012 steps 1-2: speech rules characterised; pure SpeechArbiter (A1, A2, A4)",
-    "working_tree_clean": false,
-    "uncommitted_files": 11
+    "subject": "Merge branch 'm4/W2-session-reset' into claude/9-25",
+    "working_tree_clean": true,
+    "uncommitted_files": 0
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-25T06:50:54",
+    "collected_at": "2026-09-25T07:29:03",
     "total": {
-      "tests": 1338,
-      "failures": 0,
+      "tests": 269,
+      "failures": 1,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "evaluation": {
         "tests": 27,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "app": {
-        "tests": 1071,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -43,8 +37,8 @@
         "skipped": 0
       },
       "behavior-test": {
-        "tests": 119,
-        "failures": 0,
+        "tests": 121,
+        "failures": 1,
         "errors": 0,
         "skipped": 0
       },
@@ -61,12 +55,10 @@
         "skipped": 0
       }
     },
-    "passing": true
+    "passing": false
   },
   "apk": {
-    "built": true,
-    "bytes": 223398935,
-    "built_at": "2026-09-25T06:49:47"
+    "built": false
   },
   "capabilities": {
     "available": true,
@@ -74,7 +66,8 @@
       "device": 36,
       "unsupported": 6,
       "human": 1,
-      "unit": 2
+      "unit": 4,
+      "implemented": 2
     },
     "human_verification_pending": [
       "open_mic_thresholds",
@@ -125,53 +118,25 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "A1: | A1 | Each REST response parses from a recorded fixture; missing fields stay missing | functional | `AmapLiveInfoParserTest` | not built |",
-    "actionable_count": 74,
+    "NEXT_ACTION": "app-debug.apk: no debug APK has been built from this tree",
+    "actionable_count": 66,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 16,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
       {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-011-amap-live-info.md",
-        "item": "A1",
+        "priority": 1,
+        "class": "broken build or missing artifact",
+        "source": "build output",
+        "item": "app-debug.apk",
         "blocked_by": null
       },
       {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-011-amap-live-info.md",
-        "item": "A10",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-011-amap-live-info.md",
-        "item": "A2",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-011-amap-live-info.md",
-        "item": "A3",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-012-speech-arbiter.md",
-        "item": "A3",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-011-amap-live-info.md",
-        "item": "A4",
+        "priority": 3,
+        "class": "invariant violation",
+        "source": "test report",
+        "item": "com.novadrive.architecture.FeaturePresenceRegressionTest",
         "blocked_by": null
       },
       {
@@ -182,73 +147,17 @@
         "blocked_by": null
       },
       {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-011-amap-live-info.md",
-        "item": "A5",
+        "priority": 5,
+        "class": "implemented but not wired into production",
+        "source": "capabilities.yaml",
+        "item": "along_route",
         "blocked_by": null
       },
       {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-012-speech-arbiter.md",
-        "item": "A5",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-011-amap-live-info.md",
-        "item": "A6",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-012-speech-arbiter.md",
-        "item": "A6",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-011-amap-live-info.md",
-        "item": "A7",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-012-speech-arbiter.md",
-        "item": "A7",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-010-screen-affordances.md",
-        "item": "A8",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-011-amap-live-info.md",
-        "item": "A8",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-012-speech-arbiter.md",
-        "item": "A8",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-011-amap-live-info.md",
-        "item": "A9",
+        "priority": 5,
+        "class": "implemented but not wired into production",
+        "source": "capabilities.yaml",
+        "item": "route_traffic",
         "blocked_by": null
       },
       {
@@ -347,6 +256,27 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "LIFECYCLE-ERROR-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "LIVE-INFO-DEVICE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "LIVE-INFO-L6-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "LIVE-INFO-REGRESSION-001",
         "blocked_by": null
       },
       {
@@ -521,6 +451,20 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "SPEECH-ARBITER-DEVICE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "SPEECH-WORKLOAD-DEVICE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "SUITE-SCENARIO-001",
         "blocked_by": null
       },
@@ -529,6 +473,13 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "TRUTH-BAIT-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "TRUTH-LIVEINFO-NEWS-001",
         "blocked_by": null
       },
       {
@@ -609,24 +560,10 @@
         "blocked_by": null
       },
       {
-        "priority": 7,
-        "class": "active milestone row",
-        "source": "CURRENT_MILESTONE.md",
-        "item": "Workload hold before manoeuvres",
-        "blocked_by": null
-      },
-      {
-        "priority": 7,
-        "class": "active milestone row",
-        "source": "CURRENT_MILESTONE.md",
-        "item": "`query_live_info` weather: parser, tool, truth guard, capabi",
-        "blocked_by": null
-      },
-      {
-        "priority": 7,
-        "class": "active milestone row",
-        "source": "CURRENT_MILESTONE.md",
-        "item": "`route_traffic`, `along_route`, `place_details`",
+        "priority": 10,
+        "class": "stale state or harness defect",
+        "source": "state",
+        "item": "PROJECT_STATE.json",
         "blocked_by": null
       },
       {
