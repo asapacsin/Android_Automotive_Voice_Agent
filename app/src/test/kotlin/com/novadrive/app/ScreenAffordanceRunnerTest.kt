@@ -65,10 +65,10 @@ class ScreenAffordanceRunnerTest {
 
     @Test
     fun aFailureIsReportedForTheModelToSay() {
-        controls.recenterResult = ScreenControls.Outcome(false, "RECENTER_NO_FIX")
-        assertTrue(runner.tryHandle("回到当前位置"))
-        assertEquals(listOf("RECENTER_NO_FIX"), failures)
-        assertTrue(ScreenAffordanceRunner.failureMessage("RECENTER_NO_FIX").contains("不要说已经完成"))
+        controls.adjustResult = ScreenControls.Outcome(false, "HVAC_FAULT")
+        assertTrue(runner.tryHandle("温度减"))
+        assertEquals(listOf("HVAC_FAULT"), failures)
+        assertTrue(ScreenAffordanceRunner.failureMessage("HVAC_FAULT").contains("不要说已经完成"))
     }
 
     @Test
@@ -87,6 +87,23 @@ class ScreenAffordanceRunnerTest {
     }
 
     @Test
+    fun cameraAndRecenterActByTheWordToo() {
+        val camera = ScreenAffordanceRunner.CAMERA
+        assertNull(ScreenAffordanceRunner.plan(camera, "关掉", false, false, cameraShowing = false), "关掉摄像头 must not open it")
+        assertNull(ScreenAffordanceRunner.plan(camera, "打开", false, false, cameraShowing = true))
+        assertTrue(ScreenAffordanceRunner.plan(camera, "关闭", false, false, cameraShowing = true) != null)
+        assertTrue(ScreenAffordanceRunner.plan(camera, null, false, false, cameraShowing = true) != null)
+        assertNull(ScreenAffordanceRunner.plan(RECENTER, "关闭", false, false), "关闭定位 is not a recentre")
+    }
+
+    @Test
+    fun aRecentreFailureIsNotSpokenBecauseTheMapAlreadyShowsIt() {
+        controls.recenterResult = ScreenControls.Outcome(false, "RECENTER_NO_FIX")
+        assertTrue(runner.tryHandle("回到当前位置"))
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
     fun namesAreSplitFromResources() {
         assertEquals(listOf("上一首", "重新播放"), ScreenAffordanceRunner.names("上一首| 重新播放 |"))
     }
@@ -94,15 +111,17 @@ class ScreenAffordanceRunnerTest {
     private class FakeControls : ScreenControls {
         val calls = mutableListOf<String>()
         var recenterResult = ScreenControls.Outcome(true)
+        var adjustResult = ScreenControls.Outcome(true)
         override val musicPlaying: StateFlow<Boolean> = MutableStateFlow(false)
         override val climate: StateFlow<ClimateState> = MutableStateFlow(ClimateState(powerOn = false, targetTemperatureCelsius = 24.0, fanLevel = 2))
         override suspend fun toggleMusic(): ScreenControls.Outcome { calls += "toggle_music"; return ScreenControls.Outcome(true) }
         override suspend fun restartMusic(): ScreenControls.Outcome { calls += "restart"; return ScreenControls.Outcome(true) }
         override suspend fun toggleClimatePower(): ScreenControls.Outcome { calls += "power"; return ScreenControls.Outcome(true) }
         override suspend fun adjustTemperature(delta: Double): ScreenControls.Outcome {
-            calls += "adjust:$delta"; return ScreenControls.Outcome(true)
+            calls += "adjust:$delta"; return adjustResult
         }
         override suspend fun recenter(): ScreenControls.Outcome { calls += "recenter"; return recenterResult }
         override suspend fun toggleCamera(): ScreenControls.Outcome { calls += "camera"; return ScreenControls.Outcome(true) }
+        override fun cameraShowing(): Boolean = false
     }
 }

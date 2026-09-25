@@ -137,6 +137,14 @@ Never the transcript or a place name (I-8): picker row ids are opaque (`i2`, POI
 - **Spoken names.** The defaults in the table, kept in `strings.xml` and used as `contentDescription`.
   The owner can add more; no escalation needed.
 - **Speak on success?** Default **no** (B5). Changeable later without touching the matcher.
+- **「停止」 alone means stop music.** While music plays during navigation, 「停止」 is taken
+  locally and never reaches the model, even if the driver meant navigation. Default kept because
+  「结束导航」 is the navigation phrase and 「停止」 is the bar's word; drop the alias from
+  `voice_music_stop` if device use says otherwise. Raised by review 2026-09-25.
+- **Model call before its transcript.** Claims key on `DriverContext.capabilityEpoch()`, which
+  advances at speech start, so a model call that precedes `transcription.completed` still blocks
+  the local path for that utterance (`AffordanceTurnClaimTest`). Whether a refused model call
+  then says something contradictory is checked on the phone (AFFORDANCE-DEVICE-001).
 
 ## Implementation status
 

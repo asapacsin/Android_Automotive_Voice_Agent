@@ -56,13 +56,17 @@ object ToolCallGuards {
     fun repeatedInTurn(call: DomainVoiceEvent.ToolCall, context: DriverContext?): String? {
         if (call.name !in REPEAT_SENSITIVE) return null
         if (context == null) return null
-        val epoch = context.currentEpoch()
-        if (epoch <= 0) return null
         val arguments = call.arguments.filterKeys { it != "_validation_error" }
-        // SPEC-010 B4: the on-screen matcher may already have run this capability for this turn.
-        if (!context.claimCapability(epoch, call.name, arguments["action"], DriverContext.ClaimSource.MODEL)) {
+        // SPEC-010 B4: the on-screen matcher may already have run this capability for this
+        // utterance. Keyed on the utterance that started, since the call can precede its transcript.
+        val capabilityEpoch = context.capabilityEpoch()
+        if (capabilityEpoch > 0 &&
+            !context.claimCapability(capabilityEpoch, call.name, arguments["action"], DriverContext.ClaimSource.MODEL)
+        ) {
             return DUPLICATE_IN_TURN
         }
+        val epoch = context.currentEpoch()
+        if (epoch <= 0) return null
         return if (context.claimDispatch(epoch, call.name, arguments)) null else DUPLICATE_IN_TURN
     }
 

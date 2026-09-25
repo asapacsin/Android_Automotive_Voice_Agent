@@ -2341,6 +2341,7 @@ tests:
       - "affordance_match id=<id> for each, and screen_action=voice_<id> ok=true"
       - "no tool= line from the model for the same capability in that turn"
       - "no transcript or place name in the log"
+      - "no spoken reply contradicting the local success (e.g. 没有成功) when the model's own call is refused DUPLICATE_IN_TURN, and no reply at all when cancelCurrentResponse ran before a response existed"
     terminal_success: [music_stopped, climate_toggled, map_recentred]
     evidence: []
     related: [SPEC-010, B-024]

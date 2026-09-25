@@ -54,6 +54,7 @@ class DriverContext(private val clock: () -> Long = { System.currentTimeMillis()
 
     private var requestText: String = ""
     private var requestEpoch: Long = 0
+    private var speechEpoch: Long = 0
     private var climate: Climate? = null
     private val adjustments = mutableMapOf<Dimension, Adjustment>()
     private var clarification: Clarification? = null
@@ -68,7 +69,8 @@ class DriverContext(private val clock: () -> Long = { System.currentTimeMillis()
         requestText = text.trim()
         requestEpoch = epoch
         dispatched.removeAll { it.startsWith("$epoch|") }
-        capabilities.keys.removeAll { it.startsWith("$epoch|") }
+        // Not cleared for *this* epoch: the model's call can precede its transcript (SPEC-010 B4).
+        capabilities.keys.removeAll { it.substringBefore('|').toLong() < epoch }
     }
 
     /**
@@ -136,6 +138,16 @@ class DriverContext(private val clock: () -> Long = { System.currentTimeMillis()
             val key = "$epoch|$tool|" + arguments.toSortedMap().entries.joinToString(",") { "${it.key}=${it.value}" }
             dispatched.add(key)
         }
+
+    /**
+     * The driver started speaking a new utterance. Baidu may send the model's function call before
+     * the transcript completes, so per-turn capability claims key on this, not on [currentEpoch],
+     * which only advances with the transcript (SPEC-010 B4).
+     */
+    fun onSpeechStarted(epoch: Long) = synchronized(lock) { speechEpoch = maxOf(speechEpoch, epoch) }
+
+    /** The epoch a capability claim belongs to: the latest utterance started or transcribed. */
+    fun capabilityEpoch(): Long = synchronized(lock) { maxOf(requestEpoch, speechEpoch) }
 
     /** Who ran a capability first in a turn: the on-screen matcher or the model (SPEC-010 B4). */
     enum class ClaimSource { LOCAL, MODEL }

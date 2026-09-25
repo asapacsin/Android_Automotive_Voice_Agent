@@ -377,6 +377,7 @@ change_impact:
       - AudioFocusController
       - SpeechUplinkGate
       - GuidanceMicGate
+      - SpeechArbiter
       - PcmAudioPlayer
       - AecMetrics
       - LowLatencyPlaybackBuffer

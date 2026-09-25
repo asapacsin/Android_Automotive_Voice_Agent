@@ -68,6 +68,7 @@ class MainActivity : Activity() {
             // Tap and voice both come here (I-6); the screen only renders the result.
             recenterMap = { screen.recenterMap() },
             cameraToggle = { toggleCamera() },
+            cameraOpen = { ::screen.isInitialized && screen.cameraShowing },
         )
         affordanceRunner = ScreenAffordanceRunner(
             affordances = com.novadrive.app.ui.ScreenAffordances.shared,

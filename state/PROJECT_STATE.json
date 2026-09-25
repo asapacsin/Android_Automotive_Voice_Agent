@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-09-25T06:44:43",
+  "generated_at": "2026-09-25T06:51:10",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "f247a0d",
+    "commit": "073b00f",
     "branch": "claude/9-25",
-    "subject": "SPEC-010 step 5: register affordance tests (A8)",
+    "subject": "SPEC-012 steps 1-2: speech rules characterised; pure SpeechArbiter (A1, A2, A4)",
     "working_tree_clean": false,
-    "uncommitted_files": 5
+    "uncommitted_files": 11
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-25T06:44:43",
+    "collected_at": "2026-09-25T06:50:54",
     "total": {
-      "tests": 1335,
+      "tests": 1338,
       "failures": 0,
       "errors": 0,
       "skipped": 0
@@ -25,7 +25,7 @@
         "skipped": 0
       },
       "app": {
-        "tests": 1068,
+        "tests": 1071,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -66,7 +66,7 @@
   "apk": {
     "built": true,
     "bytes": 223398935,
-    "built_at": "2026-09-25T06:43:34"
+    "built_at": "2026-09-25T06:49:47"
   },
   "capabilities": {
     "available": true,

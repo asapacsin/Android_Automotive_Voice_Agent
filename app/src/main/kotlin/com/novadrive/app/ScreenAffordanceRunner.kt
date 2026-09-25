@@ -37,10 +37,16 @@ class ScreenAffordanceRunner(
         val result = AffordanceMatcher.match(text, affordances.current.value)
         if (result is AffordanceMatcher.Result.Ambiguous) log("affordance_ambiguous count=${result.ids.size}")
         val match = result as? AffordanceMatcher.Result.Match ?: return false
-        val plan = plan(match.affordance.id, match.verb, controls.musicPlaying.value, controls.climate.value.powerOn)
+        val plan = plan(
+            match.affordance.id,
+            match.verb,
+            controls.musicPlaying.value,
+            controls.climate.value.powerOn,
+            controls.cameraShowing(),
+        )
             ?: return false
         val driver = context()
-        val epoch = driver?.currentEpoch() ?: 0
+        val epoch = driver?.capabilityEpoch() ?: 0
         if (plan.tool != null && driver != null && epoch > 0 &&
             !driver.claimCapability(epoch, plan.tool, plan.action, DriverContext.ClaimSource.LOCAL)
         ) {
@@ -57,13 +63,18 @@ class ScreenAffordanceRunner(
                 plan.run(controls)
             }
             log("screen_action=voice_$id ok=${outcome.ok} error=${outcome.errorCode ?: "-"}")
-            if (!outcome.ok) reportFailure(outcome.errorCode ?: "UNKNOWN")
+            // A recentre failure is already written on screen by the map owner; saying it too would
+            // tell the driver twice.
+            if (!outcome.ok && outcome.errorCode?.startsWith(RECENTER_FAILURE_PREFIX) != true) {
+                reportFailure(outcome.errorCode ?: "UNKNOWN")
+            }
         }
         return true
     }
 
     companion object {
         const val AFFORDANCE_GONE = "AFFORDANCE_GONE"
+        const val RECENTER_FAILURE_PREFIX = "RECENTER_"
 
         const val MUSIC_RESTART = "music_restart"
         const val MUSIC_PLAY = "music_play"
@@ -81,7 +92,13 @@ class ScreenAffordanceRunner(
          * Pure: what [id] means in the current state. Null when it would do nothing (暂停 while
          * already stopped) — the model then answers, as it would without the screen.
          */
-        fun plan(id: String, verb: String?, musicPlaying: Boolean, climateOn: Boolean): Plan? = when (id) {
+        fun plan(
+            id: String,
+            verb: String?,
+            musicPlaying: Boolean,
+            climateOn: Boolean,
+            cameraShowing: Boolean = false,
+        ): Plan? = when (id) {
             MUSIC_RESTART -> Plan(MUSIC, "play") { it.restartMusic() }
             MUSIC_PLAY -> if (musicPlaying) null else Plan(MUSIC, "play") { it.toggleMusic() }
             MUSIC_STOP -> if (!musicPlaying) null else Plan(MUSIC, "stop") { it.toggleMusic() }
@@ -92,11 +109,7 @@ class ScreenAffordanceRunner(
                 it.adjustTemperature(ClimateLimits.DEFAULT_TEMPERATURE_STEP_C)
             }
             CLIMATE -> {
-                val wantOn = when (verb) {
-                    in OFF_VERBS -> false
-                    "打开" -> true
-                    else -> !climateOn
-                }
+                val wantOn = wanted(verb, climateOn)
                 if (wantOn == climateOn) {
                     null
                 } else {
@@ -104,9 +117,18 @@ class ScreenAffordanceRunner(
                     Plan(ClimateToolHandler.TOOL, action) { it.toggleClimatePower() }
                 }
             }
-            RECENTER -> Plan(null, null) { it.recenter() }
-            CAMERA -> Plan(null, null) { it.toggleCamera() }
+            // 「关闭定位」 is not a request to recentre.
+            RECENTER -> if (verb in OFF_VERBS) null else Plan(null, null) { it.recenter() }
+            // The word decides, never a blind toggle: 「关掉摄像头」 must not open it.
+            CAMERA -> if (wanted(verb, cameraShowing) == cameraShowing) null else Plan(null, null) { it.toggleCamera() }
             else -> null
+        }
+
+        /** On or off by the verb said; no verb means "the other state", as a tap would. */
+        private fun wanted(verb: String?, isOn: Boolean): Boolean = when (verb) {
+            in OFF_VERBS -> false
+            "打开" -> true
+            else -> !isOn
         }
 
         /** The failure line for the model; a code, never the driver's words (I-8 applies to logs). */

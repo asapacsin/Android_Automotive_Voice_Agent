@@ -43,6 +43,19 @@ class AffordanceTurnClaimTest {
     }
 
     @Test
+    fun theModelsCallBeforeTheTranscriptStillCountsForThatUtterance() {
+        // Baidu can send the function call before transcription.completed: speech for utterance 2
+        // has started, but the transcript (and currentEpoch) still says 1.
+        context.onSpeechStarted(2)
+        assertTrue(JSONObject(dispatcher.dispatch(modelCall("-1")).output!!).getBoolean("ok"))
+        context.onDriverUtterance("温度减", epoch = 2)
+        assertFalse(
+            context.claimCapability(context.capabilityEpoch(), "control_climate", ClimateToolActions.ADJUST_TEMPERATURE, ClaimSource.LOCAL),
+            "the local path must see the model's claim for the same utterance",
+        )
+    }
+
+    @Test
     fun aNewTurnClaimsAfresh() {
         assertTrue(localClaim())
         context.onDriverUtterance("温度减", epoch = 2)

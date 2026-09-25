@@ -698,6 +698,7 @@ class BaiduFlexClient(
             driverContext.cancel(previous.epoch)
         }
         turn = DriverTurn(turnEpoch.incrementAndGet())
+        driverContext.onSpeechStarted(turn.epoch)
         if (playbackActive || assistantSpeaking) turn.onSpeechDuringPlayback(qualified = speechEvidence())
     }
 
