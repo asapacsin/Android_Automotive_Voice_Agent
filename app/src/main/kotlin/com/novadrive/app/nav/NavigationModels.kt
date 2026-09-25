@@ -6,6 +6,7 @@ data class Destination(
     val longitude: Double,
     val poiId: String? = null,
     val address: String? = null,
+    val adcode: String? = null,
 ) {
     // v2 section 10 says the LLM must never invent coordinates, so the type refuses impossible ones.
     init {
