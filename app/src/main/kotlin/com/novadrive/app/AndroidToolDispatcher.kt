@@ -78,6 +78,8 @@ class AndroidToolDispatcher(
     private val places: SavedPlaceTool = SavedPlaceTool.none(),
     /** Calling someone is the one action here that reaches a person; see [PhoneCallTool]. */
     private val phone: PhoneCallTool = PhoneCallTool.none(),
+    /** `query_live_info` (SPEC-011): weather, route traffic, along-route POIs, place details. */
+    private val liveInfo: LiveInfoTool = LiveInfoTool.none(),
     /**
      * Last so the common test call site can pass it as a trailing lambda. Everything above has a
      * default; this one is what nearly every dispatcher test overrides.
@@ -220,6 +222,7 @@ class AndroidToolDispatcher(
             }
             "save_place" -> places.save(call, ::failed)
             "place_call" -> phone.call(call, ::failed)
+            "query_live_info" -> liveInfo.dispatch(call, ::failed)
             "exit_navigation_mode" -> result(call, executor.exitNavigationMode())
             com.novadrive.app.voice.BaiduFlexProtocol.END_CONVERSATION -> result(call, executor.endConversation())
             com.novadrive.app.voice.BaiduFlexProtocol.SET_SPEECH_OUTPUT -> when (call.arguments["mode"]) {

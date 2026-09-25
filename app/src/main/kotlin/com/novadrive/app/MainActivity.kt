@@ -48,6 +48,7 @@ class MainActivity : Activity() {
             climateHandler,
             VisionProvider.handler(this),
             phone = PhoneCallTool(com.novadrive.app.phone.PhoneProvider.port(this)),
+            liveInfo = LiveInfoTool.live(this),
             places = SavedPlaceTool(
                 read = savedPlaces::get,
                 write = savedPlaces::set,

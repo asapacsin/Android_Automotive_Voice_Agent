@@ -250,6 +250,7 @@ class DebugToolReceiver : BroadcastReceiver() {
             com.novadrive.app.vehicle.ClimateToolHandler(com.novadrive.app.vehicle.VehicleControlProvider.port),
             com.novadrive.app.vision.VisionProvider.handler(context),
             phone = PhoneCallTool(com.novadrive.app.phone.PhoneProvider.port(context)),
+            liveInfo = LiveInfoTool.live(context),
             places = SavedPlaceTool(
                 read = com.novadrive.app.nav.SavedPlaceStore(context)::get,
                 write = com.novadrive.app.nav.SavedPlaceStore(context)::set,

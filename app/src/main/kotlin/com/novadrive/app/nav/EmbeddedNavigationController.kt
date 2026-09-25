@@ -59,7 +59,15 @@ class EmbeddedNavigationController(
         engine.attachNavigationEndedCallback(::onNavigationEnded)
     }
 
-    suspend fun requestDestination(query: String) {
+    suspend fun requestDestination(query: String) = request { resolver.resolve(query) }
+
+    /**
+     * SPEC-011 `along_route`: POIs found along the route go into the same picker as a search, so
+     * choosing one is the existing destination → route → guidance path, not a second one.
+     */
+    suspend fun requestCandidates(candidates: List<DestinationCandidate>) = request { candidates }
+
+    private suspend fun request(resolve: suspend () -> List<DestinationCandidate>) {
         // Changing destination while driving: end the current guidance first, otherwise the
         // old route keeps navigating underneath the new picker. Done outside the lock because
         // the host's ended-callback re-enters onNavigationEnded.
@@ -76,7 +84,7 @@ class EmbeddedNavigationController(
             generation
         }
         DebugVoiceLog.log("nav_resolve_start")
-        val resolved = resolver.resolve(query)
+        val resolved = resolve()
         val autoCalculate = synchronized(lock) {
             if (seq != generation) return
             DebugVoiceLog.log("nav_resolve_candidates count=${resolved.size}")

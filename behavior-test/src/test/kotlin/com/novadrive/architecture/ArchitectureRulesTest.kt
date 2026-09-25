@@ -37,6 +37,8 @@ class ArchitectureRulesTest {
             "app/src/main/kotlin/com/novadrive/app/nav/amap/NoOpNaviViewListener.kt",
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapPrivacyCompliance.kt",
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapDrivingPresentation.kt",
+            // SPEC-011: getTrafficStatuses and RoutePOISearch, behind the SDK-free RouteLiveInfoSource.
+            "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapRouteLiveInfo.kt",
         )
         val unexpected = importers - allowed
         assertTrue(unexpected.isEmpty()) {
@@ -137,10 +139,25 @@ class ArchitectureRulesTest {
             file.readLines().forEachIndexed { index, line ->
                 if (!line.contains("DebugVoiceLog.log")) return@forEachIndexed
                 // A log line that interpolates a coordinate-shaped property.
-                val leaks = Regex("\\$\\{?[A-Za-z.]*(latitude|longitude|\\blat\\b|\\blon\\b)").containsMatchIn(line)
+                val leaks = Regex("\\$\\{?[A-Za-z.]*(latitude|longitude|\\blat\\b|\\blon\\b)").containsMatchIn(line) ||
+                    // SPEC-011 A5: nor anything else that identifies a place - an adcode, a city, an
+                    // address, a POI id or name, or a REST URL (regeo carries `location=`).
+                    Regex("\\$\\{?[A-Za-z.]*(adcode|city|address|poiId|poiName|candidate\\.name|destination\\.name|\\burl\\b|httpUrl)", RegexOption.IGNORE_CASE)
+                        .containsMatchIn(line)
                 if (leaks) offenders += "${file.relativeTo(root).path.replace('\\', '/')}:${index + 1}"
             }
         }
+        // SPEC-011 observability: `query_live_info` logs through an injected sink, so its one log
+        // shape is checked here - `live_info kind= ok= code= ms= cached=` and nothing else.
+        val liveInfo = text("app/src/main/kotlin/com/novadrive/app/LiveInfoTool.kt")
+        val logged = Regex("\\blog\\(\\s*\"(live_info[^)]*)\\)", RegexOption.DOT_MATCHES_ALL).findAll(liveInfo).map { it.groupValues[1] }.toList()
+        assertTrue(logged.isNotEmpty()) { "LiveInfoTool must log its outcome (SPEC-011 observability)" }
+        val fields = logged.flatMap { Regex("\\b([a-z_]+)=").findAll(it).map { m -> m.groupValues[1] }.toList() }.toSet()
+        assertTrue(fields.all { it in setOf("kind", "ok", "code", "ms", "cached") }) {
+            "SPEC-011 / I-8: live_info may log only kind, ok, code, ms and cached; found $fields"
+        }
+        offenders += logged.filter { Regex("(?i)(adcode|city|where|address|name|poi|location|lat|lon|url)").containsMatchIn(it) }
+            .map { "LiveInfoTool.kt: $it" }
         assertTrue(offenders.isEmpty()) {
             "INVARIANT I-8: no coordinate may be logged. Found: $offenders"
         }

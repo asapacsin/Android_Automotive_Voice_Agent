@@ -164,17 +164,25 @@ class ActionClaimGuard {
         )
         private val MEDIA_PUNCTUATION = "，。！？、,.!? \t　"
         /**
-         * Questions about the world right now. This product has **no** weather, traffic or news
-         * source, so any answer containing an actual forecast is invented by definition — there is
-         * nothing it could have been read from.
+         * Questions about the world right now that `query_live_info` can answer (SPEC-011), by kind.
+         * An answer is true only when a lookup of that kind succeeded in the same turn; any other
+         * answer containing a forecast is invented.
          *
          * Measured 2026-09-18: 「今天天气怎么样」 was answered honestly once and, in a later session,
          * with an invented forecast for **Beijing** (「今天北京天气晴转多云，气温20到28度」). Checklist
-         * row T09 requires a fixed refusal instead.
+         * row T09 required a fixed refusal while there was no source.
          */
-        private val REALTIME_INFO_WORDS = listOf(
-            "天气", "气温", "温度多少度", "下雨", "下雪", "台风", "空气质量", "雾霾", "紫外线",
-            "路况", "堵车", "拥堵", "限行", "油价", "股票", "新闻", "汇率",
+        private val LIVE_INFO_WORDS = mapOf(
+            "weather" to listOf("天气", "气温", "温度多少度", "下雨", "下雪", "台风"),
+            "route_traffic" to listOf("路况", "堵车", "拥堵", "堵不堵"),
+        )
+
+        /**
+         * Real-time questions with **no** source on this car, SPEC-011 included: Amap's weather
+         * endpoint has no air quality, and there is no news, market or price feed. Always refused.
+         */
+        private val NO_SOURCE_INFO_WORDS = listOf(
+            "空气质量", "雾霾", "紫外线", "限行", "油价", "股票", "股价", "新闻", "汇率",
         )
 
         private val CAMERA_WORDS = listOf("镜头", "摄像头", "画面", "拍到", "看看前面", "前面有什么", "前面是什么", "前面是谁", "前面有谁")
@@ -187,6 +195,8 @@ class ActionClaimGuard {
         private val DECLINE_WORDS = listOf(
             "不支持", "无法", "不能", "没法", "没有", "暂不", "暂时不", "抱歉", "对不起", "没听清", "再说一遍",
             "请问", "吗", "？", "?", "哪", "什么",
+            // SPEC-011: the honest outcomes of a live lookup that did not return data.
+            "查不到", "没查到", "用完了",
         )
 
         /**
@@ -261,19 +271,47 @@ class ActionClaimGuard {
             return remainder.isNotEmpty()
         }
 
-        /** A question about the world right now, which this product has no tool to answer. */
-        fun isRealtimeInfoRequest(text: String): Boolean = REALTIME_INFO_WORDS.any { it in text }
+        /** A question about the world right now: answerable from a live lookup, or not at all. */
+        fun isRealtimeInfoRequest(text: String): Boolean =
+            NO_SOURCE_INFO_WORDS.any { it in text } || LIVE_INFO_WORDS.values.any { words -> words.any { it in text } }
 
         /**
-         * An answer to a real-time question that did not decline is fabricated: there is no source
-         * it could have come from. No keyword list of "wrong" answers is possible or needed.
+         * The `query_live_info` kind whose successful result may answer [text], or null. Null
+         * whenever the question also asks for something with no source: 「天气和新闻」 cannot be
+         * made true by a weather lookup.
+         */
+        fun liveInfoKindFor(text: String): String? {
+            if (NO_SOURCE_INFO_WORDS.any { it in text }) return null
+            return LIVE_INFO_WORDS.entries.firstOrNull { (_, words) -> words.any { it in text } }?.key
+        }
+
+        /**
+         * An answer to a real-time question that did not decline, with no lookup behind it, is
+         * fabricated: there is nothing it could have been read from.
          */
         fun fabricatesRealtimeInfo(reply: String): Boolean = !declines(reply)
 
-        fun realtimeInfoCorrection(request: String): String =
-            "用户刚才问的是实时信息：「$request」。这辆车上没有任何可以查询天气、路况或新闻的工具，" +
-                "所以你上一句的内容是编造的。不要调用任何工具，只用一句话如实告诉用户：" +
-                "我没有实时信息的数据来源，无法回答这个问题。不要给出任何城市、温度或预报。"
+        /**
+         * Self-contained: it may land in a fresh conversation. Three cases, so the model is never
+         * told something false about its own tools: no source exists; a lookup ran and failed (do
+         * not retry — measured 2026-09-24, a re-request hid the failure); or nothing was looked up.
+         */
+        fun realtimeInfoCorrection(request: String, lookupFailed: Boolean = false): String {
+            val kind = liveInfoKindFor(request)
+            return when {
+                kind == null ->
+                    "用户刚才问的是实时信息：「$request」。这辆车上没有可以查询新闻、股价、油价、汇率或空气质量的数据来源，" +
+                        "所以你上一句的内容是编造的。不要调用任何工具，只用一句话如实告诉用户：" +
+                        "我没有这类实时信息的数据来源，无法回答这个问题。不要给出任何城市、温度或预报，也不要给出任何数字。"
+                lookupFailed ->
+                    "用户刚才问的是实时信息：「$request」。刚才的查询没有成功，没有拿到任何结果，所以你上一句的内容是编造的。" +
+                        "不要调用任何工具，只用一句话如实告诉用户现在查不到。不要给出任何城市、温度或预报，也不要描述路况。"
+                else ->
+                    "用户刚才问的是实时信息：「$request」。你没有查询，所以你上一句的内容是编造的。" +
+                        "请调用 query_live_info（kind=$kind）查询，然后只根据返回结果回答；如果查询失败，就如实说查不到。" +
+                        "拿到结果之前，不要给出任何城市、温度或预报，也不要描述路况。"
+            }
+        }
 
         fun isCameraQuestion(text: String): Boolean = CAMERA_WORDS.any { it in text }
 

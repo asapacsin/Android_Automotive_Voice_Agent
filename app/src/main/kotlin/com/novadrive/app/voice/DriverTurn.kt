@@ -62,7 +62,10 @@ class DriverTurn(val epoch: Long) {
         /** A request with no tool at all (音量, 车窗 …). No proof is possible, ever. */
         NO_TOOL_ACTION,
 
-        /** A question about the world right now, which this car has no source for. */
+        /**
+         * A question about the world right now. Weather and route traffic can be answered from a
+         * successful `query_live_info` of that kind this turn (SPEC-011 B3); news and prices never.
+         */
         REALTIME_INFO,
 
         /** Chat, a question, a choice from a list. Its truth does not depend on execution. */
@@ -125,6 +128,9 @@ class DriverTurn(val epoch: Long) {
     var proven: Boolean = false
         private set
 
+    /** `query_live_info` kinds that returned `ok=true` this turn: the only source for REALTIME_INFO. */
+    private val liveInfoKinds = mutableSetOf<String>()
+
     /** The last failure reason delivered for this turn, if any. */
     var lastFailure: String? = null
         private set
@@ -179,7 +185,9 @@ class DriverTurn(val epoch: Long) {
     }
 
     private fun decideHold(contextAwaitingAnswer: Boolean): HoldReason {
-        if (proven) return HoldReason.NONE
+        // Proof of *some* action is not a source for the weather: only a live-info result of the
+        // kind the driver asked about is (SPEC-011 B3).
+        if (proven && (kind != Kind.REALTIME_INFO || answeredFromSource())) return HoldReason.NONE
         if (echoCandidate && !toolCalled) return HoldReason.ECHO_CANDIDATE
         if (kind == Kind.CAPABILITY_HELP) return HoldReason.CAPABILITY_HELP
         // An action claim always needs proof. Measured on device 2026-09-18: with a route list on
@@ -261,11 +269,12 @@ class DriverTurn(val epoch: Long) {
      * A tool result was delivered to the model. `ok=true` is the only thing in this system that
      * proves an external action happened; a failure explicitly does **not** release a claim.
      */
-    fun onExecutionResult(ok: Boolean, failure: String?): Verdict {
+    fun onExecutionResult(ok: Boolean, failure: String?, liveInfoKind: String? = null): Verdict {
         if (!accepts()) {
             rejectedEvents++
             return Verdict.Wait
         }
+        if (ok && liveInfoKind != null) liveInfoKinds += liveInfoKind
         if (!ok) {
             lastFailure = failure
             executionFailed = true
@@ -343,32 +352,13 @@ class DriverTurn(val epoch: Long) {
                 }
             }
 
-            HoldReason.NO_TOOL_REQUEST -> {
-                if (toolCalled || hadToolCallInResponse) {
-                    // A tool was found after all; it is no longer a no-tool request.
-                    Verdict.Release("tool_called")
-                } else {
-                    val fabricated = if (kind == Kind.REALTIME_INFO) {
-                        ActionClaimGuard.fabricatesRealtimeInfo(reply)
-                    } else {
-                        ActionClaimGuard.claimsDone(reply)
-                    }
-                    if (fabricated) {
-                        val why = if (kind == Kind.REALTIME_INFO) {
-                            "fabricated_realtime_info"
-                        } else {
-                            "false_claim_unsupported"
-                        }
-                        val correction = if (kind == Kind.REALTIME_INFO) {
-                            ActionClaimGuard.realtimeInfoCorrection(requestText)
-                        } else {
-                            null // ActionClaimGuard's own nudge already covers this case.
-                        }
-                        Verdict.Drop(why, correction)
-                    } else {
-                        Verdict.Release("honest_refusal")
-                    }
-                }
+            HoldReason.NO_TOOL_REQUEST -> when {
+                kind == Kind.REALTIME_INFO -> realtimeVerdict(reply, hadToolCallInResponse)
+                // A tool was found after all; it is no longer a no-tool request.
+                toolCalled || hadToolCallInResponse -> Verdict.Release("tool_called")
+                // ActionClaimGuard's own nudge already covers the correction.
+                ActionClaimGuard.claimsDone(reply) -> Verdict.Drop("false_claim_unsupported")
+                else -> Verdict.Release("honest_refusal")
             }
 
             HoldReason.CAPABILITY_HELP -> when {
@@ -413,6 +403,25 @@ class DriverTurn(val epoch: Long) {
         if (phase == Phase.RESPONDING) phase = Phase.SETTLED
         return verdict
     }
+
+    /**
+     * SPEC-011 B3. A reply about the weather or traffic is released when a lookup of that kind
+     * succeeded this turn. An earlier tool call is not enough: a lookup that *failed* is followed by
+     * a response of its own, and that response inventing a forecast is exactly the fabrication this
+     * guards against. News and prices have no source, so [answeredFromSource] is never true for them.
+     */
+    private fun realtimeVerdict(reply: String, hadToolCallInResponse: Boolean): Verdict = when {
+        hadToolCallInResponse -> Verdict.Release("tool_called")
+        answeredFromSource() -> Verdict.Release("live_info_result")
+        ActionClaimGuard.fabricatesRealtimeInfo(reply) -> Verdict.Drop(
+            "fabricated_realtime_info",
+            ActionClaimGuard.realtimeInfoCorrection(requestText, lookupFailed = executionFailed),
+        )
+        else -> Verdict.Release("honest_refusal")
+    }
+
+    private fun answeredFromSource(): Boolean =
+        ActionClaimGuard.liveInfoKindFor(requestText)?.let { it in liveInfoKinds } == true
 
     /** The hold budget was exceeded. A real reply is never lost to a stuck gate. */
     fun onHoldBudgetExceeded(): Verdict {

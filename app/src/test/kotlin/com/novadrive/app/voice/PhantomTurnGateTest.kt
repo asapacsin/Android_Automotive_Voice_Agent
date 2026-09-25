@@ -158,8 +158,16 @@ class PhantomTurnGateTest {
 
     @Test
     fun theRealtimeCorrectionForbidsInventingAnyDetail() {
-        val correction = ActionClaimGuard.realtimeInfoCorrection("今天天气怎么样？")
-        assertTrue(correction.contains("不要调用任何工具"))
-        assertTrue(correction.contains("不要给出任何城市、温度或预报"))
+        // No source at all: never call anything, never give a figure.
+        val news = ActionClaimGuard.realtimeInfoCorrection("今天有什么新闻？")
+        assertTrue(news.contains("不要调用任何工具"))
+        assertTrue(news.contains("不要给出任何城市、温度或预报"))
+        // SPEC-011: weather has a source - look it up, and invent nothing until then.
+        val weather = ActionClaimGuard.realtimeInfoCorrection("今天天气怎么样？")
+        assertTrue(weather.contains("query_live_info"))
+        assertTrue(weather.contains("不要给出任何城市、温度或预报"))
+        // A lookup that already failed is not retried.
+        val failed = ActionClaimGuard.realtimeInfoCorrection("今天天气怎么样？", lookupFailed = true)
+        assertTrue(failed.contains("不要调用任何工具"))
     }
 }

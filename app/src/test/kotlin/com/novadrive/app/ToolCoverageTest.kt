@@ -35,6 +35,8 @@ class ToolCoverageTest {
         // Dispatched, then refused with NO_TELEPHONY on a device with no SIM - which is a
         // dispatch, not an UNKNOWN_TOOL, and that is what this test checks.
         "place_call" to """{"contact":"张三"}""",
+        // SPEC-011: with no web key it is refused with AMAP_WEB_KEY_MISSING - still a dispatch.
+        "query_live_info" to """{"kind":"weather","where":"珠海"}""",
     )
 
     private fun declaredTools(): List<String> {
