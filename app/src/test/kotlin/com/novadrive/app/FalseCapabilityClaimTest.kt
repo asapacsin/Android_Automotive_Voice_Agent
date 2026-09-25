@@ -279,4 +279,108 @@ class FalseCapabilityClaimTest {
         )
         assertTrue(context.validReferents().isEmpty(), "a cancelled turn may not write context")
     }
+
+    // ---- SPEC-011 A3/A4: a live answer needs a live result of the same kind, this turn ----
+
+    private val goodAudio = com.novadrive.app.voice.SpeechUplinkGate.Segment(durationMs = 1_500, voicedFrames = 14, peak = 9_000)
+
+    private fun realtimeTurn(request: String): DriverTurn {
+        val turn = DriverTurn(epoch = 1)
+        turn.onUserTranscript(request) { DriverTurn.classify(it) }
+        assertEquals(DriverTurn.Kind.REALTIME_INFO, turn.kind, request)
+        return turn
+    }
+
+    /** The lookup response: the model calls the tool and says nothing. */
+    private fun DriverTurn.callsTheTool() {
+        onResponseStarted(goodAudio, false)
+        onToolCall()
+        assertTrue(onResponseDone("", hadToolCallInResponse = true) is DriverTurn.Verdict.Release)
+    }
+
+    /** The answer response, after the tool result was delivered. */
+    private fun DriverTurn.answers(reply: String): DriverTurn.Verdict {
+        onResponseStarted(goodAudio, false)
+        onAssistantText(reply)
+        return onResponseDone(reply, hadToolCallInResponse = false)
+    }
+
+    private val forecast = "今天北京天气晴转多云，气温20到28度。"
+
+    @Test
+    fun aWeatherAnswerWithNoLookupIsStillCorrected() {
+        val verdict = realtimeTurn("今天天气怎么样").answers(forecast)
+        assertTrue(verdict is DriverTurn.Verdict.Drop, "$verdict")
+        val correction = (verdict as DriverTurn.Verdict.Drop).correction.orEmpty()
+        assertTrue(correction.contains("query_live_info") && correction.contains("kind=weather"), correction)
+    }
+
+    @Test
+    fun aWeatherAnswerFromASuccessfulWeatherLookupIsReleased() {
+        val turn = realtimeTurn("今天天气怎么样")
+        turn.callsTheTool()
+        turn.onExecutionResult(ok = true, failure = null, liveInfoKind = "weather")
+        val verdict = turn.answers("北京现在多云，24度，南风3级。")
+        assertTrue(verdict is DriverTurn.Verdict.Release, "$verdict")
+    }
+
+    @Test
+    fun aFailedLookupDoesNotLicenceAForecast() {
+        // The old rule released anything once a tool had been called; a failed lookup followed by an
+        // invented forecast would have reached the driver.
+        val turn = realtimeTurn("今天天气怎么样")
+        turn.callsTheTool()
+        turn.onExecutionResult(ok = false, failure = "LIVE_INFO_UNAVAILABLE")
+        val verdict = turn.answers(forecast)
+        assertTrue(verdict is DriverTurn.Verdict.Drop, "$verdict")
+        val correction = (verdict as DriverTurn.Verdict.Drop).correction.orEmpty()
+        assertTrue(correction.contains("没有成功") && correction.contains("不要调用任何工具"), correction)
+    }
+
+    @Test
+    fun anHonestNoDataAfterAFailedLookupIsHeard() {
+        val turn = realtimeTurn("今天天气怎么样")
+        turn.callsTheTool()
+        turn.onExecutionResult(ok = false, failure = "LIVE_INFO_QUOTA")
+        assertTrue(turn.answers("今天的查询次数用完了，现在查不到天气。") is DriverTurn.Verdict.Release)
+    }
+
+    @Test
+    fun aResultOfAnotherKindIsNotASourceForTheWeather() {
+        val turn = realtimeTurn("明天会下雨吗")
+        turn.callsTheTool()
+        turn.onExecutionResult(ok = true, failure = null, liveInfoKind = "route_traffic")
+        assertTrue(turn.answers("明天小雨，17到24度。") is DriverTurn.Verdict.Drop)
+    }
+
+    @Test
+    fun trafficIsAnswerableFromARouteTrafficResult() {
+        assertEquals("route_traffic", ActionClaimGuard.liveInfoKindFor("前面堵不堵"))
+        val turn = realtimeTurn("前面堵不堵")
+        turn.callsTheTool()
+        turn.onExecutionResult(ok = true, failure = null, liveInfoKind = "route_traffic")
+        assertTrue(turn.answers("前方1.3公里有两段拥堵。") is DriverTurn.Verdict.Release)
+    }
+
+    /** A4 / TRUTH-LIVEINFO-NEWS-001: no lookup can make news, prices or air quality true. */
+    @Test
+    fun newsAndPricesStayRefusedEvenWithALiveResultInTheTurn() {
+        listOf("今天有什么新闻", "现在油价多少", "股票涨了吗", "美元汇率多少", "今天天气和新闻怎么样", "空气质量怎么样").forEach { request ->
+            assertEquals(null, ActionClaimGuard.liveInfoKindFor(request), request)
+            val turn = realtimeTurn(request)
+            turn.callsTheTool()
+            turn.onExecutionResult(ok = true, failure = null, liveInfoKind = "weather")
+            val verdict = turn.answers("今天的头条是股市大涨，油价每升8块。")
+            assertTrue(verdict is DriverTurn.Verdict.Drop, "$request -> $verdict")
+            assertTrue((verdict as DriverTurn.Verdict.Drop).correction.orEmpty().contains("没有这类实时信息的数据来源"))
+        }
+        assertTrue(realtimeTurn("今天有什么新闻").answers("抱歉，我没有新闻的数据来源。") is DriverTurn.Verdict.Release)
+    }
+
+    @Test
+    fun theDispatcherRefusesAKindWithNoSource() {
+        val output = JSONObject(dispatcher(DriverContext()).dispatch(call("query_live_info", mapOf("kind" to "news"))).output!!)
+        assertFalse(output.getBoolean("ok"))
+        assertEquals("INVALID_KIND", output.getString("error"))
+    }
 }

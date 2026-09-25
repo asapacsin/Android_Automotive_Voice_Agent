@@ -49,7 +49,7 @@ the speaker, with no intermediate claim ([INVARIANTS.md](INVARIANTS.md) I-2, I-3
 | Request | Recognised by | Required response |
 | --- | --- | --- |
 | Volume, windows, sunroof, seats, doors, boot, lights, wipers | `UtteranceIntentResolver` → `CapabilityCatalog` (`unsupported.*`) | 「这个操作没有执行，暂时不支持。」 — never 「正在调整」 |
-| News, stocks, fuel prices, exchange rates, air quality, driving restrictions | `ActionClaimGuard.REALTIME_INFO_WORDS` | An honest refusal with **no** figure, city or forecast. Weather and traffic moved to `query_live_info` (SPEC-011); a successful lookup never unlocks these |
+| News, stocks, fuel prices, exchange rates, air quality, driving restrictions | `ActionClaimGuard.NO_SOURCE_INFO_WORDS` | An honest refusal with **no** figure, city or forecast. Weather and traffic moved to `query_live_info` (SPEC-011); a successful lookup never unlocks these |
 
 Adding a capability: declare the tool, route it in `AndroidToolDispatcher`, give it a real executor
 and an honest failure result, add a row here **and** in `ProductCapabilities` /

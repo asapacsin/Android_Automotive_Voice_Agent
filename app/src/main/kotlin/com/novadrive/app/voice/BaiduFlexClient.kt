@@ -736,8 +736,13 @@ class BaiduFlexClient(
     private fun onExecutionResult(output: String) {
         val ok = output.contains("\"ok\":true")
         val failure = if (ok) null else Regex("\"error\":\"([^\"]+)\"").find(output)?.groupValues?.get(1)
-        applyVerdict(turn, turn.onExecutionResult(ok, failure))
+        applyVerdict(turn, turn.onExecutionResult(ok, failure, liveInfoKindOf(output)))
     }
+
+    /** The `kind` of a `query_live_info` result, or null for any other tool (SPEC-011 B3). */
+    private fun liveInfoKindOf(output: String): String? =
+        if (!output.contains("\"tool\":\"${BaiduFlexProtocol.QUERY_LIVE_INFO}\"")) null
+        else runCatching { JSONObject(output).optString("kind").ifEmpty { null } }.getOrNull()
 
     @Synchronized
     private fun onAssistantText(text: String) {

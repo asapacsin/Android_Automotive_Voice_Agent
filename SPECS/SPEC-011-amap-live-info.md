@@ -100,16 +100,16 @@ or POI name in a log (I-8); REST URLs carrying `location=` are never logged.
 
 | # | Criterion | Kind | Proven by | State |
 | --- | --- | --- | --- | --- |
-| A1 | Each REST response parses from a recorded fixture; missing fields stay missing | functional | `AmapLiveInfoParserTest` | not built |
-| A2 | Every failure row above yields its code | negative | `LiveInfoToolTest` | not built |
-| A3 | A weather claim with no result this turn is still corrected; with a result it is not | regression protection | `FalseCapabilityClaimTest` + `TRUTH-WEATHER-001` updated | not built |
-| A4 | News / price words stay refused | negative | `TRUTH-LIVEINFO-NEWS-001` | not built |
-| A5 | Nothing identifying a place is logged; SDK types stay in `app/nav/amap` | architectural | `ArchitectureRulesTest.locationIsNotLogged` extended, `onlyOneFileImportsAmap` | not built |
-| A6 | `along_route` results open the existing picker and 「第一个」 navigates | production wiring | `LiveInfoAlongRouteWiringTest` | not built |
-| A7 | Existing SPEC-008 selection does not regress after the declaration is added | device | SPEC-008 suite before/after, same build otherwise (LOCAL_DEVICE) | not built |
-| A8 | Each kind is selected from speech in ≥ 9 of 10 runs (pass^k) | device | `LIVE-INFO-DEVICE-001` (LOCAL_DEVICE) | not built |
-| A9 | Live Amap calls return real data with the owner's keys | external service | `LIVE-INFO-L6-001` | not built |
-| A10 | The tool is declared and dispatched; capabilities.yaml splits `realtime_weather_traffic_news`; registry agrees | reconciliation | `ArchitectureRulesTest.declaredToolsAndDispatchedToolsAgree`, `harness_check.py`, `test_matrix.py --validate` | not built |
+| A1 | Each REST response parses from a recorded fixture; missing fields stay missing | functional | `AmapLiveInfoParserTest` | built — `AmapLiveInfoParserTest` 11/11, fixtures recorded live 2026-09-25 (unit, :app run in a stub-iFlytek mirror) |
+| A2 | Every failure row above yields its code | negative | `LiveInfoToolTest` | built — `LiveInfoToolTest` 17/17 (unit, same caveat) |
+| A3 | A weather claim with no result this turn is still corrected; with a result it is not | regression protection | `FalseCapabilityClaimTest` + `TRUTH-WEATHER-001` updated | built — `FalseCapabilityClaimTest` (+6 unit tests); `TRUTH-WEATHER-001` scenario S7 re-specified in `scenarios.json`, **matrix row not yet updated, not run on device** |
+| A4 | News / price words stay refused | negative | `TRUTH-LIVEINFO-NEWS-001` | unit only — `FalseCapabilityClaimTest.newsAndPricesStayRefusedEvenWithALiveResultInTheTurn`; matrix row `TRUTH-LIVEINFO-NEWS-001` not yet created |
+| A5 | Nothing identifying a place is logged; SDK types stay in `app/nav/amap` | architectural | `ArchitectureRulesTest.locationIsNotLogged` extended, `onlyOneFileImportsAmap` | built — `locationIsNotLogged` extended (adcode/city/address/POI/URL + the live_info log shape); `AmapRouteLiveInfo` added to `onlyOneFileImportsAmap` |
+| A6 | `along_route` results open the existing picker and 「第一个」 navigates | production wiring | `LiveInfoAlongRouteWiringTest` | built — `LiveInfoAlongRouteWiringTest` 2/2 (fake SDK edges; `RoutePOISearch` itself never run) |
+| A7 | Existing SPEC-008 selection does not regress after the declaration is added | device | SPEC-008 suite before/after, same build otherwise (LOCAL_DEVICE) | not run (needs phone) |
+| A8 | Each kind is selected from speech in ≥ 9 of 10 runs (pass^k) | device | `LIVE-INFO-DEVICE-001` (LOCAL_DEVICE) | not run (needs phone) |
+| A9 | Live Amap calls return real data with the owner's keys | external service | `LIVE-INFO-L6-001` | partial — REST weatherInfo / regeo / place/detail returned real data with the owner web key from the cloud container 2026-09-25; SDK kinds not reachable off-device |
+| A10 | The tool is declared and dispatched; capabilities.yaml splits `realtime_weather_traffic_news`; registry agrees | reconciliation | `ArchitectureRulesTest.declaredToolsAndDispatchedToolsAgree`, `harness_check.py`, `test_matrix.py --validate` | built — `declaredToolsAndDispatchedToolsAgree`, `CapabilityContractTest` green; `test_matrix.py --validate` 0 problems; `--selftest` registry check fails (pre-existing 31 + 4 new live_info.* "no PASS cover" until matrix rows exist) |
 
 ## Open product decisions
 
@@ -120,7 +120,13 @@ or POI name in a log (I-8); REST URLs carrying `location=` are never logged.
 
 ## Implementation status
 
-Nothing built. Steps, each a separate verified commit:
+2026-09-25: steps 1–3 and the code of step 5 are built (commits `a5005b5`, `cb74353`, and the
+truth-guard commit after them). Step 0's fixtures were recorded; its SPEC-008 device baseline, step
+4's device runs (A7, A8) and step 6 are not done. All kinds are declared in one go, so A7 must be
+measured with the full declaration. Unit evidence for `:app` came from a scratch mirror with stub
+iFlytek classes, because `Msc.jar` is not available in the cloud container.
+
+Steps, each a separate verified commit:
 
 0. **Fixtures and baseline.** Record one real response per REST endpoint (no coordinates in the
    committed fixture — replace them with fixed values) and confirm the `RoutePOISearchType` names
