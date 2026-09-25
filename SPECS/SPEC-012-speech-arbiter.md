@@ -98,10 +98,10 @@ B2's log line. Distances are logged only as a bucket (`<150`, `≥150`), never w
 
 | # | Criterion | Kind | Proven by | State |
 | --- | --- | --- | --- | --- |
-| A1 | R1–R9 hold against the current classes | regression protection | `SpeechRulesCharacterizationTest` | not built |
-| A2 | The same tests pass against `SpeechArbiter` | functional | `SpeechRulesCharacterizationTest` (arbiter mode) | not built |
+| A1 | R1–R9 hold against the current classes | regression protection | `SpeechRulesCharacterizationTest` | **built** |
+| A2 | The same tests pass against `SpeechArbiter` | functional | `SpeechRulesCharacterizationTest` (arbiter mode) | **built** |
 | A3 | Player, focus and guidance paths ask only the arbiter; `VoicePolicy` and the mute window in `NavigationState` are gone | architectural | new `ArchitectureRulesTest` rule + `FeaturePresenceRegressionTest` updated | not built |
-| A4 | Every pair of simultaneous inputs has a tested outcome | negative | `SpeechArbiterPairTest` | not built |
+| A4 | Every pair of simultaneous inputs has a tested outcome | negative | `SpeechArbiterPairTest` | **built** |
 | A5 | Workload hold: held under 150 m, released on passing or at 8 s, never cuts a playing reply | functional | `SpeechArbiterWorkloadTest` | not built |
 | A6 | On a simulated drive, guidance and a reply never overlap and P1 still drops unprompted replies | device | `SPEECH-ARBITER-DEVICE-001` (emulator drive, LOCAL_DEVICE) | not built |
 | A7 | No reply starts inside 150 m of a manoeuvre on a simulated drive | device | `SPEECH-WORKLOAD-DEVICE-001` (LOCAL_DEVICE) | not built |
@@ -116,7 +116,14 @@ B2's log line. Distances are logged only as a bucket (`<150`, `≥150`), never w
 
 ## Implementation status
 
-Nothing built. Steps, each a separate verified commit:
+Steps 1–2 done 2026-09-25 (one commit: the arbiter-mode test needs the class). Writing the table
+against today's code found one ordering the first draft had wrong: for **new reply audio**, R4
+(permanent loss) and R6 (P1 mute) are above R1 — both drop before the guidance pause applies. The
+table in B3 is read in that order. Also found for step 3: `AndroidPlaybackPort.enqueue` calls
+`unduck()` on every permitted chunk, so R8's duck lasts only until the next chunk; step 3 must
+decide whether to keep that.
+
+Steps, each a separate verified commit:
 
 1. `SpeechRulesCharacterizationTest` against today's classes (A1). No production change.
 2. `SpeechArbiter` pure class; the same tests in arbiter mode (A2, A4).

@@ -28,8 +28,8 @@ Each SPEC's steps are separate verified commits; a device row never blocks the n
 | 7 | `query_live_info` weather: parser, tool, truth guard, capability split | L2–L4 | **not built** — SPEC-011 steps 1–3 |
 | 8 | Weather selected from speech ≥ 9/10 with no SPEC-008 regression; live Amap data | **L5–L6** | **not earned** — SPEC-011 step 4 |
 | 9 | `route_traffic`, `along_route`, `place_details` | L2–L6 | **not built** — SPEC-011 step 5 |
-| 10 | Speech rules characterised against today's classes | L2 | **not built** — SPEC-012 step 1 |
-| 11 | `SpeechArbiter` owns every speak/uplink decision; `VoicePolicy` deleted | L2–L4 | **not built** — SPEC-012 steps 2–3 |
+| 10 | Speech rules characterised against today's classes | L2 | **built** (L2) — SPEC-012 step 1, `SpeechRulesCharacterizationTest` |
+| 11 | `SpeechArbiter` owns every speak/uplink decision; `VoicePolicy` deleted | L2–L4 | **partly built** (L2) — step 2: pure `SpeechArbiter` matches the table (`SpeechArbiterPairTest`); step 3 (rewire, delete VoicePolicy) open |
 | 12 | P1 and P3 re-pass on a simulated drive through the arbiter | **L5** | **not earned** — SPEC-012 A6 |
 | 13 | Workload hold before manoeuvres | L2, **L5** | **not built** — SPEC-012 step 4 |
 

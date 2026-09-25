@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-09-25T06:37:03",
+  "generated_at": "2026-09-25T06:44:43",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "313ce82",
+    "commit": "f247a0d",
     "branch": "claude/9-25",
-    "subject": "SPEC-010 step 4a: spoken bottom-bar controls run locally (A6)",
+    "subject": "SPEC-010 step 5: register affordance tests (A8)",
     "working_tree_clean": false,
-    "uncommitted_files": 2
+    "uncommitted_files": 5
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-25T06:36:16",
+    "collected_at": "2026-09-25T06:44:43",
     "total": {
-      "tests": 1167,
+      "tests": 1335,
       "failures": 0,
       "errors": 0,
       "skipped": 0
@@ -25,7 +25,7 @@
         "skipped": 0
       },
       "app": {
-        "tests": 900,
+        "tests": 1068,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 223382551,
-    "built_at": "2026-09-25T06:35:10"
+    "bytes": 223398935,
+    "built_at": "2026-09-25T06:43:34"
   },
   "capabilities": {
     "available": true,
@@ -126,7 +126,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "A1: | A1 | Each REST response parses from a recorded fixture; missing fields stay missing | functional | `AmapLiveInfoParserTest` | not built |",
-    "actionable_count": 79,
+    "actionable_count": 74,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 16,
@@ -136,13 +136,6 @@
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-011-amap-live-info.md",
-        "item": "A1",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-012-speech-arbiter.md",
         "item": "A1",
         "blocked_by": null
       },
@@ -163,13 +156,6 @@
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-012-speech-arbiter.md",
-        "item": "A2",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-011-amap-live-info.md",
         "item": "A3",
         "blocked_by": null
@@ -185,13 +171,6 @@
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-011-amap-live-info.md",
-        "item": "A4",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-012-speech-arbiter.md",
         "item": "A4",
         "blocked_by": null
       },
@@ -619,13 +598,6 @@
         "priority": 7,
         "class": "active milestone row",
         "source": "CURRENT_MILESTONE.md",
-        "item": "Speech rules characterised against today's classes",
-        "blocked_by": null
-      },
-      {
-        "priority": 7,
-        "class": "active milestone row",
-        "source": "CURRENT_MILESTONE.md",
         "item": "Spoken control names act on the phone without a model tool c",
         "blocked_by": null
       },
@@ -641,13 +613,6 @@
         "class": "active milestone row",
         "source": "CURRENT_MILESTONE.md",
         "item": "Workload hold before manoeuvres",
-        "blocked_by": null
-      },
-      {
-        "priority": 7,
-        "class": "active milestone row",
-        "source": "CURRENT_MILESTONE.md",
-        "item": "`SpeechArbiter` owns every speak/uplink decision; `VoicePoli",
         "blocked_by": null
       },
       {
