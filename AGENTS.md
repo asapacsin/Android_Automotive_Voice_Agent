@@ -148,6 +148,24 @@ Codex agent definitions and model pins live in the user's `~/.codex/agents/` dir
   Planner checks the original user-facing requirement and failure cases, not just compilation.
   An implementation subagent does not certify its own work.
 
+## Claude Code hierarchical routing
+
+This section applies to Claude Code only; the Cursor and Codex sections above are unchanged. It
+does not change architecture ownership, invariants, or who may certify work. Agent definitions:
+[`.claude/agents/`](.claude/agents/).
+
+- Start the session as `planner` (`claude --agent planner`; Opus 5.5, high effort). It reads this
+  file and the documents under "Where things are", builds a dependency DAG, and runs waves.
+- `executor` (Opus 5.5, low effort) implements bounded task packets in its own worktree. It cannot
+  spawn agents and must return BLOCKED rather than guess or redesign.
+- `reviewer` (Opus 5.5, high effort, read-only) is used selectively; its policy is
+  [`agent/REVIEWER.md`](agent/REVIEWER.md). Verdicts: PASS / REVISE / ARCHITECTURE_REVIEW_REQUIRED.
+- At most 4 concurrent executors. Writers get worktrees the planner creates from the exact feature
+  commit (`git worktree add -b <branch> ../nova-wt/<task> <BASE_COMMIT>`), not the Agent tool's
+  worktree isolation, which has based worktrees on an older commit here.
+- Architecture is upstream of planning: a conflict stops that path with
+  `ARCHITECTURE_REVIEW_REQUIRED`; it is decided through `agent/INTAKE.md`, never inside a wave.
+
 ## Hard rules
 
 - Never commit, print, log or package credentials. No coordinate, address or transcript in a log.
