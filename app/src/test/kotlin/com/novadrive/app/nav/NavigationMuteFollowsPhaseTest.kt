@@ -1,6 +1,8 @@
 package com.novadrive.app.nav
 
 import com.novadrive.app.NavigationState
+import com.novadrive.app.voice.SpeechArbiter
+import com.novadrive.app.voice.SpeechAuthority
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -24,15 +26,25 @@ import org.junit.jupiter.api.Test
  */
 class NavigationMuteFollowsPhaseTest {
 
+    private var offsetMs = 0L
+
     @BeforeEach
-    fun clearMute() = NavigationState.reset()
+    fun clearMute() {
+        SpeechAuthority.resetForTest { System.currentTimeMillis() + offsetMs }
+        NavigationState.reset()
+    }
 
     @AfterEach
-    fun leaveNothingBehind() = NavigationState.reset()
+    fun leaveNothingBehind() {
+        NavigationState.reset()
+        SpeechAuthority.resetForTest()
+    }
 
     /** Past the confirmation window, so the mute reflects the phase and not a recent reply. */
-    private fun mutedNow(): Boolean =
-        NavigationState.shouldMuteSpeech(System.currentTimeMillis() + NavigationState.CONFIRM_WINDOW_MS + 1)
+    private fun mutedNow(): Boolean {
+        offsetMs += SpeechArbiter.WINDOW_MS + 1
+        return SpeechAuthority.arbiter.navigationMuted()
+    }
 
     private fun drivingController(engine: FakeNaviEngine): EmbeddedNavigationController {
         engine.results = listOf(

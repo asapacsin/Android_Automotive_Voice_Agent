@@ -7,7 +7,6 @@ import android.media.AudioTimestamp
 import android.media.AudioTrack
 import android.os.Build
 import com.novadrive.app.DebugVoiceLog
-import com.novadrive.app.NavigationState
 import com.novadrive.ingress.realtime.AudioBufferGuard
 import com.novadrive.ingress.realtime.BoundedThreadCleanup
 import com.novadrive.ingress.realtime.PlaybackEpochEngine
@@ -594,19 +593,24 @@ class AndroidPlaybackPort(
 
     fun applyFocusChange(change: Int) {
         try {
+            val arbiter = SpeechAuthority.arbiter
             when (focusAction(change)) {
                 FocusAction.DUCK -> {
-                    // A permitted confirmation during navigation must stay at full volume even when
-                    // Amap guidance transiently ducks other streams.
-                    if (NavigationState.navigating && !NavigationState.shouldMuteSpeech()) Unit
-                    else player.duck()
+                    arbiter.onFocus(SpeechArbiter.Focus.DUCK)
+                    // R7: a permitted reply during navigation stays at full volume; R8 ducks.
+                    if (arbiter.volume() == SpeechArbiter.Volume.DUCK) player.duck()
                 }
-                FocusAction.PAUSE -> player.pausePlayback()
+                FocusAction.PAUSE -> {
+                    arbiter.onFocus(SpeechArbiter.Focus.TRANSIENT_LOSS) // R5
+                    player.pausePlayback()
+                }
                 FocusAction.STOP -> {
+                    arbiter.onFocus(SpeechArbiter.Focus.PERMANENT_LOSS) // R4
                     player.pausePlayback()
                     player.flushCurrentEpoch()
                 }
                 FocusAction.RESUME -> {
+                    arbiter.onFocus(SpeechArbiter.Focus.HELD)
                     player.unduck()
                     player.resumePlayback()
                 }
@@ -636,15 +640,19 @@ class AndroidPlaybackPort(
     @Volatile private var droppingForNavigation = false
 
     override fun enqueue(pcm16le: ByteArray, epoch: Int) {
-        if (NavigationState.shouldMuteSpeech()) {
+        // SPEC-012: the arbiter alone decides. DROP is R4 (focus lost for good) or R6 (P1); HOLD
+        // still queues — the player is paused by the guidance or focus path until it lifts.
+        val arbiter = SpeechAuthority.arbiter
+        if (SpeechAuthority.reply() == SpeechArbiter.Reply.DROP) {
             if (!droppingForNavigation) {
                 droppingForNavigation = true
-                com.novadrive.app.DebugVoiceLog.log("reply_audio_not_played reason=navigation_unprompted")
+                val reason = if (arbiter.navigationMuted()) "navigation_unprompted" else "focus_lost"
+                com.novadrive.app.DebugVoiceLog.log("reply_audio_not_played reason=$reason")
             }
             return
         }
         droppingForNavigation = false
-        NavigationState.extendWhileSpeaking()
+        arbiter.onReplyAudio()
         if (!playbackAllowed()) {
             if (!droppingReply) {
                 droppingReply = true
@@ -653,7 +661,8 @@ class AndroidPlaybackPort(
             return
         }
         droppingReply = false
-        // A permitted reply during navigation may follow guidance ducking; restore full volume.
+        // A permitted chunk restores full volume, as before SPEC-012 (the step-2 finding: R8's duck
+        // therefore lasts until the next chunk). Kept deliberately to stay behaviour-preserving.
         player.unduck()
         player.enqueue(pcm16le, epoch)
     }

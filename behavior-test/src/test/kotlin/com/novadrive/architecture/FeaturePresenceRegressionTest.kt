@@ -88,6 +88,31 @@ class FeaturePresenceRegressionTest {
         )
     }
 
+    /** SPEC-012 A3: P1 and P3 still exist after the rules moved into the arbiter. */
+    @Test
+    fun speechArbiterKeepsP1AndP3() {
+        val arbiter = "app/src/main/kotlin/com/novadrive/app/voice/SpeechArbiter.kt"
+        assertContains(arbiter, "muted() -> Reply.DROP", "P1: unprompted replies are dropped while navigating")
+        assertContains(arbiter, "guidanceSpeaking -> Reply.HOLD", "R1: the reply waits while Amap speaks")
+        assertContains(arbiter, "const val TAIL_MS = 500L", "P3: uplink stays closed 500 ms after guidance")
+        assertContains(arbiter, "const val MAX_CLOSED_MS = 20_000L", "R3: a lost guidance end reopens the uplink")
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/NavigationState.kt",
+            "SpeechAuthority.arbiter.onNavigating(true)",
+            "navigating must reach the arbiter",
+        )
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt",
+            "SpeechAuthority.arbiter.onDriverRequest()",
+            "an asked-for answer must open the window",
+        )
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt",
+            "SpeechAuthority.arbiter.onConfirmation()",
+            "tool confirmations must stay audible during navigation",
+        )
+    }
+
     @Test
     fun wakeWordEngineArtifactsArePackaged() {
         assertContains("app/build.gradle.kts", "files(\"libs/Msc.jar\")", "iFlytek MSC classes")

@@ -291,8 +291,11 @@ class AndroidMicrophonePort(
     override var muted: Boolean = false
     @Volatile var gated: Boolean = false
 
-    /** Navigation guidance is being spoken (P3); see [GuidanceMicGate]. */
-    @Volatile var guidanceGated: Boolean = false
+    /**
+     * Navigation guidance is being spoken, or just was (P3). Asked of [SpeechAuthority] per frame:
+     * the arbiter owns the 500 ms tail and the 20 s lost-callback reopen (SPEC-012 R1–R3).
+     */
+    val guidanceGated: Boolean get() = SpeechAuthority.uplinkClosed()
 
     /**
      * Wall-clock ms until which post-speech cabin echo must not reach Baidu.

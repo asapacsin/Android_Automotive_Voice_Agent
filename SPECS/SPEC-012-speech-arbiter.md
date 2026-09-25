@@ -100,9 +100,9 @@ B2's log line. Distances are logged only as a bucket (`<150`, `≥150`), never w
 | --- | --- | --- | --- | --- |
 | A1 | R1–R9 hold against the current classes | regression protection | `SpeechRulesCharacterizationTest` | **built** |
 | A2 | The same tests pass against `SpeechArbiter` | functional | `SpeechRulesCharacterizationTest` (arbiter mode) | **built** |
-| A3 | Player, focus and guidance paths ask only the arbiter; `VoicePolicy` and the mute window in `NavigationState` are gone | architectural | new `ArchitectureRulesTest` rule + `FeaturePresenceRegressionTest` updated | not built |
+| A3 | Player, focus and guidance paths ask only the arbiter; `VoicePolicy` and the mute window in `NavigationState` are gone | architectural | `ArchitectureRulesTest.speechDecisionsAskOnlyTheArbiter` + `FeaturePresenceRegressionTest.speechArbiterKeepsP1AndP3` | **built** (L2; device A6 pending) |
 | A4 | Every pair of simultaneous inputs has a tested outcome | negative | `SpeechArbiterPairTest` | **built** |
-| A5 | Workload hold: held under 150 m, released on passing or at 8 s, never cuts a playing reply | functional | `SpeechArbiterWorkloadTest` | not built |
+| A5 | Workload hold: held under 150 m, released on passing or at 8 s, never cuts a playing reply | functional | `SpeechArbiterWorkloadTest` | **built** (pure arbiter; not wired) |
 | A6 | On a simulated drive, guidance and a reply never overlap and P1 still drops unprompted replies | device | `SPEECH-ARBITER-DEVICE-001` (emulator drive, LOCAL_DEVICE) | not built |
 | A7 | No reply starts inside 150 m of a manoeuvre on a simulated drive | device | `SPEECH-WORKLOAD-DEVICE-001` (LOCAL_DEVICE) | not built |
 | A8 | Registry and capabilities agree | reconciliation | `harness_check.py`, `test_matrix.py --validate` | not built |
@@ -122,6 +122,14 @@ against today's code found one ordering the first draft had wrong: for **new rep
 table in B3 is read in that order. Also found for step 3: `AndroidPlaybackPort.enqueue` calls
 `unduck()` on every permitted chunk, so R8's duck lasts only until the next chunk; step 3 must
 decide whether to keep that.
+
+Step 3 done 2026-09-25: `SpeechAuthority` holds the process arbiter; `AndroidPlaybackPort.enqueue`
+and `applyFocusChange`, the guidance listener and `AndroidMicrophonePort.guidanceGated` ask only it.
+`GuidanceMicGate` (+ test), `VoicePolicy` (+ test) and the `NavigationState` window are deleted; the
+characterisation test's first mode now drives the wired path. Decided: the per-chunk `unduck()` is
+**kept** (behaviour-preserving). Changed at the edges: a permanent focus loss now drops new chunks
+until focus is regained (before, they queued behind a paused player) and the uplink reopens 500 ms
+after release instead of at once. Device A6 (P1/P3 re-pass, I-12) not yet run.
 
 Steps, each a separate verified commit:
 

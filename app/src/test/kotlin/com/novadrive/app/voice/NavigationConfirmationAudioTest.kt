@@ -16,6 +16,7 @@ class NavigationConfirmationAudioTest {
 
     @BeforeEach
     fun setup() {
+        SpeechAuthority.resetForTest()
         NavigationState.reset()
         player.duck()
     }
@@ -26,7 +27,7 @@ class NavigationConfirmationAudioTest {
     @Test
     fun permittedReplyUnducksBeforeEnqueue() {
         NavigationState.begin()
-        NavigationState.allowConfirmation()
+        SpeechAuthority.arbiter.onConfirmation()
         val port = AndroidPlaybackPort(player) { true }
         port.enqueue(byteArrayOf(1, 2, 3, 4), 0)
         assertTrue(player.unduckCount >= 1, "confirmation audio must restore full volume")
@@ -44,7 +45,7 @@ class NavigationConfirmationAudioTest {
     @Test
     fun guidanceDuckIsIgnoredDuringConfirmationWindow() {
         NavigationState.begin()
-        NavigationState.allowConfirmation()
+        SpeechAuthority.arbiter.onConfirmation()
         val port = AndroidPlaybackPort(player) { true }
         val before = player.duckCount
         port.applyFocusChange(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK)

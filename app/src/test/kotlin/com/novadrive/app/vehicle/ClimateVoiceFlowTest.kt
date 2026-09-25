@@ -164,9 +164,9 @@ class ClimateVoiceFlowTest {
     @Test
     fun climateResultIsAudibleDuringNavigation() {
         NavigationState.begin()
-        assertTrue(NavigationState.shouldMuteSpeech())
+        assertTrue(com.novadrive.app.voice.SpeechAuthority.arbiter.navigationMuted())
         say("打开空调")
-        assertFalse(NavigationState.shouldMuteSpeech())
+        assertFalse(com.novadrive.app.voice.SpeechAuthority.arbiter.navigationMuted())
     }
 
     private object NoopExecutor : AndroidActionExecutor {

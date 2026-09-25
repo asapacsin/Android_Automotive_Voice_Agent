@@ -147,15 +147,14 @@ class VoiceSessionController(
      */
     val sessionFailedNow: Boolean get() = active.machine.state == VoiceUiState.ERROR
 
-    private val guidanceGate =
-        GuidanceMicGate(scope, onGateChanged = { closed ->
-            microphone.guidanceGated = closed
-            com.novadrive.app.DebugVoiceLog.log("nav_guidance_mic_gate closed=$closed")
-        })
     private val guidanceListener: (Boolean) -> Unit = { speaking ->
-        guidanceGate.onGuidanceSpeaking(speaking)
-        // Never two voices at once: 小诺's reply waits (queued, not dropped) while Amap speaks.
-        if (speaking) player.pausePlayback() else player.resumePlayback()
+        // SPEC-012: guidance is an arbiter input. R1: while Amap speaks the reply is held (queued,
+        // not dropped) and the uplink closes; the microphone reads the uplink per frame.
+        val arbiter = SpeechAuthority.arbiter
+        arbiter.onGuidanceSpeaking(speaking)
+        SpeechAuthority.uplinkClosed()
+        if (speaking) player.pausePlayback()
+        else player.resumePlayback() // R2: the hold lifts when guidance ends
     }
 
     init {
@@ -300,7 +299,7 @@ class VoiceSessionController(
                 )
             },
             log = { com.novadrive.app.DebugVoiceLog.log(it) },
-            onDriverRequest = { com.novadrive.app.NavigationState.allowReply() },
+            onDriverRequest = { SpeechAuthority.arbiter.onDriverRequest() },
         )
     }
 
@@ -437,7 +436,7 @@ class VoiceSessionController(
         provider = null
         microphone.gated = false
         com.novadrive.app.nav.NavigationGuidanceVoice.removeListener(guidanceListener)
-        guidanceGate.reset()
+        SpeechAuthority.arbiter.onGuidanceSpeaking(false)
         scope.cancel()
     }
 

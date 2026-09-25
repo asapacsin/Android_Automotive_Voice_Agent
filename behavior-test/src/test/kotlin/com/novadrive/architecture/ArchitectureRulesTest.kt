@@ -1,5 +1,6 @@
 package com.novadrive.architecture
 
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.io.File
@@ -284,6 +285,42 @@ class ArchitectureRulesTest {
         }.map { it.relativeTo(root).path.replace('\\', '/') }
         assertTrue(offenders.isEmpty()) {
             "PhonePort implementations are selected in PhoneProvider, like VehicleControlPort. Found: $offenders"
+        }
+    }
+
+    // ---- SPEC-012 A3: one owner decides who may speak ----
+
+    @Test
+    fun speechDecisionsAskOnlyTheArbiter() {
+        val gone = listOf(
+            "app/src/main/kotlin/com/novadrive/app/voicepolicy/VoicePolicy.kt",
+            "app/src/main/kotlin/com/novadrive/app/voice/GuidanceMicGate.kt",
+        )
+        for (path in gone) assertFalse(File(root, path).exists(), "SPEC-012 deleted $path; do not revive it")
+        val retired = listOf(
+            "shouldMuteSpeech", "allowConfirmation", "allowReply(", "extendWhileSpeaking",
+            "confirmUntilMs", "VoicePolicy", "GuidanceMicGate(",
+        )
+        val offenders = kotlinFiles("app/src/main").flatMap { file ->
+            val body = file.readText()
+            retired.filter { body.contains(it) }.map { "${file.relativeTo(root).path.replace('\\', '/')}: $it" }
+        }
+        assertTrue(offenders.isEmpty()) {
+            "Speak/uplink decisions belong to SpeechArbiter (via SpeechAuthority); found a parallel rule: $offenders"
+        }
+        val player = text("app/src/main/kotlin/com/novadrive/app/voice/PcmAudioPlayer.kt")
+        val enqueue = player.substringAfter("override fun enqueue(pcm16le").substringBefore("override fun flush(")
+        assertTrue(enqueue.contains("SpeechAuthority.reply()")) { "the player must ask the arbiter before playing a chunk" }
+        val focus = player.substringAfter("fun applyFocusChange(").substringBefore("override fun start()")
+        assertTrue(focus.contains("arbiter.volume()") && !focus.contains("NavigationState")) {
+            "the focus path must ask the arbiter, not the navigation flag"
+        }
+        val controller = text("app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt")
+        val guidance = controller.substringAfter("private val guidanceListener").substringBefore("init {")
+        assertTrue(guidance.contains("arbiter.onGuidanceSpeaking(speaking)")) { "guidance must reach the arbiter" }
+        val capture = text("app/src/main/kotlin/com/novadrive/app/voice/PcmAudioCapture.kt")
+        assertTrue(capture.contains("val guidanceGated: Boolean get() = SpeechAuthority.uplinkClosed()")) {
+            "the uplink gate must be the arbiter's answer"
         }
     }
 

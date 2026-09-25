@@ -2,24 +2,21 @@ package com.novadrive.app.voice
 
 import android.media.AudioManager
 import com.novadrive.app.NavigationState
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.advanceTimeBy
-import kotlinx.coroutines.test.runCurrent
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 
 /**
- * SPEC-012 A1: the rules for who may speak, R1–R9, written against **today's** owners before any of
- * them move. Every combination of the inputs is checked, so a rewrite that changes any one answer
+ * SPEC-012 A1: the rules for who may speak, R1–R9. Written in step 1 against the owners of the day
+ * (`NavigationState` window, `GuidanceMicGate`, focus mapping); since step 3 the first mode drives
+ * the wired production path instead, with the table itself unchanged. Every combination of the
+ * inputs is checked, so a rewrite that changes any one answer
  * fails here.
  *
  * Reply decisions are for a new chunk of reply audio arriving in that state; volume is the answer
  * to a duck request in that state; uplink is whether the microphone may reach Baidu.
  */
-@OptIn(ExperimentalCoroutinesApi::class)
 class SpeechRulesCharacterizationTest {
 
     enum class Guidance { NONE, SPEAKING, SPEAKING_TOO_LONG, JUST_ENDED, ENDED }
@@ -41,8 +38,8 @@ class SpeechRulesCharacterizationTest {
 
     @ParameterizedTest
     @MethodSource("states")
-    fun currentClassesFollowTheTable(state: State) {
-        assertEquals(expected(state), Legacy.answer(state)) { "$state" }
+    fun wiredPathFollowsTheTable(state: State) {
+        assertEquals(expected(state), Wired.answer(state)) { "$state" }
     }
 
     /** SPEC-012 A2: the arbiter gives the same answer in every state. */
@@ -82,16 +79,34 @@ class SpeechRulesCharacterizationTest {
             return Answer(reply, volume, uplink)
         }
 
-        /** Today's owners, each asked its own question; the glue mirrors their call sites. */
-        val Legacy = Rules { s ->
-            val now = 1_000_000L
+        /**
+         * The wired path (SPEC-012 step 3): the old owners are gone, so the first mode now drives the
+         * production seams — `NavigationState` for navigating, `AndroidPlaybackPort.applyFocusChange`
+         * for focus, the process arbiter in [SpeechAuthority] for the window, guidance and uplink —
+         * and reads the answers the player, focus path and microphone act on.
+         */
+        val Wired = Rules { s ->
+            var now = 1_000_000L
+            SpeechAuthority.resetForTest { now }
             NavigationState.reset()
             if (s.navigating) NavigationState.begin()
-            if (s.windowOpen) NavigationState.allowReply(now - 1_000)
-
-            // AndroidPlaybackPort.enqueue: P1 mute first; applyFocusChange: STOP flushes, PAUSE and
-            // the guidanceListener pause; DUCK is ignored inside the permitted window.
-            val action = focusAction(
+            if (s.windowOpen) {
+                now -= 1_000
+                SpeechAuthority.arbiter.onDriverRequest()
+                now += 1_000
+            }
+            val (started, ended) = guidanceTimes(s.guidance)
+            if (started != null) {
+                val end = now
+                now = end - started
+                SpeechAuthority.arbiter.onGuidanceSpeaking(true)
+                if (ended != null) SpeechAuthority.arbiter.onGuidanceSpeaking(false)
+                now = end
+            }
+            val player = PcmAudioPlayer { }
+            val port = AndroidPlaybackPort(player) { true }
+            val ducksBefore = player.duckCount
+            port.applyFocusChange(
                 when (s.focus) {
                     Focus.HELD -> AudioManager.AUDIOFOCUS_GAIN
                     Focus.DUCK -> AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK
@@ -99,16 +114,24 @@ class SpeechRulesCharacterizationTest {
                     Focus.PERMANENT_LOSS -> AudioManager.AUDIOFOCUS_LOSS
                 },
             )
-            val guidancePaused = s.guidance == Guidance.SPEAKING || s.guidance == Guidance.SPEAKING_TOO_LONG
-            val reply = when {
-                action == FocusAction.STOP -> Reply.DROP
-                NavigationState.shouldMuteSpeech(now) -> Reply.DROP
-                guidancePaused || action == FocusAction.PAUSE -> Reply.HOLD
-                else -> Reply.PLAY
-            }
-            val ducks = action == FocusAction.DUCK &&
-                !(NavigationState.navigating && !NavigationState.shouldMuteSpeech(now))
-            Answer(reply, if (ducks) Volume.DUCK else Volume.FULL, legacyUplink(s.guidance))
+            val ducked = player.duckCount > ducksBefore
+            val answer = Answer(
+                Reply.valueOf(SpeechAuthority.reply().name),
+                if (ducked) Volume.DUCK else Volume.FULL,
+                if (SpeechAuthority.uplinkClosed()) Uplink.CLOSED else Uplink.OPEN,
+            )
+            NavigationState.reset()
+            SpeechAuthority.resetForTest()
+            answer
+        }
+
+        /** Guidance start and end, as ms before the moment asked about. */
+        fun guidanceTimes(g: Guidance): Pair<Long?, Long?> = when (g) {
+            Guidance.NONE -> null to null
+            Guidance.SPEAKING -> 1_000L to null
+            Guidance.SPEAKING_TOO_LONG -> 20_001L to null
+            Guidance.JUST_ENDED -> 200L to 200L
+            Guidance.ENDED -> 600L to 600L
         }
 
         val Arbiter = Rules { s ->
@@ -129,13 +152,7 @@ class SpeechRulesCharacterizationTest {
                 },
             )
             // Guidance happens "before now", then the clock reaches the moment asked about.
-            val (started, ended) = when (s.guidance) {
-                Guidance.NONE -> null to null
-                Guidance.SPEAKING -> 1_000L to null
-                Guidance.SPEAKING_TOO_LONG -> 20_001L to null
-                Guidance.JUST_ENDED -> 200L to 200L
-                Guidance.ENDED -> 600L to 600L
-            }
+            val (started, ended) = guidanceTimes(s.guidance)
             if (started != null) {
                 val end = now
                 now = end - started
@@ -148,26 +165,6 @@ class SpeechRulesCharacterizationTest {
                 Volume.valueOf(arbiter.volume().name),
                 Uplink.valueOf(arbiter.uplink().name),
             )
-        }
-
-        private fun legacyUplink(guidance: Guidance): Uplink {
-            val scope = TestScope()
-            val gate = GuidanceMicGate(scope, {})
-            when (guidance) {
-                Guidance.NONE -> Unit
-                Guidance.SPEAKING -> { gate.onGuidanceSpeaking(true); scope.advanceTimeBy(1_000) }
-                Guidance.SPEAKING_TOO_LONG -> { gate.onGuidanceSpeaking(true); scope.advanceTimeBy(20_001) }
-                Guidance.JUST_ENDED -> {
-                    gate.onGuidanceSpeaking(true); gate.onGuidanceSpeaking(false); scope.advanceTimeBy(200)
-                }
-                Guidance.ENDED -> {
-                    gate.onGuidanceSpeaking(true); gate.onGuidanceSpeaking(false); scope.advanceTimeBy(600)
-                }
-            }
-            scope.runCurrent()
-            val closed = gate.closed
-            gate.reset()
-            return if (closed) Uplink.CLOSED else Uplink.OPEN
         }
     }
 }
