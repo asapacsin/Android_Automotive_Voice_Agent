@@ -97,6 +97,9 @@ the controller's production callbacks at every terminal transition: guidance sta
 `arrived`, `emulator_end` and an explicit stop each unmute; and `replaced` deliberately stays muted,
 because the old guidance ended but a new drive is already running.
 
+**2026-09-25:** since SPEC-012 step 3 the mute itself (the P1 window) lives in `SpeechArbiter`;
+`NavigationState` keeps only the `navigating` flag and forwards it to the arbiter via `SpeechAuthority`.
+
 The test was checked against a broken build before being trusted — changing the production call to
 `if (reason == "stopped")` failed exactly the two arrival cases and nothing else.
 

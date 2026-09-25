@@ -16,7 +16,7 @@ session, `VoiceSessionController.setCaptureSuspended` (ingress), which stops cap
 audio and blocks every path that would re-arm capture (including reconnect `SessionReady`).
 
 **Temporary suppression is a different thing** and is unchanged: while navigation guidance plays
-(`guidanceGated`, P13) frames are dropped, but listening stays ACTIVE and upload resumes when guidance
+(`guidanceGated`, P13 — now the `SpeechArbiter` uplink decision read through `SpeechAuthority`) frames are dropped, but listening stays ACTIVE and upload resumes when guidance
 ends. Model reply audio does **not** mute the microphone: Flex `interrupt_response`, shared-session
 WebRTC AEC3 (`WebRtcAcousticEcho`) handle echo while the uplink stays open for barge-in. Neither gate
 touches the lifecycle, and the lifecycle does not touch them.
