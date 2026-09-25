@@ -59,6 +59,7 @@ class DriverContext(private val clock: () -> Long = { System.currentTimeMillis()
     private var clarification: Clarification? = null
     private val cancelled = mutableSetOf<Long>()
     private val dispatched = mutableSetOf<String>()
+    private val capabilities = mutableMapOf<String, ClaimSource>()
 
     // ---- writes ------------------------------------------------------------
 
@@ -67,6 +68,7 @@ class DriverContext(private val clock: () -> Long = { System.currentTimeMillis()
         requestText = text.trim()
         requestEpoch = epoch
         dispatched.removeAll { it.startsWith("$epoch|") }
+        capabilities.keys.removeAll { it.startsWith("$epoch|") }
     }
 
     /**
@@ -118,6 +120,7 @@ class DriverContext(private val clock: () -> Long = { System.currentTimeMillis()
         climate = null
         requestText = ""
         dispatched.clear()
+        capabilities.clear()
     }
 
     /**
@@ -132,6 +135,23 @@ class DriverContext(private val clock: () -> Long = { System.currentTimeMillis()
         synchronized(lock) {
             val key = "$epoch|$tool|" + arguments.toSortedMap().entries.joinToString(",") { "${it.key}=${it.value}" }
             dispatched.add(key)
+        }
+
+    /** Who ran a capability first in a turn: the on-screen matcher or the model (SPEC-010 B4). */
+    enum class ClaimSource { LOCAL, MODEL }
+
+    /**
+     * SPEC-010 B4: one execution per turn per capability *across* the local affordance path and the
+     * model. [claimDispatch] keys on exact arguments, so a local `value=-1` and a model `value=-1.0`
+     * would both run. Returns false only when the **other** source already claimed `tool`+`action`
+     * in this epoch; the same source claiming twice is left to [claimDispatch], so a model that
+     * really makes two different adjustments in one turn keeps doing so.
+     */
+    fun claimCapability(epoch: Long, tool: String, action: String?, source: ClaimSource): Boolean =
+        synchronized(lock) {
+            val key = "$epoch|$tool|${action.orEmpty()}"
+            val first = capabilities.getOrPut(key) { source }
+            first == source
         }
 
     // ---- reads -------------------------------------------------------------

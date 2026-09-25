@@ -59,6 +59,10 @@ object ToolCallGuards {
         val epoch = context.currentEpoch()
         if (epoch <= 0) return null
         val arguments = call.arguments.filterKeys { it != "_validation_error" }
+        // SPEC-010 B4: the on-screen matcher may already have run this capability for this turn.
+        if (!context.claimCapability(epoch, call.name, arguments["action"], DriverContext.ClaimSource.MODEL)) {
+            return DUPLICATE_IN_TURN
+        }
         return if (context.claimDispatch(epoch, call.name, arguments)) null else DUPLICATE_IN_TURN
     }
 

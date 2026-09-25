@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-09-25T06:24:54",
+  "generated_at": "2026-09-25T06:29:41",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "fa50835",
+    "commit": "5589ca8",
     "branch": "claude/9-25",
-    "subject": "SPEC-010 step 1: recentre and camera go through ScreenControls (A4)",
+    "subject": "SPEC-010 step 2: affordance registry and whole-utterance matcher (A1, A2)",
     "working_tree_clean": false,
-    "uncommitted_files": 4
+    "uncommitted_files": 5
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-25T06:24:47",
+    "collected_at": "2026-09-25T06:29:41",
     "total": {
-      "tests": 1154,
+      "tests": 1159,
       "failures": 0,
       "errors": 0,
       "skipped": 0
@@ -25,7 +25,7 @@
         "skipped": 0
       },
       "app": {
-        "tests": 887,
+        "tests": 892,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -66,7 +66,7 @@
   "apk": {
     "built": true,
     "bytes": 223365575,
-    "built_at": "2026-09-25T06:23:41"
+    "built_at": "2026-09-25T06:28:32"
   },
   "capabilities": {
     "available": true,
@@ -126,7 +126,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "A1: | A1 | Each REST response parses from a recorded fixture; missing fields stay missing | functional | `AmapLiveInfoParserTest` | not built |",
-    "actionable_count": 83,
+    "actionable_count": 81,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 16,
@@ -165,13 +165,6 @@
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-012-speech-arbiter.md",
         "item": "A2",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-010-screen-affordances.md",
-        "item": "A3",
         "blocked_by": null
       },
       {
@@ -613,13 +606,6 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "WAKE-SYNTH-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 7,
-        "class": "active milestone row",
-        "source": "CURRENT_MILESTONE.md",
-        "item": "One execution per turn across the local and model paths",
         "blocked_by": null
       },
       {
