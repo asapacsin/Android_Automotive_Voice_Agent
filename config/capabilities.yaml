@@ -90,7 +90,7 @@ navigation:
     tool: null
     verified: device
     required_scope: INTERMEDIATE_FLOW
-    protected_by: [NAV-MID-ROUTE-001]
+    protected_by: [NAV-MID-ROUTE-001, SPEECH-ARBITER-DEVICE-001]
     regression_test: navigationGuidanceIsSpokenAndGatesTheMicrophone
     evidence: "21 nav_guidance_play_start/end pairs on an emulator drive; mic gated while speaking"
     notes: "Amap SDK offline voice. Loudness and quality are a human judgement."
@@ -166,7 +166,7 @@ navigation:
   return_to_tracking:
     tool: null
     verified: device
-    protected_by: [NAV-UI-007]
+    protected_by: [NAV-UI-007, AFFORDANCE-DEVICE-001]
     required_behaviour: >
       Overview shows the whole remaining route; returning restores lock-car without trapping the camera.
     evidence: "NAV-UI-007 PASS"
@@ -180,7 +180,7 @@ media:
   stop_music:
     tool: control_music
     verified: device
-    protected_by: [MUSIC-PLAY-001]
+    protected_by: [MUSIC-PLAY-001, AFFORDANCE-DEVICE-001]
   next_track:
     tool: null
     verified: unsupported
@@ -192,7 +192,7 @@ climate:
   power:
     tool: control_climate
     verified: device
-    protected_by: [CLIMATE-OFF-001]
+    protected_by: [CLIMATE-OFF-001, AFFORDANCE-DEVICE-001]
     backend: SimulatedVehicleControl
     notes: "Simulated. Real vehicle = one new VehicleControlPort in VehicleControlProvider."
   set_temperature:
@@ -334,7 +334,7 @@ live_info:
     tool: query_live_info
     verified: unit
     required_scope: END_TO_END
-    protected_by: [TRUTH-WEATHER-001]
+    protected_by: [LIVE-INFO-UNIT-001, TRUTH-WEATHER-001, LIVE-INFO-DEVICE-001, LIVE-INFO-L6-001, LIVE-INFO-REGRESSION-001]
     evidence: >
       AmapLiveInfoParserTest (fixtures recorded live 2026-09-25), LiveInfoToolTest (every failure
       code), FalseCapabilityClaimTest (answer released only with a weather result this turn). Live
@@ -345,6 +345,7 @@ live_info:
     tool: query_live_info
     verified: implemented
     required_scope: END_TO_END
+    protected_by: [LIVE-INFO-UNIT-001, TRUTH-WEATHER-001, LIVE-INFO-DEVICE-001, LIVE-INFO-L6-001]
     evidence: >
       LiveInfoToolTest covers the tool against a fake RouteLiveInfoSource; the SDK read
       (AmapRouteLiveInfo, AMapNavi.getTrafficStatuses) has never run on a device.
@@ -352,6 +353,7 @@ live_info:
     tool: query_live_info
     verified: implemented
     required_scope: END_TO_END
+    protected_by: [LIVE-INFO-UNIT-001, LIVE-INFO-DEVICE-001, LIVE-INFO-L6-001]
     evidence: >
       LiveInfoAlongRouteWiringTest: results open the existing picker and index 1 calculates a route
       to the first. The RoutePOISearch call itself has never run on a device.
@@ -360,6 +362,7 @@ live_info:
     tool: query_live_info
     verified: unit
     required_scope: END_TO_END
+    protected_by: [LIVE-INFO-UNIT-001, LIVE-INFO-DEVICE-001, LIVE-INFO-L6-001]
     evidence: "AmapLiveInfoParserTest + LiveInfoToolTest; live REST v3/place/detail returned data on 2026-09-25."
 
 unsupported:
@@ -393,7 +396,7 @@ unsupported:
     tool: null
     verified: unsupported
     recognised_by: ActionClaimGuard.NO_SOURCE_INFO_WORDS
-    protected_by: [TRUTH-WEATHER-001]
+    protected_by: [TRUTH-LIVEINFO-NEWS-001]
     required_behaviour: >
       News, stock prices, fuel prices, exchange rates, air quality, driving restrictions: refuse.
       Any non-refusal is fabricated - there is no source, and no query_live_info result can make it

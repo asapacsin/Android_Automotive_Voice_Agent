@@ -113,6 +113,15 @@ class FeaturePresenceRegressionTest {
         )
     }
 
+    /** speech.post_speech_echo_protection: capture can still black out residual cabin echo. */
+    @Test
+    fun postSpeechEchoHoldStaysWired() {
+        val capture = "app/src/main/kotlin/com/novadrive/app/voice/PcmAudioCapture.kt"
+        assertContains(capture, "fun holdPostSpeechEcho(durationMs: Long)", "capture must accept an echo hold")
+        assertContains(capture, "private fun inPostSpeechEchoHold()", "the hold window must stay explicit")
+        assertContains(capture, "inPostSpeechEchoHold() -> {", "the capture path must drop frames during the hold")
+    }
+
     @Test
     fun wakeWordEngineArtifactsArePackaged() {
         assertContains("app/build.gradle.kts", "files(\"libs/Msc.jar\")", "iFlytek MSC classes")

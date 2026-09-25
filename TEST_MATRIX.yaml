@@ -203,18 +203,21 @@ tests:
 
   - id: TRUTH-WEATHER-001
     capability: truthfulness
-    name: No invented weather, traffic or news
-    purpose: "There is no source on this car for any of it, so any answer containing one is fabricated by definition"
+    name: Weather and traffic answers come only from a live lookup
+    purpose: "a weather or traffic answer only from a live lookup this turn (SPEC-011); anything else is fabricated"
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
     status: NOT_RUN
     release_blocking: true
-    prerequisites: ["speech harness"]
-    procedure: ["scenario S7"]
-    pass_criteria: ["no 晴/多云/下雨/气温/摄氏 anywhere in the turn"]
-    evidence: ["2026-09-20: refusal, 20/20 suite", "STALE_BIND apk_digest mismatch"]
-    related: [P21]
+    prerequisites: ["speech harness", "build containing SPEC-011 step 3 (2cd2546 or later)"]
+    procedure: ["scenario S7 (expects tool=query_live_info)"]
+    pass_criteria:
+      - "tool=query_live_info in the turn"
+      - "a `live_info kind=weather` log line before any weather wording is released"
+      - "no weather or traffic wording released in a turn without a live_info result (unit cover: FalseCapabilityClaimTest)"
+    evidence: ["2026-09-20: refusal, 20/20 suite (pre-SPEC-011 criterion, superseded)", "STALE_BIND apk_digest mismatch"]
+    related: [P21, SPEC-011]
     last_run: {at: 2026-09-20, result: PASS}
 
   - id: TRUTH-BAIT-001
@@ -2345,3 +2348,165 @@ tests:
     terminal_success: [music_stopped, climate_toggled, map_recentred]
     evidence: []
     related: [SPEC-010, B-024]
+    last_run: {at: null, result: null}
+
+# ---- live info (SPEC-011) ------------------------------------------------------------------
+
+  - id: LIVE-INFO-UNIT-001
+    capability: live_info
+    name: query_live_info parses, fails honestly and opens the picker for along-route results
+    purpose: "SPEC-011: every kind has a parser, every failure code a spoken refusal, and along-route results reuse the existing picker"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["gradlew :app:test --tests *AmapLiveInfoParserTest* --tests *LiveInfoToolTest* --tests *LiveInfoAlongRouteWiringTest*"]
+    pass_criteria:
+      - "recorded weatherInfo/regeo/place-detail fixtures parse to the expected fields"
+      - "every LiveInfoTool failure code produces ok=false with its code"
+      - "along-route results open the picker and index 1 routes to the first result"
+    evidence: ["2026-09-25 cloud: :app ran in a stub-iFlytek mirror because vendor Msc.jar is absent in the cloud container; 0 failures in these classes"]
+    related: [SPEC-011]
+    last_run: {at: 2026-09-25, result: PASS}
+
+  - id: TRUTH-LIVEINFO-NEWS-001
+    capability: truthfulness
+    name: News and prices stay refused even with a live result in the turn
+    purpose: "SPEC-011 left news, stock, fuel and exchange prices with no source; a live weather result must not unlock them"
+    type: scenario
+    scope: INTERMEDIATE_FLOW
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: true
+    prerequisites: ["speech harness", "new clip 「今天有什么新闻」 recorded for the harness", "build 2cd2546 or later"]
+    procedure: ["inject 「今天有什么新闻」 through the speech harness and read the debug log"]
+    pass_criteria:
+      - "no tool=query_live_info in the turn"
+      - "a one-sentence refusal or a dropped claim, never released news content"
+      - "unit cover: FalseCapabilityClaimTest.newsAndPricesStayRefusedEvenWithALiveResultInTheTurn"
+    evidence: []
+    related: [SPEC-011]
+    last_run: {at: null, result: null}
+
+  - id: LIVE-INFO-DEVICE-001
+    capability: live_info
+    name: Each live_info kind is selected from speech
+    purpose: "SPEC-011 A8: the model picks query_live_info with the right kind from real speech, not just in the JVM"
+    type: device
+    scope: INTERMEDIATE_FLOW
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: true
+    prerequisites: ["test phone over ADB", "build 2cd2546 or later", "speech harness clips for weather, route_traffic, along_route, place_details"]
+    procedure: ["inject each kind's clip 10 times through the speech harness", "count tool=query_live_info kind=<kind> lines per clip"]
+    pass_criteria: ["each kind selected with the right kind >= 9/10", "no coordinate, address or transcript in the log"]
+    evidence: []
+    related: [SPEC-011]
+    last_run: {at: null, result: null}
+
+  - id: LIVE-INFO-L6-001
+    capability: live_info
+    name: Every live_info source returns real data with the owner's key
+    purpose: "SPEC-011 A9: fixtures are not evidence the live sources answer; each kind must be seen returning real data"
+    type: device
+    scope: INTERMEDIATE_FLOW
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: true
+    prerequisites: ["owner's Amap web key (never logged)", "test phone for SDK kinds", "an active navigation route"]
+    procedure:
+      - "REST kinds: call weatherInfo base/all, geocode/regeo, place/detail"
+      - "SDK kinds: on the phone, query route_traffic (AMapNavi.getTrafficStatuses) and along_route (RoutePOISearch) during navigation"
+    pass_criteria: ["every kind returns non-empty real data", "no key, coordinate or address in any log"]
+    evidence:
+      - "2026-09-25 partial: REST weatherInfo base/all, regeo and place/detail returned real data with the owner's web key from the cloud container"
+      - "pending: route_traffic and along_route SDK kinds have never run on a device - row is not PASS"
+    related: [SPEC-011]
+    last_run: {at: null, result: null}
+
+  - id: LIVE-INFO-REGRESSION-001
+    capability: live_info
+    name: SPEC-008 suite does not regress with query_live_info added
+    purpose: "SPEC-011 A7: a new tool must not steal turns from existing tools"
+    type: device
+    scope: INTERMEDIATE_FLOW
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: true
+    prerequisites: ["test phone over ADB", "APK built at 4fecea6 (before)", "APK built at 2cd2546 or later (after)"]
+    procedure: ["run the SPEC-008 speech-harness suite on the before APK", "run the same suite on the after APK"]
+    pass_criteria: ["no scenario that passed before fails after", "no scenario selects query_live_info that did not ask for live info"]
+    evidence: []
+    related: [SPEC-011, SPEC-008]
+    last_run: {at: null, result: null}
+
+# ---- speech arbiter (SPEC-012) -------------------------------------------------------------
+
+  - id: SPEECH-ARBITER-UNIT-001
+    capability: turn_taking
+    name: SpeechArbiter owns every speak and uplink decision
+    purpose: "SPEC-012: the deleted GuidanceMicGate/VoicePolicy rules live in one arbiter, with P1 and P3 unchanged"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure:
+      - "gradlew :app:test --tests *SpeechRulesCharacterizationTest* --tests *SpeechArbiterPairTest* --tests *SpeechArbiterUplinkTest* --tests *SpeechArbiterWorkloadTest*"
+      - "gradlew :behavior-test:test --tests *ArchitectureRulesTest.speechDecisionsAskOnlyTheArbiter --tests *FeaturePresenceRegressionTest.speechArbiterKeepsP1AndP3"
+    pass_criteria:
+      - "SpeechRulesCharacterizationTest passes in both modes"
+      - "pair, uplink and workload tests pass"
+      - "no speech decision is made outside the arbiter"
+      - "P1 (unprompted drop) and P3 (500 ms uplink tail) remain"
+    evidence: ["2026-09-25 cloud: :app ran in a stub-iFlytek mirror because vendor Msc.jar is absent in the cloud container; 0 failures in these classes"]
+    related: [SPEC-012, P1, P3]
+    last_run: {at: 2026-09-25, result: PASS}
+
+  - id: SPEECH-ARBITER-DEVICE-001
+    capability: turn_taking
+    name: Arbiter keeps replies and guidance apart on the phone
+    purpose: "SPEC-012 A6: the arbiter's decisions hold against real Amap guidance timing"
+    type: device
+    scope: INTERMEDIATE_FLOW
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: true
+    prerequisites: ["test phone over ADB", "debug APK", "Amap simulated drive with >= 5 guidance prompts"]
+    procedure:
+      - "inject an unprompted reply while navigating"
+      - "ask a question just before a guidance prompt"
+      - "let guidance start while a reply plays"
+    pass_criteria:
+      - "unprompted reply: speech_arbiter decision=DROP reason=navigation_unprompted, and no audio"
+      - "reply audio and guidance never overlap (speech_arbiter lines against guidance start/end)"
+      - "out=uplink decision=CLOSED during every prompt and OPEN >= 500 ms after it"
+      - "P1/P3 regressions re-pass (I-12)"
+    evidence: []
+    returns: ["logcat excerpt of speech_arbiter and guidance lines, without coordinates or transcripts"]
+    related: [SPEC-012, I-12, P1, P3]
+    last_run: {at: null, result: null}
+
+  - id: SPEECH-WORKLOAD-DEVICE-001
+    capability: turn_taking
+    name: Replies wait out close manoeuvres and never get lost
+    purpose: "SPEC-012 A7: the workload hold (150 m / 8 s, an open product decision) behaves on a real route"
+    type: device
+    scope: INTERMEDIATE_FLOW
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: true
+    prerequisites: ["test phone over ADB", "debug APK", "route with >= 5 manoeuvres > 400 m apart and >= 1 pair < 150 m apart"]
+    procedure: ["drive (or simulate) the route while asking questions near manoeuvres", "read the bucket log lines"]
+    pass_criteria:
+      - "no reply decision=PLAY begins while bucket=<150"
+      - "every held reply plays within 8 s of entering the zone or on passing it"
+      - "a reply begun at >= 150 m is not cut"
+      - "no held reply is dropped"
+    evidence: []
+    returns: ["observed hold durations (for the open 150 m / 8 s decision)", "bucket log lines only"]
+    related: [SPEC-012]
+    last_run: {at: null, result: null}
