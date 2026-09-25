@@ -153,8 +153,12 @@ class VoiceSessionController(
         val arbiter = SpeechAuthority.arbiter
         arbiter.onGuidanceSpeaking(speaking)
         SpeechAuthority.uplinkClosed()
-        if (speaking) player.pausePlayback()
-        else player.resumePlayback() // R2: the hold lifts when guidance ends
+        if (speaking) {
+            player.pausePlayback()
+            SpeechAuthority.notePaused()
+        } else {
+            SpeechAuthority.syncPlaybackHold() // R2, but never through a workload or focus hold
+        }
     }
 
     init {

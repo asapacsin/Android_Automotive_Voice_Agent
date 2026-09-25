@@ -15,6 +15,7 @@ import com.amap.api.navi.model.AimLessModeCongestionInfo
 import com.amap.api.navi.model.AimLessModeStat
 import com.amap.api.navi.model.NaviInfo
 import com.novadrive.app.DebugVoiceLog
+import com.novadrive.app.NavigationState
 
 /**
  * Registered via `AMapNavi.addAMapNaviListener(...)`.
@@ -143,6 +144,8 @@ internal class NavigationTraceListener(
     }
 
     override fun onNaviInfoUpdate(info: NaviInfo?) {
+        // SPEC-012 R6a: only the distance leaves nav/amap, and it is never logged here.
+        NavigationState.onManeuverDistance(info?.curStepRetainDistance)
         if (info == null) return
         val remainMeters = info.pathRetainDistance
         val remainSeconds = info.pathRetainTime

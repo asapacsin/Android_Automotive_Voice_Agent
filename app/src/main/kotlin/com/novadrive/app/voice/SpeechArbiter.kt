@@ -91,11 +91,15 @@ class SpeechArbiter(
 
     fun onConfirmation() = onDriverRequest()
 
-    /** A permitted reply is playing: keep the window open until it finishes; never reopen it. */
-    fun onReplyAudio() = synchronized(lock) {
+    /**
+     * A permitted reply chunk arrived: keep the window open until it finishes; never reopen it.
+     * [started] is false when the chunk was only queued behind a hold — the reply has not started
+     * playing, so R6a may still hold it (SPEC-012 step 4).
+     */
+    fun onReplyAudio(started: Boolean = true) = synchronized(lock) {
         val now = clock()
         if (now <= windowUntilMs) windowUntilMs = maxOf(windowUntilMs, now + windowMs)
-        replyPlaying = true
+        if (started) replyPlaying = true
     }
 
     fun onFocus(value: Focus) = synchronized(lock) { focus = value }
@@ -153,6 +157,14 @@ class SpeechArbiter(
 
     /** Why a DROP: true when it is the P1 navigation mute rather than a focus loss (for the log only). */
     fun navigationMuted(): Boolean = synchronized(lock) { muted() }
+
+    /** Whether the current HOLD is the workload hold (R6a), for the log only. No side effects. */
+    fun workloadHeld(): Boolean = synchronized(lock) {
+        if (guidanceSpeaking || focus == Focus.TRANSIENT_LOSS || focus == Focus.PERMANENT_LOSS) return@synchronized false
+        if (!navigating || replyPlaying || muted()) return@synchronized false
+        val entered = zoneEnteredMs ?: return@synchronized false
+        clock() - entered < holdMaxMs
+    }
 
     /** R6a. Only for a reply not yet started; the cap is enforced here so no timer is needed. */
     private fun workloadHolding(): Boolean {

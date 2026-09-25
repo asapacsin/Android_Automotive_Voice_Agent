@@ -102,7 +102,7 @@ B2's log line. Distances are logged only as a bucket (`<150`, `≥150`), never w
 | A2 | The same tests pass against `SpeechArbiter` | functional | `SpeechRulesCharacterizationTest` (arbiter mode) | **built** |
 | A3 | Player, focus and guidance paths ask only the arbiter; `VoicePolicy` and the mute window in `NavigationState` are gone | architectural | `ArchitectureRulesTest.speechDecisionsAskOnlyTheArbiter` + `FeaturePresenceRegressionTest.speechArbiterKeepsP1AndP3` | **built** (L2; device A6 pending) |
 | A4 | Every pair of simultaneous inputs has a tested outcome | negative | `SpeechArbiterPairTest` | **built** |
-| A5 | Workload hold: held under 150 m, released on passing or at 8 s, never cuts a playing reply | functional | `SpeechArbiterWorkloadTest` | **built** (pure arbiter; not wired) |
+| A5 | Workload hold: held under 150 m, released on passing or at 8 s, never cuts a playing reply | functional | `SpeechArbiterWorkloadTest`, `WorkloadHoldWiringTest` | **wired** (JVM; device A7 not run) |
 | A6 | On a simulated drive, guidance and a reply never overlap and P1 still drops unprompted replies | device | `SPEECH-ARBITER-DEVICE-001` (emulator drive, LOCAL_DEVICE) | not built |
 | A7 | No reply starts inside 150 m of a manoeuvre on a simulated drive | device | `SPEECH-WORKLOAD-DEVICE-001` (LOCAL_DEVICE) | not built |
 | A8 | Registry and capabilities agree | reconciliation | `harness_check.py`, `test_matrix.py --validate` | not built |
@@ -130,6 +130,16 @@ characterisation test's first mode now drives the wired path. Decided: the per-c
 **kept** (behaviour-preserving). Changed at the edges: a permanent focus loss now drops new chunks
 until focus is regained (before, they queued behind a paused player) and the uplink reopens 500 ms
 after release instead of at once. Device A6 (P1/P3 re-pass, I-12) not yet run.
+
+Step 4 wiring done 2026-09-25 (JVM only; device A7 not run): `NavigationTraceListener.onNaviInfoUpdate`
+forwards `curStepRetainDistance` (null for null info) via `NavigationState.onManeuverDistance` to
+`SpeechAuthority.onManeuverDistance`, which logs only the bucket (`<150`/`>=150`/`unknown`) on change
+and calls `syncPlaybackHold()`. That is the one playback-hold owner: it pauses/resumes through the
+hook `AndroidPlaybackPort` registers, only when the HOLD answer changes. Guidance end and focus
+RESUME now call it instead of resuming directly, so neither lifts a workload hold. A reply counts as
+started only when a chunk is queued while PLAY or the hold lifts with audio queued; `beginReply`,
+`flush` and `stop` end it. A workload hold posts one main-looper re-check at 8 s + 100 ms so the cap
+releases if distance updates stop. HOLD reason is logged as `workload` when it is R6a.
 
 Steps, each a separate verified commit:
 
