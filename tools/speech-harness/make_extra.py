@@ -8,14 +8,26 @@ original corpus stays a fixed regression set.
 
 import asyncio
 import os
+import shutil
 import subprocess
 
 import truststore
 
-# Verify TLS against the Windows certificate store, as make_speech.py does.
+# Verify TLS against the OS certificate store (Windows store; system CAs on Linux), as make_speech.py does.
 truststore.inject_into_ssl()
 
 import edge_tts  # noqa: E402
+
+
+def _ffmpeg():
+    """ffmpeg on PATH, else the static binary shipped by imageio-ffmpeg (Linux cloud containers)."""
+    found = shutil.which("ffmpeg")
+    if found:
+        return found
+    import imageio_ffmpeg
+
+    return imageio_ffmpeg.get_ffmpeg_exe()
+
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "speech")
 
@@ -47,7 +59,7 @@ async def main() -> None:
         pcm = os.path.join(OUT, name + ".pcm")
         await edge_tts.Communicate(text, "zh-CN-XiaoxiaoNeural").save(mp3)
         subprocess.run(
-            ["ffmpeg", "-loglevel", "error", "-y", "-i", mp3, "-ac", "1", "-ar", "16000", "-f", "s16le", pcm],
+            [_ffmpeg(), "-loglevel", "error", "-y", "-i", mp3, "-ac", "1", "-ar", "16000", "-f", "s16le", pcm],
             check=True,
         )
         print("%-22s %7d bytes" % (name, os.path.getsize(pcm)))

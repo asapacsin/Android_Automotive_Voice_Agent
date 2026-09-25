@@ -24,6 +24,13 @@ powershell -File tools\speech-harness\harness.ps1 -StepList "launch,nav_route:�
 `make_speech.py` needs `edge-tts`, `truststore` and `ffmpeg` on the build PC; the phrases are
 harmless test commands.
 
+**Linux / cloud.** `pip install edge-tts truststore imageio-ffmpeg`; the generators use `ffmpeg` on
+PATH, else the static binary from `imageio-ffmpeg`. `run_scenarios.py` and `measure_false_wake.py`
+resolve adb as `$ADB`, else `adb` on PATH, else the Windows SDK path. With several devices or
+emulators attached, pick one with `ANDROID_SERIAL=emulator-5556` — adb itself honours it, so no
+flag is needed. Run `make_speech.py`, `make_extra.py`, `make_context.py` and `make_noise.py` once;
+clips land in `speech/` (gitignored).
+
 ## What it established (2026-09-17)
 
 - Baidu server VAD ignores speech peaking below ~2700 and hears ~3800 → `MicInputGain` (3x).
