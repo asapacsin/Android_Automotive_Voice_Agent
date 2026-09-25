@@ -532,6 +532,8 @@ existing owners (`ScreenControls`, `AndroidToolDispatcher`) — no second route.
 Why reliable: no model decision is involved, so it is unit-testable end to end. Limit: it covers only
 what is on screen, and a transcription error still misses.
 
+Specced in [SPEC-010](SPECS/SPEC-010-screen-affordances.md). Status 2026-09-25: steps 1–4a built (L2); step 4b and A7 wait for the phone.
+
 ## B-025 — Live information from Amap
 
 Raised 2026-09-24. New tools on the Amap web-service API that `AmapPoiClient` already calls with the
@@ -542,6 +544,8 @@ Why reliable: each call is a deterministic lookup with a checkable failure. Limi
 claiming the feature: every new tool still depends on Flex *choosing* to call it — the failure class of
 [P2](OPEN_PROBLEMS.md) — and adding tools may lower selection accuracy for existing ones. Personal
 Amap keys have daily quotas.
+
+Specced in [SPEC-011](SPECS/SPEC-011-amap-live-info.md). Status 2026-09-25: steps 1–3 and 5 built (L2); device steps 0, 4 and 6 wait for the phone.
 
 ## B-026 — One owner for who may speak
 
