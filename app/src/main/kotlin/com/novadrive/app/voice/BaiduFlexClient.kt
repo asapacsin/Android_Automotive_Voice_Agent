@@ -39,7 +39,7 @@ class BaiduFlexClient(
     /** Shape of the audio that caused the current turn, measured by [SpeechUplinkGate]. */
     private val lastAudioSegment: () -> SpeechUplinkGate.Segment? = { null },
     /** True when something on screen is waiting for the driver's answer; such turns are never held. */
-    private val contextAwaitingAnswer: () -> Boolean = { VoiceContextHints.current() != null },
+    private val contextAwaitingAnswer: () -> Boolean = { VoiceContextHints.awaitingAnswer() },
     /** Time-scoped post-AEC speech evidence for speech over playback (Astra P4). */
     private val speechEvidence: () -> Boolean = { true },
 ) {

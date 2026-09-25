@@ -23,6 +23,10 @@ class MainActivity : Activity() {
     private lateinit var settingsRepository: BaiduSettingsRepository
     private lateinit var screen: AssistantNavigationScreen
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val affordanceScope = kotlinx.coroutines.CoroutineScope(
+        kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main.immediate,
+    )
+    private lateinit var affordanceRunner: ScreenAffordanceRunner
     @Volatile
     private var lastUiStateLabel: String = VoiceUiState.DISCONNECTED.label
 
@@ -64,6 +68,14 @@ class MainActivity : Activity() {
             // Tap and voice both come here (I-6); the screen only renders the result.
             recenterMap = { screen.recenterMap() },
             cameraToggle = { toggleCamera() },
+        )
+        affordanceRunner = ScreenAffordanceRunner(
+            affordances = com.novadrive.app.ui.ScreenAffordances.shared,
+            controls = screenControls,
+            context = { com.novadrive.app.voice.DriverContext.currentOrNull() },
+            scope = affordanceScope,
+            log = { DebugVoiceLog.log(it) },
+            reportFailure = { code -> controller.sendText(ScreenAffordanceRunner.failureMessage(code)) },
         )
         controller =
             VoiceSessionController(
@@ -113,6 +125,7 @@ class MainActivity : Activity() {
                     )
                     toolDispatcher.dispatch(call)
                 },
+                onScreenAffordance = { text -> affordanceRunner.tryHandle(text) },
             )
 
         VoiceSessionGateway.attach(
@@ -178,6 +191,7 @@ class MainActivity : Activity() {
         VoiceSessionService.stop(this)
         if (::controller.isInitialized) controller.release()
         if (::screen.isInitialized) screen.onDestroy()
+        affordanceScope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
         super.onDestroy()
     }
 

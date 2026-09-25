@@ -31,6 +31,11 @@ class ScreenAffordances {
     fun withdraw(source: String) {
         if (bySource.remove(source) != null) _current.value = bySource.values.flatten()
     }
+
+    companion object {
+        /** The app's one registry: views publish into it, the voice path and the hint read it. */
+        val shared = ScreenAffordances()
+    }
 }
 
 /**

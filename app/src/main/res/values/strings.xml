@@ -31,6 +31,16 @@
     <string name="camera_button">📷</string>
     <string name="map_recenter_button">📍</string>
     <string name="map_recenter_description">回到当前位置</string>
+    <!-- SPEC-010: what the driver may say for each bottom-bar control, "|"-separated. The first
+         name is also the control's contentDescription, so voice and accessibility share it. -->
+    <string name="voice_music_restart">上一首|重新播放</string>
+    <string name="voice_music_play">播放|播放音乐</string>
+    <string name="voice_music_stop">暂停|停止|暂停音乐|停止音乐</string>
+    <string name="voice_temp_down">温度减|调低温度</string>
+    <string name="voice_temp_up">温度加|调高温度</string>
+    <string name="voice_climate">空调</string>
+    <string name="voice_recenter">回到当前位置|定位</string>
+    <string name="voice_camera">摄像头|相机</string>
     <string name="map_recenter_no_permission">没有定位权限，无法回到当前位置。</string>
     <string name="map_recenter_no_service">设备定位已关闭，无法回到当前位置。</string>
     <string name="map_recenter_no_fix">还没有定位信号，请稍等。</string>

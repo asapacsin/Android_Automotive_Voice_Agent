@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-09-25T06:29:41",
+  "generated_at": "2026-09-25T06:36:30",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "5589ca8",
+    "commit": "6f8b18d",
     "branch": "claude/9-25",
-    "subject": "SPEC-010 step 2: affordance registry and whole-utterance matcher (A1, A2)",
+    "subject": "SPEC-010 step 3: one execution per turn across local and model paths (A3)",
     "working_tree_clean": false,
-    "uncommitted_files": 5
+    "uncommitted_files": 12
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-25T06:29:41",
+    "collected_at": "2026-09-25T06:36:16",
     "total": {
-      "tests": 1159,
+      "tests": 1167,
       "failures": 0,
       "errors": 0,
       "skipped": 0
@@ -25,7 +25,7 @@
         "skipped": 0
       },
       "app": {
-        "tests": 892,
+        "tests": 900,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 223365575,
-    "built_at": "2026-09-25T06:28:32"
+    "bytes": 223382551,
+    "built_at": "2026-09-25T06:35:10"
   },
   "capabilities": {
     "available": true,
@@ -126,7 +126,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "A1: | A1 | Each REST response parses from a recorded fixture; missing fields stay missing | functional | `AmapLiveInfoParserTest` | not built |",
-    "actionable_count": 81,
+    "actionable_count": 79,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 16,
@@ -214,13 +214,6 @@
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-012-speech-arbiter.md",
         "item": "A5",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-010-screen-affordances.md",
-        "item": "A6",
         "blocked_by": null
       },
       {
@@ -620,13 +613,6 @@
         "class": "active milestone row",
         "source": "CURRENT_MILESTONE.md",
         "item": "SPEC-008 baseline selection rate recorded before any new dec",
-        "blocked_by": null
-      },
-      {
-        "priority": 7,
-        "class": "active milestone row",
-        "source": "CURRENT_MILESTONE.md",
-        "item": "Screen and picker publish affordances; the old local-pick pa",
         "blocked_by": null
       },
       {

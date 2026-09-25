@@ -37,6 +37,8 @@ class VoiceSessionController(
     private val onListeningState: (ListeningState) -> Unit = {},
     /** When a picker is on screen and the utterance matches one candidate, dispatch locally. */
     private val onLocalNavigationPick: ((com.novadrive.app.nav.NavigationChoice) -> Unit)? = null,
+    /** SPEC-010: true when the utterance named one on-screen control and it was taken locally. */
+    private val onScreenAffordance: ((String) -> Boolean)? = null,
     timeouts: ListeningTimeouts = ListeningTimeouts(),
 ) {
     private val job = SupervisorJob()
@@ -307,6 +309,10 @@ class VoiceSessionController(
         com.novadrive.app.nav.NavigationLocalPickGuard.onUserTranscript()
         val decision = commandRouter.onUserUtterance(text)
         if (decision != ListeningIntent.Decision.PASS_TO_MODEL || !ListeningIntent.isMeaningful(text)) return
+        if (onScreenAffordance?.invoke(text) == true) {
+            active.cancelCurrentResponse()
+            return
+        }
         tryLocalNavigationPick(text)
     }
 

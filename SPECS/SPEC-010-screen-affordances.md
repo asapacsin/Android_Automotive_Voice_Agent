@@ -128,7 +128,7 @@ Never the transcript or a place name (I-8): picker row ids are opaque (`i2`, POI
 | A3 | A local match and a model call for the same capability in one turn execute once, in both orders | regression protection | `AffordanceTurnClaimTest` | **built** |
 | A4 | Recentre and camera go through `ScreenControls` for both tap and voice | architectural | `ArchitectureRulesTest.uiDoesNotReachIntoExecution` + `ScreenRouteParityTest` | **built** |
 | A5 | Picker selection uses the registry; `tryLocalNavigationPick` is gone | production wiring | `FeaturePresenceRegressionTest` + existing picker tests green | not built |
-| A6 | `VoiceContextHints` lists the affordances on screen | functional | `VoiceContextHintsTest` | not built |
+| A6 | `VoiceContextHints` lists the affordances on screen | functional | `VoiceContextHintsTest` | **built** |
 | A7 | Spoken 「暂停」「空调」「回到当前位置」 act on the phone with no tool call from the model | device | `AFFORDANCE-DEVICE-001` (speech harness, LOCAL_DEVICE) | not built |
 | A8 | Registry, capabilities, TEST_MATRIX rows agree | reconciliation | `harness_check.py`, `test_matrix.py --validate` | not built |
 
@@ -145,7 +145,13 @@ Steps, each a separate verified commit (steps 1–3 done 2026-09-25):
 1. `ScreenControls.recenter()` / `toggleCamera()`; move the two callbacks onto it; A4.
 2. `Affordance`, `ScreenAffordances`, `AffordanceMatcher` + A1/A2 (pure, no wiring).
 3. `DriverContext.claimCapability` + `ToolCallGuards` change + A3.
-4. Wire: `BottomBarView`, `NavigationChoiceOverlay` publish; `onUserUtterance` calls the matcher;
-   delete `tryLocalNavigationPick` and fold `NavigationPickerIntercept` into picker affordances; A5, A6.
+4. **4a (done 2026-09-25):** `BottomBarView` publishes; `onUserUtterance` calls
+   `ScreenAffordanceRunner` before the picker path; names in `strings.xml` double as
+   `contentDescription`; A6. `VoiceContextHints.awaitingAnswer()` excludes the always-present bar,
+   so turn holding is unchanged. Tests: `ScreenAffordanceRunnerTest`, `VoiceContextHintsTest`.
+   **4b (open):** fold the picker into affordances and delete `tryLocalNavigationPick`; A5.
+   Deferred on purpose: picker names use `NavigationChoiceResolver`'s fuzzy name match and
+   phonetic confirmation, which the exact matcher does not reproduce, and the picker path is
+   device-verified — replacing it needs the phone to re-verify, so it goes with A7.
 5. `TEST_MATRIX.yaml` rows (unit + `AFFORDANCE-DEVICE-001` as `LOCAL_DEVICE`), capabilities,
    `./gradlew test --rerun-tasks :app:assembleDebug`, then device run A7.
