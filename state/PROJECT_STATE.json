@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-09-25T06:20:01",
+  "generated_at": "2026-09-25T06:24:54",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "50d5a29",
+    "commit": "fa50835",
     "branch": "claude/9-25",
-    "subject": "Plan M4: specs for screen affordances, Amap live info, speech arbiter",
+    "subject": "SPEC-010 step 1: recentre and camera go through ScreenControls (A4)",
     "working_tree_clean": false,
-    "uncommitted_files": 7
+    "uncommitted_files": 4
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-25T06:19:34",
+    "collected_at": "2026-09-25T06:24:47",
     "total": {
-      "tests": 959,
+      "tests": 1154,
       "failures": 0,
       "errors": 0,
       "skipped": 0
@@ -25,7 +25,7 @@
         "skipped": 0
       },
       "app": {
-        "tests": 692,
+        "tests": 887,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 223349191,
-    "built_at": "2026-09-25T06:18:35"
+    "bytes": 223365575,
+    "built_at": "2026-09-25T06:23:41"
   },
   "capabilities": {
     "available": true,
@@ -125,20 +125,13 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "A1: | A1 | Every published label and alias matches alone, with each verb and particle | functional | `AffordanceMatcherTest` | not built |",
-    "actionable_count": 86,
+    "NEXT_ACTION": "A1: | A1 | Each REST response parses from a recorded fixture; missing fields stay missing | functional | `AmapLiveInfoParserTest` | not built |",
+    "actionable_count": 83,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 16,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-010-screen-affordances.md",
-        "item": "A1",
-        "blocked_by": null
-      },
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
@@ -158,13 +151,6 @@
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-011-amap-live-info.md",
         "item": "A10",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-010-screen-affordances.md",
-        "item": "A2",
         "blocked_by": null
       },
       {
@@ -627,13 +613,6 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "WAKE-SYNTH-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 7,
-        "class": "active milestone row",
-        "source": "CURRENT_MILESTONE.md",
-        "item": "Affordance registry and whole-utterance matcher",
         "blocked_by": null
       },
       {

@@ -20,7 +20,7 @@ Each SPEC's steps are separate verified commits; a device row never blocks the n
 | # | Required | Level | State |
 | --- | --- | --- | --- |
 | 1 | `ScreenControls` owns recentre and camera, so tap and voice share a route | L2 | **built** (L2) — SPEC-010 step 1, `ScreenRouteParityTest` |
-| 2 | Affordance registry and whole-utterance matcher | L2 | **not built** — SPEC-010 step 2 |
+| 2 | Affordance registry and whole-utterance matcher | L2 | **built** (L2) — SPEC-010 step 2, `AffordanceMatcherTest` |
 | 3 | One execution per turn across the local and model paths | L2 | **not built** — SPEC-010 step 3 |
 | 4 | Screen and picker publish affordances; the old local-pick path is deleted | L2–L4 | **not built** — SPEC-010 step 4 |
 | 5 | Spoken control names act on the phone without a model tool call | **L5** | **not earned** — SPEC-010 A7, needs the phone |

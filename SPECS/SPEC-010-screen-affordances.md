@@ -123,8 +123,8 @@ Never the transcript or a place name (I-8): picker row ids are opaque (`i2`, POI
 
 | # | Criterion | Kind | Proven by | State |
 | --- | --- | --- | --- | --- |
-| A1 | Every published label and alias matches alone, with each verb and particle | functional | `AffordanceMatcherTest` | not built |
-| A2 | A label inside a longer sentence does not match | negative | `AffordanceMatcherTest` | not built |
+| A1 | Every published label and alias matches alone, with each verb and particle | functional | `AffordanceMatcherTest` | **built** |
+| A2 | A label inside a longer sentence does not match | negative | `AffordanceMatcherTest` | **built** |
 | A3 | A local match and a model call for the same capability in one turn execute once, in both orders | regression protection | `AffordanceTurnClaimTest` | not built |
 | A4 | Recentre and camera go through `ScreenControls` for both tap and voice | architectural | `ArchitectureRulesTest.uiDoesNotReachIntoExecution` + `ScreenRouteParityTest` | **built** |
 | A5 | Picker selection uses the registry; `tryLocalNavigationPick` is gone | production wiring | `FeaturePresenceRegressionTest` + existing picker tests green | not built |
@@ -140,7 +140,7 @@ Never the transcript or a place name (I-8): picker row ids are opaque (`i2`, POI
 
 ## Implementation status
 
-Steps, each a separate verified commit (step 1 done 2026-09-25):
+Steps, each a separate verified commit (steps 1–2 done 2026-09-25):
 
 1. `ScreenControls.recenter()` / `toggleCamera()`; move the two callbacks onto it; A4.
 2. `Affordance`, `ScreenAffordances`, `AffordanceMatcher` + A1/A2 (pure, no wiring).
