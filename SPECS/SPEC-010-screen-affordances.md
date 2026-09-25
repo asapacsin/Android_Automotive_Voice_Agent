@@ -129,7 +129,7 @@ Never the transcript or a place name (I-8): picker row ids are opaque (`i2`, POI
 | A4 | Recentre and camera go through `ScreenControls` for both tap and voice | architectural | `ArchitectureRulesTest.uiDoesNotReachIntoExecution` + `ScreenRouteParityTest` | **built** |
 | A5 | Picker selection uses the registry; `tryLocalNavigationPick` is gone | production wiring | `FeaturePresenceRegressionTest` + existing picker tests green | not built |
 | A6 | `VoiceContextHints` lists the affordances on screen | functional | `VoiceContextHintsTest` | **built** |
-| A7 | Spoken 「暂停」「空调」「回到当前位置」 act on the phone with no tool call from the model | device | `AFFORDANCE-DEVICE-001` (speech harness, LOCAL_DEVICE) | not built |
+| A7 | Spoken 「暂停」「空调」「回到当前位置」 act on the phone with no tool call from the model | device | `AFFORDANCE-DEVICE-001` (speech harness, LOCAL_DEVICE) | queued, NOT_RUN |
 | A8 | Registry, capabilities, TEST_MATRIX rows agree | reconciliation | `harness_check.py`, `test_matrix.py --validate` | not built |
 
 ## Open product decisions

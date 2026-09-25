@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-25T06:36:30",
+  "generated_at": "2026-09-25T06:37:03",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "6f8b18d",
+    "commit": "313ce82",
     "branch": "claude/9-25",
-    "subject": "SPEC-010 step 3: one execution per turn across local and model paths (A3)",
+    "subject": "SPEC-010 step 4a: spoken bottom-bar controls run locally (A6)",
     "working_tree_clean": false,
-    "uncommitted_files": 12
+    "uncommitted_files": 2
   },
   "tests": {
     "available": true,
@@ -233,13 +233,6 @@
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-010-screen-affordances.md",
-        "item": "A7",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-011-amap-live-info.md",
         "item": "A7",
         "blocked_by": null
@@ -284,6 +277,13 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "AEC-DELAY-DEVICE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "AFFORDANCE-DEVICE-001",
         "blocked_by": null
       },
       {

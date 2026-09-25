@@ -2,15 +2,15 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-21 · 104 tests
+Updated 2026-09-21 · 106 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 42 |
+| autonomous PASS | 43 |
 | autonomous FAIL | 0 |
 | incomplete | 0 |
 | partial pass | 0 |
-| not run | 46 |
+| not run | 47 |
 | human required | 16 |
 | human pass | 0 |
 | human fail | 0 |
@@ -66,6 +66,7 @@ Updated 2026-09-21 · 104 tests
 - ECHO-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - HELP-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - NAV-SIM-QA-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- AFFORDANCE-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - navigation.guidance_voice requires INTERMEDIATE_FLOW but has no passing cover (linked: NAV-MID-ROUTE-001)
 
 ## By capability
@@ -73,7 +74,7 @@ Updated 2026-09-21 · 104 tests
 | Capability | Tests | Passing | Awaiting a human | Not run |
 | --- | --- | --- | --- | --- |
 | apps | 1 | 0 | 0 | 1 |
-| architecture | 1 | 1 | 0 | 0 |
+| architecture | 3 | 2 | 0 | 1 |
 | calling | 8 | 6 | 1 | 1 |
 | cantonese | 2 | 1 | 1 | 0 |
 | climate | 5 | 1 | 1 | 3 |
@@ -102,6 +103,8 @@ Updated 2026-09-21 · 104 tests
 | ID | Capability | Test | Owner | Status | Release blocking | Evidence |
 | --- | --- | --- | --- | --- | --- | --- |
 | APPS-001 | apps | open_app reaches a real app | AUTONOMOUS | NOT_RUN | no | STALE_BIND apk_digest mismatch |
+| AFFORDANCE-DEVICE-001 | architecture | Spoken control names act on the phone with no model tool call | AUTONOMOUS | NOT_RUN | no | — |
+| AFFORDANCE-UNIT-001 | architecture | Spoken on-screen controls match whole utterances and run once per turn | AUTONOMOUS | PASS | yes | 2026-09-25 cloud: 2066 JVM tests, 0 failures |
 | ARCH-PROVIDER-001 | architecture | Vendor wire vocabulary stays inside adapters | AUTONOMOUS | PASS | no | checked against a deliberately reintroduced breach |
 | CALL-AMBIG-001 | calling | Two people with one name are offered, not chosen between | AUTONOMOUS | PASS | yes | PhoneCallToolTest, 2026-09-20 |
 | CALL-CLASSIFY-001 | calling | A call request is an action, not an unsupported refusal | AUTONOMOUS | PASS | yes | 2026-09-20 TEST_REVIEW: keyword list and registry both claimed ownership of calling |
