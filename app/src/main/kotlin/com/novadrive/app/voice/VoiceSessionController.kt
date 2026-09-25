@@ -441,6 +441,7 @@ class VoiceSessionController(
         microphone.gated = false
         com.novadrive.app.nav.NavigationGuidanceVoice.removeListener(guidanceListener)
         SpeechAuthority.arbiter.onGuidanceSpeaking(false)
+        SpeechAuthority.onSessionEnded()
         scope.cancel()
     }
 
