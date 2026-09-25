@@ -101,18 +101,21 @@ object SpeechAuthority {
         synchronized(holdLock) { replyQueued = false }
     }
 
-    /** D1: pause exactly when the arbiter says HOLD; the only way a held reply resumes. */
+    /**
+     * D1: pause exactly when the arbiter says HOLD; the only way a held reply resumes. Decision and
+     * apply are one atomic step under [holdLock], so concurrent syncs cannot apply a stale answer.
+     * Lock order: holdLock → arbiter lock, holdLock → player outputLock; neither is ever reversed.
+     */
     fun syncPlaybackHold() {
-        val pause = reply() == SpeechArbiter.Reply.HOLD
-        val workload = pause && arbiter.workloadHeld()
-        var apply = false
         var startReply = false
         var post = false
         synchronized(holdLock) {
+            val pause = reply() == SpeechArbiter.Reply.HOLD
+            val workload = pause && arbiter.workloadHeld()
             if (pause != pauseApplied) {
                 pauseApplied = pause
-                apply = true
                 startReply = !pause && replyQueued
+                runCatching { playbackHold?.invoke(pause) }
             }
             if (workload && !recheckPosted) {
                 recheckPosted = true
@@ -120,7 +123,6 @@ object SpeechAuthority {
             }
             if (!workload) recheckPosted = false
         }
-        if (apply) runCatching { playbackHold?.invoke(pause) }
         if (startReply) arbiter.onReplyAudio(started = true)
         if (post) {
             scheduleRecheck(SpeechArbiter.WORKLOAD_HOLD_MAX_MS + RECHECK_MARGIN_MS) { syncPlaybackHold() }

@@ -132,6 +132,22 @@ class WorkloadHoldWiringTest {
     }
 
     @Test
+    fun concurrentSyncsEndOnTheCurrentAnswer() {
+        val applied = java.util.concurrent.atomic.AtomicReference<Boolean?>(null)
+        port()
+        SpeechAuthority.playbackHold = { applied.set(it) }
+        repeat(50) { round ->
+            val hold = round % 2 == 0
+            NavigationState.onManeuverDistance(if (hold) 120 else 400)
+            val threads = List(4) { Thread { repeat(200) { SpeechAuthority.syncPlaybackHold() } } }
+            threads.forEach { it.start() }
+            threads.forEach { it.join() }
+            val expected = SpeechAuthority.reply() == SpeechArbiter.Reply.HOLD
+            assertEquals(expected, applied.get(), "round $round")
+        }
+    }
+
+    @Test
     fun maneuverLogLinesCarryOnlyTheBucket() {
         val lines = listOf(0, 37, 149, 150, 151, 999, 12_345).map { SpeechAuthority.maneuverLogLine(it) } +
             SpeechAuthority.maneuverLogLine(null)

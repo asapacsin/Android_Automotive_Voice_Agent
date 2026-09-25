@@ -676,6 +676,8 @@ class AndroidPlaybackPort(
         // A permitted chunk restores full volume, as before SPEC-012 (the step-2 finding: R8's duck
         // therefore lasts until the next chunk). Kept deliberately to stay behaviour-preserving.
         player.unduck()
+        // R6a: a held chunk must never be visible to the writer thread before the player pauses.
+        if (decision == SpeechArbiter.Reply.HOLD) SpeechAuthority.syncPlaybackHold()
         player.enqueue(pcm16le, epoch)
         SpeechAuthority.onReplyChunk(decision, queued = true)
         SpeechAuthority.syncPlaybackHold()

@@ -132,6 +132,10 @@ class FeaturePresenceRegressionTest {
             "SpeechAuthority.playbackHold =",
             "the playback port registers the one hold hook",
         )
+        val enqueue = text("app/src/main/kotlin/com/novadrive/app/voice/PcmAudioPlayer.kt")
+            .substringAfter("override fun enqueue(").substringBefore("override fun flush(")
+        val holdSync = enqueue.indexOf("if (decision == SpeechArbiter.Reply.HOLD) SpeechAuthority.syncPlaybackHold()")
+        assertTrue(holdSync >= 0 && holdSync < enqueue.indexOf("player.enqueue("), "a held chunk is paused before it is queued")
         val controller = text("app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt")
         val listener = controller.substringAfter("private val guidanceListener").substringBefore("init {")
         assertTrue(listener.contains("SpeechAuthority.syncPlaybackHold()"), "guidance end must go through the hold owner")
