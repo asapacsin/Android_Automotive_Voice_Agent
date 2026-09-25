@@ -103,9 +103,9 @@ B2's log line. Distances are logged only as a bucket (`<150`, `≥150`), never w
 | A3 | Player, focus and guidance paths ask only the arbiter; `VoicePolicy` and the mute window in `NavigationState` are gone | architectural | `ArchitectureRulesTest.speechDecisionsAskOnlyTheArbiter` + `FeaturePresenceRegressionTest.speechArbiterKeepsP1AndP3` | **built** (L2; device A6 pending) |
 | A4 | Every pair of simultaneous inputs has a tested outcome | negative | `SpeechArbiterPairTest` | **built** |
 | A5 | Workload hold: held under 150 m, released on passing or at 8 s, never cuts a playing reply | functional | `SpeechArbiterWorkloadTest`, `WorkloadHoldWiringTest` | **wired** (JVM; device A7 not run) |
-| A6 | On a simulated drive, guidance and a reply never overlap and P1 still drops unprompted replies | device | `SPEECH-ARBITER-DEVICE-001` (emulator drive, LOCAL_DEVICE) | not built |
-| A7 | No reply starts inside 150 m of a manoeuvre on a simulated drive | device | `SPEECH-WORKLOAD-DEVICE-001` (LOCAL_DEVICE) | not built |
-| A8 | Registry and capabilities agree | reconciliation | `harness_check.py`, `test_matrix.py --validate` | not built |
+| A6 | On a simulated drive, guidance and a reply never overlap and P1 still drops unprompted replies | device | `SPEECH-ARBITER-DEVICE-001` (emulator drive, LOCAL_DEVICE) | queued, NOT_RUN |
+| A7 | No reply starts inside 150 m of a manoeuvre on a simulated drive | device | `SPEECH-WORKLOAD-DEVICE-001` (LOCAL_DEVICE) | queued, NOT_RUN |
+| A8 | Registry and capabilities agree | reconciliation | `harness_check.py`, `test_matrix.py --validate` | **built** 2026-09-25 — `SPEECH-ARBITER-UNIT-001`, device rows queued, `--validate` 0 problems |
 
 ## Open product decisions
 

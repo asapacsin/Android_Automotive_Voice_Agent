@@ -25,13 +25,13 @@ Each SPEC's steps are separate verified commits; a device row never blocks the n
 | 4 | Screen and picker publish affordances; the old local-pick path is deleted | L2–L4 | **partly built** (L2) — SPEC-010 step 4a: bottom bar wired, hint lists controls; 4b (picker fold, delete old path) waits for the phone |
 | 5 | Spoken control names act on the phone without a model tool call | **L5** | **not earned** — SPEC-010 A7, needs the phone |
 | 6 | SPEC-008 baseline selection rate recorded before any new declaration | **L5** | **not earned** — SPEC-011 step 0, needs the phone |
-| 7 | `query_live_info` weather: parser, tool, truth guard, capability split | L2–L4 | **not built** — SPEC-011 steps 1–3 |
+| 7 | `query_live_info` weather: parser, tool, truth guard, capability split | L2–L4 | **built** (L2, `:app` in a stub-iFlytek mirror) — SPEC-011 steps 1–3: `AmapLiveInfoParserTest`, `LiveInfoToolTest`, `FalseCapabilityClaimTest`; registry rows `LIVE-INFO-UNIT-001`, `TRUTH-WEATHER-001`, `TRUTH-LIVEINFO-NEWS-001`. REST calls returned real data with the owner's web key from the cloud (A9 partial) |
 | 8 | Weather selected from speech ≥ 9/10 with no SPEC-008 regression; live Amap data | **L5–L6** | **not earned** — SPEC-011 step 4 |
-| 9 | `route_traffic`, `along_route`, `place_details` | L2–L6 | **not built** — SPEC-011 step 5 |
+| 9 | `route_traffic`, `along_route`, `place_details` | L2–L6 | **built** (L2, code) — SPEC-011 step 5: `LiveInfoAlongRouteWiringTest` with fake SDK edges; `AmapRouteLiveInfo` has never run (device, `LIVE-INFO-L6-001` / `LIVE-INFO-DEVICE-001`) |
 | 10 | Speech rules characterised against today's classes | L2 | **built** (L2) — SPEC-012 step 1, `SpeechRulesCharacterizationTest` |
-| 11 | `SpeechArbiter` owns every speak/uplink decision; `VoicePolicy` deleted | L2–L4 | **partly built** (L2) — step 2: pure `SpeechArbiter` matches the table (`SpeechArbiterPairTest`); step 3 (rewire, delete VoicePolicy) open |
+| 11 | `SpeechArbiter` owns every speak/uplink decision; `VoicePolicy` deleted | L2–L4 | **built** (L2, stub mirror) — step 3: `SpeechAuthority` wired into player, focus, guidance and mic; `VoicePolicy`, `GuidanceMicGate` and the `NavigationState` window deleted; `ArchitectureRulesTest.speechDecisionsAskOnlyTheArbiter`, `SPEECH-ARBITER-UNIT-001` |
 | 12 | P1 and P3 re-pass on a simulated drive through the arbiter | **L5** | **not earned** — SPEC-012 A6 |
-| 13 | Workload hold before manoeuvres | L2, **L5** | **not built** — SPEC-012 step 4 |
+| 13 | Workload hold before manoeuvres | L2, **L5** | **built** (L2, stub mirror) — SPEC-012 step 4: rule `SpeechArbiterWorkloadTest`, wiring `WorkloadHoldWiringTest` (distance from `NavigationTraceListener`, one playback-hold owner); L5 not earned — `SPEECH-WORKLOAD-DEVICE-001` |
 
 **Completion rule.** Every row earned at its level, the SPEC acceptance tables have no `not built`
 row, and the device rows are either earned or queued in [HUMAN_VALIDATION.md](HUMAN_VALIDATION.md)

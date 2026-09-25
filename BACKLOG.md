@@ -550,6 +550,8 @@ the P1/P3 fixes) into one arbiter, modelled on Android Automotive's audio-focus 
 a workload input from the navigation state. Per AGENTS.md, extend the existing owner rather than add a
 parallel mechanism, and delete what it replaces.
 
+**Status 2026-09-25:** built at L2 as [SPEC-012](SPECS/SPEC-012-speech-arbiter.md) steps 1–4 — `SpeechArbiter` via `SpeechAuthority` replaces `GuidanceMicGate`, `VoicePolicy` and the `NavigationState` window (deleted); the workload hold is wired. Device rows A6/A7 open.
+
 Deliberately excluded: proactive prompts (「前方拥堵，换路线吗？」). There is no TTS, so the
 assistant speaking first would mean asking Flex to say a line, which it may reword; that needs its own
 measurement first. Amap's voice is its built-in one (`setUseInnerVoice`) — it can be muted or deferred,
