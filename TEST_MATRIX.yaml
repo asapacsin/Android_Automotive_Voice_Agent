@@ -2022,7 +2022,7 @@ tests:
     owner: AUTONOMOUS
     status: NOT_RUN
     release_blocking: true
-    prerequisites: ["debug APK with 1000 ms ungate + 600 ms echo hold", "device with live Baidu session", "speaker not muted"]
+    prerequisites: ["debug APK built after 28c42f2 (full-duplex barge-in, DriverTurn ECHO_CANDIDATE hold; no mic echo blackout)", "device with live Baidu session", "speaker not muted"]
     procedure:
       - "voice start with real microphone (do not inject PCM for this row's user turn)"
       - "nav_route 十字门 then nav_start emulator"
@@ -2032,7 +2032,7 @@ tests:
       - "nav_stop"
     pass_criteria:
       - "no second assistant turn that says 没听清 / 再说一遍"
-      - "log may show mic_echo_hold_ms=600 after her reply"
+      - "any speech heard over her reply without post-AEC evidence shows TURN_HOLD ... reason=ECHO_CANDIDATE and is not released audibly"
     evidence:
       - "STALE_BIND code_digest mismatch"
       - "2026-09-21 device 2391ff70 speaker Muted=false; live mic during emulator navi (novavoice.log): after nav_guidance_play_end 18:26:36, no 没听清/再说一遍 in the next 5s"

@@ -283,10 +283,12 @@ speech:
     tool: null
     verified: device
     protected_by: [ECHO-001]
-    regression_test: postSpeechEchoHoldStaysWired
+    regression_test: echoCandidateHoldStaysWired
     required_behaviour: >
       Residual cabin echo of the assistant's own reply must not become a phantom 「没听清」 turn.
-    evidence: "ECHO-001 PASS 2026-09-21"
+    evidence: >
+      ECHO-001 PASS 2026-09-21 was under the replaced post-speech echo hold, superseded by 28c42f2
+      (full-duplex barge-in + DriverTurn ECHO_CANDIDATE hold); device re-run pending.
   action_claim_truthfulness:
     tool: null
     verified: unit

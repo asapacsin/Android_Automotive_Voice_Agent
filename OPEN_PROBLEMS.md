@@ -1216,6 +1216,9 @@ user input.
 so frames and uplink onset stay closed after the mic formally reopens. Desk retest is autonomous
 [ECHO-001](TEST_MATRIX.yaml). Cabin loudness remains [AUDIO-QUALITY-001](TEST_MATRIX.yaml).
 
+2026-09-25: `holdPostSpeechEcho` removed as dead code; replaced 2026-09-22 (28c42f2) by
+full-duplex barge-in + DriverTurn `ECHO_CANDIDATE` hold.
+
 ---
 
 ## P28 — 「你能做什么」 / 「你能干啥」 is answered as if it were noise
