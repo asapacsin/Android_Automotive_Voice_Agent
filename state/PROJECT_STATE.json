@@ -1,25 +1,31 @@
 {
-  "generated_at": "2026-09-25T08:23:04",
+  "generated_at": "2026-09-25T09:10:43",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "a1e86cc",
+    "commit": "4e53451",
     "branch": "claude/9-25",
-    "subject": "Merge branch 'm4/W2-session-reset' into claude/9-25",
+    "subject": "Refresh generated state after M4 wave 2",
     "working_tree_clean": true,
     "uncommitted_files": 0
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-25T07:29:03",
+    "collected_at": "2026-09-25T09:10:37",
     "total": {
-      "tests": 269,
-      "failures": 1,
+      "tests": 1387,
+      "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "evaluation": {
         "tests": 27,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "app": {
+        "tests": 1116,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -37,8 +43,8 @@
         "skipped": 0
       },
       "behavior-test": {
-        "tests": 121,
-        "failures": 1,
+        "tests": 123,
+        "failures": 0,
         "errors": 0,
         "skipped": 0
       },
@@ -55,10 +61,12 @@
         "skipped": 0
       }
     },
-    "passing": false
+    "passing": true
   },
   "apk": {
-    "built": false
+    "built": true,
+    "bytes": 223497180,
+    "built_at": "2026-09-25T09:09:35"
   },
   "capabilities": {
     "available": true,
@@ -118,27 +126,13 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "app-debug.apk: no debug APK has been built from this tree",
-    "actionable_count": 66,
+    "NEXT_ACTION": "A5: | A5 | Picker selection uses the registry; `tryLocalNavigationPick` is gone | production wiring | `FeaturePresenceRegressionTest` + existing picker tests green | not built — **deferred on purpose** to",
+    "actionable_count": 63,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 16,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
-      {
-        "priority": 1,
-        "class": "broken build or missing artifact",
-        "source": "build output",
-        "item": "app-debug.apk",
-        "blocked_by": null
-      },
-      {
-        "priority": 3,
-        "class": "invariant violation",
-        "source": "test report",
-        "item": "com.novadrive.architecture.FeaturePresenceRegressionTest",
-        "blocked_by": null
-      },
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
@@ -557,13 +551,6 @@
         "class": "active milestone row",
         "source": "CURRENT_MILESTONE.md",
         "item": "Weather selected from speech ≥ 9/10 with no SPEC-008 regress",
-        "blocked_by": null
-      },
-      {
-        "priority": 10,
-        "class": "stale state or harness defect",
-        "source": "state",
-        "item": "PROJECT_STATE.json",
         "blocked_by": null
       },
       {
