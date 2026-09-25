@@ -129,6 +129,20 @@ object SpeechAuthority {
         }
     }
 
+    /**
+     * The voice session ended: drop hold bookkeeping so nothing leaks into the next session.
+     * Never invokes [playbackHold] and keeps the arbiter instance.
+     */
+    fun onSessionEnded() {
+        arbiter.onReplyEnded()
+        synchronized(holdLock) {
+            pauseApplied = false
+            replyQueued = false
+            recheckPosted = false
+            lastBucket = null
+        }
+    }
+
     private const val RECHECK_MARGIN_MS = 100L
 
     /** Tests only: a fresh arbiter, optionally on a controlled clock. */

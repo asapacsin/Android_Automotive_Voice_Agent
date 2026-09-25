@@ -148,6 +148,23 @@ class WorkloadHoldWiringTest {
     }
 
     @Test
+    fun sessionEndClearsHoldBookkeepingWithoutTouchingThePlayer() {
+        val port = port()
+        NavigationState.onManeuverDistance(120)
+        port.enqueue(chunk, 0)
+        assertEquals(listOf(true), holds)
+        SpeechAuthority.onSessionEnded()
+        assertEquals(listOf(true), holds, "session end must not invoke the hook")
+        NavigationState.onManeuverDistance(400)
+        SpeechAuthority.syncPlaybackHold()
+        assertEquals(listOf(true), holds, "no spurious resume: pauseApplied was cleared")
+        SpeechAuthority.arbiter.onDriverRequest()
+        NavigationState.onManeuverDistance(120)
+        port.enqueue(chunk, 0)
+        assertEquals(listOf(true, true), holds, "a new hold pauses again")
+    }
+
+    @Test
     fun maneuverLogLinesCarryOnlyTheBucket() {
         val lines = listOf(0, 37, 149, 150, 151, 999, 12_345).map { SpeechAuthority.maneuverLogLine(it) } +
             SpeechAuthority.maneuverLogLine(null)
