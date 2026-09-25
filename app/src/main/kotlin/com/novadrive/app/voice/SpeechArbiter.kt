@@ -3,11 +3,11 @@ package com.novadrive.app.voice
 /**
  * SPEC-012: the one owner of whether 小诺 may speak and whether the microphone may reach Baidu.
  *
- * Today the answer is split across `NavigationState` (P1 mute window), the guidance listener,
- * [GuidanceMicGate] (P3) and `AndroidPlaybackPort.applyFocusChange`. This class holds the same
+ * Before step 3 the answer was split across `NavigationState` (P1 mute window), the guidance
+ * listener, `GuidanceMicGate` (P3) and `AndroidPlaybackPort.applyFocusChange`. This class holds the same
  * rules as one table, driven by events and an injected clock so every row is testable on the JVM.
- * It is **not wired yet** (SPEC-012 step 3); until then it must answer exactly as those owners do,
- * which `SpeechRulesCharacterizationTest` checks for every combination of inputs.
+ * Wired in SPEC-012 step 3 through [SpeechAuthority]; `SpeechRulesCharacterizationTest` pins every
+ * combination of inputs to the behaviour those owners had.
  *
  * Rows, highest first, for a new chunk of reply audio:
  * R4 permanent focus loss → DROP · R6 navigating outside the permitted window → DROP (P1) ·
@@ -18,8 +18,8 @@ package com.novadrive.app.voice
  */
 class SpeechArbiter(
     private val clock: () -> Long,
-    private val tailMs: Long = GuidanceMicGate.DEFAULT_TAIL_MS,
-    private val maxClosedMs: Long = GuidanceMicGate.DEFAULT_MAX_CLOSED_MS,
+    private val tailMs: Long = TAIL_MS,
+    private val maxClosedMs: Long = MAX_CLOSED_MS,
     private val windowMs: Long = WINDOW_MS,
 ) {
     enum class Reply { PLAY, HOLD, DROP }
@@ -97,9 +97,14 @@ class SpeechArbiter(
         if (closed) Uplink.CLOSED else Uplink.OPEN
     }
 
+    /** Why a DROP: true when it is the P1 navigation mute rather than a focus loss (for the log only). */
+    fun navigationMuted(): Boolean = synchronized(lock) { muted() }
+
     private fun muted(): Boolean = navigating && clock() > windowUntilMs
 
     companion object {
         const val WINDOW_MS = 10_000L
+        const val TAIL_MS = 500L
+        const val MAX_CLOSED_MS = 20_000L
     }
 }

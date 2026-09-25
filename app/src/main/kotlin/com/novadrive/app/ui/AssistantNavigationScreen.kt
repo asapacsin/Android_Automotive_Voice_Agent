@@ -12,7 +12,6 @@ import com.novadrive.app.nav.RecenterOutcome
 import com.novadrive.app.nav.amap.AmapNaviViewHost
 import com.novadrive.app.ScreenControls
 import com.novadrive.app.DebugVoiceLog
-import com.novadrive.app.NavigationState
 import com.novadrive.app.vision.CameraQuestionHandler
 import com.novadrive.app.vision.CameraVisionGateway
 import com.novadrive.app.voice.VoiceSessionGateway
@@ -212,7 +211,7 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
         if (lookJob?.isActive == true) return
         lookJob = uiScope.launch {
             val outcome = VisionProvider.handler(context).ask(null)
-            NavigationState.allowConfirmation()
+            com.novadrive.app.voice.SpeechAuthority.arbiter.onConfirmation()
             val prompt = if (outcome.ok) {
                 CameraQuestionHandler.cameraOpenedPrompt(outcome.spokenText)
             } else {

@@ -356,7 +356,7 @@ class EmbeddedNavigationController(
      * stop the host directly and never call [stopNavigation], so without this the phase
      * stayed NAVIGATING for the life of the process and
      * [NavigationPhase.isNavigationSessionActive] kept reporting a live session to
-     * VoicePolicy long after the drive was over.
+     * the speech arbiter long after the drive was over.
      *
      * Ignored unless we are actually navigating, so a stale stop cannot clobber a picker
      * the driver is in the middle of using.

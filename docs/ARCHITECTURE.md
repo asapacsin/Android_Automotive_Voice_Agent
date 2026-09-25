@@ -56,7 +56,7 @@ One behaviour, one owner. If you need to change one of these, change it **here**
 | Current speed / posted limit while driving | `DrivingSpeedHud` in `AmapNaviViewHost` (Amap location + cameras) | assistant overlay, a second speed source |
 | Which candidate the driver picked | `NavigationChoiceResolver` | the model |
 | Turn-taking / interruption | server VAD for turn ends; `ListeningLifecycle` for ACTIVE / SILENT_WAIT / SLEEP / DEEP_IDLE; `VoiceCommandRouter` for 「闭嘴」「休眠」 | ad-hoc checks in the client |
-| Whether reply audio is heard | `AndroidPlaybackPort` (navigation mute, lifecycle) + `PhantomTurnGate` (phantom/false-claim holds) | the UI |
+| Whether reply audio is heard | `SpeechArbiter` via `SpeechAuthority` (P1 window, guidance hold, focus, uplink — SPEC-012), applied by `AndroidPlaybackPort` (+ lifecycle) + `PhantomTurnGate` (phantom/false-claim holds) | the UI |
 | Conversation lifetime | `ConversationResetPolicy` (reset after tool turns) + `ResponseTurnGate` (one reply at a time) | the model |
 | Credentials | `AndroidKeystoreCredentialStore` | source, Gradle files, logs |
 

@@ -376,7 +376,7 @@ change_impact:
       - ListeningLifecycle
       - AudioFocusController
       - SpeechUplinkGate
-      - GuidanceMicGate
+      - SpeechAuthority
       - SpeechArbiter
       - PcmAudioPlayer
       - AecMetrics
