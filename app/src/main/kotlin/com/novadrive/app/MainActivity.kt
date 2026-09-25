@@ -61,6 +61,9 @@ class MainActivity : Activity() {
             climatePort = VehicleControlProvider.port,
             climateHandler = climateHandler,
             musicPlaying = BundledMusicPlayer.playing,
+            // Tap and voice both come here (I-6); the screen only renders the result.
+            recenterMap = { screen.recenterMap() },
+            cameraToggle = { toggleCamera() },
         )
         controller =
             VoiceSessionController(
@@ -128,7 +131,6 @@ class MainActivity : Activity() {
                 onOpenDeveloperSettings = {
                     startActivity(Intent(this@MainActivity, DeveloperSettingsActivity::class.java))
                 }
-                onCameraToggleRequested = { toggleCamera() }
                 onCameraPermissionNeeded = { runOnUiThread { requestCameraPermission() } }
                 onListeningToggle = { toggleListening() }
             }
@@ -241,16 +243,17 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun toggleCamera() {
+    private fun toggleCamera(): ScreenControls.Outcome {
         if (screen.cameraShowing) {
             screen.hideCamera()
-            return
+            return ScreenControls.Outcome(true)
         }
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             requestCameraPermission()
-            return
+            return ScreenControls.Outcome(false, "CAMERA_PERMISSION_REQUIRED")
         }
         screen.showCamera()
+        return ScreenControls.Outcome(true)
     }
 
     /**

@@ -25,8 +25,6 @@ import kotlinx.coroutines.launch
 import com.novadrive.ingress.realtime.VoiceUiState
 
 class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
-    var onCameraToggleRequested: (() -> Unit)? = null
-
     /** Asked by the camera when a vision request finds no camera permission. */
     var onCameraPermissionNeeded: (() -> Unit)?
         get() = camera.onPermissionNeeded
@@ -83,8 +81,6 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
         mapHost.attachSpeedHud(this)
         camera.onVisionText = { text -> overlay.appendTranscript("📷 $text") }
         camera.visibility = GONE
-        bottomBar.onCameraClick = { onCameraToggleRequested?.invoke() }
-        bottomBar.onRecenterClick = { recenterMap() }
         overlay.onOpenDeveloperSettings = { onOpenDeveloperSettings?.invoke() }
         choiceOverlay.bind(EmbeddedNavigation.shared(context))
         uiScope.launch {

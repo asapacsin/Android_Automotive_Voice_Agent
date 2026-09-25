@@ -26,11 +26,6 @@ import kotlinx.coroutines.launch
  * decides nothing and reaches no backend directly.
  */
 class BottomBarView(context: Context) : LinearLayout(context) {
-    var onCameraClick: (() -> Unit)? = null
-
-    /** 📍 recentre the map on the driver's current position. */
-    var onRecenterClick: (() -> Unit)? = null
-
     private var scope: CoroutineScope? = null
     private var controls: ScreenControls? = null
 
@@ -75,14 +70,14 @@ class BottomBarView(context: Context) : LinearLayout(context) {
                 text = context.getString(R.string.map_recenter_button)
                 textSize = 18f
                 contentDescription = context.getString(R.string.map_recenter_description)
-                setOnClickListener { onRecenterClick?.invoke() }
+                setOnClickListener { act("recenter", climateFailure = false) { it.recenter() } }
             }
         addView(recenter, LayoutParams(dp(56), LayoutParams.WRAP_CONTENT))
         val camera =
             Button(context).apply {
                 text = context.getString(R.string.camera_button)
                 textSize = 18f
-                setOnClickListener { onCameraClick?.invoke() }
+                setOnClickListener { act("camera", climateFailure = false) { it.toggleCamera() } }
             }
         addView(camera, LayoutParams(dp(72), LayoutParams.WRAP_CONTENT))
     }
@@ -127,12 +122,16 @@ class BottomBarView(context: Context) : LinearLayout(context) {
      * changes only when the executor says the action succeeded, never because the button was
      * pressed.
      */
-    private fun act(name: String, action: suspend (ScreenControls) -> ScreenControls.Outcome) {
+    private fun act(
+        name: String,
+        climateFailure: Boolean = true,
+        action: suspend (ScreenControls) -> ScreenControls.Outcome,
+    ) {
         val bound = controls ?: return
         scope?.launch {
             val outcome = action(bound)
             DebugVoiceLog.log("screen_action=$name ok=${outcome.ok} error=${outcome.errorCode ?: "-"}")
-            if (!outcome.ok) climateLabel.text = context.getString(R.string.bottom_bar_climate_failed)
+            if (!outcome.ok && climateFailure) climateLabel.text = context.getString(R.string.bottom_bar_climate_failed)
         }
     }
 

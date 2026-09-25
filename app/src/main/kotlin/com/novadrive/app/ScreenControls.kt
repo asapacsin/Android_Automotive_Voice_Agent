@@ -1,5 +1,6 @@
 package com.novadrive.app
 
+import com.novadrive.app.nav.RecenterOutcome
 import com.novadrive.app.vehicle.ClimateToolHandler
 import com.novadrive.vehicle.ClimateState
 import com.novadrive.vehicle.VehicleControlPort
@@ -34,6 +35,12 @@ interface ScreenControls {
 
     suspend fun adjustTemperature(delta: Double): Outcome
 
+    /** 📍 Move the map back to the driver's position. Fails with the [RecenterOutcome] name. */
+    suspend fun recenter(): Outcome
+
+    /** 📷 Show the camera window, or hide it if it is showing. */
+    suspend fun toggleCamera(): Outcome
+
     /** Deliberately the same shape a tool result has: did it work, and if not, why. */
     data class Outcome(val ok: Boolean, val errorCode: String? = null)
 }
@@ -47,6 +54,8 @@ class ExecutorScreenControls(
     private val climatePort: VehicleControlPort,
     private val climateHandler: ClimateToolHandler,
     override val musicPlaying: StateFlow<Boolean>,
+    private val recenterMap: () -> RecenterOutcome,
+    private val cameraToggle: () -> ScreenControls.Outcome,
 ) : ScreenControls {
 
     override val climate: StateFlow<ClimateState> get() = climatePort.climateState
@@ -76,6 +85,17 @@ class ExecutorScreenControls(
             "value" to plain(delta),
         ),
     )
+
+    override suspend fun recenter(): ScreenControls.Outcome {
+        val result = recenterMap()
+        return if (result == RecenterOutcome.MOVED) {
+            ScreenControls.Outcome(true)
+        } else {
+            ScreenControls.Outcome(false, "RECENTER_${result.name}")
+        }
+    }
+
+    override suspend fun toggleCamera(): ScreenControls.Outcome = cameraToggle()
 
     private suspend fun climate(arguments: Map<String, String>): ScreenControls.Outcome {
         val result = climateHandler.handle(arguments)
