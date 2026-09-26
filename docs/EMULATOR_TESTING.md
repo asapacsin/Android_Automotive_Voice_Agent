@@ -53,3 +53,37 @@ live-service checks also need their real credentials and network access. The API
   harness clip is not heard when that device is a headset.
 - `voice say:<clip>` injection is paced in real time (`test_speech_end frames=207 elapsedMs=2073`
   for a 2.07 s clip) and exercises Baidu recognition, tools and reply playback end to end.
+
+## Talking to 小诺 on the emulator: the host audio bridge (debug builds)
+
+Because of the chopped host-mic bridge above, live voice on the emulator goes through the PC
+instead. With the emulator running and the debug app open, run from the repository root:
+
+```powershell
+python tools/speech-harness/host_audio_bridge.py
+```
+
+It runs `adb reverse tcp:7790 tcp:7790`, switches the app's bridge on (`DEBUG_TOOL tool=bridge
+arg=on:7790`), starts a session, streams the PC microphone (ffmpeg dshow, 16 kHz mono; the USB
+headset first unless it reads digital silence, else the next device; `--mic "<name>"`, `--list`)
+and plays every reply slice with ffplay at the reply rate (Flex: 24 kHz). It prints what was heard
+(`transcript=你:`), tool calls and replies from the NovaVoice log. Enter starts a turn (the
+`voice wake` path); Ctrl+C switches the bridge off.
+
+How it works: `HostAudioTap` (main source set, both slots null unless a debug build's
+`HostAudioBridge` sets them) makes `PcmAudioCapture` read frames from the socket instead of
+`AudioRecord`, so gain, gate, mute and turn handling are those of the live microphone, and makes
+`PcmAudioPlayer` copy each slice it has written to the `AudioTrack` to the PC. The emulator track
+keeps playing, so drain, SPEAKING→LISTENING and barge-in timing still come from its clock. A
+barge-in flush does not cut audio already sent to ffplay (up to one slice queue on the PC).
+
+Measured 2026-09-26 (`--from-file tools/speech-harness/speech/temp24.pcm`):
+`transcript=你: 调到二十四度。` → `tool=control_climate … 24°C` →
+`transcript=小诺: 空调温度已设为24度…` and `[reply audio] bytes=207840 rate=24000 seconds=4.33`.
+
+**Wake word works on the bridge.** The iFlytek MSC engine loads and runs under ARM translation
+(`MscSpeechLog onVolumeChanged` while armed); it was simply disabled in settings
+(`wake status` → `enabled=false`). Its idle capture is also a `PcmAudioCapture`, so it hears the
+bridged audio: with the session asleep, `--no-start --from-file …/wake_xiaoxiao.pcm` gave
+`wake_detection` 2.1 s after `host_bridge on` (1 s lead silence + the clip) and
+`listening SLEEP->ACTIVE reason=wake_word`. Enable it with `tool=wake arg=on`.

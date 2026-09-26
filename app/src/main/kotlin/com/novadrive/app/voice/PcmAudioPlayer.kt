@@ -238,6 +238,9 @@ class PcmAudioPlayer(
                 }
             }
         }
+        HostAudioTap.sink?.let { sink ->
+            sink(pending.copyOfRange(epochEngine.pendingSliceOffset, epochEngine.pendingSliceOffset + written), sampleRateHz)
+        }
         epochEngine.acceptShortWrite(written)
         framesWritten += written / 2
         val clock = renderClock(player)

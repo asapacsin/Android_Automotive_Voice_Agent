@@ -1,0 +1,286 @@
+"""Talk to 小诺 on the emulator with the PC's microphone; hear replies on the PC's speakers.
+
+Debug builds only (HostAudioBridge in app/src/debug). One command:
+
+    python tools/speech-harness/host_audio_bridge.py
+
+It sets up `adb reverse`, switches the app's bridge on, starts a voice session, streams the PC mic
+(ffmpeg dshow, 16 kHz mono s16le) into the app's normal capture path, plays reply audio with
+ffplay and prints what 小诺 heard and said from the NovaVoice log. Press Enter to start a turn
+(the `voice wake` path). Ctrl+C switches the bridge off and exits.
+
+    --mic "<dshow name>"   choose the microphone (default: first USB Audio Device, else first)
+    --list                 list dshow microphones
+    --from-file X.pcm      stream a 16 kHz mono s16le clip instead of the mic (verification)
+    --duration S           exit after S seconds
+    --no-play              do not play replies (bytes/seconds are still reported)
+    --no-start             do not start a session (say the wake word instead)
+"""
+import argparse
+import math
+import os
+import re
+import shutil
+import socket
+import struct
+import subprocess
+import sys
+import threading
+import time
+
+ADB = os.environ.get("ADB") or shutil.which("adb") or r"C:\Users\Administrator\Android\Sdk\platform-tools\adb.exe"
+SERIAL = os.environ.get("ANDROID_SERIAL")
+RECEIVER = "com.novadrive.app/.DebugToolReceiver"
+RATE = 16000
+CHUNK = RATE * 2 // 50  # 20 ms
+SHOW = re.compile(r"transcript=|tool=|host_bridge|state=|error", re.I)
+
+
+def adb(*args, **kw):
+    target = ["-s", SERIAL] if SERIAL else ["-e"]
+    return subprocess.run([ADB, *target, *args], capture_output=True, text=True,
+                          encoding="utf-8", errors="replace", timeout=kw.get("timeout", 30))
+
+
+def broadcast(tool, arg):
+    return adb("shell", "am", "broadcast", "-n", RECEIVER, "-a", "com.novadrive.app.DEBUG_TOOL",
+               "--es", "tool", tool, "--es", "arg", arg)
+
+
+def ffmpeg(name="ffmpeg"):
+    found = shutil.which(name)
+    if found:
+        return found
+    if name == "ffmpeg":
+        import imageio_ffmpeg  # noqa: the same fallback make_speech.py uses
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    return None
+
+
+def list_mics():
+    out = subprocess.run([ffmpeg(), "-hide_banner", "-list_devices", "true", "-f", "dshow", "-i", "dummy"],
+                         capture_output=True, text=True, encoding="utf-8", errors="replace").stderr
+    return re.findall(r'"([^"]+)" \(audio\)', out)
+
+
+def probe_rms(device, seconds=1.0):
+    """Loudness of a short capture. A muted or disconnected device delivers exact digital zeros."""
+    out = subprocess.run([ffmpeg(), "-hide_banner", "-loglevel", "error", "-f", "dshow", "-i", f"audio={device}",
+                          "-t", str(seconds), "-ac", "1", "-ar", str(RATE), "-f", "s16le", "-"],
+                         capture_output=True, timeout=15).stdout
+    return rms(out)
+
+
+def pick_mic(mics):
+    """USB headset first, but skip a device that is silent (muted headset mic reads rms 0)."""
+    ordered = sorted(mics, key=lambda m: "USB Audio" not in m)
+    for mic in ordered:
+        level = probe_rms(mic)
+        if level > 0:
+            return mic
+        print(f"[bridge] {mic}: silent (muted?), trying the next microphone", flush=True)
+    return ordered[0] if ordered else None
+
+
+def rms(pcm):
+    n = len(pcm) // 2
+    if n == 0:
+        return 0
+    samples = struct.unpack(f"<{n}h", pcm[: n * 2])
+    return int(math.sqrt(sum(s * s for s in samples) / n))
+
+
+def feed_mic(conn, device, stop):
+    proc = subprocess.Popen([ffmpeg(), "-hide_banner", "-loglevel", "error", "-f", "dshow",
+                             "-audio_buffer_size", "20", "-i", f"audio={device}",
+                             "-ac", "1", "-ar", str(RATE), "-f", "s16le", "-"],
+                            stdout=subprocess.PIPE)
+    last, peak = time.time(), 0
+    try:
+        while not stop.is_set():
+            data = proc.stdout.read(CHUNK)
+            if not data:
+                print("[bridge] microphone capture ended", flush=True)
+                break
+            conn.sendall(data)
+            peak = max(peak, rms(data))
+            if time.time() - last >= 2:
+                print(f"[mic] rms={peak}", flush=True)
+                last, peak = time.time(), 0
+    finally:
+        proc.kill()
+        stop.set()
+
+
+def feed_file(conn, path, stop, lead=1.0):
+    clip = open(path, "rb").read()
+    stream = bytes(int(RATE * 2 * lead)) + clip
+    print(f"[bridge] streaming {path} ({len(clip) / RATE / 2:.2f} s) after {lead:.1f} s silence", flush=True)
+    start, sent = time.time(), 0
+    silence = bytes(CHUNK)
+    while not stop.is_set():
+        chunk = stream[sent:sent + CHUNK] if sent < len(stream) else silence
+        chunk = chunk + bytes(CHUNK - len(chunk))
+        conn.sendall(chunk)
+        sent += CHUNK
+        delay = start + sent / (RATE * 2) - time.time()
+        if delay > 0:
+            time.sleep(delay)
+
+
+def downlink(conn, stop, play):
+    player, player_rate = None, None
+    reply_bytes, reply_rate, last = 0, 0, 0.0
+
+    def report():
+        if reply_bytes:
+            print(f"[reply audio] bytes={reply_bytes} rate={reply_rate} seconds={reply_bytes / 2 / reply_rate:.2f}",
+                  flush=True)
+
+    def read_exact(n):
+        buf = b""
+        while len(buf) < n:
+            try:
+                part = conn.recv(n - len(buf))
+            except socket.timeout:
+                if stop.is_set():
+                    return None
+                if last and time.time() - last > 0.8:
+                    yield_report()
+                continue
+            if not part:
+                return None
+            buf += part
+        return buf
+
+    def yield_report():
+        nonlocal reply_bytes, last
+        report()
+        reply_bytes, last = 0, 0.0
+
+    ffplay = shutil.which("ffplay") if play else None
+    if play and not ffplay:
+        print("[bridge] ffplay not found: replies are counted, not played", flush=True)
+    while not stop.is_set():
+        head = read_exact(8)
+        if head is None:
+            break
+        rate, length = struct.unpack("<II", head)
+        pcm = read_exact(length)
+        if pcm is None:
+            break
+        reply_bytes += length
+        reply_rate = rate
+        last = time.time()
+        if ffplay and rate != player_rate:
+            if player:
+                player.kill()
+            player = subprocess.Popen([ffplay, "-hide_banner", "-loglevel", "error", "-nodisp", "-autoexit",
+                                       "-fflags", "nobuffer", "-f", "s16le", "-ar", str(rate),
+                                       "-ch_layout", "mono", "-i", "-"], stdin=subprocess.PIPE)
+            player_rate = rate
+        if player:
+            try:
+                player.stdin.write(pcm)
+                player.stdin.flush()
+            except OSError:
+                player = None
+    report()
+    stop.set()
+    if player:
+        player.kill()
+
+
+LOGCAT = []
+
+
+def follow_log(stop):
+    proc = subprocess.Popen([ADB, *(["-s", SERIAL] if SERIAL else ["-e"]), "logcat", "-T", "1", "-s", "NovaVoice"],
+                            stdout=subprocess.PIPE, text=True, encoding="utf-8", errors="replace")
+    LOGCAT.append(proc)
+    last_state = None
+    for line in proc.stdout:
+        if stop.is_set():
+            break
+        text = line.split("NovaVoice", 1)[-1].lstrip(": ").rstrip()
+        if text.startswith("state="):
+            if text == last_state:
+                continue
+            last_state = text
+        if SHOW.search(text) and "uplink_frames" not in text and "session_diag" not in text:
+            print("[app] " + text, flush=True)
+    proc.kill()
+
+
+def main():
+    for stream in (sys.stdout, sys.stderr):
+        stream.reconfigure(encoding="utf-8", errors="replace")
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--port", type=int, default=7790)
+    ap.add_argument("--mic")
+    ap.add_argument("--list", action="store_true")
+    ap.add_argument("--from-file")
+    ap.add_argument("--duration", type=float)
+    ap.add_argument("--no-play", action="store_true")
+    ap.add_argument("--no-start", action="store_true", help="leave the session asleep (wake-word test)")
+    args = ap.parse_args()
+
+    if args.list:
+        print("\n".join(list_mics()))
+        return
+    device = None
+    if not args.from_file:
+        mics = list_mics()
+        device = args.mic or pick_mic(mics)
+        if not device:
+            sys.exit("no dshow microphone found")
+        print(f"[bridge] microphone: {device}", flush=True)
+
+    server = socket.socket()
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind(("127.0.0.1", args.port))
+    server.listen(1)
+    server.settimeout(15)
+    adb("reverse", f"tcp:{args.port}", f"tcp:{args.port}")
+    stop = threading.Event()
+    threading.Thread(target=follow_log, args=(stop,), daemon=True).start()
+    broadcast("bridge", f"on:{args.port}")
+    try:
+        conn, _ = server.accept()
+    except socket.timeout:
+        sys.exit("the app did not connect: is a debug build running (adb shell am start -n com.novadrive.app/.MainActivity)?")
+    conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+    conn.settimeout(0.3)
+    print("[bridge] connected", flush=True)
+    if not args.no_start:
+        broadcast("voice", "start")
+
+    feeder = (lambda: feed_file(conn, args.from_file, stop)) if args.from_file else (lambda: feed_mic(conn, device, stop))
+    threading.Thread(target=feeder, daemon=True).start()
+    threading.Thread(target=downlink, args=(conn, stop, not args.no_play), daemon=True).start()
+
+    def enter_to_talk():
+        for _ in sys.stdin:
+            print("[bridge] " + broadcast("voice", "wake").stdout.strip().splitlines()[-1][-80:], flush=True)
+
+    if sys.stdin and sys.stdin.isatty():
+        threading.Thread(target=enter_to_talk, daemon=True).start()
+        print("[bridge] speak now; press Enter to start a new turn, Ctrl+C to quit", flush=True)
+    deadline = time.time() + args.duration if args.duration else None
+    try:
+        while not stop.is_set() and (deadline is None or time.time() < deadline):
+            time.sleep(0.2)
+    except KeyboardInterrupt:
+        pass
+    stop.set()
+    time.sleep(0.5)
+    broadcast("bridge", "off")
+    adb("reverse", "--remove", f"tcp:{args.port}")
+    conn.close()
+    for proc in LOGCAT:
+        proc.kill()
+    print("[bridge] off", flush=True)
+
+
+if __name__ == "__main__":
+    main()

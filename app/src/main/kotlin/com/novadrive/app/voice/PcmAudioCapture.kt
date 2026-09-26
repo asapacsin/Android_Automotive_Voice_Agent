@@ -133,9 +133,18 @@ class PcmAudioCapture(
         worker =
             thread(name = "nova-pcm-capture", isDaemon = true) {
                 val buf = ByteArray(FRAME_BYTES)
+                val drain = ByteArray(FRAME_BYTES)
                 try {
                     while (running.get()) {
-                        val read = recorder.read(buf, 0, buf.size)
+                        val bridged = HostAudioTap.source
+                        val read =
+                            if (bridged != null) {
+                                // Keep the recorder drained so switching back is seamless.
+                                recorder.read(drain, 0, drain.size, AudioRecord.READ_NON_BLOCKING)
+                                bridged.read(buf).also { if (it < 0) HostAudioTap.source = null }.coerceAtLeast(0)
+                            } else {
+                                recorder.read(buf, 0, buf.size)
+                            }
                         if (read > 0) {
                             framesRead += read / 2
                             val raw = buf.copyOf(read)

@@ -35,6 +35,19 @@ class DebugToolReceiver : BroadcastReceiver() {
                 "turn" -> beginTurn(arg)
                 "dispatch" -> dispatch(context, arg)
                 "voice" -> voice(context, arg)
+                // Host audio bridge (PC mic in, PC speakers out): arg `on:<port>` | `off` | `status`.
+                "bridge" -> when {
+                    arg.startsWith("on") -> {
+                        val port = arg.substringAfter(':', "7790").toIntOrNull() ?: 7790
+                        // The broadcast runs on the main thread; the connect is a network call.
+                        Thread { runCatching { HostAudioBridge.start(port) }.onFailure {
+                            Log.d("NovaVoice", "host_bridge failed=${it.javaClass.simpleName}")
+                        } }.start()
+                        "connecting port=$port"
+                    }
+                    arg == "off" -> HostAudioBridge.stop()
+                    else -> HostAudioBridge.status
+                }
                 else -> "unknown tool"
             }
             val safeArg = if (tool == "nav_desk_origin") "<redacted>" else arg
