@@ -40,7 +40,14 @@ object BoundedThreadCleanup {
  * partially written device slice. Platform track buffering is excluded — see SPEC-009.
  */
 object AppPlaybackQueuePolicy {
-    const val MAX_PENDING_MS = 500
+    /**
+     * A memory ceiling, not a latency budget. Flex delivers a reply several times faster than it
+     * plays (2026-09-26: a ~3 s reply arrived in ~1 s, 390 ms already queued when the first slice
+     * played), so the queue legitimately holds most of a reply. The former 500 ms ceiling failed
+     * every reply longer than about half a second with `AUDIO_PLAYBACK_FAILED` — nothing was
+     * heard. A stale tail is cut by the reply epoch on barge-in, not by this limit.
+     */
+    const val MAX_PENDING_MS = 60_000
 
     fun pendingBytes(
         queuedBytes: Int,

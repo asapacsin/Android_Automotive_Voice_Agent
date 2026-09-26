@@ -20,7 +20,7 @@ class AppPlaybackQueuePolicyTest {
 
     @Test
     fun atLimitIncomingChunkIsStillAccepted() {
-        val atLimitBytes = 16_000 * 2 / 2 // 500 ms at 16 kHz mono PCM16
+        val atLimitBytes = limitBytes(16_000)
         assertFalse(
             AppPlaybackQueuePolicy.wouldExceedLimit(
                 queuedBytes = atLimitBytes,
@@ -34,7 +34,7 @@ class AppPlaybackQueuePolicyTest {
 
     @Test
     fun oneBytePastLimitTriggersOverflow() {
-        val atLimitBytes = 16_000 * 2 / 2
+        val atLimitBytes = limitBytes(16_000)
         assertTrue(
             AppPlaybackQueuePolicy.wouldExceedLimit(
                 queuedBytes = atLimitBytes,
@@ -48,7 +48,7 @@ class AppPlaybackQueuePolicyTest {
 
     @Test
     fun newerEpochWouldBeAcceptedAfterOverflowClearsPendingAudio() {
-        val nearlyFull = 16_000 * 2 / 2 - 320
+        val nearlyFull = limitBytes(16_000) - 320
         assertFalse(
             AppPlaybackQueuePolicy.wouldExceedLimit(
                 queuedBytes = nearlyFull,
@@ -77,4 +77,25 @@ class AppPlaybackQueuePolicyTest {
             ),
         )
     }
+
+    /**
+     * Regression, 2026-09-26: Flex delivered a ~3 s reply in ~1 s and the old 500 ms ceiling
+     * failed it before it could be heard. A whole spoken reply arriving at once must fit.
+     */
+    @Test
+    fun aWholeReplyDeliveredFasterThanRealTimeFits() {
+        val tenSecondsAt24k = 24_000 * 2 * 10
+        assertFalse(
+            AppPlaybackQueuePolicy.wouldExceedLimit(
+                queuedBytes = tenSecondsAt24k - 9_600,
+                remainderBytes = 0,
+                unwrittenSliceBytes = 0,
+                incomingBytes = 9_600,
+                sampleRateHz = 24_000,
+            ),
+        )
+    }
+
+    private fun limitBytes(sampleRateHz: Int): Int =
+        sampleRateHz * 2 * AppPlaybackQueuePolicy.MAX_PENDING_MS / 1000
 }

@@ -86,7 +86,7 @@ class PcmAudioPlayer(
         synchronized(outputLock) {
             val previousWorker = worker
             if (!mayStartAudioWorker(previousWorker?.isAlive == true, running.get())) {
-                onError("AUDIO_PLAYBACK_FAILED")
+                fail("worker_overlap")
                 return
             }
             if (previousWorker?.isAlive == true) {
@@ -110,7 +110,7 @@ class PcmAudioPlayer(
                 )
             } catch (_: IllegalArgumentException) {
                 running.set(false)
-                onError("AUDIO_PLAYBACK_FAILED")
+                fail("min_buffer")
                 return
             }
         val bufferManager = LowLatencyPlaybackBuffer(sampleRateHz, minBuf)
@@ -132,13 +132,13 @@ class PcmAudioPlayer(
                                 .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
                                 .build(),
                         )
-                        .setBufferSizeInBytes(bufferManager.initialBufferBytes())
+                        .setBufferSizeInBytes(bufferManager.capacityBytes())
                         .setTransferMode(AudioTrack.MODE_STREAM)
                 VoiceAudioSession.applyToTrackBuilder(builder, audioSessionId)
                 builder.build()
             } catch (_: Exception) {
                 running.set(false)
-                onError("AUDIO_PLAYBACK_FAILED")
+                fail("track_build")
                 return
             }
         playbackPaused = false
@@ -156,7 +156,7 @@ class PcmAudioPlayer(
             } catch (_: Exception) {
             }
             running.set(false)
-            onError("AUDIO_PLAYBACK_FAILED")
+            fail("track_play")
             return
         }
         bufferManager.reset(player)
@@ -216,16 +216,16 @@ class PcmAudioPlayer(
                     AudioTrack.WRITE_NON_BLOCKING,
                 )
             } catch (_: Exception) {
-                onError("AUDIO_PLAYBACK_FAILED")
+                fail("write_threw")
                 return SliceResult.STOP
             }
         if (written < 0) {
-            onError("AUDIO_PLAYBACK_FAILED")
+            fail("write_error")
             return SliceResult.STOP
         }
         if (written == 0) return SliceResult.RETRY
         if (written % 2 != 0) {
-            onError("AUDIO_PLAYBACK_FAILED")
+            fail("write_odd_bytes")
             return SliceResult.STOP
         }
 
@@ -233,7 +233,7 @@ class PcmAudioPlayer(
             if (aec.isAvailable) {
                 val accepted = pending.copyOfRange(epochEngine.pendingSliceOffset, epochEngine.pendingSliceOffset + written)
                 if (!aec.processRender(accepted, sampleRateHz)) {
-                    onError("AUDIO_PLAYBACK_FAILED")
+                    fail("aec_render")
                     return SliceResult.STOP
                 }
             }
@@ -436,6 +436,15 @@ class PcmAudioPlayer(
         track = null
     }
 
+    /**
+     * Every playback failure reaches the screen as the same `AUDIO_PLAYBACK_FAILED`; the debug log
+     * says which step failed, so a "playback failed" banner can be traced to its cause.
+     */
+    private fun fail(site: String) {
+        DebugVoiceLog.log("playback_error code=AUDIO_PLAYBACK_FAILED site=$site")
+        onError("AUDIO_PLAYBACK_FAILED")
+    }
+
     /** Overflow or explicit failure for the current reply epoch; ingress still owns the next epoch. */
     private fun failReplyLocked(epoch: Int) {
         epochEngine.failReply(epoch)
@@ -450,7 +459,7 @@ class PcmAudioPlayer(
         emitSpeaking(false)
         notifyPlaybackActiveIfChanged()
         publishPlayoutDelay(track, null)
-        onError("AUDIO_PLAYBACK_FAILED")
+        fail("queue_overflow")
     }
 
     /**

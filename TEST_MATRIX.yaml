@@ -977,7 +977,7 @@ tests:
   - id: PLAYBACK-QUEUE-OVERFLOW-001
     capability: turn_taking
     name: Application PCM queue overflow fails the current reply epoch
-    purpose: "P1: pending app-owned PCM must not exceed 500 ms; overflow stops that reply without advancing ingress epoch"
+    purpose: "P1: pending app-owned PCM must not exceed 60 s (was 500 ms, which failed every reply longer than ~0.5 s — 2026-09-26); overflow stops that reply without advancing ingress epoch"
     type: unit
     scope: COMPONENT
     owner: AUTONOMOUS

@@ -33,6 +33,21 @@ class LowLatencyPlaybackBufferTest {
     }
 
     @Test
+    fun aTrackBuiltAtTheDeclaredCapacityCanTakeEveryGrow() {
+        // Regression, 2026-09-26: the track was built at the starting size, so the first grow was
+        // clamped and capped and a whole reply underran on the emulator at 44 ms.
+        val manager = LowLatencyPlaybackBuffer(rate, platformMinBufferBytes = framesPer10ms * 4)
+        val track = FakeTrack(capacityFrames = manager.capacityBytes() / 2)
+        manager.reset(track)
+        assertEquals(20, manager.bufferMs, "reset starts at the platform floor, not the capacity")
+        repeat(5) { i ->
+            track.underrunCount = i + 1
+            manager.afterWrite(track)
+        }
+        assertEquals(70, manager.bufferMs)
+    }
+
+    @Test
     fun anUnderrunWhileWritingGrowsByTenMilliseconds() {
         val track = FakeTrack()
         val manager = LowLatencyPlaybackBuffer(rate, platformMinBufferBytes = framesPer10ms * 4)

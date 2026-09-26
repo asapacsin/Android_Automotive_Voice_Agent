@@ -19,10 +19,15 @@ fragment once raw and again processed.
   already completed. At the configured 16/24-kHz mono PCM16 output rates, 237 KB represents about
   7.4/4.9 seconds of audio. This is historical evidence from an older APK, not a current performance
   baseline.
-- Limit application-owned pending PCM to **500 ms** at the negotiated output sample rate, counting
-  queued, remainder and partially written bytes. This bounds memory and the stale tail exposed by
-  FC-010. The platform AudioTrack buffer is tracked separately and is not included in this app-queue
-  limit. This is a safety ceiling, not a latency or acoustic-success claim.
+- Limit application-owned pending PCM to **60 s** at the negotiated output sample rate, counting
+  queued, remainder and partially written bytes. This bounds memory. The platform AudioTrack buffer
+  is tracked separately and is not included in this app-queue limit. This is a safety ceiling, not
+  a latency or acoustic-success claim; a stale tail is cut by the reply epoch on barge-in.
+- The ceiling was **500 ms** until 2026-09-26. Flex delivers replies faster than real time (a ~3 s
+  reply arrived in ~1 s; 390 ms was already queued when the first slice played, and the queue
+  overflowed 200 ms later, logged as `playback_error code=AUDIO_PLAYBACK_FAILED site=queue_overflow`),
+  so every reply longer than about half a second was flushed unheard behind a "playback failed"
+  banner. The queue must hold a whole reply.
 - On overflow, clear and flush the current reply epoch, reject further PCM for that completed epoch,
   and report `AUDIO_PLAYBACK_FAILED` through the existing playback error path. Never discard an
   arbitrary chunk and continue as though the reply were intact. A later reply opens a newer epoch.
@@ -37,7 +42,7 @@ fragment once raw and again processed.
    exactly once.
 3. Explicit reply completion pads only a final sub-10-ms frame with silence and drains it; late
    audio for the completed epoch is rejected.
-4. Pending application PCM never exceeds 500 ms at the negotiated rate. Overflow stops that reply,
+4. Pending application PCM never exceeds 60 s at the negotiated rate; a whole reply fits. Overflow stops that reply,
    reports the playback error, and does not claim successful completion.
 5. Capture teardown stops/unblocks and joins its worker before releasing its recorder or effects;
    timeout retains ownership and prevents overlapping capture.

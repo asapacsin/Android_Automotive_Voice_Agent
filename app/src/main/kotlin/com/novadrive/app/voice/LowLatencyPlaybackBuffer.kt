@@ -48,6 +48,15 @@ class LowLatencyPlaybackBuffer(
 
     fun initialBufferBytes(): Int = currentBufferBytes
 
+    /**
+     * The capacity to build the track with: the starting size plus room for every permitted grow.
+     * A track built at exactly [initialBufferBytes] cannot grow at all — `setBufferSizeInFrames`
+     * clamps to capacity — so the first underrun capped growth and the policy above never ran
+     * (2026-09-26, emulator: `grow_capped` at 44 ms, then ~30 underruns/s through a whole reply).
+     * [reset] brings the size down to the starting value, so initial latency is unchanged.
+     */
+    fun capacityBytes(): Int = platformFloorBytes + MAX_INCREASES * bytesPer10ms
+
     fun afterWrite(player: AudioTrack) = afterWrite(player.asPort())
 
     fun afterWrite(port: Port) {
