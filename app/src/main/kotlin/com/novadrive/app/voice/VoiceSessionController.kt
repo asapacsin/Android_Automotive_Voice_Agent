@@ -403,6 +403,11 @@ class VoiceSessionController(
                 val silence = ByteArray(frame)
                 val padded = pcm16le.size + TEST_TRAILING_SILENCE_FRAMES * frame
                 com.novadrive.app.DebugVoiceLog.log("test_speech_start bytes=${pcm16le.size}")
+                // Paced against the clock, not by a fixed delay per frame: a 10 ms frame followed
+                // by a 100 ms delay (the frame shrank, the delay did not) played every clip at a
+                // tenth of real time, and a per-frame delay(10) would still drift with scheduling.
+                val startedAt = android.os.SystemClock.elapsedRealtime()
+                var sent = 0L
                 while (offset < padded) {
                     val chunk = if (offset < pcm16le.size) {
                         pcm16le.copyOfRange(offset, minOf(offset + frame, pcm16le.size))
@@ -413,9 +418,13 @@ class VoiceSessionController(
                     // as a tap on the dashboard is, or the harness would prove nothing about it.
                     microphone.gateForInjection(chunk).forEach { active.injectAudioFrame(it) }
                     offset += frame
-                    delay(TEST_FRAME_MS)
+                    sent++
+                    val dueAt = startedAt + sent * TEST_FRAME_MS
+                    delay((dueAt - android.os.SystemClock.elapsedRealtime()).coerceAtLeast(0L))
                 }
-                com.novadrive.app.DebugVoiceLog.log("test_speech_end")
+                com.novadrive.app.DebugVoiceLog.log(
+                    "test_speech_end frames=$sent elapsedMs=${android.os.SystemClock.elapsedRealtime() - startedAt}",
+                )
             } finally {
                 microphone.suppressLive = false
             }
@@ -465,7 +474,7 @@ class VoiceSessionController(
         )
         private const val SESSION_DIAG_INTERVAL_MS = 5_000L
         private const val TEST_FRAME_BYTES = PcmAudioCapture.FRAME_BYTES
-        private const val TEST_FRAME_MS = 100L
+        private const val TEST_FRAME_MS = PcmAudioCapture.FRAME_MS.toLong()
         private const val TEST_TRAILING_SILENCE_FRAMES = 15
     }
 }
