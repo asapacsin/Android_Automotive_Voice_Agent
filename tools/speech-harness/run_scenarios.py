@@ -52,6 +52,13 @@ def push_clip(name):
     if not os.path.isfile(local):
         return f"missing clip: {local}"
     adb("push", local, f"{REMOTE}/{name}.pcm")
+    # A rooted adbd (emulator after `adb root`) writes the clip as root with the storage_file
+    # label, which the app cannot read. Hand it to the app's uid and restore the label; on a
+    # normal device this branch does not run.
+    if adb("shell", "id", "-u").stdout.strip() == "0":
+        uid = adb("shell", "stat", "-c", "%u", f"/data/data/{PKG}").stdout.strip()
+        adb("shell", "chown", f"{uid}:{uid}", f"{REMOTE}/{name}.pcm")
+        adb("shell", "restorecon", REMOTE.replace("/sdcard/", "/data/media/0/") + f"/{name}.pcm")
     return None
 
 

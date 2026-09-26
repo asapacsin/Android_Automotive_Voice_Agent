@@ -15,7 +15,7 @@ class FeaturePresenceRegressionTest {
     private val root = File(System.getProperty("nova.repo.root") ?: error("nova.repo.root not set"))
     private fun text(path: String): String = File(root, path).also {
         assertTrue(it.isFile, "missing file: $path")
-    }.readText()
+    }.readText().replace("\r\n", "\n") // autocrlf checkouts: multi-line needles are written with \n
 
     private fun assertContains(path: String, needle: String, why: String) {
         assertTrue(text(path).contains(needle), "$path must contain `$needle` — $why")
