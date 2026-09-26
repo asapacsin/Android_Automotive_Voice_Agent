@@ -86,6 +86,14 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
 
         /** Amap: start point not in supported range (desk / missing SDK fix). */
         const val START_OUT_OF_RANGE_CODE = 3
+
+        /**
+         * The APK ships ARM-only Amap libraries. On an x86 emulator they run under binary
+         * translation and the map's GL thread dies with SIGILL, taking the whole app down.
+         * There the map surface is simply not attached, so the rest of the app can be tested.
+         */
+        val mapRenderable: Boolean =
+            android.os.Build.SUPPORTED_ABIS.firstOrNull()?.startsWith("x86") != true
     }
 
     init {
@@ -96,7 +104,11 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         naviView = AMapNaviView(context)
         naviView.setAMapNaviViewListener(AmapDrivingPresentation.listener { stopNavigation("ui_exit") })
         AmapDrivingPresentation.applyIdle(naviView)
-        addView(naviView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        if (mapRenderable) {
+            addView(naviView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        } else {
+            DebugVoiceLog.log("map_surface skipped=translated_abi")
+        }
         // Speed chip is attached by AssistantNavigationScreen above the assistant overlay.
     }
 
@@ -854,23 +866,24 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
     }
 
     fun onCreate(savedInstanceState: Bundle?) {
+        if (!mapRenderable) return
         naviView.onCreate(savedInstanceState)
         AmapDrivingPresentation.applyIdle(naviView)
     }
 
     fun onResume() {
-        naviView.onResume()
+        if (mapRenderable) naviView.onResume()
         startLocation()
     }
 
     fun onPause() {
         stopLocation()
-        naviView.onPause()
+        if (mapRenderable) naviView.onPause()
     }
 
     fun onDestroy() {
         stopLocation()
-        naviView.onDestroy()
+        if (mapRenderable) naviView.onDestroy()
         runCatching { navi?.removeTTSPlayListener(GuidancePlayListener) }
         if (NavigationGuidanceVoice.speaking) NavigationGuidanceVoice.onPlayEnd()
         navi = null
@@ -878,6 +891,6 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
     }
 
     fun onSaveInstanceState(outState: Bundle) {
-        naviView.onSaveInstanceState(outState)
+        if (mapRenderable) naviView.onSaveInstanceState(outState)
     }
 }
