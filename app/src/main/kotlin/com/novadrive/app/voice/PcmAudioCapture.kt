@@ -329,8 +329,14 @@ class AndroidMicrophonePort(
 
     val droppedUplinkGate = java.util.concurrent.atomic.AtomicLong()
 
-    /** Debug A/B switch, mirroring [inputGainEnabled]; always on in normal use. */
-    @Volatile var uplinkGateEnabled: Boolean = true
+    /**
+     * Debug A/B switch, mirroring [inputGainEnabled]; always on in normal use. Off only in a
+     * debuggable build on an x86 emulator, whose host-mic bridge zero-fills one 15 ms HAL buffer
+     * in every ~46 ms (≈30% of samples, measured 2026-09-26 on nova_api30). Speech then arrives as
+     * 30–100 ms bursts that the impulse rule rejects wholesale — nothing spoken would reach the model.
+     */
+    @Volatile var uplinkGateEnabled: Boolean =
+        !(com.novadrive.app.DebugVoiceLog.isEnabled && com.novadrive.app.TranslatedAbi.active)
 
     /** The processing every outgoing microphone frame gets; the speech harness uses it too. */
     fun processForSend(frame: ByteArray): ByteArray =

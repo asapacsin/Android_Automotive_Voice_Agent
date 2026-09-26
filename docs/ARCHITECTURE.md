@@ -90,6 +90,8 @@ render PCM is fed immediately before `AudioTrack.write` (including 24 kHz → 16
 far-end reference); capture PCM is cleaned on the capture thread before `SpeechUplinkGate` and
 `MicInputGain`. Platform `AcousticEchoCanceler` / `NoiseSuppressor` stay off when the native backend
 loads; otherwise the app falls back to the legacy platform path and logs `aec_backend=unavailable`.
+A debug build on an x86 emulator (ARM libraries under translation, `TranslatedAbi`) skips AEC3 and
+logs `reason=translated_abi`: translated AEC3 took ~80% of a core and starved both audio threads.
 `AndroidMicrophonePort` owns every reason a
 frame may not be sent: `muted`, `guidanceGated` (the `SpeechArbiter` uplink answer via `SpeechAuthority`: Amap is speaking, plus tail/cap), `suppressLive` (the debug
 harness is injecting), and the `SpeechUplinkGate`. Model reply playback does **not** gate the mic:

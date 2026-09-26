@@ -37,3 +37,19 @@ real cabin acoustics, speaker echo cancellation, microphone gating under road no
 intelligibility, or physical vehicle behavior. The repository requires physical-device evidence for
 audio and navigation behavior in [ACCEPTANCE_TESTS.md](../ACCEPTANCE_TESTS.md). Amap and Baidu
 live-service checks also need their real credentials and network access. The API 30 Google APIs x86_64 image includes [ARM native-library translation support](https://android-developers.googleblog.com/2020/03/run-arm-apps-on-android-emulator.html). Still verify that the app's native libraries load on this image before treating emulator results as evidence of ABI compatibility on a physical device.
+
+## Voice on the x86 emulator (measured 2026-09-26, nova_api30, Windows host, WHPX)
+
+- The APK ships only ARM native libraries, so the app runs as `arm64-v8a` under translation
+  (`dumpsys package com.novadrive.app` → `primaryCpuAbi=arm64-v8a`). Debug builds therefore skip
+  the Amap map surface and WebRTC AEC3 there (`TranslatedAbi`); translated AEC3 took ~80% of a
+  core on `nova-pcm-capture` and the reply track underran ~30 times a second.
+- The host microphone bridge zero-fills one 15 ms HAL buffer (672 frames at 44.1 kHz) in every
+  ~46 ms: about 30% of captured samples are exact zeros, with or without AEC, with `-audio dsound`
+  or the default backend. Speech reaches Baidu chopped; the uplink gate is off on this emulator
+  because it would reject the chopped bursts as impulses. Live-mic recognition here is a
+  best-effort check, not evidence.
+- The emulator records from the Windows default recording device. Speakers-to-mic playback of a
+  harness clip is not heard when that device is a headset.
+- `voice say:<clip>` injection is paced in real time (`test_speech_end frames=207 elapsedMs=2073`
+  for a 2.07 s clip) and exercises Baidu recognition, tools and reply playback end to end.

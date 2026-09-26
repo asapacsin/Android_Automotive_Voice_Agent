@@ -92,8 +92,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
          * translation and the map's GL thread dies with SIGILL, taking the whole app down.
          * There the map surface is simply not attached, so the rest of the app can be tested.
          */
-        val mapRenderable: Boolean =
-            android.os.Build.SUPPORTED_ABIS.firstOrNull()?.startsWith("x86") != true
+        val mapRenderable: Boolean = !com.novadrive.app.TranslatedAbi.active
     }
 
     init {

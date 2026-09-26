@@ -79,6 +79,12 @@ class WebRtcAcousticEcho private constructor(@Volatile private var nativeHandle:
 
         fun create(): WebRtcAcousticEcho {
             if (!libraryLoaded) return WebRtcAcousticEcho(0L)
+            // Debug emulator only: translated AEC3 starves both audio threads (see TranslatedAbi).
+            // The emulator's host mic is a headset with no speaker path to cancel.
+            if (DebugVoiceLog.isEnabled && com.novadrive.app.TranslatedAbi.active) {
+                DebugVoiceLog.log("aec_backend=unavailable reason=translated_abi")
+                return WebRtcAcousticEcho(0L)
+            }
             val handle = runCatching { nativeCreate() }.getOrElse {
                 DebugVoiceLog.log("aec_backend=unavailable reason=native_create_failed")
                 0L
