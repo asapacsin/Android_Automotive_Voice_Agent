@@ -18,7 +18,8 @@ import java.util.concurrent.TimeUnit
  *
  * One TCP socket to 127.0.0.1:[port]. PC → app: raw 16 kHz mono PCM16LE, paced in real time by
  * the PC's capture. App → PC: `[u32 sampleRate][u32 length][PCM16LE]` for every slice the player
- * has written to its AudioTrack. Frames enter the normal capture path ([HostAudioTap]), so gain,
+ * has written to its AudioTrack, and `[u32 0][u32 length][UTF-8 text]` (rate 0 = tag) for each Amap
+ * guidance prompt, which the PC speaks itself. Frames enter the normal capture path ([HostAudioTap]), so gain,
  * gating, mute and turn handling are exactly those of the live microphone.
  */
 object HostAudioBridge {
@@ -54,6 +55,12 @@ object HostAudioBridge {
             framed.putInt(rate).putInt(pcm.size).put(pcm)
             queue.offer(framed.array())
         }
+        HostAudioTap.guidanceSink = { text ->
+            val bytes = text.toByteArray(Charsets.UTF_8)
+            val framed = ByteBuffer.allocate(8 + bytes.size).order(ByteOrder.LITTLE_ENDIAN)
+            framed.putInt(0).putInt(bytes.size).put(bytes)
+            queue.offer(framed.array())
+        }
         HostAudioTap.source = SocketSource(input) { socket === s }
         Log.d(TAG, "host_bridge on port=$port")
         return "on port=$port"
@@ -65,6 +72,7 @@ object HostAudioBridge {
         socket = null
         HostAudioTap.source = null
         HostAudioTap.sink = null
+        HostAudioTap.guidanceSink = null
         runCatching { s.close() }
         Log.d(TAG, "host_bridge off")
         return "off"

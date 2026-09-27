@@ -87,6 +87,14 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
                 overlay.setDrivingChrome(phase == NavigationPhase.NAVIGATING)
             }
         }
+        uiScope.launch {
+            val nav = EmbeddedNavigation.shared(context)
+            kotlinx.coroutines.flow.combine(
+                nav.state(), nav.destinationCandidates, nav.routeCandidates, nav.destination,
+            ) { phase, destinations, routes, destination ->
+                mapHost.showNavigationState(phase, destinations, routes, destination?.name)
+            }.collect {}
+        }
     }
 
     /**

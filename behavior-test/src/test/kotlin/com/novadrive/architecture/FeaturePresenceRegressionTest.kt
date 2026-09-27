@@ -191,9 +191,11 @@ class FeaturePresenceRegressionTest {
     @Test
     fun navigationGuidanceIsSpokenAndGatesTheMicrophone() {
         val host = "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapNaviViewHost.kt"
-        assertContains(host, "setUseInnerVoice(true", "the SDK is silent unless its own voice is enabled")
-        assertContains(host, "enableGuidanceVoice()", "must be called when the engine is created")
-        assertContains(host, "addTTSPlayListener(GuidancePlayListener)", "the speaking signal drives the mic gate (P3)")
+        val voice = "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapGuidanceVoice.kt"
+        assertContains(voice, "setUseInnerVoice(true", "the SDK is silent unless its own voice is enabled")
+        assertContains(host, "AmapGuidanceVoice.enable(navi)", "must be called when the engine is created")
+        assertContains(voice, "addTTSPlayListener(this)", "the speaking signal drives the mic gate (P3)")
+        assertContains(voice, "NavigationGuidanceVoice.onPlayStart()", "the speaking signal drives the mic gate (P3)")
         assertContains(
             "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt",
             "NavigationGuidanceVoice.addListener(guidanceListener)",

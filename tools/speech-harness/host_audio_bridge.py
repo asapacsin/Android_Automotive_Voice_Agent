@@ -13,7 +13,10 @@ ffplay and prints what 小诺 heard and said from the NovaVoice log. Press Enter
     --list                 list dshow microphones
     --from-file X.pcm      stream a 16 kHz mono s16le clip instead of the mic (verification)
     --duration S           exit after S seconds
-    --no-play              do not play replies (bytes/seconds are still reported)
+    --no-play              do not play replies or guidance (bytes/seconds are still reported)
+
+Amap's turn-by-turn guidance arrives as a tagged text frame and is spoken on the PC (edge-tts
+zh-CN voice, SAPI fallback); `[guidance] chars=N` is printed, never the text.
     --no-start             do not start a session (say the wake word instead)
 """
 import argparse
@@ -169,6 +172,9 @@ def downlink(conn, stop, play):
         pcm = read_exact(length)
         if pcm is None:
             break
+        if rate == 0:  # tagged frame: Amap guidance text, spoken here (never printed: it names places)
+            speak_guidance(pcm.decode("utf-8", "replace"), play)
+            continue
         reply_bytes += length
         reply_rate = rate
         last = time.time()
@@ -189,6 +195,49 @@ def downlink(conn, stop, play):
     stop.set()
     if player:
         player.kill()
+
+
+GUIDANCE = []
+
+
+def speak_guidance(text, play):
+    """Amap's own turn-by-turn voice plays only on the emulator speaker, so it is said again here.
+
+    edge-tts (zh-CN neural voice, online) when installed, else Windows SAPI's default voice; this PC
+    has no offline Chinese voice. A newer prompt cuts off an unfinished one, as in the SDK.
+    """
+    print(f"[guidance] chars={len(text)} spoken={bool(play)}", flush=True)
+    if not play:
+        return
+    threading.Thread(target=_say, args=(text,), daemon=True).start()
+
+
+def _say(text):
+    for proc in GUIDANCE:
+        if proc.poll() is None:
+            proc.kill()
+    GUIDANCE.clear()
+    out = os.path.join(os.environ.get("TEMP", "."), "nova_guidance.mp3")
+    # truststore: use the Windows certificate store, so an HTTPS-scanning antivirus does not break TLS.
+    runner = ("import sys, runpy\ntry:\n import truststore; truststore.inject_into_ssl()\nexcept ImportError: pass\n"
+              "sys.argv = ['edge_tts'] + sys.argv[1:]; runpy.run_module('edge_tts', run_name='__main__')")
+    try:
+        made = subprocess.run([sys.executable, "-c", runner, "--voice", "zh-CN-XiaoxiaoNeural", "--text", text,
+                               "--write-media", out], capture_output=True, timeout=20).returncode == 0
+    except subprocess.TimeoutExpired:
+        made = False
+    ffplay = shutil.which("ffplay")
+    if made and ffplay:
+        GUIDANCE.append(subprocess.Popen([ffplay, "-hide_banner", "-loglevel", "error", "-nodisp", "-autoexit", out]))
+        return
+    print("[guidance] edge-tts unavailable, using SAPI", flush=True)
+    script = ("Add-Type -AssemblyName System.Speech; "
+              "(New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak([Console]::In.ReadToEnd())")
+    proc = subprocess.Popen(["powershell", "-NoProfile", "-Command", script], stdin=subprocess.PIPE,
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    proc.stdin.write(text.encode("utf-8"))
+    proc.stdin.close()
+    GUIDANCE.append(proc)
 
 
 LOGCAT = []

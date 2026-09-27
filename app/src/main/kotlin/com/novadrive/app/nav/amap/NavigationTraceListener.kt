@@ -16,6 +16,7 @@ import com.amap.api.navi.model.AimLessModeStat
 import com.amap.api.navi.model.NaviInfo
 import com.novadrive.app.DebugVoiceLog
 import com.novadrive.app.NavigationState
+import com.novadrive.app.nav.TextNavigationPanelModel
 
 /**
  * Registered via `AMapNavi.addAMapNaviListener(...)`.
@@ -36,6 +37,8 @@ internal class NavigationTraceListener(
     private val onLocation: (AMapNaviLocation) -> Unit = {},
     private val onCameraLimits: (List<DrivingSpeedHud.CameraLimit>) -> Unit = {},
     private val onFacilityLimit: (Int) -> Unit = {},
+    /** Every progress update, for the translated-ABI text panel. Never logged. */
+    private val onProgress: (TextNavigationPanelModel.Progress) -> Unit = {},
 ) : AMapNaviListener {
 
     private var lastManeuverIcon: Int? = null
@@ -147,6 +150,15 @@ internal class NavigationTraceListener(
         // SPEC-012 R6a: only the distance leaves nav/amap, and it is never logged here.
         NavigationState.onManeuverDistance(info?.curStepRetainDistance)
         if (info == null) return
+        onProgress(
+            TextNavigationPanelModel.Progress(
+                iconType = info.iconType,
+                stepMeters = info.curStepRetainDistance,
+                remainMeters = info.pathRetainDistance,
+                remainSeconds = info.pathRetainTime,
+                nextRoad = runCatching { info.nextRoadName }.getOrNull(),
+            ),
+        )
         val remainMeters = info.pathRetainDistance
         val remainSeconds = info.pathRetainTime
         val lights = runCatching { info.routeRemainLightCount }.getOrNull()

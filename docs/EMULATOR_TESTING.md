@@ -87,3 +87,29 @@ Measured 2026-09-26 (`--from-file tools/speech-harness/speech/temp24.pcm`):
 bridged audio: with the session asleep, `--no-start --from-file …/wake_xiaoxiao.pcm` gave
 `wake_detection` 2.1 s after `host_bridge on` (1 s lead silence + the clip) and
 `listening SLEEP->ACTIVE reason=wake_word`. Enable it with `tool=wake arg=on`.
+
+## Navigation on the emulator: text panel and guidance on the PC (2026-09-27)
+
+The map cannot be drawn on x86 (`TranslatedAbi`), so `AmapNaviViewHost` puts a plain-View
+`TextNavigationPanel` where the map would be. It renders `TextNavigationPanelModel` from the
+controller's existing flows (`AssistantNavigationScreen` forwards phase, destination and route
+candidates) and the SDK listener's `NaviInfo` progress: idle, searching, destination list, route
+preview (index, km, minutes, label), navigating (manoeuvre arrow + name, distance to it, next road,
+remaining km and time, speed limit if known, last guidance sentence), arrived / stopped. A real
+phone never constructs it. The choice overlay still sits on top for taps.
+
+Amap's own spoken guidance (`setUseInnerVoice`) plays only on the emulator speaker. With the host
+bridge on, `AmapGuidanceVoice.onPlayStart` also hands the guidance text to
+`HostAudioTap.guidanceSink`; the debug `HostAudioBridge` sends it down the same socket as a tagged
+frame (`[u32 0][u32 len][UTF-8]`, rate 0 = text), and `host_audio_bridge.py` speaks it with
+edge-tts (`zh-CN-XiaoxiaoNeural`, online, TLS through `truststore` because the PC's antivirus
+scans HTTPS; SAPI fallback, which has no Chinese voice on this PC). The PC prints only
+`[guidance] chars=N`. The mic gate (`nav_guidance_mic_gate`) is unchanged: it still follows the
+SDK's play start/end.
+
+Measured 2026-09-27 (S5 + S5b voice, then a tap on route 1): panel showed the destination list,
+the three-route preview and `导航中 → …  ← 左转 343 m 进入 …  剩余 8.6 km · 33 分钟` with the guidance
+sentence; the bridge printed `[guidance] chars=31`. Screenshots: android_doc
+`emulator_nav_panel_2026-09-27/`. **Open:** the emulator-mode vehicle did not advance after the
+first manoeuvre (no further `nav_maneuver` / `onNaviInfoUpdate` for 6 minutes), so later
+manoeuvres, arrival and repeated guidance on the PC are not yet observed on x86.

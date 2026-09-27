@@ -18,4 +18,10 @@ object HostAudioTap {
 
     /** Must not block: called on the playback writer under its output lock. */
     @Volatile var sink: ((pcm16le: ByteArray, sampleRateHz: Int) -> Unit)? = null
+
+    /**
+     * The text of each Amap guidance prompt as it starts playing, so the PC can speak it: the SDK's
+     * inner voice plays only on the emulator's own speaker. Must not block. Never logged.
+     */
+    @Volatile var guidanceSink: ((text: String) -> Unit)? = null
 }

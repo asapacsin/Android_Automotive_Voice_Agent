@@ -39,6 +39,8 @@ class ArchitectureRulesTest {
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapDrivingPresentation.kt",
             // SPEC-011: getTrafficStatuses and RoutePOISearch, behind the SDK-free RouteLiveInfoSource.
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapRouteLiveInfo.kt",
+            // The SDK's own guidance voice and its play listener (mic gate, host-bridge text).
+            "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapGuidanceVoice.kt",
         )
         val unexpected = importers - allowed
         assertTrue(unexpected.isEmpty()) {

@@ -15,7 +15,6 @@ import com.amap.api.maps.model.LatLng
 import com.amap.api.maps.model.MyLocationStyle
 import com.amap.api.navi.AMapNavi
 import com.amap.api.navi.AMapNaviView
-import com.amap.api.navi.TTSPlayListener
 import com.amap.api.navi.enums.NaviType
 import com.amap.api.navi.enums.PathPlanningStrategy
 import com.amap.api.navi.model.AMapNaviLocation
@@ -28,6 +27,8 @@ import com.novadrive.app.nav.NavigationGuidanceVoice
 import com.novadrive.app.nav.RecenterDecision
 import com.novadrive.app.nav.RecenterOutcome
 import com.novadrive.app.nav.RouteCandidate
+import com.novadrive.app.nav.DestinationCandidate
+import com.novadrive.app.nav.NavigationPhase
 
 /**
  * The only file permitted to import `com.amap`.
@@ -71,6 +72,9 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
     private var facilityLimitKmh = 0
     private var lastSpeedHud: DrivingSpeedHud.Snapshot? = null
 
+    /** Stand-in for the map where it cannot be drawn (translated ABI); null on a real phone. */
+    private val textPanel: TextNavigationPanel? = if (mapRenderable) null else TextNavigationPanel(context)
+
     private companion object {
         /** Street level: close enough to recognise where you are, wide enough to orient. */
         const val IDLE_ZOOM = 16f
@@ -97,9 +101,12 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
 
     init {
         AmapPrivacyCompliance.ensure(context)
+        if (!mapRenderable) {
+            AmapGuidanceVoice.textReceiver = { text -> textPanel?.onGuidanceText(text) }
+        }
         AMapNavi.addTTSInitializeListener { code, _ -> DebugVoiceLog.log("nav_guidance_tts_init code=$code") }
         navi = AMapNavi.getInstance(context.applicationContext)
-        enableGuidanceVoice()
+        AmapGuidanceVoice.enable(navi)
         naviView = AMapNaviView(context)
         naviView.setAMapNaviViewListener(AmapDrivingPresentation.listener { stopNavigation("ui_exit") })
         AmapDrivingPresentation.applyIdle(naviView)
@@ -107,43 +114,24 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
             addView(naviView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         } else {
             DebugVoiceLog.log("map_surface skipped=translated_abi")
+            textPanel?.navigating = { isNavigating }
+            textPanel?.limitKmh = { DrivingSpeedHud.mergeLimit(cameraLimitKmh, facilityLimitKmh) }
+            addView(textPanel, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+            textPanel?.render()
         }
         // Speed chip is attached by AssistantNavigationScreen above the assistant overlay.
     }
 
     /**
-     * Spoken turn-by-turn guidance. Never enabled before 2026-09-17: navigation ran silently
-     * because the SDK's own voice is off unless asked for, and the guidance text callback was
-     * discarded. The SDK ships an offline Mandarin voice (assets/tts), so no extra service.
-     *
-     * The play listener is what keeps guidance out of the assistant's ears (P3): see
-     * [NavigationGuidanceVoice]. Logs never carry the guidance text (it names places).
+     * Called by the screen with the controller's state, so the text panel (translated ABI only)
+     * shows the same flow the choice overlay does. No-op on a device that draws the map.
      */
-    private object GuidancePlayListener : TTSPlayListener {
-        override fun onPlayStart(text: String?) {
-            DebugVoiceLog.log("nav_guidance_play_start chars=${text?.length ?: 0}")
-            NavigationGuidanceVoice.onPlayStart()
-        }
-
-        override fun onPlayEnd(text: String?) {
-            DebugVoiceLog.log("nav_guidance_play_end")
-            NavigationGuidanceVoice.onPlayEnd()
-        }
-    }
-
-    private fun enableGuidanceVoice() {
-        val navi = navi ?: return
-        runCatching {
-            navi.setUseInnerVoice(true, false)
-            navi.addTTSPlayListener(GuidancePlayListener)
-        }.onSuccess {
-            DebugVoiceLog.log("nav_guidance_voice enabled=${navi.isUseInnerVoiceSafe()}")
-        }.onFailure {
-            DebugVoiceLog.log("nav_guidance_voice enabled=false exception=${it.javaClass.simpleName}")
-        }
-    }
-
-    private fun AMapNavi.isUseInnerVoiceSafe(): Boolean = runCatching { getIsUseInnerVoice() }.getOrDefault(false)
+    fun showNavigationState(
+        phase: NavigationPhase,
+        destinations: List<DestinationCandidate>,
+        routes: List<RouteCandidate>,
+        destinationName: String?,
+    ) = textPanel?.onState(phase, destinations, routes, destinationName)
 
     /** True once FINE location is held; the SDK cannot use GNSS without it. */
     private fun hasFineLocation(): Boolean =
@@ -663,6 +651,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
             synchronized(navLock) { navigationActive = true }
             AmapDrivingPresentation.lockCar(naviView)
             refreshSpeedHud()
+            textPanel?.render()
         } else if (!isNavigating) {
             enableMyLocation()
             AmapDrivingPresentation.applyIdle(naviView)
@@ -704,6 +693,8 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         facilityLimitKmh = 0
         reportedSpeedKmh = 0
         refreshSpeedHud()
+        textPanel?.clearProgress()
+        textPanel?.render()
         val navi = this.navi
         if (navi == null) {
             DebugVoiceLog.log("nav_stopped reached=false reason=$reason no_navi=true")
@@ -788,6 +779,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
                 facilityLimitKmh = limit
                 refreshSpeedHud()
             },
+            onProgress = { info -> textPanel?.onProgress(info) },
         )
         traceListener = listener
         runCatching { navi?.addAMapNaviListener(listener) }
@@ -883,8 +875,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
     fun onDestroy() {
         stopLocation()
         if (mapRenderable) naviView.onDestroy()
-        runCatching { navi?.removeTTSPlayListener(GuidancePlayListener) }
-        if (NavigationGuidanceVoice.speaking) NavigationGuidanceVoice.onPlayEnd()
+        AmapGuidanceVoice.disable(navi)
         navi = null
         AMapNavi.destroy()
     }
