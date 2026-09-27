@@ -162,16 +162,10 @@ class AndroidToolDispatcher(
                     NavigationLocalPickGuard.consumeNavigateToSuppression(authority.listKey, authority.turnKey)
                 ) {
                     com.novadrive.app.DebugVoiceLog.log("nav_voice_suppress_navigate_to")
-                    return ToolDispatchResult(
-                        null,
-                        null,
-                        successChip = "✓ ${call.name}",
-                        output = JSONObject()
-                            .put("ok", true)
-                            .put("tool", call.name)
-                            .put("status", "destination_already_selected_locally")
-                            .toString(),
-                    )
+                    // The local pick already selected the destination; report exactly what that pick
+                    // did, through the same output a spoken choice gets. A bare ok here let the model
+                    // invent 「导航已开始」 while the route list waited (OPEN_PROBLEMS 2026-09-27).
+                    return navigationResult(call, AndroidActionResult.Accepted("destination_selected"))
                 }
                 executor.matchPickerName(destination)?.let { choice ->
                     val action = executor.chooseNavigationOption(choice)

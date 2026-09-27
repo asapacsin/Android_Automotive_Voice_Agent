@@ -26,6 +26,16 @@ class ActionClaimGuard {
     private var lastToolFailure: String? = null
     private var failureCorrected = false
 
+    /**
+     * This utterance's tool results showed navigation actually starting. Measured 2026-09-27: after
+     * a destination pick the model said 「导航已开始。」 while three routes waited for a choice -
+     * once after an ok=true suppressed navigate_to, and once (emulator, S5b) in a response Baidu
+     * created before the choose_navigation_option result had even been returned. Only positive
+     * evidence releases that claim.
+     */
+    private var navigationStarted = false
+    private var navigationClaimCorrected = false
+
     @Synchronized
     fun onUserTranscript(text: String) {
         userText = text.trim().takeIf { it.isNotEmpty() }
@@ -33,6 +43,8 @@ class ActionClaimGuard {
         nudged = false
         lastToolFailure = null
         failureCorrected = false
+        navigationStarted = false
+        navigationClaimCorrected = false
     }
 
     /**
@@ -48,6 +60,9 @@ class ActionClaimGuard {
         } else {
             null
         }
+        if (isNavigationResult(output)) {
+            if (output.contains("\"ok\":true") && startsNavigation(output)) navigationStarted = true
+        }
     }
 
     /** A response finished. Returns the follow-up text to send, or null. */
@@ -62,6 +77,12 @@ class ActionClaimGuard {
         if (failure != null && !failureCorrected && claimsDone(assistantText.trim())) {
             failureCorrected = true
             return correctionForFailure(failure)
+        }
+        if (toolCalledThisTurn && !navigationStarted && !navigationClaimCorrected &&
+            claimsNavigationStarted(assistantText)
+        ) {
+            navigationClaimCorrected = true
+            return NAVIGATION_NOT_STARTED
         }
         val reply = assistantText.trim()
         val request = userText
@@ -126,6 +147,8 @@ class ActionClaimGuard {
         nudged = false
         lastToolFailure = null
         failureCorrected = false
+        navigationStarted = false
+        navigationClaimCorrected = false
     }
 
     companion object {
@@ -354,6 +377,28 @@ class ActionClaimGuard {
          */
         fun describesCarAction(reply: String): Boolean =
             !refuses(reply) && DEVICE_NOUNS.any { it in reply } && ACTION_WORDS.any { it in reply }
+
+        private fun isNavigationResult(output: String): Boolean =
+            output.contains("\"tool\":\"navigate_to\"") ||
+                output.contains("\"tool\":\"${BaiduFlexProtocol.CHOOSE_NAVIGATION_OPTION}\"")
+
+        /** Only the executor's own evidence counts: a route chosen, or the navigating screen. */
+        private fun startsNavigation(output: String): Boolean =
+            output.contains("\"status\":\"navigation_started\"") || output.contains("\"screen\":\"navigating\"")
+
+        /** 「导航已开始」「开始导航了」「已为你开始导航」「正在导航」. A question or a refusal is not a claim. */
+        fun claimsNavigationStarted(reply: String): Boolean {
+            val text = reply.trim()
+            if (text.isEmpty() || declines(text)) return false
+            if ("没有开始" in text || "还没开始" in text || "未开始" in text) return false
+            return Regex("导航(已经|已)?开始|(已经|已|已为你|已为您)?开始导航(了)?[。！!]?|正在(为你|为您)?导航").containsMatchIn(text) &&
+                !text.contains("说「开始导航」") && !text.contains("说开始导航")
+        }
+
+        /** Navigation did not start this turn; the reply said it did. */
+        const val NAVIGATION_NOT_STARTED =
+            "你上一句说导航已经开始是错误的：目的地已选好，路线还在屏幕上等用户选择，导航还没有开始。" +
+                "不要调用任何工具，只用一句话更正：导航还没开始，请说「开始导航」走推荐路线，或说第几条路线。"
 
         fun claimsDone(reply: String): Boolean =
             !declines(reply) && DONE_WORDS.any { it in reply } && ACTION_WORDS.any { it in reply }

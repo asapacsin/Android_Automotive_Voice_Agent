@@ -107,7 +107,9 @@ class AndroidToolDispatcherTest {
         val dispatcher = AndroidToolDispatcher(executor, ClimateToolHandler(SimulatedVehicleControl()), noCamera())
         val result = dispatcher.dispatch(call("navigate_to", mapOf("destination" to "中交汇通")))
         assertEquals(0, executor.executions)
-        assertEquals("destination_already_selected_locally", JSONObject(result.output!!).getString("status"))
+        val output = JSONObject(runBlocking { result.deferredOutput!!() })
+        assertEquals("destination_selected", output.getString("status"))
+        assertTrue(output.getString("status") != "navigation_started")
         NavigationLocalPickGuard.onUserTranscript()
     }
 

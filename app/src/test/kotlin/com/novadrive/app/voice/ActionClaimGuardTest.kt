@@ -2,6 +2,7 @@ package com.novadrive.app.voice
 
 import com.novadrive.ingress.realtime.ResponseOutcome
 
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
@@ -112,6 +113,8 @@ class ActionClaimGuardTest {
         assertNotNull(guard.onResponseDone(message, "好的，已选择第二个。"))
         guard.onUserTranscript("选最快的路线。")
         assertNull(guard.onResponseDone(call, ""))
+        // P32: the claim is released by the executor's evidence, not by a tool merely being called.
+        guard.onToolResult("""{"ok":true,"tool":"choose_navigation_option","status":"navigation_started"}""")
         assertNull(guard.onResponseDone(message, "导航已开始。"))
     }
 
@@ -346,5 +349,48 @@ class ActionClaimGuardTest {
         assertFalse(ActionClaimGuard.isSpecificMediaRequest("放首歌", mediaIntentKnown = true))
         assertFalse(ActionClaimGuard.isSpecificMediaRequest("来点音乐", mediaIntentKnown = true))
         assertFalse(ActionClaimGuard.isSpecificMediaRequest("播放音乐", mediaIntentKnown = true))
+    }
+
+    // Verbatim sequence from the 2026-09-27 NovaVoice log: a local pick selected 东北口岸酒店, the
+    // model's duplicate navigate_to was suppressed, and the reply claimed navigation had started
+    // while three routes waited for a choice.
+    @Test
+    fun navigationStartedClaimAfterDestinationSelectedIsCorrected() {
+        guard.onUserTranscript("东北口岸酒店。")
+        assertNull(guard.onResponseDone(call, ""))
+        guard.onToolResult(
+            """{"ok":true,"tool":"navigate_to","status":"destination_selected","screen":"route_list","count":3}""",
+        )
+        assertEquals(ActionClaimGuard.NAVIGATION_NOT_STARTED, guard.onResponseDone(message, "导航已开始。"))
+        assertNull(guard.onResponseDone(message, "导航已开始。"), "one correction per utterance")
+    }
+
+    @Test
+    fun navigationStartedClaimWithRouteChosenIsLeftAlone() {
+        guard.onUserTranscript("第一条。")
+        assertNull(guard.onResponseDone(call, ""))
+        guard.onToolResult(
+            """{"ok":true,"tool":"choose_navigation_option","status":"navigation_started","screen":"navigating"}""",
+        )
+        assertNull(guard.onResponseDone(message, "导航已开始。"))
+    }
+
+    @Test
+    fun honestRoutePromptIsLeftAlone() {
+        guard.onUserTranscript("东北口岸酒店。")
+        assertNull(guard.onResponseDone(call, ""))
+        guard.onToolResult(
+            """{"ok":true,"tool":"navigate_to","status":"destination_selected","screen":"route_list","count":3}""",
+        )
+        assertNull(guard.onResponseDone(message, "有3条路线，说开始导航走推荐路线，或说第几条。"))
+    }
+
+    // Emulator S5b, 2026-09-27: Baidu created a spoken response right after the function call,
+    // before the choose_navigation_option result was returned, and it said 「导航已开始。」.
+    @Test
+    fun navigationStartedClaimBeforeAnyResultIsCorrected() {
+        guard.onUserTranscript("第二个。")
+        assertNull(guard.onResponseDone(call, ""))
+        assertEquals(ActionClaimGuard.NAVIGATION_NOT_STARTED, guard.onResponseDone(message, "导航已开始。"))
     }
 }

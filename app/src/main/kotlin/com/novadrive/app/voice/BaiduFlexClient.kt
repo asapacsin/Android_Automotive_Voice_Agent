@@ -438,6 +438,7 @@ class BaiduFlexClient(
                 val kind = when (nudge) {
                     ActionClaimGuard.CLARIFY_REFERENT -> "clarify"
                     ActionClaimGuard.UNVERIFIED_ACTION_CLAIM -> "unheard"
+                    ActionClaimGuard.NAVIGATION_NOT_STARTED -> "navigation_not_started"
                     else -> "perform"
                 }
                 DebugVoiceLog.log("flex_action_claim_unverified follow_up=true kind=$kind")
