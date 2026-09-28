@@ -215,7 +215,20 @@ foreach ($proc in (Get-Process -Name "qemu-system-*" -ErrorAction SilentlyContin
     }
 }
 
+function Set-EmulatorSpeakerMuted([string]$Serial) {
+    # The bridge plays the app's voice on the PC; the emulator's own output would repeat it weakly.
+    # Streams 0 (call), 4 (alarm) and 10 (accessibility) cannot go below 1, so they get their minimum.
+    foreach ($stream in @(1, 2, 3, 5, 8, 9, 11)) {
+        & $adb -s $Serial shell cmd media_session volume --stream $stream --set 0 2>$null | Out-Null
+    }
+    foreach ($stream in @(0, 4, 10)) {
+        & $adb -s $Serial shell cmd media_session volume --stream $stream --set 1 2>$null | Out-Null
+    }
+    Write-Host "Emulator speaker muted (media volume 0); voices play through the host audio bridge only."
+}
+
 if (-not $NoBridge) {
+    Set-EmulatorSpeakerMuted $serial
     $bridgeLog = Join-Path $buildDir "host_audio_bridge.log"
     $running = Get-CimInstance Win32_Process -Filter "Name like 'python%'" -ErrorAction SilentlyContinue |
         Where-Object { $_.CommandLine -like "*host_audio_bridge.py*" }

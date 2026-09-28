@@ -13,7 +13,9 @@ forwarding, the PC proxy (`settings put global http_proxy 10.0.2.2:7897`, needed
 and a Hengqin GPS fix; installs the debug APK (`-r -g --abi arm64-v8a`, keeping the app's data);
 opens the app; moves the emulator window to (100, 0); and starts the host audio bridge detached
 (`--mic "Microphone Array (适用于数字麦克风的英特尔® 智音技术)"`, log
-`C:\Users\Administrator\tools\nova-drive-build\host_audio_bridge.log`). Options: `-NoBridge`,
+`C:\Users\Administrator\tools\nova-drive-build\host_audio_bridge.log`), first muting the
+emulator's own speaker (`cmd media_session volume --stream <n> --set 0` for streams 1-3, 5, 8, 9, 11;
+streams 0, 4, 10 to their minimum 1) so voices are not heard twice. Options: `-NoBridge` (no mute),
 `-Mic`, `-AvdName nova_api30 -Abi armeabi-v7a` (the older AVD, see the table at the end),
 `-ApkPath`, `-SetupSdk` (installs platform-tools, the emulator and `-ImagePackage`),
 `-BootTimeoutSeconds`. It finds the SDK through `ANDROID_SDK_ROOT`, `ANDROID_HOME`, then
