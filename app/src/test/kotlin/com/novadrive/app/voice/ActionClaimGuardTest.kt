@@ -403,4 +403,22 @@ class ActionClaimGuardTest {
         g2.onUserTranscript("有的人帮我舒服的")
         assertEquals(ActionClaimGuard.UNVERIFIED_ACTION_CLAIM, g2.onResponseDone(message, "有点热啊，我帮你调低一点温度"))
     }
+
+    /** Owner demo 2026-09-28 (P39): prompts with a list on screen are not claims. */
+    @Test
+    fun aPromptToChooseIsNotAnUnverifiedClaim() {
+        for (reply in listOf("要选哪条路线？", "请选一条路线。", "是的，你可以直接说第几个，或者在屏幕上点选目的地。")) {
+            val fresh = ActionClaimGuard()
+            fresh.onUserTranscript("就是怪的。")
+            assertNull(fresh.onResponseDone(message, reply), reply)
+            assertNull(ActionClaimGuard.carActionClaim(reply), reply)
+        }
+        // Asking *and* reporting is still a claim.
+        assertEquals("car_action", ActionClaimGuard.carActionClaim("好的，已为你选择第二条路线，还要改吗？"))
+        assertEquals("car_action", ActionClaimGuard.carActionClaim("退出导航中，请选择下一个目的地。"))
+        assertEquals(
+            "predicate=done_claim noun=- verb=打开",
+            ActionClaimGuard.carActionClaimMatch("好的，已为你打开。")!!.describe(),
+        )
+    }
 }

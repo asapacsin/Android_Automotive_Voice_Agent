@@ -1,6 +1,7 @@
 package com.novadrive.app.vision
 
 import com.novadrive.app.DebugVoiceLog
+import kotlinx.coroutines.CompletableDeferred
 import org.json.JSONObject
 
 /**
@@ -9,6 +10,14 @@ import org.json.JSONObject
  *
  * Every failure is reported as `ok=false` with an instruction not to describe anything, so the
  * assistant can never invent what the camera shows.
+ *
+ * Also the one owner of **how many looks one question costs**. Opening the camera looks once
+ * ([lookOnOpen]); a question asks through [ask]. Measured 2026-09-28 (demo 08:37:42-57): the camera
+ * was tapped open, 「看看前面有什么」 followed 2 s later, both looks waited for the first frame and
+ * sent two vision requests, and the driver heard two answers. Now a question that arrives before
+ * the open-look has sent its request takes that look over (one request, the driver's question);
+ * one that arrives while the open-look's request is in flight uses its answer instead of sending
+ * another. Either way the open-look is not spoken. One instance per process ([VisionProvider]).
  */
 class CameraQuestionHandler(
     private val surface: () -> CameraVisionSurface?,
@@ -16,7 +25,48 @@ class CameraQuestionHandler(
 ) {
     data class Outcome(val ok: Boolean, val output: String, val spokenText: String, val errorCode: String?)
 
+    private val lock = Any()
+
+    /** Questions asked so far; an open-look that sees this change has been taken over. */
+    private var questionsAsked = 0L
+
+    /** The open-look's request while it is in flight, so a question can share it. */
+    private var openLookInFlight: CompletableDeferred<Outcome>? = null
+    private var openLookSuperseded = false
+
+    /** A question from the driver (the describe_camera_view tool). Exactly one request. */
     suspend fun ask(rawQuestion: String?): Outcome {
+        val shared = synchronized(lock) {
+            questionsAsked++
+            openLookInFlight?.also { openLookSuperseded = true }
+        }
+        if (shared != null) {
+            DebugVoiceLog.log("vision_question_joined_open_look")
+            return shared.await()
+        }
+        return look(rawQuestion, openLookSeq = null) ?: failure("CAMERA_UNAVAILABLE", "摄像头不可用。")
+    }
+
+    /**
+     * The look that opening the camera triggers. Null when a question took it over: the
+     * question's own result is what the driver hears, so this must not be spoken.
+     */
+    suspend fun lookOnOpen(): Outcome? {
+        val seq = synchronized(lock) { questionsAsked }
+        val outcome = look(null, openLookSeq = seq)
+        val superseded = synchronized(lock) {
+            openLookInFlight = null
+            (openLookSuperseded || questionsAsked != seq).also { openLookSuperseded = false }
+        }
+        if (superseded) {
+            DebugVoiceLog.log("vision_open_look superseded=true")
+            return null
+        }
+        return outcome
+    }
+
+    /** Null only for an open-look ([openLookSeq] set) that a question took over before it sent. */
+    private suspend fun look(rawQuestion: String?, openLookSeq: Long?): Outcome? {
         val question = rawQuestion?.trim()?.takeIf { it.isNotEmpty() }?.take(MAX_QUESTION_CHARS) ?: DEFAULT_QUESTION
         val camera = surface() ?: return failure("CAMERA_UNAVAILABLE", "摄像头不可用。")
         if (!camera.cameraPermitted()) {
@@ -28,8 +78,31 @@ class CameraQuestionHandler(
         if (jpeg == null || jpeg.isEmpty()) {
             return failure("NO_CAMERA_FRAME", "没有拿到摄像头画面。").also { camera.showVisionText(it.spokenText) }
         }
+        val published = openLookSeq?.let { seq ->
+            synchronized(lock) {
+                // The frame took seconds to arrive; a question asked meanwhile sends the request.
+                if (questionsAsked != seq) return null
+                CompletableDeferred<Outcome>().also {
+                    openLookInFlight = it
+                    openLookSuperseded = false
+                }
+            }
+        }
         DebugVoiceLog.log("vision_request bytes=${jpeg.size}")
-        val outcome = when (val result = vision.ask(question, jpeg)) {
+        val outcome = try {
+            request(question, jpeg)
+        } catch (e: Throwable) {
+            published?.completeExceptionally(e)
+            throw e
+        }
+        published?.complete(outcome)
+        DebugVoiceLog.log("vision_result ok=${outcome.ok} code=${outcome.errorCode ?: "-"}")
+        camera.showVisionText(outcome.spokenText)
+        return outcome
+    }
+
+    private suspend fun request(question: String, jpeg: ByteArray): Outcome =
+        when (val result = vision.ask(question, jpeg)) {
             is VisionResult.Answer -> Outcome(
                 ok = true,
                 output = JSONObject()
@@ -45,10 +118,6 @@ class CameraQuestionHandler(
             is VisionResult.AuthFailed -> failure("VISION_AUTH_FAILED", "看图服务的密钥不能用，请在开发者设置里填写千帆视觉 API Key。", result.detail)
             is VisionResult.Failed -> failure("VISION_REQUEST_FAILED", "看图服务暂时不可用。", result.detail)
         }
-        DebugVoiceLog.log("vision_result ok=${outcome.ok} code=${outcome.errorCode ?: "-"}")
-        camera.showVisionText(outcome.spokenText)
-        return outcome
-    }
 
     private fun failure(code: String, userMessage: String, detail: String? = null): Outcome {
         if (detail != null) DebugVoiceLog.log("vision_failure code=$code detail=$detail")

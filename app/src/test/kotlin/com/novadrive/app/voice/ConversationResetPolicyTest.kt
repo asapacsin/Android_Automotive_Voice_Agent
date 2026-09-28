@@ -80,4 +80,15 @@ class ConversationResetPolicyTest {
         assertFalse(policy.onResponseDone(ResponseOutcome.spokenOnly()))
         assertTrue(policy.onResponseDone(ResponseOutcome.spokenOnly()))
     }
+
+    @Test
+    fun aReplyTheDriverTalkedOverIsNotATurnAndNeverResetsMidUtterance() {
+        // Owner demo 2026-09-28 08:36:31: the cancelled reply after a tool turn reset the
+        // conversation 45 ms after speech_started; the new session heard only 「这个。」.
+        val policy = ConversationResetPolicy()
+        assertFalse(policy.onResponseDone(ResponseOutcome(spoke = false, unidentifiedToolCalls = 1)))
+        policy.onToolResultSent()
+        assertFalse(policy.onResponseDone(ResponseOutcome.spokenOnly(), superseded = true))
+        assertTrue(policy.onResponseDone(ResponseOutcome.spokenOnly()), "the next completed reply still resets")
+    }
 }

@@ -2,6 +2,7 @@ package com.novadrive.app.nav.amap
 
 import com.amap.api.navi.AMapNavi
 import com.amap.api.navi.TTSPlayListener
+import com.amap.api.navi.enums.BroadcastMode
 import com.novadrive.app.DebugVoiceLog
 import com.novadrive.app.nav.NavigationGuidanceVoice
 import com.novadrive.app.voice.HostAudioTap
@@ -44,6 +45,26 @@ internal object AmapGuidanceVoice : TTSPlayListener {
         }.onFailure {
             DebugVoiceLog.log("nav_guidance_voice enabled=false exception=${it.javaClass.simpleName}")
         }
+        applyConciseBroadcast(navi)
+    }
+
+    /**
+     * Concise guidance (2026-09-28): on the owner's simulated drive the default mode spoke about
+     * every 3–7 s and the uplink was closed for 60–70% of the drive (P3 gates it while Amap speaks),
+     * so driver commands were lost. [BroadcastMode.CONCISE] keeps manoeuvre and camera prompts and
+     * drops the road/traffic narration between them.
+     */
+    private fun applyConciseBroadcast(navi: AMapNavi) {
+        val accepted = runCatching { navi.setBroadcastMode(BroadcastMode.CONCISE) }.getOrDefault(false)
+        val mode = runCatching { navi.getBroadcastMode() }.getOrDefault(-1)
+        DebugVoiceLog.log("nav_guidance_broadcast accepted=$accepted mode=${broadcastModeName(mode)}")
+    }
+
+    internal fun broadcastModeName(mode: Int): String = when (mode) {
+        BroadcastMode.CONCISE -> "concise"
+        BroadcastMode.DETAIL -> "detail"
+        BroadcastMode.MUTE -> "mute"
+        else -> "unknown"
     }
 
     fun disable(navi: AMapNavi?) {

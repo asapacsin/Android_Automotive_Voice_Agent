@@ -298,6 +298,67 @@ class BaiduFlexClientTest {
         client.disconnect()
     }
 
+    /**
+     * Owner demo 2026-09-28 08:33:12: the driver kept talking over a held reply. The turn was
+     * dropped (`cancelled_superseded replyChars=0`), and then the rest of that reply -
+     * 「我没听清，再说一遍。」 - was still emitted, and the cancelled response triggered a context
+     * reset while the driver was mid-sentence.
+     */
+    @Test
+    fun aSupersededReplyIsNeitherShownNorCountedAsATurn() = runBlocking {
+        val received = Collections.synchronizedList(mutableListOf<String>())
+        server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
+                webSocket.send("""{"type":"session.created","session":{"model":"qianfan-realtime-flex-v1"}}""")
+            }
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                received += text
+                if (JSONObject(text).optString("type") != "session.update") return
+                webSocket.send("""{"type":"session.updated","session":{"model":"qianfan-realtime-flex-v1"}}""")
+                // Three chat turns so a fourth completed reply would reset the conversation.
+                repeat(2) { i ->
+                    webSocket.send("""{"type":"input_audio_buffer.speech_started"}""")
+                    webSocket.send("""{"type":"input_audio_buffer.speech_stopped"}""")
+                    webSocket.send("""{"type":"response.created","response":{"id":"c$i"}}""")
+                    webSocket.send("""{"type":"conversation.item.input_audio_transcription.completed","item_id":"u$i","transcript":"今天心情不错啊。"}""")
+                    webSocket.send("""{"type":"response.audio_transcript.done","transcript":"那真好，继续加油。"}""")
+                    webSocket.send("""{"type":"response.done","response":{"status":"completed","output":[{"type":"message"}]}}""")
+                }
+                webSocket.send("""{"type":"input_audio_buffer.speech_started"}""")
+                webSocket.send("""{"type":"input_audio_buffer.speech_stopped"}""")
+                webSocket.send("""{"type":"response.created","response":{"id":"r1"}}""")
+                webSocket.send("""{"type":"conversation.item.input_audio_transcription.completed","item_id":"i1","transcript":"我在办公室讲话，会不会吵到别人。"}""")
+                // The driver goes on talking: the held reply is superseded...
+                webSocket.send("""{"type":"input_audio_buffer.speech_started"}""")
+                // ...and Baidu still streams the end of it before cancelling.
+                webSocket.send("""{"type":"response.audio.delta","delta":"AAE="}""")
+                webSocket.send("""{"type":"response.audio_transcript.done","transcript":"我没听清，再说一遍。"}""")
+                webSocket.send("""{"type":"response.done","response":{"status":"cancelled","status_details":{"reason":"turn_detected"},"output":[{"type":"message"}]}}""")
+            }
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
+        }))
+        val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
+        val transcripts = Collections.synchronizedList(mutableListOf<String>())
+        var audioDeltas = 0
+        val collector = launch(kotlinx.coroutines.Dispatchers.IO) {
+            client.events().collect {
+                when (val p = it.payload) {
+                    is DomainVoiceEvent.AssistantTranscript -> transcripts += p.text
+                    is DomainVoiceEvent.AudioDelta -> audioDeltas++
+                    else -> Unit
+                }
+            }
+        }
+        client.connect(config())
+        Thread.sleep(800)
+        assertEquals(listOf("那真好，继续加油。", "那真好，继续加油。"), transcripts.toList(), "the superseded reply is never shown")
+        assertEquals(0, audioDeltas, "nor heard")
+        assertEquals(1, server.requestCount, "a reply the driver talked over does not reset the conversation mid-utterance")
+        assertEquals(0, received.count { JSONObject(it).optString("type") == "conversation.item.create" }, "and is not corrected")
+        collector.cancel()
+        client.disconnect()
+    }
+
     @Test
     fun aServerCloseIsReportedSoTheSessionCanRecover() = runBlocking {
         // Without answering the close frame OkHttp never reported it: the session died silently.

@@ -36,13 +36,20 @@ class ConversationResetPolicy(private val maxPlainTurns: Int = 3) {
      * Baidu's (ADR-009).
      */
     @Synchronized
-    fun onResponseDone(outcome: ResponseOutcome): Boolean {
+    fun onResponseDone(outcome: ResponseOutcome, superseded: Boolean = false): Boolean {
         if (outcome.requestedTool) {
             outcome.toolCallIds.forEach { id -> if (!answeredEarly.remove(id)) owed += id }
             pendingToolResults += outcome.unidentifiedToolCalls
             toolTurnSinceReset = true
             return false
         }
+        // [superseded]: the driver started speaking over this reply and it was discarded. It is
+        // not a finished turn, and the driver is mid-utterance: a reset now opens a new socket while
+        // their sentence is still being streamed, so the new conversation hears only its tail.
+        // Measured 2026-09-28 08:32:57 and 08:36:31 (owner demo): flex_context_reset 100 ms and
+        // 45 ms after speech_started, then transcripts 「这个。」 and replies 「没听清，再说一遍。」.
+        // The reset still happens after the next completed reply.
+        if (superseded) return false
         if (!outcome.spoke) return false
         if (pendingToolResults > 0 || owed.isNotEmpty()) return false
         if (toolTurnSinceReset) return true

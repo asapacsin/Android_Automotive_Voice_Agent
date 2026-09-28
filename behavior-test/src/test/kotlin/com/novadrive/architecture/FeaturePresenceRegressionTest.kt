@@ -111,6 +111,16 @@ class FeaturePresenceRegressionTest {
             "SpeechAuthority.arbiter.onConfirmation()",
             "tool confirmations must stay audible during navigation",
         )
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt",
+            "SpeechAuthority.arbiter.onDriverSpeaking(state == VoiceUiState.USER_SPEAKING)",
+            "R0: guidance must not cut off an utterance the server is still hearing",
+        )
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapGuidanceVoice.kt",
+            "navi.setBroadcastMode(BroadcastMode.CONCISE)",
+            "concise guidance keeps the uplink open for most of a drive",
+        )
     }
 
     /**

@@ -241,12 +241,14 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
      * Captures the current view, asks the vision model, shows the answer in the bubble and has
      * the assistant say it in its own voice (the phone has no default system TTS engine).
      * One look at a time. Each look is a paid vision call, so this runs once per opening, not
-     * continuously; later questions go through the describe_camera_view voice tool.
+     * continuously; later questions go through the describe_camera_view voice tool, and a question
+     * asked while this look is still running takes it over (one request, one answer).
      */
     private fun lookAndSpeak() {
         if (lookJob?.isActive == true) return
         lookJob = uiScope.launch {
-            val outcome = VisionProvider.handler(context).ask(null)
+            // Null: the driver asked a question meanwhile, and that answer is the one they hear.
+            val outcome = VisionProvider.handler(context).lookOnOpen() ?: return@launch
             com.novadrive.app.voice.SpeechAuthority.arbiter.onConfirmation()
             val prompt = if (outcome.ok) {
                 CameraQuestionHandler.cameraOpenedPrompt(outcome.spokenText)

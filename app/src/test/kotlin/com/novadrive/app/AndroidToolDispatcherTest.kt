@@ -16,6 +16,13 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class AndroidToolDispatcherTest {
+    /** The local-pick authority is process-global; no test may inherit another's. */
+    @org.junit.jupiter.api.BeforeEach
+    fun clearLocalPick() {
+        NavigationLocalPickGuard.invalidate()
+        com.novadrive.app.nav.NavigationPickSession.clear()
+    }
+
     @Test
     fun navigateValidatesThenMapsSuccessfulAndFailedResults() {
         val executor = FakeExecutor()
@@ -111,6 +118,37 @@ class AndroidToolDispatcherTest {
         assertEquals("destination_selected", output.getString("status"))
         assertTrue(output.getString("status") != "navigation_started")
         NavigationLocalPickGuard.onUserTranscript()
+    }
+
+    /**
+     * Owner demo 2026-09-28 08:36:30: 「第二个」 with five destinations on screen. The app picks
+     * row 2 itself; the model's own call (here with a preference, as measured) must not run again.
+     */
+    @Test
+    fun theModelsChoiceAfterALocalOrdinalPickIsADuplicate() {
+        NavigationLocalPickGuard.invalidate()
+        val executor = FakeExecutor()
+        val dispatcher = AndroidToolDispatcher(executor, ClimateToolHandler(SimulatedVehicleControl()), noCamera())
+        val turn = NavigationLocalPickGuard.nextTurnKey()
+        com.novadrive.app.nav.NavigationPickSession.begin("list-a", turn)
+        val local = dispatcher.dispatch(
+            DomainVoiceEvent.ToolCall(
+                "${AndroidToolDispatcher.LOCAL_PICK_CALL_PREFIX}1",
+                "choose_navigation_option",
+                mapOf("index" to "2"),
+            ),
+        )
+        assertEquals(listOf<NavigationChoice>(NavigationChoice.Index(2)), executor.choices)
+        com.novadrive.app.nav.NavigationPickSession.recordExecutorResult(
+            EmbeddedNavigationController.VoiceChoiceResult.DestinationChosen("拱北口岸", 2),
+        )
+        runBlocking { local.deferredOutput?.invoke() }
+        val duplicate = dispatcher.dispatch(call("choose_navigation_option", mapOf("preference" to "recommended")))
+        assertEquals(1, executor.choices.size, "the model's call executes nothing")
+        val output = JSONObject(runBlocking { duplicate.deferredOutput!!() })
+        assertTrue(output.getBoolean("ok"))
+        assertEquals("destination_selected", output.getString("status"))
+        NavigationLocalPickGuard.invalidate()
     }
 
     @Test

@@ -57,6 +57,8 @@ class VoiceSessionController(
         VoiceSessionCallbacks(
             onUiState = { state, error ->
                 lastUiState = state
+                // SPEC-012 R0: guidance must not close the uplink on an utterance in progress.
+                SpeechAuthority.arbiter.onDriverSpeaking(state == VoiceUiState.USER_SPEAKING)
                 onUiState(state, error)
                 // A reconnect keeps the driver armed; a terminal error must not pretend to.
                 when (state) {

@@ -31,7 +31,12 @@ object NavigationPickSession {
                 is EmbeddedNavigationController.VoiceChoiceResult.ConfirmNeeded ->
                     NavigationLocalPickGuard.Outcome.AMBIGUOUS
             }
-        NavigationLocalPickGuard.record(current.listKey, current.turnKey, recorded)
+        val status = if (outcome is EmbeddedNavigationController.VoiceChoiceResult.RouteChosen) {
+            NavigationLocalPickGuard.NAVIGATION_STARTED
+        } else {
+            NavigationLocalPickGuard.DESTINATION_SELECTED
+        }
+        NavigationLocalPickGuard.record(current.listKey, current.turnKey, recorded, status)
     }
 
     fun clear() {

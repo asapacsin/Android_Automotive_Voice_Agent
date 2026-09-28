@@ -411,11 +411,64 @@ class ActionClaimGuard {
          * 「选」「调」 fit any sentence. Measured 2026-09-28 (P36): a 16-character chat reply about
          * coffee was dropped as an unverified claim and the driver heard nothing.
          */
-        fun carActionClaim(reply: String): String? = when {
-            describesCarAction(reply) -> "car_action"
-            claimsDone(reply) && CONTROL_VERBS.any { it in reply } -> "done_claim"
-            else -> null
+        fun carActionClaim(reply: String): String? = carActionClaimMatch(reply)?.predicate
+
+        /**
+         * Which predicate of [carActionClaim] matched, and on which of *our own* vocabulary words.
+         * Safe to log: the words come from the fixed lists here, never from the reply's other
+         * content (the reply text itself may quote the driver and is never logged).
+         */
+        data class ClaimMatch(val predicate: String, val noun: String?, val verb: String) {
+            fun describe(): String = "predicate=$predicate noun=${noun ?: "-"} verb=$verb"
         }
+
+        /**
+         * The one claim predicate for a reply with no tool behind it; see [carActionClaim].
+         *
+         * A reply that hands the choice back to the driver is a prompt, not a claim, unless it also
+         * says something already happened. Measured 2026-09-28 08:32 and 08:36 (owner demo, lists on
+         * screen): chat turns 「什么这也可以是吧。」 and 「就是怪的。」 got replies of 35 and 7
+         * characters that were dropped as `unverified_claim_car_action` - a list on screen makes the
+         * model mention 「路线」「目的地」 with 「选」, which is exactly how it asks the driver to
+         * choose. The driver heard nothing, then the 「没听清」 correction.
+         */
+        fun carActionClaimMatch(reply: String): ClaimMatch? {
+            if (promptsDriver(reply) && !reportsCompletion(reply)) return null
+            if (describesCarAction(reply)) {
+                return ClaimMatch(
+                    "car_action",
+                    DEVICE_NOUNS.first { it in reply },
+                    ACTION_WORDS.first { it in reply },
+                )
+            }
+            if (claimsDone(reply)) {
+                CONTROL_VERBS.firstOrNull { it in reply }?.let { return ClaimMatch("done_claim", null, it) }
+            }
+            return null
+        }
+
+        /** The reply asks the driver to choose or to say something, rather than reporting. */
+        private fun promptsDriver(reply: String): Boolean = PROMPT_WORDS.any { it in reply }
+
+        /**
+         * Completion or progress in so many words: 「已…」「好的」「正在…」, or a control verb that is
+         * finished (「打开了」「导航中」). These keep a reply a claim even when it also asks something.
+         */
+        private fun reportsCompletion(reply: String): Boolean =
+            COMPLETION_WORDS.any { it in reply } || FINISHED_VERB.containsMatchIn(reply)
+
+        /**
+         * Words that hand the turn back to the driver. Not 「吗」 or 「？」 alone: 「我帮你调低温度，现在
+         * 凉快点没？」 (device, 2026-09-19) promised an action and only then asked.
+         */
+        private val PROMPT_WORDS = listOf(
+            "哪", "第几", "请说", "请选", "请在", "请直接", "请告诉", "你可以", "您可以", "可以说", "可以直接",
+            "直接说", "点选", "告诉我", "要不要", "需要我", "要我", "你想", "您想", "你要选", "您要选",
+        )
+        private val COMPLETION_WORDS = listOf("已", "好的", "好了", "正在", "这就", "马上")
+        private val FINISHED_VERB = Regex(
+            "(打开|开启|关闭|关掉|播放|暂停|导航|调高|调低|调到|调成|设为|设置|退出|开始|选择?)(了|中|啦|好)",
+        )
 
         private val CONTROL_VERBS = listOf(
             "打开", "开启", "关闭", "关掉", "播放", "暂停", "导航", "调高", "调低", "调到", "调成", "调节",
@@ -453,6 +506,16 @@ class ActionClaimGuard {
             "你上一句说的操作实际上没有执行：你没有调用任何工具，车上也没有任何变化。" +
                 "而且用户刚才说的话可能没有听清楚。不要调用任何工具，" +
                 "只用一句话如实告诉用户：刚才没有听清楚，也没有执行任何操作，请再说一遍。"
+
+        /**
+         * The model said 「没听清」 to a sentence the recogniser transcribed (see
+         * [DriverTurn]'s repair_for_heard_speech). Self-contained: it may land in a fresh
+         * conversation after a reset. Tools stay allowed - a misclassified command must still run.
+         */
+        fun answerHeardTranscript(request: String): String =
+            "用户刚才说（语音转写，可能有个别错字）：「$request」。请直接针对这句话用一句话自然地聊天回应，" +
+                "不要说没听清，也不要让用户再说一遍。不要调用任何工具。" +
+                "只有这句话完全无法理解时，才说没听清。"
 
         /** Self-contained: it may land in a fresh conversation after a reset. */
         fun nudgeFor(

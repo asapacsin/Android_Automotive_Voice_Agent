@@ -18,7 +18,19 @@ object VisionProvider {
             }.also { instance = it }
         }
 
-    fun handler(context: Context): CameraQuestionHandler {
+    @Volatile
+    private var sharedHandler: CameraQuestionHandler? = null
+
+    /**
+     * One per process: the open-look (camera opened) and the voice question must see each other
+     * to cost one vision request between them (see [CameraQuestionHandler]).
+     */
+    fun handler(context: Context): CameraQuestionHandler =
+        sharedHandler ?: synchronized(this) {
+            sharedHandler ?: newHandler(context).also { sharedHandler = it }
+        }
+
+    private fun newHandler(context: Context): CameraQuestionHandler {
         val live = port(context)
         return CameraQuestionHandler(
             surface = { VisionOverrides.surface ?: CameraVisionGateway.current() },

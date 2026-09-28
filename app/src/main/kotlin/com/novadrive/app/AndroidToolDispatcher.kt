@@ -190,6 +190,14 @@ class AndroidToolDispatcher(
                 navigationResult(call, action)
             }
             CHOOSE_NAVIGATION_OPTION -> {
+                // The app already picked for this utterance (「第二个」, an exact name): the model's
+                // own call is a duplicate, whatever its arguments say. It gets that pick's result.
+                if (!call.callId.startsWith(LOCAL_PICK_CALL_PREFIX)) {
+                    NavigationLocalPickGuard.consumeChoiceSuppression()?.let { status ->
+                        com.novadrive.app.DebugVoiceLog.log("nav_voice_suppress_choose_option")
+                        return navigationResult(call, AndroidActionResult.Accepted(status))
+                    }
+                }
                 val choice = parseChoice(call.arguments) ?: return failed(call, "INVALID_CHOICE")
                 val action = executor.chooseNavigationOption(choice)
                 if (action !is AndroidActionResult.Accepted) return result(call, action)
@@ -251,6 +259,9 @@ class AndroidToolDispatcher(
 
     companion object {
         const val CHOOSE_NAVIGATION_OPTION = com.novadrive.app.voice.BaiduFlexProtocol.CHOOSE_NAVIGATION_OPTION
+
+        /** Call ids of the app's own local picks (MainActivity's onLocalNavigationPick). */
+        const val LOCAL_PICK_CALL_PREFIX = "local_nav_"
 
         /** A spoken name matched no row but sounds like one: ask, do not select. */
         const val CONFIRM_CANDIDATE = "CONFIRM_CANDIDATE"

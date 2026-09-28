@@ -44,6 +44,7 @@ internal class NavigationTraceListener(
     private var lastManeuverIcon: Int? = null
     private var lastRemainLights: Int? = null
     private var lastCameraFingerprint: String? = null
+    private var lastCameraLogLine: String? = null
     private var lastRemainMeters: Int? = null
     private var lastNaviType: Int? = null
     private var proximityStreak = 0
@@ -211,11 +212,16 @@ internal class NavigationTraceListener(
     override fun updateCameraInfo(info: Array<out AMapNaviCameraInfo>?) {
         if (info.isNullOrEmpty()) return
         val summary = info.joinToString(",") { cam ->
-            "type=${cam.cameraType} limitKmh=${cam.cameraSpeed} distM=${cam.cameraDistance}"
+            "${cam.cameraType}/${cam.cameraSpeed}/${cam.cameraDistance}"
         }
         if (summary == lastCameraFingerprint) return
         lastCameraFingerprint = summary
-        DebugVoiceLog.log("nav_camera_ahead count=${info.size} $summary")
+        // The distance changes every second; the log only changes with the set or its bucket.
+        val line = cameraLogLine(info.map { CameraSample(it.cameraType, it.cameraSpeed, it.cameraDistance) })
+        if (line != lastCameraLogLine) {
+            lastCameraLogLine = line
+            DebugVoiceLog.log(line)
+        }
         onCameraLimits(
             info.map { cam ->
                 DrivingSpeedHud.CameraLimit(limitKmh = cam.cameraSpeed, distM = cam.cameraDistance)
@@ -268,4 +274,24 @@ internal class NavigationTraceListener(
     override fun updateAimlessModeCongestionInfo(info: AimLessModeCongestionInfo?) = Unit
 
     override fun onNaviRouteNotify(data: AMapNaviRouteNotifyData?) = Unit
+
+    internal data class CameraSample(val type: Int, val limitKmh: Int, val distM: Int)
+
+    internal companion object {
+        /**
+         * The only camera log line: type and limit per camera, distance as a bucket. Never a
+         * coordinate. Logged only when it changes, so a camera being approached logs a few lines,
+         * not one a second.
+         */
+        fun cameraLogLine(cams: List<CameraSample>): String =
+            "nav_camera_ahead count=${cams.size} " +
+                cams.joinToString(",") { "type=${it.type} limitKmh=${it.limitKmh} dist=${distanceBucket(it.distM)}" }
+
+        fun distanceBucket(meters: Int): String = when {
+            meters < 200 -> "<200"
+            meters < 500 -> "<500"
+            meters < 1_000 -> "<1000"
+            else -> ">=1000"
+        }
+    }
 }

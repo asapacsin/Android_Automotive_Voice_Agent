@@ -90,14 +90,26 @@ class DriverTurn(val epoch: Long) {
          * until the turn is confirmed by the driver's own words, a tool call or execution proof.
          */
         ECHO_CANDIDATE,
+
+        /**
+         * A tool this turn called has not returned its result yet, so nothing the model says now can
+         * be grounded in it. Measured 2026-09-28 (demo 08:37): 「看看前面有什么」 called
+         * describe_camera_view; a response created before the vision result said
+         * 「抱歉，摄像头暂时无法使用。」, and seconds later the look succeeded. Takes precedence over
+         * [proven]: that turn had been "proven" by an older set_speech_output result.
+         */
+        AWAITING_TOOL_RESULT,
     }
 
     sealed interface Verdict {
         /** Play and show what was held. */
         data class Release(val reason: String) : Verdict
 
-        /** Never play or show it; [correction] is sent to the model when non-null. */
-        data class Drop(val reason: String, val correction: String? = null) : Verdict
+        /**
+         * Never play or show it; [correction] is sent to the model when non-null. [detail] is a
+         * log-safe diagnostic (which predicate, which of our own vocabulary words) - never content.
+         */
+        data class Drop(val reason: String, val correction: String? = null, val detail: String? = null) : Verdict
 
         /** Keep holding: the turn is not finished. */
         data object Wait : Verdict
@@ -123,6 +135,15 @@ class DriverTurn(val epoch: Long) {
      */
     var echoCandidate: Boolean = false
         private set
+
+    /** Call ids this turn dispatched whose result has not been delivered yet, with the tool name. */
+    private val awaitingResults = linkedMapOf<String, String>()
+
+    /** Tools that were still running when the current response started. */
+    private var awaitedAtResponseStart: Set<String> = emptySet()
+
+    /** A tool of this turn is still running (e.g. a vision request of several seconds). */
+    val awaitingToolResult: Boolean get() = awaitingResults.isNotEmpty()
 
     /** A tool result with `ok=true` came back. This, and only this, is proof. */
     var proven: Boolean = false
@@ -170,6 +191,7 @@ class DriverTurn(val epoch: Long) {
         if (!accepts()) return HoldReason.NONE
         phase = Phase.RESPONDING
         if (audio == null) audio = segment
+        awaitedAtResponseStart = awaitingResults.values.toSet()
         holdReason = decideHold(contextAwaitingAnswer)
         return holdReason
     }
@@ -185,6 +207,8 @@ class DriverTurn(val epoch: Long) {
     }
 
     private fun decideHold(contextAwaitingAnswer: Boolean): HoldReason {
+        // Before proof: proof of an earlier action says nothing about a result still being made.
+        if (awaitingToolResult) return HoldReason.AWAITING_TOOL_RESULT
         // Proof of *some* action is not a source for the weather: only a live-info result of the
         // kind the driver asked about is (SPEC-011 B3).
         if (proven && (kind != Kind.REALTIME_INFO || answeredFromSource())) return HoldReason.NONE
@@ -257,21 +281,34 @@ class DriverTurn(val epoch: Long) {
         return holdReason
     }
 
-    fun onToolCall() {
+    fun onToolCall(callId: String? = null, name: String? = null) {
         if (!accepts()) {
             rejectedEvents++
             return
         }
         toolCalled = true
+        if (callId != null) awaitingResults[callId] = name.orEmpty()
     }
 
     /**
      * A tool result was delivered to the model. `ok=true` is the only thing in this system that
      * proves an external action happened; a failure explicitly does **not** release a claim.
      */
-    fun onExecutionResult(ok: Boolean, failure: String?, liveInfoKind: String? = null): Verdict {
+    fun onExecutionResult(ok: Boolean, failure: String?, liveInfoKind: String? = null, callId: String? = null): Verdict {
         if (!accepts()) {
             rejectedEvents++
+            return Verdict.Wait
+        }
+        if (callId != null) awaitingResults.remove(callId)
+        // A response created before this result cannot have used it; it is judged when it ends.
+        if (holdReason == HoldReason.AWAITING_TOOL_RESULT) {
+            if (!ok) {
+                lastFailure = failure
+                executionFailed = true
+            } else {
+                proven = true
+                if (liveInfoKind != null) liveInfoKinds += liveInfoKind
+            }
             return Verdict.Wait
         }
         if (ok && liveInfoKind != null) liveInfoKinds += liveInfoKind
@@ -314,6 +351,7 @@ class DriverTurn(val epoch: Long) {
             HoldReason.AWAITING_EXECUTION_PROOF,
             HoldReason.UNCLASSIFIED_CLAIM,
             HoldReason.CAPABILITY_HELP,
+            HoldReason.AWAITING_TOOL_RESULT,
             -> Verdict.Wait
         }
     }
@@ -328,6 +366,13 @@ class DriverTurn(val epoch: Long) {
         val reply = assistantText.trim()
         val verdict = when (holdReason) {
             HoldReason.NONE -> Verdict.Release("not_held")
+
+            // No correction: the pending result's own delivery asks the model for the real answer.
+            HoldReason.AWAITING_TOOL_RESULT -> when {
+                hadToolCallInResponse || reply.isEmpty() -> Verdict.Release("tool_called")
+                speaksBeforeResult(reply) -> Verdict.Drop("reply_before_tool_result")
+                else -> Verdict.Release("no_claim_before_result")
+            }
 
             // Nothing confirmed a driver: no words of their own, no tool, no proof. A reply that
             // claims nothing is exactly what used to be released here and heard as a self-loop.
@@ -375,8 +420,9 @@ class DriverTurn(val epoch: Long) {
             HoldReason.UNCLASSIFIED_CLAIM -> when {
                 toolCalled || hadToolCallInResponse -> Verdict.Release("tool_called")
                 proven -> Verdict.Release("execution_proved")
-                else -> ActionClaimGuard.carActionClaim(reply)
-                    ?.let { Verdict.Drop("unverified_claim_$it") }
+                else -> ActionClaimGuard.carActionClaimMatch(reply)
+                    ?.let { Verdict.Drop("unverified_claim_${it.predicate}", detail = it.describe()) }
+                    ?: repairForHeardDriver(reply)
                     ?: Verdict.Release("no_claim_made")
             }
 
@@ -420,6 +466,39 @@ class DriverTurn(val epoch: Long) {
         else -> Verdict.Release("honest_refusal")
     }
 
+    /**
+     * The model answered a chat turn with 「没听清，再说一遍」 although the recogniser heard a whole
+     * sentence. Measured 2026-09-28 08:33 (owner demo): 「你办公室也不怎么吵。」 and a 30-character
+     * sentence about the office were each answered 「我没听清，再说一遍。」 - the speech-to-speech
+     * model judges the *audio*, and in a noisy cabin (or after its own 「没听清」 replies earlier in the
+     * same conversation) it gives up on speech its own transcriber got. The driver is asked to
+     * repeat something that was understood.
+     *
+     * Once per utterance the repair is dropped unheard and the model is given the transcript to
+     * answer. If it still cannot make sense of it, its second repair is released as usual.
+     */
+    /**
+     * A reply made while a result is still coming that states an outcome - a failure
+     * (「摄像头暂时无法使用」), a completion, an action - is invented. While the camera is being
+     * looked at, *anything* said is: there is no picture yet to describe or to fail on.
+     */
+    private fun speaksBeforeResult(reply: String): Boolean =
+        CAMERA_TOOL in awaitedAtResponseStart ||
+            ActionClaimGuard.refuses(reply) ||
+            ActionClaimGuard.claimsDone(reply) ||
+            ActionClaimGuard.carActionClaim(reply) != null
+
+    private fun repairForHeardDriver(reply: String): Verdict? {
+        if (repairRetried || kind != Kind.CONVERSATION || !userSpoke) return null
+        if (!PhantomTurnGate.asksToRepeat(reply)) return null
+        if (requestText.count { it.isLetterOrDigit() } < MIN_HEARD_SENTENCE_CHARS) return null
+        repairRetried = true
+        return Verdict.Drop("repair_for_heard_speech", ActionClaimGuard.answerHeardTranscript(requestText))
+    }
+
+    /** A repair of this utterance was already replaced by an answer to its transcript. */
+    private var repairRetried = false
+
     private fun answeredFromSource(): Boolean =
         ActionClaimGuard.liveInfoKindFor(requestText)?.let { it in liveInfoKinds } == true
 
@@ -455,9 +534,12 @@ class DriverTurn(val epoch: Long) {
 
     override fun toString(): String =
         "DriverTurn(epoch=$epoch phase=$phase kind=$kind userSpoke=$userSpoke toolCalled=$toolCalled " +
-            "proven=$proven hold=$holdReason held=${held.size})"
+            "proven=$proven hold=$holdReason held=${held.size} awaiting=${awaitingResults.size})"
 
     companion object {
+        /** The vision tool: nothing about the picture exists until its result does. */
+        private const val CAMERA_TOOL = "describe_camera_view"
+
         /**
          * Whether [transcript] is the assistant's own [reply] heard back. Compares word characters
          * only, and only against what this app just said: never a list of driver phrases.
@@ -470,6 +552,12 @@ class DriverTurn(val epoch: Long) {
             val bigrams = heard.windowed(2)
             return bigrams.count { said.contains(it) } >= bigrams.size * ECHO_BIGRAM_SHARE
         }
+
+        /**
+         * Word characters a transcript needs before 「没听清」 to it is second-guessed. 「你办公室也不怎
+         * 么吵」 has nine; 「这个」「就这个」 (two, three) are fragments a repair is exactly right for.
+         */
+        const val MIN_HEARD_SENTENCE_CHARS = 5
 
         /** Share of the heard bigrams that must appear in the reply; recognition is not verbatim. */
         private const val ECHO_BIGRAM_SHARE = 0.6

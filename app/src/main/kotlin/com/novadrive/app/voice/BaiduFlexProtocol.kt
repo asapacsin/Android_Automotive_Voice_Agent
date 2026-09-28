@@ -96,7 +96,7 @@ object BaiduFlexProtocol {
         val describeCamera = functionTool(
             name = "describe_camera_view",
             description = "看摄像头画面并回答问题。用户说「看看前面有什么」「摄像头里是什么」「画面里有几个人」「这是什么东西」「这是什么」「这个是什么」「看一下这个」等询问眼前或镜头画面的问题时调用（没有其他上下文时，「这是什么」一律当作问镜头画面），" +
-                "question 填用户的原问题。会自动打开摄像头并把当前画面发给视觉模型，需要几秒钟。" +
+                "question 填用户的原问题。会自动打开摄像头并把当前画面发给视觉模型，需要几秒钟：结果返回之前什么都不要说，既不要描述画面，也不要说摄像头不能用，结果会自动送来。" +
                 "只根据返回的 answer 回答；ok=false 时只转述 message，绝对不要猜测画面内容。" +
                 "Look at the camera image and answer the driver's question about it.",
             properties = JSONObject().put(
@@ -189,7 +189,7 @@ object BaiduFlexProtocol {
         val setSpeechOutput = functionTool(
             name = SET_SPEECH_OUTPUT,
             description = "用户让小诺别说了、别吵、保持安静、停止说话、停止說話时用 mode=silent：小诺立刻停止说话，但继续听，下一句指令照常执行，不需要再唤醒；" +
-                "调用后不要再说任何话（不要「好的」之类确认）。这不是休眠（休眠用 end_conversation）。mode=spoken 表示恢复正常对话。" +
+                "调用后不要再说任何话（不要「好的」之类确认）。这不是休眠（休眠用 end_conversation）。用户说「继续说」「可以说话了」「你说吧」时用 mode=spoken 恢复正常对话。" +
                 "不要用于音乐、导航播报或车辆音量。silent: stop talking now, no acknowledgement, wait for the next command (not sleep); spoken: talk normally.",
             properties = JSONObject().put(
                 "mode",

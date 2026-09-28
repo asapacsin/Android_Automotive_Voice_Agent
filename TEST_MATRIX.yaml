@@ -2481,10 +2481,13 @@ tests:
       - "inject an unprompted reply while navigating"
       - "ask a question just before a guidance prompt"
       - "let guidance start while a reply plays"
+      - "start a command (e.g. 有点热) about 1-2 s before a guidance prompt and keep speaking into it"
     pass_criteria:
       - "unprompted reply: speech_arbiter decision=DROP reason=navigation_unprompted, and no audio"
       - "reply audio and guidance never overlap (speech_arbiter lines against guidance start/end)"
-      - "out=uplink decision=CLOSED during every prompt and OPEN >= 500 ms after it"
+      - "out=uplink decision=CLOSED during every prompt not met by an utterance, and OPEN >= 500 ms after it"
+      - "R0: a command in progress at guidance start logs decision=OPEN reason=driver_utterance, gets a transcript and is answered"
+      - "nav_guidance_broadcast mode=concise; guidance prompts fewer than on the 2026-09-28 demo"
       - "P1/P3 regressions re-pass (I-12)"
     evidence: []
     returns: ["logcat excerpt of speech_arbiter and guidance lines, without coordinates or transcripts"]

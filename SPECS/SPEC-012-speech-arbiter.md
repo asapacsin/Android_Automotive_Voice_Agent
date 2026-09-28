@@ -60,6 +60,7 @@ B3. **Rule table — today's behaviour, unchanged.** Highest row wins.
 
 | # | Condition | Reply | Uplink |
 | --- | --- | --- | --- |
+| R0 | Guidance starts while the driver is mid-utterance (server `speech_started`, no `speech_stopped`) — added 2026-09-28, see B6 | (R1 applies) | OPEN until the utterance ends or 8 s from that guidance start |
 | R1 | Guidance speaking | HOLD | CLOSED |
 | R2 | Guidance ended < 500 ms ago | continue (HOLD lifts) | CLOSED |
 | R3 | Guidance "speaking" for > 20 s with no end | — | OPEN (lost callback) |
@@ -81,11 +82,30 @@ B5. **New rule — workload hold (step 4).** While navigating, when the distance
 distance jumps up) or **8 s** have gone, whichever is first; then it plays. A reply already playing
 is not cut. It is inserted as R6a, above R7.
 
+B6. **Driver utterance protection (R0, 2026-09-28).** Owner demo on the emulator: guidance started
+1.9 s after `speech_started` for 「有点热」, R1 closed the uplink mid-utterance and the turn was lost
+(no transcript ever; `droppedGuidance` reached 4853 frames ≈ 48 s; the uplink was closed 60–70 % of
+the drive). **Decision:** Amap's voice is the SDK's own and cannot be deferred (non-goal above), so
+the uplink stays OPEN over guidance while the server still reports the driver speaking, released by
+`speech_stopped` or 8 s after the first guidance start that met the utterance (a back-to-back prompt
+does not extend it). Only an utterance already in progress when guidance starts is protected —
+speech reported while the uplink is gated cannot open it, so P3 still holds for echo. Reply audio
+is unchanged (R1 HOLD). Accepted cost: the first seconds of that prompt may reach Baidu mixed with
+the driver's words. Known gap: the ~0.3 s between local onset and the server's `speech_started` is
+not protected. Input: the voice session's UI state `USER_SPEAKING` →
+`SpeechArbiter.onDriverSpeaking`. The 500 ms tail is **kept** (P3's device evidence was taken with
+it; `play_end` → open measured 550 ms on the demo, the tail is ~10 % of closed time); the closed
+time is cut at its source instead: `AmapGuidanceVoice.enable` sets `BroadcastMode.CONCISE`, which
+keeps manoeuvre and camera prompts and drops the narration between them. Proven by
+`SpeechArbiterUtteranceProtectTest` (replays the logged sequence); device re-check on a simulated
+drive is `SPEECH-ARBITER-DEVICE-001`.
+
 ## Failure behaviour
 
 | Case | Result |
 | --- | --- |
 | Guidance end callback lost | R3 reopens the uplink after 20 s; the held reply resumes |
+| Server never sends `speech_stopped` during protected guidance | R0's 8 s cap closes the uplink as R1 |
 | Manoeuvre distance stops updating | the 8 s cap releases the hold |
 | Two inputs at once (guidance starts while focus is lost) | table order decides; tested per pair |
 | Session ends while a reply is held | the hold is dropped with the session epoch (SPEC-009) |

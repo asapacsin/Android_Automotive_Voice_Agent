@@ -109,6 +109,20 @@ object PhantomTurnGate {
     }
 
     /**
+     * A short reply whose point is asking the driver to repeat: [isGenericRepair], plus the longer
+     * wording the app's own 「没听清」 correction produces (「刚才没有听清楚，也没有执行任何操作，请再
+     * 说一遍。」, 25 characters), which the model then imitates for later turns in that conversation.
+     */
+    fun asksToRepeat(text: String): Boolean {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return false
+        return isGenericRepair(trimmed) ||
+            (trimmed.length <= MAX_REPEAT_REQUEST_CHARS && REPAIR_MARKERS.any { trimmed.contains(it, ignoreCase = true) })
+    }
+
+    private const val MAX_REPEAT_REQUEST_CHARS = 32
+
+    /**
      * Whether a transcript contains any actual word. Measured on device 2026-09-18: noise was
      * transcribed as 「。」 — a lone full stop — and a blank-string check counted that as the driver
      * speaking, so the phantom reply was released and spoken. Punctuation and whitespace are not

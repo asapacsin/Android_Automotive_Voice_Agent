@@ -18,9 +18,16 @@ object SpeechAuthority {
 
     @Volatile private var lastUplink: SpeechArbiter.Uplink = SpeechArbiter.Uplink.OPEN
     @Volatile private var lastReply: SpeechArbiter.Reply = SpeechArbiter.Reply.PLAY
+    @Volatile private var lastProtected = false
 
-    /** Whether the microphone must not reach Baidu now (R1–R3). */
+    /** Whether the microphone must not reach Baidu now (R0–R3). */
     fun uplinkClosed(): Boolean {
+        val protectedNow = arbiter.uplinkProtected()
+        if (protectedNow != lastProtected) {
+            lastProtected = protectedNow
+            // R0 engaged: guidance is speaking but the driver's utterance keeps the uplink open.
+            if (protectedNow) DebugVoiceLog.log("speech_arbiter out=uplink decision=OPEN reason=driver_utterance")
+        }
         val now = arbiter.uplink()
         if (now != lastUplink) {
             lastUplink = now
@@ -150,6 +157,7 @@ object SpeechAuthority {
         arbiter = SpeechArbiter(clock = clock)
         lastUplink = SpeechArbiter.Uplink.OPEN
         lastReply = SpeechArbiter.Reply.PLAY
+        lastProtected = false
         playbackHold = null
         scheduleRecheck = { _, _ -> }
         synchronized(holdLock) {

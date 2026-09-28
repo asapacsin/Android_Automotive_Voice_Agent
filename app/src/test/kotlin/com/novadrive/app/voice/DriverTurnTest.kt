@@ -406,4 +406,91 @@ class DriverTurnTest {
         val verdict = t.onResponseDone("找到几个地点，请在屏幕上选择。", hadToolCallInResponse = false)
         assertTrue(verdict is DriverTurn.Verdict.Release, "a prompt claims nothing")
     }
+
+    // ---- owner demo 2026-09-28 (P39) ----
+
+    private fun chatTurn(transcript: String): DriverTurn {
+        val t = DriverTurn(epoch = 16)
+        t.onResponseStarted(goodAudio, contextAwaitingAnswer = true)
+        t.hold("audio")
+        t.onUserTranscript(transcript) { DriverTurn.classify(it) }
+        return t
+    }
+
+    /**
+     * 08:32:44 「什么这也可以是吧。」 (35-character reply) and 08:36:50 「就是怪的。」 (7 characters), both
+     * with a list on screen, both `TURN_DROP unverified_claim_car_action kind=CONVERSATION`. The
+     * reply texts were not logged; these are the prompts a list on screen makes the model say.
+     */
+    @Test
+    fun aPromptToChooseWithAListOnScreenIsSpoken() {
+        val cases = listOf(
+            "什么这也可以是吧。" to "是的，你可以直接说第几个，或者在屏幕上点选目的地。",
+            "就是怪的。" to "要选哪条路线？",
+            "就是怪的。" to "请选一条路线。",
+        )
+        for ((heard, reply) in cases) {
+            assertEquals(DriverTurn.Kind.CONVERSATION, DriverTurn.classify(heard))
+            val t = chatTurn(heard)
+            assertEquals(DriverTurn.Verdict.Release("no_claim_made"), t.onResponseDone(reply, false), reply)
+        }
+    }
+
+    @Test
+    fun aClaimThatAlsoAsksIsStillDroppedAndSaysWhichWordsMatched() {
+        for (reply in listOf("好的，已为你选择第二条路线，还要改吗？", "退出导航中，请选择下一个目的地。")) {
+            val verdict = chatTurn("就是怪的。").onResponseDone(reply, false)
+            assertTrue(verdict is DriverTurn.Verdict.Drop, reply)
+            val detail = (verdict as DriverTurn.Verdict.Drop).detail.orEmpty()
+            assertTrue(detail.startsWith("predicate=car_action noun="), detail)
+            // Vocabulary words only: the log line never carries the reply itself.
+            assertFalse(detail.contains(reply))
+        }
+    }
+
+    /**
+     * 08:33:14 「你办公室也不怎么吵。」 → 「我没听清，再说一遍。」, released. The recogniser heard a
+     * whole sentence; the model gave up on the audio. Once per utterance the repair is replaced by
+     * an answer to the transcript.
+     */
+    @Test
+    fun aRepairToAHeardSentenceIsReplacedOnceByAnAnswer() {
+        val t = DriverTurn(epoch = 22)
+        t.onResponseStarted(goodAudio, false)
+        t.hold("audio")
+        t.onUserTranscript("你办公室也不怎么吵。") { DriverTurn.classify(it) }
+        val first = t.onResponseDone("我没听清，再说一遍。", false)
+        assertTrue(first is DriverTurn.Verdict.Drop)
+        first as DriverTurn.Verdict.Drop
+        assertEquals("repair_for_heard_speech", first.reason)
+        assertTrue(first.correction!!.contains("你办公室也不怎么吵"), "self-contained: it may land after a reset")
+        assertTrue(first.correction!!.contains("不要说没听清"))
+        // The model still cannot make sense of it: that repair is honest and is heard.
+        t.onResponseStarted(null, false)
+        t.hold("audio")
+        assertEquals(DriverTurn.Verdict.Release("no_claim_made"), t.onResponseDone("没听清，再说一遍。", false))
+    }
+
+    @Test
+    fun theAppsOwnLongerRepairWordingIsAlsoReplaced() {
+        // 08:32:51: after the app's 「刚才没有听清楚…」 correction the model repeated it verbatim.
+        val verdict = chatTurn("这个问题我想问一下你。").onResponseDone("刚才没有听清楚，也没有执行任何操作，请再说一遍。", false)
+        assertEquals("repair_for_heard_speech", (verdict as DriverTurn.Verdict.Drop).reason)
+    }
+
+    @Test
+    fun aRepairToAFragmentOrAnActionIsLeftAlone() {
+        // 「这个。」 is exactly what a repair is for.
+        assertEquals(DriverTurn.Verdict.Release("no_claim_made"), chatTurn("这个。").onResponseDone("没听清，再说一遍。", false))
+        // An action turn is judged on execution proof, not here.
+        val action = turn(DriverTurn.Kind.ACTION)
+        action.onResponseStarted(goodAudio, false)
+        action.hold("audio")
+        assertEquals(DriverTurn.Verdict.Release("no_claim_made"), action.onResponseDone("没听清，再说一遍。", false))
+        // A real answer is untouched.
+        assertEquals(
+            DriverTurn.Verdict.Release("no_claim_made"),
+            chatTurn("你办公室也不怎么吵。").onResponseDone("是啊，挺安静的。", false),
+        )
+    }
 }

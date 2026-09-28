@@ -16,6 +16,13 @@ package com.novadrive.app.voice
  * Uplink: closed while guidance speaks and for [tailMs] after (R1/R2), reopened after
  * [maxClosedMs] if the end is never reported (R3).
  *
+ * R0 (driver utterance protection, 2026-09-28): guidance that starts while the server reports the
+ * driver mid-utterance (`speech_started` without `speech_stopped`, fed by [onDriverSpeaking]) does
+ * not close the uplink until that utterance ends or [protectMaxMs] has gone since the guidance
+ * began, whichever is first. Closing it cut the driver off and the turn was lost (owner demo: the
+ * mic closed 1.9 s into 「有点热」, no transcript ever arrived). The guidance voice is Amap's own and
+ * cannot be deferred; the cost is that its first seconds may reach Baidu mixed with the driver.
+ *
  * R6a (SPEC-012 B5, workload hold): while navigating, once the distance to the next manoeuvre
  * ([onManeuverDistance]) falls under [holdDistanceM], a permitted reply that has **not started**
  * is HELD until the manoeuvre is passed (the distance jumps up by more than [passJumpM]) or
@@ -31,6 +38,7 @@ class SpeechArbiter(
     private val holdDistanceM: Int = WORKLOAD_HOLD_DISTANCE_M,
     private val holdMaxMs: Long = WORKLOAD_HOLD_MAX_MS,
     private val passJumpM: Int = MANEUVER_PASSED_JUMP_M,
+    private val protectMaxMs: Long = UTTERANCE_PROTECT_MAX_MS,
 ) {
     enum class Reply { PLAY, HOLD, DROP }
     enum class Volume { FULL, DUCK }
@@ -45,6 +53,9 @@ class SpeechArbiter(
     private var guidanceStartedMs = 0L
     private var guidanceEndedMs: Long? = null
     private var replyPlaying = false
+    private var driverSpeaking = false
+    /** R0: until when guidance may not close the uplink on the driver's current utterance. */
+    private var protectUntilMs: Long? = null
     private var lastDistanceM: Int? = null
     /** When the current manoeuvre's hold zone was entered; null outside the zone or once released. */
     private var zoneEnteredMs: Long? = null
@@ -104,11 +115,20 @@ class SpeechArbiter(
 
     fun onFocus(value: Focus) = synchronized(lock) { focus = value }
 
+    /** R0 input: the server's VAD says the driver is speaking (true) or has stopped (false). */
+    fun onDriverSpeaking(speaking: Boolean) = synchronized(lock) {
+        driverSpeaking = speaking
+        if (!speaking) protectUntilMs = null
+    }
+
     fun onGuidanceSpeaking(speaking: Boolean) = synchronized(lock) {
         if (speaking) {
+            val now = clock()
             guidanceSpeaking = true
-            guidanceStartedMs = clock()
+            guidanceStartedMs = now
             guidanceEndedMs = null
+            // R0: bounded from the first prompt that met the utterance; a back-to-back prompt does not extend it.
+            if (driverSpeaking && protectUntilMs == null) protectUntilMs = now + protectMaxMs
         } else if (guidanceSpeaking) {
             guidanceSpeaking = false
             guidanceEndedMs = clock()
@@ -123,6 +143,8 @@ class SpeechArbiter(
         guidanceSpeaking = false
         guidanceEndedMs = null
         replyPlaying = false
+        driverSpeaking = false
+        protectUntilMs = null
         clearManeuver()
     }
 
@@ -152,7 +174,19 @@ class SpeechArbiter(
         } else {
             guidanceEndedMs?.let { now - it < tailMs } ?: false
         }
-        if (closed) Uplink.CLOSED else Uplink.OPEN
+        if (closed && !protecting(now)) Uplink.CLOSED else Uplink.OPEN
+    }
+
+    /** R0 is holding the uplink open over guidance right now (for the log only). */
+    fun uplinkProtected(): Boolean = synchronized(lock) {
+        val now = clock()
+        val guidance = guidanceSpeaking || guidanceEndedMs?.let { now - it < tailMs } == true
+        guidance && protecting(now)
+    }
+
+    private fun protecting(now: Long): Boolean {
+        val until = protectUntilMs ?: return false
+        return driverSpeaking && now < until
     }
 
     /** Why a DROP: true when it is the P1 navigation mute rather than a focus loss (for the log only). */
@@ -190,6 +224,8 @@ class SpeechArbiter(
         const val WINDOW_MS = 10_000L
         const val TAIL_MS = 500L
         const val MAX_CLOSED_MS = 20_000L
+        /** R0 cap: a driver command is a few seconds; past this, guidance closes the uplink as before. */
+        const val UTTERANCE_PROTECT_MAX_MS = 8_000L
         const val WORKLOAD_HOLD_DISTANCE_M = 150
         const val WORKLOAD_HOLD_MAX_MS = 8_000L
         const val MANEUVER_PASSED_JUMP_M = 20
