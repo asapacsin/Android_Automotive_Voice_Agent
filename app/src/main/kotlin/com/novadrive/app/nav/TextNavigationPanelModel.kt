@@ -2,7 +2,8 @@ package com.novadrive.app.nav
 
 /**
  * What the text navigation panel shows where the map would be, on a build that cannot draw the
- * map (x86 emulator, see `TranslatedAbi`). Pure Kotlin so it is unit-tested; it holds no state —
+ * map (API 30 x86 emulator running arm64, see `TranslatedAbi.amapNativeSafe`). Pure Kotlin so
+ * it is unit-tested; it holds no state —
  * the caller passes the controller's phase and lists plus the latest guidance progress the SDK
  * listener already receives. Screen text only: nothing here is logged.
  */

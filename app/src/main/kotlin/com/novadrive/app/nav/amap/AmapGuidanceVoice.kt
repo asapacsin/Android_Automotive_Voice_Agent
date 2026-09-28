@@ -15,7 +15,7 @@ import com.novadrive.app.voice.HostAudioTap
  * [NavigationGuidanceVoice]. Logs never carry the guidance text (it names places).
  */
 internal object AmapGuidanceVoice : TTSPlayListener {
-    /** The live host's text panel (translated ABI only); null otherwise. */
+    /** The live host's text panel (`TranslatedAbi.amapNativeSafe` false only), else null. */
     @Volatile var textReceiver: ((String) -> Unit)? = null
 
     override fun onPlayStart(text: String?) {

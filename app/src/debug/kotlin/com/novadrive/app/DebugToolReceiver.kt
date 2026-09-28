@@ -50,7 +50,7 @@ class DebugToolReceiver : BroadcastReceiver() {
                 }
                 else -> "unknown tool"
             }
-            val safeArg = if (tool == "nav_desk_origin") "<redacted>" else arg
+            val safeArg = if (tool == "nav_desk_origin" || arg.startsWith("@")) "<redacted>" else arg
             Log.d("NovaVoice", "debug_tool tool=$tool arg=$safeArg result=$result")
         } catch (e: Exception) {
             Log.d("NovaVoice", "debug_tool failed: ${e.message}")
@@ -103,6 +103,15 @@ class DebugToolReceiver : BroadcastReceiver() {
         val target = keyword.ifBlank { "横琴口岸" }
         val host = NavigationHostGateway.current()
             ?: return "no live map host (open MainActivity first)"
+        // `@lat,lon` (GCJ-02): route without the Web-key POI search, e.g. on a fresh emulator
+        // whose keys have not been entered yet. Coordinates are never logged.
+        if (target.startsWith("@")) {
+            val parts = target.substring(1).split(',', limit = 2)
+            val lat = parts.getOrNull(0)?.trim()?.toDoubleOrNull() ?: return "usage: @lat,lon"
+            val lon = parts.getOrNull(1)?.trim()?.toDoubleOrNull() ?: return "usage: @lat,lon"
+            host.calculateDriveRoute(lat, lon, "坐标目的地")
+            return "routing to coordinates"
+        }
         Thread {
             val key = AmapSettingsRepository(context.applicationContext).loadWebKey()
             if (key.isNullOrBlank()) {

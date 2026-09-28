@@ -5,7 +5,8 @@ import kotlin.math.cos
 import kotlin.math.sqrt
 
 /**
- * The map picture on a build that cannot draw the Amap GL map (x86 emulator, `TranslatedAbi`):
+ * The map picture where the Amap GL map cannot be drawn (an API 30 x86 emulator running
+ * arm64, `TranslatedAbi.amapNativeSafe`):
  * which overlays the Amap Web Service static map (`/v3/staticmap`) is asked for, and when it is
  * worth asking again. Pure Kotlin so it is unit-tested; the fetch lives in `nav/amap`.
  *

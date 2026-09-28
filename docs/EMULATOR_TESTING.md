@@ -1,48 +1,44 @@
 # Windows emulator testing
 
-On this PC, double-click **Nova Drive Emulator** on the desktop to start the emulator and install/open the current debug APK. The shortcut uses the launcher below.
-
-Use the local Android Emulator when the test phone is unavailable. From the repository root,
-run:
-
-```powershell
-.\scripts\emulator.ps1
-```
-
-The script discovers
-the SDK through `ANDROID_SDK_ROOT`, then `ANDROID_HOME`, then
-`C:\Users\Administrator\Android\Sdk`. It reuses or creates the `NovaDrive_API_30` AVD with the
-API 30 Google APIs x86_64 system image, starts a visible window, waits at most five minutes for
-boot, enables host microphone forwarding, and prints the ADB serial. Use that serial on every ADB
-command so another connected device cannot receive it accidentally. The new AVD is configured
-with 3 GB RAM, four virtual cores, a 1280×720 landscape display, and a 2 GB data partition. If
-`JAVA_HOME` is unset, the launcher uses `C:\Users\Administrator\tools\jdk-17` when present.
-
-If the SDK tools or image are not installed, run `.\scripts\emulator.ps1 -SetupSdk` once; Android
-SDK licenses must already have been accepted. The SDK setup installs only platform-tools, the
-emulator, and the API 30 Google APIs x86_64 image. When `HTTPS_PROXY` or `HTTP_PROXY` is set, the
-launcher extracts only its host and port for sdkmanager and does not print the proxy URL. To install
-the current debug APK and open the app:
+On this PC, double-click **Nova Drive Emulator** on the desktop. It runs, from the repository root:
 
 ```powershell
 .\scripts\emulator.ps1 -InstallApk
 ```
 
-The default APK path is `C:\Users\Administrator\tools\nova-drive-build\app\outputs\apk\debug\app-debug.apk`.
-Pass `-ApkPath <path>` to choose another APK. Setup and APK installation can be combined. The
-launcher also accepts `-BootTimeoutSeconds` to change the bounded boot wait.
+The launcher boots the `nova_api34` AVD (API 34 Google APIs x86_64, on `D:\android-avd`)
+detached with `-no-snapshot-save -allow-host-audio -gpu host -feature GLESDynamicVersion
+-camera-back webcam0`, waits at most five minutes for boot, then applies `adb root`, host-mic
+forwarding, the PC proxy (`settings put global http_proxy 10.0.2.2:7897`, needed for Baidu TLS)
+and a Hengqin GPS fix; installs the debug APK (`-r -g --abi arm64-v8a`, keeping the app's data);
+opens the app; moves the emulator window to (100, 0); and starts the host audio bridge detached
+(`--mic "Microphone Array (适用于数字麦克风的英特尔® 智音技术)"`, log
+`C:\Users\Administrator\tools\nova-drive-build\host_audio_bridge.log`). Options: `-NoBridge`,
+`-Mic`, `-AvdName nova_api30 -Abi armeabi-v7a` (the older AVD, see the table at the end),
+`-ApkPath`, `-SetupSdk` (installs platform-tools, the emulator and `-ImagePackage`),
+`-BootTimeoutSeconds`. It finds the SDK through `ANDROID_SDK_ROOT`, `ANDROID_HOME`, then
+`C:\Users\Administrator\Android\Sdk`; a missing AVD is created under `-AvdDir` (default
+`D:\android-avd`, C: is nearly full) with nova_api30's hardware (Pixel 5, 4 GB RAM, host GPU,
+6 GB data). On this PC the API 34 image lives in `D:\android-sdk-extra` behind a directory
+junction at `Sdk\system-images\android-34`.
+
+**A fresh AVD has no keys.** Enter the Baidu Bearer key, the iFlytek APPID and the Amap Web key
+once in 开发者设置 on `nova_api34`. The map and navigation need none of them (the Android Amap key
+is in the APK); voice, the wake word and POI search do. `DEBUG_TOOL nav_route` also accepts
+`@lat,lon` (GCJ-02) to route without the Web key; that argument is redacted in the log.
 
 This emulator is useful for UI, basic lifecycle, and ADB-driven component checks. It cannot certify
 real cabin acoustics, speaker echo cancellation, microphone gating under road noise, driver
 intelligibility, or physical vehicle behavior. The repository requires physical-device evidence for
 audio and navigation behavior in [ACCEPTANCE_TESTS.md](../ACCEPTANCE_TESTS.md). Amap and Baidu
-live-service checks also need their real credentials and network access. The API 30 Google APIs x86_64 image includes [ARM native-library translation support](https://android-developers.googleblog.com/2020/03/run-arm-apps-on-android-emulator.html). Still verify that the app's native libraries load on this image before treating emulator results as evidence of ABI compatibility on a physical device.
+live-service checks also need their real credentials and network access. The Google APIs x86_64 images include [ARM native-library translation support](https://android-developers.googleblog.com/2020/03/run-arm-apps-on-android-emulator.html). Still verify that the app's native libraries load on this image before treating emulator results as evidence of ABI compatibility on a physical device.
 
 ## Voice on the x86 emulator (measured 2026-09-26, nova_api30, Windows host, WHPX)
 
 - The APK ships only ARM native libraries, so the app runs as `arm64-v8a` under translation
   (`dumpsys package com.novadrive.app` → `primaryCpuAbi=arm64-v8a`). Debug builds therefore skip
-  the Amap map surface and WebRTC AEC3 there (`TranslatedAbi`); translated AEC3 took ~80% of a
+  WebRTC AEC3 there (`TranslatedAbi`; the map skip is now API 30 arm64 only, see the last
+  section); translated AEC3 took ~80% of a
   core on `nova-pcm-capture` and the reply track underran ~30 times a second.
 - The host microphone bridge zero-fills one 15 ms HAL buffer (672 frames at 44.1 kHz) in every
   ~46 ms: about 30% of captured samples are exact zeros, with or without AEC, with `-audio dsound`
@@ -90,7 +86,7 @@ bridged audio: with the session asleep, `--no-start --from-file …/wake_xiaoxia
 
 ## Navigation on the emulator: text panel and guidance on the PC (2026-09-27)
 
-The map cannot be drawn on x86 (`TranslatedAbi`), so `AmapNaviViewHost` puts a plain-View
+Where the map cannot be drawn (API 30 + arm64; see the last section), `AmapNaviViewHost` puts a plain-View
 `TextNavigationPanel` where the map would be. It renders `TextNavigationPanelModel` from the
 controller's existing flows (`AssistantNavigationScreen` forwards phase, destination and route
 candidates) and the SDK listener's `NaviInfo` progress: idle, searching, destination list, route
@@ -143,3 +139,31 @@ after a manoeuvre change: at 8.2 km remaining after ~1 min, at 4.5 km after 7 mi
 passed), and at 1.0 km (debug `nav_start emulator:120`, 8.6 → 1.0 km in 4 min). Disabling camera
 updates (`setCameraInfoUpdateEnabled(false)`) did not help and was reverted. It is Amap ARM code
 under translation; the owner's app restarts when it happens. Not seen on the ARM phone.
+
+## The real Amap map on the emulator (2026-09-28)
+
+The SIGILL above is the **API 30** translator's arm64 interpreter (`ro.ndk_translation.version`
+0.2.2): the tombstone ends in `Decoder<…Interpreter>::DecodeSimdScalarTwoRegMisc()` ←
+`DecodeDataProcessingSimdAndFp`, an AdvSIMD scalar instruction it does not implement, reached by
+Amap's GL thread at once and by its navigation engine within minutes. Measured one emulator at a
+time, simulated drives at 120 km/h from Hengqin (`nav_route`, `nav_start emulator:120`):
+
+| Configuration | Real map (AMapNaviView) | Drives to arrival | Crash |
+| --- | --- | --- | --- |
+| nova_api30 (API 30, translator 0.2.2), arm64 install | no: SIGILL in the GLThread at map start | 0/3 (text-panel mode) | SIGILL `DecodeSimdScalarTwoRegMisc`, 1–7 min into each drive |
+| nova_api30, `install --abi armeabi-v7a` | **yes** (tiles, car-up 3D view, lanes, cameras) | 1/1: 17.9 km, 19 manoeuvres, 70 guidance sentences, `nav_stopped reached=true reason=emulator_end` | none in navigation; **the iFlytek wake engine crashes** (SIGSEGV in translated code on the `iflytek-wake-init` thread, 2/2 as soon as the wake word is enabled) |
+| **nova_api34** (API 34 image r14, translator 0.2.3), arm64 install (the image translates arm64 only) | **yes** | **3/3**: 8.7 km (4.5 min), 25.8 km (13.4 min, 22+ manoeuvres; the host bridge spoke 35 guidance sentences on the PC) and a third on the final build (see below) | none |
+
+So `TranslatedAbi.amapNativeSafe` is false only for a 64-bit translated process below API 34, and
+only there does `AmapNaviViewHost` put up the text panel and static map picture (kept for that
+case: `nova_api30` with an arm64 install). Everything else on an emulator draws the real
+`AMapNaviView`. Navigation on any emulator (`TranslatedAbi.active`) still runs as
+`NaviType.EMULATOR`, because no real fix moves the car. The debug-build AEC skip and uplink-gate
+switch still key off `TranslatedAbi.active`: they answer the host-microphone path, not the map.
+
+**Not yet measured on nova_api34:** Baidu voice, the wake word and POI search, because a fresh
+AVD has no keys and agents do not enter credentials. After the owner enters them once, check
+`wake status`, a wake from `host_audio_bridge.py --no-start --from-file
+tools/speech-harness/speech/wake_xiaoxiao.pcm`, and a voice drive (S5/S5b). If the iFlytek engine
+fails there too, the fallback is nova_api30 with the armeabi-v7a install and the wake word off.
+Screenshots: android_doc `emulator_real_map_2026-09-28/`.

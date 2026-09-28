@@ -72,7 +72,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
     private var facilityLimitKmh = 0
     private var lastSpeedHud: DrivingSpeedHud.Snapshot? = null
 
-    /** Stand-in for the map where it cannot be drawn (translated ABI); null on a real phone. */
+    /** Stand-in for the map where it cannot be drawn (`TranslatedAbi.amapNativeSafe`). */
     private val textPanel: TextNavigationPanel? = if (mapRenderable) null else TextNavigationPanel(context)
 
     private companion object {
@@ -92,11 +92,12 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         const val START_OUT_OF_RANGE_CODE = 3
 
         /**
-         * The APK ships ARM-only Amap libraries. On an x86 emulator they run under binary
-         * translation and the map's GL thread dies with SIGILL, taking the whole app down.
-         * There the map surface is simply not attached, so the rest of the app can be tested.
+         * The APK ships ARM-only Amap libraries. Where the x86 emulator's translator cannot run
+         * them (SIGILL takes the whole app down; [com.novadrive.app.TranslatedAbi.amapNativeSafe])
+         * the map surface is not attached and the text panel stands in, so the rest of the app
+         * can be tested.
          */
-        val mapRenderable: Boolean = !com.novadrive.app.TranslatedAbi.active
+        val mapRenderable: Boolean = com.novadrive.app.TranslatedAbi.amapNativeSafe
     }
 
     init {
@@ -113,7 +114,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         if (mapRenderable) {
             addView(naviView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         } else {
-            DebugVoiceLog.log("map_surface skipped=translated_abi")
+            DebugVoiceLog.log("map_surface skipped=translator_unsafe")
             textPanel?.navigating = { isNavigating }
             textPanel?.limitKmh = { DrivingSpeedHud.mergeLimit(cameraLimitKmh, facilityLimitKmh) }
             addView(textPanel, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
@@ -123,7 +124,8 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
     }
 
     /**
-     * Called by the screen with the controller's state, so the text panel (translated ABI only)
+     * Called by the screen with the controller's state, so the text panel (only where
+     * `TranslatedAbi.amapNativeSafe` is false)
      * shows the same flow the choice overlay does. No-op on a device that draws the map.
      */
     fun showNavigationState(
@@ -636,7 +638,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         }
         // x86 emulator: no real fixes move the car, so GPS mode stands still after the first
         // update (2026-09-28: a voice-started drive logged mode=1 and never advanced). Simulate.
-        val simulate = emulator || !mapRenderable
+        val simulate = emulator || com.novadrive.app.TranslatedAbi.active
         if (simulate) {
             // Posted limits come from Amap cameras/roads. This is only how fast the
             // fake car moves. Default 50 km/h: overspeed on 30, legal on 80.
