@@ -184,7 +184,10 @@ on nova_api30 + armeabi-v7a (the AVD with keys), voice through `host_audio_bridg
 `control_climate … 24°C`; 播放音乐 → music plays but the reply says 没成功 (`control_music`
 `MALFORMED_JSON` after `screen_action=voice_music_play ok=true`, an app defect fixed as P34 in
 OPEN_PROBLEMS, re-test pending); 闭嘴 → quiet (the `error` event after it: P35).
-`DEBUG_TOOL nav_speed <kmh>` changes the simulated car's speed mid-drive (a voice-started
+`DEBUG_TOOL nav_read` makes the SDK speak the current guidance now (`AMapNavi.readNaviInfo`, through its own TTS
+callbacks, `read=false` when not navigating); the 2026-09-28 demo replay uses it to start a prompt 0.4 s
+after `speech_started`, the SPEC-012 R0 case, instead of waiting for one by chance (prompts are a median
+11 s apart at 40–90 km/h). `DEBUG_TOOL nav_speed <kmh>` changes the simulated car's speed mid-drive (a voice-started
 emulator drive runs at 50 km/h). `voice say:` could not read clips pushed by a rooted adbd on
 this AVD (`missing <clip>.pcm`: root-owned files are invisible to the app through FUSE), hence
 the bridge.

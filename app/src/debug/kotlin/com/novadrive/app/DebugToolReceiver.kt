@@ -29,6 +29,14 @@ class DebugToolReceiver : BroadcastReceiver() {
                         .setEmulatorNaviSpeed(kmh)
                     "kmh=$kmh"
                 }
+                // The SDK speaks the current guidance now, through its own TTS path (onPlayStart/End):
+                // lets the harness start a prompt at a chosen moment in a driver utterance (SPEC-012 R0).
+                "nav_read" -> {
+                    val ok = runCatching {
+                        com.amap.api.navi.AMapNavi.getInstance(context.applicationContext).readNaviInfo()
+                    }.getOrDefault(false)
+                    "read=$ok"
+                }
                 "nav_overview" -> navOverview()
                 "nav_lock" -> navLock()
                 "climate" -> climate(arg)
