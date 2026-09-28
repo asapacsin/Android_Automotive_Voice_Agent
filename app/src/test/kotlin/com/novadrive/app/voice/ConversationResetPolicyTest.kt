@@ -73,6 +73,24 @@ class ConversationResetPolicyTest {
     }
 
     @Test
+    fun aCallDroppedFromACancelledResponseIsNotOwedForever() {
+        // Emulator replay 2026-09-28 14:33: 「最快的」 picked locally, the model's call dropped; its id
+        // stayed owed, resets stopped, and every later command got an empty response.
+        val policy = ConversationResetPolicy()
+        policy.onCallDropped("call_drop") // the call event arrives before its response.done
+        assertFalse(policy.onResponseDone(ResponseOutcome.toolsOnly("call_drop")))
+        assertTrue(policy.onResponseDone(ResponseOutcome.spokenOnly()), "the next spoken reply resets")
+    }
+
+    @Test
+    fun aCallDroppedAfterItsResponseDoneIsReleasedToo() {
+        val policy = ConversationResetPolicy()
+        assertFalse(policy.onResponseDone(ResponseOutcome.toolsOnly("call_drop")))
+        policy.onCallDropped("call_drop")
+        assertTrue(policy.onResponseDone(ResponseOutcome.spokenOnly()))
+    }
+
+    @Test
     fun resetClearsState() {
         val policy = ConversationResetPolicy(maxPlainTurns = 2)
         policy.onResponseDone(ResponseOutcome(spoke = false, unidentifiedToolCalls = 1))

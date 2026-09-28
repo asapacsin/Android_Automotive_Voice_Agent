@@ -1502,3 +1502,32 @@ Also found on the emulator: a conversation reset whose TLS handshake was cut by 
 - P36 removes the nudge that started this sequence.
 
 Unverified: the exact busy→internal sequence live (not provoked with back-to-back clips 1.2 s apart).
+
+---
+
+## P39 — After a local pick, every later command got an empty reply (no conversation reset any more)
+
+**Status:** FIXED 2026-09-28 — unit-tested; emulator replay of the owner's demo passes the affected steps
+**Reported:** emulator replay (nova_api34, host bridge) of the owner's 2026-09-28 08:36 demo, 14:33:
+「最快的」 was picked locally (`nav_voice_local_pick`), the app cancelled the model's response and
+dropped its `choose_navigation_option` (`flex_call_dropped reason=response_cancelled`). From then on
+no `flex_context_reset` happened, and 有点热 (x5), 停止说话 and the nudge after 「开始导航」 all got
+`response.done output=[]` (empty-retry empty too); 看看前面有什么 was answered 「我已经帮你看了…」
+without `describe_camera_view`. Also in the replay at 14:24 (drop at 第二个, empty replies to
+看看前面有什么 later).
+
+### Root cause
+
+`ConversationResetPolicy` never resets while a tool result is owed. The dropped call's id was added
+to `owed` when its `response.done` arrived, but it is never executed and never answered, so it
+stayed owed for the rest of the session: the conversation grew without bound — the very failure the
+policy exists for (measured 2026-09-17: empty replies from about the third tool turn in one long
+conversation).
+
+### Fix
+
+`ConversationResetPolicy.onCallDropped(callId)`; `BaiduFlexClient.dropCallFromCancelledResponse`
+calls it. Tests: `aCallDroppedFromACancelledResponseIsNotOwedForever`,
+`aCallDroppedAfterItsResponseDoneIsReleasedToo`. Replay after the fix: resets resume after the next
+spoken reply; 有点热 → `control_climate`, 停止说话 → `set_speech_output`, 看看前面有什么 → one
+`vision_request` and one answer.

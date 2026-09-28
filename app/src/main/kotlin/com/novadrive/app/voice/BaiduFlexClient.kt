@@ -286,6 +286,7 @@ class BaiduFlexClient(
         if (event !is DomainVoiceEvent.ToolCall || !cancelSentThisResponse) return false
         val shape = if (event.arguments.containsKey("_validation_error")) "rejected" else "valid"
         DebugVoiceLog.log("flex_call_dropped reason=response_cancelled tool=${event.name} args=$shape")
+        resetPolicy.onCallDropped(event.callId)
         return true
     }
 

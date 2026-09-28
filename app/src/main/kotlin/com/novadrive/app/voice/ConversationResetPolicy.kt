@@ -66,6 +66,17 @@ class ConversationResetPolicy(private val maxPlainTurns: Int = 3) {
         }
     }
 
+    /**
+     * A call from a response the client cancelled (a local pick already did the job): it is never
+     * executed and never answered, so nothing is owed for it. Measured 2026-09-28 on the emulator
+     * replay of the owner's demo: 「最快的」 was picked locally, the model's `choose_navigation_option`
+     * was dropped, its call id stayed owed, and no reset ever happened again. The long conversation
+     * then answered every later command with `output=[]` (有点热 x5, 停止说话, 看看前面有什么) —
+     * exactly the failure this policy exists to prevent.
+     */
+    @Synchronized
+    fun onCallDropped(callId: String) = onToolResultSent(callId)
+
     @Synchronized
     fun reset() {
         pendingToolResults = 0
