@@ -479,7 +479,8 @@ class BaiduFlexClient(
             // and would have, were it not for the dispatcher's own duplicate guard. One owner.
             val alreadyCorrected = correctionSentThisResponse
             correctionSentThisResponse = false
-            actionGuard.onResponseDone(outcome, spoken)?.takeIf { !listeningSuspended && !alreadyCorrected }?.let { nudge ->
+            val cancelledByUs = cancelSentThisResponse
+            actionGuard.onResponseDone(outcome, spoken)?.takeIf { !listeningSuspended && !alreadyCorrected && !cancelledByUs }?.let { nudge ->
                 // Which follow-up, not just that there was one: "we did not catch that" and
                 // "which control did you mean" are different product behaviours, and a suite that
                 // cannot tell them apart passes S16 either way.
@@ -859,9 +860,9 @@ class BaiduFlexClient(
                         (verdict.detail?.let { " $it" } ?: ""),
                 )
                 Telemetry.record(EventType.AUDIO_STOPPED, detail = "turn_dropped_${verdict.reason}")
-                // In standby the client sends no turns of its own (see discardPendingAudio): the
-                // dropped reply was never going to be played, so there is nothing to correct.
-                verdict.correction?.takeIf { !listeningSuspended }?.let {
+                // In standby the client sends no turns of its own (see discardPendingAudio), and a
+                // reply we cancelled answered an utterance the app handled itself (P40): nothing to correct.
+                verdict.correction?.takeIf { !listeningSuspended && !cancelSentThisResponse }?.let {
                     correctionSentThisResponse = true
                     sendUserText(it)
                 }

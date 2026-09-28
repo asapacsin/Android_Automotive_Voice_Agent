@@ -1554,3 +1554,11 @@ While NAVIGATING, a whole-utterance 「开始导航」 (`isStartCommand`) is pic
 `Accepted(navigation_already_active)` — a true result the model can report, and the status its own
 duplicate call gets. Tests: `startNavigationWhileNavigatingIsAnsweredLocally`,
 `alreadyNavigatingIsASelectionWhoseStatusSaysSo`.
+
+Second half (found on the first recorded replay, 15:25): the local pick cancelled the model's
+response, but Baidu still completed it with 「导航已开始」; `DriverTurn` dropped that unproven claim and
+its correction turn produced `navigate_to` with no destination (「导航目的地不能为空」). A reply this
+client cancelled answered an utterance the app already handled, so `BaiduFlexClient` sends no
+correction or nudge for it (same rule as `flex_call_dropped`). Test:
+`aReplyCancelledForALocalPickIsNotCorrected`. The driver hears nothing for the redundant command
+(known: silence after a local pick).

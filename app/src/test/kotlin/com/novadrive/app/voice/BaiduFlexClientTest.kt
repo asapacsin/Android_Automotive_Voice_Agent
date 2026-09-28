@@ -423,6 +423,44 @@ class BaiduFlexClientTest {
     }
 
     @Test
+    fun aReplyCancelledForALocalPickIsNotCorrected() = runBlocking {
+        // P40, emulator replay 2026-09-28: 「开始导航」 during guidance was answered by the app; Baidu
+        // still completed the cancelled reply 「导航已开始」, and the correction for that unproven
+        // claim made the model call navigate_to with no destination.
+        val received = Collections.synchronizedList(mutableListOf<String>())
+        var serverSocket: WebSocket? = null
+        server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
+                serverSocket = webSocket
+                webSocket.send("""{"type":"session.created","session":{"model":"qianfan-realtime-flex-v1"}}""")
+            }
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                received += text
+                if (JSONObject(text).optString("type") == "session.update") {
+                    webSocket.send("""{"type":"session.updated","session":{"model":"qianfan-realtime-flex-v1"}}""")
+                }
+            }
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
+        }))
+        val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
+        client.connect(config())
+        val socket = serverSocket!!
+        socket.send("""{"type":"input_audio_buffer.speech_started"}""")
+        socket.send("""{"type":"input_audio_buffer.speech_stopped"}""")
+        socket.send("""{"type":"response.created","response":{"id":"r1"}}""")
+        socket.send("""{"type":"conversation.item.input_audio_transcription.completed","item_id":"i1","transcript":"开始导航。"}""")
+        Thread.sleep(200)
+        client.cancelActiveResponse()
+        socket.send("""{"type":"response.audio_transcript.done","transcript":"导航已开始。"}""")
+        socket.send("""{"type":"response.done","response":{"status":"completed","output":[{"type":"message"}]}}""")
+        Thread.sleep(500)
+        val types = received.map { JSONObject(it).getString("type") }
+        assertTrue("response.cancel" in types, "the reply was cancelled: $types")
+        assertEquals(0, types.count { it == "conversation.item.create" }, "no correction turn: $types")
+        client.disconnect()
+    }
+
+    @Test
     fun completedToolTurnStartsAFreshConversationAndHeldAudioReachesIt() = runBlocking {
         val secondUpdateSeen = CountDownLatch(1)
         val releaseSecond = CountDownLatch(1)
