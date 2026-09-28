@@ -22,6 +22,13 @@ class DebugToolReceiver : BroadcastReceiver() {
                 "nav_desk_origin" -> navDeskOrigin(arg)
                 "nav_start" -> navStart(arg)
                 "nav_stop" -> navStop()
+                // Simulated-car speed mid-drive (a voice-started emulator drive runs at 50 km/h).
+                "nav_speed" -> {
+                    val kmh = EmulatorNaviSpeed.clamp(arg.toIntOrNull() ?: EmulatorNaviSpeed.DEFAULT_KMH)
+                    com.amap.api.navi.AMapNavi.getInstance(context.applicationContext)
+                        .setEmulatorNaviSpeed(kmh)
+                    "kmh=$kmh"
+                }
                 "nav_overview" -> navOverview()
                 "nav_lock" -> navLock()
                 "climate" -> climate(arg)
