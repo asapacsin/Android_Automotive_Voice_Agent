@@ -42,6 +42,12 @@ PHRASES = {
     # P22 - a song this product has no way to play. Must be refused, and must NOT start the
     # bundled track while claiming to play the song that was asked for.
     "media_named_song": "放一下周杰伦那首讲晴天的歌。",
+    # Owner's demo replay, 2026-09-28 08:36 (DEMO-REPLAY on nova_api34): the exact short forms used.
+    "nav_gongbei": "带我去拱北口岸。",
+    "pick_fastest_short": "最快的。",
+    "resume_talking": "继续说。",
+    # A longer 有点热 so Amap guidance can start mid-utterance (SPEC-012 R0 on a simulated drive).
+    "ctx_too_hot_long": "有点热，帮我把空调打开，温度调低一点。",
 }
 
 VOICE = "zh-CN-XiaoxiaoNeural"
