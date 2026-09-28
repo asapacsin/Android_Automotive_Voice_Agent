@@ -7,8 +7,10 @@ import com.novadrive.app.BaiduCredentials
 import com.novadrive.app.BaiduRuntimeProvider
 import com.novadrive.ingress.realtime.DomainVoiceEvent
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
@@ -137,6 +139,12 @@ class PhantomTurnSuppressionTest {
                 }
 
                 override fun onMessage(webSocket: WebSocket, text: String) {
+                    // As the real server does, the spoken result follows the client's function output.
+                    // Sending it at once raced sendFunctionResult (failed 1 of 2 full runs, 2026-09-28).
+                    if (text.contains("function_call_output")) {
+                        sendSpokenResult(webSocket)
+                        return
+                    }
                     if (JSONObject(text).optString("type") != "session.update") return
                     webSocket.send("""{"type":"session.updated","session":{"model":"qianfan-realtime-flex-v1"}}""")
                     webSocket.send("""{"type":"input_audio_buffer.speech_started"}""")
@@ -152,6 +160,9 @@ class PhantomTurnSuppressionTest {
                     webSocket.send(
                         """{"type":"response.done","response":{"id":"resp_1","status":"completed","output":[{"type":"function_call"}]}}""",
                     )
+                }
+
+                private fun sendSpokenResult(webSocket: WebSocket) {
                     // Response 2: the short spoken confirmation, with no tool call of its own.
                     webSocket.send("""{"type":"response.created","response":{"id":"resp_2"}}""")
                     webSocket.send("""{"type":"response.audio.delta","delta":"AAAA"}""")
@@ -193,7 +204,9 @@ class PhantomTurnSuppressionTest {
                 }
             }
             client.connect(config())
-            assertTrue(done.await(5, TimeUnit.SECONDS), "server script did not finish")
+            // Off this thread: the collector above must run to send the function output the server waits for.
+            val finished = withContext(Dispatchers.IO) { done.await(5, TimeUnit.SECONDS) }
+            assertTrue(finished, "server script did not finish")
             kotlinx.coroutines.delay(500)
             job.cancel()
             client.disconnect()
