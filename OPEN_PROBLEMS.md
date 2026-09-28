@@ -1563,6 +1563,11 @@ correction or nudge for it (same rule as `flex_call_dropped`). Test:
 `aReplyCancelledForALocalPickIsNotCorrected`. The driver hears nothing for the redundant command
 (known: silence after a local pick).
 
+Third (replay 16:04:52): Baidu honoured the cancel (`status=cancelled reason=client_cancelled`) but
+`DriverTurn` released the held subtitle 「导航启动中，请说目的地。」 (no audio had arrived). A reply the
+client cancelled is now neither played nor shown (`TURN_DROP reason=client_cancelled`). Test:
+`aReplyTheClientCancelledIsNotShown`.
+
 ---
 
 ## P41 — R0 protected an utterance that had ended when the session went to sleep

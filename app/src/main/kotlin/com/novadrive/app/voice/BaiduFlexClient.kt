@@ -845,7 +845,11 @@ class BaiduFlexClient(
             DriverTurn.Verdict.Wait -> Unit
             is DriverTurn.Verdict.Release -> {
                 val pending = target.takeHeld()
-                if (pending.isNotEmpty()) {
+                // A reply this client cancelled (a local pick answered the driver) is not shown
+                // either: 「导航启动中，请说目的地。」 appeared as a subtitle during guidance (P40).
+                if (cancelSentThisResponse && pending.isNotEmpty()) {
+                    DebugVoiceLog.log("TURN_DROP epoch=${target.epoch} reason=client_cancelled events=${pending.size}")
+                } else if (pending.isNotEmpty()) {
                     DebugVoiceLog.log(
                         "TURN_RELEASE epoch=${target.epoch} reason=${verdict.reason} events=${pending.size}",
                     )

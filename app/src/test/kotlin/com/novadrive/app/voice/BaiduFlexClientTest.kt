@@ -9,6 +9,7 @@ import com.novadrive.app.NavigationState
 import com.novadrive.ingress.realtime.DomainVoiceEvent
 import com.novadrive.ingress.realtime.VoiceProviderException
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -457,6 +458,44 @@ class BaiduFlexClientTest {
         val types = received.map { JSONObject(it).getString("type") }
         assertTrue("response.cancel" in types, "the reply was cancelled: $types")
         assertEquals(0, types.count { it == "conversation.item.create" }, "no correction turn: $types")
+        client.disconnect()
+    }
+
+    @Test
+    fun aReplyTheClientCancelledIsNotShown() = runBlocking {
+        // P40, replay 16:04:52: the cancelled reply to 「开始导航」 was released as a subtitle.
+        var serverSocket: WebSocket? = null
+        server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
+                serverSocket = webSocket
+                webSocket.send("""{"type":"session.created","session":{"model":"qianfan-realtime-flex-v1"}}""")
+            }
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                if (JSONObject(text).optString("type") == "session.update") {
+                    webSocket.send("""{"type":"session.updated","session":{"model":"qianfan-realtime-flex-v1"}}""")
+                }
+            }
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
+        }))
+        val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
+        val seen = Collections.synchronizedList(mutableListOf<DomainVoiceEvent>())
+        val collector = launch(Dispatchers.IO) { client.events().collect { seen += it.payload } }
+        client.connect(config())
+        val socket = serverSocket!!
+        socket.send("""{"type":"input_audio_buffer.speech_started"}""")
+        socket.send("""{"type":"input_audio_buffer.speech_stopped"}""")
+        socket.send("""{"type":"response.created","response":{"id":"r1"}}""")
+        socket.send("""{"type":"conversation.item.input_audio_transcription.completed","item_id":"i1","transcript":"开始导航。"}""")
+        Thread.sleep(200)
+        client.cancelActiveResponse()
+        socket.send("""{"type":"response.audio_transcript.done","transcript":"导航启动中，请说目的地。"}""")
+        socket.send("""{"type":"response.done","response":{"status":"cancelled","status_details":{"reason":"client_cancelled"},"output":[{"type":"message"}]}}""")
+        Thread.sleep(500)
+        assertTrue(
+            seen.none { it is DomainVoiceEvent.AssistantTranscript || it is DomainVoiceEvent.AudioDelta },
+            "a cancelled reply is neither heard nor shown: $seen",
+        )
+        collector.cancel()
         client.disconnect()
     }
 
