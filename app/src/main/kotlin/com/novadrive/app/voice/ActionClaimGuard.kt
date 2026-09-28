@@ -133,7 +133,7 @@ class ActionClaimGuard {
      * indistinguishable from a completed action: they were told it was being handled.
      */
     private fun unverifiedClaim(reply: String, request: String?): String? {
-        if (!claimsDone(reply) && !describesCarAction(reply)) return null
+        if (carActionClaim(reply) == null) return null
         // The driver was heard; what is missing is the *target*. Telling them we did not catch a
         // sentence we caught perfectly is both false and useless (measured 2026-09-20 on 「再低一点」).
         if (request != null && ContextResolver.needsClarification(request)) return CLARIFY_REFERENT
@@ -402,6 +402,25 @@ class ActionClaimGuard {
 
         fun claimsDone(reply: String): Boolean =
             !declines(reply) && DONE_WORDS.any { it in reply } && ACTION_WORDS.any { it in reply }
+
+        /**
+         * Why a reply with no tool behind it counts as claiming something happened *in this car*,
+         * or null when it does not: "car_action" (a car control named with an action word) or
+         * "done_claim" (a completion word with an unambiguous control verb, no noun needed:
+         * 「好的，已为你打开」). [claimsDone] alone is too broad for chat: 「了」「好的」 with 「开始」
+         * 「选」「调」 fit any sentence. Measured 2026-09-28 (P36): a 16-character chat reply about
+         * coffee was dropped as an unverified claim and the driver heard nothing.
+         */
+        fun carActionClaim(reply: String): String? = when {
+            describesCarAction(reply) -> "car_action"
+            claimsDone(reply) && CONTROL_VERBS.any { it in reply } -> "done_claim"
+            else -> null
+        }
+
+        private val CONTROL_VERBS = listOf(
+            "打开", "开启", "关闭", "关掉", "播放", "暂停", "导航", "调高", "调低", "调到", "调成", "调节",
+            "设为", "设置", "退出",
+        )
 
         /**
          * The tool said it failed and the reply claiming success was dropped before the driver

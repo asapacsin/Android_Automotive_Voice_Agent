@@ -9,9 +9,14 @@ It sets up `adb reverse`, switches the app's bridge on, starts a voice session, 
 ffplay and prints what 小诺 heard and said from the NovaVoice log. Press Enter to start a turn
 (the `voice wake` path). Ctrl+C switches the bridge off and exits.
 
+Audio is sent on a 20 ms clock; `[uplink] fps=` reports the rate (50.0 is steady). When the app
+stops reading, old frames are dropped instead of blocking; when it disconnects (restart, bridge
+switched off) the script re-enables the bridge and waits for it to come back.
+
     --mic "<dshow name>"   choose the microphone (default: first USB Audio Device, else first)
     --list                 list dshow microphones
-    --from-file X.pcm      stream a 16 kHz mono s16le clip instead of the mic (verification)
+    --from-file X.pcm      stream a 16 kHz mono s16le clip instead of the mic (verification);
+                           several comma-separated clips play in order, --gap S apart (default 4)
     --duration S           exit after S seconds
     --no-play              do not play replies or guidance (bytes/seconds are still reported)
 
@@ -23,6 +28,7 @@ import argparse
 import math
 import os
 import re
+import select
 import shutil
 import socket
 import struct
@@ -93,42 +99,167 @@ def rms(pcm):
     return int(math.sqrt(sum(s * s for s in samples) / n))
 
 
-def feed_mic(conn, device, stop):
+class Uplink:
+    """Real-time, never-blocking PC -> app audio.
+
+    Frames are sent on a 20 ms clock whatever the source delivers (dshow hands ffmpeg audio in
+    bursts). When the app stops reading (its settings screen is in front, the process restarted),
+    the socket's buffer fills: then the oldest whole frames are dropped - a partly sent frame is
+    always finished, so the app never sees a torn sample - and the script keeps running. Before
+    2026-09-28 a full buffer raised `conn.sendall TimeoutError` and killed the bridge (P37).
+    """
+
+    MAX_BACKLOG = 5  # 100 ms: older audio is worth nothing to a live conversation
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.queue = []
+        self.offset = 0
+        self.conn = None
+        self.sent = self.dropped = self.stalls = 0
+        self.window_sent, self.window_start = 0, time.time()
+        self.max_gap, self.last_send = 0.0, None
+
+    def attach(self, conn):
+        with self.lock:
+            self.conn, self.queue, self.offset = conn, [], 0
+            self.last_send = None
+
+    def detach(self):
+        with self.lock:
+            self.conn = None
+
+    def push(self, chunk):
+        with self.lock:
+            if self.conn is None:
+                return
+            self.queue.append(chunk)
+            while len(self.queue) > self.MAX_BACKLOG:
+                # Never the frame that is half on the wire.
+                del self.queue[1 if self.offset else 0]
+                self.dropped += 1
+
+    def pump(self):
+        """Send what the socket accepts right now. False when the connection is gone."""
+        with self.lock:
+            conn = self.conn
+            if conn is None:
+                return True
+            while self.queue:
+                try:
+                    if not select.select([], [conn], [], 0)[1]:
+                        self.stalls += 1
+                        return True
+                    n = conn.send(memoryview(self.queue[0])[self.offset:])
+                except (BlockingIOError, socket.timeout, InterruptedError):
+                    self.stalls += 1
+                    return True
+                except OSError:
+                    self.conn = None
+                    return False
+                self.offset += n
+                if self.offset < len(self.queue[0]):
+                    return True
+                self.queue.pop(0)
+                self.offset = 0
+                self.sent += 1
+                now = time.time()
+                if self.last_send is not None:
+                    self.max_gap = max(self.max_gap, now - self.last_send)
+                self.last_send = now
+            return True
+
+    def report(self):
+        now = time.time()
+        span = now - self.window_start
+        with self.lock:
+            fps = (self.sent - self.window_sent) / span if span > 0 else 0
+            line = (f"[uplink] frames={self.sent} fps={fps:.1f} dropped={self.dropped} "
+                    f"stalls={self.stalls} backlog_ms={len(self.queue) * 20} max_gap_ms={self.max_gap * 1000:.0f}")
+            self.window_sent, self.window_start, self.max_gap = self.sent, now, 0.0
+        print(line, flush=True)
+
+
+def paced(uplink, source, stop, frame_s=0.02):
+    """Pushes one 20 ms frame per clock tick from [source] (a callable returning bytes)."""
+    start, n, last = time.time(), 0, time.time()
+    while not stop.is_set():
+        uplink.push(source())
+        uplink.pump()
+        n += 1
+        delay = start + n * frame_s - time.time()
+        if delay > 0:
+            time.sleep(delay)
+        elif delay < -0.2:  # the PC itself stalled: resync rather than fire a burst
+            start, n = time.time(), 0
+        if time.time() - last >= 5:
+            uplink.report()
+            last = time.time()
+
+
+def feed_mic(uplink, device, stop):
+    """ffmpeg reads the mic into a small buffer; the clock, not dshow's chunking, paces the send."""
     proc = subprocess.Popen([ffmpeg(), "-hide_banner", "-loglevel", "error", "-f", "dshow",
                              "-audio_buffer_size", "20", "-i", f"audio={device}",
                              "-ac", "1", "-ar", str(RATE), "-f", "s16le", "-"],
                             stdout=subprocess.PIPE)
-    last, peak = time.time(), 0
-    try:
+    captured = bytearray()
+    cond = threading.Condition()
+
+    def reader():
         while not stop.is_set():
-            data = proc.stdout.read(CHUNK)
+            data = proc.stdout.read(CHUNK // 2)
             if not data:
                 print("[bridge] microphone capture ended", flush=True)
+                stop.set()
                 break
-            conn.sendall(data)
-            peak = max(peak, rms(data))
-            if time.time() - last >= 2:
-                print(f"[mic] rms={peak}", flush=True)
-                last, peak = time.time(), 0
+            with cond:
+                captured.extend(data)
+                if len(captured) > CHUNK * 10:  # 200 ms: the mic got ahead of the clock
+                    del captured[: len(captured) - CHUNK * 4]
+                cond.notify()
+
+    threading.Thread(target=reader, daemon=True).start()
+    peak, last = 0, time.time()
+
+    def next_frame():
+        nonlocal peak, last
+        with cond:
+            if len(captured) < CHUNK:
+                cond.wait(0.015)
+            frame = bytes(captured[:CHUNK])
+            del captured[:CHUNK]
+        frame = frame + bytes(CHUNK - len(frame))  # a late mic is silence, not a stall
+        peak = max(peak, rms(frame))
+        if time.time() - last >= 5:
+            print(f"[mic] rms={peak}", flush=True)
+            last, peak = time.time(), 0
+        return frame
+
+    try:
+        paced(uplink, next_frame, stop)
     finally:
         proc.kill()
-        stop.set()
 
 
-def feed_file(conn, path, stop, lead=1.0):
-    clip = open(path, "rb").read()
-    stream = bytes(int(RATE * 2 * lead)) + clip
-    print(f"[bridge] streaming {path} ({len(clip) / RATE / 2:.2f} s) after {lead:.1f} s silence", flush=True)
-    start, sent = time.time(), 0
-    silence = bytes(CHUNK)
-    while not stop.is_set():
-        chunk = stream[sent:sent + CHUNK] if sent < len(stream) else silence
-        chunk = chunk + bytes(CHUNK - len(chunk))
-        conn.sendall(chunk)
-        sent += CHUNK
-        delay = start + sent / (RATE * 2) - time.time()
-        if delay > 0:
-            time.sleep(delay)
+def feed_file(uplink, paths, stop, lead=1.0, gap=0.0):
+    """Clips in order, [gap] seconds of silence between them, then silence for ever."""
+    stream = bytearray(int(RATE * 2 * lead))
+    for i, path in enumerate(paths):
+        clip = open(path, "rb").read()
+        print(f"[bridge] clip {path} ({len(clip) / RATE / 2:.2f} s)", flush=True)
+        if i:
+            stream += bytes(int(RATE * 2 * gap) // 2 * 2)
+        stream += clip
+    pos = 0
+
+    def next_frame():
+        nonlocal pos
+        chunk = bytes(stream[pos:pos + CHUNK])
+        pos += CHUNK
+        return chunk + bytes(CHUNK - len(chunk))
+
+    paced(uplink, next_frame, stop)
 
 
 def downlink(conn, stop, play):
@@ -151,6 +282,8 @@ def downlink(conn, stop, play):
                 if last and time.time() - last > 0.8:
                     yield_report()
                 continue
+            except OSError:
+                return None
             if not part:
                 return None
             buf += part
@@ -268,7 +401,8 @@ def main():
     ap.add_argument("--port", type=int, default=7790)
     ap.add_argument("--mic")
     ap.add_argument("--list", action="store_true")
-    ap.add_argument("--from-file")
+    ap.add_argument("--from-file", help="clip.pcm, or several comma-separated, played in order")
+    ap.add_argument("--gap", type=float, default=4.0, help="seconds of silence between --from-file clips")
     ap.add_argument("--duration", type=float)
     ap.add_argument("--no-play", action="store_true")
     ap.add_argument("--no-start", action="store_true", help="leave the session asleep (wake-word test)")
@@ -289,43 +423,69 @@ def main():
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.bind(("127.0.0.1", args.port))
     server.listen(1)
-    server.settimeout(15)
-    adb("reverse", f"tcp:{args.port}", f"tcp:{args.port}")
+    server.settimeout(5)
     stop = threading.Event()
     threading.Thread(target=follow_log, args=(stop,), daemon=True).start()
-    broadcast("bridge", f"on:{args.port}")
-    try:
-        conn, _ = server.accept()
-    except socket.timeout:
-        sys.exit("the app did not connect: is a debug build running (adb shell am start -n com.novadrive.app/.MainActivity)?")
-    conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-    conn.settimeout(0.3)
-    print("[bridge] connected", flush=True)
-    if not args.no_start:
-        broadcast("voice", "start")
-
-    feeder = (lambda: feed_file(conn, args.from_file, stop)) if args.from_file else (lambda: feed_mic(conn, device, stop))
-    threading.Thread(target=feeder, daemon=True).start()
-    threading.Thread(target=downlink, args=(conn, stop, not args.no_play), daemon=True).start()
+    uplink = Uplink()
+    if args.from_file:
+        paths = args.from_file.split(",")
+        feeder = lambda: feed_file(uplink, paths, stop, gap=args.gap)
+    else:
+        feeder = lambda: feed_mic(uplink, device, stop)
 
     def enter_to_talk():
         for _ in sys.stdin:
             print("[bridge] " + broadcast("voice", "wake").stdout.strip().splitlines()[-1][-80:], flush=True)
 
-    if sys.stdin and sys.stdin.isatty():
-        threading.Thread(target=enter_to_talk, daemon=True).start()
-        print("[bridge] speak now; press Enter to start a new turn, Ctrl+C to quit", flush=True)
     deadline = time.time() + args.duration if args.duration else None
+    started_session, feeding = False, False
+    conn, dead = None, threading.Event()
+    # One connection at a time, for as long as the script runs: the app may restart, the bridge may
+    # be switched off, the settings screen may stop capture. The script outlives all of them (P37).
     try:
         while not stop.is_set() and (deadline is None or time.time() < deadline):
+            if conn is None:
+                adb("reverse", f"tcp:{args.port}", f"tcp:{args.port}")
+                broadcast("bridge", f"on:{args.port}")
+                try:
+                    conn, _ = server.accept()
+                except socket.timeout:
+                    print("[bridge] waiting for the app (is a debug build running?)", flush=True)
+                    continue
+                conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                conn.settimeout(0.3)
+                dead = threading.Event()
+                uplink.attach(conn)
+                print("[bridge] connected", flush=True)
+                threading.Thread(target=downlink, args=(conn, dead, not args.no_play), daemon=True).start()
+                if not feeding:
+                    feeding = True
+                    threading.Thread(target=feeder, daemon=True).start()
+                    if sys.stdin and sys.stdin.isatty():
+                        threading.Thread(target=enter_to_talk, daemon=True).start()
+                        print("[bridge] speak now; press Enter to start a new turn, Ctrl+C to quit", flush=True)
+                if not args.no_start and not started_session:
+                    started_session = True
+                    broadcast("voice", "start")
             time.sleep(0.2)
+            if dead.is_set() or uplink.conn is None:
+                print("[bridge] app disconnected; reconnecting", flush=True)
+                uplink.detach()
+                dead.set()
+                try:
+                    conn.close()
+                except OSError:
+                    pass
+                conn = None
     except KeyboardInterrupt:
         pass
     stop.set()
+    dead.set()
     time.sleep(0.5)
     broadcast("bridge", "off")
     adb("reverse", "--remove", f"tcp:{args.port}")
-    conn.close()
+    if conn:
+        conn.close()
     for proc in LOGCAT:
         proc.kill()
     print("[bridge] off", flush=True)

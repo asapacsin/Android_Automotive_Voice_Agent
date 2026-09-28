@@ -184,6 +184,39 @@ class DriverTurnTest {
         assertTrue(verdict is DriverTurn.Verdict.Release, "an honest chat reply is spoken")
     }
 
+    /**
+     * P36, measured 2026-09-28 06:51 on the emulator: 「裙子。」 then 「陪你真好，咖啡。」, a
+     * conversation turn, got a 16-character chat reply that TURN_DROP unverified_claim silenced.
+     * Chat that names no car control and no control verb is not a claim and must play.
+     */
+    @Test
+    fun aChatReplyWithNoCarActionIsSpoken() {
+        for (reply in listOf("好的，那我们开始聊咖啡吧。", "陪着你就好了，咖啡我也爱喝。", "好呀，选一杯拿铁也不错。")) {
+            val t = DriverTurn(epoch = 9)
+            t.onResponseStarted(goodAudio, false)
+            t.hold("audio")
+            t.onUserTranscript("陪你真好，咖啡。") { DriverTurn.Kind.CONVERSATION }
+            val verdict = t.onResponseDone(reply, hadToolCallInResponse = false)
+            assertEquals(DriverTurn.Verdict.Release("no_claim_made"), verdict, reply)
+        }
+    }
+
+    @Test
+    fun anUnverifiedClaimNamesWhichKindOfClaimItWas() {
+        val car = DriverTurn(epoch = 1)
+        car.onResponseStarted(goodAudio, false)
+        car.hold("audio")
+        car.onUserTranscript("发诺克拉。") { DriverTurn.Kind.CONVERSATION }
+        assertEquals("unverified_claim_car_action",
+            (car.onResponseDone("导航到家。正在搜索您的家地址。", false) as DriverTurn.Verdict.Drop).reason)
+        val done = DriverTurn(epoch = 2)
+        done.onResponseStarted(goodAudio, false)
+        done.hold("audio")
+        done.onUserTranscript("那个。") { DriverTurn.Kind.CONVERSATION }
+        assertEquals("unverified_claim_done_claim",
+            (done.onResponseDone("好的，已为你打开。", false) as DriverTurn.Verdict.Drop).reason)
+    }
+
     @Test
     fun aClaimAfterAMisheardTurnIsNeverSpoken() {
         // The measured failure, 2026-09-19: 「返屋企啦」 arrived as 「发诺克拉。」, was classified as

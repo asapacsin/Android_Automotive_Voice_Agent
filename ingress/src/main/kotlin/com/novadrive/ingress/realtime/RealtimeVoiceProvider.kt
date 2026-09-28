@@ -94,6 +94,9 @@ fun classifyVoiceError(code: String): ErrorClass {
             normalized.contains("DNS") ||
             normalized.contains("TIMEOUT") ||
             normalized.contains("WS_FAILED") ||
+            // A handshake cut off by the network (measured 2026-09-28 on the emulator's proxy,
+            // P38): the next attempt usually succeeds, and ReconnectPolicy caps the attempts.
+            normalized.contains("TLS_FAILED") ||
             normalized.contains("UNAVAILABLE") -> ErrorClass.RETRYABLE
         else -> ErrorClass.TERMINAL
     }

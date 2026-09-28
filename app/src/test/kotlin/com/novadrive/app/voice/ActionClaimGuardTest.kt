@@ -393,4 +393,14 @@ class ActionClaimGuardTest {
         assertNull(guard.onResponseDone(call, ""))
         assertEquals(ActionClaimGuard.NAVIGATION_NOT_STARTED, guard.onResponseDone(message, "导航已开始。"))
     }
+
+    /** P36: the same chat reply must not draw the 「没听清」 nudge that followed the drop. */
+    @Test
+    fun chatWithoutACarActionDrawsNoNudge() {
+        guard.onUserTranscript("陪你真好，咖啡。")
+        assertEquals(null, guard.onResponseDone(message, "好的，那我们开始聊咖啡吧。"))
+        val g2 = ActionClaimGuard()
+        g2.onUserTranscript("有的人帮我舒服的")
+        assertEquals(ActionClaimGuard.UNVERIFIED_ACTION_CLAIM, g2.onResponseDone(message, "有点热啊，我帮你调低一点温度"))
+    }
 }

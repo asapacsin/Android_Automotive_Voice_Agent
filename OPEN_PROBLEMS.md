@@ -1426,3 +1426,79 @@ logged, so the code is inferred from the sequence, not read.
   a repeat logs `flex_cancel_skipped`.
 - Every error event now logs `flex_error code=<provider code> kind=cancel_refused|response_busy|
   session_update_refused|other` — the code and a derived kind, never the message.
+
+## P36 — A chat reply dropped as an "unverified claim"; the driver heard nothing
+
+**Status:** FIXED 2026-09-28 — unit-tested; emulator bridge: chat replies play
+**Reported:** 2026-09-28 06:51 owner's voice on nova_api34: 「陪你真好，咖啡。」 (kind=CONVERSATION)
+→ `TURN_DROP epoch=9 reason=unverified_claim replyChars=16`, then the 「没听清」 nudge.
+
+### Root cause
+
+`DriverTurn` (UNCLASSIFIED_CLAIM) and `ActionClaimGuard.unverifiedClaim` both treated
+`claimsDone(reply)` as a claim: any completion word (「了」「好的」「为你」) plus any action word
+(「开始」「选」「调」「升」). Ordinary chat matches that.
+
+### Fix
+
+`ActionClaimGuard.carActionClaim(reply)` is the one predicate: `car_action` (a car control noun
+with an action word, the existing `describesCarAction`) or `done_claim` (completion word plus an
+unambiguous control verb: 打开/关闭/播放/暂停/导航/调高/调低/设为…). Both owners use it. The drop
+reason now says which: `unverified_claim_car_action` / `unverified_claim_done_claim`. P32 and the
+「发诺克拉」 / 「有啲熱」 tests still drop and nudge.
+
+Evidence (bridge, `chat_coffee.pcm`): `transcript=你: 陪你真好，我们聊聊咖啡吧。` →
+`小诺: 咖啡确实是个不错的选择。你喜欢什么类型的咖啡？`, reply audio on the PC, no TURN_DROP.
+
+## P37 — Host audio bridge: bursty uplink, and the script died when the app stopped reading
+
+**Status:** FIXED 2026-09-28 — measured on the emulator
+**Reported:** 2026-09-28: `speech_started`/`speech_stopped` 2 ms apart; earlier the script died
+with `conn.sendall TimeoutError` while the settings screen was in front, leaving the app deaf.
+
+### Root cause
+
+The app read the socket only from the capture loop, so when capture paused the TCP buffers filled;
+on resume the backlog arrived in one burst (a VAD start/stop pair within ms), or the PC's blocking
+`sendall` timed out and killed the script. The mic path also forwarded dshow's chunks as they came.
+
+### Fix
+
+- PC (`host_audio_bridge.py`): `Uplink` sends one 20 ms frame per clock tick, never blocks
+  (`select` before `send`, whole frames dropped beyond 100 ms backlog, a half-sent frame always
+  finished), reconnects forever (re-runs `adb reverse` and `bridge on` every 5 s until the app
+  connects). Prints `[uplink] fps= dropped= stalls= max_gap_ms=` every 5 s.
+- App (`HostAudioBridge`, debug): a reader thread drains the socket into `UplinkBuffer` (120 ms,
+  oldest dropped) whatever capture does; `host_bridge uplink_frames= dropped_ms= max_gap_ms=`.
+
+Evidence: `[uplink] fps=50.0 dropped=0 stalls=0` for 70 s; app side 100 frames/s (10 ms). With
+the app force-stopped mid-run: `app disconnected; reconnecting` → `connected` → fps 50.0 again.
+App-side drops (`dropped_ms`) happen only while capture is not reading (session start, a reconnect)
+— that audio is discarded instead of being replayed as a burst.
+
+## P38 — `response_busy` then `internal error` ended the session in DEEP_IDLE
+
+**Status:** FIXED 2026-09-28 — unit-tested; the busy race was not reproduced on the emulator
+**Reported:** 2026-09-28 06:51:09: the P36 nudge's `response.create` (sent 07.836, after the
+previous response ended) was still unanswered when the driver spoke; Baidu refused it
+(`conversation_already_has_active_response`), failed the driver's response with
+`internal: internal error`, and `BAIDU_API_REJECTED` was terminal → `ACTIVE->DEEP_IDLE`.
+
+### Root cause
+
+The app did not send while a response was known to be active; Baidu was slow to create the nudge's
+response and server VAD raced it. That race is the provider's; what was wrong is the consequence:
+`BaiduProtocol.classifyError` mapped Baidu's `internal` fault to `BAIDU_API_REJECTED` (TERMINAL).
+Also found on the emulator: a conversation reset whose TLS handshake was cut by the network
+(`BAIDU_FLEX_TLS_FAILED`) was terminal too.
+
+### Fix
+
+- `internal` / `server_error` → `BAIDU_SERVER_UNAVAILABLE` (RETRYABLE); `*_TLS_FAILED` is
+  RETRYABLE (`classifyVoiceError`); `ReconnectPolicy` still caps attempts at 5.
+- Ingress `VoiceSessionController`: a provider error starts the reconnect off the event collector,
+  and a second retryable error while it is in flight joins it (`session_error_joined`) instead of
+  counting as another attempt (the log had two errors 55 ms apart).
+- P36 removes the nudge that started this sequence.
+
+Unverified: the exact busy→internal sequence live (not provoked with back-to-back clips 1.2 s apart).

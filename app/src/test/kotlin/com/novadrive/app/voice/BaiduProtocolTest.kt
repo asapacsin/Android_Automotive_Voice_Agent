@@ -58,4 +58,15 @@ class BaiduProtocolTest {
         val events = BaiduProtocol.parseServerEvent("""{"type":"conversation.item.created","item":{"type":"function_call"}}""")
         assertTrue(events.single() is DomainVoiceEvent.ToolUnsupported)
     }
+
+    /** P38: Baidu's `internal: internal error` is a server fault, retried by reconnecting. */
+    @Test
+    fun internalErrorIsRetryable() {
+        val code = BaiduProtocol.classifyError("internal", "internal error")
+        assertEquals("BAIDU_SERVER_UNAVAILABLE", code)
+        assertEquals(com.novadrive.ingress.realtime.ErrorClass.RETRYABLE, com.novadrive.ingress.realtime.classifyVoiceError(code))
+        assertEquals("BAIDU_API_REJECTED", BaiduProtocol.classifyError("invalid_request", "bad field"))
+        assertEquals(com.novadrive.ingress.realtime.ErrorClass.RETRYABLE,
+            com.novadrive.ingress.realtime.classifyVoiceError("BAIDU_FLEX_TLS_FAILED"))
+    }
 }

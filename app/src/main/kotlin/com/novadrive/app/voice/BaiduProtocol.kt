@@ -80,6 +80,11 @@ object BaiduProtocol {
             listOf("invalid_client", "unauthorized", "invalid_api_key", "authentication").any { it in blob } -> "BAIDU_AUTH_FAILED"
             "model" in blob && ("invalid" in blob || "not found" in blob || "unavailable" in blob) -> "BAIDU_INVALID_MODEL"
             "timeout" in blob -> "BAIDU_TIMEOUT"
+            // A server-side fault of one response, not a rejection of this client: measured
+            // 2026-09-28 (P38), a reply that collided with an app response.create failed with
+            // `internal: internal error` and the session went terminal, dropping the driver to
+            // DEEP_IDLE. "UNAVAILABLE" classifies as RETRYABLE, so the session reconnects.
+            listOf("internal", "server_error", "service unavailable", "服务内部错误").any { it in blob } -> "BAIDU_SERVER_UNAVAILABLE"
             else -> "BAIDU_API_REJECTED"
         }
     }

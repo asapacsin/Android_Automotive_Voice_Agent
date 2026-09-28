@@ -93,6 +93,34 @@ class VoiceSessionControllerTest {
             assertTrue(provider.closed)
         }
 
+    /** P38, 2026-09-28: one failed response gave two provider errors 55 ms apart. One reconnect. */
+    @Test
+    fun twoErrorsFromOneDyingSocketMakeOneReconnect() =
+        runTest(UnconfinedTestDispatcher()) {
+            val provider = FakeRealtimeVoiceProvider()
+            val mic = InMemoryMicrophonePort()
+            val policy = ReconnectPolicy(ReconnectPlan(maxAttempts = 5, initialDelayMs = 200, maxDelayMs = 1_000))
+            val controller =
+                VoiceSessionController(
+                    provider = provider,
+                    microphone = mic,
+                    playback = InMemoryPlaybackPort(),
+                    scope = this,
+                    reconnectPolicy = policy,
+                    config = RealtimeSessionConfig(VoiceProviderId.FAKE, VoiceCatalog.FAKE_MODEL),
+                )
+            controller.start()
+            provider.emit(DomainVoiceEvent.Error("BAIDU_SERVER_UNAVAILABLE", "provider=internal: internal error"))
+            advanceTimeBy(55)
+            provider.emit(DomainVoiceEvent.Error("BAIDU_SERVER_UNAVAILABLE", "provider=internal: internal error"))
+            assertEquals(VoiceUiState.RECONNECTING, controller.machine.state)
+            advanceTimeBy(300)
+            assertEquals(2, provider.connectCount, "one reconnect, not two")
+            assertEquals(1, policy.attempts)
+            assertTrue(mic.started)
+            controller.stop()
+        }
+
     @Test
     fun reconnectResumesCaptureOnceWithoutDuplicateCollectors() =
         runTest(UnconfinedTestDispatcher()) {

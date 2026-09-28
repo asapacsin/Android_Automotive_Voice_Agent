@@ -66,6 +66,13 @@ and plays every reply slice with ffplay at the reply rate (Flex: 24 kHz). It pri
 (`transcript=你:`), tool calls and replies from the NovaVoice log. Enter starts a turn (the
 `voice wake` path); Ctrl+C switches the bridge off.
 
+Pacing and robustness (P37, 2026-09-28). The PC sends one 20 ms frame per clock tick
+(`[uplink] fps=50.0` every 5 s; `dropped`/`stalls` count frames the app did not take), never blocks
+on a full socket, and reconnects by itself when the app restarts or switches the bridge off. The app
+drains the socket on its own thread into a 120 ms buffer, so a paused capture (settings screen)
+never stalls the PC and never replays old audio as a burst (`host_bridge uplink_frames=
+dropped_ms= max_gap_ms=`). `--from-file a.pcm,b.pcm --gap 1.2` plays clips back to back.
+
 How it works: `HostAudioTap` (main source set, both slots null unless a debug build's
 `HostAudioBridge` sets them) makes `PcmAudioCapture` read frames from the socket instead of
 `AudioRecord`, so gain, gate, mute and turn handling are those of the live microphone, and makes

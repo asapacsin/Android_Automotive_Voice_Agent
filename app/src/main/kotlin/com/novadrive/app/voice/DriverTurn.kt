@@ -375,9 +375,9 @@ class DriverTurn(val epoch: Long) {
             HoldReason.UNCLASSIFIED_CLAIM -> when {
                 toolCalled || hadToolCallInResponse -> Verdict.Release("tool_called")
                 proven -> Verdict.Release("execution_proved")
-                ActionClaimGuard.claimsDone(reply) || ActionClaimGuard.describesCarAction(reply) ->
-                    Verdict.Drop("unverified_claim")
-                else -> Verdict.Release("no_claim_made")
+                else -> ActionClaimGuard.carActionClaim(reply)
+                    ?.let { Verdict.Drop("unverified_claim_$it") }
+                    ?: Verdict.Release("no_claim_made")
             }
 
             HoldReason.AWAITING_EXECUTION_PROOF -> {

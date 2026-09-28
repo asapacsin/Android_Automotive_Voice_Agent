@@ -91,6 +91,7 @@ class VoiceSessionController(
     fun start() {
         if (!sessionActive.compareAndSet(false, true)) return
         reconnectPolicy.reset()
+        reconnectInFlight.set(false)
         machine.userStartSession()
         publish()
         playback.start(playbackEpoch)
@@ -393,7 +394,10 @@ class VoiceSessionController(
             resumeCaptureOnce()
         }
         if (failure != null) {
-            handleFailure(failure.first, failure.second)
+            // Off the collector: an error still queued behind this one (the same dying socket)
+            // must be seen while the reconnect is in flight, so it joins it (P38).
+            val (code, message) = failure!!
+            scope.launch { handleFailure(code, message) }
             return
         }
         scheduleDelivery()
@@ -511,19 +515,37 @@ class VoiceSessionController(
         }
     }
 
-    private suspend fun handleFailure(code: String, message: String) {
-        val delayMs = mutex.withLock { beginReconnectOrTerminal(code, message) } ?: return
+    /** A reconnect is scheduled or running; a second error from the same dying socket joins it. */
+    private val reconnectInFlight = AtomicBoolean(false)
+
+    private suspend fun handleFailure(code: String, message: String, retrying: Boolean = false) {
+        // Measured 2026-09-28 (P38): one failed response produced two provider errors 55 ms apart.
+        // Each started its own reconnect; the second must not count as another attempt.
+        if (!retrying && reconnectInFlight.get() && reconnectPolicy.classify(code) == ErrorClass.RETRYABLE) {
+            log.warn("session_error_joined", mapOf("code" to code))
+            return
+        }
+        val delayMs = mutex.withLock { beginReconnectOrTerminal(code, message) }
+        if (delayMs == null) {
+            reconnectInFlight.set(false)
+            return
+        }
+        reconnectInFlight.set(true)
         delay(delayMs)
-        if (!sessionActive.get()) return
+        if (!sessionActive.get()) {
+            reconnectInFlight.set(false)
+            return
+        }
         try {
             provider.connect(config)
+            reconnectInFlight.set(false)
             mutex.withLock { diagnostics.markReconnected() }
             markConnectedAndFlushTexts()
             resumeCaptureOnce()
         } catch (ex: VoiceProviderException) {
-            handleFailure(ex.code, ex.safeMessage)
+            handleFailure(ex.code, ex.safeMessage, retrying = true)
         } catch (ex: Exception) {
-            handleFailure("SERVER_DISCONNECT", ex.message ?: message)
+            handleFailure("SERVER_DISCONNECT", ex.message ?: message, retrying = true)
         }
     }
 
