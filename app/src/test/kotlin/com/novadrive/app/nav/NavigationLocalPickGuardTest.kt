@@ -77,4 +77,14 @@ class NavigationLocalPickGuardTest {
             NavigationLocalPickGuard.current()?.outcome,
         )
     }
+
+    /** 「开始导航」 during guidance: the model's own call gets 「already active」, not a failure. */
+    @Test
+    fun alreadyNavigatingIsASelectionWhoseStatusSaysSo() {
+        val turn = NavigationLocalPickGuard.nextTurnKey()
+        NavigationPickSession.begin("list-a", turn)
+        NavigationPickSession.recordExecutorResult(EmbeddedNavigationController.VoiceChoiceResult.AlreadyNavigating)
+        assertEquals(NavigationLocalPickGuard.Outcome.SELECTED, NavigationLocalPickGuard.current()?.outcome)
+        assertEquals(NavigationLocalPickGuard.NAVIGATION_ALREADY_ACTIVE, NavigationLocalPickGuard.consumeChoiceSuppression())
+    }
 }

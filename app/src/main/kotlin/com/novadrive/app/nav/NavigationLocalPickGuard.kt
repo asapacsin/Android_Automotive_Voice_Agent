@@ -33,6 +33,7 @@ object NavigationLocalPickGuard {
 
     const val DESTINATION_SELECTED = "destination_selected"
     const val NAVIGATION_STARTED = "navigation_started"
+    const val NAVIGATION_ALREADY_ACTIVE = "navigation_already_active"
 
     @Volatile
     private var authority: Authority? = null

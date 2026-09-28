@@ -183,6 +183,9 @@ class EmbeddedNavigationController(
 
         /** Nothing was selected; the driver is asked whether they meant this row. */
         data class ConfirmNeeded(val position: Int, val name: String) : VoiceChoiceResult
+
+        /** 「开始导航」 while guidance is already running: true, and nothing to do. */
+        data object AlreadyNavigating : VoiceChoiceResult
     }
 
     /**
@@ -224,6 +227,9 @@ class EmbeddedNavigationController(
             NavigationPhase.RESOLVING_DESTINATION,
             NavigationPhase.CALCULATING_ROUTE,
             -> VoiceChoiceResult.Rejected("OPTIONS_NOT_READY")
+            NavigationPhase.NAVIGATING ->
+                if (choice == NavigationChoice.Preference(NavigationChoice.Kind.RECOMMENDED)) VoiceChoiceResult.AlreadyNavigating
+                else VoiceChoiceResult.Rejected("NO_OPTIONS_ON_SCREEN")
             else -> VoiceChoiceResult.Rejected("NO_OPTIONS_ON_SCREEN")
         }
     }

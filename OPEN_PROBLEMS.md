@@ -1531,3 +1531,26 @@ calls it. Tests: `aCallDroppedFromACancelledResponseIsNotOwedForever`,
 `aCallDroppedAfterItsResponseDoneIsReleasedToo`. Replay after the fix: resets resume after the next
 spoken reply; 有点热 → `control_climate`, 停止说话 → `set_speech_output`, 看看前面有什么 → one
 `vision_request` and one answer.
+
+---
+
+## P40 — 「开始导航」 after 「最快的」: 小诺 said 没有指定目的地，无法开始导航 while guiding
+
+**Status:** FIXED 2026-09-28 — unit-tested; emulator replay of the owner's demo
+**Reported:** emulator replay (nova_api34) of the owner's 08:36 demo, 14:52: 「最快的」 picked the route
+and started guidance at once. The driver's 「开始导航」 then reached the model, which claimed
+「导航已开始」 with no tool (`TURN_DROP reason=unproven_action_claim`). After the app's correction
+prompt it called `navigate_to` with no destination and said 「没有指定目的地，无法开始导航」.
+
+### Root cause
+
+`NavigationPickerIntercept` handled picks only while a list was on screen. Once navigating, a bare
+「开始导航」 had no deterministic owner, and the model has no tool that means "keep going".
+
+### Fix
+
+While NAVIGATING, a whole-utterance 「开始导航」 (`isStartCommand`) is picked locally.
+`EmbeddedNavigationController.chooseByVoice` returns `AlreadyNavigating`, which becomes
+`Accepted(navigation_already_active)` — a true result the model can report, and the status its own
+duplicate call gets. Tests: `startNavigationWhileNavigatingIsAnsweredLocally`,
+`alreadyNavigatingIsASelectionWhoseStatusSaysSo`.

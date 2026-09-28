@@ -157,4 +157,20 @@ class NavigationPickerInterceptTest {
             ),
         )
     }
+
+    /** Emulator replay 2026-09-28: 「最快的」 already started guidance, then 「开始导航」. */
+    @Test
+    fun startNavigationWhileNavigatingIsAnsweredLocally() {
+        for (said in listOf("开始导航", "开始导航。", "那就开始导航吧")) {
+            assertEquals(
+                NavigationChoice.Preference(NavigationChoice.Kind.RECOMMENDED),
+                NavigationPickerIntercept.resolve(said, NavigationPhase.NAVIGATING, emptyList(), emptyList()),
+                said,
+            )
+        }
+        // Only the bare command: anything else during guidance is the model's.
+        for (said in listOf("好的", "推荐", "最快的", "开始导航去机场", "重新开始导航")) {
+            assertNull(NavigationPickerIntercept.resolve(said, NavigationPhase.NAVIGATING, emptyList(), emptyList()), said)
+        }
+    }
 }

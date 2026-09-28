@@ -4,6 +4,7 @@ import com.novadrive.app.nav.EmbeddedNavigationController
 import com.novadrive.app.nav.EmbeddedNavigationController.VoiceChoiceResult
 import com.novadrive.app.nav.NavigationChoiceAuthority
 import com.novadrive.app.nav.NavigationChoiceResolver
+import com.novadrive.app.nav.NavigationLocalPickGuard
 import com.novadrive.app.nav.NavigationPhase
 import com.novadrive.app.nav.NavigationPickSession
 
@@ -21,6 +22,7 @@ internal fun navigationChoiceAction(
     return when (outcome) {
         is VoiceChoiceResult.DestinationChosen -> AndroidActionResult.Accepted("destination_selected")
         is VoiceChoiceResult.RouteChosen -> AndroidActionResult.Accepted("navigation_started")
+        VoiceChoiceResult.AlreadyNavigating -> AndroidActionResult.Accepted(NavigationLocalPickGuard.NAVIGATION_ALREADY_ACTIVE)
         is VoiceChoiceResult.Rejected -> {
             val details = if (outcome.code == NavigationChoiceAuthority.OPTIONS_STALE) {
                 optionsOnScreen(navigation)?.let { mapOf("options_on_screen" to it) }.orEmpty()

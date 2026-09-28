@@ -18,9 +18,19 @@ object NavigationPickerIntercept {
                 intercept(destinations, choice, NavigationChoiceResolver::pickDestination)
             NavigationPhase.AWAITING_ROUTE_SELECTION ->
                 intercept(routes, choice, NavigationChoiceResolver::pickRoute)
+            // 「开始导航」 when the route pick already started it (「最快的」 starts at once). Measured
+            // 2026-09-28 (emulator replay of the owner's demo): the model claimed 「导航已开始」 with no
+            // tool, was corrected, then called navigate_to with no destination and told the driver
+            // 「没有指定目的地，无法开始导航」 while the car was being guided. Answered by the app instead.
+            NavigationPhase.NAVIGATING ->
+                NavigationChoice.Preference(NavigationChoice.Kind.RECOMMENDED).takeIf { isStartCommand(utterance) }
             else -> null
         }
     }
+
+    /** The whole utterance is 「开始导航」 (with a polite prefix or particle), nothing else. */
+    fun isStartCommand(utterance: String): Boolean =
+        START.matches(utterance.filterNot { it.isWhitespace() || it in PUNCTUATION })
 
     private fun <T> intercept(
         items: List<T>,
@@ -69,6 +79,8 @@ object NavigationPickerIntercept {
     }
 
     private const val PUNCTUATION = "。，,.!！?？、~～"
+
+    private val START = Regex("^(?:请|帮我|那就|好)?开始导航(?:吧|啊|呀|哈|啦)?$")
 
     private val ORDINAL = Regex(
         "^(?:我要|我选|就选|就要|就去|就|选择|选|要|去)?第([一二三四五六七八九十]|[0-9]{1,2})(?:个|条|项|家|行)?(?:吧|啊|呀|哈|啦|就行|就好)?$",

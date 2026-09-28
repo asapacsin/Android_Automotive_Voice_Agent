@@ -20,6 +20,7 @@ object NavigationPickSession {
             when (outcome) {
                 is EmbeddedNavigationController.VoiceChoiceResult.DestinationChosen,
                 is EmbeddedNavigationController.VoiceChoiceResult.RouteChosen,
+                EmbeddedNavigationController.VoiceChoiceResult.AlreadyNavigating,
                 -> NavigationLocalPickGuard.Outcome.SELECTED
                 is EmbeddedNavigationController.VoiceChoiceResult.Rejected ->
                     when (outcome.code) {
@@ -31,10 +32,10 @@ object NavigationPickSession {
                 is EmbeddedNavigationController.VoiceChoiceResult.ConfirmNeeded ->
                     NavigationLocalPickGuard.Outcome.AMBIGUOUS
             }
-        val status = if (outcome is EmbeddedNavigationController.VoiceChoiceResult.RouteChosen) {
-            NavigationLocalPickGuard.NAVIGATION_STARTED
-        } else {
-            NavigationLocalPickGuard.DESTINATION_SELECTED
+        val status = when (outcome) {
+            is EmbeddedNavigationController.VoiceChoiceResult.RouteChosen -> NavigationLocalPickGuard.NAVIGATION_STARTED
+            EmbeddedNavigationController.VoiceChoiceResult.AlreadyNavigating -> NavigationLocalPickGuard.NAVIGATION_ALREADY_ACTIVE
+            else -> NavigationLocalPickGuard.DESTINATION_SELECTED
         }
         NavigationLocalPickGuard.record(current.listKey, current.turnKey, recorded, status)
     }
