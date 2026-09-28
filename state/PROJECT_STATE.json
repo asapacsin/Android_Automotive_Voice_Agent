@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-09-28T17:58:37",
+  "generated_at": "2026-09-29T03:26:22",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "c677a3a",
+    "commit": "f4a1b43",
     "branch": "cursor/9-28",
-    "subject": "Emulator launcher mutes the emulator speaker when the host bridge runs",
+    "subject": "Debug tool nav_read: start a real guidance prompt on demand.",
     "working_tree_clean": true,
     "uncommitted_files": 0
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-28T15:46:43",
+    "collected_at": "2026-09-29T03:25:57",
     "total": {
-      "tests": 1413,
+      "tests": 1458,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
       "app": {
-        "tests": 1140,
+        "tests": 1185,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 223579140,
-    "built_at": "2026-09-28T15:42:23"
+    "bytes": 223611908,
+    "built_at": "2026-09-29T03:24:35"
   },
   "capabilities": {
     "available": true,
@@ -119,6 +119,11 @@
       "id": "D-7",
       "title": "A false claim could be spoken for *supported* actions",
       "priority": "RESOLVED"
+    },
+    {
+      "id": "D-8",
+      "title": "`BaiduFlexClient` is over its line budget again",
+      "priority": "OPEN"
     }
   ],
   "work_frontier": {
@@ -127,7 +132,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "A5: | A5 | Picker selection uses the registry; `tryLocalNavigationPick` is gone | production wiring | `FeaturePresenceRegressionTest` + existing picker tests green | not built — **deferred on purpose** to",
-    "actionable_count": 64,
+    "actionable_count": 65,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 16,
@@ -551,6 +556,13 @@
         "class": "active milestone row",
         "source": "CURRENT_MILESTONE.md",
         "item": "Weather selected from speech ≥ 9/10 with no SPEC-008 regress",
+        "blocked_by": null
+      },
+      {
+        "priority": 8,
+        "class": "recorded technical debt",
+        "source": "docs/TECH_DEBT.md",
+        "item": "D-8",
         "blocked_by": null
       },
       {
