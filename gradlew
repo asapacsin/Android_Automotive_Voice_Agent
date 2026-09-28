@@ -9,6 +9,7 @@ if [ -z "${JAVA_HOME:-}" ]; then
   for candidate in \
     /usr/lib/jvm/java-17-openjdk-amd64 \
     /usr/lib/jvm/java-17-openjdk \
+    "$HOME/tools/jdk-17" \
     "/c/Users/Administrator/tools/jdk-17"
   do
     if [ -x "$candidate/bin/java" ]; then

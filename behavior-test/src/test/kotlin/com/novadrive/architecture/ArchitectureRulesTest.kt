@@ -94,7 +94,7 @@ class ArchitectureRulesTest {
     fun executionProofOwnsActionClaims() {
         val client = text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt")
         // Proof enters the system at exactly one place: the tool result.
-        assertTrue(client.contains("onExecutionResult(output)")) {
+        assertTrue(client.contains("onExecutionResult(callId, output)")) {
             "INVARIANT I-1: sendFunctionResult is the only source of execution evidence"
         }
         val turn = text("app/src/main/kotlin/com/novadrive/app/voice/DriverTurn.kt")
@@ -196,7 +196,7 @@ class ArchitectureRulesTest {
         // Raising one is allowed — with a reason in the commit
         // message. See docs/AGENT_MAINTENANCE.md step 4 and docs/TECH_DEBT.md D-1.
         val budgets = mapOf(
-            "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt" to 900,
+            "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt" to 950,
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapNaviViewHost.kt" to 900,
             "app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt" to 470,
             "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt" to 500,

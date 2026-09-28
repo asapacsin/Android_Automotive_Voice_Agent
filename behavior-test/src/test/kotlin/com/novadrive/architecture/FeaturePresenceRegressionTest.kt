@@ -317,7 +317,7 @@ class FeaturePresenceRegressionTest {
         assertContains(client, "onResponseCreated()", "a suspicious turn's reply audio must be held")
         assertContains(client, "finishResponse(hadToolCall =", "the verdict needs the tool-call fact")
         assertContains(client, "TURN_DROP", "every suppression must say why")
-        assertContains(client, "onExecutionResult(output)", "execution evidence must reach the turn")
+        assertContains(client, "onExecutionResult(callId, output)", "execution evidence must reach the turn")
         // The safety invariant: only what the driver hears and reads may be held. A tool call, an
         // error or the driver's own transcript must always pass straight through.
         assertContains(client, "event is DomainVoiceEvent.AudioDelta ||", "reply audio may be held")

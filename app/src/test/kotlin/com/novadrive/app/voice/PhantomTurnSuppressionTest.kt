@@ -180,7 +180,18 @@ class PhantomTurnSuppressionTest {
                 contextAwaitingAnswer = { false },
             )
             val seen = Collections.synchronizedList(mutableListOf<DomainVoiceEvent>())
-            val job = launch(start = CoroutineStart.UNDISPATCHED) { client.events().collect { seen += it.payload } }
+            val job = launch(start = CoroutineStart.UNDISPATCHED) {
+                client.events().collect { event ->
+                    seen += event.payload
+                    val payload = event.payload
+                    if (payload is DomainVoiceEvent.ToolCall) {
+                        client.sendFunctionResult(
+                            payload.callId,
+                            """{"ok":true,"tool":"${payload.name}","status":"played"}""",
+                        )
+                    }
+                }
+            }
             client.connect(config())
             assertTrue(done.await(5, TimeUnit.SECONDS), "server script did not finish")
             kotlinx.coroutines.delay(500)
