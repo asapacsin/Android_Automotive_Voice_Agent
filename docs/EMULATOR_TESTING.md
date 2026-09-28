@@ -113,3 +113,33 @@ sentence; the bridge printed `[guidance] chars=31`. Screenshots: android_doc
 `emulator_nav_panel_2026-09-27/`. **Open:** the emulator-mode vehicle did not advance after the
 first manoeuvre (no further `nav_maneuver` / `onNaviInfoUpdate` for 6 minutes), so later
 manoeuvres, arrival and repeated guidance on the PC are not yet observed on x86.
+
+## Map picture and a moving car on the emulator (2026-09-28)
+
+**Stall root cause.** The voice/controller path always starts `NaviType.GPS`
+(`EmbeddedNavigationController` → `startNavigation(emulator = false)`); the owner's drive logged
+`nav_start accepted=true mode=1`. On x86 nothing moves the GPS position, so the SDK produced one
+`NaviInfo` and then only traffic updates. A `DEBUG_TOOL nav_start emulator:120` run on the same
+build (mode=2) advanced normally. Fix, in the owner (`AmapNaviViewHost.startNavigation`): when the
+map cannot be drawn (`TranslatedAbi`), navigation always runs as `NaviType.EMULATOR` at the
+emulator speed (default 50 km/h). A real phone is unchanged.
+
+**Map picture.** `TextNavigationPanel` now shows the Amap Web Service static map
+(`/v3/staticmap`) next to the text (below it in portrait), using the Web key saved in settings.
+`StaticMapModel` (pure, unit-tested) builds the request: car marker `C`, destination `D`,
+numbered destination candidates, route polylines (all routes in preview, the active one while
+navigating, Douglas–Peucker to ≤80 points each, the stretch 300 m behind / 3 km ahead of the car
+at zoom 15 when navigating). Refresh on any layout change at once, on car movement only after 4 s
+and 40 m (200 m when idle). `StaticMapFetcher` keeps one request in flight plus the newest pending
+one and logs only `static_map ok bytes=N` / `static_map error=…`; the URL (key, coordinates) is
+never logged. Without a key the text shows a one-line hint. Route shapes come from
+`AmapRouteGeometry` (in `AmapRouteLiveInfo.kt`).
+
+Measured: voice S5 → candidates, S5b → 3-route preview, tap route 1 → `nav_start mode=2`, panel
+remaining 9.2 km → 8.3 km a minute later with the map following. Screenshots in android_doc
+`emulator_static_map_2026-09-28/`. **Open: arrival not reached on x86.** Three of three drives died
+with SIGILL in a translated native thread (ndk_translation interpreter, unnamed `Thread-N`) 1–2 s
+after a manoeuvre change: at 8.2 km remaining after ~1 min, at 4.5 km after 7 min (six manoeuvres
+passed), and at 1.0 km (debug `nav_start emulator:120`, 8.6 → 1.0 km in 4 min). Disabling camera
+updates (`setCameraInfoUpdateEnabled(false)`) did not help and was reverted. It is Amap ARM code
+under translation; the owner's app restarts when it happens. Not seen on the ARM phone.

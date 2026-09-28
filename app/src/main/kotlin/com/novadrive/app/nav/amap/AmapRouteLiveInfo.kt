@@ -9,6 +9,7 @@ import com.novadrive.app.nav.AlongRouteCategory
 import com.novadrive.app.nav.DestinationCandidate
 import com.novadrive.app.nav.RouteLiveInfoSource
 import com.novadrive.app.nav.RouteTraffic
+import com.novadrive.app.nav.StaticMapModel.GeoPoint
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
@@ -94,4 +95,17 @@ class AmapRouteLiveInfo(context: Context) : RouteLiveInfoSource {
         /** How far off the route a POI may be; the SDK's range is in metres. */
         const val RANGE_METERS = 250
     }
+}
+
+/**
+ * Route shapes for the emulator's static map picture (GCJ-02, as the Web API expects), read from
+ * the same AMapNavi singleton. Active route first while navigating; otherwise every calculated
+ * route in id order. Never logged.
+ */
+internal object AmapRouteGeometry {
+    fun routes(context: Context, navigating: Boolean): List<List<GeoPoint>> = runCatching {
+        val navi = AMapNavi.getInstance(context.applicationContext)
+        val paths = if (navigating) listOfNotNull(navi.naviPath) else navi.naviPaths?.toSortedMap()?.values?.toList().orEmpty()
+        paths.mapNotNull { path -> path.coordList?.map { GeoPoint(it.latitude, it.longitude) }?.takeIf { it.size >= 2 } }
+    }.getOrDefault(emptyList())
 }

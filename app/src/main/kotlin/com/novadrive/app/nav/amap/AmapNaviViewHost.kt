@@ -236,6 +236,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
      */
     private fun applyFix(fix: LocationFix, source: String) {
         lastFix = fix
+        textPanel?.onCar(fix.latitude, fix.longitude)
         // While navigating, AMapNaviView owns its camera (it locks to the vehicle). Moving it
         // from here would fight the SDK for control mid-drive.
         if (isNavigating) return
@@ -633,7 +634,10 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
                 DebugVoiceLog.log("nav_route_info_prestart meters=${path.allLength} seconds=${path.allTime}")
             }
         }
-        if (emulator) {
+        // x86 emulator: no real fixes move the car, so GPS mode stands still after the first
+        // update (2026-09-28: a voice-started drive logged mode=1 and never advanced). Simulate.
+        val simulate = emulator || !mapRenderable
+        if (simulate) {
             // Posted limits come from Amap cameras/roads. This is only how fast the
             // fake car moves. Default 50 km/h: overspeed on 30, legal on 80.
             val speed = EmulatorNaviSpeed.clamp(speedKmh)
@@ -643,7 +647,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         } else {
             fallbackSpeedKmh = 0
         }
-        val mode = if (emulator) NaviType.EMULATOR else NaviType.GPS
+        val mode = if (simulate) NaviType.EMULATOR else NaviType.GPS
         disableBrowseLocationLayer()
         AmapDrivingPresentation.applyDriving(navi, naviView)
         val accepted = runCatching { navi.startNavi(mode) }.getOrDefault(false)
