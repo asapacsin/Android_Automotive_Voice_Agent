@@ -173,7 +173,8 @@ on nova_api30 + armeabi-v7a (the AVD with keys), voice through `host_audio_bridg
 --from-file` after `DEBUG_TOOL voice wake`: 导航去珠海站 → 5 candidates → 第二个 → 3 routes →
 选最快的那条 → real 3D navigation (turn card, lanes, cameras, overspeed) → arrival; 调到二十四度 →
 `control_climate … 24°C`; 播放音乐 → music plays but the reply says 没成功 (`control_music`
-`MALFORMED_JSON` after `screen_action=voice_music_play ok=true`, an app defect); 闭嘴 → quiet.
+`MALFORMED_JSON` after `screen_action=voice_music_play ok=true`, an app defect fixed as P34 in
+OPEN_PROBLEMS, re-test pending); 闭嘴 → quiet (the `error` event after it: P35).
 `DEBUG_TOOL nav_speed <kmh>` changes the simulated car's speed mid-drive (a voice-started
 emulator drive runs at 50 km/h). `voice say:` could not read clips pushed by a rooted adbd on
 this AVD (`missing <clip>.pcm`: root-owned files are invisible to the app through FUSE), hence

@@ -242,7 +242,7 @@ class BaiduFlexClient(
     }
 
     fun cancelResponse() {
-        if (assistantSpeaking) trySend(BaiduFlexProtocol.responseCancel())
+        if (assistantSpeaking) sendCancelOnce("barge_in")
     }
 
     /**
@@ -250,7 +250,33 @@ class BaiduFlexClient(
      * arrived yet (cancelResponse only acts once audio plays, to keep barge-in behaviour as is).
      */
     fun cancelActiveResponse() {
-        if (responseInProgress || assistantSpeaking) trySend(BaiduFlexProtocol.responseCancel())
+        if (responseInProgress || assistantSpeaking) sendCancelOnce("active")
+    }
+
+    /**
+     * This response was cancelled by us (OPEN_PROBLEMS P34/P35): send `response.cancel` once (a
+     * second one, from 「闭嘴」's two paths, drew an `error`), and drop calls it still completes
+     * (their arguments arrive cut off; the app already handled the utterance).
+     */
+    @Volatile private var cancelSentThisResponse = false
+
+    private fun sendCancelOnce(reason: String) {
+        if (cancelSentThisResponse) {
+            DebugVoiceLog.log("flex_cancel_skipped reason=$reason already_sent=true")
+            return
+        }
+        if (trySend(BaiduFlexProtocol.responseCancel())) {
+            cancelSentThisResponse = true
+            DebugVoiceLog.log("flex_cancel_sent reason=$reason")
+        }
+    }
+
+    /** A call from a response this client cancelled: not executed, not answered, no new reply. */
+    private fun dropCallFromCancelledResponse(event: DomainVoiceEvent): Boolean {
+        if (event !is DomainVoiceEvent.ToolCall || !cancelSentThisResponse) return false
+        val shape = if (event.arguments.containsKey("_validation_error")) "rejected" else "valid"
+        DebugVoiceLog.log("flex_call_dropped reason=response_cancelled tool=${event.name} args=$shape")
+        return true
     }
 
     /**
@@ -373,6 +399,7 @@ class BaiduFlexClient(
         sessionCreated = false
         assistantSpeaking = false
         responseInProgress = false
+        cancelSentThisResponse = false
         turnGate.onConnectionReset()
         assembler.clear()
         val owned = navigatingListener
@@ -510,6 +537,8 @@ class BaiduFlexClient(
             if (type == "response.audio.delta") assistantSpeaking = true
             if (type == "response.audio.done" || type == "response.done") assistantSpeaking = false
             if (type !in NOISY_EVENT_TYPES) DebugVoiceLog.log("flex_event type=$type")
+            // Code only: a provider message can quote what the driver said.
+            if (type == "error") DebugVoiceLog.log("flex_error code=${BaiduFlexProtocol.errorCode(text)}")
             if (type == "input_audio_buffer.speech_started") {
                 emptyRetry.onSpeechStarted()
                 turnGate.onSpeechStarted()
@@ -524,6 +553,7 @@ class BaiduFlexClient(
                 }
             }
             if (type == "response.created") {
+                cancelSentThisResponse = false
                 turnGate.onResponseCreated()
                 assistantText.setLength(0)
                 onResponseCreated()
@@ -556,6 +586,7 @@ class BaiduFlexClient(
                 applyVerdict(turn, DriverTurn.Verdict.Release("response_done_fallback"))
             }
             events.forEach { event ->
+                if (dropCallFromCancelledResponse(event)) return@forEach
                 if (dropDuplicateCall(event)) return@forEach
                 // A tool call proves the driver's turn was real; never let one sit behind a hold,
                 // and remember it so the spoken result of the action is not judged on its own.

@@ -76,6 +76,9 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
     private val textPanel: TextNavigationPanel? = if (mapRenderable) null else TextNavigationPanel(context)
 
     private companion object {
+        /** Speed chip above our bar (64) + Amap's bar (~61) and logo; measured 2026-09-28 (P33). */
+        const val SPEED_HUD_BOTTOM_DP = 164
+
         /** Street level: close enough to recognise where you are, wide enough to orient. */
         const val IDLE_ZOOM = 16f
 
@@ -655,6 +658,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         val accepted = runCatching { navi.startNavi(mode) }.getOrDefault(false)
         if (accepted) {
             synchronized(navLock) { navigationActive = true }
+            onDrivingChanged?.invoke(true)
             AmapDrivingPresentation.lockCar(naviView)
             refreshSpeedHud()
             textPanel?.render()
@@ -710,6 +714,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
             .onSuccess { DebugVoiceLog.log("nav_stopped reached=true reason=$reason") }
             .onFailure { DebugVoiceLog.log("nav_stopped reached=false reason=$reason exception=true") }
         AmapDrivingPresentation.applyIdle(naviView)
+        onDrivingChanged?.invoke(false)
         enableMyLocation()
         // Guidance cut off mid-sentence may never report its end; do not leave the mic gated.
         if (NavigationGuidanceVoice.speaking) NavigationGuidanceVoice.onPlayEnd()
@@ -719,6 +724,9 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         onNavigationEndedCallback?.invoke(reason)
         return true
     }
+
+    /** Told when the native driving presentation starts or ends, on whichever thread did it. */
+    var onDrivingChanged: ((Boolean) -> Unit)? = null
 
     /** True while an emulator or GPS navigation session is running. */
     val isNavigating: Boolean
@@ -820,7 +828,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
             LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
                 gravity = Gravity.BOTTOM or Gravity.START
                 leftMargin = dp(12)
-                bottomMargin = dp(76)
+                bottomMargin = dp(SPEED_HUD_BOTTOM_DP)
             },
         )
     }

@@ -32,6 +32,9 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
     private val bubble: TextView
     private val actionCard: TextView
     private val settingsEntry: TextView
+    private val stateRow: LinearLayout
+    private val avatarColumn: LinearLayout
+    private val topRow: LinearLayout
 
     init {
         isClickable = false
@@ -108,7 +111,7 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
                 setOnClickListener { onOpenDeveloperSettings?.invoke() }
             }
 
-        val stateRow =
+        stateRow =
             LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
@@ -118,10 +121,10 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
                 setPadding(0, dp(4), dp(4), dp(4))
                 setOnClickListener { onListeningToggle?.invoke() }
             }
-        val avatarColumn =
+        avatarColumn =
             LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
-                addView(avatar, LinearLayout.LayoutParams(dp(64), dp(64)))
+                addView(avatar, LinearLayout.LayoutParams(dp(FULL_AVATAR_DP), dp(FULL_AVATAR_DP)))
                 addView(
                     stateRow,
                     LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
@@ -130,7 +133,7 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
                 )
                 isClickable = false
             }
-        val topRow =
+        topRow =
             LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.TOP
@@ -176,11 +179,52 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
         bindState(lastVoiceState, null)
     }
 
-    /** Shrink the assistant chrome so Amap's native turn HUD is not covered. */
+    /**
+     * While driving, the assistant becomes one [DRIVING_STRIP_DP] strip above the map (the screen
+     * moves the map down by the same amount), so Amap's turn card is never drawn under it. The
+     * avatar, the listening state and the latest line stay visible; the settings chip goes.
+     */
     fun setDrivingChrome(driving: Boolean) {
         if (drivingChrome == driving) return
         drivingChrome = driving
+        applyChromeLayout()
         bindState(lastVoiceState, null)
+    }
+
+    private fun applyChromeLayout() {
+        val compact = drivingChrome
+        avatarColumn.orientation = if (compact) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
+        avatarColumn.gravity = if (compact) Gravity.CENTER_VERTICAL else Gravity.NO_GRAVITY
+        val avatarSize = dp(if (compact) COMPACT_AVATAR_DP else FULL_AVATAR_DP)
+        avatar.layoutParams = (avatar.layoutParams as LinearLayout.LayoutParams).apply {
+            width = avatarSize
+            height = avatarSize
+        }
+        avatar.textSize = if (compact) 15f else 22f
+        stateRow.layoutParams = (stateRow.layoutParams as LinearLayout.LayoutParams).apply {
+            topMargin = if (compact) 0 else dp(6)
+            leftMargin = if (compact) dp(6) else 0
+        }
+        topRow.gravity = if (compact) Gravity.CENTER_VERTICAL else Gravity.TOP
+        if (compact) {
+            topRow.setPadding(dp(10), 0, dp(10), 0)
+            topRow.setBackgroundColor(Color.parseColor("#E6121820"))
+            bubble.setPadding(dp(10), dp(4), dp(10), dp(4))
+            bubble.textSize = 13f
+            // One line, the newest words kept: newlines show as spaces, the start is elided.
+            bubble.isSingleLine = true
+            bubble.ellipsize = android.text.TextUtils.TruncateAt.START
+        } else {
+            topRow.setPadding(dp(16), dp(16), dp(16), 0)
+            topRow.background = null
+            bubble.setPadding(dp(16), dp(12), dp(16), dp(12))
+            bubble.textSize = 15f
+            bubble.isSingleLine = false
+            bubble.ellipsize = null
+        }
+        topRow.layoutParams = (topRow.layoutParams as LayoutParams).apply {
+            height = if (compact) dp(DRIVING_STRIP_DP) else LayoutParams.WRAP_CONTENT
+        }
     }
 
     fun bindState(state: VoiceUiState, error: String?) {
@@ -249,6 +293,11 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 }
+
+/** Height of the assistant strip while driving; the map starts below it. */
+internal const val DRIVING_STRIP_DP = 44
+private const val COMPACT_AVATAR_DP = 32
+private const val FULL_AVATAR_DP = 64
 
 /** Number of transcript lines the bubble keeps: the latest exchange only (driver + 小诺). */
 internal const val TRANSCRIPT_MAX_LINES = 2

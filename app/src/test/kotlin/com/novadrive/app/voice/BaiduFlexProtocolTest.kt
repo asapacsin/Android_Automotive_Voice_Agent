@@ -205,6 +205,41 @@ class BaiduFlexProtocolTest {
         assertEquals("APP_NOT_ALLOWED", disallowed.arguments["_validation_error"])
     }
 
+    /**
+     * OPEN_PROBLEMS 2026-09-28: a cancelled response ends its call with a cut-off `arguments`. The
+     * log line says how it was malformed without repeating what it contained.
+     */
+    @Test
+    fun malformedArgumentsAreLoggedByShapeNeverByContent() {
+        val lines = mutableListOf<String>()
+        val call = FlexFunctionCallAssembler(onMalformed = { lines += it }).apply {
+            consume(item("call_music", "control_music"))
+            consume(delta("call_music", "{\"action\":\"pl"))
+        }.consume(done("call_music", "{\"action\":\"pl")).single() as DomainVoiceEvent.ToolCall
+        assertEquals("MALFORMED_JSON", call.arguments["_validation_error"])
+        assertEquals(listOf("flex_call_args_malformed tool=control_music shape=truncated_object done_chars=13 delta_chars=13"), lines)
+        assertFalse(lines.single().contains("pl\""), "no argument content in the log")
+    }
+
+    @Test
+    fun aDoneEventWithoutArgumentsFallsBackToTheStreamedDeltas() {
+        val call = FlexFunctionCallAssembler(onMalformed = {}).apply {
+            consume(item("call_music", "control_music"))
+            consume(delta("call_music", "{\"action\":"))
+            consume(delta("call_music", "\"play\"}"))
+        }.consume(done("call_music", "")).single() as DomainVoiceEvent.ToolCall
+        assertEquals(mapOf("action" to "play"), call.arguments)
+    }
+
+    @Test
+    fun anErrorEventIsLoggedAsCodeAndKindOnly() {
+        assertEquals(
+            "response_cancel_not_active kind=cancel_refused",
+            BaiduFlexProtocol.errorCode("""{"type":"error","error":{"code":"response_cancel_not_active","message":"Cancellation failed: no active response 你说的话"}}"""),
+        )
+        assertEquals("none kind=other", BaiduFlexProtocol.errorCode("""{"type":"error","error":{"message":"去珠海站"}}"""))
+    }
+
     @Test
     fun reconnectClearDropsPartialFunctionState() {
         val assembler = FlexFunctionCallAssembler()

@@ -472,6 +472,67 @@ class BaiduFlexClientTest {
         client.disconnect()
     }
 
+    /**
+     * OPEN_PROBLEMS 2026-09-28, reproduced from the emulator log: 「播放音乐」 ran the on-screen play
+     * control and cancelled the model's reply; Baidu then finished that reply's control_music call
+     * with cut-off arguments (MALFORMED_JSON), the failure went back to the model and 小诺 said
+     * 没成功 while the music played. Then 「闭嘴」 silenced twice (local router + set_speech_output),
+     * the second response.cancel was refused with an error event.
+     */
+    @Test
+    fun aCallFromACancelledResponseIsNotRunAndTheResponseIsCancelledOnce() = runBlocking {
+        val received = Collections.synchronizedList(mutableListOf<String>())
+        var serverSocket: WebSocket? = null
+        server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
+                serverSocket = webSocket
+                webSocket.send("""{"type":"session.created","session":{"model":"qianfan-realtime-flex-v1"}}""")
+            }
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                received += text
+                if (JSONObject(text).optString("type") == "session.update") {
+                    webSocket.send("""{"type":"session.updated","session":{"model":"qianfan-realtime-flex-v1"}}""")
+                }
+            }
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
+        }))
+        val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
+        val calls = Collections.synchronizedList(mutableListOf<DomainVoiceEvent.ToolCall>())
+        val collector = launch(kotlinx.coroutines.Dispatchers.IO) {
+            client.events().collect { (it.payload as? DomainVoiceEvent.ToolCall)?.let(calls::add) }
+        }
+        client.connect(config())
+        val socket = serverSocket!!
+        socket.send("""{"type":"response.created","response":{"id":"r1"}}""")
+        socket.send("""{"type":"response.output_item.added","item":{"id":"i1","type":"function_call","call_id":"call_music","name":"control_music"}}""")
+        socket.send("""{"type":"response.function_call_arguments.delta","call_id":"call_music","delta":"{\"action\":\"pl"}""")
+        Thread.sleep(200)
+        // The on-screen path took the utterance; both 「闭嘴」 paths also ask for a cancel.
+        client.cancelActiveResponse()
+        client.cancelActiveResponse()
+        Thread.sleep(200)
+        socket.send("""{"type":"response.function_call_arguments.done","call_id":"call_music","arguments":"{\"action\":\"pl"}""")
+        socket.send("""{"type":"response.done","response":{"status":"cancelled","output":[{"type":"function_call"}]}}""")
+        Thread.sleep(400)
+        val types = received.map { JSONObject(it).getString("type") }
+        assertEquals(1, types.count { it == "response.cancel" }, "one cancel per response: $types")
+        assertTrue(calls.isEmpty(), "the cancelled reply's call is neither run nor failed: $calls")
+        assertEquals(0, types.count { it == "conversation.item.create" }, "no failure result goes back")
+        assertEquals(0, types.count { it == "response.create" }, "no reply is asked for")
+
+        // The next response is a fresh one: its calls run, and it may be cancelled again.
+        socket.send("""{"type":"response.created","response":{"id":"r2"}}""")
+        socket.send("""{"type":"response.output_item.added","item":{"id":"i2","type":"function_call","call_id":"call_stop","name":"control_music"}}""")
+        socket.send("""{"type":"response.function_call_arguments.done","call_id":"call_stop","arguments":"{\"action\":\"stop\"}"}""")
+        Thread.sleep(400)
+        assertEquals(listOf("call_stop"), calls.map { it.callId })
+        client.cancelActiveResponse()
+        Thread.sleep(200)
+        assertEquals(2, received.count { JSONObject(it).optString("type") == "response.cancel" })
+        collector.cancel()
+        client.disconnect()
+    }
+
     private fun config(voice: String = BaiduAppSettings.DEFAULT_VOICE) = BaiduApiConfig(
         BaiduAppSettings(
             authMode = BaiduAuthMode.BEARER_API_KEY,

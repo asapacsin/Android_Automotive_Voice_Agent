@@ -313,6 +313,27 @@ object BaiduFlexProtocol {
 
     fun responseCreate(): String = JSONObject().put("type", "response.create").toString()
 
+    /**
+     * An `error` event reduced to what may be logged: the provider code (identifier characters
+     * only) and a kind derived from the message. The message itself is never returned — it can
+     * quote the driver.
+     */
+    fun errorCode(text: String): String = runCatching {
+        val raw = JSONObject(text)
+        val error = raw.optJSONObject("error") ?: raw
+        val code = error.optString("code").filter { it.isLetterOrDigit() || it == '_' || it == '.' || it == '-' }.take(64)
+        val blob = "${error.optString("code")} ${error.optString("message")}".lowercase()
+        val kind = when {
+            CANCEL_REFUSED_PHRASES.any { it in blob } -> "cancel_refused"
+            ACTIVE_RESPONSE_PHRASE in blob -> "response_busy"
+            "cannot update a session" in blob -> "session_update_refused"
+            else -> "other"
+        }
+        "${code.ifEmpty { "none" }} kind=$kind"
+    }.getOrDefault("unparsed kind=other")
+
+    private val CANCEL_REFUSED_PHRASES = listOf("no active response", "cancellation failed", "没有可取消", "无可取消")
+
     fun parseCommonEvent(text: String, speaking: Boolean): List<DomainVoiceEvent> {
         val raw = JSONObject(text)
         return when (raw.optString("type")) {
@@ -326,7 +347,7 @@ object BaiduFlexProtocol {
                 val message = BaiduProtocol.sanitize(error.optString("message"))
                 val blob = "$providerCode $message".lowercase()
                 // A refused cancel is benign: nothing was playing, so emit nothing instead of Error.
-                if (listOf("no active response", "cancellation failed", "没有可取消", "无可取消").any { it in blob }) {
+                if (CANCEL_REFUSED_PHRASES.any { it in blob }) {
                     return emptyList()
                 }
                 // A refused session.update is not session-fatal either: the session keeps its
@@ -391,7 +412,9 @@ object BaiduFlexProtocol {
 }
 
 /** Stateful, bounded assembler. It emits nothing until the authoritative done event. */
-class FlexFunctionCallAssembler {
+class FlexFunctionCallAssembler(
+    private val onMalformed: (String) -> Unit = { com.novadrive.app.DebugVoiceLog.log(it) },
+) {
     private data class Pending(val name: String, val itemId: String, val delta: StringBuilder = StringBuilder())
     private val pending = mutableMapOf<String, Pending>()
     private val completed = mutableSetOf<String>()
@@ -438,10 +461,16 @@ class FlexFunctionCallAssembler {
         val current = pending.remove(callId)
         val name = current?.name.orEmpty()
         if (name.isBlank()) return listOf(rejected(callId, "", "MISSING_TOOL_METADATA"))
-        val arguments = raw.optString("arguments")
+        // The done event is authoritative; the streamed deltas are the fallback when it carries none.
+        val streamed = current?.delta?.toString().orEmpty()
+        val arguments = raw.optString("arguments").ifEmpty { streamed }
         if (arguments.length > BaiduFlexProtocol.MAX_ARGUMENT_BYTES) return listOf(rejected(callId, name, "ARGUMENTS_TOO_LARGE"))
         val parsed = runCatching { JSONObject(arguments) }.getOrNull()
-            ?: return listOf(rejected(callId, name, "MALFORMED_JSON"))
+        if (parsed == null) {
+            // Shape only, never content: the arguments can hold a destination or a question.
+            onMalformed("flex_call_args_malformed tool=$name ${argumentShape(raw.optString("arguments"), streamed)}")
+            return listOf(rejected(callId, name, "MALFORMED_JSON"))
+        }
         val validation = validate(name, parsed)
         if (validation != null) return listOf(rejected(callId, name, validation))
         val args = buildMap {
@@ -531,6 +560,17 @@ class FlexFunctionCallAssembler {
             }
             else -> null // The Android dispatcher returns UNKNOWN_TOOL without executing.
         }
+    }
+
+    private fun argumentShape(done: String, streamed: String): String {
+        val trimmed = done.trim()
+        val shape = when {
+            trimmed.isEmpty() -> "empty"
+            !trimmed.startsWith("{") -> "not_object"
+            !trimmed.endsWith("}") -> "truncated_object"
+            else -> "invalid_object"
+        }
+        return "shape=$shape done_chars=${done.length} delta_chars=${streamed.length}"
     }
 
     private fun rejected(callId: String, name: String, reason: String) =

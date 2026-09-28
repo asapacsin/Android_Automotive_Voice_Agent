@@ -1337,3 +1337,92 @@ nav_route_candidates count=3
 
 One clean run; the model's false claim is intermittent, so the guard path itself is proven by
 `ActionClaimGuardTest` only. Live owner-voice re-test of 拱北口岸 → 东北口岸酒店 still pending.
+
+## P33 — Assistant overlay drawn over Amap's turn card; speed chip over Amap's bottom bar
+
+**Status:** FIXED 2026-09-28 — emulator screenshots (nova_api34, real AMapNaviView); phone pending
+**Reported:** 2026-09-28, emulator demo screenshot `emulator_real_map_2026-09-28/api34_arm64_drive2_2.png`
+
+### Symptom
+
+During a simulated drive the 诺 avatar, 「休眠中（已断开）」, the 小诺 bubble and the 开发者设置 chip were
+painted over Amap's turn card (「598米 进入 景山路」): neither was readable. The speed chip
+(120 km/h, 限速) sat on Amap's bottom bar (退出 / 中速 / 暂停).
+
+### Root cause
+
+- The overlay is a full-screen sibling on top of the map. `setDrivingChrome` only hid the settings
+  chip and cut the bubble to one line; the avatar column and bubble stayed at the top, exactly where
+  Amap puts its turn card.
+- It was driven only by `NavigationPhase.NAVIGATING`. A drive the SDK runs without the voice state
+  machine (debug `nav_start`, the demo) never reached that phase, so even that was skipped.
+- The speed chip's `bottomMargin` (76 dp) cleared our bar (64 dp) but not Amap's bar above it (~61 dp).
+
+### Fix
+
+- `AssistantNavigationScreen.applyDrivingLayout`: while driving (phase NAVIGATING **or**
+  `AmapNaviViewHost.onDrivingChanged(true)`), the map moves down by `DRIVING_STRIP_DP` (44 dp) and
+  `AssistantOverlayView` becomes a one-line strip in that space: small avatar, listening state, and the
+  latest transcript line (start elided). Nothing of ours overlaps the map, so Amap's card, lanes and bar
+  keep their own layout. Restored when navigation ends (`nav_layout driving=false`).
+- `DrivingSpeedHud` chip: `SPEED_HUD_BOTTOM_DP` = 164, above Amap's bar and its logo.
+
+### Evidence
+
+`emulator_demo_2026-09-28/11_nav_layout_fixed.png` (turn card 「343米 进入 东风路」, lanes, traffic bar,
+退出/中速/暂停 all clear; strip shows 诺 · 休眠中（已断开） · 小诺; speed chip above the bar),
+`11b_nav_layout_fixed_later.png` (「864米 进入 景山路」, Amap logo visible), `12_nav_layout_idle.png` after
+`nav_stop`. Log: `nav_layout driving=true` after `nav_start accepted=true`, `driving=false` after `nav_stopped`.
+Not yet seen on the phone or in landscape.
+
+## P34 — 「播放音乐」 plays the music, then 小诺 says 没成功
+
+**Status:** FIXED 2026-09-28 — unit-tested (`BaiduFlexClientTest`, `BaiduFlexProtocolTest`); live voice pending (no Baidu key on nova_api34)
+**Reported:** 2026-09-28 emulator demo log
+
+```
+affordance_match id=music_play verb=false
+screen_action=voice_music_play ok=true error=-
+tool=control_music args=[_validation_error] result=MALFORMED_JSON      (+236 ms)
+小诺: 没成功。
+```
+
+### Root cause
+
+「播放音乐」 names the on-screen ▶ control, so SPEC-010's `ScreenAffordanceRunner` ran it locally (by
+design) and `VoiceSessionController` cancelled the model's reply (`response.cancel`). The model was
+already streaming a `control_music` call in that reply. Baidu still sent the call's
+`function_call_arguments.done`, cut off by the cancel, so `FlexFunctionCallAssembler` rejected it as
+`MALFORMED_JSON`. A rejected call bypasses the SPEC-010 capability claim (`ToolCallGuards` only guards
+valid calls), so the failure went back to the model with a `response.create`, and it said 没成功.
+
+### Fix
+
+- `BaiduFlexClient`: a function call that completes after the client cancelled its response is neither
+  executed nor answered, and no reply is requested (`flex_call_dropped reason=response_cancelled
+  tool=… args=rejected|valid`). The app already owns that utterance.
+- `FlexFunctionCallAssembler`: a malformed call is logged by shape only
+  (`flex_call_args_malformed tool=… shape=empty|not_object|truncated_object|invalid_object
+  done_chars=N delta_chars=M`); an empty `arguments` on the done event falls back to the streamed deltas.
+
+Unverified: Baidu's exact shape for the cut-off call (the log line will show it on the next live run).
+
+## P35 — An `error` event after 「闭嘴」
+
+**Status:** FIXED 2026-09-28 — unit-tested; live voice pending (no Baidu key on nova_api34)
+**Reported:** 2026-09-28 emulator demo log: `tool=set_speech_output ✓` then `flex_event type=error`.
+
+### Root cause
+
+「闭嘴」 silences twice: `VoiceCommandRouter` on the transcript and the model's `set_speech_output`
+call. Each `ListeningLifecycle.silence` cancels the reply, and `cancelActiveResponse` sent a second
+`response.cancel` while the first was still ending the same response; Baidu refuses that with an
+`error` event (already treated as benign, so only the log showed it). The error message was never
+logged, so the code is inferred from the sequence, not read.
+
+### Fix
+
+- `BaiduFlexClient.sendCancelOnce`: one `response.cancel` per response (reset on `response.created`);
+  a repeat logs `flex_cancel_skipped`.
+- Every error event now logs `flex_error code=<provider code> kind=cancel_refused|response_busy|
+  session_update_refused|other` — the code and a derived kind, never the message.

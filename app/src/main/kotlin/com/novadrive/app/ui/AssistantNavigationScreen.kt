@@ -84,7 +84,16 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
         choiceOverlay.bind(EmbeddedNavigation.shared(context))
         uiScope.launch {
             EmbeddedNavigation.shared(context).state().collect { phase ->
-                overlay.setDrivingChrome(phase == NavigationPhase.NAVIGATING)
+                phaseNavigating = phase == NavigationPhase.NAVIGATING
+                applyDrivingLayout()
+            }
+        }
+        // The SDK can drive without the voice state machine (debug nav_start, a restored session);
+        // Amap's turn card is on screen either way, so either one lays the screen out for driving.
+        mapHost.onDrivingChanged = { driving ->
+            post {
+                hostDriving = driving
+                applyDrivingLayout()
             }
         }
         uiScope.launch {
@@ -95,6 +104,25 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
                 mapHost.showNavigationState(phase, destinations, routes, destination?.name)
             }.collect {}
         }
+    }
+
+    private var phaseNavigating = false
+    private var hostDriving = false
+    private var drivingLayout = false
+
+    /**
+     * Driving: the assistant is a strip above the map and the map starts below it, so Amap's own
+     * turn card, lanes and bottom bar are never covered (OPEN_PROBLEMS 2026-09-28).
+     */
+    private fun applyDrivingLayout() {
+        val driving = phaseNavigating || hostDriving
+        if (driving == drivingLayout) return
+        drivingLayout = driving
+        overlay.setDrivingChrome(driving)
+        mapHost.layoutParams = (mapHost.layoutParams as LayoutParams).apply {
+            topMargin = if (driving) dp(DRIVING_STRIP_DP) else 0
+        }
+        DebugVoiceLog.log("nav_layout driving=$driving")
     }
 
     /**
