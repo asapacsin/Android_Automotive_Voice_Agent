@@ -1,43 +1,25 @@
 {
-  "generated_at": "2026-09-25T09:10:43",
+  "generated_at": "2026-09-28T17:58:37",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "4e53451",
-    "branch": "claude/9-25",
-    "subject": "Refresh generated state after M4 wave 2",
+    "commit": "c677a3a",
+    "branch": "cursor/9-28",
+    "subject": "Emulator launcher mutes the emulator speaker when the host bridge runs",
     "working_tree_clean": true,
     "uncommitted_files": 0
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-25T09:10:37",
+    "collected_at": "2026-09-28T15:46:43",
     "total": {
-      "tests": 1387,
+      "tests": 1413,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "by_module": {
-      "evaluation": {
-        "tests": 27,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
       "app": {
-        "tests": 1116,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "simulator": {
-        "tests": 15,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "safety": {
-        "tests": 2,
+        "tests": 1140,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -54,8 +36,26 @@
         "errors": 0,
         "skipped": 0
       },
+      "evaluation": {
+        "tests": 27,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
       "ingress": {
-        "tests": 98,
+        "tests": 100,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "safety": {
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "simulator": {
+        "tests": 15,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 223497180,
-    "built_at": "2026-09-25T09:09:35"
+    "bytes": 223579140,
+    "built_at": "2026-09-28T15:42:23"
   },
   "capabilities": {
     "available": true,
@@ -127,7 +127,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "A5: | A5 | Picker selection uses the registry; `tryLocalNavigationPick` is gone | production wiring | `FeaturePresenceRegressionTest` + existing picker tests green | not built — **deferred on purpose** to",
-    "actionable_count": 63,
+    "actionable_count": 64,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 16,
@@ -551,6 +551,13 @@
         "class": "active milestone row",
         "source": "CURRENT_MILESTONE.md",
         "item": "Weather selected from speech ≥ 9/10 with no SPEC-008 regress",
+        "blocked_by": null
+      },
+      {
+        "priority": 10,
+        "class": "stale state or harness defect",
+        "source": "state",
+        "item": "PROJECT_STATE.json",
         "blocked_by": null
       },
       {
