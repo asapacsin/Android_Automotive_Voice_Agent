@@ -171,3 +171,22 @@ execution evidence may establish that an action occurred; `DriverTurn` holds an 
 tool result with `ok=true` arrives. Device evidence: `TURN_DROP epoch=3 reason=unproven_action_claim
 events=7`, then `nav_navigation_started routeId=12`, then the claim spoken once. The feared latency
 did not appear: in the normal flow the model answers *from* the tool result, so proof already exists.
+
+---
+
+## D-8 — `BaiduFlexClient` is over its line budget again — **OPEN** (found 2026-09-28)
+
+**Problem.** The demo-log fixes (`f1083fd`: call-scoped execution results, duplicate
+`choose_option` suppression, heard-speech repair) grew `BaiduFlexClient.kt` to 933 lines. Instead of
+splitting it, `7e2a65b` raised its budget in `ArchitectureRulesTest` from 900 to 950 lines. That is
+the D-1 pattern returning: per-turn and per-call policy accumulating in the transport class.
+
+**Affected.** `app/voice/BaiduFlexClient.kt`; the budget in
+`behavior-test/.../architecture/ArchitectureRulesTest.kt`.
+
+**Risk.** 17 lines of headroom left; the next voice-path fix either raises the budget again or is
+squeezed into the wrong owner, and interactions between the holds become unreadable again.
+
+**Next step.** Move the tool-call bookkeeping (duplicate-call suppression, `sendFunctionResult`'s
+execution-evidence and deferred `response.create` handling) into its own owner next to `DriverTurn`,
+then put the budget back to 900 in the same commit.
