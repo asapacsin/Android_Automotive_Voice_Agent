@@ -77,4 +77,17 @@ class WakeArmingTest {
         assertTrue(retry.mayAttempt())
         assertFalse(retry.exhausted)
     }
+
+    /** Matches [WakeWordController.reconcile] with resetRetryBudget after listening enters SLEEP. */
+    @Test
+    fun enteringIdleListeningClearsExhaustedCaptureRetries() {
+        repeat(3) {
+            arming.capture.recordFailure()
+            now += 8_000
+        }
+        assertTrue(arming.capture.recordFailure(), "fourth failure spends the budget")
+        assertFalse(arming.capture.mayAttempt())
+        arming.onReconciled()
+        assertTrue(arming.capture.mayAttempt())
+    }
 }

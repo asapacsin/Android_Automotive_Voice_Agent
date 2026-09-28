@@ -86,7 +86,7 @@ object NavigationLocalPickGuard {
     fun consumeNavigateToSuppression(listKey: String, turnKey: Long): Boolean {
         val current = authority ?: return false
         if (current.listKey != listKey || current.turnKey != turnKey) return false
-        if (current.outcome != Outcome.SELECTED) return false
+        if (current.outcome != Outcome.SELECTED && current.outcome != Outcome.REFINE) return false
         authority = null
         return true
     }

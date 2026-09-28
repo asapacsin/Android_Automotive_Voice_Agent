@@ -55,6 +55,17 @@ class NavigationLocalPickGuardTest {
     }
 
     @Test
+    fun localPreferenceRejectionSuppressesNavigateToOnce() {
+        val turn = NavigationLocalPickGuard.nextTurnKey()
+        NavigationPickSession.begin("list-a", turn)
+        NavigationPickSession.recordExecutorResult(
+            EmbeddedNavigationController.VoiceChoiceResult.Rejected("PREFERENCE_NOT_FOR_DESTINATIONS"),
+        )
+        assertTrue(NavigationLocalPickGuard.consumeNavigateToSuppression("list-a", turn))
+        assertFalse(NavigationLocalPickGuard.consumeNavigateToSuppression("list-a", turn))
+    }
+
+    @Test
     fun pickSessionRecordsExecutorResult() {
         val turn = NavigationLocalPickGuard.nextTurnKey()
         NavigationPickSession.begin("list-a", turn)

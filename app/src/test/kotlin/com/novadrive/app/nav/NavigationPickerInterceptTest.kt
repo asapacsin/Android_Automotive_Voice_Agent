@@ -110,4 +110,51 @@ class NavigationPickerInterceptTest {
         }
         assertNull(NavigationPickerIntercept.resolve("第二个", NavigationPhase.NAVIGATING, destinations, emptyList()))
     }
+
+    @Test
+    fun fastestRoutePreferencePicksLocally() {
+        val routes = listOf(RouteCandidate(12, 5_827, 1_080), RouteCandidate(13, 7_078, 960))
+        for (said in listOf("最快的", "选最快的", "就最快吧")) {
+            assertEquals(
+                NavigationChoice.Preference(NavigationChoice.Kind.FASTEST),
+                NavigationPickerIntercept.resolve(said, NavigationPhase.AWAITING_ROUTE_SELECTION, emptyList(), routes),
+                said,
+            )
+        }
+    }
+
+    @Test
+    fun nearestDestinationPreferencePicksLocally() {
+        assertEquals(
+            NavigationChoice.Preference(NavigationChoice.Kind.NEAREST),
+            NavigationPickerIntercept.resolve("最近的", NavigationPhase.AWAITING_DESTINATION_SELECTION, destinations, emptyList()),
+        )
+    }
+
+    @Test
+    fun routePreferenceOnDestinationListIsStillConsumedLocally() {
+        assertEquals(
+            NavigationChoice.Preference(NavigationChoice.Kind.FASTEST),
+            NavigationPickerIntercept.resolve(
+                "最快的",
+                NavigationPhase.AWAITING_DESTINATION_SELECTION,
+                destinations,
+                emptyList(),
+            ),
+        )
+    }
+
+    @Test
+    fun misheardNameWithOneDistinctiveRunPicksThatRow() {
+        val list = listOf(dest("华融琴海湾购物中心"), dest("横琴新家园"))
+        assertEquals(
+            NavigationChoice.Name("琴海湾"),
+            NavigationPickerIntercept.resolve(
+                "琴海湾",
+                NavigationPhase.AWAITING_DESTINATION_SELECTION,
+                list,
+                emptyList(),
+            ),
+        )
+    }
 }

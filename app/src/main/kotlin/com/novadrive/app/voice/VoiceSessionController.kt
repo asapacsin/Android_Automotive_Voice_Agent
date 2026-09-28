@@ -132,7 +132,8 @@ class VoiceSessionController(
                 com.novadrive.app.nav.EmbeddedNavigation.currentOrNull()?.onListeningSuspended()
             }
             onListeningState(to)
-            com.novadrive.app.wake.WakeWordController.reconcile(appContext)
+            val resetWakeRetries = to == ListeningState.SLEEP || to == ListeningState.DEEP_IDLE
+            com.novadrive.app.wake.WakeWordController.reconcile(appContext, resetRetryBudget = resetWakeRetries)
         },
     )
 
@@ -325,8 +326,7 @@ class VoiceSessionController(
      * Speech over playback is a barge-in only with time-scoped post-AEC evidence (Astra P4). The
      * same answer goes to the playback owner (flush or not) and to the turn (candidate or not).
      */
-    private fun bargeInQualified(): Boolean =
-        VoiceAudioSession.aecBackend != "webrtc" || microphone.recentSpeech
+    private fun bargeInQualified(): Boolean = playoutBargeInQualified(microphone.recentSpeech)
 
     private fun tryLocalNavigationPick(text: String) {
         val pick = onLocalNavigationPick ?: return

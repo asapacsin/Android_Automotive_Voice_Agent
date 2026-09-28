@@ -49,14 +49,17 @@ object WakeWordController {
     fun setEnabled(context: Context, enabled: Boolean) {
         val app = context.applicationContext
         WakeWordSettings.from(app).setEnabled(enabled)
-        arming.onReconciled()
-        bind(app)
+        reconcile(app, resetRetryBudget = true)
     }
 
-    /** Reconcile wake ownership after listening lifecycle or permission changes. */
-    fun reconcile(context: Context? = appContext) {
+    /**
+     * Reconcile wake ownership after listening lifecycle or permission changes.
+     * [resetRetryBudget] clears capture/engine retry counters — use when entering [SLEEP] /
+     * [DEEP_IDLE] or after settings change, not on every periodic tick.
+     */
+    fun reconcile(context: Context? = appContext, resetRetryBudget: Boolean = false) {
         val app = context?.applicationContext ?: return
-        arming.onReconciled()
+        if (resetRetryBudget) arming.onReconciled()
         bind(app)
     }
 
