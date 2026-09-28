@@ -96,4 +96,18 @@ class SpeechArbiterUtteranceProtectTest {
         arbiter.onGuidanceSpeaking(true)
         assertEquals(Uplink.CLOSED, arbiter.uplink())
     }
+
+    /**
+     * Emulator replay 2026-09-28 15:36: the session went to SLEEP with the UI state still
+     * USER_SPEAKING, and the next prompt logged `decision=OPEN reason=driver_utterance` for an
+     * utterance that no longer existed. Sleep now reports the driver as not speaking.
+     */
+    @Test
+    fun anUtteranceEndedBySleepDoesNotProtectTheNextPrompt() {
+        at(1_000); arbiter.onDriverSpeaking(true)
+        at(30_000); arbiter.onDriverSpeaking(false) // listening ACTIVE->SLEEP
+        at(40_000); arbiter.onGuidanceSpeaking(true)
+        assertEquals(Uplink.CLOSED, arbiter.uplink())
+        assertFalse(arbiter.uplinkProtected())
+    }
 }

@@ -127,6 +127,8 @@ class VoiceSessionController(
             if (reason == "inactivity_timeout") Telemetry.record(EventType.INACTIVITY_TIMEOUT)
             if (reason == "silent_wait_timeout") Telemetry.record(EventType.SILENT_WAIT_TIMEOUT)
             if (to == ListeningState.SLEEP || to == ListeningState.DEEP_IDLE) {
+                // The UI state can stay USER_SPEAKING into sleep; R0 must not protect a stale utterance.
+                SpeechAuthority.arbiter.onDriverSpeaking(false)
                 com.novadrive.app.nav.NavigationLocalPickGuard.invalidate()
                 com.novadrive.app.nav.NavigationPickSession.clear()
                 com.novadrive.app.nav.EmbeddedNavigation.currentOrNull()?.onListeningSuspended()

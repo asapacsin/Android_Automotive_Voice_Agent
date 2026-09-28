@@ -1562,3 +1562,24 @@ client cancelled answered an utterance the app already handled, so `BaiduFlexCli
 correction or nudge for it (same rule as `flex_call_dropped`). Test:
 `aReplyCancelledForALocalPickIsNotCorrected`. The driver hears nothing for the redundant command
 (known: silence after a local pick).
+
+---
+
+## P41 — R0 protected an utterance that had ended when the session went to sleep
+
+**Status:** FIXED 2026-09-28 — unit-tested; emulator replay
+**Reported:** emulator replay (nova_api34) 15:36:22: with `listening=SLEEP` and the UI state still
+`USER_SPEAKING` from before the inactivity timeout, a guidance prompt logged
+`speech_arbiter out=uplink decision=OPEN reason=driver_utterance` — R0 holding the uplink open for
+an utterance that no longer existed (for up to 8 s: echo reaches Baidu, the P3 risk R0 accepts only
+for a real utterance).
+
+### Root cause
+
+`SpeechArbiter.onDriverSpeaking` follows the UI state only, and entering SLEEP does not publish a new
+UI state.
+
+### Fix
+
+`VoiceSessionController`: entering SLEEP or DEEP_IDLE reports the driver as not speaking. Test:
+`SpeechArbiterUtteranceProtectTest.anUtteranceEndedBySleepDoesNotProtectTheNextPrompt`.
