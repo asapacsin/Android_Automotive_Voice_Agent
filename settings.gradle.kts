@@ -1,25 +1,42 @@
 rootProject.name = "nova-drive"
 
+// Repository order depends on the host (measured 2026-09-28). The owner's Windows PC is in China
+// and its antivirus intercepts HTTPS: repo.maven.apache.org fails PKIX there and Gradle does not
+// fall through on an SSL error, so the Aliyun mirrors go first. Cloud (Linux) agents reach the
+// official repositories and may not reach Aliyun, so those go first there.
+val mirrorsFirst = System.getProperty("os.name").startsWith("Windows")
+
 pluginManagement {
+    val mirrorsFirst = System.getProperty("os.name").startsWith("Windows")
     repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-        maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
-        maven { url = uri("https://maven.aliyun.com/repository/google") }
-        maven { url = uri("https://maven.aliyun.com/repository/central") }
-        maven { url = uri("https://maven.aliyun.com/repository/public") }
+        fun official() {
+            google()
+            mavenCentral()
+            gradlePluginPortal()
+        }
+        fun mirrors() {
+            maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
+            maven { url = uri("https://maven.aliyun.com/repository/google") }
+            maven { url = uri("https://maven.aliyun.com/repository/central") }
+            maven { url = uri("https://maven.aliyun.com/repository/public") }
+        }
+        if (mirrorsFirst) { mirrors(); official() } else { official(); mirrors() }
     }
 }
 
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        google()
-        mavenCentral()
-        maven { url = uri("https://maven.aliyun.com/repository/google") }
-        maven { url = uri("https://maven.aliyun.com/repository/central") }
-        maven { url = uri("https://maven.aliyun.com/repository/public") }
+        fun official() {
+            google()
+            mavenCentral()
+        }
+        fun mirrors() {
+            maven { url = uri("https://maven.aliyun.com/repository/google") }
+            maven { url = uri("https://maven.aliyun.com/repository/central") }
+            maven { url = uri("https://maven.aliyun.com/repository/public") }
+        }
+        if (mirrorsFirst) { mirrors(); official() } else { official(); mirrors() }
     }
 }
 
