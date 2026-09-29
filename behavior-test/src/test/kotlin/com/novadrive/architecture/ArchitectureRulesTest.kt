@@ -72,7 +72,8 @@ class ArchitectureRulesTest {
 
     @Test
     fun onlyAudioAndSubtitleMayBeHeld() {
-        val client = text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt")
+        // Owner of the per-turn gate: DriverTurnPipeline (ADR-010).
+        val client = text("app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt")
         assertTrue(client.contains("private fun holdOrEmit")) {
             "INVARIANT I-5: there must be exactly one place that decides what is held"
         }
@@ -92,10 +93,13 @@ class ArchitectureRulesTest {
 
     @Test
     fun executionProofOwnsActionClaims() {
-        val client = text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt")
+        // Owner of the per-turn gate: DriverTurnPipeline (ADR-010); the provider client is read too,
+        // so the loose per-turn flags below cannot come back in either file.
+        val client = text("app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt") +
+            text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt")
         // Proof enters the system at exactly one place: the tool result.
         assertTrue(client.contains("onExecutionResult(callId, output)")) {
-            "INVARIANT I-1: sendFunctionResult is the only source of execution evidence"
+            "INVARIANT I-1: the tool result (DriverTurnPipeline.onToolResult) is the only source of execution evidence"
         }
         val turn = text("app/src/main/kotlin/com/novadrive/app/voice/DriverTurn.kt")
         assertTrue(turn.contains("AWAITING_EXECUTION_PROOF")) {
