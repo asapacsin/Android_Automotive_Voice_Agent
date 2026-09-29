@@ -1,21 +1,21 @@
 {
-  "generated_at": "2026-09-29T14:01:46",
+  "generated_at": "2026-09-29T14:10:53",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "6e51e02",
+    "commit": "3badc84",
     "branch": "claude/9-29",
-    "subject": "Gemini probe round 3: latency by component (F23-F32), latency_probe.py.",
-    "working_tree_clean": false,
-    "uncommitted_files": 14
+    "subject": "Regenerate LOCAL_DEVICE_REQUIRED.md (stale generated view).",
+    "working_tree_clean": true,
+    "uncommitted_files": 0
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-25T07:29:03",
+    "collected_at": "2026-09-29T14:10:39",
     "total": {
-      "tests": 269,
-      "failures": 1,
+      "tests": 1526,
+      "failures": 0,
       "errors": 0,
-      "skipped": 0
+      "skipped": 1
     },
     "by_module": {
       "evaluation": {
@@ -23,6 +23,12 @@
         "failures": 0,
         "errors": 0,
         "skipped": 0
+      },
+      "app": {
+        "tests": 1246,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 1
       },
       "simulator": {
         "tests": 15,
@@ -37,8 +43,8 @@
         "skipped": 0
       },
       "behavior-test": {
-        "tests": 121,
-        "failures": 1,
+        "tests": 126,
+        "failures": 0,
         "errors": 0,
         "skipped": 0
       },
@@ -49,16 +55,18 @@
         "skipped": 0
       },
       "ingress": {
-        "tests": 98,
+        "tests": 104,
         "failures": 0,
         "errors": 0,
         "skipped": 0
       }
     },
-    "passing": false
+    "passing": true
   },
   "apk": {
-    "built": false
+    "built": true,
+    "bytes": 223710212,
+    "built_at": "2026-09-29T14:08:50"
   },
   "capabilities": {
     "available": true,
@@ -128,27 +136,13 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "app-debug.apk: no debug APK has been built from this tree",
-    "actionable_count": 72,
+    "NEXT_ACTION": "A5: | A5 | Picker selection uses the registry; `tryLocalNavigationPick` is gone | production wiring | `FeaturePresenceRegressionTest` + existing picker tests green | not built — **deferred on purpose** to",
+    "actionable_count": 70,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 17,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
-      {
-        "priority": 1,
-        "class": "broken build or missing artifact",
-        "source": "build output",
-        "item": "app-debug.apk",
-        "blocked_by": null
-      },
-      {
-        "priority": 3,
-        "class": "invariant violation",
-        "source": "test report",
-        "item": "com.novadrive.architecture.FeaturePresenceRegressionTest",
-        "blocked_by": null
-      },
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
