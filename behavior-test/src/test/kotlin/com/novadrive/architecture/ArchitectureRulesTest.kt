@@ -200,7 +200,9 @@ class ArchitectureRulesTest {
         // Raising one is allowed — with a reason in the commit
         // message. See docs/AGENT_MAINTENANCE.md step 4 and docs/TECH_DEBT.md D-1.
         val budgets = mapOf(
-            "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt" to 950,
+            // D-8 closed 2026-09-29: the per-turn gate moved to DriverTurnPipeline (939 -> 725).
+            "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt" to 800,
+            "app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt" to 400,
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapNaviViewHost.kt" to 900,
             "app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt" to 470,
             "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt" to 500,

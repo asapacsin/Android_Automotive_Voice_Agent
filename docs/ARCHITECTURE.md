@@ -45,10 +45,10 @@ One behaviour, one owner. If you need to change one of these, change it **here**
 | Spoken capability-help copy | `ProductCapabilities.spokenHelpSummary` — supported catalog groups only | `ActionClaimGuard` keyword lists, the persona prompt |
 | Capability-help turn handling | `DriverTurn.Kind.CAPABILITY_HELP` + `HoldReason.CAPABILITY_HELP` — release when the reply names ≥2 supported groups; else `help_incomplete` with catalog scripted speak | `unverified_claim` / `UNVERIFIED_ACTION_CLAIM` for help utterances |
 | Calling a contact | `PhoneCallTool` via `PhonePort`; `PhoneProvider` selects `AndroidContacts` | NLU, the catalog, the UI |
-| Whether a tool call is well-formed | `FlexFunctionCallAssembler` (schema, bounds, enums) | the model, the dispatcher |
+| Which tools are declared, and whether a tool call is well-formed | `RealtimeToolCatalog` (names, descriptions, JSON Schema; `validate` for schema, bounds, enums), shared by every realtime adapter; `FlexFunctionCallAssembler` only assembles Baidu's streamed calls | the model, the dispatcher, a per-provider copy of the list |
 | Whether an action may execute | `AndroidToolDispatcher` (+ `SafetyPolicy` in `orchestration` for the JVM path) | the model |
 | Whether an action **did** execute | the `ToolDispatchResult` / `AndroidActionResult` returned by the executor | any sentence the model produced |
-| What may be claimed to the driver | `DriverTurn` — holds reply audio+subtitle until execution proof exists; `PhantomTurnGate` judges phantom turns; `ActionClaimGuard` classifies requests and writes corrections | the persona prompt, the model's wording |
+| What may be claimed to the driver | `DriverTurn`, driven for every provider by `DriverTurnPipeline` (ADR-010) — holds reply audio+subtitle until execution proof exists; `PhantomTurnGate` judges phantom turns; `ActionClaimGuard` classifies requests and writes corrections | the persona prompt, the model's wording |
 | Per-utterance state (phase, kind, proof) | `DriverTurn`, one instance per driver turn, epoch-guarded | loose flags anywhere else |
 | **Cross-turn** context (what was adjusted, what is pending, what is stale) | `DriverContext`, built only from `ok=true` tool results; resolved by `ContextResolver`; carried to the model by `VoiceContextHints` | the model's memory — there is none, the conversation resets after every tool turn |
 | Navigation execution | `EmbeddedNavigationController` → `AmapNaviViewHost` | `NavigationAdapter` (legacy deep link, dormant) |
@@ -59,7 +59,10 @@ One behaviour, one owner. If you need to change one of these, change it **here**
 | Whether 小诺 may speak / whether the mic reaches Baidu | `SpeechArbiter` via `SpeechAuthority` (P1 window, guidance hold, focus, guidance uplink gate, workload hold R6a fed the next-manoeuvre distance by `NavigationTraceListener` → `NavigationState`; `SpeechAuthority.syncPlaybackHold` is the one place the player is paused or resumed for a hold), applied by `AndroidPlaybackPort` (+ lifecycle) + `PhantomTurnGate` (phantom/false-claim holds) | the UI |
 | Live information (weather, route traffic, along-route, place details) | `LiveInfoTool` (`query_live_info`) — REST kinds via `AmapPoiClient` / `AmapLiveInfoParser`; SDK kinds via the `RouteLiveInfo` port / `nav/amap/AmapRouteLiveInfo` (SPEC-011) | the model's own knowledge |
 | Conversation lifetime | `ConversationResetPolicy` (reset after tool turns) + `ResponseTurnGate` (one reply at a time) | the model |
-| Credentials | `AndroidKeystoreCredentialStore` | source, Gradle files, logs |
+| Credentials | `AndroidKeystoreCredentialStore` (`baidu_*`, `gemini_*`, `iflytek_*`, `amap_*`) | source, Gradle files, logs |
+| Which realtime provider a session uses | `VoiceProviderChoice` (Baidu Flex unless Gemini is enabled, consented and keyed), applied once in `VoiceSessionController.openSession` (ADR-010) | the adapters, the UI, anything mid-session |
+| Gemini Live wire format | `GeminiLiveProtocol` / `GeminiLiveClient` / `GeminiLiveProvider` | `ingress`, policy code |
+| "Driver speaking" when the provider has no speech events | the local `SpeechUplinkGate` onset/offset, fed to the session core's `onLocalSpeechActivity` and honoured only when `ProviderCapabilities.serverSpeechActivityEvents` is false | the adapter, a provider-name branch |
 
 ## Modules and allowed dependencies
 

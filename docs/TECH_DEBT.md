@@ -174,7 +174,9 @@ did not appear: in the normal flow the model answers *from* the tool result, so 
 
 ---
 
-## D-8 — `BaiduFlexClient` is over its line budget again — **OPEN** (found 2026-09-28)
+## D-8 — `BaiduFlexClient` is over its line budget again — **RESOLVED 2026-09-29** (found 2026-09-28)
+
+**Closed by** G1.3 of [GEMINI_LIVE_PLAN.md](GEMINI_LIVE_PLAN.md): the per-turn claim gate (DriverTurn wiring, action-claim follow-up, duplicate-call detection, superseded-output drop) moved to the provider-neutral `DriverTurnPipeline`, so the Gemini adapter reuses it. `BaiduFlexClient.kt` 939 → 725 lines; budget 950 → 800, `DriverTurnPipeline.kt` budgeted at 400.
 
 **Problem.** The demo-log fixes (`f1083fd`: call-scoped execution results, duplicate
 `choose_option` suppression, heard-speech repair) grew `BaiduFlexClient.kt` to 933 lines. Instead of
