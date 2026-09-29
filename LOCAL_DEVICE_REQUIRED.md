@@ -334,6 +334,7 @@ adb logcat -s NovaVoice:D
 **Already established without you:**
 
 - NavigationLocalPickGuard turn/list authority + NavigationPickSession executor results
+- P32: suppressed navigate_to reports destination_selected + route list; ActionClaimGuard corrects a navigation-started claim without navigation_started evidence (ActionClaimGuardTest, AndroidToolDispatcherTest)
 
 **You will need:** installed debug APK; network; map entitlement
 
@@ -346,6 +347,7 @@ adb logcat -s NovaVoice:D
 
 - correct destination and route selected once
 - no duplicate navigate_to after local pick
+- no 导航已开始 before nav_navigation_started (P32)
 
 **Tell me back:** destination and route reached; whether any touch was required; duplicate tool calls observed
 
