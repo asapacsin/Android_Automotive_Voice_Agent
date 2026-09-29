@@ -2514,3 +2514,70 @@ tests:
     returns: ["observed hold durations (for the open 150 m / 8 s decision)", "bucket log lines only"]
     related: [SPEC-012]
     last_run: {at: null, result: null}
+
+  - id: GEMINI-UNIT-001
+    capability: architecture
+    name: Gemini Live adapter, shared gate and opt-in wiring
+    purpose: "SPEC-013 A1-A5: protocol, claim gate under Gemini, provider choice, boundary rules"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: []
+    procedure:
+      - "gradlew :app:testDebugUnitTest --tests *GeminiLive* --tests *RealtimeToolCatalog* --tests *DriverTurnPipeline* --tests *RealtimeProviderFactory* --tests *GeminiSettings* --tests *UplinkTransition*"
+      - "gradlew :ingress:test --tests *LocalSpeechActivity* ; gradlew :behavior-test:test"
+    pass_criteria: ["0 failures in the listed classes", "ProviderBoundaryTest and ArchitectureRulesTest green"]
+    evidence: ["2026-09-29 cloud, claude/9-29: app debug 1230/0, behavior-test 126/0, ingress 104/0"]
+    related: [SPEC-013]
+
+  - id: GEMINI-LIVE-CLOUD-001
+    capability: architecture
+    name: The app's Gemini client against the real API (cloud)
+    purpose: "Setup accepted; spoken commands reach a validated tool call with filler claims held"
+    type: integration
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: ["GEMINI_API_KEY in the environment", "tools/speech-harness/speech clips"]
+    procedure: ["NOVA_GEMINI_LIVE_SMOKE=1 SMOKE_PCM=<clip> LC_ALL=C.UTF-8 gradlew :app:testDebugUnitTest --rerun --tests *GeminiLiveSmokeTest*"]
+    pass_criteria: ["setupComplete", "tool call with valid args", "no completed-action claim released before the call"]
+    evidence: ["2026-09-29: ac_on, fan_up, nav_wanda 3/3 PASS (docs/reports/2026-09-29-gemini-live-probe.md second round)"]
+    related: [SPEC-013]
+
+  - id: GEMINI-DEVICE-REACH-001
+    capability: reliability
+    name: The phone opens a Gemini Live session on its normal network (G-M1)
+    purpose: "SPEC-013 A7: reachability from where the product is used; decides ADR-010's future"
+    type: device
+    scope: COMPONENT
+    owner: HUMAN_CREDENTIAL
+    status: HUMAN_REQUIRED
+    automation_blocker: credential_permission
+    release_blocking: false
+    human_reason: "Needs the owner's Gemini key entered on the phone and the owner's own acceptance of the cross-border notice"
+    prerequisites: ["debug APK from claude/9-29", "Gemini key"]
+    procedure:
+      - "Developer settings > Gemini Live: paste key, tick consent, tick use Gemini, save"
+      - "start a session; say 打开空调 and 导航到万达"
+      - "read logcat NovaVoice for gemini_setup_complete, gemini_tool_call, session_provider choice=gemini_live"
+    pass_criteria: ["gemini_setup_complete within 3 s", "both commands reach a tool call"]
+    evidence: []
+    related: [SPEC-013, ADR-010]
+
+  - id: GEMINI-DEVICE-DUPLEX-001
+    capability: turn_taking
+    name: Gemini reply through the speaker does not interrupt itself (G-M2)
+    purpose: "SPEC-013 A8: server-owned interruption with AEC3 at 24 kHz render"
+    type: device
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    prerequisites: ["GEMINI-DEVICE-REACH-001 passed", "test phone over ADB"]
+    procedure: ["speech harness: ask for a long answer 10 times, no speech during playback", "count gemini interrupted events with no local onset"]
+    pass_criteria: ["0 self-interruptions in 10 replies", "barge-in 闭嘴 stops playback within 1 s"]
+    evidence: []
+    related: [SPEC-013]
