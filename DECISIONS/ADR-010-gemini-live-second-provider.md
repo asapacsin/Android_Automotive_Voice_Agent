@@ -39,7 +39,7 @@ architecture's recommended or most conservative option; each is one setting or o
 | Gate | Taken as |
 | --- | --- |
 | G-1 | second provider, Baidu default |
-| G-2 | direct connection, no relay; reachability measured by G-M1 |
+| G-2 | **answered by the owner 2026-09-29:** the owner uses a VPN; reachability is not a product concern. If Gemini later causes problems, the owner will switch to another similar realtime model behind the same seam. No relay |
 | G-3 | no search grounding (the key's quota refused it, F14) |
 | G-4 | no command fast path; actuating latency (F6) accepted and recorded |
 | G-5 | prebuilt voice `Kore` by default, editable |
