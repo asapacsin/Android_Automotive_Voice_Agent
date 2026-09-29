@@ -1,6 +1,6 @@
 # SPEC-013 — Talk to 小诺 through Gemini Live, opt-in, with the same truth rules as Baidu
 
-Status: **Draft, authorised 2026-09-29**
+Status: **Partly implemented 2026-09-29** — code and cloud evidence; device rows A7/A8 not earned
 Raised: 2026-09-29 · Source: [B-027](../BACKLOG.md)
 Depends on: [ADR-010](../DECISIONS/ADR-010-gemini-live-second-provider.md), ADR-009, I-1, I-7, I-8, I-13
 
@@ -83,11 +83,11 @@ value, a coordinate or an address (I-7, I-8).
 
 | # | Criterion | Kind | Proven by | State |
 | --- | --- | --- | --- | --- |
-| A1 | Setup and every server message in G§3.2 translate correctly | functional | `GeminiLiveProtocolTest` | not built |
-| A2 | A Gemini choice reaches `GeminiLiveProvider`; the default still reaches Baidu | production wiring | `VoiceProviderChoiceTest`, wiring test | not built |
-| A3 | A claimed action is held until execution proof, under Gemini | negative | `GeminiLiveClientTest` | not built |
-| A4 | Baidu's `session.update` is byte-identical after the tool catalogue moved | regression protection | `RealtimeToolCatalogTest` | not built |
-| A5 | No vendor vocabulary outside the adapters; no provider-name branch | architectural | `ProviderBoundaryTest` | not built |
-| A6 | The APK builds with the adapter | artifact | `:app:assembleDebug` | not built |
+| A1 | Setup and every server message in G§3.2 translate correctly | functional | `GeminiLiveProtocolTest` | built (L2, 2026-09-29) |
+| A2 | A Gemini choice reaches `GeminiLiveProvider`; the default still reaches Baidu | production wiring | `VoiceProviderChoiceTest`, wiring test | built (L2, 2026-09-29) |
+| A3 | A claimed action is held until execution proof, under Gemini | negative | `GeminiLiveClientTest` | built (L2, 2026-09-29) |
+| A4 | Baidu's `session.update` is byte-identical after the tool catalogue moved | regression protection | `RealtimeToolCatalogTest` | built (L2, 2026-09-29) |
+| A5 | No vendor vocabulary outside the adapters; no provider-name branch | architectural | `ProviderBoundaryTest` | built (L2, 2026-09-29) |
+| A6 | The APK builds with the adapter | artifact | `:app:assembleDebug` | built (L2, 2026-09-29) |
 | A7 | The phone opens a Gemini session on its normal network (G-M1) | device | `GEMINI-DEVICE-REACH-001` | not earned |
 | A8 | Reply through the speaker does not self-interrupt (G-M2) | device | `GEMINI-DEVICE-DUPLEX-001` | not earned |
