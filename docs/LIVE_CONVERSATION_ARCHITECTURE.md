@@ -6,6 +6,8 @@ autonomous work queue (`scripts/discover_work.py`) before the decisions in §9 a
 
 Written 2026-09-29 on `claude/9-29` (from `demo-1.0` at `7ac69f5`).
 Implementation plan (also proposed, gated on §9): [LIVE_CONVERSATION_PLAN.md](LIVE_CONVERSATION_PLAN.md).
+**2026-09-29 update:** the owner chose Gemini 3.8 Live Extended Thinking (D-G). The provider-specific
+design is [GEMINI_LIVE_ARCHITECTURE.md](GEMINI_LIVE_ARCHITECTURE.md); it supersedes §8 option 2 (GPT-Live).
 Source of the demand: the mentor's note introducing OpenAI GPT-Live (sent about 2026-09-19, shown by
 the product owner 2026-09-29). It lists four properties: full-duplex audio, natural interruptions
 with small acknowledgements, background delegation of hard work to a stronger model, and noise /

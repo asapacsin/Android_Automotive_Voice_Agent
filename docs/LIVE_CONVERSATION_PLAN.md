@@ -9,6 +9,10 @@ This plan is not in `BACKLOG.md` or `CURRENT_MILESTONE.md`. Like the architectur
 of the autonomous queue (`scripts/discover_work.py`) until decision D-A is taken. Task T0.1 in §3
 then puts it into the queue deliberately.
 
+**Superseded in part (2026-09-29):** the owner chose Gemini 3.8 Live Extended Thinking as a realtime
+provider ([GEMINI_LIVE_ARCHITECTURE.md](GEMINI_LIVE_ARCHITECTURE.md)). This plan is re-sequenced
+after decisions G-1 … G-6 there; until then its phase order is not current.
+
 Written 2026-09-29 on `claude/9-29`. `BASE_COMMIT` for the first wave is the branch HEAD at the
 time the plan is started, re-read then. It is not the commit recorded here.
 
