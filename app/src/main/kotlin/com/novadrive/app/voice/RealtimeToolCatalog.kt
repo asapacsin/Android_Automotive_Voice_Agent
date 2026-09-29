@@ -1,6 +1,7 @@
 package com.novadrive.app.voice
 
 import com.novadrive.app.vehicle.ClimateToolHandler
+import com.novadrive.ingress.realtime.DomainVoiceEvent
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -297,6 +298,34 @@ object RealtimeToolCatalog {
             else -> null // The Android dispatcher returns UNKNOWN_TOOL without executing.
         }
     }
+
+    /** Upper bound on a call's serialised arguments (same value as the Baidu adapter's). */
+    const val MAX_ARGUMENT_BYTES = 4096
+
+    /** A call or tool id an adapter may accept from the wire. */
+    fun validId(value: String): Boolean = value.isNotBlank() && value.length <= 128 && value.all {
+        it.isLetterOrDigit() || it == '_' || it == '-'
+    }
+
+    /**
+     * Parsed arguments turned into the neutral, validated [DomainVoiceEvent.ToolCall]; a rule
+     * violation becomes `{"_validation_error": CODE}`. Values are `get(key).toString()` so numbers
+     * stringify identically on Android's org.json and the JVM test artifact.
+     */
+    fun toolCall(callId: String, name: String, args: JSONObject): DomainVoiceEvent.ToolCall {
+        validate(name, args)?.let { return rejectedCall(callId, name, it) }
+        val map = buildMap {
+            val keys = args.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                put(key, args.get(key).toString())
+            }
+        }
+        return DomainVoiceEvent.ToolCall(callId, name, map)
+    }
+
+    fun rejectedCall(callId: String, name: String, reason: String) =
+        DomainVoiceEvent.ToolCall(callId, name, mapOf("_validation_error" to reason))
 
     private fun spec(name: String, description: String, properties: JSONObject, required: List<String>) =
         ToolSpec(
