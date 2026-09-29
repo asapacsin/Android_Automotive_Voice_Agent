@@ -130,7 +130,8 @@ class BargeInEvidenceTest {
     fun theClientMarksSpeechOverPlaybackWithTheAppsOwnEvidence() {
         val root = generateSequence(File("").absoluteFile) { it.parentFile }
             .first { File(it, "settings.gradle.kts").isFile }
-        val client = File(root, "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt").readText()
+        // The per-turn gate is owned by DriverTurnPipeline (ADR-010); the client only feeds it.
+        val client = File(root, "app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt").readText()
         assertTrue(client.contains("turn.onSpeechDuringPlayback(qualified = speechEvidence())"))
         assertTrue(client.contains("echoOf = lastSpokenReply"))
     }
