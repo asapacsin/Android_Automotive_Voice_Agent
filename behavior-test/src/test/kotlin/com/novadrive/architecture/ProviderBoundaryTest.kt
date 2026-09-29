@@ -104,6 +104,9 @@ class ProviderBoundaryTest {
             "app/src/main/kotlin/com/novadrive/app/voice/BaiduProtocol.kt",
             "app/src/main/kotlin/com/novadrive/app/voice/BaiduDirectRealtimeProvider.kt",
             "app/src/main/kotlin/com/novadrive/app/voice/FlexFunctionCallAssembler.kt",
+            "app/src/main/kotlin/com/novadrive/app/voice/GeminiLiveClient.kt",
+            "app/src/main/kotlin/com/novadrive/app/voice/GeminiLiveProtocol.kt",
+            "app/src/main/kotlin/com/novadrive/app/voice/GeminiLiveProvider.kt",
         )
 
         /**
@@ -118,10 +121,21 @@ class ProviderBoundaryTest {
             "session.updated",
             "conversation.item",
             "input_audio_buffer.speech_started",
+            // Gemini Live (ADR-010)
+            "serverContent",
+            "setupComplete",
+            "realtimeInput",
+            "clientContent",
+            "toolResponse",
+            "functionCalls",
+            "turnComplete",
+            "inputTranscription",
+            "outputTranscription",
         )
 
         val VENDOR_PACKAGES = listOf(
             "com.baidu", "com.iflytek", "com.amap", "com.alibaba.dashscope", "com.openai",
+            "com.google",
         )
     }
 }

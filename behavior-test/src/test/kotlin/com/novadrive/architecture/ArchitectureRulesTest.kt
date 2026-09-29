@@ -207,6 +207,9 @@ class ArchitectureRulesTest {
             "app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt" to 470,
             "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt" to 500,
             "app/src/main/kotlin/com/novadrive/app/nav/EmbeddedNavigationController.kt" to 500,
+            // Gemini Live adapter (ADR-010), recorded 2026-09-29 at 465 and 56 lines.
+            "app/src/main/kotlin/com/novadrive/app/voice/GeminiLiveClient.kt" to 550,
+            "app/src/main/kotlin/com/novadrive/app/voice/RealtimeProviderFactory.kt" to 150,
         )
         val over = budgets.mapNotNull { (path, budget) ->
             val lines = File(root, path).readLines().size

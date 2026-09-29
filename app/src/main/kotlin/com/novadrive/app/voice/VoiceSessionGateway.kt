@@ -1,6 +1,5 @@
 package com.novadrive.app.voice
 
-import com.novadrive.app.BaiduApiConfig
 
 /**
  * Single application-scoped start/stop seam for the voice session.
@@ -135,7 +134,7 @@ interface SessionServiceControl {
     fun start()
     fun stop()
     fun hasMicPermission(): Boolean
-    fun baiduConfig(): BaiduApiConfig
+    fun sessionConfig(): SessionProviderConfig
 }
 
 sealed interface StartResult {
@@ -177,7 +176,7 @@ private class ControllerGatewaySession(
     override fun hasMicPermission(): Boolean = service.hasMicPermission()
 
     override fun startBaidu(reason: String) {
-        controller.startBaidu(service.baiduConfig(), reason)
+        controller.startSession(service.sessionConfig(), reason)
     }
 
     override fun activate(reason: String) {

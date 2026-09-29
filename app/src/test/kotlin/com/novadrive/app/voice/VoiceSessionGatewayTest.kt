@@ -1,6 +1,5 @@
 package com.novadrive.app.voice
 
-import com.novadrive.app.BaiduApiConfig
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -242,6 +241,6 @@ class VoiceSessionGatewayTest {
             stopCalls += 1
         }
         override fun hasMicPermission(): Boolean = true
-        override fun baiduConfig(): BaiduApiConfig = error("not used")
+        override fun sessionConfig(): SessionProviderConfig = error("not used")
     }
 }
