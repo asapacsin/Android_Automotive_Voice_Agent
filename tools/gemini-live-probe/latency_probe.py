@@ -35,6 +35,8 @@ SPEECH = os.environ.get("SPEECH_DIR", os.path.join(ROOT, "tools", "speech-harnes
 CHUNK = 640
 SHOW = os.environ.get("SHOW_TEXT") == "1"
 TOOL_MS = int(os.environ.get("TOOL_MS", "300"))
+LINGER_S = float(os.environ.get("LINGER_S", "0"))
+SAVE_DIR = os.environ.get("SAVE_DIR")
 PUNCT = set("，。！？、；：,.!?;: \n“”\"'…（）()")
 
 
@@ -91,11 +93,14 @@ async def main(clip, total_s):
     manual = os.environ.get("VAD", "auto") == "manual"
     hangover = int(os.environ.get("HANGOVER_MS", "300"))
     turn = None
+    linger = {"until": None}
     results_sent_at = []
     done = asyncio.Event()
 
     def new_turn():
-        return {"audio1": None, "audio_ms": 0.0, "chars": 0, "points": [], "complete": None, "calls": 0}
+        return {"audio1": None, "audio_ms": 0.0, "chars": 0, "points": [], "complete": None, "calls": 0,
+                "pcm": bytearray(), "chunks": [], "audio_last": None, "gen_complete": None, "last_tx": None,
+                "events_after_gen": []}
 
     async with aiohttp.ClientSession(trust_env=True) as sess:
         async with sess.ws_connect(URL, headers={"x-goog-api-key": KEY}, max_msg_size=0) as ws:
@@ -105,7 +110,14 @@ async def main(clip, total_s):
             async def reader():
                 nonlocal turn
                 while True:
-                    msg = await ws.receive()
+                    try:
+                        msg = await asyncio.wait_for(ws.receive(), 0.5)
+                    except asyncio.TimeoutError:
+                        if linger["until"] is not None and rel() > linger["until"]:
+                            done.set(); return
+                        continue
+                    if linger["until"] is not None and rel() > linger["until"]:
+                        done.set(); return
                     if msg.type not in (aiohttp.WSMsgType.TEXT, aiohttp.WSMsgType.BINARY):
                         out["close"] = [ws.close_code, str(msg.extra)[:160]]
                         done.set(); return
@@ -124,10 +136,14 @@ async def main(clip, total_s):
                     if "toolCall" in d:
                         for f in d["toolCall"].get("functionCalls", []):
                             out["calls"].append([rel(), f["name"]])
+                            if linger["until"] is not None:
+                                out.setdefault("late_calls", []).append([rel(), f["name"]])
                             if "call" not in out:
                                 out["call"] = rel(); out["call_name"] = f["name"]
                             if turn is not None:
                                 turn["calls"] += 1
+                                if turn["gen_complete"] is not None:
+                                    turn["events_after_gen"].append([rel(), "toolCall"])
                             await asyncio.sleep(TOOL_MS / 1000)
                             await ws.send_str(json.dumps({"toolResponse": {"functionResponses": [
                                 {"id": f.get("id"), "name": f["name"], "response": tool_output(f["name"], f.get("args"))}]}}))
@@ -148,15 +164,27 @@ async def main(clip, total_s):
                                 turn["audio1"] = rel()
                                 if "audio1" not in out:
                                     out["audio1"] = rel()
-                            turn["audio_ms"] += len(base64.b64decode(p["inlineData"]["data"])) / 48.0
+                            pcm = base64.b64decode(p["inlineData"]["data"])
+                            turn["audio_last"] = rel()
+                            if turn["gen_complete"] is not None:
+                                turn["events_after_gen"].append([rel(), "audio"])
+                            turn["audio_ms"] += len(pcm) / 48.0
+                            turn["pcm"] += pcm
                     if "outputTranscription" in sc:
                         text = sc["outputTranscription"].get("text", "")
                         if turn is None:
                             turn = new_turn()
                         turn["chars"] += sum(1 for c in text if c not in PUNCT)
                         turn["points"].append([rel(), round(turn["audio_ms"]), turn["chars"]])
+                        turn["last_tx"] = rel()
+                        if turn["gen_complete"] is not None:
+                            turn["events_after_gen"].append([rel(), "out_tx"])
+                        turn["chunks"].append({"t": rel(), "audio_ms_at_arrival": round(turn["audio_ms"], 1), "text": text,
+                                               "fields": sorted(sc["outputTranscription"].keys())})
                         if SHOW:
                             out["text"].append(text)
+                    if sc.get("generationComplete") and turn is not None and turn["gen_complete"] is None:
+                        turn["gen_complete"] = rel()
                     if sc.get("interrupted"):
                         out.setdefault("interrupted", rel())
                     if sc.get("turnComplete"):
@@ -165,8 +193,13 @@ async def main(clip, total_s):
                             out["turns"].append(turn)
                         turn = None
                         # finished: a turn completed after a tool result was sent, or no call and a spoken turn
-                        if results_sent_at and rel() > results_sent_at[-1]:
-                            done.set(); return
+                        if results_sent_at and rel() > results_sent_at[-1] and linger["until"] is None:
+                            if LINGER_S > 0:
+                                # Keep listening: a second, late call would be recorded in late_calls.
+                                linger["until"] = rel() + LINGER_S * 1000
+                                out["linger_from"] = rel()
+                            else:
+                                done.set(); return
 
             rt = asyncio.create_task(reader())
             await asyncio.wait_for(ready.wait(), 15)
@@ -204,7 +237,13 @@ async def main(clip, total_s):
             rt.cancel()
     if turn is not None:
         out["turns"].append(turn)
-    for t in out["turns"]:
+    for k, t in enumerate(out["turns"]):
+        pcm = t.pop("pcm"); chunks = t.pop("chunks")
+        if SAVE_DIR and pcm:
+            os.makedirs(SAVE_DIR, exist_ok=True)
+            stem = os.path.join(SAVE_DIR, "%s_%s_%d_%d" % (clip.replace(":", "_")[:20], out["model"], int(time.time()), k))
+            open(stem + ".pcm", "wb").write(bytes(pcm))
+            json.dump({"chunks": chunks, "audio_ms": t["audio_ms"]}, open(stem + ".json", "w", encoding="utf-8"), ensure_ascii=False)
         pts = t.pop("points")
         if t["chars"] and t["audio_ms"]:
             mpc = t["audio_ms"] / t["chars"]
