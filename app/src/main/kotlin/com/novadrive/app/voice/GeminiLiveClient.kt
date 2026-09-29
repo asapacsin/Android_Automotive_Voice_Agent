@@ -50,13 +50,21 @@ class GeminiLiveClient(
     private val contextAwaitingAnswer: () -> Boolean = { VoiceContextHints.awaitingAnswer() },
     private val speechEvidence: () -> Boolean = { true },
     /**
-     * How long a claim correction waits. Gemini often ends a filler turn and issues the real tool
-     * call in a later turn 4-20 s after the driver stopped; an immediate correction races that
-     * call and can double-actuate.
+     * How long a claim correction waits while a tool call may still come. Measured
+     * (docs/reports/2026-09-29-gemini-live-probe.md F20): with CALL_FIRST_HINT, spoken commands in
+     * the app client got the call 5–9 s after the end of speech and text runs up to ~27 s; without
+     * the hint the first probe saw up to 31 s. An immediate correction races that call and can
+     * double-actuate.
      */
-    private val correctionGraceMs: Long = 12_000,
+    private val correctionGraceMs: Long = 20_000,
 ) {
-    private val eventFlow = MutableSharedFlow<RealtimeEvent>(replay = 0, extraBufferCapacity = 64)
+    /**
+     * A held reply is released all at once at turn end: up to the pipeline's 120-event hold budget
+     * plus that turn's tail (AudioDone, subtitle, ResponseDone). 1024 absorbs such a burst for a
+     * slow collector; a drop is still counted, never silent.
+     */
+    private val eventFlow = MutableSharedFlow<RealtimeEvent>(replay = 0, extraBufferCapacity = 1024)
+    private val droppedEvents = AtomicLong(0)
     private val generation = AtomicLong(0)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     @Volatile private var socket: WebSocket? = null
@@ -79,6 +87,12 @@ class GeminiLiveClient(
     private val turnText = StringBuilder()
     private val inputText = StringBuilder()
     @Volatile private var onsetSeen = false
+    /** outputTranscription that arrived with no turn open; applied when audio or a call opens one. */
+    private val strayOutput = StringBuilder()
+    /** A tool call was dispatched since the current driver turn began (R7: no correction race). */
+    @Volatile private var callDispatchedThisDriverTurn = false
+    /** The setup of the current connection carried a resumption handle. */
+    @Volatile private var setupResumed = false
     private val callNames = java.util.concurrent.ConcurrentHashMap<String, String>()
 
     @Volatile private var pendingCorrection: Job? = null
@@ -106,8 +120,8 @@ class GeminiLiveClient(
             throw VoiceProviderException("GEMINI_ENDPOINT_INVALID", "GEMINI_ENDPOINT_INVALID")
         }
         pipeline.resetGuard()
-        synchronized(this) { resetTurn() }
-        onsetSeen = false
+        synchronized(this) { resetTurn(); onsetSeen = false }
+        callDispatchedThisDriverTurn = false
         clientCancelled = false
         audioErrorReported = false
         playbackActive = false
@@ -124,7 +138,8 @@ class GeminiLiveClient(
             silenceDurationMs = settings.silenceDurationMs,
             resumptionHandle = resumptionHandle,
         )
-        DebugVoiceLog.log("gemini_connect resume=${resumptionHandle != null}")
+        setupResumed = !resumptionHandle.isNullOrEmpty()
+        DebugVoiceLog.log("gemini_connect resume=$setupResumed")
         // The key goes in this header and nowhere else: not the URL, not a log, not an exception.
         val request = Request.Builder().url(settings.endpoint.trim())
             .header(GeminiLiveProtocol.API_KEY_HEADER, config.apiKey).build()
@@ -180,10 +195,26 @@ class GeminiLiveClient(
 
     fun onLocalSpeechActivity(active: Boolean) {
         if (!active) return
-        onsetSeen = true
         cancelCorrection("driver_turn")
-        val (speaking, inProgress) = synchronized(this) { (turnOpen && turnAudioSeen && !generationDone) to turnOpen }
-        pipeline.beginDriverTurn(playbackOrSpeaking = playbackActive || speaking, responseInProgress = inProgress)
+        synchronized(this) { beginDriverTurnLocked() }
+    }
+
+    /**
+     * A new driver utterance. Caller holds `this`; lock order is client -> pipeline, and no Host
+     * callback takes this lock. An open turn that has produced neither audio nor a call would
+     * otherwise absorb the next reply without an onResponseCreated for the new turn (I-1).
+     */
+    private fun beginDriverTurnLocked() {
+        onsetSeen = true
+        callDispatchedThisDriverTurn = false
+        strayOutput.setLength(0)
+        if (turnOpen && !turnAudioSeen && turnCallIds.isEmpty()) {
+            DebugVoiceLog.log("gemini_empty_turn_closed")
+            clearTurnState()
+            emit(DomainVoiceEvent.ResponseDone("cancelled", "superseded_empty"))
+        }
+        val speaking = turnOpen && turnAudioSeen && !generationDone
+        pipeline.beginDriverTurn(playbackOrSpeaking = playbackActive || speaking, responseInProgress = turnOpen)
     }
 
     fun onPlaybackActiveChanged(active: Boolean) {
@@ -200,6 +231,9 @@ class GeminiLiveClient(
     }
 
     fun disconnect() {
+        // A new session must not resume an old conversation. The core's reconnect calls connect()
+        // again without disconnect(), so it still resumes.
+        resumptionHandle = null
         closeSocket()
         pipeline.onSessionEnded()
     }
@@ -217,33 +251,54 @@ class GeminiLiveClient(
     }
 
     private fun resetTurn() {
+        clearTurnState()
+        inputText.setLength(0)
+        strayOutput.setLength(0)
+    }
+
+    private fun clearTurnState() {
         turnOpen = false
         turnAudioSeen = false
         generationDone = false
         turnCallIds.clear()
         turnText.setLength(0)
-        inputText.setLength(0)
     }
 
     // ---- deferred correction ----------------------------------------------------------------
 
+    /**
+     * Host callback (pipeline monitor held): never takes the client lock. Deferred only while a
+     * model call may still come; once a call was dispatched in this driver turn the correction
+     * cannot race one and goes out now.
+     */
     private fun deferCorrection(text: String) {
         val current = generation.get()
         pendingCorrection?.cancel()
+        if (callDispatchedThisDriverTurn) {
+            pendingCorrection = null
+            sendCorrectionNow(text)
+            return
+        }
         DebugVoiceLog.log("gemini_correction_deferred graceMs=$correctionGraceMs")
-        pendingCorrection = scope.launch {
+        lateinit var job: Job
+        job = scope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
             delay(correctionGraceMs)
             if (generation.get() != current) return@launch
-            pendingCorrection = null
-            if (listeningSuspended) {
-                DebugVoiceLog.log("gemini_correction_cancelled reason=listening_suspended")
-                return@launch
-            }
-            if (trySend(GeminiLiveProtocol.textTurn(text))) {
-                DebugVoiceLog.log("gemini_correction_sent")
-            } else {
-                DebugVoiceLog.log("gemini_correction_cancelled reason=not_connected")
-            }
+            // Only clear our own slot: a newer correction may have replaced this one.
+            if (pendingCorrection === job) pendingCorrection = null
+            sendCorrectionNow(text)
+        }
+        pendingCorrection = job
+        job.start()
+    }
+
+    private fun sendCorrectionNow(text: String) {
+        if (listeningSuspended) {
+            DebugVoiceLog.log("gemini_correction_cancelled reason=listening_suspended")
+        } else if (trySend(GeminiLiveProtocol.textTurn(text))) {
+            DebugVoiceLog.log("gemini_correction_sent")
+        } else {
+            DebugVoiceLog.log("gemini_correction_cancelled reason=not_connected")
         }
     }
 
@@ -284,7 +339,13 @@ class GeminiLiveClient(
             if (generation.get() != current) return
             DebugVoiceLog.log("gemini_closed code=$code")
             Telemetry.record(EventType.SOCKET_DISCONNECTED, detail = "server_closed code=$code")
-            fail(pending, GeminiLiveProtocol.closeFailure(code, reason), "socket_closed", closed = true)
+            // An expired handle rejected at setup must not make a reconnect terminal (MALFORMED).
+            val resumeRejected = setupResumed && code == 1007 && !pending.isCompleted
+            if (resumeRejected) {
+                resumptionHandle = null
+                DebugVoiceLog.log("gemini_resume_rejected handle_cleared=true")
+            }
+            fail(pending, GeminiLiveProtocol.closeFailure(code, reason, resumeRejected), "socket_closed", closed = true)
         }
     }
 
@@ -318,9 +379,20 @@ class GeminiLiveClient(
             resumptionHandle = message.resumptionHandle
             DebugVoiceLog.log("gemini_resumption_update resumable=true")
         }
+        // The reconnect follows on the next close (a RETRYABLE code), reusing the handle.
         if (message.goAway) DebugVoiceLog.log("gemini_go_away")
         if (message.thoughtParts > 0) DebugVoiceLog.log("gemini_thought_dropped parts=${message.thoughtParts}")
-        synchronized(this) { onContent(message) }
+        message.voiceActivity?.let { DebugVoiceLog.log("gemini_voice_activity type=$it") }
+        synchronized(this) {
+            if (generation.get() != current) return
+            if (message.voiceActivity == GeminiLiveProtocol.ACTIVITY_START && !onsetSeen) {
+                // The local uplink gate missed this onset (F19): the server's start opens the turn.
+                cancelCorrection("driver_turn")
+                beginDriverTurnLocked()
+                DebugVoiceLog.log("gemini_driver_turn_fallback source=voice_activity")
+            }
+            onContent(message)
+        }
         message.workPending?.let { emit(DomainVoiceEvent.ProviderWorkState(it)) }
         if (message.cancelledCallIds.isNotEmpty()) {
             DebugVoiceLog.log("gemini_tool_call_cancellation ids=${message.cancelledCallIds}")
@@ -331,7 +403,9 @@ class GeminiLiveClient(
 
     private fun onContent(message: GeminiLiveProtocol.ServerMessage) {
         message.inputTranscription?.let { inputText.append(it) }
-        if (!turnOpen && (message.audio.isNotEmpty() || message.outputTranscription != null || message.toolCalls.isNotEmpty())) {
+        // Only audio or a call opens a turn: a transcript alone (e.g. a stray chunk after
+        // turnComplete) would open a response for the old driver turn and swallow the next reply.
+        if (!turnOpen && (message.audio.isNotEmpty() || message.toolCalls.isNotEmpty())) {
             openTurn()
         }
         message.audio.forEach { data ->
@@ -343,8 +417,12 @@ class GeminiLiveClient(
             if (!pipeline.filter(event)) emit(event)
         }
         message.outputTranscription?.let { chunk ->
-            turnText.append(chunk)
-            pipeline.appendAssistantText(chunk)
+            if (!turnOpen) {
+                strayOutput.append(chunk)
+            } else {
+                turnText.append(chunk)
+                pipeline.appendAssistantText(chunk)
+            }
         }
         message.toolCalls.forEach(::onToolCall)
         if (message.generationComplete) finishGeneration()
@@ -363,20 +441,23 @@ class GeminiLiveClient(
         if (!onsetSeen && inputText.isNotBlank()) {
             cancelCorrection("driver_turn")
             pipeline.beginDriverTurn(playbackOrSpeaking = playbackActive, responseInProgress = false)
-            DebugVoiceLog.log("gemini_driver_turn_fallback")
+            DebugVoiceLog.log("gemini_driver_turn_fallback source=transcript")
         }
         flushInput()
         clientCancelled = false
         pipeline.clearCallsThisResponse()
         pipeline.onResponseCreated()
+        clearTurnState()
         turnOpen = true
-        turnAudioSeen = false
-        generationDone = false
-        turnCallIds.clear()
-        turnText.setLength(0)
         Telemetry.record(EventType.AGENT_REQUEST_START)
         DebugVoiceLog.log("gemini_turn_open")
         emit(DomainVoiceEvent.ResponseStarted)
+        if (strayOutput.isNotEmpty()) {
+            val text = strayOutput.toString()
+            strayOutput.setLength(0)
+            turnText.append(text)
+            pipeline.appendAssistantText(text)
+        }
     }
 
     private fun flushInput() {
@@ -405,6 +486,7 @@ class GeminiLiveClient(
 
     private fun closeTurn(status: String) {
         flushInput()
+        strayOutput.setLength(0)
         if (!turnOpen) return
         finishGeneration()
         val outcome = ResponseOutcome(spoke = turnAudioSeen, toolCallIds = turnCallIds.toList(), unidentifiedToolCalls = 0)
@@ -415,11 +497,7 @@ class GeminiLiveClient(
         Telemetry.record(EventType.RESPONSE_COMPLETED, detail = status)
         emit(DomainVoiceEvent.ResponseDone(status))
         pipeline.releaseFallback()
-        turnOpen = false
-        turnAudioSeen = false
-        generationDone = false
-        turnCallIds.clear()
-        turnText.setLength(0)
+        clearTurnState()
         onsetSeen = false
         clientCancelled = false
     }
@@ -436,6 +514,7 @@ class GeminiLiveClient(
             return
         }
         cancelCorrection("tool_call")
+        callDispatchedThisDriverTurn = true
         pipeline.onToolCallDispatched(call)
         callNames[call.callId] = call.name
         turnCallIds += call.callId
@@ -454,7 +533,9 @@ class GeminiLiveClient(
     }
 
     private fun emit(event: DomainVoiceEvent) {
-        eventFlow.tryEmit(RealtimeEvent(SystemSessionClock.nowMs(), event))
+        if (!eventFlow.tryEmit(RealtimeEvent(SystemSessionClock.nowMs(), event))) {
+            DebugVoiceLog.log("gemini_event_dropped count=${droppedEvents.incrementAndGet()}")
+        }
     }
 
     companion object {
