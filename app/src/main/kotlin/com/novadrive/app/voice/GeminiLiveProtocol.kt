@@ -15,10 +15,12 @@ object GeminiLiveProtocol {
     const val INPUT_AUDIO_MIME = "audio/pcm;rate=16000"
     const val LANGUAGE = "zh-CN"
     /**
-     * Provider-specific tone line appended after the persona (and context hint). Measured in the
-     * cloud probe: without it Gemini spoke a filler first and called the tool 7.7-31 s later in a
-     * separate turn; with it 3/3 navigation runs called the tool before speaking. Shapes tone only
-     * (I-11); the deferred correction in [GeminiLiveClient] is the enforcement.
+     * Provider-specific tone line appended after the persona (and context hint). Measured in
+     * docs/reports/2026-09-29-gemini-live-probe.md F20: without it the first probe saw a filler
+     * first and the call 7.7–31 s after the end of speech; with it, spoken commands in the app
+     * client still got a filler turn and the call 5–9 s after the end of speech (text runs: 3/3
+     * navigation calls before speaking, at 8.5–27 s). Shapes tone only (I-11); the deferred
+     * correction in [GeminiLiveClient] and the pipeline's gate are the enforcement.
      */
     const val CALL_FIRST_HINT = "用户要求执行操作（空调、导航、音乐等）时，先调用对应工具，拿到结果之后再说话；调用之前不要先说“马上”“这就”之类的话。"
     const val DUPLICATE_CALL_INSTRUCTION = "同一个操作刚才已经执行过一次，这次没有重复执行。"
@@ -129,12 +131,16 @@ object GeminiLiveProtocol {
         val toolCalls: List<RawCall> = emptyList(),
         val cancelledCallIds: List<String> = emptyList(),
         val goAway: Boolean = false,
+        /** [ACTIVITY_START] / [ACTIVITY_END] from `voiceActivity` (F19), else null. */
+        val voiceActivity: String? = null,
     )
 
     /** Throws on a message that is not a JSON object. */
     fun parse(text: String): ServerMessage {
         val raw = JSONObject(text)
-        var message = ServerMessage(setupComplete = raw.has("setupComplete"), goAway = raw.has("goAway"))
+        val activity = (raw.optJSONObject("voiceActivity") ?: raw.optJSONObject("serverContent")?.optJSONObject("voiceActivity"))
+            ?.optString("type")?.let { type -> listOf(ACTIVITY_START, ACTIVITY_END).firstOrNull { type.uppercase().endsWith(it) } }
+        var message = ServerMessage(setupComplete = raw.has("setupComplete"), goAway = raw.has("goAway"), voiceActivity = activity)
         raw.optJSONObject("sessionResumptionUpdate")?.let { update ->
             message = message.copy(
                 resumptionHandle = update.optString("newHandle").ifEmpty { null },
@@ -208,8 +214,9 @@ object GeminiLiveProtocol {
     }
 
     /** Generic, never the server's reason text (it can quote the request). */
-    fun closeFailure(code: Int, reason: String?): VoiceProviderException {
-        val mapped = closeCode(code, reason)
+    fun closeFailure(code: Int, reason: String?, resumeRejected: Boolean = false): VoiceProviderException {
+        // A resumed setup rejected with 1007 is an expired handle, not a malformed setup: retry fresh.
+        val mapped = if (resumeRejected && code == 1007) RESUME_UNAVAILABLE else closeCode(code, reason)
         return VoiceProviderException(mapped, "Gemini Live connection closed (status=$code)")
     }
 
@@ -228,4 +235,7 @@ object GeminiLiveProtocol {
     const val TIMEOUT = "GEMINI_LIVE_TIMEOUT"
     const val CONNECTION_FAILED = "GEMINI_LIVE_CONNECTION_FAILED"
     const val PROTOCOL_ERROR = "GEMINI_LIVE_PROTOCOL_ERROR"
+    const val RESUME_UNAVAILABLE = "GEMINI_LIVE_RESUME_UNAVAILABLE"
+    const val ACTIVITY_START = "ACTIVITY_START"
+    const val ACTIVITY_END = "ACTIVITY_END"
 }

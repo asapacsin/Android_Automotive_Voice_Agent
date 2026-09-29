@@ -163,4 +163,23 @@ class GeminiLiveProtocolTest {
         val failure = GeminiLiveProtocol.closeFailure(1011, "quota for project secret-thing")
         assertFalse(failure.safeMessage.contains("quota"))
     }
+
+    @Test
+    fun rejectedResumedSetupIsRetryableNotMalformed() {
+        val resumed = GeminiLiveProtocol.closeFailure(1007, "invalid handle", resumeRejected = true)
+        assertEquals(GeminiLiveProtocol.RESUME_UNAVAILABLE, resumed.code)
+        assertEquals(ErrorClass.RETRYABLE, classifyVoiceError(resumed.code))
+        assertEquals(ErrorClass.MALFORMED, classifyVoiceError(GeminiLiveProtocol.closeFailure(1007, "x").code))
+        assertEquals(GeminiLiveProtocol.UNAVAILABLE, GeminiLiveProtocol.closeFailure(1011, "x", resumeRejected = true).code)
+    }
+
+    @Test
+    fun parsesVoiceActivity() {
+        fun type(json: String) = GeminiLiveProtocol.parse(json).voiceActivity
+        assertEquals("ACTIVITY_START", type("""{"voiceActivity":{"type":"ACTIVITY_START","audioOffset":"0.360s"}}"""))
+        assertEquals("ACTIVITY_END", type("""{"voiceActivity":{"type":"ACTIVITY_END","audioOffset":"1.2s"}}"""))
+        assertEquals("ACTIVITY_START", type("""{"serverContent":{"voiceActivity":{"type":"ACTIVITY_START"}}}"""))
+        assertNull(type("""{"voiceActivity":{"type":"SOMETHING_ELSE"}}"""))
+        assertNull(type("""{"serverContent":{"turnComplete":true}}"""))
+    }
 }

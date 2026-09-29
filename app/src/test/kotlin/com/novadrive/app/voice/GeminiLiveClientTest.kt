@@ -56,7 +56,7 @@ class GeminiLiveClientTest {
         }
         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
         fun send(json: String) = socket!!.send(json)
-        fun messages(key: String) = received.map(::JSONObject).filter { it.has(key) }
+        fun messages(key: String) = synchronized(received) { received.toList() }.map(::JSONObject).filter { it.has(key) }
     }
 
     private fun fake(ready: Boolean = true) = FakeGemini(ready).also { server.enqueue(MockResponse().withWebSocketUpgrade(it)) }
@@ -185,13 +185,15 @@ class GeminiLiveClientTest {
     }
 
     @Test
-    fun longActionClaimIsNotReleasedByTheHoldBudgetBeforeTurnEnd() = runBlocking {
+    fun transcriptChunksDoNotCountTowardTheHoldBudget() = runBlocking {
         val fake = fake()
         val client = client(graceMs = 60_000)
         val events = collect(client)
         client.connect(config())
         client.onLocalSpeechActivity(true)
         fake.send(input("打开空调"))
+        // 60 audio chunks + 60 transcript chunks: 120 messages, but only the 60 audio chunks are
+        // held, so the 120-event hold budget is not exceeded and nothing is released before the end.
         repeat(60) {
             fake.send(audio())
             fake.send(output("已为您打开空调。"))
@@ -316,9 +318,14 @@ class GeminiLiveClientTest {
         val client = client()
         client.connect(config())
         assertFalse(JSONObject(first.received[0]).getJSONObject("setup").getJSONObject("sessionResumption").has("handle"))
+        val events = collect(client)
         first.send("""{"sessionResumptionUpdate":{"newHandle":"resume-h1","resumable":true}}""")
-        Thread.sleep(200)
-        client.disconnect()
+        first.send(input("你好"))
+        first.send(turnComplete)
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.UserTranscript } }
+        // The core's reconnect: the server closes, then connect() again without disconnect().
+        first.socket!!.close(1011, "internal")
+        waitUntil { events.snapshot().contains(DomainVoiceEvent.Closed) }
         val second = fake()
         client.connect(config())
         waitUntil { second.received.isNotEmpty() }
@@ -358,6 +365,295 @@ class GeminiLiveClientTest {
         val closed = assertThrows<VoiceProviderException> { unconnected.sendUserText("x") }
         assertNoKey(closed)
         assertNotNull(GeminiApiConfig(GeminiAppSettings(), KEY, "p").toString().takeIf { !it.contains(KEY) })
+    }
+
+
+    // ---- G2.2 corrections ------------------------------------------------------------------
+
+    private fun result(ok: Boolean, tool: String = "control_climate") =
+        if (ok) """{"ok":true,"tool":"$tool"}""" else """{"ok":false,"tool":"$tool","error":"CLIMATE_UNAVAILABLE"}"""
+
+    private fun provenTurn(fake: FakeGemini, client: GeminiLiveClient, events: List<DomainVoiceEvent>, id: String = "p1") {
+        client.onLocalSpeechActivity(true)
+        fake.send(input("打开空调"))
+        fake.send(toolCall(id, "control_climate", """{"action":"power_on"}"""))
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ToolCall && it.callId == id } }
+        client.sendToolResult(id, result(ok = true))
+        fake.send(audio("UFJPVkVO"))
+        fake.send(output("空调已打开"))
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().count { it is DomainVoiceEvent.ResponseDone } == 1 }
+    }
+
+    @Test
+    fun strayTranscriptAfterTurnCompleteDoesNotLetTheNextClaimBypassTheGate() = runBlocking {
+        val fake = fake()
+        val client = client(graceMs = 60_000)
+        val events = collect(client)
+        client.connect(config())
+        provenTurn(fake, client, events)
+        assertTrue(events.snapshot().contains(DomainVoiceEvent.AudioDelta("UFJPVkVO")))
+        fake.send(output("。"))
+        Thread.sleep(300)
+        client.onLocalSpeechActivity(true)
+        fake.send(audio("Q0xBSU0="))
+        fake.send(output("已为您把空调调到二十度"))
+        fake.send(content(""""generationComplete":true"""))
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().count { it is DomainVoiceEvent.ResponseDone } == 2 }
+        Thread.sleep(300)
+        assertFalse(events.snapshot().contains(DomainVoiceEvent.AudioDelta("Q0xBSU0=")), "unproven claim must not be heard")
+    }
+
+    @Test
+    fun strayTranscriptWhileThePreviousTurnHoldsDoesNotSwallowTheNextChatReply() = runBlocking {
+        val fake = fake()
+        val client = client(graceMs = 60_000)
+        val events = collect(client)
+        client.connect(config())
+        client.onLocalSpeechActivity(true)
+        fake.send(input("打开空调"))
+        fake.send(toolCall("h1", "control_climate", """{"action":"power_on"}"""))
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+        // The result is still outstanding: the previous driver turn holds whatever comes next.
+        fake.send(output("我正在"))
+        Thread.sleep(300)
+        client.onLocalSpeechActivity(true)
+        fake.send(input("你好"))
+        fake.send(audio("Q0hBVA=="))
+        fake.send(output("好的，请问还需要什么"))
+        fake.send(content(""""generationComplete":true"""))
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().contains(DomainVoiceEvent.AudioDelta("Q0hBVA==")) }
+    }
+
+    @Test
+    fun newOnsetClosesAnEmptyOpenTurnWithoutSwallowingTheNextReply() = runBlocking {
+        val fake = fake()
+        val client = client(graceMs = 60_000)
+        val events = collect(client)
+        client.connect(config())
+        client.onLocalSpeechActivity(true)
+        // An invalid call opens a turn but dispatches nothing: the turn has no audio and no call.
+        fake.send("""{"toolCall":{"functionCalls":[{"id":"bad id!","name":"x","args":{}}]}}""")
+        waitUntil { events.snapshot().contains(DomainVoiceEvent.ResponseStarted) }
+        client.onLocalSpeechActivity(true)
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+        fake.send(input("你好"))
+        fake.send(audio("TkVYVA=="))
+        fake.send(output("好的，请问还需要什么"))
+        fake.send(content(""""generationComplete":true"""))
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().contains(DomainVoiceEvent.AudioDelta("TkVYVA==")) }
+    }
+
+    @Test
+    fun releaseBurstIsNotDroppedForASlowCollector() = runBlocking {
+        val fake = fake()
+        val client = client(graceMs = 60_000)
+        val events = Collections.synchronizedList(mutableListOf<DomainVoiceEvent>())
+        jobs += CoroutineScope(Dispatchers.Default).launch(start = CoroutineStart.UNDISPATCHED) {
+            client.events().collect { kotlinx.coroutines.delay(3); events += it.payload }
+        }
+        client.connect(config())
+        client.onLocalSpeechActivity(true)
+        fake.send(input("你好"))
+        val parts = (1..130).joinToString(",") { """{"inlineData":{"mimeType":"audio/pcm;rate=24000","data":"QUJD$it"}}""" }
+        fake.send(content(""""modelTurn":{"parts":[$parts]}"""))
+        fake.send(output("好的，请问还需要什么"))
+        fake.send(content(""""generationComplete":true"""))
+        fake.send(turnComplete)
+        waitUntil(5_000) { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+        val snapshot = events.snapshot()
+        assertEquals(130, snapshot.count { it is DomainVoiceEvent.AudioDelta })
+        assertTrue(snapshot.contains(DomainVoiceEvent.AudioDone))
+    }
+
+    @Test
+    fun fillerClaimThenCallInTheNextTurnWithOkResultReleasesTheResultAudio() = runBlocking {
+        val fake = fake()
+        val client = client(graceMs = 60_000)
+        val events = collect(client)
+        client.connect(config())
+        client.onLocalSpeechActivity(true)
+        claimTurn(fake)
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+        fake.send(toolCall("n1", "control_climate", """{"action":"power_on"}"""))
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ToolCall } }
+        client.sendToolResult("n1", result(ok = true))
+        fake.send(audio("UkVTVUxU"))
+        fake.send(output("空调已打开"))
+        fake.send(content(""""generationComplete":true"""))
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().contains(DomainVoiceEvent.AudioDelta("UkVTVUxU")) }
+        assertFalse(events.snapshot().contains(DomainVoiceEvent.AudioDelta("QUJD")), "the filler claim stays dropped")
+        assertTrue(fake.messages("clientContent").isEmpty(), "no correction once the call arrived")
+    }
+
+    @Test
+    fun fillerClaimThenCallWithFailedResultKeepsTheClaimSilentAndCorrectsAtOnce() = runBlocking {
+        val fake = fake()
+        val client = client(graceMs = 60_000)
+        val events = collect(client)
+        client.connect(config())
+        client.onLocalSpeechActivity(true)
+        claimTurn(fake)
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+        fake.send(toolCall("f1", "control_climate", """{"action":"power_on"}"""))
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ToolCall } }
+        client.sendToolResult("f1", result(ok = false))
+        fake.send(audio("RkFJTA=="))
+        fake.send(output("已为您打开空调"))
+        fake.send(content(""""generationComplete":true"""))
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().count { it is DomainVoiceEvent.ResponseDone } == 2 }
+        // A call was dispatched in this driver turn: the correction cannot race one, so it is not
+        // deferred by the 60 s grace.
+        waitUntil { fake.messages("clientContent").isNotEmpty() }
+        assertFalse(events.snapshot().contains(DomainVoiceEvent.AudioDelta("RkFJTA==")), "a failed action's claim is not heard")
+    }
+
+    @Test
+    fun correctionWithNoCallDispatchedIsDeferred() = runBlocking {
+        val fake = fake()
+        val client = client(graceMs = 1_500)
+        val events = collect(client)
+        client.connect(config())
+        client.onLocalSpeechActivity(true)
+        claimTurn(fake)
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+        Thread.sleep(700)
+        assertTrue(fake.messages("clientContent").isEmpty(), "deferred while a call may still come")
+        waitUntil { fake.messages("clientContent").isNotEmpty() }
+    }
+
+    @Test
+    fun pendingCorrectionIsNotSentAfterDisconnect() = runBlocking {
+        val fake = fake()
+        val client = client(graceMs = 300)
+        val events = collect(client)
+        client.connect(config())
+        client.onLocalSpeechActivity(true)
+        claimTurn(fake)
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+        client.disconnect()
+        Thread.sleep(1_200)
+        assertTrue(fake.messages("clientContent").isEmpty())
+    }
+
+    @Test
+    fun pendingCorrectionIsNotSentWhileListeningIsSuspended() = runBlocking {
+        val fake = fake()
+        val client = client(graceMs = 300)
+        val events = collect(client)
+        client.connect(config())
+        client.onLocalSpeechActivity(true)
+        claimTurn(fake)
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+        client.discardPendingAudio()
+        Thread.sleep(1_200)
+        assertTrue(fake.messages("clientContent").isEmpty())
+    }
+
+    @Test
+    fun expiredResumptionHandleIsClearedAndTheFailureIsRetryable() = runBlocking {
+        val first = fake()
+        val client = client()
+        val events = collect(client)
+        client.connect(config())
+        first.send("""{"sessionResumptionUpdate":{"newHandle":"resume-old","resumable":true}}""")
+        first.send(input("你好"))
+        first.send(turnComplete)
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.UserTranscript } }
+        first.socket!!.close(1011, "internal")
+        waitUntil { events.snapshot().contains(DomainVoiceEvent.Closed) }
+        val rejected = object : WebSocketListener() {
+            val setups = Collections.synchronizedList(mutableListOf<String>())
+            override fun onMessage(webSocket: WebSocket, text: String) { setups += text; webSocket.close(1007, "invalid handle") }
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
+        }
+        server.enqueue(MockResponse().withWebSocketUpgrade(rejected))
+        val failure = assertThrows<VoiceProviderException> { runBlocking { client.connect(config()) } }
+        assertEquals(ErrorClass.RETRYABLE, classifyVoiceError(failure.code))
+        assertTrue(JSONObject(rejected.setups.single()).getJSONObject("setup").getJSONObject("sessionResumption").has("handle"))
+        val third = fake()
+        client.connect(config())
+        waitUntil { third.received.isNotEmpty() }
+        assertFalse(JSONObject(third.received[0]).getJSONObject("setup").getJSONObject("sessionResumption").has("handle"))
+    }
+
+    @Test
+    fun malformedSetupWithoutAHandleStaysMalformed() = runBlocking {
+        server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+            override fun onMessage(webSocket: WebSocket, text: String) { webSocket.close(1007, "Unknown name") }
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
+        }))
+        val failure = assertThrows<VoiceProviderException> { runBlocking { client().connect(config()) } }
+        assertEquals(ErrorClass.MALFORMED, classifyVoiceError(failure.code))
+    }
+
+    @Test
+    fun disconnectForgetsTheResumptionHandle() = runBlocking {
+        val first = fake()
+        val client = client()
+        val events = collect(client)
+        client.connect(config())
+        first.send("""{"sessionResumptionUpdate":{"newHandle":"resume-h2","resumable":true}}""")
+        first.send(input("你好"))
+        first.send(turnComplete)
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.UserTranscript } }
+        client.disconnect()
+        val second = fake()
+        client.connect(config())
+        waitUntil { second.received.isNotEmpty() }
+        assertFalse(JSONObject(second.received[0]).getJSONObject("setup").getJSONObject("sessionResumption").has("handle"))
+    }
+
+    private fun voiceActivity(type: String) = """{"voiceActivity":{"type":"$type","audioOffset":"0.360s"}}"""
+
+    @Test
+    fun activityStartWithoutLocalOnsetOpensTheDriverTurnBeforeTheReply() = runBlocking {
+        val fake = fake()
+        val client = client(graceMs = 60_000)
+        val events = collect(client)
+        client.connect(config())
+        provenTurn(fake, client, events)
+        // The uplink gate missed the onset; the server's ACTIVITY_START opens the driver turn, so
+        // the earlier proof does not release this turn's claim.
+        fake.send(voiceActivity("ACTIVITY_START"))
+        fake.send(voiceActivity("ACTIVITY_END"))
+        fake.send(audio("Q0xBSU0="))
+        fake.send(output("已为您把空调调到二十度"))
+        fake.send(content(""""generationComplete":true"""))
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().count { it is DomainVoiceEvent.ResponseDone } == 2 }
+        Thread.sleep(300)
+        val snapshot = events.snapshot()
+        assertFalse(snapshot.contains(DomainVoiceEvent.AudioDelta("Q0xBSU0=")))
+        assertTrue(snapshot.none { it is DomainVoiceEvent.SpeechStarted || it is DomainVoiceEvent.SpeechStopped })
+    }
+
+    @Test
+    fun activityStartAfterLocalOnsetDoesNotOpenASecondDriverTurn() = runBlocking {
+        val fake = fake()
+        val client = client(graceMs = 60_000)
+        val events = collect(client)
+        client.connect(config())
+        client.onLocalSpeechActivity(true)
+        fake.send(input("打开空调"))
+        fake.send(toolCall("v1", "control_climate", """{"action":"power_on"}"""))
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ToolCall } }
+        // A second driver turn here would cancel the first and make its proof useless.
+        fake.send(voiceActivity("ACTIVITY_START"))
+        Thread.sleep(200)
+        client.sendToolResult("v1", result(ok = true))
+        fake.send(audio("RE9ORQ=="))
+        fake.send(output("空调已打开"))
+        fake.send(content(""""generationComplete":true"""))
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().contains(DomainVoiceEvent.AudioDelta("RE9ORQ==")) }
+        assertTrue(events.snapshot().none { it is DomainVoiceEvent.SpeechStarted })
     }
 
     private fun assertNoKey(failure: Throwable) {
