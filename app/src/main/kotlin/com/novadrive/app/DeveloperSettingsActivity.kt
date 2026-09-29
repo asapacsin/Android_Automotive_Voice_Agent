@@ -13,6 +13,7 @@ import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.RadioButton
@@ -314,6 +315,7 @@ class DeveloperSettingsActivity : Activity() {
             })
             addView(amapKey)
             addView(openAccessibility)
+            addView(geminiSection())
             addView(voiceToggle)
             addView("讯飞 APPID（唤醒词 你好小诺；MSC 只需要 APPID，不需要 API Key/Secret）".label())
             addView(iflytekAppId)
@@ -475,6 +477,63 @@ class DeveloperSettingsActivity : Activity() {
             instructions = instructions.text.toString().trim(),
             voice = voice.text.toString().trim().ifBlank { BaiduAppSettings.DEFAULT_VOICE },
             speed = speed.text.toString().trim().toDoubleOrNull() ?: BaiduAppSettings.DEFAULT_SPEED,
+        )
+    }
+
+    /** Gemini Live opt-in (ADR-010). The key is never displayed or logged; blank keeps the stored one. */
+    private fun geminiSection(): LinearLayout {
+        val gemini = GeminiSettingsRepository(this)
+        val saved = gemini.loadSettings()
+        val consent = CheckBox(this).apply { text = "我已阅读并同意 / I accept"; isChecked = saved.consentAccepted }
+        val enabled = CheckBox(this).apply {
+            text = "使用 Gemini Live 作为语音模型 / Use Gemini Live"; isChecked = saved.enabled
+        }
+        val key = secretField(
+            if (gemini.keyPresent()) "Gemini API Key（已配置 / configured；留空保留）" else "Gemini API Key",
+        )
+        val voice = EditText(this).apply { setText(saved.voice); hint = GeminiAppSettings.DEFAULT_VOICE }
+        val levels = GeminiThinkingLevel.entries.associateBy {
+            RadioButton(this).apply { text = it.wireName; id = View.generateViewId() }
+        }
+        val thinking = RadioGroup(this).apply {
+            levels.forEach { (button, level) -> addView(button); if (level == saved.thinkingLevel) check(button.id) }
+        }
+        val silence = EditText(this).apply {
+            setText(saved.silenceDurationMs?.toString().orEmpty())
+            hint = "静音结束 ms（留空 = 服务器默认）/ silence ms, blank = server default"
+            inputType = InputType.TYPE_CLASS_NUMBER
+        }
+        val save = Button(this).apply {
+            text = "保存 Gemini 设置 / Save Gemini"
+            setOnClickListener {
+                if (enabled.isChecked && !consent.isChecked) { result.text = "GEMINI_CONSENT_MISSING"; return@setOnClickListener }
+                val silenceText = silence.text.toString().trim()
+                val settings = saved.copy(
+                    enabled = enabled.isChecked,
+                    consentAccepted = consent.isChecked,
+                    voice = voice.text.toString().trim().ifBlank { GeminiAppSettings.DEFAULT_VOICE },
+                    thinkingLevel = levels.entries.firstOrNull { it.key.id == thinking.checkedRadioButtonId }?.value
+                        ?: GeminiThinkingLevel.LOW,
+                    silenceDurationMs = if (silenceText.isEmpty()) null else silenceText.toIntOrNull() ?: -1,
+                )
+                try {
+                    gemini.save(settings, update(key))
+                    key.text.clear()
+                    result.text = "GEMINI_SETTINGS_SAVED\nchoice=${gemini.choice().wireName} keyPresent=${gemini.keyPresent()}"
+                } catch (failure: IllegalArgumentException) {
+                    result.text = failure.message ?: "GEMINI_SETTINGS_INVALID"
+                }
+            }
+        }
+        val clearKey = Button(this).apply {
+            text = "清除 Gemini Key / Clear Gemini key"
+            setOnClickListener { gemini.clearKey(); result.text = "GEMINI_KEY_CLEARED" }
+        }
+        return verticalGroup(
+            TextView(this).apply { text = "Gemini Live (opt-in, ADR-010)"; textSize = 18f },
+            GeminiAppSettings.CONSENT_NOTICE, consent, enabled, "API Key", key, "Voice", voice,
+            "Thinking level", thinking, "Silence ms", silence, save, clearKey,
+            "Takes effect at the next session start.",
         )
     }
 

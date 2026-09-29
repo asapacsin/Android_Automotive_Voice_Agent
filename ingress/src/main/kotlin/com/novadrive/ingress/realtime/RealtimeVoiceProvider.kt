@@ -47,6 +47,9 @@ interface RealtimeVoiceProvider {
      */
     fun onLocalSpeechActivity(active: Boolean) {}
 
+    /** The device started ([active] true) or stopped playing reply audio; for client-side VAD. */
+    fun onPlaybackActiveChanged(active: Boolean) {}
+
     /** Cancels a reply that is in progress even if its audio has not started yet. */
     suspend fun cancelActiveResponse(): DomainVoiceEvent = cancelAssistantResponse()
 
