@@ -60,6 +60,20 @@ Gemini is claimed at device level until G-M1/G-M2 pass.
 - `toolCallCancellation`: a call not yet executed is not executed; an executed one is not undone.
 - Thought parts, if any arrive, are dropped in the adapter and never logged or spoken.
 
+## Known limitations (measured 2026-09-29, cloud, not the device)
+
+- **Conversational replies are heard only when complete.** The shared claim gate holds an unproven
+  reply to the end of its response; Gemini streams at real-time pace, so the delay equals the
+  reply's length. Escalated in [ADR-010](../DECISIONS/ADR-010-gemini-live-second-provider.md)
+  "Open architecture question"; until decided, option (a) applies.
+- **Actuating commands are slow.** Spoken commands reached their tool call 5–9 s after the end of
+  speech in the app client, with a filler turn first (probe F20).
+- **Late calls after the correction grace.** A claim correction waits up to 20 s for Gemini's own
+  late call; a call later than that could follow the correction (double actuation risk for
+  non-idempotent tools; the dispatcher's same-turn duplicate guard covers climate/music/live info).
+- **Typed turns are unreliable** (F22): 2 of 3 typed 「把空调打开」 never called the tool and then
+  reported a failure that did not happen. App prompts sent as text may be affected.
+
 ## Observability
 
 Event types, ids, sizes, durations and close codes only. Never the key, a transcript, an argument

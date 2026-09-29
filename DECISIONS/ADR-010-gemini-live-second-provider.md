@@ -23,8 +23,11 @@ Spec: [SPEC-013](../SPECS/SPEC-013-gemini-live-provider.md)
    directly. Whether it can, from where the product is used, is measured on the device (G-M1);
    until then the provider is not claimed to work in mainland China.
 4. The provider-neutral contract grows by capability, never by provider name (ADR-009 §3):
-   `serverSpeechActivityEvents` (Gemini sends no speech-started/stopped events; the local uplink
-   gate supplies them), `ToolCallCancelled` and `ProviderWorkState` events.
+   `serverSpeechActivityEvents` (false for Gemini: the local uplink gate supplies "driver
+   speaking"), `ToolCallCancelled` and `ProviderWorkState` events. *Correction, same day (probe
+   F19):* Gemini does send `voiceActivity` START/END. The flag stays false by choice — the local
+   gate is faster and already device-proven for Baidu's barge-in evidence — and the adapter uses
+   ACTIVITY_START only as the fallback when no local onset was seen.
 5. The tool declarations, their validation and the per-turn claim gate are shared by both adapters
    (extracted from the Baidu adapter), so I-1 is enforced by one mechanism for both.
 
@@ -51,6 +54,29 @@ architecture's recommended or most conservative option; each is one setting or o
   self-interruption.
 - Driver audio, transcripts and the context hint leave the country when Gemini is enabled; this is
   why it is opt-in.
+
+## Open architecture question (raised by the build, not decided here)
+
+```text
+ARCHITECTURE_REVIEW_REQUIRED
+CONSTRAINT:  I-1 enforcement in DriverTurn / DriverTurnPipeline (B-014): a reply that has no
+             execution proof yet is held until its response is complete (UNCLASSIFIED_CLAIM for
+             conversational turns, AWAITING_EXECUTION_PROOF for action turns)
+EVIDENCE:    probe report F21 and the independent review of G2.1: Gemini streams reply audio at
+             real-time pace, with transcript chunks interleaved, not ahead. Holding to the end of
+             the response therefore delays hearing a reply by its whole duration (a 13 s answer is
+             first heard at ~14.5 s). Baidu's measured cost of the same hold is 93-515 ms (P23)
+CONFLICT:    SPEC-013's goal "the same conversation as with Baidu" vs. I-1's hold-until-done rule
+OPTIONS:     (a) accept: Gemini stays opt-in with slow conversational replies (action results are
+                 unaffected: proof arrives before the result audio);
+             (b) a capability `replyStreamsInRealTime` under which the gate releases audio
+                 progressively while the transcript so far contains no action claim, holding from
+                 the first claim onwards (a DriverTurn policy change; needs its own tests);
+             (c) hold only turns classified as ACTION requests; release conversational turns at
+                 once (changes I-1 coverage for chat turns, for both providers unless capability-gated)
+DOWNSTREAM:  DriverTurn / DriverTurnPipeline, SPEC-013 A-rows, possibly I-1 wording
+DECISION_REQUIRED: which of (a)/(b)/(c) for Gemini Live
+```
 
 ## What would justify revisiting
 

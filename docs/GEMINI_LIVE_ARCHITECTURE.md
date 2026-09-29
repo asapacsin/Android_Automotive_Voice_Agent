@@ -50,7 +50,7 @@ All from the probe report (cloud container, not the device; numbers are single-d
 | F13 | Rejected fields | `proactivity`, `enableAffectiveDialog` (unknown fields) |
 | F14 | `googleSearch` tool | **Refused on this key: "exceeded your current quota"** (1011) |
 | F15 | Server sends `sessionResumptionUpdate` (handle) unasked, right after setup | yes |
-| F16 | Server events have **no `speech_started`/`speech_stopped` equivalent** | only `inputTranscription`, `interrupted`, `turnComplete`, `generationComplete` |
+| F16 | ~~Server events have no `speech_started`/`speech_stopped` equivalent~~ **Corrected by F19 (same day):** the server sends `voiceActivity {ACTIVITY_START / ACTIVITY_END}`; the first probe only logged fields it knew. The design keeps the local uplink gate as the primary signal (faster, no network round trip) and uses ACTIVITY_START as the fallback | see probe report F19 |
 
 ---
 
