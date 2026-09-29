@@ -30,6 +30,9 @@ What was measured, from where, and what it may claim. Tools: `tools/gemini-live-
 | Setup fields accepted | `automaticActivityDetection` {silenceDurationMs, prefixPaddingMs, start/endOfSpeechSensitivity LOW, disabled}, `activityHandling: NO_INTERRUPTION`, `contextWindowCompression.slidingWindow`, `sessionResumption`, `speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName`, `thinkingConfig.includeThoughts` |
 | Setup fields rejected | `proactivity`, `enableAffectiveDialog`: 1007 unknown field |
 | `tools: [{googleSearch: {}}]` | 1011 "You exceeded your current quota, please check your plan and billing details" |
+| `functionDeclarations[].parameters` with the app's JSON Schema (`additionalProperties`) | 1007 "Unknown name additionalProperties" |
+| Same schemas as `parametersJsonSchema` | accepted unchanged (`additionalProperties`, `minLength`/`maxLength`, `enum`, `number`) |
+| An explicit `behavior: "BLOCKING"` | 1007 "BLOCKING function calls are not supported for this model"; omitting `behavior` is blocking |
 | Server events observed | `setupComplete`, `sessionResumptionUpdate`, `serverContent` {`modelTurn`, `inputTranscription`, `outputTranscription`, `interrupted`, `generationComplete`, `turnComplete`, `interactionStatus`}, `toolCall`. **No speech-started/stopped event.** Not observed (not triggered): `toolCallCancellation`, `goAway` |
 
 Not measured, and needed: everything on the phone (reachability from its network, echo

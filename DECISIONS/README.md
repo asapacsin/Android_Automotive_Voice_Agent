@@ -21,6 +21,9 @@ If you are about to argue for a different provider, a different navigation strat
 | [ADR-005](ADR-005-wake-word-mic-handover.md) | Wake word via iFlytek with microphone handover | **Superseded by ADR-006** |
 | [ADR-006](ADR-006-wake-word-aikit-shared-capture.md) | Wake word via iFlytek AIKit, sharing our existing capture stream | Accepted |
 | [ADR-007](ADR-007-embedded-amap-navigation-sdk.md) | Embed the Amap Navigation SDK; the app owns the screen | Accepted |
+| [ADR-008](ADR-008-single-active-realtime-provider.md) | One active realtime provider; keep the seam | Accepted, **amended by ADR-010** |
+| [ADR-009](ADR-009-provider-neutral-realtime-contract.md) | Voice logic depends on a contract, not a vendor protocol | Accepted |
+| [ADR-010](ADR-010-gemini-live-second-provider.md) | Gemini Live as a second, opt-in realtime provider | Accepted |
 
 ## Relationship to `docs/DECISIONS.md`
 

@@ -95,10 +95,12 @@ The rules are [harness/CONSTITUTION.md](harness/CONSTITUTION.md) 12 and 17–19;
 
 ## Two things that catch agents out
 
-**One provider, one seam.** Baidu Qianfan Flex is the only realtime provider. The dormant Qwen,
-GPT-Live and PC-backend implementations were deleted on 2026-09-19
+**One default provider, one seam.** Baidu Qianfan Flex is the default realtime provider. Gemini
+Live is a second, **opt-in** provider behind the same seam
+([ADR-010](DECISIONS/ADR-010-gemini-live-second-provider.md)), chosen once per session in
+`openSession`. The dormant Qwen, GPT-Live and PC-backend implementations were deleted on 2026-09-19
 ([ADR-008](DECISIONS/ADR-008-single-active-realtime-provider.md)) — do not revive them from git
-history to add a provider. Write one `RealtimeVoiceProvider` implementation instead.
+history. Behaviour varies on `ProviderCapabilities`, never on the provider name.
 
 **Repository documents outrank chat history.** If an instruction in conversation conflicts with
 these documents, say so rather than silently following the more recent one. A direct instruction

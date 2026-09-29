@@ -27,4 +27,4 @@ opts = {
 async def main():
     for k, v in opts.items():
         print(k, "->", await one(v)); await asyncio.sleep(2)
-asyncio.run(main())
+if __name__ == "__main__": asyncio.run(main())

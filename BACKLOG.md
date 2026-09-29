@@ -6,6 +6,7 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 
 | # | Demand | Raised | Status | Spec |
 | --- | --- | --- | --- | --- |
+| B-027 | **Gemini Live as a second voice provider** — the owner chose Gemini 3.8 Live Extended Thinking; build it behind the provider seam, opt-in, Baidu stays default | 2026-09-29 | **Specced** | [SPEC-013](SPECS/SPEC-013-gemini-live-provider.md) · [ADR-010](DECISIONS/ADR-010-gemini-live-second-provider.md) |
 | B-026 | **One owner for who may speak** — a single arbiter decides between Amap guidance, other apps' audio and 小诺's replies (calls later), using a driver-workload signal (distance to the next manoeuvre), replacing today's separate special cases. *Not* the assistant speaking first | 2026-09-24 | **In milestone** M4 | [SPEC-012](SPECS/SPEC-012-speech-arbiter.md) |
 | B-025 | **Live information from Amap** — weather at the destination, traffic on the route, along-route search (fuel, charging, service areas, toilets), place details (hours, parking); one tool each with an honest failure result | 2026-09-24 | **In milestone** M4 | [SPEC-011](SPECS/SPEC-011-amap-live-info.md) |
 | B-024 | **Say anything on screen (可见即可说)** — every visible control publishes id, label, aliases, position and action; a deterministic matcher resolves the driver's words without the model | 2026-09-24 | **In milestone** M4 | [SPEC-010](SPECS/SPEC-010-screen-affordances.md) |
