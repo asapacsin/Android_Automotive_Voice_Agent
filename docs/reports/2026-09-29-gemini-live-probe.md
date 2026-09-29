@@ -92,6 +92,21 @@ not distributions.
 | F31 | `gemini-3.8-flash` `streamGenerateContent`: HTTP 503 on all 6 attempts today, so the latency of a background thinking model is **not measured** |
 | F32 | `gemini-3.8-live` with the older 2-tool probe setup: a cough and a knock during a reply did not interrupt it (1 run). Barge-in was **not measured**: in 1 run the two utterances merged into one input turn, and in 1 run there was no reply at all |
 
+**Corrections after independent review (same day):**
+
+- F23: 19 spoken auto-VAD runs are recorded in files; the 20th was a key-inspection run, also a
+  call, at 935 ms. Over the 19, the median is 1.26 s and the first-audio median is 3.4 s.
+- F24: 10 command runs are recorded in files, plus 2 runs printed to the console. The gap before
+  the second reply was 0.7–24 s, not "about 20 s".
+- F25 is a uniform-rate estimate, sampled only when a transcript chunk arrives; the first-chunk
+  lead was 1.24–3.16 s.
+- F26: `ACTIVITY_END` came 0.42–1.33 s after the speech ended.
+- **F29 is wrong for `gemini-3.8-live`:** its audio arrives at about 4.4x speaking speed.
+  `generationComplete` comes right after the last audio; `turnComplete` comes about the reply's
+  playback length later. Extended thinking delivered at 1.0x.
+- **F33:** 0 of 8 spoken commands on `gemini-3.8-live` sent a late second call within 15 s after
+  the spoken result.
+
 What this round may claim: the order of events and the relative latency of the two models from a
 cloud container. What it may not claim: anything about the phone (network, echo, cabin noise), or
 the quality of either model's answers beyond the transcripts shown.

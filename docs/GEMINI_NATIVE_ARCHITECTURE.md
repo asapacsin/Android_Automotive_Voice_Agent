@@ -17,7 +17,50 @@ third round (F23–F32). These are cloud measurements, not the phone.
 
 ---
 
-## 0. The answer in one paragraph
+## Revision 2 (2026-09-29, after independent review): what supersedes what
+
+Measured after the review: `gemini-3.8-live` delivers reply audio at about **4.4x speaking speed**.
+In one run, a 9.3 s reply's audio had all arrived 2.1 s after its first chunk. `generationComplete`
+came 25 ms after the last audio, and `turnComplete` came **7.2 s later**, paced to playback. The
+extended-thinking model delivered audio at 1.0x. F29 read `turnComplete` as the end of the audio;
+that was wrong for the fast model. So the slow conversational replies come from the client
+settling the claim gate at `turnComplete`, not from the audio stream.
+
+The design is therefore simplified. Where this section disagrees with the sections below, this
+section wins:
+
+1. **The gate settles at `generationComplete`, not `turnComplete`** (Gemini adapter). Every word and
+   all the audio are in by then, so today's whole-reply verdict runs unchanged. I-1 wording does not
+   change. The cost is the generation time, about a quarter of the reply's length on
+   `gemini-3.8-live`, comparable to Baidu's measured 93–515 ms for short replies.
+2. **Clause release (§5.1) is deferred.** It is needed only for models that deliver at 1.0x, such as
+   extended thinking. The review found it unsafe as written: the kind can be reclassified after
+   streaming starts, 「好的，」 streamed before a correction breaks I-2, and alignment by a
+   characters-per-second estimate is unproven. Revisit only if a 1.0x model becomes the default.
+3. **Default model `gemini-3.8-live`** (N-1), unchanged: 20/20 calls in 0.8–2.4 s. In a 15 s linger
+   after the spoken result, 0 of 8 spoken commands sent a late second call.
+4. **Fix two orderings the review found in today's gate (both providers, D-10):**
+   - A call that opens a response registers after `decideHold`, so `AWAITING_TOOL_RESULT` never
+     applies to it. The hold must be re-decided on `onToolCall`.
+   - Once `PHANTOM_AUDIO` releases, the rest of that reply is never judged for a claim.
+5. **Correction timing (§5.3):** keep today's rule that a correction goes out immediately once a
+   call was dispatched in the driver turn. Add a rule that a repeat of a call that already succeeded
+   (same name and arguments) in one driver turn is answered `duplicate_call_ignored`, not executed.
+6. **One model registry** in `VoiceCatalog`: every declared model has a profile, and an undeclared
+   model gets conservative traits. The thinking field becomes a neutral trait there, so there is no
+   second list in the adapter.
+7. N-2 is now "settle at `generationComplete`", with no invariant change. D-9 (hold budget) stays
+   an open owner decision. ADR-008 is downstream of N-1, because the default no longer uses native
+   thinking.
+
+Revised build plan: T1 model registry and setup per model (includes `GeminiLiveClient` setup call)
+→ T2 settle at `generationComplete` + D-10 fixes + per-driver-turn duplicate rule, with tests for
+call-first order and phantom-then-claim → T3 smoke test: L1 calls ≤ 2.5 s; L2 first audio leaving
+the gate ≤ audio arrival + generation time; L3 no claim before proof → review.
+
+---
+
+## 0. The answer in one paragraph (original proposal; see Revision 2)
 
 The slowness has two causes, and they need different fixes.
 

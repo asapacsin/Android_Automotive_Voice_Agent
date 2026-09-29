@@ -7,6 +7,13 @@ Keeps: ADR-001, ADR-002 (Baidu stays the default provider), ADR-008, ADR-009.
 Architecture: [docs/GEMINI_NATIVE_ARCHITECTURE.md](../docs/GEMINI_NATIVE_ARCHITECTURE.md) ·
 Requirement: [SPEC-014](../SPECS/SPEC-014-gemini-native-voice-path.md) · Demand: B-028
 
+## Revision 2 (after review)
+
+The gate settles at `generationComplete`, not `turnComplete`. `gemini-3.8-live` delivers audio at
+4.4x, and `turnComplete` is paced to playback. Clause release (decision 2) is deferred, and I-1's
+wording is unchanged. D-10 (two gate orderings) and a per-driver-turn duplicate rule are added. See
+the architecture's "Revision 2".
+
 ## Context
 
 The owner, after the first Gemini build: *"design a new architecture that should optimise for the

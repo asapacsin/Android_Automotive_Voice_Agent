@@ -155,6 +155,21 @@ generated into `state/PROJECT_STATE.json`.
 
 ---
 
+## D-10 — Two orderings the claim gate misses — **OPEN** (found by review 2026-09-29)
+
+**Problem.** Two orderings let a reply past the claim gate without being judged:
+
+1. A tool call that opens a response is registered after `decideHold` ran (`GeminiLiveClient`
+   `openTurn` → `onToolCall`, and Baidu's `response.created` → `function_call`), so
+   `AWAITING_TOOL_RESULT` never applies to that response.
+2. After `PHANTOM_AUDIO` releases on the first reply text with content, the rest of the reply is
+   never checked for a claim.
+
+**Next step.** Re-decide the hold in `onToolCall` while RESPONDING. Judge a released phantom reply
+with the unclassified-claim predicate. Add tests for both orders. This is T2 of ADR-011 Revision 2.
+
+---
+
 ## D-9 — The hold budget releases a reply whose words were never judged — **OPEN** (found 2026-09-29)
 
 **Problem.** `DriverTurnPipeline` releases everything held once a turn holds more than 120 events
