@@ -2564,6 +2564,9 @@ tests:
       - "start a session; say 打开空调 and 导航到万达"
       - "read logcat NovaVoice for gemini_setup_complete, gemini_tool_call, session_provider choice=gemini_live"
     pass_criteria: ["gemini_setup_complete within 3 s", "both commands reach a tool call"]
+    returns: "the three logcat lines (or their absence), the time from session start to gemini_setup_complete, and which network the phone was on (VPN on/off)"
+    autonomous_evidence: "cloud container, outside China: setup accepted with the app's full configuration in 0.8-1.1 s; spoken 空调打开 and 导航到万达 reached control_climate and navigate_to through the app's own client (GEMINI-LIVE-CLOUD-001, probe report second round)"
+    remaining_uncertainty: "whether the phone's network (with the owner's VPN) reaches generativelanguage.googleapis.com at all, and the setup and first-audio latency from there"
     evidence: []
     related: [SPEC-013, ADR-010]
 

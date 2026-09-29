@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-29T05:41:41",
+  "generated_at": "2026-09-29T14:01:46",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "0f26271",
+    "commit": "6e51e02",
     "branch": "claude/9-29",
-    "subject": "Merge G2.2: Gemini adapter review corrections",
+    "subject": "Gemini probe round 3: latency by component (F23-F32), latency_probe.py.",
     "working_tree_clean": false,
-    "uncommitted_files": 2
+    "uncommitted_files": 14
   },
   "tests": {
     "available": true,
@@ -108,6 +108,11 @@
       "priority": "RESOLVED"
     },
     {
+      "id": "D-9",
+      "title": "The hold budget releases a reply whose words were never judged",
+      "priority": "OPEN"
+    },
+    {
       "id": "D-7",
       "title": "A false claim could be spoken for *supported* actions",
       "priority": "RESOLVED"
@@ -124,7 +129,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "app-debug.apk: no debug APK has been built from this tree",
-    "actionable_count": 70,
+    "actionable_count": 72,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 17,
@@ -586,6 +591,13 @@
         "blocked_by": null
       },
       {
+        "priority": 8,
+        "class": "recorded technical debt",
+        "source": "docs/TECH_DEBT.md",
+        "item": "D-9",
+        "blocked_by": null
+      },
+      {
         "priority": 10,
         "class": "stale state or harness defect",
         "source": "state",
@@ -646,6 +658,13 @@
         "class": "next authorised backlog item",
         "source": "BACKLOG.md",
         "item": "B-027",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-028",
         "blocked_by": null
       }
     ]

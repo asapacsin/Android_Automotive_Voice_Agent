@@ -13,7 +13,7 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 > - PLACE-SAVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - PLACE-NAV-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 
-16 item(s) queued.
+17 item(s) queued.
 
 Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEVICE_REQUIRED.md).
 
@@ -329,6 +329,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 **Already established without you:**
 
 - NavigationLocalPickGuard turn/list authority + NavigationPickSession executor results
+- P32: suppressed navigate_to reports destination_selected + route list; ActionClaimGuard corrects a navigation-started claim without navigation_started evidence (ActionClaimGuardTest, AndroidToolDispatcherTest)
 
 **You will need:** installed debug APK; network; map entitlement
 
@@ -341,6 +342,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 - correct destination and route selected once
 - no duplicate navigate_to after local pick
+- no 导航已开始 before nav_navigation_started (P32)
 
 **Tell me back:** destination and route reached; whether any touch was required; duplicate tool calls observed
 
@@ -478,6 +480,268 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 **Still unknown until you do:** release-only runtime behaviour, especially anything reflection-based in the three vendor SDKs; whether enabling R8 is safe - it can only be judged against an installed signed build
 
 *Release-blocking.*
+
+### GEMINI-DEVICE-REACH-001 — The phone opens a Gemini Live session on its normal network (G-M1)
+
+**Why this needs you.** Needs the owner's Gemini key entered on the phone and the owner's own acceptance of the cross-border notice
+
+**Automation blocker:** `credential_permission`
+
+**Already established without you:**
+
+- c
+- l
+- o
+- u
+- d
+-  
+- c
+- o
+- n
+- t
+- a
+- i
+- n
+- e
+- r
+- ,
+-  
+- o
+- u
+- t
+- s
+- i
+- d
+- e
+-  
+- C
+- h
+- i
+- n
+- a
+- :
+-  
+- s
+- e
+- t
+- u
+- p
+-  
+- a
+- c
+- c
+- e
+- p
+- t
+- e
+- d
+-  
+- w
+- i
+- t
+- h
+-  
+- t
+- h
+- e
+-  
+- a
+- p
+- p
+- '
+- s
+-  
+- f
+- u
+- l
+- l
+-  
+- c
+- o
+- n
+- f
+- i
+- g
+- u
+- r
+- a
+- t
+- i
+- o
+- n
+-  
+- i
+- n
+-  
+- 0
+- .
+- 8
+- -
+- 1
+- .
+- 1
+-  
+- s
+- ;
+-  
+- s
+- p
+- o
+- k
+- e
+- n
+-  
+- 空
+- 调
+- 打
+- 开
+-  
+- a
+- n
+- d
+-  
+- 导
+- 航
+- 到
+- 万
+- 达
+-  
+- r
+- e
+- a
+- c
+- h
+- e
+- d
+-  
+- c
+- o
+- n
+- t
+- r
+- o
+- l
+- _
+- c
+- l
+- i
+- m
+- a
+- t
+- e
+-  
+- a
+- n
+- d
+-  
+- n
+- a
+- v
+- i
+- g
+- a
+- t
+- e
+- _
+- t
+- o
+-  
+- t
+- h
+- r
+- o
+- u
+- g
+- h
+-  
+- t
+- h
+- e
+-  
+- a
+- p
+- p
+- '
+- s
+-  
+- o
+- w
+- n
+-  
+- c
+- l
+- i
+- e
+- n
+- t
+-  
+- (
+- G
+- E
+- M
+- I
+- N
+- I
+- -
+- L
+- I
+- V
+- E
+- -
+- C
+- L
+- O
+- U
+- D
+- -
+- 0
+- 0
+- 1
+- ,
+-  
+- p
+- r
+- o
+- b
+- e
+-  
+- r
+- e
+- p
+- o
+- r
+- t
+-  
+- s
+- e
+- c
+- o
+- n
+- d
+-  
+- r
+- o
+- u
+- n
+- d
+- )
+
+**You will need:** debug APK from claude/9-29; Gemini key
+
+**What to do:**
+
+1. Developer settings > Gemini Live: paste key, tick consent, tick use Gemini, save
+2. start a session; say 打开空调 and 导航到万达
+3. read logcat NovaVoice for gemini_setup_complete, gemini_tool_call, session_provider choice=gemini_live
+
+**It passes if:**
+
+- gemini_setup_complete within 3 s
+- both commands reach a tool call
+
+**Tell me back:** t; h; e;  ; t; h; r; e; e;  ; l; o; g; c; a; t;  ; l; i; n; e; s;  ; (; o; r;  ; t; h; e; i; r;  ; a; b; s; e; n; c; e; ); ,;  ; t; h; e;  ; t; i; m; e;  ; f; r; o; m;  ; s; e; s; s; i; o; n;  ; s; t; a; r; t;  ; t; o;  ; g; e; m; i; n; i; _; s; e; t; u; p; _; c; o; m; p; l; e; t; e; ,;  ; a; n; d;  ; w; h; i; c; h;  ; n; e; t; w; o; r; k;  ; t; h; e;  ; p; h; o; n; e;  ; w; a; s;  ; o; n;  ; (; V; P; N;  ; o; n; /; o; f; f; )
+
+**Still unknown until you do:** w; h; e; t; h; e; r;  ; t; h; e;  ; p; h; o; n; e; '; s;  ; n; e; t; w; o; r; k;  ; (; w; i; t; h;  ; t; h; e;  ; o; w; n; e; r; '; s;  ; V; P; N; );  ; r; e; a; c; h; e; s;  ; g; e; n; e; r; a; t; i; v; e; l; a; n; g; u; a; g; e; .; g; o; o; g; l; e; a; p; i; s; .; c; o; m;  ; a; t;  ; a; l; l; ,;  ; a; n; d;  ; t; h; e;  ; s; e; t; u; p;  ; a; n; d;  ; f; i; r; s; t; -; a; u; d; i; o;  ; l; a; t; e; n; c; y;  ; f; r; o; m;  ; t; h; e; r; e
 
 ## D. Product decisions
 

@@ -1,6 +1,6 @@
 # Gemini 3.8 Live Extended Thinking: provider architecture
 
-Status: **Accepted 2026-09-29** as [ADR-010](../DECISIONS/ADR-010-gemini-live-second-provider.md); build order in [GEMINI_LIVE_PLAN.md](GEMINI_LIVE_PLAN.md). Written 2026-09-29 on
+Status: **Accepted 2026-09-29** as [ADR-010](../DECISIONS/ADR-010-gemini-live-second-provider.md); build order in [GEMINI_LIVE_PLAN.md](GEMINI_LIVE_PLAN.md). **Proposed successor for §3.1 (model, thinking) and §4.3 (F6 levers):** [GEMINI_NATIVE_ARCHITECTURE.md](GEMINI_NATIVE_ARCHITECTURE.md) (ADR-011). Written 2026-09-29 on
 `claude/9-29`, after the product owner's decision to use **Gemini 3.8 "extended"**. Against the
 model list the key returns, that is `models/gemini-3.8-live-extended-thinking`.
 

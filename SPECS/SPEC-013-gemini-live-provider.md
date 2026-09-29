@@ -62,6 +62,11 @@ Gemini is claimed at device level until G-M1/G-M2 pass.
 
 ## Known limitations (measured 2026-09-29, cloud, not the device)
 
+The proposed fix for the first two is [SPEC-014](SPEC-014-gemini-native-voice-path.md) /
+[ADR-011](../DECISIONS/ADR-011-gemini-native-voice-path.md). Third-round measurements (F23–F25):
+the slow and missing calls belong to the extended-thinking model, and the transcript leads its
+audio.
+
 - **Conversational replies are heard only when complete.** The shared claim gate holds an unproven
   reply to the end of its response; Gemini streams at real-time pace, so the delay equals the
   reply's length. Escalated in [ADR-010](../DECISIONS/ADR-010-gemini-live-second-provider.md)

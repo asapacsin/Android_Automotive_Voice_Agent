@@ -446,6 +446,12 @@ change_impact:
       - BaiduAccessTokenClient
       - BaiduDirectRealtimeProvider
       - ConversationResetPolicy
+      - GeminiLiveClient
+      - GeminiLiveProtocol
+      - GeminiLiveProvider
+      - RealtimeProviderFactory
+      - HostAudioTap
+      - PlayoutBargeInQualification
       - Results
       - Policy
       - StructuredCommand
@@ -495,6 +501,11 @@ change_impact:
       - InitialLocationRecenter
       - RouteLiveInfo
       - AmapRouteLiveInfo
+      - StaticMapModel
+      - StaticMapFetcher
+      - TextNavigationPanel
+      - TextNavigationPanelModel
+      - AmapGuidanceVoice
       - Location
       - Results
       - Policy
@@ -518,6 +529,8 @@ change_impact:
     components:
       - ActionClaimGuard
       - DriverTurn
+      - DriverTurnPipeline
+      - RealtimeToolCatalog
       - UtteranceIntentResolver
       - ProductCapabilities
       - DriverContext

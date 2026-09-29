@@ -24,6 +24,7 @@ If you are about to argue for a different provider, a different navigation strat
 | [ADR-008](ADR-008-single-active-realtime-provider.md) | One active realtime provider; keep the seam | Accepted, **amended by ADR-010** |
 | [ADR-009](ADR-009-provider-neutral-realtime-contract.md) | Voice logic depends on a contract, not a vendor protocol | Accepted |
 | [ADR-010](ADR-010-gemini-live-second-provider.md) | Gemini Live as a second, opt-in realtime provider | Accepted |
+| [ADR-011](ADR-011-gemini-native-voice-path.md) | Gemini-native voice path: model profiles, clause release, fast model by default | **Proposed** |
 
 ## Relationship to `docs/DECISIONS.md`
 

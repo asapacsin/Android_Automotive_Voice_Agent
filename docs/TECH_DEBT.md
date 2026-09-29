@@ -155,6 +155,28 @@ generated into `state/PROJECT_STATE.json`.
 
 ---
 
+## D-9 — The hold budget releases a reply whose words were never judged — **OPEN** (found 2026-09-29)
+
+**Problem.** `DriverTurnPipeline` releases everything held once a turn holds more than 120 events
+(`DriverTurn.onHoldBudgetExceeded`), whatever the hold reason. That includes
+`AWAITING_EXECUTION_PROOF` and `UNCLASSIFIED_CLAIM`, whose words are only judged at the end of the
+response. `DriverTurnTest.theHoldBudgetAlwaysReleasesRatherThanStalling` pins this on purpose, so
+that a stuck gate never loses a real reply.
+
+**Affected.** `DriverTurn.onHoldBudgetExceeded`, `DriverTurnPipeline.holdOrEmit`, both providers.
+
+**Risk.** An unproven action claim longer than the budget is heard: an I-1 gap. It is narrow on
+Baidu (120 deltas ≈ 6 s of audio) and on Gemini (0.16–0.64 s chunks, so 20–77 s), and it has not
+been observed. Found by reading the code while designing
+[GEMINI_NATIVE_ARCHITECTURE.md](GEMINI_NATIVE_ARCHITECTURE.md) §5.1 R-S5.
+
+**Next step.** Proposed in [ADR-011](../DECISIONS/ADR-011-gemini-native-voice-path.md) as part
+of N-2. At the budget, release only the clauses the claim check has judged clean. Past a 60 s hard
+cap, drop the remainder instead of releasing it. This changes a deliberate behaviour, so it waits
+for the owner's decision.
+
+---
+
 ## D-7 — A false claim could be spoken for *supported* actions — **RESOLVED 2026-09-18** (`89c9338`)
 
 **Problem.** The hold that prevents a false claim covers requests with **no** tool. For a supported

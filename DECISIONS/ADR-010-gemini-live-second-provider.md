@@ -57,6 +57,11 @@ architecture's recommended or most conservative option; each is one setting or o
 
 ## Open architecture question (raised by the build, not decided here)
 
+*Answered by a proposal, 2026-09-29:* [ADR-011](ADR-011-gemini-native-voice-path.md) (Proposed)
+generalises option (b) as clause release by trait. It also found that the chosen model, not the
+claim gate, causes the slow actions (probe F23/F24). The block below stays until ADR-011 is
+accepted.
+
 ```text
 ARCHITECTURE_REVIEW_REQUIRED
 CONSTRAINT:  I-1 enforcement in DriverTurn / DriverTurnPipeline (B-014): a reply that has no
