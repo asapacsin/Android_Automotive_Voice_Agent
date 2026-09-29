@@ -29,6 +29,11 @@ class DriverTurnPipeline(
     private val speechEvidence: () -> Boolean,
     private val host: Host,
 ) {
+    /**
+     * The adapter's side. Its callbacks are invoked while this pipeline's monitor is held: they must
+     * not block, and must not take a lock that another thread may hold while calling into the
+     * pipeline (emit only tryEmits; a deferred send only schedules).
+     */
     interface Host {
         fun emit(event: DomainVoiceEvent)
 
@@ -86,7 +91,9 @@ class DriverTurnPipeline(
     /** S2 of SPEC-006: a referent does not survive the session that produced it. */
     fun onSessionEnded() {
         driverContext.onSessionEnded()
-        DriverContext.clear()
+        // Only our own record: a throwaway client's disconnect must not wipe a live session's
+        // context (the releaseNavigatingListenerIfOwned hazard).
+        if (DriverContext.currentOrNull() === driverContext) DriverContext.clear()
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.novadrive.app.voice
 
+import com.novadrive.app.vehicle.ClimateToolHandler
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -75,7 +76,7 @@ object RealtimeToolCatalog {
                     "action",
                     JSONObject()
                         .put("type", "string")
-                        .put("enum", JSONArray(CLIMATE_ACTIONS)),
+                        .put("enum", JSONArray(ClimateToolHandler.ACTIONS)),
                 )
                 .put(
                     "value",
@@ -247,7 +248,7 @@ object RealtimeToolCatalog {
                 !keys.contains("action") -> "INVALID_FIELDS"
                 !setOf("action", "value").containsAll(keys) -> "INVALID_FIELDS"
                 json.opt("action") !is String -> "INVALID_FIELD_TYPE"
-                json.optString("action") !in CLIMATE_ACTIONS -> "ACTION_NOT_ALLOWED"
+                json.optString("action") !in ClimateToolHandler.ACTIONS -> "ACTION_NOT_ALLOWED"
                 keys.contains("value") && json.opt("value") !is Number -> "INVALID_FIELD_TYPE"
                 json.optString("action") in setOf("set_temperature", "set_fan") && !keys.contains("value") -> "MISSING_VALUE"
                 else -> null
