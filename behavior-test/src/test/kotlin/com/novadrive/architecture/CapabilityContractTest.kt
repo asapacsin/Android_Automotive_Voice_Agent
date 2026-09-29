@@ -28,8 +28,9 @@ class CapabilityContractTest {
             .joinToString(separator = " ")
     }
 
+    /** Tools offered to the model: RealtimeToolCatalog owns the list, shared by every adapter (ADR-010). */
     private val declaredTools: Set<String> by lazy {
-        val protocol = File(root, "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexProtocol.kt").readText()
+        val protocol = File(root, "app/src/main/kotlin/com/novadrive/app/voice/RealtimeToolCatalog.kt").readText()
         Regex("name = \"([a-z_]+)\"").findAll(protocol).map { it.groupValues[1] }.toSet() +
             Regex("const val [A-Z_]+ = \"([a-z_]+)\"").findAll(protocol).map { it.groupValues[1] }.toSet()
     }
@@ -60,7 +61,7 @@ class CapabilityContractTest {
             Regex("([A-Z_]{4,}) ->").findAll(dispatcher).map { it.groupValues[1].lowercase() }.toSet() +
             Regex("TOOL = \"([a-z_]+)\"").findAll(handlers).map { it.groupValues[1] }.toSet()
         val phantom = registryTools.filter { it !in declaredTools }
-        assertTrue(phantom.isEmpty()) { "Registry lists tools the model is never offered: $phantom" }
+        assertTrue(phantom.isEmpty()) { "Registry lists tools the model is never offered (not in RealtimeToolCatalog): $phantom" }
         val unrouted = registryTools.filter { it !in routed }
         assertTrue(unrouted.isEmpty()) { "Registry lists tools nothing executes: $unrouted" }
     }
