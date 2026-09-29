@@ -69,6 +69,6 @@ async def main(timeline, extra, total_s):
 
 if __name__ == "__main__":
     tl = [(int(a), b) for a, b in json.loads(sys.argv[1])]
-    extra = {"generationConfig.thinkingConfig": {"thinkingLevel": os.environ.get("LVL", "LOW")}}
+    extra = {} if os.environ.get("LVL") == "none" else {"generationConfig.thinkingConfig": {"thinkingLevel": os.environ.get("LVL", "LOW")}}
     extra.update(json.loads(sys.argv[3]) if len(sys.argv) > 3 else {})
     asyncio.run(main(tl, extra, float(sys.argv[2])))

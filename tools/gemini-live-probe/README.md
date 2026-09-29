@@ -17,6 +17,11 @@ LVL=LOW python audio_probe.py '[[300,"intro_q.pcm"],[6500,"shut_up_zh.pcm"]]' 16
 
 # which setup fields the model accepts
 python opt_probe.py
+
+# per-component latency with the app's own tools and persona (one JSON line per run; times from the
+# end of the utterance; transcript text only with SHOW_TEXT=1). MODEL, LVL, VAD=auto|manual,
+# HANGOVER_MS, PROMPT=app|persona|none; a clip of the form "text:..." sends a typed turn instead.
+MODEL=models/gemini-3.8-live python latency_probe.py ac_on.pcm 30
 ```
 
 Output contains synthetic test transcripts only. Do not point these tools at recordings of real

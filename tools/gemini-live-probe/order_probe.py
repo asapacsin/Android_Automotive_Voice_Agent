@@ -22,8 +22,9 @@ NAV = {"name": "navigate_to", "description": "导航到指定地点。",
 
 
 async def main(clip, total_s):
-    extra = {"generationConfig.thinkingConfig": {"thinkingLevel": os.environ.get("LVL", "LOW")},
-             "tools": [{"functionDeclarations": [CLIMATE, NAV]}]}
+    extra = {} if os.environ.get("LVL") == "none" else {"generationConfig.thinkingConfig": {"thinkingLevel": os.environ.get("LVL", "LOW")}}
+    extra.update({
+             "tools": [{"functionDeclarations": [CLIMATE, NAV]}]})
     if os.environ.get("CALL_FIRST") == "1":
         extra["systemInstruction"] = {"parts": [{"text": "你是车载语音助手小诺。用简短的中文口语回答。用户要求执行操作（空调、导航等）时，必须先调用对应工具，拿到结果之后再说话；调用之前不要说任何话，也不要说“马上”“这就”。"}]}
     rows = []

@@ -68,3 +68,30 @@ Setup with the full app configuration was accepted every time (0.8–1.1 s to `s
 Encoding note for anyone repeating this: the container's JVM default charset is ASCII, so Chinese
 text passed through an environment variable reaches the model as `?????`. Run with
 `LC_ALL=C.UTF-8` and `-Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8`.
+
+
+## Third round (same day): what makes the Gemini path slow, by component
+
+Tool: `tools/gemini-live-probe/latency_probe.py`. It uses the app's own 12 tool declarations
+(`app/src/test/resources/golden/baidu_session_update.json`, the catalogue both adapters share), the
+app persona plus `CALL_FIRST_HINT`, the `Kore` voice, and the recorded 16 kHz clips streamed in
+real time. It answers each tool call with an `ok=true` result after 300 ms. Times are from the end
+of the driver's utterance. Cloud container, not the phone. Samples are small, and they are counts,
+not distributions.
+
+| # | Fact |
+| --- | --- |
+| F23 | **`models/gemini-3.8-live` (same key, no thinking) calls tools at once.** Spoken commands: 20 of 20 called the right tool, 0.78–2.38 s after the end of speech (median 1.24 s). The call came before any speech, with no filler turn and no `interactionStatus`. The first audio of the spoken result came 2.0–5.9 s after the end of speech (median 3.5 s; includes the 300 ms simulated execution). Typed commands: 3 of 3 called, 0.86–1.97 s. Refusals were honest: 「抱歉，这个操作我还做不了」 for volume, and no invented news |
+| F24 | **`gemini-3.8-live-extended-thinking`, same setup, 12 spoken commands:** 1 tool call, at 31.7 s. 7 runs: a filler turn, `interactionStatus: IN_PROGRESS`, then a second reply about 20 s later with **no call**. The 2 of those that were transcribed both reported a failure that never happened (「抱歉，系统出现故障，未能成功打开空调」). 4 runs: no reply within 45 s (these 4 ran as 4 concurrent sessions). The same model's earlier runs (second round) called at 7–11.5 s. So `IN_PROGRESS` does **not** predict that a call will come |
+| F25 | **Correction to F21: the transcript arrives ahead of its audio.** Over 45 reply turns (both models, spoken and typed), every `outputTranscription` chunk arrived before the audio it transcribes. The smallest lead was 240 ms and the median 1.7 s; a reply's first chunk led by 1.2–2.6 s. Short replies arrive as one transcript chunk, in the same message as the first audio chunk. F21 is right that the chunks are interleaved with the audio; they are not behind it. Measured as (audio received) − (characters received × that turn's ms per character); 203–344 ms per character, median 247 |
+| F26 | **Client activity detection is not faster.** `automaticActivityDetection.disabled` with `activityStart`/`activityEnd` sent by the client 300 or 600 ms after the speech ended: calls came 1.35–2.68 s after the end of speech (6 of 6), no better than server VAD (F23). Server VAD reported `ACTIVITY_END` 0.4–1.2 s after the speech ended |
+| F27 | `gemini-3.8-live` **rejects `thinkingLevel`**: 1007 "Thinking level is not supported for this model." It accepts no `thinkingConfig`, or `thinkingBudget: 0`. The app's setup always sends `thinkingLevel`, so selecting this model today would fail at setup |
+| F28 | Both models send empty `{}` frames between content messages. `GeminiLiveProtocol.parse` already yields an empty message for them |
+| F29 | Long replies stream at real-time pace on both models: 「你好，简单介绍一下你能做什么」 got 8.6–9.8 s of audio delivered over 8.6–9.8 s. So holding a reply until it is complete costs its whole length, whichever model is used |
+| F30 | `behavior: NON_BLOCKING` on `gemini-3.8-live` is accepted at setup. In 1 run it called `delegate_task` at 1.05 s without speaking first. After the `WHEN_IDLE` result it said it was looking the answer up, and did not speak the result within 20 s. Native delegation on this model is **unproven** |
+| F31 | `gemini-3.8-flash` `streamGenerateContent`: HTTP 503 on all 6 attempts today, so the latency of a background thinking model is **not measured** |
+| F32 | `gemini-3.8-live` with the older 2-tool probe setup: a cough and a knock during a reply did not interrupt it (1 run). Barge-in was **not measured**: in 1 run the two utterances merged into one input turn, and in 1 run there was no reply at all |
+
+What this round may claim: the order of events and the relative latency of the two models from a
+cloud container. What it may not claim: anything about the phone (network, echo, cabin noise), or
+the quality of either model's answers beyond the transcripts shown.
