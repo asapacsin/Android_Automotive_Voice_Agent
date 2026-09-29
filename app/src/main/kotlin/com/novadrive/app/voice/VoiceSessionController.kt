@@ -1,7 +1,6 @@
 package com.novadrive.app.voice
 
 import android.content.Context
-import com.novadrive.app.BaiduApiConfig
 import com.novadrive.app.NavigationState
 import com.novadrive.evaluation.EventType
 import com.novadrive.evaluation.Telemetry
@@ -181,7 +180,6 @@ class VoiceSessionController(
         lifecycle.onSessionStarted(reason)
     }
 
-    fun startBaidu(apiConfig: BaiduApiConfig, reason: String = "start") = startSession(SessionProviderConfig.Baidu(apiConfig), reason)
 
     /**
      * Wake word, UI or an app prompt: resume listening (or restart the countdown). The wake word

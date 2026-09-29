@@ -204,7 +204,7 @@ class VoiceSessionGatewayTest {
         val activations = mutableListOf<String>()
         val sleeps = mutableListOf<String>()
         override var listeningState: ListeningState = ListeningState.DEEP_IDLE
-        override fun startBaidu(reason: String) {
+        override fun startSession(reason: String) {
             startCalls += 1
             isActive = true
             listeningState = ListeningState.ACTIVE

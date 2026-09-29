@@ -54,3 +54,19 @@ object RealtimeProviderFactory {
     private fun built(provider: RealtimeVoiceProvider, id: VoiceProviderId, model: String, rate: Int) =
         Built(provider, RealtimeSessionConfig(provider = id, model = model, audio = RealtimeAudioConfig(INPUT_SAMPLE_RATE_HZ, rate)), rate)
 }
+
+/**
+ * Maps the session's provider choice ([com.novadrive.app.VoiceProviderChoice]) to its typed config.
+ * Next to the factory so the choice and the adapter it selects live in one place (ADR-009 §4,
+ * ADR-010); only the chosen provider's settings are read, so a Gemini session never needs Baidu
+ * credentials and a Baidu session never touches the Gemini key.
+ */
+fun sessionConfigFor(
+    choice: VoiceProviderId,
+    gemini: () -> GeminiApiConfig,
+    baidu: () -> BaiduApiConfig,
+): SessionProviderConfig =
+    when (choice) {
+        VoiceProviderId.GEMINI_LIVE -> SessionProviderConfig.Gemini(gemini())
+        else -> SessionProviderConfig.Baidu(baidu())
+    }

@@ -51,7 +51,7 @@ object VoiceSessionGateway {
         }
         if (!session.hasMicPermission()) return StartResult.MicPermissionMissing
         return try {
-            session.startBaidu(reason)
+            session.startSession(reason)
             service?.start()
             StartResult.Started
         } catch (failure: IllegalArgumentException) {
@@ -151,7 +151,7 @@ internal interface GatewaySession {
     /** True when the session ended in a terminal error and can only be recovered by restarting. */
     val hasFailed: Boolean get() = false
     fun hasMicPermission(): Boolean
-    fun startBaidu(reason: String = "start")
+    fun startSession(reason: String = "start")
     fun stop()
     fun activate(reason: String) {}
     fun sleep(reason: String) {}
@@ -175,7 +175,7 @@ private class ControllerGatewaySession(
 
     override fun hasMicPermission(): Boolean = service.hasMicPermission()
 
-    override fun startBaidu(reason: String) {
+    override fun startSession(reason: String) {
         controller.startSession(service.sessionConfig(), reason)
     }
 

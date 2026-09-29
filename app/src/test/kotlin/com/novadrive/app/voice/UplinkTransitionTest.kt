@@ -43,9 +43,29 @@ class UplinkTransitionTest {
     }
 
     @Test
-    fun noListenerIsHarmless() {
+    fun noListenerStillReturnsTheGatesDecision() {
         val gate = SpeechUplinkGate()
-        val sent = reportUplinkTransition({ gate.isOpen }, null) { gate.offer(tone(6_000)) }
-        assertTrue(sent.send.size >= 0)
+        var decision: SpeechUplinkGate.Decision? = null
+        repeat(SpeechUplinkGate.MIN_ONSET_FRAMES) {
+            decision = reportUplinkTransition({ gate.isOpen }, null) { gate.offer(tone(6_000)) }
+        }
+        assertTrue(gate.isOpen)
+        // The onset frame flushes the pre-roll: the wrapper must hand back exactly what the gate sent.
+        assertTrue(decision!!.send.isNotEmpty())
+    }
+
+    @Test
+    fun anInterruptionMidUtteranceClosesThenANewOnsetReopens() {
+        val gate = SpeechUplinkGate()
+        val events = mutableListOf<Boolean>()
+        val notify: (Boolean) -> Unit = { events += it }
+        repeat(SpeechUplinkGate.MIN_ONSET_FRAMES + 5) {
+            reportUplinkTransition({ gate.isOpen }, notify) { gate.offer(tone(6_000)) }
+        }
+        reportUplinkTransition({ gate.isOpen }, notify) { gate.onCaptureInterrupted() }
+        repeat(SpeechUplinkGate.MIN_ONSET_FRAMES + 5) {
+            reportUplinkTransition({ gate.isOpen }, notify) { gate.offer(tone(6_000)) }
+        }
+        assertEquals(listOf(true, false, true), events)
     }
 }

@@ -15,9 +15,9 @@ import com.novadrive.app.ui.AssistantNavigationScreen
 import com.novadrive.app.voice.PcmAudioPlayer
 import com.novadrive.app.voice.SessionProviderConfig
 import com.novadrive.app.voice.SessionServiceControl
+import com.novadrive.app.voice.sessionConfigFor
 import com.novadrive.app.voice.VoiceSessionController
 import com.novadrive.app.voice.VoiceSessionGateway
-import com.novadrive.ingress.realtime.VoiceProviderId
 import com.novadrive.ingress.realtime.VoiceUiState
 
 class MainActivity : Activity() {
@@ -302,11 +302,11 @@ class MainActivity : Activity() {
         val gemini = GeminiSettingsRepository(this)
         val choice = gemini.choice()
         DebugVoiceLog.log("session_provider choice=${choice.wireName}")
-        return if (choice == VoiceProviderId.GEMINI_LIVE) {
-            SessionProviderConfig.Gemini(gemini.config(instructions = settingsRepository.loadSettings().instructions))
-        } else {
-            SessionProviderConfig.Baidu(settingsRepository.config())
-        }
+        return sessionConfigFor(
+            choice,
+            gemini = { gemini.config(instructions = settingsRepository.loadSettings().instructions) },
+            baidu = { settingsRepository.config() },
+        )
     }
 
     companion object {
