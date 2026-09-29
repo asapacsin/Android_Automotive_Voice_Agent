@@ -206,6 +206,21 @@ class VoiceSessionController(
         }
     }
 
+    /**
+     * Local evidence (the uplink gate) that the driver started or stopped speaking. Only a provider
+     * that sends no speech events of its own ([ProviderCapabilities.serverSpeechActivityEvents]
+     * false) is driven by it; it then gets exactly the handling a server `SpeechStarted` /
+     * `SpeechStopped` gets (turn state, barge-in candidate). For every other provider this is a
+     * no-op, so the server stays the one source and nothing is counted twice.
+     */
+    fun onLocalSpeechActivity(active: Boolean) {
+        if (provider.capabilities.serverSpeechActivityEvents || !sessionActive.get()) return
+        provider.onLocalSpeechActivity(active)
+        scope.launch {
+            handleEvent(if (active) DomainVoiceEvent.SpeechStarted else DomainVoiceEvent.SpeechStopped)
+        }
+    }
+
     /** Stops the assistant's current reply: local playback now, and the reply on the server. */
     fun cancelCurrentResponse() {
         if (!sessionActive.get()) return

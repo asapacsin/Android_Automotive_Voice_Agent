@@ -27,6 +27,16 @@ sealed interface DomainVoiceEvent {
     data class WorkResult(val workId: String, val output: String) : DomainVoiceEvent
     data class WorkFailed(val workId: String, val message: String) : DomainVoiceEvent
     data object Reconnecting : DomainVoiceEvent
+    /**
+     * The provider withdrew tool calls it had issued (the driver moved on). Work not yet executed
+     * is not executed; an action that already ran is never "undone" by this (I-1).
+     */
+    data class ToolCallCancelled(val callIds: List<String>) : DomainVoiceEvent
+    /**
+     * The provider's own view of whether it still waits on tool work. Information only: whether
+     * work is pending is decided by [WorkCoordinator], never by this.
+     */
+    data class ProviderWorkState(val pending: Boolean) : DomainVoiceEvent
 }
 
 /**

@@ -40,6 +40,13 @@ interface RealtimeVoiceProvider {
     /** Listening resumed after a sleep; the conversation continues where it was. */
     fun resumeListening() {}
 
+    /**
+     * Local evidence that the driver started ([active] true) or stopped speaking, from the uplink
+     * gate. Called only for a provider whose [ProviderCapabilities.serverSpeechActivityEvents] is
+     * false, so it can open its driver turn at the same moment the session core does.
+     */
+    fun onLocalSpeechActivity(active: Boolean) {}
+
     /** Cancels a reply that is in progress even if its audio has not started yet. */
     suspend fun cancelActiveResponse(): DomainVoiceEvent = cancelAssistantResponse()
 
