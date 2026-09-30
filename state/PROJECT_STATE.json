@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-29T14:10:53",
+  "generated_at": "2026-09-30T00:05:28",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "3badc84",
+    "commit": "7dd2524",
     "branch": "claude/9-29",
-    "subject": "Regenerate LOCAL_DEVICE_REQUIRED.md (stale generated view).",
-    "working_tree_clean": true,
-    "uncommitted_files": 0
+    "subject": "ADR-011 revision 2: settle the claim gate at generationComplete; review corrections; D-10.",
+    "working_tree_clean": false,
+    "uncommitted_files": 4
   },
   "tests": {
     "available": true,
@@ -116,6 +116,11 @@
       "priority": "RESOLVED"
     },
     {
+      "id": "D-10",
+      "title": "Two orderings the claim gate misses",
+      "priority": "OPEN"
+    },
+    {
       "id": "D-9",
       "title": "The hold budget releases a reply whose words were never judged",
       "priority": "OPEN"
@@ -137,7 +142,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "A5: | A5 | Picker selection uses the registry; `tryLocalNavigationPick` is gone | production wiring | `FeaturePresenceRegressionTest` + existing picker tests green | not built — **deferred on purpose** to",
-    "actionable_count": 70,
+    "actionable_count": 71,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 17,
@@ -582,6 +587,13 @@
         "class": "active milestone row",
         "source": "CURRENT_MILESTONE.md",
         "item": "Weather selected from speech ≥ 9/10 with no SPEC-008 regress",
+        "blocked_by": null
+      },
+      {
+        "priority": 8,
+        "class": "recorded technical debt",
+        "source": "docs/TECH_DEBT.md",
+        "item": "D-10",
         "blocked_by": null
       },
       {

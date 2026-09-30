@@ -2,7 +2,8 @@
 
 Status: **Proposed 2026-09-29**, as [ADR-011](../DECISIONS/ADR-011-gemini-native-voice-path.md).
 It is not in force until the owner decides N-1 and N-2 (§10). Requirement:
-[SPEC-014](../SPECS/SPEC-014-gemini-native-voice-path.md) · Demand: B-028.
+[SPEC-014](../SPECS/SPEC-014-gemini-native-voice-path.md) · Demand: B-028 ·
+Plan: [GEMINI_NATIVE_PLAN.md](GEMINI_NATIVE_PLAN.md).
 
 The owner's request: *"design a new architecture that should optimise for the new Gemini API,
 because the last test said the old design is slow and poorly suited to it."*

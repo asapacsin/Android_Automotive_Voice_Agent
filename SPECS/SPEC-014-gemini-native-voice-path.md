@@ -4,6 +4,8 @@ Status: **Draft 2026-09-29**. Blocked on the owner's decisions N-1 and N-2
 ([ADR-011](../DECISIONS/ADR-011-gemini-native-voice-path.md))
 Raised: 2026-09-29 · Source: [B-028](../BACKLOG.md)
 Depends on: I-1, I-5, I-10, I-13, ADR-009, ADR-010, [SPEC-013](SPEC-013-gemini-live-provider.md)
+Plan: [GEMINI_NATIVE_PLAN.md](../docs/GEMINI_NATIVE_PLAN.md). Behaviour 3–7 and A2/A3 below describe
+clause release, which ADR-011 Revision 2 deferred; they are rewritten in the plan's W0.
 
 > **Reaching Done on this SPEC does not end the run.** Reconcile the registry, the debt list and
 > the backlog row, then run `python scripts/discover_work.py` and take the next item. Handing

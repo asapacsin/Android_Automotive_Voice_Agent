@@ -5,7 +5,8 @@ Amends, on acceptance: [ADR-010](ADR-010-gemini-live-second-provider.md) decisio
 Gemini model), and closes its "Open architecture question".
 Keeps: ADR-001, ADR-002 (Baidu stays the default provider), ADR-008, ADR-009.
 Architecture: [docs/GEMINI_NATIVE_ARCHITECTURE.md](../docs/GEMINI_NATIVE_ARCHITECTURE.md) ·
-Requirement: [SPEC-014](../SPECS/SPEC-014-gemini-native-voice-path.md) · Demand: B-028
+Requirement: [SPEC-014](../SPECS/SPEC-014-gemini-native-voice-path.md) · Demand: B-028 ·
+Plan: [GEMINI_NATIVE_PLAN.md](../docs/GEMINI_NATIVE_PLAN.md)
 
 ## Revision 2 (after review)
 
