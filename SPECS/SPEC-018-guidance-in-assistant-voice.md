@@ -90,6 +90,34 @@ Provider-neutral, extended by capability (ADR-009 §3), in `ingress`:
 - App gateway: `VoiceSessionGateway.sendPrompt(text, promptId): Boolean` — no `start`, no
   activation; false when there is no active, non-failed session.
 
+## Code review of step 1 (2026-09-30): REVISE — decisions taken (revision 3)
+
+- **Typed transcript path (R5, R6).** A GUIDANCE turn's output transcription is emitted as
+  `DomainVoiceEvent.AppPromptTranscript(promptId, text)` — never as `AssistantTranscript` — until its
+  turnComplete, including text after generationComplete. The core forwards it to
+  `VoiceSessionCallbacks.onAppPromptTranscript(promptId, text)` (default no-op). Guidance text
+  therefore never reaches `onTranscript`, the UI transcript, logs or the service notification (I-8).
+  COMPLETED (turnComplete) follows the last transcript, so fidelity is judged at
+  max(COMPLETED, drained) on the typed text; the transcript grace is deleted.
+- **No prompt while any turn is open (R4).** Until G-1d is measured, `sendPrompt` returns false
+  while a driver onset is outstanding or any response turn is open; `guidanceBlocker` also returns
+  RESPONSE_OPEN while the UI state is THINKING.
+- **A voided open prompt goes silent (R3).** The client stops emitting that turn's audio once it
+  emitted VOIDED for it.
+- **Every VOIDED and every session stop reach the relay (R1).** PENDING → abandon + Amap now;
+  ASSISTANT not drained → cut (B2a); ASSISTANT drained → release + B2a, then pump.
+- **Stop clears guidance state (R2).** `AndroidPlaybackPort.stop()` and session end clear the
+  tracker, the arbiter's open/assistant guidance and the transcript collector.
+- **G-2 only when it is used (R7).** The lifecycle keeps the connection in SLEEP while navigating
+  only when the relay is active (toggle on) and the provider has `verbatimPromptSpeech`; otherwise
+  today's timers apply unchanged.
+- **Claim at playout; drained means ended (R8).** ASSISTANT is claimed when the player actually
+  starts playing a guidance chunk (not at enqueue). "Drained" = COMPLETED seen, no queued chunk of
+  the prompt, and the player idle; an early idle (underrun) is not a drain.
+- **Amap never over itself (G-1b+).** A fallback is spoken only when Amap is not speaking; the relay
+  brackets its own `playTTS` for the arbiter (listener if G-1b+ shows it fires, else a length-based
+  estimate), so no assistant prompt starts over it.
+
 ## Behaviour
 
 - **B1. Route per prompt.** The relay handles one prompt at a time. A new prompt goes to **Amap at
@@ -207,4 +235,4 @@ would reopen ADR-014 and is escalated, not decided here.
 | Area | State | Proof |
 | --- | --- | --- |
 | Design review | done — REVISE, all 10 changes taken (revision 2) | reviewer report 2026-09-30 |
-| Step 1 | built (L2), behind the developer toggle (off) | 68635ac (contract), 5e0d909 (speech owners), 144f3fb (relay, fidelity, Amap edge); code review in progress |
+| Step 1 | built (L2), behind the developer toggle (off); code review REVISE (R1–R8) — fixes in progress | 68635ac (contract), 5e0d909 (speech owners), 144f3fb (relay, fidelity, Amap edge); code review in progress |
