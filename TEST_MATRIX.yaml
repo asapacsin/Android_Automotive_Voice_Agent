@@ -933,6 +933,21 @@ tests:
     related: [P22]
     last_run: {at: 2026-09-20, result: PASS}
 
+  - id: BODY-UNIT-001
+    capability: body
+    name: Windows and seat height act on the vehicle port and announce what was done
+    purpose: "SPEC-015 B1/B4/B5 - 「座位有点高」 lowers the seat, 「把车窗打开一半」 sets 50%, and the reply is built from the state read back"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    prerequisites: []
+    procedure: ["gradlew :app:testDebugUnitTest --tests *BodyDomainTest* --tests *WindowToolHandlerTest* --tests *SeatToolHandlerTest* --tests *ActionAnnouncementTest*"]
+    pass_criteria: ["success results carry the read-back state and an announce sentence; clamping sets limit_reached; invalid and no-port calls are ok=false with no announce"]
+    evidence: []
+    related: [SPEC-015]
+
 # ---- turn taking, lifecycle, recovery --------------------------------------------------------
 
   - id: BARGEIN-001

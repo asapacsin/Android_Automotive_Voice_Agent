@@ -280,6 +280,32 @@ class FalseCapabilityClaimTest {
         assertTrue(context.validReferents().isEmpty(), "a cancelled turn may not write context")
     }
 
+    // ---- SPEC-015: windows and seat are real tools now; a claim still needs the call ----
+
+    @Test
+    fun aWindowClaimWithNoToolCallIsNotReleased() {
+        val turn = DriverTurn(epoch = 1)
+        turn.onUserTranscript("把车窗打开一半") { DriverTurn.classify(it) }
+        assertEquals(DriverTurn.Kind.ACTION, turn.kind)
+        turn.onResponseStarted(goodAudio, false)
+        val reply = "已经把车窗打开一半了"
+        turn.onAssistantText(reply)
+        val verdict = turn.onResponseDone(reply, hadToolCallInResponse = false)
+        assertFalse(verdict is DriverTurn.Verdict.Release, "$verdict")
+    }
+
+    @Test
+    fun windowsAndSeatAreActionsButTheSunroofIsStillRefused() {
+        listOf("把车窗打开一半", "座位有点高", "座椅调低一点").forEach {
+            assertFalse(ActionClaimGuard.isUnsupportedRequest(it), it)
+            assertEquals(DriverTurn.Kind.ACTION, DriverTurn.classify(it), it)
+        }
+        listOf("打开天窗", "打开车门", "打开后备箱").forEach {
+            assertTrue(ActionClaimGuard.isUnsupportedRequest(it), it)
+            assertEquals(DriverTurn.Kind.NO_TOOL_ACTION, DriverTurn.classify(it), it)
+        }
+    }
+
     // ---- SPEC-011 A3/A4: a live answer needs a live result of the same kind, this turn ----
 
     private val goodAudio = com.novadrive.app.voice.SpeechUplinkGate.Segment(durationMs = 1_500, voicedFrames = 14, peak = 9_000)

@@ -37,6 +37,9 @@ class ToolCoverageTest {
         "place_call" to """{"contact":"张三"}""",
         // SPEC-011: with no web key it is refused with AMAP_WEB_KEY_MISSING - still a dispatch.
         "query_live_info" to """{"kind":"weather","where":"珠海"}""",
+        // SPEC-015: the body domain; with no cabin port it answers VEHICLE_UNAVAILABLE - a dispatch.
+        "control_window" to """{"action":"set","value":50}""",
+        "control_seat" to """{"action":"adjust_height","value":-1}""",
     )
 
     private fun declaredTools(): List<String> {

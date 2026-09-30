@@ -84,7 +84,8 @@ class ObservableContractsTest {
     @Test
     fun anUnsupportedRequestIsRecognisedBeforeTheModelAnswers() {
         assertTrue(ActionClaimGuard.isUnsupportedRequest("把音量调大一点"))
-        assertTrue(ActionClaimGuard.isUnsupportedRequest("打开车窗"))
+        assertTrue(ActionClaimGuard.isUnsupportedRequest("打开天窗"))
+        assertFalse(ActionClaimGuard.isUnsupportedRequest("打开车窗"), "SPEC-015: windows have control_window")
         assertFalse(ActionClaimGuard.isUnsupportedRequest("空调温度调高一点"))
     }
 

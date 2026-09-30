@@ -56,7 +56,7 @@ object ToolCallGuards {
         // place_call dials twice, navigate_to / open_app / save_place / exit_navigation_mode redo a
         // visible action, and query_live_info costs daily quota (SPEC-011: DUPLICATE_IN_TURN). Pure
         // reads such as describe_camera_view are left out.
-        if (ToolRegistry.PRODUCT.spec(call.name)?.repeatSensitive != true) return null
+        if (call.name !in ToolRegistry.PRODUCT.repeatSensitiveNames) return null
         if (context == null) return null
         val arguments = call.arguments.filterKeys { it != "_validation_error" }
         // SPEC-010 B4: the on-screen matcher may already have run this capability for this

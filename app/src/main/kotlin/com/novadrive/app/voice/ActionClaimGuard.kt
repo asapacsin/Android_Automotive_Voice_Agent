@@ -170,7 +170,7 @@ class ActionClaimGuard {
          * control_climate and raise the fan — a wrong action.
          */
         private val FALLBACK_UNSUPPORTED_CUES = listOf(
-            "音量", "声音", "大声", "小声", "车窗", "窗户", "天窗", "座椅", "电话", "后备箱", "车门", "车灯", "雨刷",
+            "音量", "声音", "大声", "小声", "天窗", "电话", "后备箱", "车门", "车灯", "雨刷",
             "下一首", "上一首", "换一首", "换首歌", "切歌",
         )
 
@@ -356,6 +356,7 @@ class ActionClaimGuard {
             "音乐", "歌", "曲",
             "导航", "目的地", "路线", "地址",
             "摄像头", "镜头", "画面",
+            "车窗", "窗户", "座椅", "座位",
         )
 
         /**

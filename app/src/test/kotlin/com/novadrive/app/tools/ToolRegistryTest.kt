@@ -31,6 +31,7 @@ class ToolRegistryTest {
             "navigate_to" to "navigation", "choose_navigation_option" to "navigation",
             "exit_navigation_mode" to "navigation", "save_place" to "navigation",
             "open_app" to "apps", "control_music" to "media", "control_climate" to "climate",
+            "control_window" to "body", "control_seat" to "body",
             "describe_camera_view" to "vision", "place_call" to "phone", "query_live_info" to "live_info",
             "end_conversation" to "speech", "set_speech_output" to "speech",
         )
@@ -52,13 +53,18 @@ class ToolRegistryTest {
     }
 
     @Test
-    fun `repeat-sensitive tools are exactly the world-acting eight`() {
+    fun `repeat-sensitive tools are exactly the world-acting ten`() {
         assertEquals(
             setOf(
                 "control_climate", "control_music", "query_live_info", "place_call",
                 "navigate_to", "open_app", "save_place", "exit_navigation_mode",
+                "control_window", "control_seat",
             ),
             ToolRegistry.PRODUCT.tools().filter { it.repeatSensitive }.map { it.name }.toSet(),
+        )
+        assertEquals(
+            ToolRegistry.PRODUCT.tools().filter { it.repeatSensitive }.map { it.name }.toSet(),
+            ToolRegistry.PRODUCT.repeatSensitiveNames,
         )
     }
 }

@@ -94,7 +94,8 @@ class ActionClaimGuardTest {
             assertTrue(ActionClaimGuard.isControlRequest(it), "must be an action we can perform: $it")
         }
         assertTrue(ActionClaimGuard.isUnsupportedRequest("把音量调大。"))
-        assertTrue(ActionClaimGuard.isUnsupportedRequest("打开车窗。"))
+        assertTrue(ActionClaimGuard.isUnsupportedRequest("打开天窗。"))
+        assertFalse(ActionClaimGuard.isUnsupportedRequest("打开车窗。"), "SPEC-015: windows have control_window")
     }
 
     @Test

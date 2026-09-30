@@ -339,8 +339,8 @@ object ScenarioCatalog {
     private fun unsupported(): List<Scenario> = listOf(
         Scenario("UNSUPPORTED_VOLUME", "No volume tool: refuse honestly", setOf(Suite.REGRESSION, Suite.SMOKE, Suite.AUDIO_E2E),
             steps = listOf(say("音量调大", outcome = Outcome.NO_ACTION, model = ModelBehavior.REFUSE, state = mapOf(HVAC_FAN to "2")))),
-        Scenario("UNSUPPORTED_WINDOW", "No window tool: refuse honestly", setOf(Suite.REGRESSION),
-            steps = listOf(say("打开车窗", outcome = Outcome.NO_ACTION, model = ModelBehavior.REFUSE))),
+        Scenario("UNSUPPORTED_WINDOW", "No sunroof tool: refuse honestly", setOf(Suite.REGRESSION),
+            steps = listOf(say("打开天窗", outcome = Outcome.NO_ACTION, model = ModelBehavior.REFUSE))),
         Scenario("UNSUPPORTED_FALSE_CLAIM_CORRECTED", "Model claims an unsupported action; the app corrects it", setOf(Suite.CHAOS, Suite.REGRESSION),
             modes = SIM_ONLY,
             steps = listOf(say("音量调大", outcome = Outcome.NO_ACTION, model = ModelBehavior.FALSE_CLAIM))),
