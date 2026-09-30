@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-30T05:24:53",
+  "generated_at": "2026-09-30T05:41:27",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "fe88cc0",
+    "commit": "a4e57a1",
     "branch": "claude/fuzzy-logic-9-30",
-    "subject": "Owner test-run policy (short route 横琴创业谷→励骏庞都, no Gemini for non-voice tests); ADR-014 G-2 decided",
+    "subject": "ADR-015: car functions as MCP-shaped domain servers (owner chose option A)",
     "working_tree_clean": false,
-    "uncommitted_files": 2
+    "uncommitted_files": 9
   },
   "tests": {
     "available": true,
@@ -146,8 +146,8 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "A5: | A5 | Picker selection uses the registry; `tryLocalNavigationPick` is gone | production wiring | `FeaturePresenceRegressionTest` + existing picker tests green | not built — **deferred on purpose** to",
-    "actionable_count": 71,
+    "NEXT_ACTION": "A1: | A1 | Port: window/seat limits, clamping, generic result; climate unchanged | functional | `SimulatedVehicleControlTest`, `ClimateToolHandlerTest` | not built |",
+    "actionable_count": 119,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 18,
@@ -156,8 +156,183 @@
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "A1",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-016-gemini-default-and-domain-servers.md",
+        "item": "A1",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-017-music-from-description.md",
+        "item": "A1",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-018-guidance-in-assistant-voice.md",
+        "item": "A1",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "A10",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "A2",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-016-gemini-default-and-domain-servers.md",
+        "item": "A2",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-017-music-from-description.md",
+        "item": "A2",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-018-guidance-in-assistant-voice.md",
+        "item": "A2",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "A3",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-016-gemini-default-and-domain-servers.md",
+        "item": "A3",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-017-music-from-description.md",
+        "item": "A3",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-018-guidance-in-assistant-voice.md",
+        "item": "A3",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "A4",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-016-gemini-default-and-domain-servers.md",
+        "item": "A4",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-017-music-from-description.md",
+        "item": "A4",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-018-guidance-in-assistant-voice.md",
+        "item": "A4",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-010-screen-affordances.md",
         "item": "A5",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "A5",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-016-gemini-default-and-domain-servers.md",
+        "item": "A5",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-017-music-from-description.md",
+        "item": "A5",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-018-guidance-in-assistant-voice.md",
+        "item": "A5",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "A6",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-016-gemini-default-and-domain-servers.md",
+        "item": "A6",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-017-music-from-description.md",
+        "item": "A6",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-018-guidance-in-assistant-voice.md",
+        "item": "A6",
         "blocked_by": null
       },
       {
@@ -170,8 +345,148 @@
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "A7",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-016-gemini-default-and-domain-servers.md",
+        "item": "A7",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-017-music-from-description.md",
+        "item": "A7",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-018-guidance-in-assistant-voice.md",
+        "item": "A7",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-013-gemini-live-provider.md",
         "item": "A8",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "A8",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-016-gemini-default-and-domain-servers.md",
+        "item": "A8",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-017-music-from-description.md",
+        "item": "A8",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-018-guidance-in-assistant-voice.md",
+        "item": "A8",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "A9",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-018-guidance-in-assistant-voice.md",
+        "item": "A9",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "Body domain (window/seat)",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "Comfort domain (scenarios)",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-017-music-from-description.md",
+        "item": "Hand-off + readback",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-016-gemini-default-and-domain-servers.md",
+        "item": "Part A",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-016-gemini-default-and-domain-servers.md",
+        "item": "Part B declarations/validation",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-016-gemini-default-and-domain-servers.md",
+        "item": "Part B runtime routing",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "Port + simulator",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-018-guidance-in-assistant-voice.md",
+        "item": "Relay, arbiter, pipeline, lifecycle",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "Speaking style",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-017-music-from-description.md",
+        "item": "Tool + capability",
         "blocked_by": null
       },
       {
@@ -676,6 +991,27 @@
         "class": "next authorised backlog item",
         "source": "BACKLOG.md",
         "item": "B-029",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-030",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-031",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-032",
         "blocked_by": null
       }
     ]

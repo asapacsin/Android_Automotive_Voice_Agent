@@ -1,6 +1,7 @@
 # Fuzzy driving requests (模糊意图): architecture
 
-Status: **Proposed 2026-09-30**, as [ADR-012](../DECISIONS/ADR-012-fuzzy-driving-requests.md).
+Status: **Accepted 2026-09-30**, as [ADR-012](../DECISIONS/ADR-012-fuzzy-driving-requests.md); all of §11 decided
+(O-2 by the owner, the rest delegated and taken as recommended). Requirement: [SPEC-015](../SPECS/SPEC-015-fuzzy-driving-requests.md).
 It is not in force until the owner decides O-1 to O-5 (§11). Demand: [B-029](../BACKLOG.md)
 (owner document `fuzzy logic.docx`, 2026-09-30). Next step: SPEC-015, then a plan in waves.
 

@@ -1,10 +1,12 @@
 # ADR-012 — Fuzzy driving requests: simulated body actuators, fixed comfort scenarios, speaking style
 
-Status: **Proposed 2026-09-30**. Not in force until the owner decides O-1 to O-5 of the architecture.
+Status: **Accepted 2026-09-30.** O-2 decided by the owner; O-1, O-3, O-4, O-5 delegated by the owner
+("you should make the decision and architecture") and taken as recommended. Requirement: SPEC-015.
+Amended by ADR-015: the new tools are built as domain servers (`body`, `comfort`, `speech`).
 Keeps: ADR-002 (end to end; no ASR stage), ADR-008 / ADR-010 (one seam), ADR-009 (behaviour varies
 on capabilities, not provider names), SPEC-006 (bounded implicit-intent table; per-call safety).
 Architecture: [docs/FUZZY_DRIVING_ARCHITECTURE.md](../docs/FUZZY_DRIVING_ARCHITECTURE.md) ·
-Demand: B-029 · Requirement: SPEC-015 (to be written after this decision)
+Demand: B-029 · Requirement: [SPEC-015](../SPECS/SPEC-015-fuzzy-driving-requests.md)
 
 ## Context
 
