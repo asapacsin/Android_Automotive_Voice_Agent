@@ -85,7 +85,7 @@ class FalseCapabilityClaimTest {
             guard.onResponseDone(ResponseOutcome(spoke = false, toolCallIds = listOf("c1")), "")
             assertEquals(null, guard.onResponseDone(ResponseOutcome(spoke = true), reply), reply)
         }
-        listOf("空调开好了，风量调不了", "没能找到别的，已经为你打开空调").forEach { reply ->
+        listOf("空调开好了，风量调不了", "没能找到别的，已经为你打开空调", "这首放不了，已经在放另一首歌了").forEach { reply ->
             assertTrue(ActionClaimGuard.carActionClaim(reply) != null, reply)
             val mixed = ActionClaimGuard()
             mixed.onUserTranscript("打开空调")

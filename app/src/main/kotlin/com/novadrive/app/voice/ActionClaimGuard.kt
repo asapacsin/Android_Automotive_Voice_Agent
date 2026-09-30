@@ -256,7 +256,11 @@ class ActionClaimGuard {
         private fun isMediaRefusalOnly(reply: String): Boolean =
             MEDIA_CLAIM_NOUNS.any { it in reply } &&
                 MEDIA_FAILURE_WORDS.any { it in reply } &&
-                NON_MEDIA_NOUNS.none { it in reply }
+                NON_MEDIA_NOUNS.none { it in reply } &&
+                MEDIA_REFUSAL_BLOCKERS.none { it in reply }
+
+        /** A refusal that also says something is playing is still a claim. */
+        private val MEDIA_REFUSAL_BLOCKERS = listOf("在放", "正在放", "放着", "开始放", "已经放")
 
         private fun mediaClaimWords(reply: String): Pair<String, String>? {
             val noun = MEDIA_CLAIM_NOUNS.firstOrNull { it in reply } ?: return null
