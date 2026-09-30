@@ -189,6 +189,42 @@ class VoiceSessionGatewayTest {
         assertEquals(1, secondSession.startCalls)
     }
 
+    @Test
+    fun sendPromptWithoutAttachedSessionIsFalse() {
+        assertFalse(VoiceSessionGateway.sendPrompt("前方左转", "p1"))
+    }
+
+    @Test
+    fun sendPromptNeverStartsOrActivatesAndFailsWhenInactiveOrFailed() {
+        val identity = Any().also { identities += it }
+        val session = FakeGatewaySession()
+        val service = FakeServiceControl()
+        VoiceSessionGateway.attachInternal(identity, session, service)
+
+        assertFalse(VoiceSessionGateway.sendPrompt("前方左转", "p1"), "inactive")
+        assertEquals(0, session.startCalls)
+        assertEquals(0, service.startCalls)
+        assertTrue(session.prompts.isEmpty())
+
+        session.isActive = true
+        session.listeningState = ListeningState.SLEEP
+        assertTrue(VoiceSessionGateway.sendPrompt("前方左转", "p2"))
+        assertEquals(listOf("p2"), session.prompts)
+        assertEquals(0, session.startCalls)
+        assertTrue(session.activations.isEmpty(), "a prompt never wakes the session")
+        assertEquals(ListeningState.SLEEP, session.listeningState)
+        assertTrue(session.texts.isEmpty(), "not the queued text path")
+
+        session.promptAccepted = false
+        assertFalse(VoiceSessionGateway.sendPrompt("前方左转", "p3"), "provider refused")
+
+        session.promptAccepted = true
+        session.hasFailed = true
+        assertFalse(VoiceSessionGateway.sendPrompt("前方左转", "p4"), "failed session")
+        assertEquals(0, session.stopCalls)
+        assertEquals(listOf("p2", "p3"), session.prompts)
+    }
+
     private class FakeGatewaySession(
         var hasMic: Boolean = true,
     ) : GatewaySession {
@@ -200,6 +236,12 @@ class VoiceSessionGatewayTest {
         override fun hasMicPermission(): Boolean = hasMic
         override fun sendText(text: String) {
             texts += text
+        }
+        val prompts = mutableListOf<String>()
+        var promptAccepted = true
+        override fun sendPrompt(text: String, promptId: String): Boolean {
+            prompts += promptId
+            return promptAccepted
         }
         val activations = mutableListOf<String>()
         val sleeps = mutableListOf<String>()

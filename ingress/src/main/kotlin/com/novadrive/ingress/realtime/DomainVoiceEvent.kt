@@ -37,6 +37,15 @@ sealed interface DomainVoiceEvent {
      * work is pending is decided by [WorkCoordinator], never by this.
      */
     data class ProviderWorkState(val pending: Boolean) : DomainVoiceEvent
+    /**
+     * The response to an app prompt sent with [RealtimeVoiceProvider.sendPrompt] (SPEC-018).
+     * OPENED precedes that response's first [AudioDelta] in stream order; COMPLETED is its turn
+     * end; VOIDED means it was interrupted, cut by a connection loss, or pre-empted by a driver
+     * onset (or never opened) before COMPLETED.
+     */
+    data class AppPromptTurn(val promptId: String, val phase: Phase) : DomainVoiceEvent {
+        enum class Phase { OPENED, COMPLETED, VOIDED }
+    }
 }
 
 /**

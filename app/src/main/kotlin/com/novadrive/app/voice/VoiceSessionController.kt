@@ -428,6 +428,9 @@ class VoiceSessionController(
         active.sendText(text)
     }
 
+    /** SPEC-018: an app prompt, sent now or not at all (never queued, never starts anything). */
+    fun sendPrompt(text: String, promptId: String): Boolean = active.sendPrompt(text, promptId)
+
     fun release() {
         lifecycle.onSessionStopped("released")
         NavigationState.reset()

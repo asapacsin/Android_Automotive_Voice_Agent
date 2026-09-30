@@ -83,6 +83,11 @@ data class ProviderCapabilities(
     val serverSpeechActivityEvents: Boolean = true,
     /** The provider can withdraw a tool call it already issued ([DomainVoiceEvent.ToolCallCancelled]). */
     val toolCallCancellation: Boolean = false,
+    /**
+     * The provider can be asked to speak an app prompt verbatim and correlates the response with
+     * it ([RealtimeVoiceProvider.sendPrompt], [DomainVoiceEvent.AppPromptTurn]; SPEC-018).
+     */
+    val verbatimPromptSpeech: Boolean = false,
 ) {
     val functionCalling: Boolean get() = customTools
 }
@@ -262,6 +267,7 @@ object VoiceCatalog {
                     requiresCredentials = true,
                     serverSpeechActivityEvents = false,
                     toolCallCancellation = true,
+                    verbatimPromptSpeech = true,
                 )
             VoiceProviderId.FAKE ->
                 ProviderCapabilities(

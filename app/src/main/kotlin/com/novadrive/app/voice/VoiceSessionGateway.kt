@@ -89,6 +89,17 @@ object VoiceSessionGateway {
         return started
     }
 
+    /**
+     * SPEC-018 B1a: sends an app prompt to the running session now, or returns false. Never starts
+     * or wakes a session and never changes the listening state; false when nothing is attached,
+     * the session is not active, or it failed.
+     */
+    fun sendPrompt(text: String, promptId: String): Boolean {
+        val session = starter ?: return false
+        if (!session.isActive || session.hasFailed) return false
+        return session.sendPrompt(text, promptId)
+    }
+
     /** UI / voice: stop listening now (SLEEP); the session and the wake word stay available. */
     fun sleep(reason: String) {
         starter?.sleep(reason)
@@ -159,6 +170,7 @@ internal interface GatewaySession {
     fun shutUp(reason: String) {}
     val listeningState: ListeningState get() = if (isActive) ListeningState.ACTIVE else ListeningState.DEEP_IDLE
     fun sendText(text: String) {}
+    fun sendPrompt(text: String, promptId: String): Boolean = false
     fun injectTestSpeech(pcm16le: ByteArray) {}
     fun setInputGainEnabled(enabled: Boolean) {}
 }
@@ -205,6 +217,8 @@ private class ControllerGatewaySession(
     override fun sendText(text: String) {
         controller.sendText(text)
     }
+
+    override fun sendPrompt(text: String, promptId: String): Boolean = controller.sendPrompt(text, promptId)
 
     override fun injectTestSpeech(pcm16le: ByteArray) {
         controller.injectTestSpeech(pcm16le)
