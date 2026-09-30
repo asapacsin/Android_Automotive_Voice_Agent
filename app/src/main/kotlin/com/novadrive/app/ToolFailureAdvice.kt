@@ -57,6 +57,7 @@ object ToolFailureAdvice {
         "NOT_PLAYING" to "这首没放成，可能需要会员或者有版权限制。请如实说没放成，不要说正在放。",
         "NO_MUSIC_APP" to "手机上没有能播放的音乐 app，请如实说。",
         "HANDOFF_REJECTED" to "音乐 app 没有接受这次请求，没有播放。请用一句话如实说没放成，不要说正在放。",
+        "MUSIC_STILL_PLAYING" to "已经让音乐 app 暂停，但它还在放。请如实说音乐还没停，不要说已经关掉了。",
         "MUSIC_HANDOFF_UNAVAILABLE" to "现在不能交给音乐 app 播放，没有播放。请用一句话如实说放不了，不要说正在放。",
         // SPEC-011 query_live_info. Each one says what did not happen and forbids the guess.
         LiveInfoTool.AMAP_WEB_KEY_MISSING to

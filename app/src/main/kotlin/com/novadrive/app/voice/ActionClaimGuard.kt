@@ -36,6 +36,10 @@ class ActionClaimGuard {
     private var navigationStarted = false
     private var navigationClaimCorrected = false
 
+    /** A play_music result this turn that did not read back a playing track (SPEC-017). */
+    private var musicUnconfirmed = false
+    private var musicClaimCorrected = false
+
     @Synchronized
     fun onUserTranscript(text: String) {
         userText = text.trim().takeIf { it.isNotEmpty() }
@@ -45,6 +49,8 @@ class ActionClaimGuard {
         failureCorrected = false
         navigationStarted = false
         navigationClaimCorrected = false
+        musicUnconfirmed = false
+        musicClaimCorrected = false
     }
 
     /**
@@ -59,6 +65,9 @@ class ActionClaimGuard {
                 ?: "操作失败"
         } else {
             null
+        }
+        if (output.contains("\"tool\":\"play_music\"")) {
+            musicUnconfirmed = !(output.contains("\"ok\":true") && output.contains("\"status\":\"playing\""))
         }
         if (isNavigationResult(output)) {
             if (output.contains("\"ok\":true") && startsNavigation(output)) navigationStarted = true
@@ -83,6 +92,10 @@ class ActionClaimGuard {
         ) {
             navigationClaimCorrected = true
             return NAVIGATION_NOT_STARTED
+        }
+        if (toolCalledThisTurn && musicUnconfirmed && !musicClaimCorrected && claimsMediaPlaying(assistantText)) {
+            musicClaimCorrected = true
+            return MUSIC_NOT_CONFIRMED
         }
         val reply = assistantText.trim()
         val request = userText
@@ -149,6 +162,8 @@ class ActionClaimGuard {
         failureCorrected = false
         navigationStarted = false
         navigationClaimCorrected = false
+        musicUnconfirmed = false
+        musicClaimCorrected = false
     }
 
     companion object {
@@ -242,7 +257,19 @@ class ActionClaimGuard {
          * song (「这首歌的歌词挺好」) without a playing word is not a claim.
          */
         private val MEDIA_CLAIM_NOUNS = listOf("歌", "曲", "音乐", "《")
-        private val MEDIA_PLAYING_WORDS = listOf("正在放", "在放", "放着", "开始放", "播放")
+        private val MEDIA_PLAYING_WORDS = listOf(
+            "正在放", "在放", "放着", "开始放", "播放",
+            // Promises count as much as claims: nothing ran yet.
+            "给你放", "为你放", "帮你放", "这就放", "马上放",
+        )
+
+        /** 「放松」「放心」「放假」「放映」 are not music playing (「《哪吒2》还在放映」). */
+        private val NOT_PLAYING_COMPOUNDS = Regex("放松|放心|放假|放映")
+
+        /** 《 is a media noun only right after a playing verb: 「正在放梶浦由记的《…》」. */
+        private val TITLE_AFTER_PLAYING = Regex(
+            "(正在放|在放|开始放|播放|给你放|为你放|帮你放|这就放|马上放)[^。！？，,!?]{0,12}《",
+        )
 
         /** Honest failure wording from a play_music result. */
         private val MEDIA_FAILURE_WORDS = listOf("放不了", "没放成", "播放不了", "没能放")
@@ -260,13 +287,26 @@ class ActionClaimGuard {
                 MEDIA_REFUSAL_BLOCKERS.none { it in reply }
 
         /** A refusal that also says something is playing is still a claim. */
-        private val MEDIA_REFUSAL_BLOCKERS = listOf("在放", "正在放", "放着", "开始放", "已经放")
+        private val MEDIA_REFUSAL_BLOCKERS = listOf(
+            "在放", "正在放", "放着", "开始放", "已经放", "为你播放", "已经播放", "播放了",
+        )
 
         private fun mediaClaimWords(reply: String): Pair<String, String>? {
-            val noun = MEDIA_CLAIM_NOUNS.firstOrNull { it in reply } ?: return null
-            val verb = MEDIA_PLAYING_WORDS.firstOrNull { it in reply } ?: return null
+            val text = NOT_PLAYING_COMPOUNDS.replace(reply, "")
+            val verb = MEDIA_PLAYING_WORDS.firstOrNull { it in text } ?: return null
+            val noun = MEDIA_CLAIM_NOUNS.filter { it != "《" }.firstOrNull { it in text }
+                ?: "《".takeIf { TITLE_AFTER_PLAYING.containsMatchIn(text) }
+                ?: return null
             return noun to verb
         }
+
+        /** A reply that says (or promises) a song is playing; honest refusals excluded. */
+        fun claimsMediaPlaying(reply: String): Boolean = !isMediaRefusalOnly(reply) && mediaClaimWords(reply) != null
+
+        /** play_music did not confirm playback (requested_unverified); the reply said it was playing. */
+        const val MUSIC_NOT_CONFIRMED =
+            "你上一句说正在放某首歌是错误的：音乐 app 只是收到了请求，还没有确认正在放什么。" +
+                "不要调用任何工具，只用一句话更正：已经让音乐 app 去找了，不要说正在放哪首歌。"
         private val DECLINE_WORDS = listOf(
             "不支持", "无法", "不能", "没法", "没有", "暂不", "暂时不", "抱歉", "对不起", "没听清", "再说一遍",
             "请问", "吗", "？", "?", "哪", "什么",

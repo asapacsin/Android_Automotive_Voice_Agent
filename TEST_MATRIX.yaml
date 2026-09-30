@@ -958,7 +958,7 @@ tests:
     owner: AUTONOMOUS
     status: NOT_RUN
     release_blocking: true
-    prerequisites: ["Baidu Qianfan Flex text turns with the owner's key (never logged)", "a set of 10 music descriptions"]
+    prerequisites: ["Gemini Live (default provider, ADR-013) text turns with the owner's key (never logged)", "a set of 10 music descriptions"]
     procedure: ["send each description as a text turn", "record the play_music arguments per description"]
     pass_criteria: [">= 8/10 descriptions produce play_music with a plausible title or artist/work", "0/10 produce control_music{play}"]
     evidence: []
@@ -971,14 +971,12 @@ tests:
     purpose: "SPEC-017 A6: the hand-off intent and the MediaSession readback work end to end with a real player"
     type: device
     scope: END_TO_END
-    owner: HUMAN_PHYSICAL
-    status: HUMAN_REQUIRED
-    automation_blocker: credential_permission
+    owner: AUTONOMOUS
+    status: NOT_RUN
     release_blocking: true
     covers: [media.play_by_description]
     terminal_success: [requested_track_playing, readback_names_it, map_in_foreground]
-    human_reason: "Notification-listener access is a consent the device owner grants in system settings, and VLC plus the audio files must be supplied from outside this sandbox"
-    prerequisites: ["emulator or test phone with this build", "VLC (org.videolan.vlc) installed with a few local audio files whose titles are known", "notification access (通知使用权) granted to 小诺", "VPN split tunnel: the music app excluded from any VPN, Baidu reachable"]
+    prerequisites: ["emulator or test phone with this build", "VLC (org.videolan.vlc) APK installed on the emulator, a few tagged local audio files pushed to /sdcard/Music", "notification access granted over adb: cmd notification allow_listener com.novadrive.app/com.novadrive.app.media.NovaMediaListener", "VPN split tunnel: the music app excluded from any VPN, the realtime provider reachable"]
     procedure: ["say or text 「放<一个本地文件的歌名>」", "wait up to 6 s", "note the play_music result status and now_playing", "repeat with notification access revoked"]
     pass_criteria: ["status=playing with now_playing naming the local file, matches_request=true", "the map returns to the foreground", "without notification access: status=requested_unverified and the reply names no song"]
     autonomous_evidence: ["MUSIC-UNIT-001 (JVM) covers the result rules with a fake session source"]

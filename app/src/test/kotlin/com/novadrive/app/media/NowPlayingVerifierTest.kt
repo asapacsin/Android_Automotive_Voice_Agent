@@ -5,6 +5,9 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
+private fun NowPlayingVerifier.awaitBlocking(request: MusicRequest, previous: NowPlaying?) =
+    kotlinx.coroutines.runBlocking { await(request, previous) }
+
 class NowPlayingVerifierTest {
     private class FakeSource(val access: Boolean, val script: (Long) -> NowPlaying?) : NowPlayingSource {
         var t = 0L
@@ -19,13 +22,13 @@ class NowPlayingVerifierTest {
 
     @Test fun noAccessIsUnverified() {
         val src = FakeSource(false) { error("must not poll") }
-        assertEquals(PlaybackCheck.Unverified, verifier(src).await(request, null))
+        assertEquals(PlaybackCheck.Unverified, verifier(src).awaitBlocking(request, null))
     }
 
     @Test fun newTrackPlaying() {
         val src = FakeSource(true) { t -> if (t >= 1000) NowPlaying("oblivious", "Kalafina", true, "com.netease.cloudmusic") else null }
         val v = verifier(src)
-        val r = v.await(request, null)
+        val r = v.awaitBlocking(request, null)
         assertTrue(r is PlaybackCheck.Playing && r.matchesRequest)
         assertEquals(1000, v.lastWaitedMs)
     }
@@ -33,7 +36,7 @@ class NowPlayingVerifierTest {
     @Test fun previousTrackIgnored() {
         val prev = NowPlaying("old song", "someone", true, "com.tencent.qqmusic")
         val src = FakeSource(true) { t -> if (t < 2000) prev else NowPlaying("oblivious", "Kalafina", true, "com.tencent.qqmusic") }
-        val r = verifier(src).await(request, prev)
+        val r = verifier(src).awaitBlocking(request, prev)
         assertTrue(r is PlaybackCheck.Playing && r.nowPlaying.title == "oblivious")
     }
 
@@ -41,18 +44,18 @@ class NowPlayingVerifierTest {
         val prev = NowPlaying("old song", "someone", true, "com.tencent.qqmusic")
         val src = FakeSource(true) { prev }
         val v = verifier(src)
-        assertEquals(PlaybackCheck.NotPlaying, v.await(request, prev))
+        assertEquals(PlaybackCheck.NotPlaying, v.awaitBlocking(request, prev))
         assertTrue(v.lastWaitedMs >= 6000)
     }
 
     @Test fun pausedDoesNotCount() {
         val src = FakeSource(true) { NowPlaying("oblivious", "Kalafina", false, "x") }
-        assertEquals(PlaybackCheck.NotPlaying, verifier(src).await(request, null))
+        assertEquals(PlaybackCheck.NotPlaying, verifier(src).awaitBlocking(request, null))
     }
 
     @Test fun mismatchReported() {
         val src = FakeSource(true) { NowPlaying("Lilium", "Kumiko Noma", true, "org.videolan.vlc") }
-        val r = verifier(src).await(request, null)
+        val r = verifier(src).awaitBlocking(request, null)
         assertTrue(r is PlaybackCheck.Playing)
         assertFalse((r as PlaybackCheck.Playing).matchesRequest)
     }

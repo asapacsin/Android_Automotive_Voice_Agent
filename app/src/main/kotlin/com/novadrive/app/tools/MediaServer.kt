@@ -1,6 +1,11 @@
 package com.novadrive.app.tools
 
 import com.novadrive.app.AndroidActionExecutor
+import com.novadrive.app.AndroidActionResult
+import com.novadrive.app.media.PauseResult
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.novadrive.app.DebugVoiceLog
 import com.novadrive.app.media.HandoffResult
 import com.novadrive.app.media.MusicHandoffTool
@@ -20,6 +25,8 @@ import org.json.JSONObject
 class MediaServer(
     private val executor: AndroidActionExecutor,
     private val music: MusicHandoffTool? = null,
+    /** The readback polls a binder; never on the session's event loop (Main.immediate). */
+    private val io: CoroutineDispatcher = Dispatchers.IO,
 ) : ToolServer {
     override val domain: ToolDomain = MediaDomain
 
@@ -30,7 +37,7 @@ class MediaServer(
                     // A named or described request never reaches here: ToolCallGuards.unsupportedMedia
                     // refuses it and points the model at play_music.
                     "play" -> env.result(call, executor.playMusic())
-                    "stop" -> env.result(call, executor.stopMusic())
+                    "stop" -> stopMusic(call, env)
                     else -> env.failed(call, "ACTION_NOT_ALLOWED")
                 }
             }
@@ -44,6 +51,8 @@ class MediaServer(
         val request = MusicRequest(a["title"], a["artist"], a["album_or_work"], a["mood"], a["query"], a["exclude_title"])
         // Before the hand-off: a track that was already playing is not evidence of this request.
         val previous = tool.snapshot()
+        // The bundled track must not play over the app's song.
+        executor.stopMusic()
         when (val sent = tool.handOff(request)) {
             is HandoffResult.Sent -> Unit
             HandoffResult.NoApp -> return env.failed(call, NO_MUSIC_APP)
@@ -54,12 +63,46 @@ class MediaServer(
             null,
             successChip = "🎵 已交给音乐 app",
             deferredOutput = {
-                val check = tool.await(request, previous)
+                val check = withContext(io) { tool.await(request, previous) }
                 DebugVoiceLog.log(NowPlayingVerifier.logLine(check, tool.lastWaitedMs))
                 com.novadrive.app.voice.SpeechAuthority.arbiter.onConfirmation()
                 output(call, check, env)
             },
         )
+    }
+
+    /**
+     * Stops the bundled track and pauses whatever app is playing. `music_stopped` only when the
+     * readback shows nothing playing; after a hand-off without listener access nothing can show
+     * the app stopped, so the result does not say it did.
+     */
+    private fun stopMusic(call: DomainVoiceEvent.ToolCall, env: ToolCallEnv): ToolDispatchResult {
+        val bundled = executor.stopMusic()
+        val tool = music ?: return env.result(call, bundled)
+        return when (tool.pauseActive()) {
+            PauseResult.NoAccess ->
+                if (tool.handedOff) {
+                    env.result(call, AndroidActionResult.Accepted(STOP_UNVERIFIED))
+                } else {
+                    env.result(call, bundled)
+                }
+            PauseResult.NothingPlaying -> env.result(call, bundled)
+            PauseResult.PauseSent -> ToolDispatchResult(
+                null,
+                null,
+                successChip = "⏹ 正在停止",
+                deferredOutput = {
+                    val stopped = withContext(io) { tool.awaitStopped() }
+                    DebugVoiceLog.log("music_stop stopped=$stopped")
+                    val out = if (stopped) {
+                        env.result(call, AndroidActionResult.Accepted("music_stopped"))
+                    } else {
+                        env.failed(call, MUSIC_STILL_PLAYING)
+                    }
+                    out.output!!
+                },
+            )
+        }
     }
 
     private fun output(call: DomainVoiceEvent.ToolCall, check: PlaybackCheck, env: ToolCallEnv): String =
@@ -93,6 +136,9 @@ class MediaServer(
         const val NO_MUSIC_APP = "NO_MUSIC_APP"
         const val HANDOFF_REJECTED = "HANDOFF_REJECTED"
         const val MUSIC_HANDOFF_UNAVAILABLE = "MUSIC_HANDOFF_UNAVAILABLE"
+        const val MUSIC_STILL_PLAYING = "MUSIC_STILL_PLAYING"
+        /** Bundled track stopped; the music app was asked to pause but nothing can confirm it. */
+        val STOP_UNVERIFIED: String = "bundled_stopped_app_pause_unverified" // not const: tool-name scan
         const val ACCESS_HINT = "在系统设置里给小诺打开「通知使用权」，小诺就能确认正在放哪首歌。"
 
         /** Once per process. */

@@ -4,14 +4,15 @@ package com.novadrive.app.media
 class NowPlayingVerifier(
     private val source: NowPlayingSource,
     private val clock: () -> Long,
-    private val sleep: (Long) -> Unit,
+    private val sleep: suspend (Long) -> Unit = { kotlinx.coroutines.delay(it) },
     private val timeoutMs: Long = 6000,
     private val pollMs: Long = 250,
 ) {
     var lastWaitedMs: Long = 0
         private set
 
-    fun await(request: MusicRequest, previous: NowPlaying?): PlaybackCheck {
+    /** Suspends between polls; cancellable. */
+    suspend fun await(request: MusicRequest, previous: NowPlaying?): PlaybackCheck {
         val start = clock()
         lastWaitedMs = 0
         if (!source.hasAccess()) return PlaybackCheck.Unverified

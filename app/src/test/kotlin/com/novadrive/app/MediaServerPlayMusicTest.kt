@@ -6,7 +6,14 @@ import com.novadrive.app.media.MusicRequest
 import com.novadrive.app.media.NowPlaying
 import com.novadrive.app.media.NowPlayingSource
 import com.novadrive.app.media.NowPlayingVerifier
+import com.novadrive.app.media.PauseResult
 import com.novadrive.app.media.PlaybackCheck
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
+import java.util.concurrent.Executors
 import com.novadrive.app.tools.MediaServer
 import com.novadrive.app.vehicle.ClimateToolHandler
 import com.novadrive.ingress.realtime.DomainVoiceEvent
@@ -24,10 +31,11 @@ class MediaServerPlayMusicTest {
 
     private class Executor : AndroidActionExecutor {
         var bundledPlays = 0
+        var bundledStops = 0
         override fun navigate(destination: String) = AndroidActionResult.Accepted()
         override fun openApp(app: AllowedApp) = AndroidActionResult.Accepted()
         override fun playMusic(): AndroidActionResult { bundledPlays++; return AndroidActionResult.Accepted("music_playing") }
-        override fun stopMusic() = AndroidActionResult.Accepted("music_stopped")
+        override fun stopMusic(): AndroidActionResult { bundledStops++; return AndroidActionResult.Accepted("music_stopped") }
         override fun exitNavigationMode() = AndroidActionResult.Accepted()
     }
 
@@ -38,18 +46,24 @@ class MediaServerPlayMusicTest {
         override fun current(): NowPlaying? = sequence.getOrNull(i.coerceAtMost(sequence.size - 1)).also { i++ }
     }
 
-    private class FakeTool(
+    private open class FakeTool(
         val source: FakeSource,
         val before: NowPlaying? = null,
         val handoff: HandoffResult = HandoffResult.Sent("org.videolan.vlc"),
+        val pause: PauseResult = PauseResult.NothingPlaying,
+        val stopsWithin: Boolean = true,
+        override val handedOff: Boolean = false,
     ) : MusicHandoffTool {
         var now = 0L
-        var handedOff: MusicRequest? = null
+        var lastRequest: MusicRequest? = null
+        var pauses = 0
         private val verifier = NowPlayingVerifier(source, { now }, { now += it })
         override fun snapshot() = if (source.access) before else null
-        override fun handOff(request: MusicRequest): HandoffResult { handedOff = request; return handoff }
-        override fun await(request: MusicRequest, previous: NowPlaying?): PlaybackCheck = verifier.await(request, previous)
+        override fun handOff(request: MusicRequest): HandoffResult { lastRequest = request; return handoff }
+        override suspend fun await(request: MusicRequest, previous: NowPlaying?): PlaybackCheck = verifier.await(request, previous)
         override val lastWaitedMs: Long get() = verifier.lastWaitedMs
+        override fun pauseActive(): PauseResult { pauses++; return pause }
+        override suspend fun awaitStopped() = stopsWithin
     }
 
     private val executor = Executor()
@@ -57,11 +71,12 @@ class MediaServerPlayMusicTest {
     @BeforeEach
     fun resetHint() = MediaServer.resetHintForTest()
 
-    private fun run(tool: MusicHandoffTool?, args: Map<String, String>): JSONObject {
-        val dispatcher = AndroidToolDispatcher(
-            executor, ClimateToolHandler(SimulatedVehicleControl()), noCamera(), music = tool,
-        ) { null }
-        val result = dispatcher.dispatch(DomainVoiceEvent.ToolCall("c1", "play_music", args))
+    private fun dispatcher(tool: MusicHandoffTool?) = AndroidToolDispatcher(
+        executor, ClimateToolHandler(SimulatedVehicleControl()), noCamera(), music = tool,
+    ) { null }
+
+    private fun run(tool: MusicHandoffTool?, args: Map<String, String>, name: String = "play_music"): JSONObject {
+        val result = dispatcher(tool).dispatch(DomainVoiceEvent.ToolCall("c1", name, args))
         val text = result.deferredOutput?.let { runBlocking { it() } } ?: result.output!!
         return JSONObject(text)
     }
@@ -78,8 +93,9 @@ class MediaServerPlayMusicTest {
         assertEquals("oath sign", out.getJSONObject("now_playing").getString("title"))
         assertEquals("org.videolan.vlc", out.getJSONObject("now_playing").getString("app"))
         assertEquals("在放LiSA的《oath sign》", out.getString("announce"))
-        assertEquals("Fate/Zero", tool.handedOff!!.albumOrWork)
+        assertEquals("Fate/Zero", tool.lastRequest!!.albumOrWork)
         assertEquals(0, executor.bundledPlays)
+        assertEquals(1, executor.bundledStops, "the bundled track is paused before the hand-off")
     }
 
     @Test
@@ -145,5 +161,85 @@ class MediaServerPlayMusicTest {
     fun theLogLineCarriesNoTitle() {
         val line = NowPlayingVerifier.logLine(PlaybackCheck.Playing(NowPlaying("oath sign", "LiSA", true, "p"), true), 250)
         assertFalse(line.contains("oath"))
+    }
+
+    // ---- R1: the readback never runs on the event loop -----------------------------------------
+
+    private class GatedTool(val gate: CompletableDeferred<Unit>) :
+        FakeTool(FakeSource(true, listOf(null))) {
+        @Volatile var awaitThread: String? = null
+        @Volatile var cancelled = false
+        override suspend fun await(request: MusicRequest, previous: NowPlaying?): PlaybackCheck {
+            awaitThread = Thread.currentThread().name
+            try {
+                gate.await()
+            } catch (e: CancellationException) {
+                cancelled = true
+                throw e
+            }
+            return PlaybackCheck.Unverified
+        }
+    }
+
+    private fun mainDispatcher() = Executors.newSingleThreadExecutor { Thread(it, "fake-main") }.asCoroutineDispatcher()
+
+    @Test
+    fun theReadbackLeavesTheMainDispatcherFree() {
+        val main = mainDispatcher()
+        val tool = GatedTool(CompletableDeferred())
+        val deferred = dispatcher(tool).dispatch(DomainVoiceEvent.ToolCall("c1", "play_music", kajiura)).deferredOutput!!
+        runBlocking {
+            val job = kotlinx.coroutines.CoroutineScope(main).async { deferred() }
+            // The event loop still runs other work while the readback waits.
+            kotlinx.coroutines.withTimeout(2000) { kotlinx.coroutines.withContext(main) { "free" } }
+            tool.gate.complete(Unit)
+            val out = JSONObject(job.await())
+            assertEquals("requested_unverified", out.getString("status"))
+        }
+        assertTrue(tool.awaitThread != null && tool.awaitThread != "fake-main", "await ran on ${tool.awaitThread}")
+        main.close()
+    }
+
+    @Test
+    fun theReadbackIsCancellable() {
+        val main = mainDispatcher()
+        val tool = GatedTool(CompletableDeferred())
+        val deferred = dispatcher(tool).dispatch(DomainVoiceEvent.ToolCall("c1", "play_music", kajiura)).deferredOutput!!
+        runBlocking {
+            val job = kotlinx.coroutines.CoroutineScope(main).launch { deferred() }
+            kotlinx.coroutines.withTimeout(2000) { while (tool.awaitThread == null) kotlinx.coroutines.delay(10) }
+            job.cancel()
+            job.join()
+        }
+        assertTrue(tool.cancelled)
+        main.close()
+    }
+
+    // ---- R3: stop after a hand-off ---------------------------------------------------------------
+
+    @Test
+    fun stopReportsStoppedOnlyWhenTheReadbackShowsNothingPlaying() {
+        val paused = FakeTool(FakeSource(true, listOf(null)), pause = PauseResult.PauseSent, stopsWithin = true)
+        val ok = run(paused, mapOf("action" to "stop"), "control_music")
+        assertTrue(ok.getBoolean("ok"))
+        assertEquals("music_stopped", ok.getString("status"))
+        assertEquals(1, paused.pauses)
+
+        val still = FakeTool(FakeSource(true, listOf(null)), pause = PauseResult.PauseSent, stopsWithin = false)
+        val fail = run(still, mapOf("action" to "stop"), "control_music")
+        assertFalse(fail.getBoolean("ok"))
+        assertEquals("MUSIC_STILL_PLAYING", fail.getString("error"))
+        assertTrue(fail.getString("next").contains("还没停"))
+    }
+
+    @Test
+    fun stopWithoutListenerAccessAfterAHandOffDoesNotClaimTheAppStopped() {
+        val tool = FakeTool(FakeSource(false, listOf(null)), pause = PauseResult.NoAccess, handedOff = true)
+        val out = run(tool, mapOf("action" to "stop"), "control_music")
+        assertTrue(out.getBoolean("ok"))
+        assertEquals(MediaServer.STOP_UNVERIFIED, out.getString("status"))
+        assertTrue(executor.bundledStops >= 1)
+        val never = run(FakeTool(FakeSource(false, listOf(null)), pause = PauseResult.NoAccess), mapOf("action" to "stop"), "control_music")
+        assertEquals("music_stopped", never.getString("status"), "no hand-off: only the bundled track could be playing")
     }
 }

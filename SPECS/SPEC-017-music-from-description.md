@@ -76,14 +76,14 @@ artists or queries in the log (a query can name a person; treat as transcript, I
 
 | # | Criterion | Kind | Proven by | State |
 | --- | --- | --- | --- | --- |
-| A1 | Intent built correctly per field set; package preference order | functional | `MediaAppHandoffTest` (Robolectric-free: intent spec as data) | not built |
-| A2 | Readback rules: playing / unverified / not playing / mismatch | functional | `NowPlayingVerifierTest` with a fake session source | not built |
-| A3 | Result JSON and `announce` never name a song that is not in `now_playing` | negative | `PlayMusicResultTest`, `FalseCapabilityClaimTest` (+case) | not built |
-| A4 | Capability flip in all three places | contract | `CapabilityContractTest` | not built |
+| A1 | Intent built correctly per field set; package preference order | functional | `MediaSearchSpecsTest`, `MediaAppPreferenceTest` (intent spec as data) | built, unit tests pass |
+| A2 | Readback rules: playing / unverified / not playing / mismatch; off the event loop, cancellable | functional | `NowPlayingVerifierTest`, `MediaServerPlayMusicTest` | built, unit tests pass |
+| A3 | Result JSON and `announce` never name a song that is not in `now_playing`; an unconfirmed hand-off never releases 「正在放…」 | negative | `MediaServerPlayMusicTest`, `FalseCapabilityClaimTest` | built, unit tests pass |
+| A4 | Capability flip in all three places | contract | `CapabilityContractTest` | built, passes |
 | A5 | Model maps descriptions to fields (≥ 8/10 on a description set) | TEXT_LIVE | `MUSIC-TEXT-LIVE-001` | not earned |
-| A6 | VLC on the emulator: hand-off plays a local file, readback names it | device (emulator) | `MUSIC-VLC-EMU-001` | not earned |
+| A6 | VLC on the emulator: hand-off plays a local file, readback names it | device (emulator) | `MUSIC-VLC-EMU-001` (autonomous) | not earned |
 | A7 | 网易云/QQ音乐: plays or honestly fails; split-tunnel note verified | device | `MUSIC-APP-DEVICE-001` (HUMAN) | not earned |
-| A8 | APK builds with the listener service declared | artifact | `:app:assembleDebug` | not built |
+| A8 | APK builds with the listener service declared | artifact | `:app:assembleDebug` | built |
 
 ## Open product decisions
 
@@ -93,5 +93,8 @@ None blocking. Default preference order above; the owner can reorder it in devel
 
 | Area | State | Proof |
 | --- | --- | --- |
-| Hand-off + readback | not built | — |
-| Tool + capability | not built | — |
+| Hand-off + readback (`AndroidMediaHandoff`, `AndroidNowPlayingSource`, `NowPlayingVerifier`) | built; never run on a device | unit tests (A1, A2) |
+| `play_music` tool + capability flip | built; never run on a device | `MediaServerPlayMusicTest`, `MediaDomainPlayMusicTest`, `FalseCapabilityClaimTest`, `CapabilityContractTest` |
+| `control_music{stop}` pauses the app's session; `music_stopped` only on readback | built; never run on a device | `MediaServerPlayMusicTest` |
+| On-screen one-time listener hint with the settings path | **not built** — only a `hint` field in the first `requested_unverified` result | — |
+| `MusicSource` port / `BundledTrackSource` split | not built — the bundled track stays behind `control_music` | — |
