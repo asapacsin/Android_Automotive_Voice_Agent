@@ -2584,3 +2584,17 @@ tests:
     pass_criteria: ["0 self-interruptions in 10 replies", "barge-in 闭嘴 stops playback within 1 s"]
     evidence: []
     related: [SPEC-013]
+  - id: GATE-D10-DEVICE-001
+    capability: turn_taking
+    name: Claim gate D-10 orderings hold on real provider traffic
+    purpose: "D-10 is fixed at JVM level (DriverTurnTest); the real order of transcript, call, response end and tool result is unverified"
+    type: device
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    prerequisites: ["test phone over ADB"]
+    procedure: ["Baidu: a command whose acknowledgement precedes function_call, result after response.done", "Gemini: a call that opens the response", "a failed action followed by the model's reply"]
+    pass_criteria: ["no done-claim heard before an ok=true result", "a failed action is reported to the driver", "TURN_DROP/RELEASE reasons match DriverTurnTest"]
+    evidence: []
+    related: [SPEC-014]

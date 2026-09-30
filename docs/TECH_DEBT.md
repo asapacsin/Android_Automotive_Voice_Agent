@@ -155,7 +155,7 @@ generated into `state/PROJECT_STATE.json`.
 
 ---
 
-## D-10 — Two orderings the claim gate misses — **OPEN** (found by review 2026-09-29)
+## D-10 — Two orderings the claim gate misses — **RESOLVED at JVM level 2026-09-30** (`ac40304`; device: GATE-D10-DEVICE-001)
 
 **Problem.** Two orderings let a reply past the claim gate without being judged:
 
@@ -165,8 +165,22 @@ generated into `state/PROJECT_STATE.json`.
 2. After `PHANTOM_AUDIO` releases on the first reply text with content, the rest of the reply is
    never checked for a claim.
 
-**Next step.** Re-decide the hold in `onToolCall` while RESPONDING. Judge a released phantom reply
-with the unclassified-claim predicate. Add tests for both orders. This is T2 of ADR-011 Revision 2.
+**Resolution.** A call registered mid-response moves the hold to `AWAITING_TOOL_RESULT`; words
+before it are judged by the replaced hold, words after it by the result; a failed call keeps the
+reply held to its end and is reported (`reportFailure`) whatever the order. A phantom reply with
+content becomes `UNCLASSIFIED_CLAIM`. Reviewed PASS after two REVISE rounds. Remaining, not a
+regression: a result with no registered call (e.g. a superseded turn's slow result) can still
+release a held reply — see D-11.
+
+---
+
+## D-11 — A superseded turn's tool result is applied to the current turn — **OPEN** (found by review 2026-09-30)
+
+**Problem.** `DriverTurnPipeline` routes a late result to the current `DriverTurn`. A result for a
+call that turn never registered can count as its proof and release a held reply
+(`onExecutionResult`, normal path; also ignores `holdUntilEnd`). Present at `c51650a` too.
+
+**Next step.** Ignore (log) results whose call id the current turn did not dispatch; test it.
 
 ---
 
