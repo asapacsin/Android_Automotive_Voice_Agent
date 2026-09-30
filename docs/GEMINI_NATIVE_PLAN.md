@@ -60,6 +60,9 @@ Read against the code at `7dd2524`:
    save, so N-1 changes the default only for a phone that never saved Gemini settings. The owner's
    phone keeps extended thinking until he picks the new model. The plan does not migrate a saved
    choice silently (ADR-010 opt-in). The settings screen lists the fast model first, marked 推荐.
+   **Amended 2026-09-30 by the owner ("switch the live one"):** a saved extended-thinking model is
+   switched to `gemini-3.8-live` once, on the first settings load after the update; later choices,
+   extended thinking included, are kept (`geminiModelAfterOneTimeSwitch`).
 
 ## 3. Dependency graph and waves
 

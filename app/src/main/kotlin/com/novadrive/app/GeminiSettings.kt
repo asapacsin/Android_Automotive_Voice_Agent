@@ -85,11 +85,18 @@ object VoiceProviderChoice {
 }
 
 /**
- * An unset model loads as the default; a saved model (e.g. extended thinking) is kept as is —
- * ADR-011 changes the default without migrating an owner's opt-in choice (ADR-010).
+ * An unset model loads as the default; a saved model is kept as is, except for the one-time
+ * switch below.
  */
 internal fun storedGeminiModelOrDefault(stored: String?): String =
     stored.orEmpty().ifBlank { VoiceCatalog.GEMINI_LIVE_DEFAULT }
+
+/**
+ * One-time switch (owner, 2026-09-30: "switch the live one"): a saved extended-thinking model
+ * becomes the default once. After that, whatever the owner picks is kept, extended included.
+ */
+internal fun geminiModelAfterOneTimeSwitch(stored: String?, alreadySwitched: Boolean): String? =
+    if (!alreadySwitched && stored == VoiceCatalog.GEMINI_LIVE_EXTENDED) VoiceCatalog.GEMINI_LIVE_DEFAULT else stored
 
 class GeminiSettingsRepository(
     context: Context,
@@ -97,7 +104,21 @@ class GeminiSettingsRepository(
 ) {
     private val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    fun loadSettings(): GeminiAppSettings =
+    fun loadSettings(): GeminiAppSettings {
+        switchModelOnce()
+        return loadStored()
+    }
+
+    private fun switchModelOnce() {
+        if (prefs.getBoolean(KEY_MODEL_SWITCHED_011, false)) return
+        val stored = prefs.getString(KEY_MODEL, null)
+        val switched = geminiModelAfterOneTimeSwitch(stored, alreadySwitched = false)
+        val editor = prefs.edit().putBoolean(KEY_MODEL_SWITCHED_011, true)
+        if (switched != stored && switched != null) editor.putString(KEY_MODEL, switched)
+        editor.apply()
+    }
+
+    private fun loadStored(): GeminiAppSettings =
         GeminiAppSettings(
             enabled = prefs.getBoolean(KEY_ENABLED, false),
             consentAccepted = prefs.getBoolean(KEY_CONSENT, false),
@@ -144,6 +165,7 @@ class GeminiSettingsRepository(
         private const val KEY_ENABLED = "enabled"
         private const val KEY_CONSENT = "consent_accepted"
         private const val KEY_MODEL = "model"
+        private const val KEY_MODEL_SWITCHED_011 = "model_switched_adr011"
         private const val KEY_ENDPOINT = "endpoint"
         private const val KEY_VOICE = "voice"
         private const val KEY_THINKING = "thinking_level"

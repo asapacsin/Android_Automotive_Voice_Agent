@@ -85,4 +85,12 @@ class GeminiSettingsTest {
         assertEquals("gemini-3.8-live", storedGeminiModelOrDefault("  "))
         assertEquals(VoiceCatalog.GEMINI_LIVE_EXTENDED, storedGeminiModelOrDefault(VoiceCatalog.GEMINI_LIVE_EXTENDED))
     }
+
+    @Test
+    fun aSavedExtendedModelIsSwitchedToTheLiveModelOnlyOnce() {
+        assertEquals(VoiceCatalog.GEMINI_LIVE_DEFAULT, geminiModelAfterOneTimeSwitch(VoiceCatalog.GEMINI_LIVE_EXTENDED, alreadySwitched = false))
+        assertEquals(VoiceCatalog.GEMINI_LIVE_EXTENDED, geminiModelAfterOneTimeSwitch(VoiceCatalog.GEMINI_LIVE_EXTENDED, alreadySwitched = true))
+        assertEquals(VoiceCatalog.GEMINI_LIVE_DEFAULT, geminiModelAfterOneTimeSwitch(VoiceCatalog.GEMINI_LIVE_DEFAULT, alreadySwitched = false))
+        assertEquals(null, geminiModelAfterOneTimeSwitch(null, alreadySwitched = false))
+    }
 }

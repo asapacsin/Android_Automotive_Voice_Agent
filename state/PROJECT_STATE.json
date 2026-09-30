@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-30T03:06:59",
+  "generated_at": "2026-09-30T03:20:06",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "95a3374",
+    "commit": "3f28aeb",
     "branch": "claude/9-30",
-    "subject": "TEST_MATRIX: valid owner for GEMINI-DEVICE-LATENCY-001; regenerate status files",
+    "subject": "TEST_MATRIX: complete GEMINI-DEVICE-LATENCY-001 human-test fields",
     "working_tree_clean": false,
-    "uncommitted_files": 4
+    "uncommitted_files": 3
   },
   "tests": {
     "available": true,
