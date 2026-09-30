@@ -17,9 +17,24 @@ enum class GeminiThinkingLevel(val wireName: String) {
     }
 }
 
+/**
+ * Which realtime provider the owner prefers (ADR-013). GEMINI is the default for fresh and existing
+ * installs; BAIDU is only ever an explicit choice, never an automatic fallback (one voice per stage).
+ */
+enum class VoiceProviderPreference(val wireName: String) {
+    GEMINI("gemini"),
+    BAIDU("baidu"),
+    ;
+
+    companion object {
+        fun fromWire(raw: String?): VoiceProviderPreference =
+            entries.firstOrNull { it.wireName == raw } ?: GEMINI
+    }
+}
+
 /** Persisted, non-secret Gemini Live settings (ADR-010). The API key lives in the Keystore only. */
 data class GeminiAppSettings(
-    val enabled: Boolean = false,
+    val provider: VoiceProviderPreference = VoiceProviderPreference.GEMINI,
     val consentAccepted: Boolean = false,
     val model: String = VoiceCatalog.GEMINI_LIVE_DEFAULT,
     val endpoint: String = DEFAULT_ENDPOINT,
@@ -67,21 +82,35 @@ object GeminiSettingsValidator {
     fun validate(settings: GeminiAppSettings, apiKey: String): String? {
         validateSettings(settings)?.let { return it }
         if (apiKey.isBlank()) return "GEMINI_API_KEY_MISSING"
-        if (settings.enabled && !settings.consentAccepted) return "GEMINI_CONSENT_MISSING"
+        if (!settings.consentAccepted) return "GEMINI_CONSENT_MISSING"
         return null
+    }
+
+    /** Builds the Gemini session config or throws [IllegalArgumentException] with the config code. */
+    fun configOrThrow(settings: GeminiAppSettings, apiKey: String, instructions: String): GeminiApiConfig {
+        validate(settings, apiKey)?.let { throw IllegalArgumentException(it) }
+        return GeminiApiConfig(settings, apiKey, instructions)
+    }
+
+    /** The one honest on-screen sentence for a voice-provider config code; null for non-Gemini codes. */
+    fun screenMessage(code: String): String? = when {
+        code == "GEMINI_API_KEY_MISSING" -> "语音服务未配置：请在开发者设置里填写 Gemini 密钥。"
+        code == "GEMINI_CONSENT_MISSING" -> "请先在开发者设置里同意语音数据跨境传输提示。"
+        code.startsWith("GEMINI_") -> "语音服务设置有误，请检查开发者设置。"
+        else -> null
     }
 }
 
 /**
  * Decides which realtime provider a session uses. Called once per session at the composition
- * boundary (ADR-010); never re-evaluated mid-session. Gemini is opt-in: anything short of
- * enabled + consented + key present + valid settings keeps the Baidu Flex default.
+ * boundary (ADR-010); never re-evaluated mid-session. Gemini is the default (ADR-013): only an
+ * explicit BAIDU preference selects Baidu Flex. A missing key, consent or valid setting does NOT
+ * fall back to Baidu — the Gemini config path fails the start with its code instead.
  */
 object VoiceProviderChoice {
+    @Suppress("UNUSED_PARAMETER")
     fun resolve(settings: GeminiAppSettings, keyPresent: Boolean): VoiceProviderId =
-        if (settings.enabled && settings.consentAccepted && keyPresent &&
-            GeminiSettingsValidator.validateSettings(settings) == null
-        ) VoiceProviderId.GEMINI_LIVE else VoiceProviderId.BAIDU_FLEX
+        if (settings.provider == VoiceProviderPreference.BAIDU) VoiceProviderId.BAIDU_FLEX else VoiceProviderId.GEMINI_LIVE
 }
 
 /**
@@ -120,7 +149,7 @@ class GeminiSettingsRepository(
 
     private fun loadStored(): GeminiAppSettings =
         GeminiAppSettings(
-            enabled = prefs.getBoolean(KEY_ENABLED, false),
+            provider = VoiceProviderPreference.fromWire(prefs.getString(KEY_PROVIDER, null)),
             consentAccepted = prefs.getBoolean(KEY_CONSENT, false),
             model = storedGeminiModelOrDefault(prefs.getString(KEY_MODEL, null)),
             endpoint = prefs.getString(KEY_ENDPOINT, null).orEmpty().ifBlank { GeminiAppSettings.DEFAULT_ENDPOINT },
@@ -133,7 +162,7 @@ class GeminiSettingsRepository(
         GeminiSettingsValidator.validateSettings(settings)?.let { throw IllegalArgumentException(it) }
         credentials.applyCredentialUpdate(CRED_API_KEY, key)
         val editor = prefs.edit()
-            .putBoolean(KEY_ENABLED, settings.enabled)
+            .putString(KEY_PROVIDER, settings.provider.wireName)
             .putBoolean(KEY_CONSENT, settings.consentAccepted)
             .putString(KEY_MODEL, settings.model.trim())
             .putString(KEY_ENDPOINT, settings.endpoint.trim())
@@ -153,8 +182,7 @@ class GeminiSettingsRepository(
     fun config(instructions: String): GeminiApiConfig {
         val settings = loadSettings()
         val key = credentials.read(CRED_API_KEY).orEmpty()
-        GeminiSettingsValidator.validate(settings, key)?.let { throw IllegalArgumentException(it) }
-        return GeminiApiConfig(settings, key, instructions)
+        return GeminiSettingsValidator.configOrThrow(settings, key, instructions)
     }
 
     fun choice(): VoiceProviderId = VoiceProviderChoice.resolve(loadSettings(), keyPresent())
@@ -162,7 +190,8 @@ class GeminiSettingsRepository(
     companion object {
         const val CRED_API_KEY = "gemini_api_key"
         private const val PREFS = "nova_gemini_settings"
-        private const val KEY_ENABLED = "enabled"
+        /** ADR-013; replaces the old opt-in "enabled" key, which is now ignored. */
+        private const val KEY_PROVIDER = "provider_preference"
         private const val KEY_CONSENT = "consent_accepted"
         private const val KEY_MODEL = "model"
         private const val KEY_MODEL_SWITCHED_011 = "model_switched_adr011"
