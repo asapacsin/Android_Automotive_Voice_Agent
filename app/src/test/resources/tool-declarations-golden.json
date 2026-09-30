@@ -54,5 +54,9 @@
   "control_seat": {
     "description": "调节座椅高度（当前为模拟座椅）。「座位有点高」「座椅太高了」action=adjust_height,value=-1；「座位有点低」「座椅太低了」action=adjust_height,value=1；「座椅调到最低」action=set_height,value=0；「座椅调到最高」value=10；「座椅现在多高」action=get_state。不说哪个座位时 seat=driver。用户只描述感受时直接调节一档，不要反问。只根据返回的 seat_height 和 announce 确认结果；ok=false 时如实说没有成功。Adjust the seat height (simulated backend); confirm only from the returned seat_height and announce.",
     "parameters": "{\"additionalProperties\":false,\"type\":\"object\",\"properties\":{\"seat\":{\"type\":\"string\",\"enum\":[\"driver\",\"passenger\"]},\"action\":{\"type\":\"string\",\"enum\":[\"adjust_height\",\"set_height\",\"get_state\"]},\"value\":{\"description\":\"set_height: 0-10 档；adjust_height: 变化档数（负数降低，正数升高），必填\",\"type\":\"number\"}},\"required\":[\"action\"]}"
+  },
+  "set_speaking_style": {
+    "description": "切换小诺说话的语气（只改语气，不改声音）。用户说「说话能不能嗲一点」「撒个娇」「可爱一点」「甜一点」时 style=sweet；说「正常一点」「恢复」「别嗲了」「正常说话」时 style=default。设置会一直保持，直到用户再次要求更改。调用后按返回的 instruction 用新的语气简短回应一句。Switches the assistant's speaking tone only (the voice never changes); the setting stays until the driver asks again.",
+    "parameters": "{\"additionalProperties\":false,\"type\":\"object\",\"properties\":{\"style\":{\"type\":\"string\",\"enum\":[\"sweet\",\"default\"]}},\"required\":[\"style\"]}"
   }
 }

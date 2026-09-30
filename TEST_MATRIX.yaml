@@ -2633,3 +2633,18 @@ tests:
     pass_criteria: ["no done-claim heard before an ok=true result", "a failed action is reported to the driver", "TURN_DROP/RELEASE reasons match DriverTurnTest"]
     evidence: []
     related: [SPEC-014]
+
+  - id: STYLE-UNIT-001
+    capability: speech
+    name: set_speaking_style changes the tone, persists it and composes it
+    purpose: "SPEC-015 FZ-11/FZ-12/B6 - 「嗲一点」 sticks until 「正常一点」; tone only, the voice never changes"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    prerequisites: []
+    procedure: ["gradlew :app:testDebugUnitTest --tests *SpeakingStyleToolTest*"]
+    pass_criteria: ["sweet/default set SpeakingStyleState and call persist", "result is ok=true with style and instruction, persisted=false only when the save failed", "invalid arguments are refused", "PersonaProfiles.compose carries SWEET_TONE after style=sweet"]
+    evidence: []
+    related: [SPEC-015]

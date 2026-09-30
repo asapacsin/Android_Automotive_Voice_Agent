@@ -35,6 +35,10 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         DebugVoiceLog.init(this)
+        // Before any session can start: the driver's chosen tone is sticky across restarts.
+        val speakingStyleStore = SpeakingStyleStore(this)
+        SpeakingStyleState.restore(speakingStyleStore.load())
+        SpeakingStyleState.persist = speakingStyleStore::save
         // The wake detector's process-lifetime owner. It used to be bound inside
         // DebugVoiceLog.init, which is a logging initialiser: one guard added there for a
         // sensible logging reason would have silently taken the wake word with it.

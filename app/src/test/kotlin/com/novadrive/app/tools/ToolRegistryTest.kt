@@ -33,7 +33,7 @@ class ToolRegistryTest {
             "open_app" to "apps", "control_music" to "media", "control_climate" to "climate",
             "control_window" to "body", "control_seat" to "body",
             "describe_camera_view" to "vision", "place_call" to "phone", "query_live_info" to "live_info",
-            "end_conversation" to "speech", "set_speech_output" to "speech",
+            "end_conversation" to "speech", "set_speech_output" to "speech", "set_speaking_style" to "speech",
         )
         val registry = ToolRegistry.PRODUCT
         assertEquals(expected.keys, registry.tools().map { it.name }.toSet())
@@ -53,12 +53,12 @@ class ToolRegistryTest {
     }
 
     @Test
-    fun `repeat-sensitive tools are exactly the world-acting ten`() {
+    fun `repeat-sensitive tools are exactly the world-acting eleven`() {
         assertEquals(
             setOf(
                 "control_climate", "control_music", "query_live_info", "place_call",
                 "navigate_to", "open_app", "save_place", "exit_navigation_mode",
-                "control_window", "control_seat",
+                "control_window", "control_seat", "set_speaking_style",
             ),
             ToolRegistry.PRODUCT.tools().filter { it.repeatSensitive }.map { it.name }.toSet(),
         )
