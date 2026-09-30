@@ -56,6 +56,7 @@ class MainActivity : Activity() {
             phone = PhoneCallTool(com.novadrive.app.phone.PhoneProvider.port(this)),
             liveInfo = LiveInfoTool.live(this),
             cabin = VehicleControlProvider.port,
+            music = com.novadrive.app.media.AndroidMusicHandoffTool(this),
             places = SavedPlaceTool(
                 read = savedPlaces::get,
                 write = savedPlaces::set,

@@ -51,8 +51,14 @@ object ToolFailureAdvice {
             "拨号没有成功，没有接通。" +
             "请用一句话如实告诉用户没打出去，不要谎称已经接通。",
         "MEDIA_LIBRARY_UNSUPPORTED" to
-            "车上只有一首内置曲目，没有音乐库，无法搜索或指定歌曲。" +
-            "请用一句话如实告诉用户放不了他要的那首歌，不要谎称已经播放，也不要改放其它曲子。",
+            "control_music 只能放内置曲目，不能放用户说的那首，所以没有播放。" +
+            "用户说了歌名、歌手、作品或描述，请改用 play_music 按描述去放，不要谎称已经播放，也不要改放内置曲目。",
+        // SPEC-017 play_music.
+        "NOT_PLAYING" to "这首没放成，可能需要会员或者有版权限制。请如实说没放成，不要说正在放。",
+        "NO_MUSIC_APP" to "手机上没有能播放的音乐 app，请如实说。",
+        "HANDOFF_REJECTED" to "音乐 app 没有接受这次请求，没有播放。请用一句话如实说没放成，不要说正在放。",
+        "MUSIC_STILL_PLAYING" to "已经让音乐 app 暂停，但它还在放。请如实说音乐还没停，不要说已经关掉了。",
+        "MUSIC_HANDOFF_UNAVAILABLE" to "现在不能交给音乐 app 播放，没有播放。请用一句话如实说放不了，不要说正在放。",
         // SPEC-011 query_live_info. Each one says what did not happen and forbids the guess.
         LiveInfoTool.AMAP_WEB_KEY_MISSING to
             "高德的查询服务还没有配置，所以没有查。请用一句话如实说这个功能还没有配置好（例如「天气查询还没有配置」），不要编造任何结果。",

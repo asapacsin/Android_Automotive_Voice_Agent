@@ -181,6 +181,25 @@ media:
     tool: control_music
     verified: device
     protected_by: [MUSIC-PLAY-001, AFFORDANCE-DEVICE-001]
+  play_by_description:
+    tool: play_music
+    verified: unit
+    required_scope: END_TO_END
+    protected_by: [MUSIC-UNIT-001, MUSIC-TEXT-LIVE-001, MUSIC-VLC-EMU-001, MUSIC-APP-DEVICE-001]
+    evidence: >
+      MediaServerPlayMusicTest, MediaDomainPlayMusicTest, FalseCapabilityClaimTest (JVM, fake
+      hand-off and session source). Never run on a device.
+    required_behaviour: >
+      A named or described song (SPEC-017) is handed to the driver's music app with
+      MEDIA_PLAY_FROM_SEARCH and read back from the active MediaSession. Results: playing (with
+      now_playing and matches_request), requested_unverified (no notification access - may say only
+      that the app was asked), ok=false NOT_PLAYING / NO_MUSIC_APP / HANDOFF_REJECTED /
+      MUSIC_HANDOFF_UNAVAILABLE. Only now_playing may be claimed (I-1). control_music{play} is still
+      refused with MEDIA_LIBRARY_UNSUPPORTED for such a request, so the bundled track never answers it.
+    notes: >
+      Replaces unsupported.media_library. Its evidence, kept: on 2391ff70 2026-09-19 the named-song
+      request returned MEDIA_LIBRARY_UNSUPPORTED on control_music and nothing played, while
+      「播放音乐」 still returned music_playing. That refusal remains the guard on the bundled path.
   next_track:
     tool: null
     verified: unsupported
@@ -404,19 +423,6 @@ unsupported:
     verified: unsupported
     recognised_by: UtteranceIntentResolver
     protected_by: [TRUTH-BAIT-001]
-  media_library:
-    tool: null
-    verified: unsupported
-    recognised_by: ActionClaimGuard.isSpecificMediaRequest
-    protected_by: [MUSIC-NAMED-001, TRUTH-MEDIA-001]
-    evidence: >
-      FalseCapabilityClaimTest, and on 2391ff70 2026-09-19: the named-song request returned
-      MEDIA_LIBRARY_UNSUPPORTED and nothing played, while 「播放音乐」 still returned music_playing.
-    required_behaviour: >
-      A request naming a song, an artist or a style is refused in one sentence. It must never start
-      the bundled track: something would play, the result would be ok=true, and the driver would be
-      told they got what they asked for. Refused at AndroidToolDispatcher with
-      MEDIA_LIBRARY_UNSUPPORTED, so a prompt rule is not the only thing preventing it (I-11).
   # SPEC-011 split realtime_weather_traffic_news: weather and route traffic moved to live_info.*;
   # what is left has no source at all.
   realtime_news_prices:
@@ -582,7 +588,7 @@ change_impact:
       - speech.capability_help
       - speech.action_claim_truthfulness
       - unsupported.volume_control
-      - unsupported.media_library
+      - media.play_by_description
       - unsupported.realtime_news_prices
       - live_info.weather
       - phone.place_call

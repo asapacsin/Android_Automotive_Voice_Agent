@@ -423,6 +423,30 @@ class GeminiLiveClientTest {
     }
 
     @Test
+    fun anUnverifiedPlayMusicPlayingClaimIsNeverHeard() = runBlocking {
+        val fake = fake()
+        val client = client(graceMs = 60_000)
+        val events = collect(client)
+        client.connect(config())
+        client.onLocalSpeechActivity(true)
+        fake.send(input("放梶浦由记的歌"))
+        fake.send(toolCall("m1", "play_music", """{"artist":"梶浦由記"}"""))
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ToolCall } }
+        client.sendToolResult("m1", """{"ok":true,"tool":"play_music","status":"requested_unverified"}""")
+        waitUntil { fake.messages("toolResponse").isNotEmpty() }
+        fake.send(audio("TVVTSUM="))
+        fake.send(output("正在放《X》"))
+        fake.send(generationComplete)
+        fake.send(turnComplete)
+        waitUntil { fake.messages("clientContent").isNotEmpty() }
+        Thread.sleep(300)
+        assertEquals(1, fake.messages("clientContent").size, "exactly one correction")
+        val snapshot = events.snapshot()
+        assertTrue(snapshot.none { it == DomainVoiceEvent.AudioDelta("TVVTSUM=") })
+        assertTrue(snapshot.none { it is DomainVoiceEvent.AssistantTranscript })
+    }
+
+    @Test
     fun droppedClaimAfterADispatchedCallIsCorrectedAtTurnCompleteNotBefore() = runBlocking {
         val fake = fake()
         val client = client(graceMs = 60_000)

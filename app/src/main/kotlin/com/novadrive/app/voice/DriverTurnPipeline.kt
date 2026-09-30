@@ -186,8 +186,13 @@ class DriverTurnPipeline(
     private fun onExecutionResult(callId: String, output: String) {
         val ok = output.contains("\"ok\":true")
         val failure = if (ok) null else Regex("\"error\":\"([^\"]+)\"").find(output)?.groupValues?.get(1)
-        applyVerdict(turn, turn.onExecutionResult(ok, failure, liveInfoKindOf(output), callId))
+        applyVerdict(turn, turn.onExecutionResult(ok, failure, liveInfoKindOf(output), callId, musicConfirmedOf(output)))
     }
+
+    /** SPEC-017: for a play_music result, whether it read back a playing track; else null. */
+    private fun musicConfirmedOf(output: String): Boolean? =
+        if (!output.contains("\"tool\":\"play_music\"")) null
+        else output.contains("\"ok\":true") && output.contains("\"status\":\"playing\"")
 
     /** The `kind` of a `query_live_info` result, or null for any other tool (SPEC-011 B3). */
     private fun liveInfoKindOf(output: String): String? =

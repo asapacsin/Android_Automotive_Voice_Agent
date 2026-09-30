@@ -30,4 +30,11 @@ class AndroidNowPlayingSource(private val context: Context) : NowPlayingSource {
             packageName = c.packageName,
         )
     }
+
+    /** Pauses every playing session: null without listener access, else whether one was playing. */
+    fun pausePlaying(): Boolean? {
+        val playing = controllers()?.filter { it.playbackState?.state == PlaybackState.STATE_PLAYING } ?: return null
+        playing.forEach { it.transportControls.pause() }
+        return playing.isNotEmpty()
+    }
 }

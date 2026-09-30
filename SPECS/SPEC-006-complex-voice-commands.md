@@ -356,7 +356,7 @@ Because the mic is gated while 小诺 speaks, correction always arrives as the *
 | F-4 | Missing context (S1–S7) | Clarify. Never substitute a default. |
 | F-5 | Ambiguous context | Clarify, naming the options. Never pick one. |
 | F-6 | Partial failure in a multi-intent turn | Report both outcomes. Never "all done". |
-| F-7 | Unsupported capability implied by natural phrasing | Refuse; do not execute a *nearby* supported action. Specifically: a request for a named song, artist or lyric must **not** start the bundled track. Availability is `CapabilityCatalog` (`unsupported.media_library`); `ActionClaimGuard.isSpecificMediaRequest` only maps the phrasing onto that id. |
+| F-7 | Unsupported capability implied by natural phrasing | Refuse; do not execute a *nearby* supported action. Specifically: a request for a named song, artist or lyric must **not** start the bundled track. Such a request goes to `play_music` (SPEC-017, `media.play_by_description`); `ActionClaimGuard.isSpecificMediaRequest` only maps the phrasing onto that id, and `control_music{play}` for it is refused `MEDIA_LIBRARY_UNSUPPORTED`. |
 | F-8 | Driver reports the previous action was ineffective | Treat as C8 feedback: adjust again in the same direction. If `limit_reached`, say so honestly instead of adjusting again. If `power_on == false`, apply D1. |
 | F-9 | Cancellation race | See the table above. |
 | F-10 | Duplicate execution | Rejected by the (epoch, intent key) rule; never silently repeated. |

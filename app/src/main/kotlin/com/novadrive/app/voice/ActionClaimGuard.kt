@@ -231,6 +231,70 @@ class ActionClaimGuard {
             val verb = BODY_COMPLETION_WORDS.firstOrNull { it in reply } ?: return null
             return noun to verb
         }
+
+        /** The body and media pair rules together: a (noun, verb) from our own lists, or null. */
+        private fun pairClaimWords(reply: String): Pair<String, String>? =
+            bodyClaimWords(reply) ?: mediaClaimWords(reply)
+
+        /**
+         * SPEC-017 media pair rule: 「正在放梶浦由记的《…》」 claims something is playing. Only
+         * `play_music`'s now_playing may say that (I-1). A media noun is required, so chat about a
+         * song (「这首歌的歌词挺好」) without a playing word is not a claim.
+         */
+        private val MEDIA_CLAIM_NOUNS = listOf("歌", "曲", "音乐", "《")
+        private val MEDIA_PLAYING_WORDS = listOf(
+            "正在放", "在放", "放着", "开始放", "播放",
+            // Promises count as much as claims: nothing ran yet.
+            "给你放", "为你放", "帮你放", "这就放", "马上放",
+        )
+
+        /** 「放松」「放心」「放假」「放映」 are not music playing (「《哪吒2》还在放映」). */
+        private val NOT_PLAYING_COMPOUNDS = Regex("放松|放心|放假|放映")
+
+        /** 《 is a media noun only right after a playing verb: 「正在放梶浦由记的《…》」. */
+        private val TITLE_AFTER_PLAYING = Regex(
+            "(正在放|在放|开始放|播放|给你放|为你放|帮你放|这就放|马上放)[^。！？，,!?]{0,12}《",
+        )
+
+        /** Honest failure wording from a play_music result. */
+        private val MEDIA_FAILURE_WORDS = listOf("放不了", "没放成", "播放不了", "没能放")
+        private val NON_MEDIA_NOUNS by lazy { DEVICE_NOUNS.filterNot { it in MEDIA_CLAIM_NOUNS } + BODY_NOUNS }
+
+        /**
+         * 「《X》播放不了」: an honest media refusal, released. Only when a media noun and a media
+         * failure word are present and nothing else in the car is named, so a mixed reply
+         * (「空调开好了，风量调不了」) is still a claim (I-1).
+         */
+        private fun isMediaRefusalOnly(reply: String): Boolean =
+            MEDIA_CLAIM_NOUNS.any { it in reply } &&
+                MEDIA_FAILURE_WORDS.any { it in reply } &&
+                NON_MEDIA_NOUNS.none { it in reply } &&
+                MEDIA_REFUSAL_BLOCKERS.none { it in reply }
+
+        /** A refusal that also says something is playing is still a claim. */
+        private val MEDIA_REFUSAL_BLOCKERS = listOf(
+            "在放", "正在放", "放着", "开始放", "已经放", "为你播放", "已经播放", "播放了",
+        )
+
+        private fun mediaClaimWords(reply: String): Pair<String, String>? {
+            val text = NOT_PLAYING_COMPOUNDS.replace(reply, "")
+            val verb = MEDIA_PLAYING_WORDS.firstOrNull { it in text } ?: return null
+            val noun = MEDIA_CLAIM_NOUNS.filter { it != "《" }.firstOrNull { it in text }
+                ?: "《".takeIf { TITLE_AFTER_PLAYING.containsMatchIn(text) }
+                ?: return null
+            return noun to verb
+        }
+
+        /** A reply that says (or promises) a song is playing; honest refusals excluded. */
+        fun claimsMediaPlaying(reply: String): Boolean = !isMediaRefusalOnly(reply) && mediaClaimWords(reply) != null
+
+        /**
+         * play_music did not confirm playback (requested_unverified); the reply said it was
+         * playing. Sent by DriverTurn, which drops that reply (the one owner).
+         */
+        const val MUSIC_NOT_CONFIRMED =
+            "你上一句说正在放某首歌是错误的：音乐 app 只是收到了请求，还没有确认正在放什么。" +
+                "不要调用任何工具，只用一句话更正：已经让音乐 app 去找了，不要说正在放哪首歌。"
         private val DECLINE_WORDS = listOf(
             "不支持", "无法", "不能", "没法", "没有", "暂不", "暂时不", "抱歉", "对不起", "没听清", "再说一遍",
             "请问", "吗", "？", "?", "哪", "什么",
@@ -274,15 +338,14 @@ class ActionClaimGuard {
 
         private fun resolvedIntent(text: String): UtteranceIntent? =
             UtteranceIntentResolver.product().resolve(text)
-                ?: if (isSpecificMediaRequest(text)) UtteranceIntent(CapabilityIds.MEDIA_LIBRARY) else null
+                ?: if (isSpecificMediaRequest(text)) UtteranceIntent(CapabilityIds.MEDIA_PLAY_BY_DESCRIPTION) else null
 
         /**
-         * A request for *particular* music. `media` is one bundled track with play/stop — there is
-         * no library, no search and no track metadata (`config/capabilities.yaml`), so a request
-         * that names a song, an artist or a style cannot be executed. Starting the bundled track
-         * instead would be a false claim about which capability ran ([I-2](../docs/INVARIANTS.md)):
-         * something plays, the result is `ok=true`, and the driver is told they got what they asked
-         * for.
+         * A request for *particular* music: served by `play_music` through the driver's music app
+         * (SPEC-017, `media.play_by_description`), never by the bundled track. Starting the bundled
+         * track instead would be a false claim about which capability ran
+         * ([I-2](../docs/INVARIANTS.md)): something plays, the result is `ok=true`, and the driver
+         * is told they got what they asked for.
          *
          * Structural rather than a list of artists, which could never be complete: strip the words
          * that make a request *generic* and see whether the driver named anything else. A music
@@ -393,8 +456,8 @@ class ActionClaimGuard {
          * (「我可以帮你做很多事情」) names nothing and does not match.
          */
         fun describesCarAction(reply: String): Boolean =
-            !refuses(reply) && (
-                (DEVICE_NOUNS.any { it in reply } && ACTION_WORDS.any { it in reply }) || bodyClaimWords(reply) != null
+            !refuses(reply) && !isMediaRefusalOnly(reply) && (
+                (DEVICE_NOUNS.any { it in reply } && ACTION_WORDS.any { it in reply }) || pairClaimWords(reply) != null
             )
 
         private fun isNavigationResult(output: String): Boolean =
@@ -420,8 +483,8 @@ class ActionClaimGuard {
                 "不要调用任何工具，只用一句话更正：导航还没开始，请说「开始导航」走推荐路线，或说第几条路线。"
 
         fun claimsDone(reply: String): Boolean =
-            !declines(reply) && (
-                (DONE_WORDS.any { it in reply } && ACTION_WORDS.any { it in reply }) || bodyClaimWords(reply) != null
+            !declines(reply) && !isMediaRefusalOnly(reply) && (
+                (DONE_WORDS.any { it in reply } && ACTION_WORDS.any { it in reply }) || pairClaimWords(reply) != null
             )
 
         /**
@@ -455,8 +518,9 @@ class ActionClaimGuard {
          */
         fun carActionClaimMatch(reply: String): ClaimMatch? {
             if (promptsDriver(reply) && !reportsCompletion(reply)) return null
+            if (isMediaRefusalOnly(reply)) return null
             if (!refuses(reply)) {
-                bodyClaimWords(reply)?.let { (noun, verb) -> return ClaimMatch("car_action", noun, verb) }
+                pairClaimWords(reply)?.let { (noun, verb) -> return ClaimMatch("car_action", noun, verb) }
             }
             if (describesCarAction(reply)) {
                 return ClaimMatch(

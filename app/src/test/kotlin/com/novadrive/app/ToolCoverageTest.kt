@@ -41,6 +41,8 @@ class ToolCoverageTest {
         // SPEC-015: the body domain; with no cabin port it answers VEHICLE_UNAVAILABLE - a dispatch.
         "control_window" to """{"action":"set","value":50}""",
         "control_seat" to """{"action":"adjust_height","value":-1}""",
+        // SPEC-017: with no music tool wired it answers MUSIC_HANDOFF_UNAVAILABLE - a dispatch.
+        "play_music" to """{"title":"晴天","artist":"周杰伦"}""",
     )
 
     private fun declaredTools(): List<String> {

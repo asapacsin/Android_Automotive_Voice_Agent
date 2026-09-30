@@ -58,5 +58,9 @@
   "set_speaking_style": {
     "description": "切换小诺说话的语气（只改语气，不改声音）。用户说「说话能不能嗲一点」「撒个娇」「可爱一点」「甜一点」时 style=sweet；说「正常一点」「恢复」「别嗲了」「正常说话」时 style=default。设置会一直保持，直到用户再次要求更改。调用后按返回的 instruction 用新的语气简短回应一句。Switches the assistant's speaking tone only (the voice never changes); the setting stays until the driver asks again.",
     "parameters": "{\"additionalProperties\":false,\"type\":\"object\",\"properties\":{\"style\":{\"type\":\"string\",\"enum\":[\"sweet\",\"default\"]}},\"required\":[\"style\"]}"
+  },
+  "play_music": {
+    "description": "按描述播放音乐（交给手机上的音乐 app 播放）：用户说出歌名、歌手、作品（动画、电影、游戏）或模糊描述（例如「梶浦由记的、空之境界里很燃的那首片头曲」「来点开车提神的」）时调用。先用你的知识确定具体是哪一首：歌名填 title，歌手填 artist，作品填 album_or_work，情绪填 mood，用户原话填 query；确定不了具体歌曲时只填 query 和 mood。只根据返回的 now_playing 说正在放什么；status=requested_unverified 时只能说「已经让音乐 app 去找了」，不能说正在放哪首；ok=false 时如实说没放成。用户说「不是这首」时再调用一次，把刚才那首填到 exclude_title。只说「放首歌」「播放音乐」而没有任何描述时用 control_music。 Play a song the driver named or described through the phone's music app; report only what now_playing says.",
+    "parameters": "{\"additionalProperties\":false,\"type\":\"object\",\"properties\":{\"mood\":{\"description\":\"情绪或风格，例如燃、安静、提神\",\"type\":\"string\",\"maxLength\":80},\"artist\":{\"description\":\"歌手或作曲者\",\"type\":\"string\",\"maxLength\":80},\"exclude_title\":{\"description\":\"用户说「不是这首」时，刚才那首的歌名\",\"type\":\"string\",\"maxLength\":80},\"query\":{\"description\":\"用户的原话描述\",\"type\":\"string\",\"maxLength\":80},\"album_or_work\":{\"description\":\"专辑或作品（动画、电影、游戏）\",\"type\":\"string\",\"maxLength\":80},\"title\":{\"description\":\"歌名（你确定的具体歌曲）\",\"type\":\"string\",\"maxLength\":80}}}"
   }
 }
