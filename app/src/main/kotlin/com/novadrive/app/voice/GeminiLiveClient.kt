@@ -98,6 +98,9 @@ class GeminiLiveClient(
     private val callNames = java.util.concurrent.ConcurrentHashMap<String, String>()
 
     @Volatile private var pendingCorrection: Job? = null
+    /** Set while the gate settles at generationComplete: a correction then waits for closeTurn. */
+    @Volatile private var settling = false
+    @Volatile private var stashedCorrection: String? = null
 
     private val pipeline = DriverTurnPipeline(
         lastAudioSegment = lastAudioSegment,
@@ -276,6 +279,11 @@ class GeminiLiveClient(
      * cannot race one and goes out now.
      */
     private fun deferCorrection(text: String) {
+        if (settling) {
+            // Settled early; the grace is still measured from turnComplete (closeTurn sends it).
+            stashedCorrection = text
+            return
+        }
         val current = generation.get()
         pendingCorrection?.cancel()
         if (callDispatchedThisDriverTurn) {
@@ -307,6 +315,10 @@ class GeminiLiveClient(
     }
 
     private fun cancelCorrection(reason: String) {
+        if (stashedCorrection != null) {
+            stashedCorrection = null
+            DebugVoiceLog.log("gemini_correction_cancelled reason=$reason stashed=true")
+        }
         val job = pendingCorrection ?: return
         pendingCorrection = null
         if (job.isActive) {
@@ -412,7 +424,10 @@ class GeminiLiveClient(
         if (!turnOpen && (message.audio.isNotEmpty() || message.toolCalls.isNotEmpty())) {
             openTurn()
         }
-        message.audio.forEach { data ->
+        if (turnOpen && generationDone && message.audio.isNotEmpty()) {
+            // The gate already gave its verdict: nothing after it may reach the speaker unjudged.
+            DebugVoiceLog.log("gemini_audio_after_settle count=${message.audio.size}")
+        } else message.audio.forEach { data ->
             if (!turnAudioSeen) {
                 turnAudioSeen = true
                 Telemetry.record(EventType.TTS_START)
@@ -423,6 +438,8 @@ class GeminiLiveClient(
         message.outputTranscription?.let { chunk ->
             if (!turnOpen) {
                 strayOutput.append(chunk)
+            } else if (generationDone) {
+                DebugVoiceLog.log("gemini_text_after_settle chars=${chunk.length}")
             } else {
                 turnText.append(chunk)
                 pipeline.appendAssistantText(chunk)
@@ -486,17 +503,27 @@ class GeminiLiveClient(
             Telemetry.record(EventType.TTS_END)
             if (!pipeline.filter(DomainVoiceEvent.AudioDone)) emit(DomainVoiceEvent.AudioDone)
         }
-        if (!pipeline.takeSuperseded().also { settledSuperseded = it }) pipeline.settleResponse(ResponseOutcome(spoke = turnAudioSeen, toolCallIds = turnCallIds.toList(), unidentifiedToolCalls = 0))
+        // Settle here: turnComplete comes a playback-length later. Close still sees late calls.
+        settledSuperseded = pipeline.takeSuperseded()
+        if (!settledSuperseded) {
+            settling = true
+            try {
+                pipeline.settleResponse(ResponseOutcome(spoke = turnAudioSeen, toolCallIds = turnCallIds.toList(), unidentifiedToolCalls = 0))
+            } finally {
+                settling = false
+            }
+        }
     }
 
     private fun closeTurn(status: String) {
         flushInput()
         strayOutput.setLength(0)
         if (!turnOpen) return
-        finishGeneration()
+        finishGeneration()  // the verdict was given there (at generationComplete, or now)
         val outcome = ResponseOutcome(spoke = turnAudioSeen, toolCallIds = turnCallIds.toList(), unidentifiedToolCalls = 0)
         val superseded = pipeline.takeSuperseded() or settledSuperseded
         pipeline.afterResponse(outcome, superseded)
+        stashedCorrection?.let { stashedCorrection = null; deferCorrection(it) }
         DebugVoiceLog.log("gemini_turn_done status=$status calls=${outcome.toolCallIds.size} spoke=${outcome.spoke}")
         Telemetry.record(EventType.RESPONSE_COMPLETED, detail = status)
         emit(DomainVoiceEvent.ResponseDone(status))

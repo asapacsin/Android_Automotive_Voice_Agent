@@ -408,15 +408,86 @@ class GeminiLiveClientTest {
         fake.send(audio())
         fake.send(output("已为您打开空调"))
         fake.send(generationComplete)
-        Thread.sleep(200)
+        Thread.sleep(250)
         assertTrue(events.snapshot().none { it is DomainVoiceEvent.AudioDelta || it is DomainVoiceEvent.AssistantTranscript })
+        assertTrue(fake.messages("clientContent").isEmpty(), "no correction before turnComplete")
         fake.send(turnComplete)
         waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
-        // Correction still deferred to turnComplete + grace, and sent exactly once.
+        // The 300 ms grace is measured from turnComplete, not from the early settle.
+        Thread.sleep(150)
+        assertTrue(fake.messages("clientContent").isEmpty(), "grace runs from turnComplete")
         waitUntil { fake.messages("clientContent").isNotEmpty() }
         Thread.sleep(400)
         assertEquals(1, fake.messages("clientContent").size)
         assertTrue(events.snapshot().none { it is DomainVoiceEvent.AudioDelta })
+    }
+
+    @Test
+    fun droppedClaimAfterADispatchedCallIsCorrectedAtTurnCompleteNotBefore() = runBlocking {
+        val fake = fake()
+        val client = client(graceMs = 60_000)
+        val events = collect(client)
+        client.connect(config())
+        client.onLocalSpeechActivity(true)
+        fake.send(input("打开空调"))
+        fake.send(toolCall("f1", "control_climate", """{"action":"power_on"}"""))
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ToolCall } }
+        client.sendToolResult("f1", result(ok = false))
+        waitUntil { fake.messages("toolResponse").isNotEmpty() }
+        fake.send(audio("RkFJTA=="))
+        fake.send(output("已为您打开空调"))
+        fake.send(generationComplete)
+        Thread.sleep(250)
+        assertTrue(fake.messages("clientContent").isEmpty(), "no correction between generationComplete and turnComplete")
+        fake.send(turnComplete)
+        // A call was dispatched this driver turn: the correction goes out at close, not after 60 s.
+        waitUntil { fake.messages("clientContent").isNotEmpty() }
+        Thread.sleep(300)
+        assertEquals(1, fake.messages("clientContent").size)
+        assertTrue(events.snapshot().none { it == DomainVoiceEvent.AudioDelta("RkFJTA==") })
+    }
+
+    @Test
+    fun audioAfterASettledCleanTurnIsDropped() = runBlocking {
+        val fake = fake()
+        val client = client()
+        val events = collect(client)
+        client.connect(config())
+        client.onLocalSpeechActivity(true)
+        fake.send(input("你好"))
+        fake.send(audio("Q0xFQU4y"))
+        fake.send(output("好的"))
+        fake.send(generationComplete)
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.AudioDone } }
+        fake.send(audio("TEFURQ=="))
+        fake.send(output("还有"))
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+        val snapshot = events.snapshot()
+        assertTrue(snapshot.contains(DomainVoiceEvent.AudioDelta("Q0xFQU4y")))
+        assertTrue(snapshot.none { it == DomainVoiceEvent.AudioDelta("TEFURQ==") })
+    }
+
+    @Test
+    fun audioAfterASupersededSettleIsDropped() = runBlocking {
+        val fake = fake()
+        val client = client(graceMs = 60_000)
+        val events = collect(client)
+        client.connect(config())
+        client.onLocalSpeechActivity(true)
+        fake.send(input("打开空调"))
+        fake.send(audio("SE9MRA=="))
+        fake.send(output("已为您打开空调"))
+        Thread.sleep(200)
+        client.onLocalSpeechActivity(true)  // new onset while the held reply is open: superseded
+        fake.send(generationComplete)
+        fake.send(audio("TEFURTI="))
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+        Thread.sleep(100)
+        val snapshot = events.snapshot()
+        assertTrue(snapshot.none { it == DomainVoiceEvent.AudioDelta("TEFURTI=") })
+        assertTrue(snapshot.none { it == DomainVoiceEvent.AudioDelta("SE9MRA==") })
     }
 
     @Test
@@ -455,14 +526,23 @@ class GeminiLiveClientTest {
         Thread.sleep(700)
         assertEquals(1, events.snapshot().count { it is DomainVoiceEvent.ToolCall && it.callId == "late1" })
         assertTrue(fake.messages("clientContent").isEmpty(), "late call must cancel the correction")
-        // The response answering the result is gated normally: a proven result releases it.
+        // A claim response created before the result is held, not emitted ...
+        fake.send(audio("RUFSTFk="))
+        fake.send(output("空调已打开"))
+        fake.send(generationComplete)
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().count { it is DomainVoiceEvent.ResponseDone } == 2 }
+        assertTrue(events.snapshot().none { it == DomainVoiceEvent.AudioDelta("RUFSTFk=") })
+        // ... and the response answering the ok result is released.
         client.sendToolResult("late1", result(ok = true))
+        waitUntil { fake.messages("toolResponse").isNotEmpty() }
         fake.send(audio("UkVTVUxU"))
         fake.send(output("空调已打开"))
         fake.send(generationComplete)
         waitUntil { events.snapshot().contains(DomainVoiceEvent.AudioDelta("UkVTVUxU")) }
         fake.send(turnComplete)
-        waitUntil { events.snapshot().count { it is DomainVoiceEvent.ResponseDone } == 2 }
+        waitUntil { events.snapshot().count { it is DomainVoiceEvent.ResponseDone } == 3 }
+        assertTrue(events.snapshot().none { it == DomainVoiceEvent.AudioDelta("RUFSTFk=") })
     }
 
     @Test
