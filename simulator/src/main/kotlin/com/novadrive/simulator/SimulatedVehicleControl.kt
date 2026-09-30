@@ -1,9 +1,13 @@
 package com.novadrive.simulator
 
+import com.novadrive.vehicle.CabinLimits
+import com.novadrive.vehicle.CabinState
 import com.novadrive.vehicle.ClimateLimits
 import com.novadrive.vehicle.ClimateState
 import com.novadrive.vehicle.VehicleActionResult
 import com.novadrive.vehicle.VehicleControlPort
+import com.novadrive.vehicle.SeatId
+import com.novadrive.vehicle.WindowId
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,9 +35,82 @@ class ClimateFaults(
 class SimulatedVehicleControl(
     initial: ClimateState = ClimateState.DEFAULT,
     val faults: ClimateFaults = ClimateFaults(),
+    initialCabin: CabinState = CabinState.DEFAULT,
 ) : VehicleControlPort {
     private val lock = Any()
     private val state = MutableStateFlow(initial)
+    private val cabin = MutableStateFlow(initialCabin)
+
+    override val cabinState: StateFlow<CabinState> = cabin.asStateFlow()
+
+    override suspend fun setWindows(windows: Set<WindowId>, openPercent: Int): VehicleActionResult<CabinState> =
+        mutateCabin { current ->
+            when {
+                windows.isEmpty() -> VehicleActionResult.InvalidArgument("no window selected")
+                openPercent !in CabinLimits.WINDOW_MIN..CabinLimits.WINDOW_MAX ->
+                    VehicleActionResult.InvalidArgument(
+                        "window percent $openPercent outside ${CabinLimits.WINDOW_MIN}..${CabinLimits.WINDOW_MAX}",
+                    )
+                else -> VehicleActionResult.Success(
+                    current.copy(windows = current.windows + windows.associateWith { openPercent }),
+                )
+            }
+        }
+
+    override suspend fun changeWindows(windows: Set<WindowId>, deltaPercent: Int): VehicleActionResult<CabinState> =
+        mutateCabin { current ->
+            if (windows.isEmpty()) {
+                VehicleActionResult.InvalidArgument("no window selected")
+            } else {
+                var limited = false
+                val updated = windows.associateWith { id ->
+                    val wanted = current.windows.getValue(id).toLong() + deltaPercent
+                    val bounded = wanted.coerceIn(CabinLimits.WINDOW_MIN.toLong(), CabinLimits.WINDOW_MAX.toLong())
+                    // A window already at the limit in the asked direction is clamped too.
+                    if (bounded != wanted) limited = true
+                    bounded.toInt()
+                }
+                VehicleActionResult.Success(current.copy(windows = current.windows + updated), limited)
+            }
+        }
+
+    override suspend fun setSeatHeight(seat: SeatId, level: Int): VehicleActionResult<CabinState> =
+        mutateCabin { current ->
+            if (level !in CabinLimits.SEAT_MIN..CabinLimits.SEAT_MAX) {
+                VehicleActionResult.InvalidArgument(
+                    "seat level $level outside ${CabinLimits.SEAT_MIN}..${CabinLimits.SEAT_MAX}",
+                )
+            } else {
+                VehicleActionResult.Success(current.copy(seatHeights = current.seatHeights + (seat to level)))
+            }
+        }
+
+    override suspend fun changeSeatHeight(seat: SeatId, delta: Int): VehicleActionResult<CabinState> =
+        mutateCabin { current ->
+            val wanted = current.seatHeights.getValue(seat).toLong() + delta
+            val bounded = wanted.coerceIn(CabinLimits.SEAT_MIN.toLong(), CabinLimits.SEAT_MAX.toLong())
+            VehicleActionResult.Success(
+                current.copy(seatHeights = current.seatHeights + (seat to bounded.toInt())),
+                limitReached = bounded != wanted,
+            )
+        }
+
+    override suspend fun getCabinState(): CabinState = cabin.value
+
+    /**
+     * [block] returns a Success carrying the *proposed* state; only then is it published, and the
+     * result carries the state read back from the flow, as a real adapter would report it.
+     */
+    private fun mutateCabin(block: (CabinState) -> VehicleActionResult<CabinState>): VehicleActionResult<CabinState> =
+        synchronized(lock) {
+            when (val outcome = block(cabin.value)) {
+                is VehicleActionResult.Success -> {
+                    cabin.value = outcome.state
+                    VehicleActionResult.Success(cabin.value, outcome.limitReached)
+                }
+                else -> outcome
+            }
+        }
 
     override val climateState: StateFlow<ClimateState> = state.asStateFlow()
 

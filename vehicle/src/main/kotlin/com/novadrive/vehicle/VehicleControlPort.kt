@@ -5,7 +5,7 @@ import com.novadrive.contracts.HvacObservedState
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * The single vehicle-control boundary for cabin climate.
+ * The single vehicle-control boundary for cabin climate, windows and seats.
  *
  * Everything above this interface (voice session, tool dispatcher, UI) depends only on it and
  * must not know which backend is behind it. Implementations:
@@ -33,6 +33,76 @@ interface VehicleControlPort {
     suspend fun changeFanLevel(delta: Int): VehicleActionResult<ClimateState>
 
     suspend fun getClimateState(): ClimateState
+
+    /** Live window and seat state; one flow so a fuzzy request sees a single consistent snapshot. */
+    val cabinState: StateFlow<CabinState>
+
+    /**
+     * Absolute opening for every window in [windows]. Atomic: one out-of-range value or an empty
+     * set rejects the whole request, so the car never ends up half-applied.
+     */
+    suspend fun setWindows(windows: Set<WindowId>, openPercent: Int): VehicleActionResult<CabinState>
+
+    /** Relative change per window, clamped to the limits; see [VehicleActionResult.Success.limitReached]. */
+    suspend fun changeWindows(windows: Set<WindowId>, deltaPercent: Int): VehicleActionResult<CabinState>
+
+    /** Absolute seat height. Out-of-range values are rejected, never clamped silently. */
+    suspend fun setSeatHeight(seat: SeatId, level: Int): VehicleActionResult<CabinState>
+
+    /** Relative change from the *current* seat height. Clamped to the limits; see [VehicleActionResult.Success.limitReached]. */
+    suspend fun changeSeatHeight(seat: SeatId, delta: Int): VehicleActionResult<CabinState>
+
+    suspend fun getCabinState(): CabinState
+}
+
+enum class WindowId { FRONT_LEFT, FRONT_RIGHT, REAR_LEFT, REAR_RIGHT }
+
+enum class SeatId { DRIVER, PASSENGER }
+
+/**
+ * Window opening in percent (0 = closed) and seat height in levels. Every window and seat is
+ * always present, so callers never have to guess what a missing key means.
+ */
+data class CabinState(
+    val windows: Map<WindowId, Int>,
+    val seatHeights: Map<SeatId, Int>,
+) {
+    init {
+        require(windows.keys == WindowId.entries.toSet()) { "every window must be present: ${windows.keys}" }
+        require(seatHeights.keys == SeatId.entries.toSet()) { "every seat must be present: ${seatHeights.keys}" }
+        windows.forEach { (id, pct) ->
+            require(pct in CabinLimits.WINDOW_MIN..CabinLimits.WINDOW_MAX) {
+                "window $id at $pct outside ${CabinLimits.WINDOW_MIN}..${CabinLimits.WINDOW_MAX}"
+            }
+        }
+        seatHeights.forEach { (id, level) ->
+            require(level in CabinLimits.SEAT_MIN..CabinLimits.SEAT_MAX) {
+                "seat $id at $level outside ${CabinLimits.SEAT_MIN}..${CabinLimits.SEAT_MAX}"
+            }
+        }
+    }
+
+    companion object {
+        val DEFAULT = CabinState(
+            windows = WindowId.entries.associateWith { CabinLimits.WINDOW_MIN },
+            seatHeights = SeatId.entries.associateWith { CabinLimits.SEAT_DEFAULT },
+        )
+    }
+}
+
+/** Simulated cabin limits. Any integer percent is valid for windows; there is no grid. */
+object CabinLimits {
+    const val WINDOW_MIN: Int = 0
+    const val WINDOW_MAX: Int = 100
+
+    /** 「车窗开一点」 */
+    const val DEFAULT_WINDOW_STEP: Int = 20
+    const val SEAT_MIN: Int = 0
+    const val SEAT_MAX: Int = 10
+    const val SEAT_DEFAULT: Int = 5
+
+    /** 「座位有点高」 */
+    const val DEFAULT_SEAT_STEP: Int = 1
 }
 
 /**

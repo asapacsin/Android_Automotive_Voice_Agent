@@ -1,7 +1,10 @@
 package com.novadrive.app.vehicle
 
 import com.novadrive.vehicle.ClimateState
+import com.novadrive.vehicle.CabinState
+import com.novadrive.vehicle.SeatId
 import com.novadrive.vehicle.VehicleActionResult
+import com.novadrive.vehicle.WindowId
 import com.novadrive.vehicle.VehicleControlPort
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,6 +38,12 @@ class ClimateToolHandlerTest {
             calls += "getClimateState()"
             return state
         }
+        override val cabinState: StateFlow<CabinState> = MutableStateFlow(CabinState.DEFAULT)
+        override suspend fun setWindows(windows: Set<WindowId>, openPercent: Int) = error("not a climate call")
+        override suspend fun changeWindows(windows: Set<WindowId>, deltaPercent: Int) = error("not a climate call")
+        override suspend fun setSeatHeight(seat: SeatId, level: Int) = error("not a climate call")
+        override suspend fun changeSeatHeight(seat: SeatId, delta: Int) = error("not a climate call")
+        override suspend fun getCabinState(): CabinState = error("not a climate call")
     }
 
     private fun handle(port: RecordingPort, vararg args: Pair<String, String>) =
