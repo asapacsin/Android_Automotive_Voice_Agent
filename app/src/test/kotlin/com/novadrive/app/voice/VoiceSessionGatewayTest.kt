@@ -225,6 +225,29 @@ class VoiceSessionGatewayTest {
         assertEquals(listOf("p2", "p3"), session.prompts)
     }
 
+    @Test
+    fun guidanceBlockerReportsCodesAndDefersToTheSession() {
+        assertEquals("NOT_ATTACHED", VoiceSessionGateway.guidanceBlocker())
+        val identity = Any().also { identities += it }
+        val session = FakeGatewaySession()
+        VoiceSessionGateway.attachInternal(identity, session, FakeServiceControl())
+        assertEquals("NOT_ACTIVE", VoiceSessionGateway.guidanceBlocker())
+        session.isActive = true
+        assertEquals("NOT_CONNECTED", VoiceSessionGateway.guidanceBlocker())
+        session.hasFailed = true
+        assertEquals("FAILED", VoiceSessionGateway.guidanceBlocker())
+    }
+
+    @Test
+    fun guidanceBlockersFromCoreSignals() {
+        val ui = com.novadrive.ingress.realtime.VoiceUiState.LISTENING
+        assertEquals("NOT_CONNECTED", GuidanceBlockers.of(false, true, ui, false))
+        assertEquals("NO_CAPABILITY", GuidanceBlockers.of(true, false, ui, false))
+        assertEquals("DRIVER_SPEAKING", GuidanceBlockers.of(true, true, com.novadrive.ingress.realtime.VoiceUiState.USER_SPEAKING, false))
+        assertEquals("WORK_PENDING", GuidanceBlockers.of(true, true, ui, true))
+        assertEquals(null, GuidanceBlockers.of(true, true, ui, false))
+    }
+
     private class FakeGatewaySession(
         var hasMic: Boolean = true,
     ) : GatewaySession {

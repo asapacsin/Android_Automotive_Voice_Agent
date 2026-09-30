@@ -105,11 +105,10 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
 
     init {
         AmapPrivacyCompliance.ensure(context)
-        if (!mapRenderable) {
-            AmapGuidanceVoice.textReceiver = { text -> textPanel?.onGuidanceText(text) }
-        }
+        if (!mapRenderable) AmapGuidanceVoice.textReceiver = { text -> textPanel?.onGuidanceText(text) }
         AMapNavi.addTTSInitializeListener { code, _ -> DebugVoiceLog.log("nav_guidance_tts_init code=$code") }
         navi = AMapNavi.getInstance(context.applicationContext)
+        AmapGuidanceVoice.assistantVoice = AmapGuidanceVoice.assistantVoiceEnabled(context)
         AmapGuidanceVoice.enable(navi)
         naviView = AMapNaviView(context)
         naviView.setAMapNaviViewListener(AmapDrivingPresentation.listener { stopNavigation("ui_exit") })

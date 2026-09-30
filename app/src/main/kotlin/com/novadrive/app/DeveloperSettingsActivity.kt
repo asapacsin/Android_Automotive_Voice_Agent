@@ -316,6 +316,7 @@ class DeveloperSettingsActivity : Activity() {
             addView(amapKey)
             addView(openAccessibility)
             addView(geminiSection())
+            addView(guidanceRelayToggle())
             addView(voiceToggle)
             addView("讯飞 APPID（唤醒词 你好小诺；MSC 只需要 APPID，不需要 API Key/Secret）".label())
             addView(iflytekAppId)
@@ -481,6 +482,19 @@ class DeveloperSettingsActivity : Activity() {
     }
 
     /** Voice provider choice and Gemini Live settings (ADR-010, ADR-013). The key is never displayed or logged; blank keeps the stored one. */
+    /** SPEC-018 (experimental, default off): 小诺 speaks turn-by-turn guidance; read when navigation starts. */
+    private fun guidanceRelayToggle(): CheckBox {
+        val prefs = getSharedPreferences(
+            com.novadrive.app.nav.amap.AmapGuidanceVoice.PREFS, MODE_PRIVATE,
+        )
+        val key = com.novadrive.app.nav.amap.AmapGuidanceVoice.PREF_ASSISTANT_VOICE
+        return CheckBox(this).apply {
+            text = "助手播报导航（实验，默认关）/ Assistant speaks guidance (experimental)"
+            isChecked = prefs.getBoolean(key, false)
+            setOnCheckedChangeListener { _, checked -> prefs.edit().putBoolean(key, checked).apply() }
+        }
+    }
+
     private fun geminiSection(): LinearLayout {
         val gemini = GeminiSettingsRepository(this)
         val saved = gemini.loadSettings()
