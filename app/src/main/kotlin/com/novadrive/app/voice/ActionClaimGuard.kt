@@ -36,10 +36,6 @@ class ActionClaimGuard {
     private var navigationStarted = false
     private var navigationClaimCorrected = false
 
-    /** A play_music result this turn that did not read back a playing track (SPEC-017). */
-    private var musicUnconfirmed = false
-    private var musicClaimCorrected = false
-
     @Synchronized
     fun onUserTranscript(text: String) {
         userText = text.trim().takeIf { it.isNotEmpty() }
@@ -49,8 +45,6 @@ class ActionClaimGuard {
         failureCorrected = false
         navigationStarted = false
         navigationClaimCorrected = false
-        musicUnconfirmed = false
-        musicClaimCorrected = false
     }
 
     /**
@@ -65,9 +59,6 @@ class ActionClaimGuard {
                 ?: "操作失败"
         } else {
             null
-        }
-        if (output.contains("\"tool\":\"play_music\"")) {
-            musicUnconfirmed = !(output.contains("\"ok\":true") && output.contains("\"status\":\"playing\""))
         }
         if (isNavigationResult(output)) {
             if (output.contains("\"ok\":true") && startsNavigation(output)) navigationStarted = true
@@ -92,10 +83,6 @@ class ActionClaimGuard {
         ) {
             navigationClaimCorrected = true
             return NAVIGATION_NOT_STARTED
-        }
-        if (toolCalledThisTurn && musicUnconfirmed && !musicClaimCorrected && claimsMediaPlaying(assistantText)) {
-            musicClaimCorrected = true
-            return MUSIC_NOT_CONFIRMED
         }
         val reply = assistantText.trim()
         val request = userText
@@ -162,8 +149,6 @@ class ActionClaimGuard {
         failureCorrected = false
         navigationStarted = false
         navigationClaimCorrected = false
-        musicUnconfirmed = false
-        musicClaimCorrected = false
     }
 
     companion object {
@@ -303,7 +288,10 @@ class ActionClaimGuard {
         /** A reply that says (or promises) a song is playing; honest refusals excluded. */
         fun claimsMediaPlaying(reply: String): Boolean = !isMediaRefusalOnly(reply) && mediaClaimWords(reply) != null
 
-        /** play_music did not confirm playback (requested_unverified); the reply said it was playing. */
+        /**
+         * play_music did not confirm playback (requested_unverified); the reply said it was
+         * playing. Sent by DriverTurn, which drops that reply (the one owner).
+         */
         const val MUSIC_NOT_CONFIRMED =
             "你上一句说正在放某首歌是错误的：音乐 app 只是收到了请求，还没有确认正在放什么。" +
                 "不要调用任何工具，只用一句话更正：已经让音乐 app 去找了，不要说正在放哪首歌。"

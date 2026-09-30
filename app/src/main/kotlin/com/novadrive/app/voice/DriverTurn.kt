@@ -156,6 +156,13 @@ class DriverTurn(val epoch: Long) {
     var proven: Boolean = false
         private set
 
+    /**
+     * SPEC-017: the latest `play_music` result this turn did not read back a playing track
+     * (requested_unverified or ok=false). Its ok=true proves the hand-off, not what is playing, so
+     * a reply claiming a song is playing is held and dropped (I-1).
+     */
+    private var musicUnconfirmed = false
+
     /** `query_live_info` kinds that returned `ok=true` this turn: the only source for REALTIME_INFO. */
     private val liveInfoKinds = mutableSetOf<String>()
 
@@ -226,6 +233,7 @@ class DriverTurn(val epoch: Long) {
         lastDecideContext = contextAwaitingAnswer
         // Before proof: proof of an earlier action says nothing about a result still being made.
         if (awaitingToolResult) return HoldReason.AWAITING_TOOL_RESULT
+        if (musicUnconfirmed) return HoldReason.AWAITING_EXECUTION_PROOF
         // Proof of *some* action is not a source for the weather: only a live-info result of the
         // kind the driver asked about is (SPEC-011 B3).
         if (proven && (kind != Kind.REALTIME_INFO || answeredFromSource())) return HoldReason.NONE
@@ -424,11 +432,19 @@ class DriverTurn(val epoch: Long) {
      * A tool result was delivered to the model. `ok=true` is the only thing in this system that
      * proves an external action happened; a failure explicitly does **not** release a claim.
      */
-    fun onExecutionResult(ok: Boolean, failure: String?, liveInfoKind: String? = null, callId: String? = null): Verdict {
+    fun onExecutionResult(
+        ok: Boolean,
+        failure: String?,
+        liveInfoKind: String? = null,
+        callId: String? = null,
+        /** null: not a play_music result; true: status=playing read back; false: not confirmed. */
+        musicConfirmed: Boolean? = null,
+    ): Verdict {
         if (!accepts()) {
             rejectedEvents++
             return Verdict.Wait
         }
+        if (musicConfirmed != null && (callId == null || callId in registeredCalls)) musicUnconfirmed = !musicConfirmed
         // D-11 / I-1: only a result for a call this turn dispatched can prove or fail its action.
         // A superseded turn's late result is ignored; a null id keeps the legacy path.
         if (callId != null && callId !in registeredCalls) {
@@ -466,6 +482,8 @@ class DriverTurn(val epoch: Long) {
             return Verdict.Wait
         }
         proven = true
+        // An unconfirmed hand-off proves nothing about what is playing: judged at response end.
+        if (musicUnconfirmed) return Verdict.Wait
         if (holdReason == HoldReason.AWAITING_EXECUTION_PROOF || holdReason == HoldReason.PHANTOM_AUDIO ||
             holdReason == HoldReason.ECHO_CANDIDATE
         ) {
@@ -598,6 +616,16 @@ class DriverTurn(val epoch: Long) {
 
             HoldReason.AWAITING_EXECUTION_PROOF -> {
                 when {
+                    // SPEC-017: 「正在放《X》」 after a hand-off nothing confirmed is never heard.
+                    musicUnconfirmed && !hadToolCallInResponse && ActionClaimGuard.claimsMediaPlaying(reply) ->
+                        Verdict.Drop(
+                            "unconfirmed_music_claim",
+                            if (executionFailed && !proven) {
+                                ActionClaimGuard.reportFailure(lastFailure ?: "操作失败")
+                            } else {
+                                ActionClaimGuard.MUSIC_NOT_CONFIRMED
+                            },
+                        )
                     // Proof arrived while this response was in flight.
                     proven -> Verdict.Release("execution_proved")
                     // The model asserted an action that nothing has proved. This is the case that

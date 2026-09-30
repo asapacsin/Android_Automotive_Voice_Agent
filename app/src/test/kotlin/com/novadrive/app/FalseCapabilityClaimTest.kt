@@ -117,27 +117,7 @@ class FalseCapabilityClaimTest {
         }
     }
 
-    // ---- R2: a play_music result that did not confirm playback -----------------------------
-
-    private fun afterPlayMusic(result: String, reply: String): String? {
-        val guard = ActionClaimGuard()
-        guard.onUserTranscript("放梶浦由记的歌")
-        guard.onResponseDone(ResponseOutcome(spoke = false, toolCallIds = listOf("c1")), "")
-        guard.onToolResult(result)
-        return guard.onResponseDone(ResponseOutcome(spoke = true), reply)
-    }
-
-    @Test
-    fun anUnverifiedHandOffDoesNotReleaseAPlayingClaim() {
-        val unverified = """{"ok":true,"tool":"play_music","status":"requested_unverified"}"""
-        assertEquals(ActionClaimGuard.MUSIC_NOT_CONFIRMED, afterPlayMusic(unverified, "正在放梶浦由记的《oblivious》"))
-        assertEquals(null, afterPlayMusic(unverified, "已经让音乐 app 去找了"))
-        val failed = """{"ok":false,"tool":"play_music","error":"NOT_PLAYING"}"""
-        assertTrue(afterPlayMusic(failed, "正在放梶浦由记的《oblivious》") != null)
-        assertEquals(null, afterPlayMusic(failed, "这首没放成"))
-        val playing = """{"ok":true,"tool":"play_music","status":"playing"}"""
-        assertEquals(null, afterPlayMusic(playing, "在放Kalafina的《oblivious》"))
-    }
+    // R2 (an unconfirmed play_music result) is owned by DriverTurn: DriverTurnMusicTest.
 
     @Test
     fun chatAboutASongWithoutAPlayingWordIsReleased() {
