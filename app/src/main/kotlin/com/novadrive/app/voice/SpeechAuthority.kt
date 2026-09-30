@@ -54,6 +54,18 @@ object SpeechAuthority {
         return now
     }
 
+    @Volatile private var lastGuidance: SpeechArbiter.Reply? = null
+
+    /** SPEC-018: the decision for a chunk of assistant guidance for [promptId], logged when it changes. */
+    fun guidanceReply(promptId: String): SpeechArbiter.Reply {
+        val now = arbiter.guidanceChunk(promptId)
+        if (now != lastGuidance) {
+            lastGuidance = now
+            DebugVoiceLog.log("speech_arbiter out=guidance decision=$now prompt=$promptId")
+        }
+        return now
+    }
+
     /**
      * The one playback-hold hook (D1), registered by `AndroidPlaybackPort`: true pauses the player,
      * false resumes it. Only [syncPlaybackHold] calls it, and only when the answer changes.
@@ -117,7 +129,9 @@ object SpeechAuthority {
         var startReply = false
         var post = false
         synchronized(holdLock) {
-            val pause = reply() == SpeechArbiter.Reply.HOLD
+            // SPEC-018: while assistant guidance is open or playing, the player holds only for R1/R5.
+            val a = arbiter
+            val pause = if (a.assistantGuidanceActive()) a.guidanceHeld() else reply() == SpeechArbiter.Reply.HOLD
             val workload = pause && arbiter.workloadHeld()
             if (pause != pauseApplied) {
                 pauseApplied = pause
@@ -158,6 +172,7 @@ object SpeechAuthority {
         lastUplink = SpeechArbiter.Uplink.OPEN
         lastReply = SpeechArbiter.Reply.PLAY
         lastProtected = false
+        lastGuidance = null
         playbackHold = null
         scheduleRecheck = { _, _ -> }
         synchronized(holdLock) {

@@ -422,4 +422,54 @@ class ListeningLifecycleTest {
         assertEquals(ListeningState.SLEEP, lifecycle.state.value)
         assertEquals(20_000L, ListeningTimeouts.SILENT_WAIT_TIMEOUT_MS)
     }
+
+    // ---- SPEC-018 G-2: navigating keeps SLEEP connected ------------------------------------
+
+    @Test
+    fun sleepWhileNavigatingNeverGoesDeepIdle() = runTest {
+        val rig = Rig(this)
+        rig.start()
+        rig.lifecycle.onNavigating(true)
+        rig.lifecycle.sleep("user")
+        wait(ListeningTimeouts.DEEP_IDLE_AFTER_SLEEP_MS * 3)
+        assertEquals(ListeningState.SLEEP, rig.state)
+        assertFalse("close" in rig.controls.log)
+    }
+
+    @Test
+    fun navigationStartingInSleepCancelsTheDeepIdleTimer() = runTest {
+        val rig = Rig(this)
+        rig.start()
+        rig.lifecycle.sleep("user")
+        wait(ListeningTimeouts.DEEP_IDLE_AFTER_SLEEP_MS - 1_000)
+        rig.lifecycle.onNavigating(true)
+        wait(ListeningTimeouts.DEEP_IDLE_AFTER_SLEEP_MS)
+        assertEquals(ListeningState.SLEEP, rig.state)
+    }
+
+    @Test
+    fun connectionLostInSleepWhileNavigatingStaysSleep() = runTest {
+        val rig = Rig(this)
+        rig.start()
+        rig.lifecycle.onNavigating(true)
+        rig.lifecycle.sleep("user")
+        rig.lifecycle.onConnectionLost()
+        assertEquals(ListeningState.SLEEP, rig.state)
+        assertFalse("close" in rig.controls.log)
+    }
+
+    @Test
+    fun deepIdleTimerStartsWhenNavigationEndsInSleep() = runTest {
+        val rig = Rig(this)
+        rig.start()
+        rig.lifecycle.onNavigating(true)
+        rig.lifecycle.sleep("user")
+        wait(ListeningTimeouts.DEEP_IDLE_AFTER_SLEEP_MS * 2)
+        rig.lifecycle.onNavigating(false)
+        wait(ListeningTimeouts.DEEP_IDLE_AFTER_SLEEP_MS - 1_000)
+        assertEquals(ListeningState.SLEEP, rig.state)
+        wait(2_000)
+        assertEquals(ListeningState.DEEP_IDLE, rig.state)
+        assertTrue("close" in rig.controls.log)
+    }
 }
