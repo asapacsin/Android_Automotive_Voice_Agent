@@ -8,6 +8,7 @@ import com.novadrive.app.BaiduAuthMode
 import com.novadrive.app.DebugVoiceLog
 import com.novadrive.app.NavigationState
 import com.novadrive.app.PersonaProfiles
+import com.novadrive.app.SpeakingStyleState
 import com.novadrive.ingress.realtime.DomainVoiceEvent
 import com.novadrive.ingress.realtime.RealtimeEvent
 import com.novadrive.ingress.realtime.ResponseOutcome
@@ -50,7 +51,7 @@ class BaiduFlexClient(
     @Volatile private var ready: CompletableDeferred<Unit>? = null
     @Volatile private var sessionCreated = false
     @Volatile private var assistantSpeaking = false
-    @Volatile private var instructions: String = PersonaProfiles.DEFAULT_INSTRUCTIONS
+    @Volatile private var rawInstructions: String? = null
     @Volatile private var voice: String = BaiduAppSettings.DEFAULT_VOICE
     @Volatile private var speed: Double = BaiduAppSettings.DEFAULT_SPEED
     @Volatile private var sentVoice: String = BaiduAppSettings.DEFAULT_VOICE
@@ -145,7 +146,7 @@ class BaiduFlexClient(
         assembler.clear()
         emptyRetry.reset()
         resetPolicy.reset()
-        instructions = PersonaProfiles.sanitize(effective.settings.instructions)
+        rawInstructions = effective.settings.instructions
         voice = effective.settings.voice
         speed = effective.settings.speed
         sentVoice = voice
@@ -409,6 +410,7 @@ class BaiduFlexClient(
     private fun instructionsWithContext(): String {
         val hint = contextHint()
         if (hint != null) DebugVoiceLog.log("flex_context_hint chars=${hint.length}")
+        val instructions = PersonaProfiles.compose(rawInstructions, SpeakingStyleState.current)
         return if (hint == null) instructions else instructions.trim() + "\n" + hint
     }
 
