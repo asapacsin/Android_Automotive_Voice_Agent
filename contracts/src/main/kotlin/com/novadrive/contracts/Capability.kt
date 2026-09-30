@@ -112,6 +112,7 @@ object ProductCapabilities : CapabilityCatalog {
             rec("speech.tts", null, true),
             rec("speech.silent_mode", "set_speech_output", true),
             rec("speech.sleep", "end_conversation", true),
+            rec("speech.speaking_style", "set_speaking_style", true),
             rec("speech.interrupt_tts_by_voice", null, false),
             rec("speech.wake_word", null, true),
             rec("speech.capability_help", null, true),

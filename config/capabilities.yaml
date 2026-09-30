@@ -272,6 +272,13 @@ speech:
     verified: device
     protected_by: [SLEEP-001]
     evidence: "休眠 -> SLEEP; speech in SLEEP ignored; tap or wake word -> ACTIVE"
+  speaking_style:
+    tool: set_speaking_style
+    verified: unit
+    required_scope: COMPONENT
+    protected_by: [STYLE-UNIT-001]
+    evidence: "SpeakingStyleToolTest: sweet/default set and persist the style; PersonaProfiles.compose carries SWEET_TONE"
+    notes: "Tone only; the voice never changes. Sticky across turns, sessions, sleep and restarts (SPEC-015 FZ-11/FZ-12/B6)."
   interrupt_tts_by_voice:
     tool: null
     verified: unsupported
