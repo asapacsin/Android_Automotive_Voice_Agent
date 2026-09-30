@@ -1,6 +1,6 @@
 # SPEC-014 — Under Gemini, commands act in about a second and replies are heard as they stream
 
-Status: **Draft 2026-09-29**. Blocked on the owner's decisions N-1 and N-2
+Status: **Authorised 2026-09-30** (owner approved the plan; N-1 and N-2 decided as recommended). Build per the plan, not the clause-release rows below, which Revision 2 superseded
 ([ADR-011](../DECISIONS/ADR-011-gemini-native-voice-path.md))
 Raised: 2026-09-29 · Source: [B-028](../BACKLOG.md)
 Depends on: I-1, I-5, I-10, I-13, ADR-009, ADR-010, [SPEC-013](SPEC-013-gemini-live-provider.md)

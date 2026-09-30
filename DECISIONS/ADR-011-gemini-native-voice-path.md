@@ -1,6 +1,7 @@
 # ADR-011 — Gemini-native voice path: model profiles, clause release, fast model by default
 
-Status: **Proposed** (2026-09-29). Not in force until the owner decides N-1 and N-2.
+Status: **Accepted 2026-09-30** as Revision 2. The owner, asked N-1 and N-2 explicitly: "i approve your
+plan execute that". N-1 (a) default `gemini-3.8-live`; N-2 settle at `generationComplete`. D-9 stays open.
 Amends, on acceptance: [ADR-010](ADR-010-gemini-live-second-provider.md) decision 1 (the default
 Gemini model), and closes its "Open architecture question".
 Keeps: ADR-001, ADR-002 (Baidu stays the default provider), ADR-008, ADR-009.
