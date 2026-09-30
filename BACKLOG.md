@@ -6,7 +6,7 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 
 | # | Demand | Raised | Status | Spec |
 | --- | --- | --- | --- | --- |
-| B-029 | **Fuzzy driving requests** — 嗲一点 (voice style), 座位高/低 (seat), 有蚊子 (windows), and every action announced from its result; plus more phrases of the same kind | 2026-09-30 | **Recorded**; needs architecture + SPEC | §B-029 below |
+| B-029 | **Fuzzy driving requests** — 嗲一点 (voice style), 座位高/低 (seat), 有蚊子 (windows), and every action announced from its result; plus more phrases of the same kind | 2026-09-30 | **Architecture proposed**; awaiting owner decisions O-1…O-5, then SPEC-015 | [architecture](docs/FUZZY_DRIVING_ARCHITECTURE.md) · [ADR-012](DECISIONS/ADR-012-fuzzy-driving-requests.md) (Proposed) |
 | B-028 | **A Gemini-native architecture** — "design a new architecture that should optimise for the new Gemini API, because the last test said the old design is slow and poorly suited to it". Measured: the extended-thinking model is the cause of slow actions; the whole-reply claim hold is the cause of slow conversation | 2026-09-29 | **Specced**; proposal awaiting the owner (N-1, N-2) | [SPEC-014](SPECS/SPEC-014-gemini-native-voice-path.md) · [ADR-011](DECISIONS/ADR-011-gemini-native-voice-path.md) (Proposed) |
 | B-027 | **Gemini Live as a second voice provider** — the owner chose Gemini 3.8 Live Extended Thinking; build it behind the provider seam, opt-in, Baidu stays default | 2026-09-29 | **Built (code, cloud-verified)**; device rows open | [SPEC-013](SPECS/SPEC-013-gemini-live-provider.md) · [ADR-010](DECISIONS/ADR-010-gemini-live-second-provider.md) |
 | B-026 | **One owner for who may speak** — a single arbiter decides between Amap guidance, other apps' audio and 小诺's replies (calls later), using a driver-workload signal (distance to the next manoeuvre), replacing today's separate special cases. *Not* the assistant speaking first | 2026-09-24 | **In milestone** M4 | [SPEC-012](SPECS/SPEC-012-speech-arbiter.md) |
@@ -609,5 +609,6 @@ Review notes (2026-09-30):
    有异味/空气不好 (outside air), 好困 (cooler + fresh air + music), 太吵了 (music down/pause),
    太晒/刺眼 (sunshade — needs another simulated actuator), 腰不舒服 (lumbar/seat recline — seat tool).
 
-Next: architecture note + SPEC (tools, car-model state, UI, fuzzy-phrase table with expected actions,
-test rows), then implementation in waves.
+Architecture proposed 2026-09-30: [docs/FUZZY_DRIVING_ARCHITECTURE.md](docs/FUZZY_DRIVING_ARCHITECTURE.md),
+[ADR-012](DECISIONS/ADR-012-fuzzy-driving-requests.md). Next: the owner decides O-1…O-5, then SPEC-015
+(fuzzy-phrase table with expected actions, test rows), then implementation in waves.

@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-30T03:20:06",
+  "generated_at": "2026-09-30T04:09:29",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "3f28aeb",
-    "branch": "claude/9-30",
-    "subject": "TEST_MATRIX: complete GEMINI-DEVICE-LATENCY-001 human-test fields",
+    "commit": "2c720fa",
+    "branch": "claude/fuzzy-logic-9-30",
+    "subject": "BACKLOG: record B-029 fuzzy driving requests (owner doc 2026-09-30) with review notes",
     "working_tree_clean": false,
-    "uncommitted_files": 3
+    "uncommitted_files": 4
   },
   "tests": {
     "available": true,
@@ -147,7 +147,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "A5: | A5 | Picker selection uses the registry; `tryLocalNavigationPick` is gone | production wiring | `FeaturePresenceRegressionTest` + existing picker tests green | not built — **deferred on purpose** to",
-    "actionable_count": 70,
+    "actionable_count": 72,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 18,
@@ -609,6 +609,13 @@
         "blocked_by": null
       },
       {
+        "priority": 10,
+        "class": "stale state or harness defect",
+        "source": "state",
+        "item": "PROJECT_STATE.json",
+        "blocked_by": null
+      },
+      {
         "priority": 11,
         "class": "next authorised backlog item",
         "source": "BACKLOG.md",
@@ -669,6 +676,13 @@
         "class": "next authorised backlog item",
         "source": "BACKLOG.md",
         "item": "B-028",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-029",
         "blocked_by": null
       }
     ]
