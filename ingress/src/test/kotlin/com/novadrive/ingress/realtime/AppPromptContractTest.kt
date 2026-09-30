@@ -131,4 +131,30 @@ class AppPromptContractTest {
             assertEquals(listOf("p1:OPENED", "p1:COMPLETED"), seen)
             controller.stop()
         }
+
+    @Test
+    fun appPromptTranscriptIsForwardedInEventOrder() =
+        runTest(UnconfinedTestDispatcher()) {
+            val provider = PromptProvider(FakeRealtimeVoiceProvider(), gemini)
+            val seen = mutableListOf<String>()
+            val controller = controller(
+                provider, RecordingPlayback(), this,
+                VoiceSessionCallbacks(
+                    onAppPromptTurn = { id, phase -> seen += "$id:$phase" },
+                    onAppPromptTranscript = { id, text -> seen += "$id>$text" },
+                    onTranscript = { seen += "subtitle:$it" },
+                ),
+            )
+            controller.start()
+            val fake = provider.fake
+            fake.emit(DomainVoiceEvent.ResponseStarted)
+            fake.emit(DomainVoiceEvent.AppPromptTurn("p1", DomainVoiceEvent.AppPromptTurn.Phase.OPENED))
+            fake.emit(DomainVoiceEvent.AppPromptTranscript("p1", "前方"))
+            fake.emit(DomainVoiceEvent.AudioDelta("AAAA"))
+            fake.emit(DomainVoiceEvent.AppPromptTranscript("p1", "左转"))
+            fake.emit(DomainVoiceEvent.AppPromptTurn("p1", DomainVoiceEvent.AppPromptTurn.Phase.COMPLETED))
+            fake.emit(DomainVoiceEvent.ResponseDone("completed"))
+            assertEquals(listOf("p1:OPENED", "p1>前方", "p1>左转", "p1:COMPLETED"), seen)
+            controller.stop()
+        }
 }

@@ -186,7 +186,9 @@ class GeminiLiveClient(
 
     /** SPEC-018: send now or fail; arms the next opened turn. Leaves `listeningSuspended` alone. */
     fun sendPrompt(text: String, promptId: String): Boolean = synchronized(this) {
-        if (ready?.isCompleted != true || prompt.busy) return false
+        prompt.refusal(ready?.isCompleted == true, onsetSeen, turnOpen)?.let { reason ->
+            DebugVoiceLog.log("gemini_prompt_refused id=$promptId reason=$reason"); return false
+        }
         prompt.arm(promptId)
         if (!trySend(GeminiLiveProtocol.textTurn(text))) { prompt.disarm(); return false }
         DebugVoiceLog.log("gemini_prompt id=$promptId chars=${text.length}")
@@ -445,13 +447,13 @@ class GeminiLiveClient(
                 Telemetry.record(EventType.TTS_START)
             }
             val event = DomainVoiceEvent.AudioDelta(data)
-            if (prompt.open != null || !pipeline.filter(event)) emit(event)
+            if (prompt.open != null) { if (!prompt.suppressed()) emit(event) } else if (!pipeline.filter(event)) emit(event)
         }
         message.outputTranscription?.let { chunk ->
             if (!turnOpen) {
                 strayOutput.append(chunk)
             } else if (prompt.open != null) {
-                if (!generationDone) turnText.append(chunk)  // a GUIDANCE reply is not judged
+                prompt.transcript(chunk)  // not judged, never a subtitle; also after generationComplete
             } else if (generationDone) {
                 // Too late to hold, not to correct: afterResponse judges it (subtitle already out).
                 DebugVoiceLog.log("gemini_text_after_settle chars=${chunk.length}")
@@ -464,7 +466,7 @@ class GeminiLiveClient(
         message.toolCalls.forEach(::onToolCall)
         if (message.generationComplete) finishGeneration()
         if (message.interrupted) {
-            prompt.void("interrupted")
+            if (!turnOpen || prompt.open != null) prompt.void("interrupted")  // never a driver turn's
             emit(DomainVoiceEvent.Interrupted("server_vad"))
             Telemetry.record(EventType.INTERRUPT_DETECTED)
             closeTurn("cancelled")
@@ -478,10 +480,10 @@ class GeminiLiveClient(
             // A GUIDANCE turn (SPEC-018 B5): no driver turn, no claim judgement, no hold.
             clearTurnState()
             turnOpen = true
-            turnText.append(strayOutput); strayOutput.setLength(0)
             DebugVoiceLog.log("gemini_turn_open kind=guidance")
             emit(DomainVoiceEvent.ResponseStarted)
             prompt.markOpen(id)
+            prompt.transcript(strayOutput.toString()); strayOutput.setLength(0)
             return
         }
         // No local onset since the previous turn (e.g. the uplink gate did not see it), yet the
@@ -521,8 +523,7 @@ class GeminiLiveClient(
         if (!turnOpen || generationDone) return
         generationDone = true
         if (prompt.open != null) {
-            turnText.toString().takeIf { it.isNotBlank() }?.let { emit(DomainVoiceEvent.AssistantTranscript(it, final = true)) }
-            if (turnAudioSeen) emit(DomainVoiceEvent.AudioDone)
+            if (turnAudioSeen && !prompt.suppressed()) emit(DomainVoiceEvent.AudioDone)
             return
         }
         val text = turnText.toString()

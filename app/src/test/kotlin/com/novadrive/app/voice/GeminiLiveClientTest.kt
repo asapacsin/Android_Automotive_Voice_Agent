@@ -1038,9 +1038,115 @@ class GeminiLiveClientTest {
         waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
         // Not held (audio emitted), and no claim correction follows.
         assertTrue(events.snapshot().any { it is DomainVoiceEvent.AudioDelta })
-        assertTrue(events.snapshot().any { it is DomainVoiceEvent.AssistantTranscript })
+        assertTrue(events.snapshot().any { it is DomainVoiceEvent.AppPromptTranscript })
         Thread.sleep(400)
         assertEquals(1, fake.messages("clientContent").size, "only the prompt itself")
+    }
+
+    // ---- SPEC-018 revision 3 (review R3-R6) ------------------------------------------------
+
+    @Test
+    fun sendPromptIsRefusedWhileADriverOnsetIsOutstanding() = runBlocking {
+        val fake = fake()
+        val client = client()
+        val events = collect(client)
+        client.connect(config())
+        client.onLocalSpeechActivity(true)
+        assertFalse(client.sendPrompt("前方左转", "p1"), "local onset, no turn yet")
+        assertTrue(fake.messages("clientContent").isEmpty())
+        assertTrue(promptEvents(events).isEmpty())
+    }
+
+    @Test
+    fun sendPromptIsRefusedAfterServerActivityStart() = runBlocking {
+        val fake = fake()
+        val client = client()
+        client.connect(config())
+        fake.send(voiceActivity("ACTIVITY_START"))
+        Thread.sleep(200)
+        assertFalse(client.sendPrompt("前方左转", "p1"), "server onset, no turn yet")
+        assertTrue(fake.messages("clientContent").isEmpty())
+    }
+
+    @Test
+    fun sendPromptIsRefusedDuringADriverTurnAndAllowedAfterItCompletes() = runBlocking {
+        val fake = fake()
+        val client = client()
+        val events = collect(client)
+        client.connect(config())
+        client.onLocalSpeechActivity(true)
+        fake.send(input("你好"))
+        fake.send(audio())
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseStarted } }
+        assertFalse(client.sendPrompt("前方左转", "p1"), "driver turn open")
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+        assertTrue(client.sendPrompt("前方左转", "p2"), "free after the driver turn completed")
+        assertTrue(promptEvents(events).isEmpty())
+    }
+
+    @Test
+    fun voidedOpenPromptEmitsNoFurtherAudioOrTranscriptButStillCloses() = runBlocking {
+        val fake = fake()
+        val client = client()
+        val events = collect(client)
+        client.connect(config())
+        assertTrue(client.sendPrompt("前方左转", "p1"))
+        fake.send(audio())
+        waitUntil { promptEvents(events).isNotEmpty() }
+        client.onLocalSpeechActivity(true)
+        waitUntil { promptEvents(events).size == 2 }
+        val before = events.snapshot().count { it is DomainVoiceEvent.AudioDelta }
+        fake.send(audio())
+        fake.send(output("前方"))
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+        assertEquals(1, before)
+        assertEquals(before, events.snapshot().count { it is DomainVoiceEvent.AudioDelta })
+        assertTrue(events.snapshot().none { it is DomainVoiceEvent.AppPromptTranscript })
+        assertTrue(events.snapshot().none { it is DomainVoiceEvent.AudioDone })
+        assertEquals(DomainVoiceEvent.AppPromptTurn.Phase.VOIDED, promptEvents(events).last().phase)
+    }
+
+    @Test
+    fun guidanceTranscriptGoesOnlyThroughAppPromptTranscriptIncludingAfterGenerationComplete() = runBlocking {
+        val fake = fake()
+        val client = client()
+        val events = collect(client)
+        client.connect(config())
+        assertTrue(client.sendPrompt("前方左转", "p1"))
+        fake.send(audio())
+        fake.send(output("前方"))
+        fake.send(generationComplete)
+        fake.send(output("左转"))
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+        val seq = events.snapshot().filter { it is DomainVoiceEvent.AppPromptTranscript || it is DomainVoiceEvent.AppPromptTurn }
+        assertEquals(
+            listOf(
+                DomainVoiceEvent.AppPromptTurn("p1", DomainVoiceEvent.AppPromptTurn.Phase.OPENED),
+                DomainVoiceEvent.AppPromptTranscript("p1", "前方"),
+                DomainVoiceEvent.AppPromptTranscript("p1", "左转"),
+                DomainVoiceEvent.AppPromptTurn("p1", DomainVoiceEvent.AppPromptTurn.Phase.COMPLETED),
+            ),
+            seq,
+        )
+        assertTrue(events.snapshot().none { it is DomainVoiceEvent.AssistantTranscript })
+    }
+
+    @Test
+    fun interruptedOfADriverTurnDoesNotVoidAPrompt() = runBlocking {
+        val fake = fake()
+        val client = client()
+        val events = collect(client)
+        client.connect(config())
+        client.onLocalSpeechActivity(true)
+        fake.send(input("你好"))
+        fake.send(audio())
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseStarted } }
+        fake.send(content(""""interrupted":true"""))
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+        assertTrue(promptEvents(events).isEmpty())
     }
 
     private companion object {
