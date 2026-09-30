@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-30T05:08:34",
+  "generated_at": "2026-09-30T05:10:44",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "69a26cc",
+    "commit": "326a2b9",
     "branch": "claude/fuzzy-logic-9-30",
-    "subject": "ADR-013: Gemini Live default, no cross-provider fallback, Baidu retired after device gates",
+    "subject": "ADR-014: guidance spoken by the assistant voice, Amap voice as fallback",
     "working_tree_clean": false,
-    "uncommitted_files": 2
+    "uncommitted_files": 3
   },
   "tests": {
     "available": true,

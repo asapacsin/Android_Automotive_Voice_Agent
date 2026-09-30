@@ -2,7 +2,7 @@
 
 Status: **Accepted** (2026-09-30, product owner: "the amap stuff would be mute and instead
 everything come from the amap would handle by gemini", then "amap can allow if gemini unable to
-function"). One sub-question open (G-2 below).
+function"). G-2 answered the same day ("ok for whole gemini stuff").
 Amends: the guidance-voice row of `docs/ARCHITECTURE.md` (`AmapGuidanceVoice`, 2026-09-17).
 Builds on: [ADR-013](ADR-013-gemini-default-provider.md) (Gemini default), B-029 O-2 (one voice
 per stage).
@@ -26,6 +26,6 @@ per stage).
 
 - **G-1 (measure):** time from `onGetNavigationText` to first model audio on the phone; the
   fallback timeout is set from it.
-- **G-2 (owner):** keep the Gemini session connected for the whole navigation (continuous cost),
-  or let a sleeping assistant hand guidance to Amap's voice (fallback becomes routine while asleep).
-  Recommended: stay connected while navigating.
+- **G-2 — decided 2026-09-30:** the Gemini session stays connected for the whole navigation, even
+  while the assistant sleeps, so guidance keeps one voice. Amap's voice is only the failure fallback.
+  Measured on the standard short route (ACCEPTANCE_TESTS.md test-run policy), never a long one.
