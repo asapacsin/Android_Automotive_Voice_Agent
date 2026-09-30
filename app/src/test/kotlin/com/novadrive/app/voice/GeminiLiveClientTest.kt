@@ -448,6 +448,25 @@ class GeminiLiveClientTest {
     }
 
     @Test
+    fun aClaimTranscribedAfterSettleIsStillCorrectedAtTurnComplete() = runBlocking {
+        val fake = fake()
+        val client = client(graceMs = 200)
+        collect(client)
+        client.connect(config())
+        client.onLocalSpeechActivity(true)
+        fake.send(input("打开空调"))
+        fake.send(audio("TEFURTI="))
+        fake.send(generationComplete)
+        fake.send(output("已为您打开空调"))
+        Thread.sleep(150)
+        assertTrue(fake.messages("clientContent").isEmpty(), "no correction before turnComplete")
+        fake.send(turnComplete)
+        waitUntil { fake.messages("clientContent").isNotEmpty() }
+        Thread.sleep(300)
+        assertEquals(1, fake.messages("clientContent").size)
+    }
+
+    @Test
     fun audioAfterASettledCleanTurnIsDropped() = runBlocking {
         val fake = fake()
         val client = client()
@@ -526,7 +545,7 @@ class GeminiLiveClientTest {
         Thread.sleep(700)
         assertEquals(1, events.snapshot().count { it is DomainVoiceEvent.ToolCall && it.callId == "late1" })
         assertTrue(fake.messages("clientContent").isEmpty(), "late call must cancel the correction")
-        // A claim response created before the result is held, not emitted ...
+        // A claim response created before the result is judged at its end and dropped, never emitted ...
         fake.send(audio("RUFSTFk="))
         fake.send(output("空调已打开"))
         fake.send(generationComplete)

@@ -201,8 +201,7 @@ class GeminiLiveClient(
 
     fun onLocalSpeechActivity(active: Boolean) {
         if (!active) return
-        cancelCorrection("driver_turn")
-        synchronized(this) { beginDriverTurnLocked() }
+        synchronized(this) { cancelCorrection("driver_turn"); beginDriverTurnLocked() }
     }
 
     /**
@@ -439,7 +438,9 @@ class GeminiLiveClient(
             if (!turnOpen) {
                 strayOutput.append(chunk)
             } else if (generationDone) {
+                // Too late to hold, not to correct: afterResponse judges it (subtitle already out).
                 DebugVoiceLog.log("gemini_text_after_settle chars=${chunk.length}")
+                pipeline.appendAssistantText(chunk)
             } else {
                 turnText.append(chunk)
                 pipeline.appendAssistantText(chunk)
