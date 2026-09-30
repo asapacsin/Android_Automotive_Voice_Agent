@@ -46,6 +46,12 @@ sealed interface DomainVoiceEvent {
     data class AppPromptTurn(val promptId: String, val phase: Phase) : DomainVoiceEvent {
         enum class Phase { OPENED, COMPLETED, VOIDED }
     }
+    /**
+     * One output-transcription chunk of a GUIDANCE turn (SPEC-018), as received, from its OPENED
+     * until its turn end (also after generationComplete); every one precedes that turn's
+     * COMPLETED. A GUIDANCE turn emits no [AssistantTranscript]. Never logged with text.
+     */
+    data class AppPromptTranscript(val promptId: String, val text: String) : DomainVoiceEvent
 }
 
 /**

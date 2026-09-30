@@ -12,6 +12,7 @@ import com.novadrive.ingress.realtime.DomainVoiceEvent.AppPromptTurn.Phase
 internal class GeminiPromptTurn(private val emit: (DomainVoiceEvent) -> Unit) {
     private var armed: String? = null
     private var voided = false
+    private var suppressLogged = false
 
     /** The open turn is the response to this prompt (a GUIDANCE turn). */
     var open: String? = null
@@ -38,7 +39,32 @@ internal class GeminiPromptTurn(private val emit: (DomainVoiceEvent) -> Unit) {
     fun markOpen(promptId: String) {
         open = promptId
         voided = false
+        suppressLogged = false
         emit(DomainVoiceEvent.AppPromptTurn(promptId, Phase.OPENED))
+    }
+
+    /** R3: after VOIDED the open turn's audio and transcript are dropped (logged once). */
+    fun suppressed(): Boolean {
+        val id = open ?: return false
+        if (!voided) return false
+        if (!suppressLogged) { suppressLogged = true; DebugVoiceLog.log("gemini_prompt_audio_suppressed id=$id") }
+        return true
+    }
+
+    /** R5/R6: a GUIDANCE output-transcription chunk goes only through AppPromptTranscript. */
+    fun transcript(chunk: String) {
+        val id = open ?: return
+        if (chunk.isEmpty() || suppressed()) return
+        emit(DomainVoiceEvent.AppPromptTranscript(id, chunk))
+    }
+
+    /** R4: why a prompt may not be sent now, or null. */
+    fun refusal(ready: Boolean, onsetOutstanding: Boolean, turnOpen: Boolean): String? = when {
+        !ready -> "not_ready"
+        busy -> "prompt_busy"
+        onsetOutstanding -> "driver_onset"
+        turnOpen -> "turn_open"
+        else -> null
     }
 
     /** Voids an armed or open prompt (interrupted, connection loss, driver onset). */
@@ -63,7 +89,7 @@ internal class GeminiPromptTurn(private val emit: (DomainVoiceEvent) -> Unit) {
         clearOpen()
     }
 
-    fun clearOpen() { open = null; voided = false }
+    fun clearOpen() { open = null; voided = false; suppressLogged = false }
 
     /** SPEC-018 B5: a call in a GUIDANCE turn is rejected, never executed. */
     fun reject(call: DomainVoiceEvent.ToolCall): DomainVoiceEvent.ToolCall {

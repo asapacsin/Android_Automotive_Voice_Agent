@@ -32,6 +32,8 @@ data class VoiceSessionCallbacks(
     val qualifyPlayoutBargeIn: () -> Boolean = { true },
     /** The response to an app prompt changed phase (SPEC-018); in order with the reply audio. */
     val onAppPromptTurn: (String, DomainVoiceEvent.AppPromptTurn.Phase) -> Unit = { _, _ -> },
+    /** A GUIDANCE turn's transcription chunk (promptId, text), in event order; never logged. */
+    val onAppPromptTranscript: (String, String) -> Unit = { _, _ -> },
 )
 
 /**
@@ -414,6 +416,9 @@ class VoiceSessionController(
                 is DomainVoiceEvent.AppPromptTurn -> {
                     playback.onAppPromptTurn(event.promptId, event.phase, playbackEpoch)
                     callbacks.onAppPromptTurn(event.promptId, event.phase)
+                }
+                is DomainVoiceEvent.AppPromptTranscript -> {
+                    callbacks.onAppPromptTranscript(event.promptId, event.text)
                 }
                 else -> Unit
             }
