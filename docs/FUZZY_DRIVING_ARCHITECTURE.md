@@ -205,9 +205,15 @@ ADR-011. On Baidu it is the whole reply. Not recommended for the first wave.
      reset after this very tool turn (`ConversationResetPolicy`). On Gemini it happens at the next
      connect. Whether a resumed Gemini session re-reads `systemInstruction` must be measured on
      device; until then, (1) carries it.
-- **Voice id — decided (O-2, owner 2026-09-30): the voice stays the same.** 嗲一点 changes the
-  tone only; `session.voice` stays 4196 度清影 on Baidu and the prebuilt voice is unchanged on Gemini.
-  No voice swap and no `ProviderCapabilities` flag are built.
+- **One voice per stage — decided (O-2, owner 2026-09-30).** The driver must never hear two
+  different voices in the same stage (a session, a scenario, a reply). Consequences, all binding:
+  - 嗲一点 changes the tone only; `session.voice` stays 4196 度清影 on Baidu and the Gemini prebuilt
+    voice is unchanged. No voice swap, no `ProviderCapabilities` flag for it.
+  - `announce`, scenario summaries and partial-failure lines are spoken **by the realtime model's
+    own voice**, never by a local/system TTS. If spoken coverage is ever enforced (O-4 = B), the
+    fallback line must also go through the model, not a second synthesiser.
+  - The provider (and so the voice) is fixed for the whole session (ADR-010); nothing in this feature
+    may switch provider or voice mid-session.
 - **The persona conflict must be resolved in the text, not left as a contradiction.** The default
   persona says 「不撒娇，不卖萌」. `compose` must *replace* the tone paragraph when style is `sweet`,
   not append a line that contradicts it. The model follows contradictions unpredictably.
@@ -265,7 +271,7 @@ stays *unsupported* until built, and says so in one sentence (I-2).
 | # | Question | Recommendation | If the other way |
 | --- | --- | --- | --- |
 | O-1 | Multi-step phrases (有蚊子, 好困): a fixed scenario tool, or the model chaining tools? | **A: `run_scenario` with a closed enum** (§5) | B: no new tool, but 2–4 round trips per phrase, and ordering, dependencies and the "never 都弄好了" rule depend on the model |
-| O-2 | 嗲一点: prompt tone only, or also switch the Baidu voice? Persist across sessions? | **Decided 2026-09-30: voice stays the same (4196); tone only on both providers.** Persistence across sessions: recommended, still open | Voice swap: audibly stronger on Baidu, but nothing changes on Gemini, and it needs a `ProviderCapabilities` flag |
+| O-2 | 嗲一点: prompt tone only, or also switch the Baidu voice? Persist across sessions? | **Decided 2026-09-30: one voice per stage — voice stays 4196, tone only, no second synthesiser for `announce`.** Persistence across sessions: recommended, still open | Voice swap: audibly stronger on Baidu, but nothing changes on Gemini, and it needs a `ProviderCapabilities` flag |
 | O-3 | 有蚊子: which windows, and how far? | **All four to 50 %**, matching your 「打开一半」 example; closing again is the driver's next sentence, never a timer | Front only, or a smaller opening |
 | O-4 | "Say what you did": result-built `announce` + chip, or a hold until the reply names every step? | **A: `announce` + chip; coverage measured by the benchmark** | B: enforced coverage, at the cost of a hold on every action reply (heavier on Baidu) |
 | O-5 | May the seat move while driving? | **Yes in simulation, in single steps**; a real backend may refuse with `Unavailable` | Refuse seat changes while navigating |
