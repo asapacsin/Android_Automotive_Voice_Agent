@@ -57,4 +57,28 @@ class DriverTurnMusicTest {
         assertEquals(DriverTurn.HoldReason.NONE, t.onResponseStarted(audio, false))
         assertTrue(t.onResponseDone("在放Kalafina的《oblivious》", hadToolCallInResponse = false) is DriverTurn.Verdict.Release)
     }
+
+    // ---- Gemini shape: the reply comes in the same response as the call ----------------------
+
+    private fun geminiReply(reply: String): DriverTurn.Verdict {
+        val t = DriverTurn(epoch = 1)
+        t.onUserTranscript("放梶浦由记的歌") { DriverTurn.Kind.ACTION }
+        t.onResponseStarted(audio, false)
+        t.onToolCall("m1", "play_music")
+        t.onExecutionResult(ok = true, failure = null, callId = "m1", musicConfirmed = false)
+        t.onAssistantText(reply)
+        return t.onResponseDone(reply, hadToolCallInResponse = true)
+    }
+
+    @Test
+    fun geminiSameResponsePlayingClaimIsDropped() {
+        val v = geminiReply("正在放《X》")
+        assertTrue(v is DriverTurn.Verdict.Drop, "$v")
+        assertEquals(ActionClaimGuard.MUSIC_NOT_CONFIRMED, (v as DriverTurn.Verdict.Drop).correction)
+    }
+
+    @Test
+    fun geminiSameResponseHonestLineIsReleased() {
+        assertTrue(geminiReply("已经让音乐 app 去找了") is DriverTurn.Verdict.Release)
+    }
 }

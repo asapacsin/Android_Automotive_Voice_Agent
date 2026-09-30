@@ -82,7 +82,12 @@ class MediaServer(
         return when (tool.pauseActive()) {
             PauseResult.NoAccess ->
                 if (tool.handedOff) {
-                    env.result(call, AndroidActionResult.Accepted(STOP_UNVERIFIED))
+                    com.novadrive.app.voice.SpeechAuthority.arbiter.onConfirmation()
+                    ToolDispatchResult(
+                        null, null, successChip = "⏹ 内置音乐已停",
+                        output = JSONObject().put("ok", true).put("tool", call.name).put("status", STOP_UNVERIFIED)
+                            .put("instruction", STOP_UNVERIFIED_INSTRUCTION).toString(),
+                    )
                 } else {
                     env.result(call, bundled)
                 }
@@ -138,7 +143,10 @@ class MediaServer(
         const val MUSIC_HANDOFF_UNAVAILABLE = "MUSIC_HANDOFF_UNAVAILABLE"
         const val MUSIC_STILL_PLAYING = "MUSIC_STILL_PLAYING"
         /** Bundled track stopped; the music app was asked to pause but nothing can confirm it. */
-        val STOP_UNVERIFIED: String = "bundled_stopped_app_pause_unverified" // not const: tool-name scan
+        // Not const: ArchitectureRulesTest reads any lower-case string constant in tools/ as a tool name.
+        val STOP_UNVERIFIED: String = "bundled_stopped_app_not_paused"
+        const val STOP_UNVERIFIED_INSTRUCTION =
+            "内置音乐已经停了，但没有权限确认音乐 app 是否暂停。请如实说：内置音乐停了，音乐 app 可能还在放，需要的话请在音乐 app 里暂停；不要说「已关闭」。"
         const val ACCESS_HINT = "在系统设置里给小诺打开「通知使用权」，小诺就能确认正在放哪首歌。"
 
         /** Once per process. */

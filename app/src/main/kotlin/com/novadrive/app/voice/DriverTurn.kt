@@ -163,6 +163,12 @@ class DriverTurn(val epoch: Long) {
      */
     private var musicUnconfirmed = false
 
+    /**
+     * Where the reply stood when the unconfirmed result arrived. On Gemini the reply is spoken in
+     * the same response as the call, so only the words after the result are judged against it.
+     */
+    private var musicResultAt = 0
+
     /** `query_live_info` kinds that returned `ok=true` this turn: the only source for REALTIME_INFO. */
     private val liveInfoKinds = mutableSetOf<String>()
 
@@ -212,6 +218,7 @@ class DriverTurn(val epoch: Long) {
         midCallFailure = null
         replacedHold = null
         replySoFar = ""
+        musicResultAt = 0
         replyBeforeResult = null
         midResponseTools.clear()
         wordsBeforeCall = 0
@@ -444,7 +451,10 @@ class DriverTurn(val epoch: Long) {
             rejectedEvents++
             return Verdict.Wait
         }
-        if (musicConfirmed != null && (callId == null || callId in registeredCalls)) musicUnconfirmed = !musicConfirmed
+        if (musicConfirmed != null && (callId == null || callId in registeredCalls)) {
+            musicUnconfirmed = !musicConfirmed
+            if (musicUnconfirmed) musicResultAt = if (phase == Phase.RESPONDING) replySoFar.length else 0
+        }
         // D-11 / I-1: only a result for a call this turn dispatched can prove or fail its action.
         // A superseded turn's late result is ignored; a null id keeps the legacy path.
         if (callId != null && callId !in registeredCalls) {
@@ -617,7 +627,9 @@ class DriverTurn(val epoch: Long) {
             HoldReason.AWAITING_EXECUTION_PROOF -> {
                 when {
                     // SPEC-017: 「正在放《X》」 after a hand-off nothing confirmed is never heard.
-                    musicUnconfirmed && !hadToolCallInResponse && ActionClaimGuard.claimsMediaPlaying(reply) ->
+                    // Regardless of a call in this response: only the words after the result count.
+                    musicUnconfirmed &&
+                        ActionClaimGuard.claimsMediaPlaying(assistantText.drop(musicResultAt.coerceAtMost(assistantText.length))) ->
                         Verdict.Drop(
                             "unconfirmed_music_claim",
                             if (executionFailed && !proven) {
