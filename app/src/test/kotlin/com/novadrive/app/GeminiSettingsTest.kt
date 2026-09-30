@@ -138,4 +138,14 @@ class GeminiSettingsTest {
         assertEquals(VoiceCatalog.GEMINI_LIVE_DEFAULT, geminiModelAfterOneTimeSwitch(VoiceCatalog.GEMINI_LIVE_DEFAULT, alreadySwitched = false))
         assertEquals(null, geminiModelAfterOneTimeSwitch(null, alreadySwitched = false))
     }
+
+    @Test
+    fun configProblemTruthTable() {
+        val valid = GeminiAppSettings(consentAccepted = true)
+        assertNull(GeminiSettingsValidator.configProblem(GeminiAppSettings(provider = VoiceProviderPreference.BAIDU), keyPresent = false))
+        assertEquals("GEMINI_API_KEY_MISSING", GeminiSettingsValidator.configProblem(valid, keyPresent = false))
+        assertEquals("GEMINI_CONSENT_MISSING", GeminiSettingsValidator.configProblem(GeminiAppSettings(), keyPresent = true))
+        assertEquals("GEMINI_VOICE_INVALID", GeminiSettingsValidator.configProblem(valid.copy(voice = "bad voice"), keyPresent = true))
+        assertNull(GeminiSettingsValidator.configProblem(valid, keyPresent = true))
+    }
 }
