@@ -92,6 +92,18 @@ object GeminiSettingsValidator {
         return GeminiApiConfig(settings, apiKey, instructions)
     }
 
+    /**
+     * The config code a start would fail with, or null. Null for an explicit BAIDU preference
+     * (Gemini is not used); otherwise the same order as [validate]. Takes presence, never the key.
+     */
+    fun configProblem(settings: GeminiAppSettings, keyPresent: Boolean): String? {
+        if (settings.provider == VoiceProviderPreference.BAIDU) return null
+        validateSettings(settings)?.let { return it }
+        if (!keyPresent) return "GEMINI_API_KEY_MISSING"
+        if (!settings.consentAccepted) return "GEMINI_CONSENT_MISSING"
+        return null
+    }
+
     /** The one honest on-screen sentence for a voice-provider config code; null for non-Gemini codes. */
     fun screenMessage(code: String): String? = when {
         code == "GEMINI_API_KEY_MISSING" -> "语音服务未配置：请在开发者设置里填写 Gemini 密钥。"
@@ -184,6 +196,9 @@ class GeminiSettingsRepository(
         val key = credentials.read(CRED_API_KEY).orEmpty()
         return GeminiSettingsValidator.configOrThrow(settings, key, instructions)
     }
+
+    /** See [GeminiSettingsValidator.configProblem]. */
+    fun configProblem(): String? = GeminiSettingsValidator.configProblem(loadSettings(), keyPresent())
 
     fun choice(): VoiceProviderId = VoiceProviderChoice.resolve(loadSettings(), keyPresent())
 

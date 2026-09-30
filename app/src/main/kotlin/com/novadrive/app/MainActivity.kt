@@ -177,6 +177,14 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         if (::screen.isInitialized) screen.onResume()
+        showConfigBannerIfNeeded()
+    }
+
+    /** Tell the driver before they try: a Gemini start without key/consent/valid settings would fail. */
+    private fun showConfigBannerIfNeeded() {
+        val code = GeminiSettingsRepository(this).configProblem() ?: return
+        DebugVoiceLog.log("config_banner reason=$code")
+        showError("CONFIG", GeminiSettingsValidator.screenMessage(code) ?: code)
     }
 
     override fun onPause() {
