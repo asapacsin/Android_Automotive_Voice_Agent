@@ -57,7 +57,11 @@ class CapabilityContractTest {
 
     @Test
     fun everyToolInTheRegistryIsRealAndRouted() {
-        val dispatcher = File(root, "app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt").readText()
+        // Routing lives in the dispatcher and in one ToolServer per car domain (ADR-015).
+        val servers = File(root, "app/src/main/kotlin/com/novadrive/app/tools")
+            .listFiles { f -> f.name.endsWith("Server.kt") }.orEmpty().sortedBy { it.name }
+        val dispatcher = (listOf(File(root, "app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt")) + servers)
+            .joinToString("\n") { it.readText() }
         val handlers = listOf(
             "app/src/main/kotlin/com/novadrive/app/vehicle/ClimateToolHandler.kt",
             "app/src/main/kotlin/com/novadrive/app/vision/CameraQuestionHandler.kt",

@@ -245,10 +245,11 @@ class ArchitectureRulesTest {
 
     @Test
     fun declaredToolsAndDispatchedToolsAgree() {
-        val protocol = text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexProtocol.kt")
-        val dispatcher = text("app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt")
-        val declared = Regex("name = \"([a-z_]+)\"").findAll(protocol).map { it.groupValues[1] }.toSet() +
-            Regex("const val [A-Z_]+ = \"([a-z_]+)\"").findAll(protocol).map { it.groupValues[1] }.toSet()
+        // Declarations: RealtimeToolCatalog plus the car domains; routing: the dispatcher plus one
+        // ToolServer per domain (ADR-015). Same sources as CapabilityContractTest.
+        val declared = declaredToolNames()
+        val dispatcher = (listOf("app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt") + serverFiles())
+            .joinToString("\n") { text(it) }
         // A tool reaches an executor either as a literal branch, via a constant branch, or through
         // a handler that declares TOOL = "name". All three count as routed.
         val handlers = listOf(
@@ -266,6 +267,40 @@ class ArchitectureRulesTest {
         val undocumented = declared.filter { it !in ARGUMENT_VALUES && !capabilities.contains(it) }
         assertTrue(undocumented.isEmpty()) {
             "INVARIANT I-10: every tool must appear in docs/CAPABILITIES.md. Missing: $undocumented"
+        }
+    }
+
+    private val toolsDir = "app/src/main/kotlin/com/novadrive/app/tools"
+
+    private fun serverFiles(): List<String> =
+        File(root, toolsDir).listFiles { f -> f.name.endsWith("Server.kt") }.orEmpty()
+            .map { "$toolsDir/${it.name}" }.sorted()
+
+    private fun declaredToolNames(): Set<String> {
+        val domains = File(root, toolsDir).listFiles { f -> f.name.endsWith(".kt") }.orEmpty().sortedBy { it.name }
+        val protocol = (listOf(File(root, "app/src/main/kotlin/com/novadrive/app/voice/RealtimeToolCatalog.kt")) + domains)
+            .joinToString("\n") { it.readText() }
+        return Regex("name = \"([a-z_]+)\"").findAll(protocol).map { it.groupValues[1] }.toSet() +
+            Regex("const val [A-Z_]+ = \"([a-z_]+)\"").findAll(protocol).map { it.groupValues[1] }.toSet()
+    }
+
+    // ---- the dispatcher routes by domain, never by tool name (SPEC-016 B, ADR-015) ----
+
+    @Test
+    fun dispatcherDoesNotBranchOnToolNames() {
+        val file = text("app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt")
+        val start = file.indexOf("class AndroidToolDispatcher(")
+        assertTrue(start >= 0, "AndroidToolDispatcher class not found")
+        val end = file.indexOf("\n}\n", start).let { if (it < 0) file.length else it }
+        val body = file.substring(start, end)
+        val tools = declaredToolNames() - ARGUMENT_VALUES
+        val literalBranches = Regex("\"([a-z_]+)\" ->").findAll(body).map { it.groupValues[1] }.toList()
+        val constantBranches = Regex("([A-Z_]{4,}) ->").findAll(body).map { it.groupValues[1].lowercase() }
+            .filter { it in tools }.toList()
+        val literals = tools.filter { body.contains("\"$it\"") }
+        assertTrue(literalBranches.isEmpty() && constantBranches.isEmpty() && literals.isEmpty()) {
+            "AndroidToolDispatcher must route through the domain ToolServers, not by tool name: " +
+                "branches=$literalBranches constants=$constantBranches literals=$literals"
         }
     }
 

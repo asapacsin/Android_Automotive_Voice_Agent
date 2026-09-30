@@ -11,6 +11,17 @@ import com.novadrive.app.nav.NavigationPickerIntercept
 import com.novadrive.app.nav.NavigationVoiceOutput
 import com.novadrive.app.nav.NavigationBackends
 import com.novadrive.app.nav.NavigationHostGateway
+import com.novadrive.app.tools.AppsServer
+import com.novadrive.app.tools.ClimateServer
+import com.novadrive.app.tools.LiveInfoServer
+import com.novadrive.app.tools.MediaServer
+import com.novadrive.app.tools.NavigationServer
+import com.novadrive.app.tools.PhoneServer
+import com.novadrive.app.tools.SpeechServer
+import com.novadrive.app.tools.ToolCallEnv
+import com.novadrive.app.tools.ToolRegistry
+import com.novadrive.app.tools.ToolServer
+import com.novadrive.app.tools.VisionServer
 import com.novadrive.app.vehicle.ClimateToolHandler
 import com.novadrive.app.nav.PlaceSlot
 import com.novadrive.app.voice.DriverContext
@@ -114,147 +125,27 @@ class AndroidToolDispatcher(
         Telemetry.record(EventType.TOOL_EXECUTION_END, toolType = call.name, success = !failed, errorCode = if (failed) code else null, detail = call.callId)
     }
 
+    /** One server per car domain (ADR-015), indexed by domain id. */
+    private val servers: Map<String, ToolServer> = serverIndex(
+        ToolRegistry.PRODUCT,
+        listOf(
+            NavigationServer(executor, places),
+            AppsServer(executor),
+            MediaServer(executor),
+            ClimateServer(climate),
+            VisionServer(camera),
+            PhoneServer(phone),
+            LiveInfoServer(liveInfo),
+            SpeechServer(executor),
+        ),
+    )
+
+    private val env = ToolCallEnv(driverContext, ::failed, ::result)
+
     private fun dispatchUnrecorded(call: DomainVoiceEvent.ToolCall): ToolDispatchResult {
         call.arguments["_validation_error"]?.let { return failed(call, it) }
-        return when (call.name) {
-            CameraQuestionHandler.TOOL -> {
-                val question = call.arguments["question"]
-                // A vision request takes seconds: hand it to the session as async work instead of
-                // blocking the event loop. The answer is spoken when it arrives.
-                ToolDispatchResult(
-                    null,
-                    null,
-                    successChip = "📷 正在看",
-                    deferredOutput = {
-                        val outcome = camera.ask(question)
-                        com.novadrive.app.voice.SpeechAuthority.arbiter.onConfirmation()
-                        outcome.output
-                    },
-                )
-            }
-            ClimateToolHandler.TOOL -> {
-                val outcome = runBlocking { climate.handle(call.arguments) }
-                driverContext()?.let { context ->
-                    context.onClimateResult(
-                        action = call.arguments["action"].orEmpty(),
-                        value = call.arguments["value"]?.toDoubleOrNull(),
-                        output = outcome.output,
-                        epoch = context.currentEpoch(),
-                    )
-                }
-                // Failures are worth hearing too, even while navigating: the driver must not
-                // assume the climate changed when it did not.
-                com.novadrive.app.voice.SpeechAuthority.arbiter.onConfirmation()
-                ToolDispatchResult(
-                    null,
-                    null,
-                    blockedReason = outcome.errorCode,
-                    successChip = outcome.chip,
-                    output = ToolCallGuards.withPowerAdvice(outcome.output),
-                )
-            }
-            "navigate_to" -> {
-                val destination = call.arguments["destination"]?.trim().orEmpty()
-                if (destination.isBlank()) return failed(call, "BLANK_DESTINATION")
-                if (destination.length > 120) return failed(call, "DESTINATION_TOO_LONG")
-                val authority = NavigationLocalPickGuard.current()
-                if (authority != null &&
-                    NavigationLocalPickGuard.consumeNavigateToSuppression(authority.listKey, authority.turnKey)
-                ) {
-                    com.novadrive.app.DebugVoiceLog.log("nav_voice_suppress_navigate_to")
-                    // The local pick already selected the destination; report exactly what that pick
-                    // did, through the same output a spoken choice gets. A bare ok here let the model
-                    // invent 「导航已开始」 while the route list waited (OPEN_PROBLEMS 2026-09-27).
-                    return navigationResult(call, AndroidActionResult.Accepted("destination_selected"))
-                }
-                executor.matchPickerName(destination)?.let { choice ->
-                    val action = executor.chooseNavigationOption(choice)
-                    if (action !is AndroidActionResult.Accepted) return result(call, action)
-                    val args = when (choice) {
-                        is NavigationChoice.Name -> mapOf("name" to choice.text)
-                        is NavigationChoice.Index -> mapOf("index" to choice.position.toString())
-                        is NavigationChoice.Preference -> mapOf("preference" to choice.kind.wire)
-                    }
-                    return navigationResult(call.copy(name = CHOOSE_NAVIGATION_OPTION, arguments = args), action)
-                }
-                // A saved place the driver has not given us is a question, not a search. Letting
-                // it through would send 「回家」 to a POI search, which on 2026-09-19 returned
-                // nothing - and on a different day could return a stranger's address.
-                ToolCallGuards.savedPlaceMissing(destination, places::get)?.let { code ->
-                    return failed(call, code)
-                }
-                // The executor sets the navigation speech mute before the search starts, so a
-                // search that fails at once cannot leave it on.
-                val action = executor.navigate(destination)
-                if (action !is AndroidActionResult.Accepted) return result(call, action)
-                navigationResult(call, action)
-            }
-            CHOOSE_NAVIGATION_OPTION -> {
-                // The app already picked for this utterance (「第二个」, an exact name): the model's
-                // own call is a duplicate, whatever its arguments say. It gets that pick's result.
-                if (!call.callId.startsWith(LOCAL_PICK_CALL_PREFIX)) {
-                    NavigationLocalPickGuard.consumeChoiceSuppression()?.let { status ->
-                        com.novadrive.app.DebugVoiceLog.log("nav_voice_suppress_choose_option")
-                        return navigationResult(call, AndroidActionResult.Accepted(status))
-                    }
-                }
-                val choice = parseChoice(call.arguments) ?: return failed(call, "INVALID_CHOICE")
-                val action = executor.chooseNavigationOption(choice)
-                if (action !is AndroidActionResult.Accepted) return result(call, action)
-                navigationResult(call, action)
-            }
-            "open_app" -> {
-                val app = when (call.arguments["app"]) {
-                    "maps" -> AllowedApp.MAPS
-                    "settings" -> AllowedApp.SETTINGS
-                    else -> return failed(call, "APP_NOT_ALLOWED")
-                }
-                result(call, executor.openApp(app))
-            }
-            "control_music" -> {
-                when (call.arguments["action"]) {
-                    // One bundled track, no library: a request that named a song, an artist or a
-                    // style cannot be satisfied, and starting the bundled track would make ok=true
-                    // mean "you got what you asked for". Refused here because this is the only
-                    // bridge to a device action.
-                    "play" -> result(call, executor.playMusic())
-                    "stop" -> result(call, executor.stopMusic())
-                    else -> failed(call, "ACTION_NOT_ALLOWED")
-                }
-            }
-            "save_place" -> places.save(call, ::failed)
-            "place_call" -> phone.call(call, ::failed)
-            "query_live_info" -> liveInfo.dispatch(call, ::failed)
-            "exit_navigation_mode" -> result(call, executor.exitNavigationMode())
-            com.novadrive.app.voice.BaiduFlexProtocol.END_CONVERSATION -> result(call, executor.endConversation())
-            com.novadrive.app.voice.BaiduFlexProtocol.SET_SPEECH_OUTPUT -> when (call.arguments["mode"]) {
-                "silent" -> result(call, executor.setSpeechSilent(true))
-                "spoken" -> result(call, executor.setSpeechSilent(false))
-                else -> failed(call, "MODE_NOT_ALLOWED")
-            }
-            else -> failed(call, "UNKNOWN_TOOL")
-        }
-    }
-
-    /** Waits for the list to load, so the model can read the options out. */
-    private fun navigationResult(call: DomainVoiceEvent.ToolCall, action: AndroidActionResult.Accepted) =
-        ToolDispatchResult(
-            null,
-            null,
-            successChip = "✓ ${call.name}",
-            deferredOutput = {
-                val snapshot = executor.awaitNavigationOptions()
-                com.novadrive.app.voice.SpeechAuthority.arbiter.onConfirmation()
-                NavigationVoiceOutput.build(call.name, action.status, snapshot)
-            },
-        )
-
-    private fun parseChoice(args: Map<String, String>): NavigationChoice? {
-        // Numbers arrive stringified by the assembler: "2", or "2.0" from some JSON encoders.
-        args["index"]?.let { raw -> return raw.trim().toDoubleOrNull()?.toInt()?.let { NavigationChoice.Index(it) } }
-        args["preference"]?.let { raw -> return NavigationChoice.Kind.fromWire(raw)?.let { NavigationChoice.Preference(it) } }
-        args["name"]?.let { raw -> return raw.trim().takeIf { it.isNotEmpty() }?.let { NavigationChoice.Name(it) } }
-        return null
+        val domain = ToolRegistry.PRODUCT.domainOf(call.name) ?: return failed(call, "UNKNOWN_TOOL")
+        return servers.getValue(domain.id).call(call, env)
     }
 
     companion object {
@@ -265,6 +156,16 @@ class AndroidToolDispatcher(
 
         /** A spoken name matched no row but sounds like one: ask, do not select. */
         const val CONFIRM_CANDIDATE = "CONFIRM_CANDIDATE"
+
+        /** Servers by domain id; fails fast when a domain of [registry] has no server. */
+        internal fun serverIndex(registry: ToolRegistry, servers: List<ToolServer>): Map<String, ToolServer> {
+            val index = servers.associateBy { it.domain.id }
+            registry.tools().forEach { spec ->
+                val domain = requireNotNull(registry.domainOf(spec.name))
+                require(domain.id in index) { "domain ${domain.id} has no ToolServer" }
+            }
+            return index
+        }
 
     }
 
