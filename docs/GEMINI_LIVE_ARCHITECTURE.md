@@ -2,7 +2,8 @@
 
 Status: **Accepted 2026-09-29** as [ADR-010](../DECISIONS/ADR-010-gemini-live-second-provider.md); build order in [GEMINI_LIVE_PLAN.md](GEMINI_LIVE_PLAN.md). **Proposed successor for §3.1 (model, thinking) and §4.3 (F6 levers):** [GEMINI_NATIVE_ARCHITECTURE.md](GEMINI_NATIVE_ARCHITECTURE.md) (ADR-011). Written 2026-09-29 on
 `claude/9-29`, after the product owner's decision to use **Gemini 3.8 "extended"**. Against the
-model list the key returns, that is `models/gemini-3.8-live-extended-thinking`.
+model list the key returns, that is `models/gemini-3.8-live-extended-thinking`. Since ADR-011 (2026-09-30)
+the default Gemini model is `gemini-3.8-live`; extended thinking stays selectable.
 
 This document specialises [LIVE_CONVERSATION_ARCHITECTURE.md](LIVE_CONVERSATION_ARCHITECTURE.md)
 (cited as `A§n`). There, D-G option 2 said "add a GPT-Live adapter behind the seam". The owner chose

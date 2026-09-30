@@ -91,7 +91,7 @@ class LocalSpeechActivityTest {
         assertTrue(caps.customTools)
         assertTrue(caps.toolCallCancellation)
         assertEquals(VoiceProviderId.GEMINI_LIVE, VoiceProviderId.fromWire("gemini_live"))
-        assertEquals(VoiceProviderId.GEMINI_LIVE, VoiceCatalog.providerForModel(VoiceCatalog.GEMINI_LIVE))
+        assertEquals(VoiceProviderId.GEMINI_LIVE, VoiceCatalog.providerForModel(VoiceCatalog.GEMINI_LIVE_DEFAULT))
         // Every provider that exists today keeps the server as its speech source.
         VoiceProviderId.entries.filter { it != VoiceProviderId.GEMINI_LIVE }.forEach {
             assertTrue(VoiceCatalog.capabilities(it).serverSpeechActivityEvents) { "$it" }

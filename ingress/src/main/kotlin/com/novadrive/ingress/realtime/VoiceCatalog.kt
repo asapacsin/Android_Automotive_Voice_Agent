@@ -108,8 +108,11 @@ object VoiceCatalog {
     const val BAIDU_PRO_NEAR = "audio-realtime-near"
     const val BAIDU_PRO_FAR = "audio-realtime-far"
     const val BAIDU_FLEX = "qianfan-realtime-flex-v1"
-    const val GEMINI_LIVE = "gemini-3.8-live-extended-thinking"
     const val GEMINI_LIVE_FAST = "gemini-3.8-live"
+    const val GEMINI_LIVE_EXTENDED = "gemini-3.8-live-extended-thinking"
+
+    /** Default Gemini model (ADR-011 N-1). Extended thinking stays opt-in and a saved choice is kept. */
+    const val GEMINI_LIVE_DEFAULT = GEMINI_LIVE_FAST
     const val FAKE_MODEL = "fake-realtime"
 
     val qwenModels: Map<String, String> =
@@ -130,14 +133,14 @@ object VoiceCatalog {
     val geminiLiveModels: Map<String, String> =
         linkedMapOf(
             GEMINI_LIVE_FAST to "Gemini 3.8 Live（推荐）",
-            GEMINI_LIVE to "Gemini 3.8 Live Extended Thinking",
+            GEMINI_LIVE_EXTENDED to "Gemini 3.8 Live Extended Thinking",
         )
 
     /**
      * Declared per-model trait: the model accepts `thinkingConfig.thinkingLevel` in its setup.
      * The fast model rejects it with close code 1007 (probe F27). Undeclared model -> false.
      */
-    private val geminiThinkingLevelModels: Set<String> = setOf(GEMINI_LIVE)
+    private val geminiThinkingLevelModels: Set<String> = setOf(GEMINI_LIVE_EXTENDED)
 
     fun geminiAcceptsThinkingLevel(model: String): Boolean = model in geminiThinkingLevelModels
     val fakeModels: Map<String, String> =
@@ -152,7 +155,7 @@ object VoiceCatalog {
             VoiceProviderId.GPT_LIVE -> GPT_LIVE_1
             VoiceProviderId.BAIDU -> BAIDU_LITE_NEAR
             VoiceProviderId.BAIDU_FLEX -> BAIDU_FLEX
-            VoiceProviderId.GEMINI_LIVE -> GEMINI_LIVE
+            VoiceProviderId.GEMINI_LIVE -> GEMINI_LIVE_DEFAULT
             VoiceProviderId.FAKE -> FAKE_MODEL
         }
 
@@ -286,7 +289,8 @@ object VoiceModels {
     const val GPT_LIVE_1 = VoiceCatalog.GPT_LIVE_1
     const val FAKE = VoiceCatalog.FAKE_MODEL
     const val FLEX = VoiceCatalog.BAIDU_FLEX
-    const val GEMINI_LIVE = VoiceCatalog.GEMINI_LIVE
+    const val GEMINI_LIVE_DEFAULT = VoiceCatalog.GEMINI_LIVE_DEFAULT
+    const val GEMINI_LIVE_EXTENDED = VoiceCatalog.GEMINI_LIVE_EXTENDED
 
     val labels: Map<String, String>
         get() = VoiceCatalog.selectableLabels

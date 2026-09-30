@@ -16,6 +16,7 @@ Spec: [SPEC-013](../SPECS/SPEC-013-gemini-live-provider.md)
    `VoiceProviderId.GEMINI_LIVE`, written new (not revived from git history). ADR-008's revisit
    trigger is met: native thinking and native non-blocking tool calls are capabilities Baidu Flex
    lacks (probe F7/F8).
+   *Amended 2026-09-30 by ADR-011: default gemini-3.8-live.*
 2. **Baidu Flex stays the default.** Gemini is used only when the owner enables it in developer
    settings, accepts the cross-border notice, and a Gemini key is stored. The choice is made once
    per session, at the composition boundary (`VoiceSessionController.openSession`), never mid-session.
