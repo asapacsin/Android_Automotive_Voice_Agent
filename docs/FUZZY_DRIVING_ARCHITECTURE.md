@@ -193,7 +193,11 @@ ADR-011. On Baidu it is the whole reply. Not recommended for the first wave.
 - **Tool:** `set_speaking_style(style: sweet | default)`. Phrases: 嗲一点, 撒个娇, 可爱一点 → `sweet`;
   正常一点, 恢复, 别嗲了 → `default`. A tool, because nothing can intercept the phrase before the
   model (§2), and a tool result is the only thing that proves the setting changed.
-- **Owner:** `SpeakingStyleStore` persists the choice in app preferences until changed (O-2). There
+- **Owner:** `SpeakingStyleStore` persists the choice in app preferences. **Decided (O-2, owner
+  2026-09-30): the style is a sticky state.** Once set it stays — across turns, conversation resets,
+  sessions, sleep and app restarts — and changes only when the driver explicitly asks
+  (`set_speaking_style`). Nothing resets it automatically: no timeout, no new session, no provider
+  reconnect. There
   is one composition point: `PersonaProfiles.compose(instructions, style)`. Both clients already call
   `PersonaProfiles.sanitize` when they build instructions, so `compose` replaces that call. There is
   no provider branch.
@@ -271,7 +275,7 @@ stays *unsupported* until built, and says so in one sentence (I-2).
 | # | Question | Recommendation | If the other way |
 | --- | --- | --- | --- |
 | O-1 | Multi-step phrases (有蚊子, 好困): a fixed scenario tool, or the model chaining tools? | **A: `run_scenario` with a closed enum** (§5) | B: no new tool, but 2–4 round trips per phrase, and ordering, dependencies and the "never 都弄好了" rule depend on the model |
-| O-2 | 嗲一点: prompt tone only, or also switch the Baidu voice? Persist across sessions? | **Decided 2026-09-30: one voice per stage — voice stays 4196, tone only, no second synthesiser for `announce`.** Persistence across sessions: recommended, still open | Voice swap: audibly stronger on Baidu, but nothing changes on Gemini, and it needs a `ProviderCapabilities` flag |
+| O-2 | 嗲一点: prompt tone only, or also switch the Baidu voice? Persist across sessions? | **Decided 2026-09-30: one voice per stage — voice stays 4196, tone only, no second synthesiser for `announce`.** Sticky state: persists everywhere, changes only on the driver's explicit request | Voice swap: audibly stronger on Baidu, but nothing changes on Gemini, and it needs a `ProviderCapabilities` flag |
 | O-3 | 有蚊子: which windows, and how far? | **All four to 50 %**, matching your 「打开一半」 example; closing again is the driver's next sentence, never a timer | Front only, or a smaller opening |
 | O-4 | "Say what you did": result-built `announce` + chip, or a hold until the reply names every step? | **A: `announce` + chip; coverage measured by the benchmark** | B: enforced coverage, at the cost of a hold on every action reply (heavier on Baidu) |
 | O-5 | May the seat move while driving? | **Yes in simulation, in single steps**; a real backend may refuse with `Unavailable` | Refuse seat changes while navigating |
