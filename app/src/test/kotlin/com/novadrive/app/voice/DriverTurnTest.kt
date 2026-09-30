@@ -779,4 +779,56 @@ class DriverTurnTest {
         val v = t.onResponseDone("我什么都能做。", true)
         assertTrue(v is DriverTurn.Verdict.Drop, "was $v")
     }
+
+    @Test
+    fun aForeignResultDuringAwaitingProofIsNotProof() {
+        // D-11: a result for a call this turn never dispatched cannot prove its claim (I-1).
+        val t = turn(DriverTurn.Kind.ACTION)
+        assertEquals(DriverTurn.HoldReason.AWAITING_EXECUTION_PROOF, t.onResponseStarted(goodAudio, false))
+        t.hold("audio")
+        t.onAssistantText("导航已开始。")
+        assertEquals(DriverTurn.Verdict.Wait, t.onExecutionResult(true, null, callId = "old_call"))
+        assertTrue(t.isHolding, "a foreign result must not release the claim")
+        assertFalse(t.proven)
+        assertFalse(t.executionFailed)
+        assertEquals(1, t.foreignResults)
+    }
+
+    @Test
+    fun anOwnResultStillReleasesAfterAForeignOneWasIgnored() {
+        val t = turn(DriverTurn.Kind.ACTION)
+        t.onResponseStarted(goodAudio, false)
+        t.hold("audio")
+        t.onToolCall("n1", "navigate_to")
+        assertEquals(DriverTurn.Verdict.Wait, t.onExecutionResult(true, null, callId = "old_call"))
+        assertTrue(t.isHolding)
+        val v = t.onExecutionResult(true, null, callId = "n1")
+        assertTrue(t.proven, "the turn's own result is proof")
+        assertTrue(v is DriverTurn.Verdict.Release, "was $v")
+        assertEquals(1, t.foreignResults)
+    }
+
+    @Test
+    fun aForeignSuccessAfterAFailedMidCallKeepsTheClaimHeld() {
+        val t = turn(DriverTurn.Kind.ACTION)
+        t.onResponseStarted(goodAudio, false)
+        t.hold("audio")
+        t.onToolCall("c1", "control_climate")
+        assertEquals(DriverTurn.Verdict.Wait, t.onExecutionResult(false, "空调不可用", callId = "c1"))
+        t.onAssistantText("已为您打开空调。")
+        assertEquals(DriverTurn.Verdict.Wait, t.onExecutionResult(true, null, callId = "old_call"))
+        assertTrue(t.isHolding && t.heldCount > 0)
+        assertFalse(t.proven)
+        val v = t.onResponseDone("已为您打开空调。", true)
+        assertEquals(DriverTurn.Verdict.Drop("unproven_action_claim", ActionClaimGuard.reportFailure("空调不可用")), v)
+    }
+
+    @Test
+    fun aLateResultForAnAlreadySettledOwnCallIsStillOwn() {
+        val t = turn(DriverTurn.Kind.ACTION)
+        t.onToolCall("c1", "control_climate")
+        t.onExecutionResult(true, null, callId = "c1")
+        t.onExecutionResult(true, null, callId = "c1")
+        assertEquals(0, t.foreignResults)
+    }
 }
