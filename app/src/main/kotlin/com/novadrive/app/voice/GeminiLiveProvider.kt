@@ -48,6 +48,7 @@ class GeminiLiveProvider(
         return DomainVoiceEvent.WorkResult(result.callId, result.output)
     }
     override suspend fun sendText(text: String) = client.sendUserText(text)
+    override fun sendPrompt(text: String, promptId: String): Boolean = client.sendPrompt(text, promptId)
     override fun discardPendingAudio() = client.discardPendingAudio()
     override fun resumeListening() = client.resumeListening()
     override fun onLocalSpeechActivity(active: Boolean) = client.onLocalSpeechActivity(active)

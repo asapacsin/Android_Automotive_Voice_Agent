@@ -34,6 +34,14 @@ interface RealtimeVoiceProvider {
 
     suspend fun sendText(text: String) {}
 
+    /**
+     * Sends an app prompt to be spoken now, correlated as [promptId] through
+     * [DomainVoiceEvent.AppPromptTurn] (SPEC-018). Send now or fail: never queued, never replayed
+     * after a reconnect; false when not connected or unsupported
+     * ([ProviderCapabilities.verbatimPromptSpeech]).
+     */
+    fun sendPrompt(text: String, promptId: String): Boolean = false
+
     /** Drops microphone audio queued but not yet sent (listening was just stopped). */
     fun discardPendingAudio() {}
 

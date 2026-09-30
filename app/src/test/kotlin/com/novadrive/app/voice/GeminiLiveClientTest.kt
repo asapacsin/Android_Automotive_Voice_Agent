@@ -881,6 +881,168 @@ class GeminiLiveClientTest {
         }
     }
 
+    // ---- SPEC-018 correlation contract -----------------------------------------------------
+
+    private fun promptEvents(events: List<DomainVoiceEvent>) =
+        events.snapshot().filterIsInstance<DomainVoiceEvent.AppPromptTurn>()
+
+    private fun suspended(client: GeminiLiveClient): Boolean =
+        GeminiLiveClient::class.java.getDeclaredField("listeningSuspended").let { it.isAccessible = true; it.getBoolean(client) }
+
+    @Test
+    fun sendPromptFailsWhenNotConnected() {
+        val client = client()
+        assertFalse(client.sendPrompt("前方左转", "p1"))
+    }
+
+    @Test
+    fun sendPromptSendsATextTurnNowAndLeavesListeningSuspended() = runBlocking {
+        val fake = fake()
+        val client = client()
+        client.connect(config())
+        client.discardPendingAudio()
+        assertTrue(client.sendPrompt("前方左转", "p1"))
+        waitUntil { fake.messages("clientContent").isNotEmpty() }
+        val turn = fake.messages("clientContent").single().getJSONObject("clientContent")
+        assertTrue(turn.getBoolean("turnComplete"))
+        assertTrue(turn.toString().contains("前方左转"))
+        assertTrue(suspended(client), "sendPrompt must not clear listeningSuspended")
+    }
+
+    @Test
+    fun secondPromptWhileOneIsArmedOrOpenIsRefused() = runBlocking {
+        val fake = fake()
+        val client = client()
+        val events = collect(client)
+        client.connect(config())
+        assertTrue(client.sendPrompt("前方左转", "p1"))
+        assertFalse(client.sendPrompt("前方右转", "p2"), "armed")
+        fake.send(audio())
+        waitUntil { promptEvents(events).isNotEmpty() }
+        assertFalse(client.sendPrompt("前方右转", "p2"), "open")
+        fake.send(turnComplete)
+        waitUntil { promptEvents(events).size == 2 }
+        assertTrue(client.sendPrompt("前方右转", "p3"), "free again after COMPLETED")
+    }
+
+    @Test
+    fun openedPrecedesTheFirstAudioAndCompletedMarksTurnEnd() = runBlocking {
+        val fake = fake()
+        val client = client()
+        val events = collect(client)
+        client.connect(config())
+        assertTrue(client.sendPrompt("前方左转", "p1"))
+        fake.send(audio())
+        fake.send(output("前方左转"))
+        fake.send(audio())
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+        val seq = events.snapshot().filter {
+            it is DomainVoiceEvent.AppPromptTurn || it is DomainVoiceEvent.AudioDelta || it is DomainVoiceEvent.ResponseDone
+        }
+        assertEquals(DomainVoiceEvent.AppPromptTurn("p1", DomainVoiceEvent.AppPromptTurn.Phase.OPENED), seq[0])
+        assertTrue(seq[1] is DomainVoiceEvent.AudioDelta && seq[2] is DomainVoiceEvent.AudioDelta)
+        assertEquals(DomainVoiceEvent.AppPromptTurn("p1", DomainVoiceEvent.AppPromptTurn.Phase.COMPLETED), seq[3])
+        assertEquals(DomainVoiceEvent.ResponseDone("completed"), seq[4])
+    }
+
+    @Test
+    fun interruptedGuidanceTurnIsVoided() = runBlocking {
+        val fake = fake()
+        val client = client()
+        val events = collect(client)
+        client.connect(config())
+        assertTrue(client.sendPrompt("前方左转", "p1"))
+        fake.send(audio())
+        fake.send(content(""""interrupted":true"""))
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+        assertEquals(
+            listOf(DomainVoiceEvent.AppPromptTurn.Phase.OPENED, DomainVoiceEvent.AppPromptTurn.Phase.VOIDED),
+            promptEvents(events).map { it.phase },
+        )
+    }
+
+    @Test
+    fun closeVoidsAnArmedPrompt() = runBlocking {
+        fake()
+        val client = client()
+        val events = collect(client)
+        client.connect(config())
+        assertTrue(client.sendPrompt("前方左转", "p1"))
+        client.disconnect()
+        waitUntil { promptEvents(events).isNotEmpty() }
+        assertEquals(listOf(DomainVoiceEvent.AppPromptTurn("p1", DomainVoiceEvent.AppPromptTurn.Phase.VOIDED)), promptEvents(events))
+    }
+
+    @Test
+    fun serverCloseVoidsAnOpenGuidanceTurn() = runBlocking {
+        val fake = fake()
+        val client = client()
+        val events = collect(client)
+        client.connect(config())
+        assertTrue(client.sendPrompt("前方左转", "p1"))
+        fake.send(audio())
+        waitUntil { promptEvents(events).isNotEmpty() }
+        fake.socket!!.close(1011, "internal")
+        waitUntil { promptEvents(events).size == 2 }
+        assertEquals(DomainVoiceEvent.AppPromptTurn.Phase.VOIDED, promptEvents(events)[1].phase)
+    }
+
+    @Test
+    fun driverOnsetBeforeTheResponseOpensVoidsThePromptAndTheReplyIsADriverTurn() = runBlocking {
+        val fake = fake()
+        val client = client()
+        val events = collect(client)
+        client.connect(config())
+        assertTrue(client.sendPrompt("前方左转", "p1"))
+        client.onLocalSpeechActivity(true)
+        waitUntil { promptEvents(events).isNotEmpty() }
+        assertEquals(listOf(DomainVoiceEvent.AppPromptTurn("p1", DomainVoiceEvent.AppPromptTurn.Phase.VOIDED)), promptEvents(events))
+        // The next reply is the driver's, judged as usual: an unproven claim is held.
+        claimTurn(fake)
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+        assertEquals(1, promptEvents(events).size)
+        assertTrue(events.snapshot().none { it is DomainVoiceEvent.AudioDelta })
+    }
+
+    @Test
+    fun toolCallInsideAGuidanceTurnIsRejectedAsNotADriverTurn() = runBlocking {
+        val fake = fake()
+        val client = client()
+        val events = collect(client)
+        client.connect(config())
+        assertTrue(client.sendPrompt("前方左转", "p1"))
+        fake.send(audio())
+        fake.send(toolCall("g1", "control_climate", """{"action":"power_on"}"""))
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ToolCall } }
+        val call = events.snapshot().filterIsInstance<DomainVoiceEvent.ToolCall>().single()
+        assertEquals("g1", call.callId)
+        assertEquals(mapOf("_validation_error" to GeminiPromptTurn.NOT_A_DRIVER_TURN), call.arguments)
+        client.sendToolResult("g1", """{"ok":false,"error":"NOT_A_DRIVER_TURN"}""")
+        waitUntil { fake.messages("toolResponse").isNotEmpty() }
+        val response = fake.messages("toolResponse").single().getJSONObject("toolResponse")
+            .getJSONArray("functionResponses").getJSONObject(0)
+        assertEquals("control_climate", response.getString("name"))
+    }
+
+    @Test
+    fun guidanceReplyIsNotJudgedAsADriverClaim() = runBlocking {
+        val fake = fake()
+        val client = client(graceMs = 100)
+        val events = collect(client)
+        client.connect(config())
+        assertTrue(client.sendPrompt("已为您打开空调", "p1"))
+        fake.send(audio())
+        fake.send(output("已为您打开空调"))
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+        // Not held (audio emitted), and no claim correction follows.
+        assertTrue(events.snapshot().any { it is DomainVoiceEvent.AudioDelta })
+        assertTrue(events.snapshot().any { it is DomainVoiceEvent.AssistantTranscript })
+        Thread.sleep(400)
+        assertEquals(1, fake.messages("clientContent").size, "only the prompt itself")
+    }
+
     private companion object {
         const val KEY = "test-gemini-key-7f3a"
     }

@@ -30,6 +30,8 @@ data class VoiceSessionCallbacks(
      * Real near-end speech (post-AEC ≈ raw) must still return true.
      */
     val qualifyPlayoutBargeIn: () -> Boolean = { true },
+    /** The response to an app prompt changed phase (SPEC-018); in order with the reply audio. */
+    val onAppPromptTurn: (String, DomainVoiceEvent.AppPromptTurn.Phase) -> Unit = { _, _ -> },
 )
 
 /**
@@ -257,6 +259,21 @@ class VoiceSessionController(
         log.info("text_queued", mapOf("chars" to text.length))
     }
 
+    /**
+     * Sends an app prompt now or fails (SPEC-018 B1a): false unless the provider is connected and
+     * has [ProviderCapabilities.verbatimPromptSpeech]. Never queued, never replayed.
+     */
+    fun sendPrompt(text: String, promptId: String): Boolean {
+        if (!sessionActive.get() || !providerConnected.get() || text.isBlank()) return false
+        if (!provider.capabilities.verbatimPromptSpeech) return false
+        return try {
+            provider.sendPrompt(text, promptId)
+        } catch (ex: Exception) {
+            log.warn("prompt_send_failed", mapOf("error" to (ex.message ?: "send")))
+            false
+        }
+    }
+
     private fun markConnectedAndFlushTexts() {
         providerConnected.set(true)
         flushTexts()
@@ -393,6 +410,10 @@ class VoiceSessionController(
                 }
                 is DomainVoiceEvent.WorkProgress -> {
                     workCoordinator.updateProgress(event.workId, event.message)
+                }
+                is DomainVoiceEvent.AppPromptTurn -> {
+                    playback.onAppPromptTurn(event.promptId, event.phase, playbackEpoch)
+                    callbacks.onAppPromptTurn(event.promptId, event.phase)
                 }
                 else -> Unit
             }

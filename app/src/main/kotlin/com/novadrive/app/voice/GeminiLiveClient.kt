@@ -102,6 +102,7 @@ class GeminiLiveClient(
     /** Set while the gate settles at generationComplete: a correction then waits for closeTurn. */
     @Volatile private var settling = false
     @Volatile private var stashedCorrection: String? = null
+    private val prompt = GeminiPromptTurn(::emit)  // SPEC-018; guarded by `this`
 
     private val pipeline = DriverTurnPipeline(
         lastAudioSegment = lastAudioSegment,
@@ -183,12 +184,21 @@ class GeminiLiveClient(
         sendControl(GeminiLiveProtocol.textTurn(text))
     }
 
+    /** SPEC-018: send now or fail; arms the next opened turn. Leaves `listeningSuspended` alone. */
+    fun sendPrompt(text: String, promptId: String): Boolean = synchronized(this) {
+        if (ready?.isCompleted != true || prompt.busy) return false
+        prompt.arm(promptId)
+        if (!trySend(GeminiLiveProtocol.textTurn(text))) { prompt.disarm(); return false }
+        DebugVoiceLog.log("gemini_prompt id=$promptId chars=${text.length}")
+        true
+    }
+
     fun sendToolResult(callId: String, output: String) {
         val name = callNames.remove(callId).orEmpty()
         sendControl(GeminiLiveProtocol.toolResponse(callId, name, output))
         DebugVoiceLog.log("gemini_tool_response id=$callId chars=${output.length}")
-        // The one place execution evidence enters this client (INVARIANT I-1).
-        pipeline.onToolResult(callId, output)
+        // The one place execution evidence enters this client (INVARIANT I-1); not a GUIDANCE call.
+        if (!prompt.callIds.remove(callId)) pipeline.onToolResult(callId, output)
     }
 
     /**
@@ -211,6 +221,7 @@ class GeminiLiveClient(
      * otherwise absorb the next reply without an onResponseCreated for the new turn (I-1).
      */
     private fun beginDriverTurnLocked() {
+        prompt.void("driver_onset")
         onsetSeen = true
         callDispatchedThisDriverTurn = false
         strayOutput.setLength(0)
@@ -251,7 +262,7 @@ class GeminiLiveClient(
         cancelCorrection("disconnect")
         ready?.cancel(); ready = null
         if (socket != null) Telemetry.record(EventType.SOCKET_DISCONNECTED, detail = "client_close")
-        synchronized(this) { resetTurn() }
+        synchronized(this) { prompt.void("disconnect"); resetTurn() }
         val existing = socket; socket = null
         existing?.close(1000, "client close")
     }
@@ -263,6 +274,7 @@ class GeminiLiveClient(
     }
 
     private fun clearTurnState() {
+        prompt.clearOpen()
         turnOpen = false
         turnAudioSeen = false
         generationDone = false
@@ -368,7 +380,7 @@ class GeminiLiveClient(
     private fun fail(pending: CompletableDeferred<Unit>, failure: VoiceProviderException, reason: String, closed: Boolean = false) {
         cancelCorrection(reason)
         pipeline.dropHeld(reason)
-        synchronized(this) { resetTurn() }
+        synchronized(this) { prompt.void(reason); resetTurn() }
         socket = null
         if (!pending.completeExceptionally(failure)) {
             emit(DomainVoiceEvent.Error(failure.code, failure.safeMessage))
@@ -433,11 +445,13 @@ class GeminiLiveClient(
                 Telemetry.record(EventType.TTS_START)
             }
             val event = DomainVoiceEvent.AudioDelta(data)
-            if (!pipeline.filter(event)) emit(event)
+            if (prompt.open != null || !pipeline.filter(event)) emit(event)
         }
         message.outputTranscription?.let { chunk ->
             if (!turnOpen) {
                 strayOutput.append(chunk)
+            } else if (prompt.open != null) {
+                if (!generationDone) turnText.append(chunk)  // a GUIDANCE reply is not judged
             } else if (generationDone) {
                 // Too late to hold, not to correct: afterResponse judges it (subtitle already out).
                 DebugVoiceLog.log("gemini_text_after_settle chars=${chunk.length}")
@@ -450,6 +464,7 @@ class GeminiLiveClient(
         message.toolCalls.forEach(::onToolCall)
         if (message.generationComplete) finishGeneration()
         if (message.interrupted) {
+            prompt.void("interrupted")
             emit(DomainVoiceEvent.Interrupted("server_vad"))
             Telemetry.record(EventType.INTERRUPT_DETECTED)
             closeTurn("cancelled")
@@ -459,6 +474,16 @@ class GeminiLiveClient(
     }
 
     private fun openTurn() {
+        prompt.takeArmed(driverSpoke = inputText.isNotBlank())?.let { id ->
+            // A GUIDANCE turn (SPEC-018 B5): no driver turn, no claim judgement, no hold.
+            clearTurnState()
+            turnOpen = true
+            turnText.append(strayOutput); strayOutput.setLength(0)
+            DebugVoiceLog.log("gemini_turn_open kind=guidance")
+            emit(DomainVoiceEvent.ResponseStarted)
+            prompt.markOpen(id)
+            return
+        }
         // No local onset since the previous turn (e.g. the uplink gate did not see it), yet the
         // driver was transcribed: open the driver turn here, before its transcript is attributed.
         if (!onsetSeen && inputText.isNotBlank()) {
@@ -495,6 +520,11 @@ class GeminiLiveClient(
     private fun finishGeneration() {
         if (!turnOpen || generationDone) return
         generationDone = true
+        if (prompt.open != null) {
+            turnText.toString().takeIf { it.isNotBlank() }?.let { emit(DomainVoiceEvent.AssistantTranscript(it, final = true)) }
+            if (turnAudioSeen) emit(DomainVoiceEvent.AudioDone)
+            return
+        }
         val text = turnText.toString()
         if (text.isNotBlank()) {
             Telemetry.record(EventType.ASSISTANT_REPLY) { text }
@@ -522,6 +552,13 @@ class GeminiLiveClient(
         strayOutput.setLength(0)
         if (!turnOpen) return
         finishGeneration()  // the verdict was given there (at generationComplete, or now)
+        if (prompt.open != null) {
+            prompt.complete()
+            DebugVoiceLog.log("gemini_turn_done kind=guidance status=$status spoke=$turnAudioSeen")
+            emit(DomainVoiceEvent.ResponseDone(status))
+            clearTurnState(); clientCancelled = false
+            return
+        }
         val outcome = ResponseOutcome(spoke = turnAudioSeen, toolCallIds = turnCallIds.toList(), unidentifiedToolCalls = 0)
         val superseded = pipeline.takeSuperseded() or settledSuperseded
         pipeline.afterResponse(outcome, superseded)
@@ -539,6 +576,11 @@ class GeminiLiveClient(
         val call = GeminiLiveProtocol.toolCall(raw)
         if (call == null) {
             DebugVoiceLog.log("gemini_call_dropped reason=invalid_id")
+            return
+        }
+        if (prompt.open != null) {
+            callNames[call.callId] = call.name
+            emit(prompt.reject(call))
             return
         }
         if (pipeline.isDuplicateCall(call)) {
