@@ -289,6 +289,7 @@ class DebugToolReceiver : BroadcastReceiver() {
             phone = PhoneCallTool(com.novadrive.app.phone.PhoneProvider.port(context)),
             liveInfo = LiveInfoTool.live(context),
             cabin = com.novadrive.app.vehicle.VehicleControlProvider.port,
+            music = com.novadrive.app.media.AndroidMusicHandoffTool(context),
             places = SavedPlaceTool(
                 read = com.novadrive.app.nav.SavedPlaceStore(context)::get,
                 write = com.novadrive.app.nav.SavedPlaceStore(context)::set,

@@ -34,7 +34,7 @@ class RealtimeToolCatalogTest {
     @Test
     fun `tool names are unique and valid identifiers`() {
         val names = RealtimeToolCatalog.tools().map { it.name }
-        assertEquals(15, names.size)
+        assertEquals(16, names.size)
         assertEquals(names.size, names.toSet().size)
         assertTrue(names.all { BaiduFlexProtocol.validId(it) })
     }

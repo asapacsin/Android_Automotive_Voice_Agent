@@ -231,6 +231,24 @@ class ActionClaimGuard {
             val verb = BODY_COMPLETION_WORDS.firstOrNull { it in reply } ?: return null
             return noun to verb
         }
+
+        /** The body and media pair rules together: a (noun, verb) from our own lists, or null. */
+        private fun pairClaimWords(reply: String): Pair<String, String>? =
+            bodyClaimWords(reply) ?: mediaClaimWords(reply)
+
+        /**
+         * SPEC-017 media pair rule: 「正在放梶浦由记的《…》」 claims something is playing. Only
+         * `play_music`'s now_playing may say that (I-1). A media noun is required, so chat about a
+         * song (「这首歌的歌词挺好」) without a playing word is not a claim.
+         */
+        private val MEDIA_CLAIM_NOUNS = listOf("歌", "曲", "音乐", "《")
+        private val MEDIA_PLAYING_WORDS = listOf("正在放", "在放", "放着", "开始放", "播放")
+
+        private fun mediaClaimWords(reply: String): Pair<String, String>? {
+            val noun = MEDIA_CLAIM_NOUNS.firstOrNull { it in reply } ?: return null
+            val verb = MEDIA_PLAYING_WORDS.firstOrNull { it in reply } ?: return null
+            return noun to verb
+        }
         private val DECLINE_WORDS = listOf(
             "不支持", "无法", "不能", "没法", "没有", "暂不", "暂时不", "抱歉", "对不起", "没听清", "再说一遍",
             "请问", "吗", "？", "?", "哪", "什么",
@@ -274,15 +292,14 @@ class ActionClaimGuard {
 
         private fun resolvedIntent(text: String): UtteranceIntent? =
             UtteranceIntentResolver.product().resolve(text)
-                ?: if (isSpecificMediaRequest(text)) UtteranceIntent(CapabilityIds.MEDIA_LIBRARY) else null
+                ?: if (isSpecificMediaRequest(text)) UtteranceIntent(CapabilityIds.MEDIA_PLAY_BY_DESCRIPTION) else null
 
         /**
-         * A request for *particular* music. `media` is one bundled track with play/stop — there is
-         * no library, no search and no track metadata (`config/capabilities.yaml`), so a request
-         * that names a song, an artist or a style cannot be executed. Starting the bundled track
-         * instead would be a false claim about which capability ran ([I-2](../docs/INVARIANTS.md)):
-         * something plays, the result is `ok=true`, and the driver is told they got what they asked
-         * for.
+         * A request for *particular* music: served by `play_music` through the driver's music app
+         * (SPEC-017, `media.play_by_description`), never by the bundled track. Starting the bundled
+         * track instead would be a false claim about which capability ran
+         * ([I-2](../docs/INVARIANTS.md)): something plays, the result is `ok=true`, and the driver
+         * is told they got what they asked for.
          *
          * Structural rather than a list of artists, which could never be complete: strip the words
          * that make a request *generic* and see whether the driver named anything else. A music
@@ -394,7 +411,7 @@ class ActionClaimGuard {
          */
         fun describesCarAction(reply: String): Boolean =
             !refuses(reply) && (
-                (DEVICE_NOUNS.any { it in reply } && ACTION_WORDS.any { it in reply }) || bodyClaimWords(reply) != null
+                (DEVICE_NOUNS.any { it in reply } && ACTION_WORDS.any { it in reply }) || pairClaimWords(reply) != null
             )
 
         private fun isNavigationResult(output: String): Boolean =
@@ -421,7 +438,7 @@ class ActionClaimGuard {
 
         fun claimsDone(reply: String): Boolean =
             !declines(reply) && (
-                (DONE_WORDS.any { it in reply } && ACTION_WORDS.any { it in reply }) || bodyClaimWords(reply) != null
+                (DONE_WORDS.any { it in reply } && ACTION_WORDS.any { it in reply }) || pairClaimWords(reply) != null
             )
 
         /**
@@ -456,7 +473,7 @@ class ActionClaimGuard {
         fun carActionClaimMatch(reply: String): ClaimMatch? {
             if (promptsDriver(reply) && !reportsCompletion(reply)) return null
             if (!refuses(reply)) {
-                bodyClaimWords(reply)?.let { (noun, verb) -> return ClaimMatch("car_action", noun, verb) }
+                pairClaimWords(reply)?.let { (noun, verb) -> return ClaimMatch("car_action", noun, verb) }
             }
             if (describesCarAction(reply)) {
                 return ClaimMatch(

@@ -187,8 +187,8 @@ tests:
 
   - id: TRUTH-MEDIA-001
     capability: truthfulness
-    name: A song we cannot play is refused even when misheard
-    purpose: "P22 returned through a mis-transcription: a style request played the bundled track and was called a success"
+    name: A named or styled song never plays the bundled track, even when misheard
+    purpose: "P22 returned through a mis-transcription: a style request played the bundled track and was called a success. SPEC-017: such a request now goes to play_music"
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
@@ -196,8 +196,8 @@ tests:
     release_blocking: true
     prerequisites: ["speech harness"]
     procedure: ["run the Cantonese matrix scenario YUE-MUSIC"]
-    pass_criteria: ["MEDIA_LIBRARY_UNSUPPORTED, and the assistant says it cannot play that song"]
-    evidence: ["2026-09-20: 3/3 then 5/5 after the fix; before it, the bundled track played", "STALE_BIND apk_digest mismatch"]
+    pass_criteria: ["tool=play_music (control_music{play}, if called, is refused MEDIA_LIBRARY_UNSUPPORTED)", "the bundled track never plays", "any 正在放 claim names only the play_music result's now_playing"]
+    evidence: ["2026-09-20: 3/3 then 5/5 after the fix; before it, the bundled track played (old criterion: refusal)", "STALE_BIND apk_digest mismatch", "2026-09-30 SPEC-017 W4b2: criteria changed from 'refused' to 'routed to play_music'; the earlier PASS does not carry over - NOT_RUN"]
     related: [P22, P25]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -919,8 +919,8 @@ tests:
 
   - id: MUSIC-NAMED-001
     capability: media
-    name: A named song is refused, not substituted
-    purpose: "Playing the bundled track for a named song means ok=true says you got what you asked for"
+    name: A named song goes to play_music, never the bundled track
+    purpose: "Playing the bundled track for a named song means ok=true says you got what you asked for; SPEC-017 hands it to the driver's music app instead"
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
@@ -928,10 +928,88 @@ tests:
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S4b"]
-    pass_criteria: ["MEDIA_LIBRARY_UNSUPPORTED"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch"]
-    related: [P22]
+    pass_criteria: ["tool=play_music for the named request", "never control_music{play} succeeding (the bundled track)", "any claim of what is playing comes only from now_playing"]
+    evidence: ["2026-09-20: 20/20 suite (old criterion: MEDIA_LIBRARY_UNSUPPORTED)", "STALE_BIND apk_digest mismatch", "2026-09-30 SPEC-017 W4b2: criteria changed to the play_music truth; the earlier PASS does not carry over - NOT_RUN"]
+    related: [P22, SPEC-017]
     last_run: {at: 2026-09-20, result: PASS}
+
+  - id: MUSIC-UNIT-001
+    capability: media
+    name: play_music validates, hands off and reports only what is playing
+    purpose: "SPEC-017 A1-A4: the result and announce never name a song that is not in now_playing (I-1)"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: true
+    prerequisites: []
+    procedure: ["gradlew :app:testDebugUnitTest --tests *MediaDomainPlayMusicTest* --tests *MediaServerPlayMusicTest* --tests *FalseCapabilityClaimTest* --tests *NowPlayingVerifierTest* --tests *MediaSearchSpecsTest*"]
+    pass_criteria: ["playing+match, playing+mismatch, requested_unverified, NOT_PLAYING, NO_MUSIC_APP, MUSIC_HANDOFF_UNAVAILABLE each produce the specified result", "requested_unverified names no song", "a track already playing before the hand-off is not success", "a 正在放 claim with no tool call is not released"]
+    evidence: []
+    related: [SPEC-017]
+    last_run: {at: null, result: null}
+
+  - id: MUSIC-TEXT-LIVE-001
+    capability: media
+    name: The model maps music descriptions to play_music fields
+    purpose: "SPEC-017 A5: 「梶浦的、空之境界里很燃的那首 OP」 must become a concrete title/artist/work, not a refusal or control_music"
+    type: scenario
+    scope: INTERMEDIATE_FLOW
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: true
+    prerequisites: ["Baidu Qianfan Flex text turns with the owner's key (never logged)", "a set of 10 music descriptions"]
+    procedure: ["send each description as a text turn", "record the play_music arguments per description"]
+    pass_criteria: [">= 8/10 descriptions produce play_music with a plausible title or artist/work", "0/10 produce control_music{play}"]
+    evidence: []
+    related: [SPEC-017]
+    last_run: {at: null, result: null}
+
+  - id: MUSIC-VLC-EMU-001
+    capability: media
+    name: VLC plays a local file handed off by play_music and the readback names it
+    purpose: "SPEC-017 A6: the hand-off intent and the MediaSession readback work end to end with a real player"
+    type: device
+    scope: END_TO_END
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: credential_permission
+    release_blocking: true
+    covers: [media.play_by_description]
+    terminal_success: [requested_track_playing, readback_names_it, map_in_foreground]
+    human_reason: "Notification-listener access is a consent the device owner grants in system settings, and VLC plus the audio files must be supplied from outside this sandbox"
+    prerequisites: ["emulator or test phone with this build", "VLC (org.videolan.vlc) installed with a few local audio files whose titles are known", "notification access (通知使用权) granted to 小诺", "VPN split tunnel: the music app excluded from any VPN, Baidu reachable"]
+    procedure: ["say or text 「放<一个本地文件的歌名>」", "wait up to 6 s", "note the play_music result status and now_playing", "repeat with notification access revoked"]
+    pass_criteria: ["status=playing with now_playing naming the local file, matches_request=true", "the map returns to the foreground", "without notification access: status=requested_unverified and the reply names no song"]
+    autonomous_evidence: ["MUSIC-UNIT-001 (JVM) covers the result rules with a fake session source"]
+    remaining_uncertainty: ["whether VLC honours MEDIA_PLAY_FROM_SEARCH extras for a local title", "whether its MediaSession reports the title within 6 s"]
+    returns: ["status and now_playing per attempt", "music_verify log line (code-only)"]
+    evidence: []
+    related: [SPEC-017]
+    last_run: {at: null, result: null}
+
+  - id: MUSIC-APP-DEVICE-001
+    capability: media
+    name: 网易云 / QQ音乐 play a described song or fail honestly
+    purpose: "SPEC-017 A7: the driver's real music app, including VIP-only and region-blocked songs"
+    type: device
+    scope: END_TO_END
+    owner: HUMAN_ACCOUNT
+    status: HUMAN_REQUIRED
+    automation_blocker: credential_permission
+    release_blocking: true
+    covers: [media.play_by_description]
+    terminal_success: [described_track_playing, reply_names_only_now_playing, map_in_foreground]
+    human_reason: "Needs the owner's logged-in 网易云音乐 or QQ音乐 account (credential) and their consent for notification access on their phone"
+    prerequisites: ["test phone with this build", "网易云音乐 or QQ音乐 installed and logged in", "notification access (通知使用权) granted to 小诺", "VPN split tunnel: the music app excluded so its catalogue region is China"]
+    procedure: ["say 「放梶浦由记的、空之境界里很燃的那首 OP」", "say 「不是这首」 once", "ask for one VIP-only song", "note what plays and what 小诺 says each time"]
+    pass_criteria: ["the described song or an honest mismatch question plays and is named only from now_playing", "「不是这首」 excludes the previous title", "a VIP-only song gives NOT_PLAYING and 小诺 says it did not play", "the map returns to the foreground"]
+    autonomous_evidence: ["MUSIC-UNIT-001 (JVM)", "MUSIC-TEXT-LIVE-001 for the model's field mapping"]
+    remaining_uncertainty: ["how each app interprets MEDIA_PLAY_FROM_SEARCH extras", "whether VIP-only tracks start a preview that looks like playing"]
+    returns: ["per request: what played, what was said, status/error code", "whether the split tunnel was needed"]
+    evidence: []
+    related: [SPEC-017]
+    last_run: {at: null, result: null}
 
   - id: BODY-UNIT-001
     capability: body

@@ -6,6 +6,7 @@ import com.novadrive.app.voice.ClimateToolActions
 import com.novadrive.app.voice.DriverContext
 import com.novadrive.app.voice.DriverTurn
 import com.novadrive.ingress.realtime.DomainVoiceEvent
+import com.novadrive.ingress.realtime.ResponseOutcome
 import com.novadrive.simulator.SimulatedVehicleControl
 import org.json.JSONObject
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -17,10 +18,9 @@ import org.junit.jupiter.api.Test
  * Two ways the product could tell the driver that something happened when it did not, both of
  * which pass every other guard because a tool really did return `ok=true`.
  *
- * `media` is one bundled track with play/stop — no library, no search, no metadata. So a request
- * that names a song is not a media request this product can serve, and answering it by starting the
- * bundled track makes `ok=true` mean "you got what you asked for"
- * ([I-2](../../../../../../docs/INVARIANTS.md)).
+ * `control_music` is one bundled track with play/stop. A request that names or describes a song is
+ * served by `play_music` (SPEC-017); answering it by starting the bundled track makes `ok=true`
+ * mean "you got what you asked for" ([I-2](../../../../../../docs/INVARIANTS.md)).
  *
  * And a relative adjustment is not idempotent: the same `adjust_temperature{-2}` dispatched twice
  * is −4 °C, a physical change the driver never asked for.
@@ -49,19 +49,39 @@ class FalseCapabilityClaimTest {
         noCamera(),
     ) { context }
 
-    // ---- recognising a request this product cannot serve --------------------
+    // ---- recognising a named / described song (SPEC-017: play_music) -------
 
     @Test
-    fun aRequestNamingASongIsRecognisedAsUnsupported() {
+    fun aRequestNamingASongIsRecognisedAsPlayByDescription() {
         listOf(
             "放一下周杰伦那首我忘了名字的歌，就是讲晴天的那个。",
             "放周杰伦的歌。",
             "我想听点轻音乐的歌曲。",
         ).forEach {
-            assertTrue(ActionClaimGuard.isSpecificMediaRequest(it), "should be unsupported: $it")
-            assertTrue(ActionClaimGuard.isUnsupportedRequest(it), "should classify as unsupported: $it")
-            assertEquals(DriverTurn.Kind.NO_TOOL_ACTION, DriverTurn.classify(it), it)
+            assertTrue(ActionClaimGuard.isSpecificMediaRequest(it), "should be specific: $it")
+            assertFalse(ActionClaimGuard.isUnsupportedRequest(it), "play_music serves it: $it")
+            assertTrue(ActionClaimGuard.isControlRequest(it), it)
+            assertEquals(DriverTurn.Kind.ACTION, DriverTurn.classify(it), it)
         }
+    }
+
+    // ---- a playing claim with no tool behind it ----------------------------
+
+    @Test
+    fun aPlayingClaimWithNoToolCallIsNotReleased() {
+        assertTrue(ActionClaimGuard.carActionClaim("正在放梶浦由记的《xxx》") != null)
+        val guard = ActionClaimGuard()
+        guard.onUserTranscript("放梶浦由记的歌")
+        val followUp = guard.onResponseDone(ResponseOutcome(spoke = true), "正在放梶浦由记的《xxx》")
+        assertTrue(followUp != null, "a claim of what is playing needs play_music's now_playing")
+    }
+
+    @Test
+    fun chatAboutASongWithoutAPlayingWordIsReleased() {
+        assertEquals(null, ActionClaimGuard.carActionClaim("这首歌的歌词挺好"))
+        val guard = ActionClaimGuard()
+        guard.onUserTranscript("你觉得这首歌怎么样")
+        assertEquals(null, guard.onResponseDone(ResponseOutcome(spoke = true), "这首歌的歌词挺好"))
     }
 
     @Test
@@ -99,7 +119,16 @@ class FalseCapabilityClaimTest {
 
         assertFalse(output.getBoolean("ok"), "a song this product cannot play must not report success")
         assertEquals("MEDIA_LIBRARY_UNSUPPORTED", output.getString("error"))
-        assertTrue(output.getString("next").contains("没有音乐库"), "the model must be told what to say")
+        assertTrue(output.getString("next").contains("play_music"), "the model is sent to play_music")
+    }
+
+    @Test
+    fun aNamedArtistStillNeverStartsTheBundledTrack() {
+        val context = DriverContext()
+        context.onDriverUtterance("放梶浦由记的歌", epoch = 1)
+        val output = JSONObject(dispatcher(context).dispatch(call("control_music", mapOf("action" to "play"))).output!!)
+        assertFalse(output.getBoolean("ok"))
+        assertEquals("MEDIA_LIBRARY_UNSUPPORTED", output.getString("error"))
     }
 
     @Test

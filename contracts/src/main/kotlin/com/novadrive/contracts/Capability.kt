@@ -64,7 +64,7 @@ object CapabilityIds {
     const val SUNROOF_DOORS_LIGHTS_WIPERS = "unsupported.sunroof_doors_lights_wipers"
     const val BODY_WINDOW = "body.window"
     const val BODY_SEAT_HEIGHT = "body.seat_height"
-    const val MEDIA_LIBRARY = "unsupported.media_library"
+    const val MEDIA_PLAY_BY_DESCRIPTION = "media.play_by_description"
     const val MEDIA_NEXT_TRACK = "media.next_track"
     const val REALTIME_INFO = "unsupported.realtime_news_prices"
     const val LIVE_INFO_WEATHER = "live_info.weather"
@@ -100,6 +100,7 @@ object ProductCapabilities : CapabilityCatalog {
             rec("navigation.return_to_tracking", null, true),
             rec("media.play_music", "control_music", true),
             rec("media.stop_music", "control_music", true),
+            rec("media.play_by_description", "play_music", true),
             rec("media.next_track", null, false),
             rec("climate.power", "control_climate", true),
             rec("climate.set_temperature", "control_climate", true),
@@ -124,7 +125,6 @@ object ProductCapabilities : CapabilityCatalog {
             rec("apps.open_settings", "open_app", true),
             rec("unsupported.volume_control", null, false),
             rec("unsupported.sunroof_doors_lights_wipers", null, false),
-            rec("unsupported.media_library", null, false),
             rec("live_info.weather", "query_live_info", true),
             rec("live_info.route_traffic", "query_live_info", true),
             rec("live_info.along_route", "query_live_info", true),
@@ -150,6 +150,9 @@ object ProductCapabilities : CapabilityCatalog {
         }
         if (catalog.isSupported("media.play_music") || catalog.isSupported("media.stop_music")) {
             parts += "播放或关闭音乐"
+        }
+        if (catalog.isSupported("media.play_by_description")) {
+            parts += "点歌（说歌名、歌手或描述）"
         }
         if (catalog.ids().any { it.startsWith("climate.") && catalog.isSupported(it) }) {
             parts += "调节空调"

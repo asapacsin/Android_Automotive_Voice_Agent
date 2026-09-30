@@ -91,6 +91,8 @@ class AndroidToolDispatcher(
     private val liveInfo: LiveInfoTool = LiveInfoTool.none(),
     /** Windows and seat (SPEC-015 body domain); null answers every body call VEHICLE_UNAVAILABLE. */
     private val cabin: com.novadrive.vehicle.VehicleControlPort? = null,
+    /** `play_music` (SPEC-017); null answers every call MUSIC_HANDOFF_UNAVAILABLE. */
+    private val music: com.novadrive.app.media.MusicHandoffTool? = null,
     /**
      * Last so the common test call site can pass it as a trailing lambda. Everything above has a
      * default; this one is what nearly every dispatcher test overrides.
@@ -131,7 +133,7 @@ class AndroidToolDispatcher(
         listOf(
             NavigationServer(executor, places),
             AppsServer(executor),
-            MediaServer(executor),
+            MediaServer(executor, music),
             ClimateServer(climate),
             BodyServer(cabin),
             VisionServer(camera),

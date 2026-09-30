@@ -74,9 +74,10 @@ object ToolCallGuards {
     }
 
     /**
-     * A request for *particular* music. There is one bundled track and no library, so starting it
-     * would make `ok=true` mean "you got what you asked for"
-     * ([I-2](../../../../../../docs/INVARIANTS.md)).
+     * A request for *particular* music on `control_music{play}`. That tool is the one bundled
+     * track, so starting it would make `ok=true` mean "you got what you asked for"
+     * ([I-2](../../../../../../docs/INVARIANTS.md)); the refusal's advice redirects the model to
+     * `play_music` (SPEC-017).
      */
     fun unsupportedMedia(call: DomainVoiceEvent.ToolCall, context: DriverContext?): String? {
         if (call.name != "control_music" || call.arguments["action"] != "play") return null
