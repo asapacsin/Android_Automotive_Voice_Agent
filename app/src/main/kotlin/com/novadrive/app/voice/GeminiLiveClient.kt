@@ -83,7 +83,8 @@ class GeminiLiveClient(
     // Turn state; mutated on the socket's reader thread and under `this` lock.
     private var turnOpen = false
     private var turnAudioSeen = false
-    private var generationDone = false
+    private var generationDone = false  // = gate settled; turnComplete is a playback later (N-2)
+    private var settledSuperseded = false
     private val turnCallIds = mutableListOf<String>()
     private val turnText = StringBuilder()
     private val inputText = StringBuilder()
@@ -97,6 +98,9 @@ class GeminiLiveClient(
     private val callNames = java.util.concurrent.ConcurrentHashMap<String, String>()
 
     @Volatile private var pendingCorrection: Job? = null
+    /** Set while the gate settles at generationComplete: a correction then waits for closeTurn. */
+    @Volatile private var settling = false
+    @Volatile private var stashedCorrection: String? = null
 
     private val pipeline = DriverTurnPipeline(
         lastAudioSegment = lastAudioSegment,
@@ -197,8 +201,7 @@ class GeminiLiveClient(
 
     fun onLocalSpeechActivity(active: Boolean) {
         if (!active) return
-        cancelCorrection("driver_turn")
-        synchronized(this) { beginDriverTurnLocked() }
+        synchronized(this) { cancelCorrection("driver_turn"); beginDriverTurnLocked() }
     }
 
     /**
@@ -262,6 +265,7 @@ class GeminiLiveClient(
         turnOpen = false
         turnAudioSeen = false
         generationDone = false
+        settledSuperseded = false
         turnCallIds.clear()
         turnText.setLength(0)
     }
@@ -274,6 +278,11 @@ class GeminiLiveClient(
      * cannot race one and goes out now.
      */
     private fun deferCorrection(text: String) {
+        if (settling) {
+            // Settled early; the grace is still measured from turnComplete (closeTurn sends it).
+            stashedCorrection = text
+            return
+        }
         val current = generation.get()
         pendingCorrection?.cancel()
         if (callDispatchedThisDriverTurn) {
@@ -305,6 +314,10 @@ class GeminiLiveClient(
     }
 
     private fun cancelCorrection(reason: String) {
+        if (stashedCorrection != null) {
+            stashedCorrection = null
+            DebugVoiceLog.log("gemini_correction_cancelled reason=$reason stashed=true")
+        }
         val job = pendingCorrection ?: return
         pendingCorrection = null
         if (job.isActive) {
@@ -410,7 +423,10 @@ class GeminiLiveClient(
         if (!turnOpen && (message.audio.isNotEmpty() || message.toolCalls.isNotEmpty())) {
             openTurn()
         }
-        message.audio.forEach { data ->
+        if (turnOpen && generationDone && message.audio.isNotEmpty()) {
+            // The gate already gave its verdict: nothing after it may reach the speaker unjudged.
+            DebugVoiceLog.log("gemini_audio_after_settle count=${message.audio.size}")
+        } else message.audio.forEach { data ->
             if (!turnAudioSeen) {
                 turnAudioSeen = true
                 Telemetry.record(EventType.TTS_START)
@@ -421,6 +437,10 @@ class GeminiLiveClient(
         message.outputTranscription?.let { chunk ->
             if (!turnOpen) {
                 strayOutput.append(chunk)
+            } else if (generationDone) {
+                // Too late to hold, not to correct: afterResponse judges it (subtitle already out).
+                DebugVoiceLog.log("gemini_text_after_settle chars=${chunk.length}")
+                pipeline.appendAssistantText(chunk)
             } else {
                 turnText.append(chunk)
                 pipeline.appendAssistantText(chunk)
@@ -484,17 +504,27 @@ class GeminiLiveClient(
             Telemetry.record(EventType.TTS_END)
             if (!pipeline.filter(DomainVoiceEvent.AudioDone)) emit(DomainVoiceEvent.AudioDone)
         }
+        // Settle here: turnComplete comes a playback-length later. Close still sees late calls.
+        settledSuperseded = pipeline.takeSuperseded()
+        if (!settledSuperseded) {
+            settling = true
+            try {
+                pipeline.settleResponse(ResponseOutcome(spoke = turnAudioSeen, toolCallIds = turnCallIds.toList(), unidentifiedToolCalls = 0))
+            } finally {
+                settling = false
+            }
+        }
     }
 
     private fun closeTurn(status: String) {
         flushInput()
         strayOutput.setLength(0)
         if (!turnOpen) return
-        finishGeneration()
+        finishGeneration()  // the verdict was given there (at generationComplete, or now)
         val outcome = ResponseOutcome(spoke = turnAudioSeen, toolCallIds = turnCallIds.toList(), unidentifiedToolCalls = 0)
-        val superseded = pipeline.takeSuperseded()
-        if (!superseded) pipeline.settleResponse(outcome)
+        val superseded = pipeline.takeSuperseded() or settledSuperseded
         pipeline.afterResponse(outcome, superseded)
+        stashedCorrection?.let { stashedCorrection = null; deferCorrection(it) }
         DebugVoiceLog.log("gemini_turn_done status=$status calls=${outcome.toolCallIds.size} spoke=${outcome.spoke}")
         Telemetry.record(EventType.RESPONSE_COMPLETED, detail = status)
         emit(DomainVoiceEvent.ResponseDone(status))
