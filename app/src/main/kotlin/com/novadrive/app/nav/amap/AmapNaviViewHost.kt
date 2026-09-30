@@ -23,7 +23,6 @@ import com.novadrive.app.CoarseLocationProvider
 import com.novadrive.app.DebugVoiceLog
 import com.novadrive.app.nav.InitialLocationRecenter
 import com.novadrive.app.nav.LocationFix
-import com.novadrive.app.nav.NavigationGuidanceVoice
 import com.novadrive.app.nav.RecenterDecision
 import com.novadrive.app.nav.RecenterOutcome
 import com.novadrive.app.nav.RouteCandidate
@@ -715,8 +714,8 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         AmapDrivingPresentation.applyIdle(naviView)
         onDrivingChanged?.invoke(false)
         enableMyLocation()
-        // Guidance cut off mid-sentence may never report its end; do not leave the mic gated.
-        if (NavigationGuidanceVoice.speaking) NavigationGuidanceVoice.onPlayEnd()
+        // Ungates a cut-off guidance sentence and resets the SPEC-018 relay (once per navigation).
+        AmapGuidanceVoice.onNavigationStopped()
         // Every termination path funnels through here -- arrival, emulator end, and the
         // manual nav_stop fallback -- so this one call is what keeps the state machine in
         // sync. The navigationActive guard above means it fires exactly once per session.

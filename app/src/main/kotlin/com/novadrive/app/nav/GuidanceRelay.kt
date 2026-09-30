@@ -42,6 +42,8 @@ class GuidanceRelay(
     private val deadlineMs: Long = 1_200,
     private val cooldownMs: Long = 60_000,
     private val strikeLimit: Int = 2,
+    /** After COMPLETED, how long the final output transcription may still arrive (B7). */
+    private val transcriptGraceMs: Long = 1_500,
     private val log: (String) -> Unit = { com.novadrive.app.DebugVoiceLog.log(it) },
 ) {
     private enum class State { QUEUED, PENDING, ASSISTANT }
@@ -49,6 +51,11 @@ class GuidanceRelay(
     private class Prompt(val id: String, val text: String, val enqueuedAt: Long) {
         var state = State.QUEUED
         var deadline: Cancellable? = null
+        var completed = false
+        var drained = false
+        var graceExpired = false
+        var grace: Cancellable? = null
+        val transcript = StringBuilder()
     }
 
     private val lock = Any()
@@ -80,17 +87,59 @@ class GuidanceRelay(
 
     /** B2a: the assistant's audio for [promptId] was cut before it completed. */
     fun onCut(promptId: String) = synchronized(lock) {
-        val p = current?.takeIf { it.id == promptId && it.state == State.ASSISTANT } ?: return@synchronized
-        current = null
+        val p = assistant(promptId) ?: return@synchronized
+        if (p.completed) {
+            // Its turn had completed; the audio stopped early. Treat as drained, judge as usual.
+            p.drained = true
+            settle(p)
+            return@synchronized
+        }
+        release(p)
         toAmap(p, "CUT")
         pump()
     }
 
-    /** The response to [promptId] completed; [transcript] is its output transcription, if any. */
+    /** The response to [promptId] completed. Fidelity waits for drain and the transcript grace. */
     fun onCompleted(promptId: String, transcript: String?) = synchronized(lock) {
-        val p = current?.takeIf { it.id == promptId && it.state == State.ASSISTANT } ?: return@synchronized
-        current = null
-        val result = GuidanceFidelity.compare(p.text, transcript)
+        val p = assistant(promptId) ?: return@synchronized
+        p.completed = true
+        transcript?.let { p.transcript.append(it) }
+        p.grace = schedule(transcriptGraceMs) { onGraceExpired(p) }
+        settle(p)
+    }
+
+    /** Output transcription of [promptId] that arrived after COMPLETED (G-1e). */
+    fun onLateTranscript(promptId: String, text: String) = synchronized(lock) {
+        val p = assistant(promptId) ?: return@synchronized
+        p.transcript.append(text)
+        settle(p)
+    }
+
+    /** The player went quiet after [promptId]'s audio (B3: only now may anything else speak). */
+    fun onDrained(promptId: String) = synchronized(lock) {
+        val p = assistant(promptId) ?: return@synchronized
+        p.drained = true
+        settle(p)
+    }
+
+    private fun onGraceExpired(p: Prompt) = synchronized(lock) {
+        if (current !== p) return@synchronized
+        p.graceExpired = true
+        settle(p)
+    }
+
+    private fun assistant(id: String): Prompt? = current?.takeIf { it.id == id && it.state == State.ASSISTANT }
+
+    /**
+     * Judge and release [p] once it completed and drained, and either a transcript is in or the
+     * grace ran out. The next prompt waits for this, so no two voices overlap.
+     */
+    private fun settle(p: Prompt) {
+        if (!p.completed || !p.drained) return
+        val heard = p.transcript.toString().takeIf { it.isNotBlank() }
+        if (heard == null && !p.graceExpired) return
+        release(p)
+        val result = GuidanceFidelity.compare(p.text, heard)
         log("guidance_fidelity prompt=${p.id} result=$result")
         when (result) {
             GuidanceFidelity.Result.MATCH -> Unit
@@ -103,8 +152,14 @@ class GuidanceRelay(
         pump()
     }
 
+    private fun release(p: Prompt) {
+        p.grace?.cancel()
+        p.grace = null
+        if (current === p) current = null
+    }
+
     fun onNavigationEnded() = synchronized(lock) {
-        current?.deadline?.cancel()
+        current?.let { it.deadline?.cancel(); it.grace?.cancel() }
         current = null
         queue.forEach { it.deadline?.cancel() }
         queue.clear()
@@ -179,6 +234,7 @@ class GuidanceRelay(
             active = relay
             GuidanceClaims.claimAssistant = { relay.claimAssistant(it) }
             GuidanceClaims.onGuidanceCut = { relay.onCut(it) }
+            GuidanceClaims.onGuidanceDrained = { relay.onDrained(it) }
         }
 
         fun uninstall(relay: GuidanceRelay) {
@@ -186,6 +242,7 @@ class GuidanceRelay(
             active = null
             GuidanceClaims.claimAssistant = { true }
             GuidanceClaims.onGuidanceCut = {}
+            GuidanceClaims.onGuidanceDrained = {}
             relay.onNavigationEnded()
         }
     }
@@ -198,15 +255,18 @@ class GuidanceRelay(
 object GuidanceTranscripts {
     private const val ASSISTANT_PREFIX = "小诺: "
     private var open: String? = null
+    /** The last completed prompt: a final transcription after COMPLETED still belongs to it. */
+    private var late: String? = null
     private val text = StringBuilder()
 
     fun onAppPromptTurn(promptId: String, phase: DomainVoiceEvent.AppPromptTurn.Phase) {
         val done: String? = synchronized(this) {
             when (phase) {
-                DomainVoiceEvent.AppPromptTurn.Phase.OPENED -> { open = promptId; text.clear(); return }
+                DomainVoiceEvent.AppPromptTurn.Phase.OPENED -> { open = promptId; late = null; text.clear(); return }
                 else -> {
                     if (open != promptId) return
                     open = null
+                    late = promptId.takeIf { phase == DomainVoiceEvent.AppPromptTurn.Phase.COMPLETED }
                     text.toString().also { text.clear() }
                 }
             }
@@ -216,8 +276,14 @@ object GuidanceTranscripts {
         }
     }
 
-    /** The session's transcript line; only the assistant's text inside an open prompt is kept. */
-    fun onTranscript(line: String) = synchronized(this) {
-        if (open != null && line.startsWith(ASSISTANT_PREFIX)) text.append(line.removePrefix(ASSISTANT_PREFIX))
+    /** The session's transcript line; only the assistant's text of the open or last prompt is kept. */
+    fun onTranscript(line: String) {
+        if (!line.startsWith(ASSISTANT_PREFIX)) return
+        val body = line.removePrefix(ASSISTANT_PREFIX)
+        val lateId = synchronized(this) {
+            if (open != null) { text.append(body); return }
+            late
+        } ?: return
+        GuidanceRelay.active?.onLateTranscript(lateId, body)
     }
 }

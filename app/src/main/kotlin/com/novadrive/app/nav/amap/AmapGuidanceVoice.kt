@@ -134,6 +134,13 @@ internal object AmapGuidanceVoice : TTSPlayListener {
         else -> "unknown"
     }
 
+    /** Every navigation end (the host's single stop funnel): unstick the gate, reset the relay. */
+    fun onNavigationStopped() {
+        // Guidance cut off mid-sentence may never report its end; do not leave the mic gated.
+        if (NavigationGuidanceVoice.speaking) NavigationGuidanceVoice.onPlayEnd()
+        relay?.onNavigationEnded()
+    }
+
     fun disable(navi: AMapNavi?) {
         runCatching { navi?.removeTTSPlayListener(this) }
         relay?.let { GuidanceRelay.uninstall(it) }

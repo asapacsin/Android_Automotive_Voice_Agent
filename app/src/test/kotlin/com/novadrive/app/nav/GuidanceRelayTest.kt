@@ -140,7 +140,7 @@ class GuidanceRelayTest {
     @Test
     fun assistantClaimResetsTheConsecutiveCounter() {
         relay.onGuidanceText("a"); advance(1_200)
-        relay.onGuidanceText("b"); relay.claimAssistant("g2"); relay.onCompleted("g2", "b")
+        relay.onGuidanceText("b"); relay.claimAssistant("g2"); relay.onCompleted("g2", "b"); relay.onDrained("g2")
         relay.onGuidanceText("c"); advance(1_200)
         relay.onGuidanceText("d")
         assertEquals(4, sent.size)
@@ -154,7 +154,7 @@ class GuidanceRelayTest {
         relay.onGuidanceText("前方右转") // g2 waits
         assertEquals(1, sent.size)
         advance(500)
-        relay.onCompleted("g1", "前方左转")
+        relay.onCompleted("g1", "前方左转"); relay.onDrained("g1")
         assertEquals("g2", sent.last().first)
         advance(699)
         assertTrue(spoken.isEmpty())
@@ -169,7 +169,7 @@ class GuidanceRelayTest {
         relay.onGuidanceText("前方右转")
         advance(3_000)
         assertTrue(spoken.isEmpty())
-        relay.onCompleted("g1", "前方左转")
+        relay.onCompleted("g1", "前方左转"); relay.onDrained("g1")
         assertEquals(listOf("前方右转"), spoken)
         assertTrue(lastRoute().contains("prompt=g2 to=amap reason=EXPIRED"))
         assertEquals(1, sent.size)
@@ -181,7 +181,8 @@ class GuidanceRelayTest {
         relay.claimAssistant("g1")
         relay.onCut("g1")
         assertEquals(listOf("前方左转"), spoken)
-        relay.onCompleted("g1", null)
+        relay.onCompleted("g1", null); relay.onDrained("g1")
+        advance(2_000)
         assertEquals(1, spoken.size)
     }
 
@@ -189,12 +190,13 @@ class GuidanceRelayTest {
     fun fidelityMismatchIsRespokenAtOnceAndStrikesEndTheAssistant() {
         relay.onGuidanceText("前方左转")
         relay.claimAssistant("g1")
-        relay.onCompleted("g1", "前方右转")
+        relay.onCompleted("g1", "前方右转"); relay.onDrained("g1")
         assertEquals(listOf("前方左转"), spoken)
         assertTrue(logs.contains("guidance_fidelity prompt=g1 result=MISMATCH_DIRECTION"))
         relay.onGuidanceText("二百米直行")
         relay.claimAssistant("g2")
-        relay.onCompleted("g2", null) // UNKNOWN: a strike, no re-speak
+        relay.onCompleted("g2", null); relay.onDrained("g2")
+        advance(1_500) // UNKNOWN after the grace: a strike, no re-speak
         assertEquals(1, spoken.size)
         relay.onGuidanceText("掉头")
         assertTrue(lastRoute().contains("reason=FIDELITY_STRIKES"))
@@ -222,11 +224,88 @@ class GuidanceRelayTest {
     fun logsCarryNoGuidanceText() {
         relay.onGuidanceText("前方二百米左转进入横琴大道")
         relay.claimAssistant("g1")
-        relay.onCompleted("g1", "前方二百米右转")
+        relay.onCompleted("g1", "前方二百米右转"); relay.onDrained("g1")
         relay.onGuidanceText("靠右进入匝道"); advance(2_000)
         assertTrue(logs.isNotEmpty())
         logs.forEach { line ->
             assertFalse(line.any { Character.UnicodeScript.of(it.code) == Character.UnicodeScript.HAN }, line)
         }
+    }
+
+    @Test
+    fun queuedExpiredPromptWaitsForDrainNotJustCompletion() {
+        relay.onGuidanceText("前方左转")
+        relay.claimAssistant("g1")
+        relay.onGuidanceText("前方右转")
+        advance(3_000)
+        relay.onCompleted("g1", "前方左转")
+        assertTrue(spoken.isEmpty())
+        relay.onDrained("g1")
+        assertEquals(listOf("前方右转"), spoken)
+    }
+
+    @Test
+    fun nextAssistantPromptIsSentOnlyAfterDrain() {
+        relay.onGuidanceText("前方左转")
+        relay.claimAssistant("g1")
+        relay.onGuidanceText("前方右转")
+        relay.onCompleted("g1", "前方左转")
+        assertEquals(1, sent.size)
+        relay.onDrained("g1")
+        assertEquals("g2", sent.last().first)
+    }
+
+    @Test
+    fun drainBeforeCompletionAlsoWaitsForCompletion() {
+        relay.onGuidanceText("前方左转")
+        relay.claimAssistant("g1")
+        relay.onGuidanceText("前方右转")
+        relay.onDrained("g1")
+        assertEquals(1, sent.size)
+        relay.onCompleted("g1", "前方左转")
+        assertEquals(2, sent.size)
+    }
+
+    @Test
+    fun lateTranscriptWithinGraceMatchesWithoutStrike() {
+        repeat(2) { i ->
+            relay.onGuidanceText("前方左转")
+            val id = "g${i + 1}"
+            relay.claimAssistant(id)
+            relay.onCompleted(id, null)
+            relay.onDrained(id)
+            advance(1_000)
+            relay.onLateTranscript(id, "前方左转")
+            assertTrue(logs.contains("guidance_fidelity prompt=$id result=MATCH"))
+        }
+        relay.onGuidanceText("掉头")
+        assertEquals(3, sent.size) // no strikes accrued
+        assertTrue(spoken.isEmpty())
+    }
+
+    @Test
+    fun transcriptAfterGraceIsUnknownStrikeWithoutRespeak() {
+        relay.onGuidanceText("前方左转")
+        relay.claimAssistant("g1")
+        relay.onCompleted("g1", null)
+        relay.onDrained("g1")
+        advance(1_499)
+        assertFalse(logs.any { it.startsWith("guidance_fidelity") })
+        advance(1)
+        assertTrue(logs.contains("guidance_fidelity prompt=g1 result=UNKNOWN"))
+        relay.onLateTranscript("g1", "前方左转")
+        assertTrue(spoken.isEmpty())
+    }
+
+    @Test
+    fun strikesAndCooldownDoNotCarryIntoTheNextNavigation() {
+        relay.onGuidanceText("左转"); relay.claimAssistant("g1"); relay.onCompleted("g1", "右转"); relay.onDrained("g1")
+        relay.onGuidanceText("右转"); relay.claimAssistant("g2"); relay.onCompleted("g2", "左转"); relay.onDrained("g2")
+        relay.onGuidanceText("a"); advance(1_200)
+        relay.onGuidanceText("b")
+        assertTrue(lastRoute().contains("reason=FIDELITY_STRIKES"))
+        relay.onNavigationEnded()
+        relay.onGuidanceText("c")
+        assertEquals("g5", sent.last().first)
     }
 }
