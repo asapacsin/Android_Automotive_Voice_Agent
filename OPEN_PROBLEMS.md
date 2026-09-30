@@ -1626,3 +1626,35 @@ transcript (classified CONVERSATION, under 5 chars) still hears the repair. Test
 `DriverTurnTest.aRepairToAHeardShortActionIsDroppedAndTheFollowUpReleasedAfterTheResult`,
 `anUnintelligibleShortUtteranceStillHearsTheRepair`; `aRepairToAFragmentOrAnActionIsLeftAlone`
 updated for the new action-turn behaviour.
+
+## P43 — 「我打开了空调」 was played although the result said the climate was off
+
+**Status:** FIXED 2026-09-30 at JVM level — device/emulator check pending
+**Reported:** owner, emulator, Baidu Flex, 2026-09-30 04:21:39:
+
+```
+transcript (driver, 3 chars, implicit comfort request)
+tool=control_climate args=[action, value] result=✓ 空调关 · 17°C · 风2
+assistant: reply stating the setting changed, the climate is off, and "I switched the climate on"   <- played
+```
+
+No tool switched the climate on; the reply's second car-action claim contradicted the result.
+Other replies in the same session (「空调已调低，但目前是关闭的」) were honest.
+
+### Root cause
+
+`DriverTurn.decideHold` returned `HoldReason.NONE` for every response started once `proven` was
+true, and `onExecutionResult` released an AWAITING_EXECUTION_PROOF hold on any `ok=true`. So the
+post-result reply was checked only for *some* successful tool, never against what that result said:
+an `ok=true` climate result with `power_on:false` proves a stored setting, not a running system.
+
+### Fix
+
+`DriverTurnPipeline.onExecutionResult` passes the result's `power_on` to `DriverTurn`, which keeps
+`climateLeftOff`. While it is set, an ACTION turn's reply stays under AWAITING_EXECUTION_PROOF and is
+judged at response end: a clause claiming the climate was switched on
+(`ActionClaimGuard.claimsClimateOn`; questions and declines excluded) is dropped as
+`claim_contradicts_result` with the single truthful correction `ActionClaimGuard.CLIMATE_STILL_OFF`.
+A later `power_on:true` result clears it. Tests: `DriverTurnTest.aClaimToHaveSwitchedTheClimateOnIsDroppedWhenTheResultSaysOff`,
+`anHonestReplyAboutAClimateLeftOffIsReleased`, `aClaimToHaveSwitchedTheClimateOnIsReleasedWhenTheResultSaysOn`,
+`offeringToSwitchTheClimateOnIsNotAClaim`.

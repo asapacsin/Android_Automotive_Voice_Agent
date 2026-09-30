@@ -870,4 +870,54 @@ class DriverTurnTest {
         t.onExecutionResult(true, null, callId = "c1")
         assertEquals(0, t.foreignResults)
     }
+
+    // ---- P43: a post-result claim must match what the result says ----
+
+    private fun heardClimateTurnWithResult(powerOn: Boolean): DriverTurn {
+        val t = DriverTurn(epoch = 43)
+        t.onResponseStarted(goodAudio, false)
+        t.onUserTranscript("有点热。") { DriverTurn.classify(it) }
+        assertEquals(DriverTurn.Kind.ACTION, t.kind)
+        t.hold("audio")
+        t.onToolCall("c1", "control_climate")
+        assertEquals(DriverTurn.Verdict.Release("tool_called"), t.onResponseDone("", true))
+        t.onExecutionResult(true, null, callId = "c1", climatePowerOn = powerOn)
+        t.onResponseStarted(null, false)
+        t.hold("audio")
+        return t
+    }
+
+    @Test
+    fun aClaimToHaveSwitchedTheClimateOnIsDroppedWhenTheResultSaysOff() {
+        // Emulator 2026-09-30 04:21:39: result 「空调关 · 17°C · 风2」, reply claimed 「我打开了空调」.
+        val t = heardClimateTurnWithResult(powerOn = false)
+        assertEquals(DriverTurn.HoldReason.AWAITING_EXECUTION_PROOF, t.holdReason)
+        val verdict = t.onResponseDone("设定已经改了，但空调现在是关着的，我打开了空调。", false)
+        assertTrue(verdict is DriverTurn.Verdict.Drop, verdict.toString())
+        verdict as DriverTurn.Verdict.Drop
+        assertEquals("claim_contradicts_result", verdict.reason)
+        val correction = verdict.correction!!
+        assertTrue(correction.contains("关着") && correction.contains("不要调用任何工具"), correction)
+    }
+
+    @Test
+    fun anHonestReplyAboutAClimateLeftOffIsReleased() {
+        val t = heardClimateTurnWithResult(powerOn = false)
+        assertEquals(DriverTurn.Verdict.Release("execution_proved"), t.onResponseDone("空调已调低，但目前是关闭的。", false))
+    }
+
+    @Test
+    fun aClaimToHaveSwitchedTheClimateOnIsReleasedWhenTheResultSaysOn() {
+        val t = heardClimateTurnWithResult(powerOn = true)
+        assertEquals(DriverTurn.HoldReason.NONE, t.holdReason)
+        assertEquals(DriverTurn.Verdict.Release("not_held"), t.onResponseDone("已把空调打开。", false))
+    }
+
+    @Test
+    fun offeringToSwitchTheClimateOnIsNotAClaim() {
+        assertTrue(ActionClaimGuard.claimsClimateOn("设定已经改了，但空调现在是关着的，我打开了空调。"))
+        assertTrue(ActionClaimGuard.claimsClimateOn("已把空调打开。"))
+        assertTrue(!ActionClaimGuard.claimsClimateOn("空调已调低，但目前是关闭的。"))
+        assertTrue(!ActionClaimGuard.claimsClimateOn("空调是关着的，要打开空调吗？"))
+    }
 }

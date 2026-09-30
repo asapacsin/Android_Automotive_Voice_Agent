@@ -156,6 +156,14 @@ class DriverTurn(val epoch: Long) {
     var proven: Boolean = false
         private set
 
+    /**
+     * P43: the latest climate result of this turn said the climate is still off. Proof that a
+     * setting was stored is not proof the air conditioning runs, so a reply claiming it was
+     * switched on is checked against this instead of being released on `proven` alone.
+     */
+    var climateLeftOff: Boolean = false
+        private set
+
     /** `query_live_info` kinds that returned `ok=true` this turn: the only source for REALTIME_INFO. */
     private val liveInfoKinds = mutableSetOf<String>()
 
@@ -228,6 +236,9 @@ class DriverTurn(val epoch: Long) {
         if (awaitingToolResult) return HoldReason.AWAITING_TOOL_RESULT
         // Proof of *some* action is not a source for the weather: only a live-info result of the
         // kind the driver asked about is (SPEC-011 B3).
+        // P43: a stored setting with the climate still off proves the setting, not that the air
+        // conditioning is on. The reply is held and checked against that result.
+        if (proven && climateLeftOff && kind == Kind.ACTION) return HoldReason.AWAITING_EXECUTION_PROOF
         if (proven && (kind != Kind.REALTIME_INFO || answeredFromSource())) return HoldReason.NONE
         if (echoCandidate && !toolCalled) return HoldReason.ECHO_CANDIDATE
         if (kind == Kind.CAPABILITY_HELP) return HoldReason.CAPABILITY_HELP
@@ -424,10 +435,19 @@ class DriverTurn(val epoch: Long) {
      * A tool result was delivered to the model. `ok=true` is the only thing in this system that
      * proves an external action happened; a failure explicitly does **not** release a claim.
      */
-    fun onExecutionResult(ok: Boolean, failure: String?, liveInfoKind: String? = null, callId: String? = null): Verdict {
+    fun onExecutionResult(
+        ok: Boolean,
+        failure: String?,
+        liveInfoKind: String? = null,
+        callId: String? = null,
+        climatePowerOn: Boolean? = null,
+    ): Verdict {
         if (!accepts()) {
             rejectedEvents++
             return Verdict.Wait
+        }
+        if (ok && climatePowerOn != null && (callId == null || callId in registeredCalls)) {
+            climateLeftOff = !climatePowerOn
         }
         // D-11 / I-1: only a result for a call this turn dispatched can prove or fail its action.
         // A superseded turn's late result is ignored; a null id keeps the legacy path.
@@ -466,6 +486,8 @@ class DriverTurn(val epoch: Long) {
             return Verdict.Wait
         }
         proven = true
+        // P43: with the climate still off, the wording is judged at response end against the result.
+        if (holdReason == HoldReason.AWAITING_EXECUTION_PROOF && climateLeftOff) return Verdict.Wait
         if (holdReason == HoldReason.AWAITING_EXECUTION_PROOF || holdReason == HoldReason.PHANTOM_AUDIO ||
             holdReason == HoldReason.ECHO_CANDIDATE
         ) {
@@ -598,6 +620,10 @@ class DriverTurn(val epoch: Long) {
 
             HoldReason.AWAITING_EXECUTION_PROOF -> {
                 when {
+                    // P43 (2026-09-30): 「有点热。」 → control_climate ok with the climate off → 「…空调现在
+                    // 是关着的，我打开了空调。」 was released on `proven`. No tool switched it on.
+                    proven && climateLeftOff && ActionClaimGuard.claimsClimateOn(reply) ->
+                        Verdict.Drop("claim_contradicts_result", ActionClaimGuard.CLIMATE_STILL_OFF)
                     // Proof arrived while this response was in flight.
                     proven -> Verdict.Release("execution_proved")
                     // The model asserted an action that nothing has proved. This is the case that

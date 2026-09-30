@@ -186,7 +186,12 @@ class DriverTurnPipeline(
     private fun onExecutionResult(callId: String, output: String) {
         val ok = output.contains("\"ok\":true")
         val failure = if (ok) null else Regex("\"error\":\"([^\"]+)\"").find(output)?.groupValues?.get(1)
-        applyVerdict(turn, turn.onExecutionResult(ok, failure, liveInfoKindOf(output), callId))
+        val climatePowerOn = when {
+            output.contains("\"power_on\":false") -> false
+            output.contains("\"power_on\":true") -> true
+            else -> null
+        }
+        applyVerdict(turn, turn.onExecutionResult(ok, failure, liveInfoKindOf(output), callId, climatePowerOn))
     }
 
     /** The `kind` of a `query_live_info` result, or null for any other tool (SPEC-011 B3). */

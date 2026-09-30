@@ -395,6 +395,24 @@ class ActionClaimGuard {
                 !text.contains("说「开始导航」") && !text.contains("说开始导航")
         }
 
+        /**
+         * 「我打开了空调」「空调已打开」「已把空调打开」 - the climate was switched on. A clause that asks
+         * (「要打开空调吗？」) or declines is not a claim. P43.
+         */
+        fun claimsClimateOn(reply: String): Boolean =
+            reply.split('。', '，', ',', '！', '!', '；', ';', '\n')
+                .map { it.trim() }
+                .filter { it.isNotEmpty() && !declines(it) && QUESTION_WORDS.none { q -> q in it } }
+                .any { CLIMATE_ON_CLAIM.containsMatchIn(it) }
+
+        private val QUESTION_WORDS = listOf("吗", "？", "?", "要不要", "需要", "是否", "可以说", "请说")
+        private val CLIMATE_ON_CLAIM = Regex("(打开|开启|开)了?空调|空调(已经|已)?(被)?(打开|开启)|把空调(打开|开启)")
+
+        /** The climate result said the system is off; the reply said it was switched on. */
+        const val CLIMATE_STILL_OFF =
+            "你上一句说已经打开了空调是错误的：工具结果显示空调仍然是关闭的，没有任何工具打开它。" +
+                "不要调用任何工具，只用一句话如实更正：设定已经改好，但空调目前是关着的，需要的话可以说「打开空调」。"
+
         /** Navigation did not start this turn; the reply said it did. */
         const val NAVIGATION_NOT_STARTED =
             "你上一句说导航已经开始是错误的：目的地已选好，路线还在屏幕上等用户选择，导航还没有开始。" +
