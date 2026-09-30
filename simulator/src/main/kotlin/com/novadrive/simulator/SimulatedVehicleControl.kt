@@ -37,11 +37,11 @@ class SimulatedVehicleControl(
 
     override val climateState: StateFlow<ClimateState> = state.asStateFlow()
 
-    override suspend fun setHvacPower(on: Boolean): VehicleActionResult = applyPower(on)
+    override suspend fun setHvacPower(on: Boolean): VehicleActionResult<ClimateState> = applyPower(on)
 
-    override suspend fun setCabinTemperature(celsius: Double): VehicleActionResult = applySetTemperature(celsius)
+    override suspend fun setCabinTemperature(celsius: Double): VehicleActionResult<ClimateState> = applySetTemperature(celsius)
 
-    override suspend fun changeCabinTemperature(deltaCelsius: Double): VehicleActionResult =
+    override suspend fun changeCabinTemperature(deltaCelsius: Double): VehicleActionResult<ClimateState> =
         mutate(ClimateOperation.CHANGE_TEMPERATURE) { current ->
             if (!deltaCelsius.isFinite()) {
                 invalid("temperature delta must be a finite number")
@@ -52,9 +52,9 @@ class SimulatedVehicleControl(
             }
         }
 
-    override suspend fun setFanLevel(level: Int): VehicleActionResult = applySetFan(level)
+    override suspend fun setFanLevel(level: Int): VehicleActionResult<ClimateState> = applySetFan(level)
 
-    override suspend fun changeFanLevel(delta: Int): VehicleActionResult =
+    override suspend fun changeFanLevel(delta: Int): VehicleActionResult<ClimateState> =
         mutate(ClimateOperation.CHANGE_FAN) { current ->
             val wanted = current.fanLevel.toLong() + delta
             val bounded = wanted
@@ -76,10 +76,10 @@ class SimulatedVehicleControl(
 
     // Non-suspending entry points, used by the legacy synchronous InMemoryVehicleSimulator path.
 
-    fun applyPower(on: Boolean): VehicleActionResult =
+    fun applyPower(on: Boolean): VehicleActionResult<ClimateState> =
         mutate(ClimateOperation.POWER) { current -> Change(current.copy(powerOn = on)) }
 
-    fun applySetTemperature(celsius: Double): VehicleActionResult =
+    fun applySetTemperature(celsius: Double): VehicleActionResult<ClimateState> =
         mutate(ClimateOperation.SET_TEMPERATURE) { current ->
             if (!celsius.isFinite() ||
                 celsius !in ClimateLimits.MIN_TEMPERATURE_C..ClimateLimits.MAX_TEMPERATURE_C
@@ -93,7 +93,7 @@ class SimulatedVehicleControl(
             }
         }
 
-    fun applySetFan(level: Int): VehicleActionResult =
+    fun applySetFan(level: Int): VehicleActionResult<ClimateState> =
         mutate(ClimateOperation.SET_FAN) { current ->
             if (level !in ClimateLimits.MIN_FAN_LEVEL..ClimateLimits.MAX_FAN_LEVEL) {
                 invalid("fan level $level outside ${ClimateLimits.MIN_FAN_LEVEL}..${ClimateLimits.MAX_FAN_LEVEL}")
@@ -104,11 +104,11 @@ class SimulatedVehicleControl(
 
     private sealed interface Outcome
     private data class Change(val next: ClimateState, val limitReached: Boolean = false) : Outcome
-    private data class Rejected(val result: VehicleActionResult) : Outcome
+    private data class Rejected(val result: VehicleActionResult<ClimateState>) : Outcome
 
     private fun invalid(reason: String): Outcome = Rejected(VehicleActionResult.InvalidArgument(reason))
 
-    private fun mutate(operation: ClimateOperation, block: (ClimateState) -> Outcome): VehicleActionResult =
+    private fun mutate(operation: ClimateOperation, block: (ClimateState) -> Outcome): VehicleActionResult<ClimateState> =
         synchronized(lock) {
             val injected = injectedFailure(operation)
             if (injected != null) return injected
@@ -121,7 +121,7 @@ class SimulatedVehicleControl(
             }
         }
 
-    private fun injectedFailure(operation: ClimateOperation): VehicleActionResult? {
+    private fun injectedFailure(operation: ClimateOperation): VehicleActionResult<ClimateState>? {
         val kind = faults.failAlways[operation]
             ?: faults.failNext?.also { faults.failNext = null }
             ?: return null

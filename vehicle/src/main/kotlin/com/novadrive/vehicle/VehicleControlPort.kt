@@ -18,19 +18,19 @@ interface VehicleControlPort {
     /** Live climate state, for UI that should reflect the vehicle rather than a hard-coded label. */
     val climateState: StateFlow<ClimateState>
 
-    suspend fun setHvacPower(on: Boolean): VehicleActionResult
+    suspend fun setHvacPower(on: Boolean): VehicleActionResult<ClimateState>
 
     /** Absolute target temperature. Out-of-range values are rejected, never clamped silently. */
-    suspend fun setCabinTemperature(celsius: Double): VehicleActionResult
+    suspend fun setCabinTemperature(celsius: Double): VehicleActionResult<ClimateState>
 
     /** Relative change from the *current* vehicle state. Clamped to the limits; see [VehicleActionResult.Success.limitReached]. */
-    suspend fun changeCabinTemperature(deltaCelsius: Double): VehicleActionResult
+    suspend fun changeCabinTemperature(deltaCelsius: Double): VehicleActionResult<ClimateState>
 
     /** Absolute fan level. Out-of-range values are rejected, never clamped silently. */
-    suspend fun setFanLevel(level: Int): VehicleActionResult
+    suspend fun setFanLevel(level: Int): VehicleActionResult<ClimateState>
 
     /** Relative change from the *current* fan level. Clamped to the limits; see [VehicleActionResult.Success.limitReached]. */
-    suspend fun changeFanLevel(delta: Int): VehicleActionResult
+    suspend fun changeFanLevel(delta: Int): VehicleActionResult<ClimateState>
 
     suspend fun getClimateState(): ClimateState
 }
@@ -79,23 +79,24 @@ object ClimateLimits {
 /**
  * Outcome of a vehicle action. Backend-neutral on purpose: an AAOS, CAN or OEM adapter maps its
  * own errors onto these, so the tool layer can tell success from every kind of non-success.
+ * Generic in the state read back, so climate and cabin share one failure vocabulary.
  */
-sealed interface VehicleActionResult {
+sealed interface VehicleActionResult<out S> {
     /** The action took effect and [state] is the state read back afterwards. */
-    data class Success(val state: ClimateState, val limitReached: Boolean = false) : VehicleActionResult
+    data class Success<S>(val state: S, val limitReached: Boolean = false) : VehicleActionResult<S>
 
     /** The request itself was wrong (e.g. 50 °C). Nothing changed. */
-    data class InvalidArgument(val reason: String) : VehicleActionResult
+    data class InvalidArgument(val reason: String) : VehicleActionResult<Nothing>
 
     /** This vehicle does not have the feature. */
-    data class Unsupported(val feature: String) : VehicleActionResult
+    data class Unsupported(val feature: String) : VehicleActionResult<Nothing>
 
     /** The feature exists but cannot be used right now (e.g. system offline, ignition off). */
-    data class Unavailable(val reason: String) : VehicleActionResult
+    data class Unavailable(val reason: String) : VehicleActionResult<Nothing>
 
     /** The app is not permitted to control this property. */
-    data class PermissionDenied(val reason: String) : VehicleActionResult
+    data class PermissionDenied(val reason: String) : VehicleActionResult<Nothing>
 
     /** The backend attempted the action and it failed. */
-    data class Failure(val reason: String) : VehicleActionResult
+    data class Failure(val reason: String) : VehicleActionResult<Nothing>
 }

@@ -18,11 +18,11 @@ import org.junit.jupiter.api.Test
  * and maps every result kind faithfully. Uses a recording port, never simulator internals.
  */
 class ClimateToolHandlerTest {
-    private class RecordingPort(var next: VehicleActionResult? = null) : VehicleControlPort {
+    private class RecordingPort(var next: VehicleActionResult<ClimateState>? = null) : VehicleControlPort {
         val calls = mutableListOf<String>()
         private val state = ClimateState(powerOn = true, targetTemperatureCelsius = 22.0, fanLevel = 3)
         override val climateState: StateFlow<ClimateState> = MutableStateFlow(state)
-        private fun record(call: String): VehicleActionResult {
+        private fun record(call: String): VehicleActionResult<ClimateState> {
             calls += call
             return next ?: VehicleActionResult.Success(state)
         }

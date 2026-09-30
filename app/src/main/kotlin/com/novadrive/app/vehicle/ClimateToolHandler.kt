@@ -49,7 +49,7 @@ class ClimateToolHandler(private val port: VehicleControlPort) {
         return render(action, result)
     }
 
-    private fun render(action: String, result: VehicleActionResult): Outcome =
+    private fun render(action: String, result: VehicleActionResult<ClimateState>): Outcome =
         when (result) {
             is VehicleActionResult.Success -> Outcome(
                 ok = true,
