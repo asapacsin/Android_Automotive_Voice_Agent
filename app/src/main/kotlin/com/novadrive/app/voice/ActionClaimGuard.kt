@@ -244,11 +244,21 @@ class ActionClaimGuard {
         private val MEDIA_CLAIM_NOUNS = listOf("歌", "曲", "音乐", "《")
         private val MEDIA_PLAYING_WORDS = listOf("正在放", "在放", "放着", "开始放", "播放")
 
-        /** Honest failure wording from a play_music result: a refusal, never a claim. */
-        private val MEDIA_FAILURE_WORDS = listOf("不了", "没放成", "放不了", "没能")
+        /** Honest failure wording from a play_music result. */
+        private val MEDIA_FAILURE_WORDS = listOf("放不了", "没放成", "播放不了", "没能放")
+        private val NON_MEDIA_NOUNS by lazy { DEVICE_NOUNS.filterNot { it in MEDIA_CLAIM_NOUNS } + BODY_NOUNS }
+
+        /**
+         * 「《X》播放不了」: an honest media refusal, released. Only when a media noun and a media
+         * failure word are present and nothing else in the car is named, so a mixed reply
+         * (「空调开好了，风量调不了」) is still a claim (I-1).
+         */
+        private fun isMediaRefusalOnly(reply: String): Boolean =
+            MEDIA_CLAIM_NOUNS.any { it in reply } &&
+                MEDIA_FAILURE_WORDS.any { it in reply } &&
+                NON_MEDIA_NOUNS.none { it in reply }
 
         private fun mediaClaimWords(reply: String): Pair<String, String>? {
-            if (MEDIA_FAILURE_WORDS.any { it in reply }) return null
             val noun = MEDIA_CLAIM_NOUNS.firstOrNull { it in reply } ?: return null
             val verb = MEDIA_PLAYING_WORDS.firstOrNull { it in reply } ?: return null
             return noun to verb
@@ -375,7 +385,7 @@ class ActionClaimGuard {
 
         fun isCameraQuestion(text: String): Boolean = CAMERA_WORDS.any { it in text }
 
-        fun declines(reply: String): Boolean = DECLINE_WORDS.any { it in reply } || MEDIA_FAILURE_WORDS.any { it in reply }
+        fun declines(reply: String): Boolean = DECLINE_WORDS.any { it in reply }
 
         /**
          * The things in this car a reply can claim to have touched.
@@ -406,7 +416,7 @@ class ActionClaimGuard {
             "不支持", "无法", "不能", "没法", "暂不", "暂时不", "抱歉", "对不起", "没听清", "再说一遍",
         )
 
-        fun refuses(reply: String): Boolean = INABILITY_WORDS.any { it in reply } || MEDIA_FAILURE_WORDS.any { it in reply }
+        fun refuses(reply: String): Boolean = INABILITY_WORDS.any { it in reply }
 
         /**
          * The reply describes acting on something in this car. Used only where the request could
@@ -414,7 +424,7 @@ class ActionClaimGuard {
          * (「我可以帮你做很多事情」) names nothing and does not match.
          */
         fun describesCarAction(reply: String): Boolean =
-            !refuses(reply) && (
+            !refuses(reply) && !isMediaRefusalOnly(reply) && (
                 (DEVICE_NOUNS.any { it in reply } && ACTION_WORDS.any { it in reply }) || pairClaimWords(reply) != null
             )
 
@@ -441,7 +451,7 @@ class ActionClaimGuard {
                 "不要调用任何工具，只用一句话更正：导航还没开始，请说「开始导航」走推荐路线，或说第几条路线。"
 
         fun claimsDone(reply: String): Boolean =
-            !declines(reply) && (
+            !declines(reply) && !isMediaRefusalOnly(reply) && (
                 (DONE_WORDS.any { it in reply } && ACTION_WORDS.any { it in reply }) || pairClaimWords(reply) != null
             )
 
@@ -476,6 +486,7 @@ class ActionClaimGuard {
          */
         fun carActionClaimMatch(reply: String): ClaimMatch? {
             if (promptsDriver(reply) && !reportsCompletion(reply)) return null
+            if (isMediaRefusalOnly(reply)) return null
             if (!refuses(reply)) {
                 pairClaimWords(reply)?.let { (noun, verb) -> return ClaimMatch("car_action", noun, verb) }
             }
