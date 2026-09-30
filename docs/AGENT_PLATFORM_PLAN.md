@@ -55,5 +55,10 @@ commit, then replans.
 
 `test_matrix.py --selftest` "the repository registry validates": 30 supported capabilities have no
 bind-current PASS cover, `protected_by` or `regression_test` in `TEST_MATRIX.yaml` (the audit is
-stricter than the rows). Recorded here; fixed as its own bounded task (map each capability to the
-unit test that already protects it) after W2, when the tool→domain map is stable.
+stricter than the rows). Diagnosed 2026-09-30: this is the evidence-binding mechanism working as
+designed — PASS rows carry code digests (`evidence_bind`) and code changed since they were earned,
+so the capabilities they protect lost bind-current cover; `device`-verified capabilities need a
+device re-run, which no cloud task can earn. Fix **after the last code wave** (binds would go stale
+again otherwise): `test_matrix.py --apply-stale` to requeue, re-run and `--bind` the component
+rows in the cloud, and queue the device rows for the human batch. Never mark a row PASS to satisfy
+the audit.
