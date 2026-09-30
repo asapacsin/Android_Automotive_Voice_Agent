@@ -591,12 +591,19 @@ class AndroidPlaybackPort(
     override val playbackActive: Boolean
         get() = player.playbackActive
 
+    /** SPEC-018: the app prompt whose audio this port is routing or playing. */
+    private val guidance = GuidancePromptTracker(abandon = { id -> SpeechAuthority.arbiter.abandon(id) })
+
+    /** An assistant guidance prompt is open or still playing: cancel paths must spare it. */
+    val guidanceActive: Boolean get() = guidance.active
+
     init {
         player.setOnPlaybackStateChanged { speaking ->
             if (speaking) {
                 focus?.requestSpeechFocus()
             } else {
                 focus?.abandon()
+                if (guidance.drained() != null) guidancePlayoutEnded()
             }
         }
         // Single owner: AudioFocusController.onFocusChanged is one slot, not a listener list.
@@ -629,6 +636,7 @@ class AndroidPlaybackPort(
                     arbiter.onFocus(SpeechArbiter.Focus.PERMANENT_LOSS) // R4
                     player.pausePlayback()
                     SpeechAuthority.notePaused()
+                    cutGuidance()
                     player.flushCurrentEpoch()
                 }
                 FocusAction.RESUME -> {
@@ -661,8 +669,67 @@ class AndroidPlaybackPort(
 
     @Volatile private var droppingReply = false
     @Volatile private var droppingForNavigation = false
+    @Volatile private var droppingGuidance = false
+
+    override fun onAppPromptTurn(promptId: String, phase: com.novadrive.ingress.realtime.DomainVoiceEvent.AppPromptTurn.Phase, epoch: Int) {
+        val arbiter = SpeechAuthority.arbiter
+        when (phase) {
+            com.novadrive.ingress.realtime.DomainVoiceEvent.AppPromptTurn.Phase.OPENED -> {
+                // B3: not-yet-played chatter is lost; flush(epoch) clears the queue and keeps accepting this epoch.
+                cutGuidance()
+                player.flush(epoch)
+                SpeechAuthority.onReplyEnded()
+                guidance.opened(promptId)
+                droppingGuidance = false
+                arbiter.onAssistantGuidance(promptId, phase)
+            }
+            com.novadrive.ingress.realtime.DomainVoiceEvent.AppPromptTurn.Phase.COMPLETED -> {
+                guidance.completed(promptId) // playing stays set until the audio drains
+                arbiter.onAssistantGuidance(promptId, phase)
+            }
+            com.novadrive.ingress.realtime.DomainVoiceEvent.AppPromptTurn.Phase.VOIDED -> {
+                arbiter.onAssistantGuidance(promptId, phase)
+                if (guidance.voided(promptId)) {
+                    player.flush(epoch)
+                    SpeechAuthority.onReplyEnded()
+                    guidancePlayoutEnded()
+                }
+            }
+        }
+        SpeechAuthority.syncPlaybackHold()
+    }
+
+    /** B2a: guidance audio about to be flushed before it finished — tell the relay, stop the playout. */
+    private fun cutGuidance() {
+        if (guidance.flushed()) guidancePlayoutEnded()
+    }
+
+    private fun guidancePlayoutEnded() {
+        SpeechAuthority.arbiter.onGuidancePlayout(false)
+        SpeechAuthority.syncPlaybackHold()
+    }
+
+    /** SPEC-018 B6: guidance bypasses the listening-state gate; the arbiter's guidance row decides. */
+    private fun enqueueGuidance(pcm16le: ByteArray, epoch: Int): Boolean {
+        val route = guidance.route { id -> SpeechAuthority.guidanceReply(id) }
+        when (route) {
+            GuidancePromptTracker.Route.ORDINARY -> return false
+            GuidancePromptTracker.Route.DROP -> if (!droppingGuidance) {
+                droppingGuidance = true
+                com.novadrive.app.DebugVoiceLog.log("guidance_audio_not_played")
+            }
+            GuidancePromptTracker.Route.QUEUE -> {
+                player.unduck()
+                SpeechAuthority.arbiter.onGuidancePlayout(true)
+                SpeechAuthority.syncPlaybackHold() // HOLD (R1/R5) pauses before the chunk is visible
+                player.enqueue(pcm16le, epoch)
+            }
+        }
+        return true
+    }
 
     override fun enqueue(pcm16le: ByteArray, epoch: Int) {
+        if (enqueueGuidance(pcm16le, epoch)) return
         // SPEC-012: the arbiter alone decides. DROP is R4 (focus lost for good) or R6 (P1); HOLD
         // still queues — the player is paused through SpeechAuthority.syncPlaybackHold until it lifts.
         val arbiter = SpeechAuthority.arbiter
@@ -696,12 +763,14 @@ class AndroidPlaybackPort(
     }
 
     override fun flush(epoch: Int) {
+        cutGuidance()
         player.flush(epoch)
         SpeechAuthority.onReplyEnded()
         com.novadrive.evaluation.Telemetry.record(com.novadrive.evaluation.EventType.AUDIO_STOPPED)
     }
 
     override fun stop() {
+        cutGuidance()
         player.stop()
         SpeechAuthority.onReplyEnded()
     }

@@ -100,7 +100,7 @@ class VoiceSessionController(
         scope = scope,
         controls = object : ListeningControls {
             override fun setCloudUpload(enabled: Boolean) = active.setCaptureSuspended(!enabled)
-            override fun cancelAssistantReply() = active.cancelCurrentResponse()
+            override fun cancelAssistantReply() = cancelReplySparingGuidance()
             override fun closeCloudSession() = closeSession()
             override fun openCloudSession(): Boolean {
                 val config = lastConfig ?: return false
@@ -172,6 +172,9 @@ class VoiceSessionController(
         }
         microphone.onUplinkSegmentChanged = { open -> active.onLocalSpeechActivity(open) }
         com.novadrive.app.nav.NavigationGuidanceVoice.addListener(guidanceListener)
+        // SPEC-018 G-2: the arbiter's navigating input (from NavigationState) also keeps SLEEP connected.
+        SpeechAuthority.arbiter.navigatingObserver = { navigating -> lifecycle.onNavigating(navigating) }
+        lifecycle.onNavigating(com.novadrive.app.NavigationState.navigating)
     }
 
     /** Starts a new realtime session and makes listening ACTIVE. */
@@ -189,9 +192,14 @@ class VoiceSessionController(
         if (reason == "wake_word" && playbackSpeaking) {
             com.novadrive.app.DebugVoiceLog.log("wake_interrupts_reply")
             Telemetry.record(EventType.INTERRUPT_DETECTED, detail = "wake_word")
-            active.cancelCurrentResponse()
+            cancelReplySparingGuidance()
         }
         return lifecycle.activate(reason)
+    }
+
+    /** SPEC-018: an open guidance prompt is spared; ordinary chatter was already discarded at OPENED (B3). */
+    private fun cancelReplySparingGuidance() {
+        if (!playback.guidanceActive) active.cancelCurrentResponse()
     }
 
     /** 「闭嘴」: the reply stops now; the conversation and listening continue (SILENT_WAIT). */

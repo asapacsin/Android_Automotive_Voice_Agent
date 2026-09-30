@@ -101,6 +101,8 @@ class ListeningLifecycle(
     private var deadlineMs = 0L
     private var meaningfulTurnInProgress = false
     private var sleepAfterReply = false
+    /** SPEC-018 G-2: while navigating, SLEEP keeps the connection (guidance is spoken over it). */
+    private var navigating = false
 
     private var uploadingSinceMs: Long? = null
     private var streamedTotalMs = 0L
@@ -221,9 +223,20 @@ class ListeningLifecycle(
         }
     }
 
+    /**
+     * SPEC-018 G-2: while navigating, SLEEP never goes to DEEP_IDLE (no timer, no close on a lost
+     * connection). When navigation ends in SLEEP the normal DEEP_IDLE timer starts from then.
+     */
+    fun onNavigating(active: Boolean) = synchronized(lock) {
+        if (navigating == active) return@synchronized
+        navigating = active
+        if (_state.value != ListeningState.SLEEP) return@synchronized
+        if (active) cancelTimerLocked() else armDeepIdleLocked()
+    }
+
     /** The connection failed or closed. In SLEEP that ends the session instead of reconnecting. */
     fun onConnectionLost() = synchronized(lock) {
-        if (_state.value == ListeningState.SLEEP) enterDeepIdleLocked("connection_lost_in_sleep")
+        if (_state.value == ListeningState.SLEEP && !navigating) enterDeepIdleLocked("connection_lost_in_sleep")
     }
 
     /**
@@ -264,6 +277,11 @@ class ListeningLifecycle(
         meaningfulTurnInProgress = false
         sleepAfterReply = false
         transitionLocked(ListeningState.SLEEP, reason)
+        if (!navigating) armDeepIdleLocked()
+    }
+
+    private fun armDeepIdleLocked() {
+        cancelTimerLocked()
         val mine = epoch
         timer = scope.launch {
             delay(timeouts.deepIdleAfterSleepMs)
