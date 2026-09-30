@@ -77,6 +77,21 @@ class FalseCapabilityClaimTest {
     }
 
     @Test
+    fun anHonestMusicFailureIsReleasedAsARefusal() {
+        listOf("《X》播放不了", "这首没放成").forEach { reply ->
+            assertEquals(null, ActionClaimGuard.carActionClaim(reply), reply)
+            val guard = ActionClaimGuard()
+            guard.onUserTranscript("放梶浦由记的歌")
+            guard.onResponseDone(ResponseOutcome(spoke = false, toolCallIds = listOf("c1")), "")
+            assertEquals(null, guard.onResponseDone(ResponseOutcome(spoke = true), reply), reply)
+        }
+        assertTrue(ActionClaimGuard.carActionClaim("正在放《X》") != null)
+        val guard = ActionClaimGuard()
+        guard.onUserTranscript("放梶浦由记的歌")
+        assertTrue(guard.onResponseDone(ResponseOutcome(spoke = true), "正在放《X》") != null)
+    }
+
+    @Test
     fun chatAboutASongWithoutAPlayingWordIsReleased() {
         assertEquals(null, ActionClaimGuard.carActionClaim("这首歌的歌词挺好"))
         val guard = ActionClaimGuard()

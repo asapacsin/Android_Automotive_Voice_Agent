@@ -244,7 +244,11 @@ class ActionClaimGuard {
         private val MEDIA_CLAIM_NOUNS = listOf("歌", "曲", "音乐", "《")
         private val MEDIA_PLAYING_WORDS = listOf("正在放", "在放", "放着", "开始放", "播放")
 
+        /** Honest failure wording from a play_music result: a refusal, never a claim. */
+        private val MEDIA_FAILURE_WORDS = listOf("不了", "没放成", "放不了", "没能")
+
         private fun mediaClaimWords(reply: String): Pair<String, String>? {
+            if (MEDIA_FAILURE_WORDS.any { it in reply }) return null
             val noun = MEDIA_CLAIM_NOUNS.firstOrNull { it in reply } ?: return null
             val verb = MEDIA_PLAYING_WORDS.firstOrNull { it in reply } ?: return null
             return noun to verb
@@ -371,7 +375,7 @@ class ActionClaimGuard {
 
         fun isCameraQuestion(text: String): Boolean = CAMERA_WORDS.any { it in text }
 
-        fun declines(reply: String): Boolean = DECLINE_WORDS.any { it in reply }
+        fun declines(reply: String): Boolean = DECLINE_WORDS.any { it in reply } || MEDIA_FAILURE_WORDS.any { it in reply }
 
         /**
          * The things in this car a reply can claim to have touched.
@@ -402,7 +406,7 @@ class ActionClaimGuard {
             "不支持", "无法", "不能", "没法", "暂不", "暂时不", "抱歉", "对不起", "没听清", "再说一遍",
         )
 
-        fun refuses(reply: String): Boolean = INABILITY_WORDS.any { it in reply }
+        fun refuses(reply: String): Boolean = INABILITY_WORDS.any { it in reply } || MEDIA_FAILURE_WORDS.any { it in reply }
 
         /**
          * The reply describes acting on something in this car. Used only where the request could
