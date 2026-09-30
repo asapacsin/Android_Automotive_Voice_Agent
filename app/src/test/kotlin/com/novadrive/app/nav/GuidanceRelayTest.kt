@@ -448,4 +448,29 @@ class GuidanceRelayTest {
         advance(1)
         assertEquals(4, brackets.size)
     }
+
+    @Test
+    fun completedWhilePendingIsKeptAndSettlesAfterClaimAndDrain() {
+        relay.onGuidanceText("前方左转")
+        relay.onCompleted("g1", "前方左转")
+        assertTrue(relay.claimAssistant("g1"))
+        relay.onDrained("g1")
+        assertTrue(logs.contains("guidance_fidelity prompt=g1 result=MATCH"))
+        relay.onGuidanceText("再右转")
+        assertEquals("g2", sent.last().first)
+        assertTrue(spoken.isEmpty())
+    }
+
+    @Test
+    fun completedWhilePendingStillFallsBackAtTheDeadline() {
+        relay.onGuidanceText("前方左转")
+        relay.onCompleted("g1", "前方左转")
+        advance(1_200)
+        assertEquals(listOf("前方左转"), spoken)
+        assertFalse(relay.claimAssistant("g1"))
+        amapEnds()
+        relay.onGuidanceText("再右转")
+        assertEquals("g2", sent.last().first)
+        assertEquals(1, spoken.size)
+    }
 }
