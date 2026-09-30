@@ -66,6 +66,30 @@ From the code at `20c14c7` (design review):
 | Staying connected while navigating, also in SLEEP and after connection loss | `ListeningLifecycle` (extended) | `GuidanceRelay` |
 | Which providers can speak a verbatim prompt | `ProviderCapabilities.verbatimPromptSpeech` (Gemini true, Baidu false) | a provider-name check (I-13) |
 
+## Correlation contract (planner decision, 2026-09-30 — step 1)
+
+Provider-neutral, extended by capability (ADR-009 §3), in `ingress`:
+
+- `ProviderCapabilities.verbatimPromptSpeech: Boolean = false` (Gemini true, Baidu false).
+- `RealtimeVoiceProvider.sendPrompt(text: String, promptId: String): Boolean` — default `false`.
+  Send now or fail: never queued, never replayed after reconnect; `false` when not connected.
+- `DomainVoiceEvent.AppPromptTurn(promptId: String, phase: Phase)`, `Phase { OPENED, COMPLETED, VOIDED }`.
+  The provider emits OPENED **in stream order before** the first `AudioDelta` of the response to that
+  prompt; COMPLETED at its turn end; VOIDED when that response is interrupted, cut by a connection
+  loss, or pre-empted by a driver onset before COMPLETED. An armed prompt whose response never
+  opens is VOIDED on the next driver onset or turn.
+- Core (`ingress/VoiceSessionController`): `sendPrompt` delegates to the provider only when
+  `connectedNow`, else returns false (never `pendingTexts`). `AppPromptTurn` events are forwarded in
+  order to `PlaybackPort.onAppPromptTurn(promptId, phase, epoch)` (default no-op) and to
+  `VoiceSessionCallbacks.onAppPromptTurn` (default no-op), so audio enqueue and the marker keep
+  their order in the one event loop.
+- Gemini client: arms "next opened turn = GUIDANCE(promptId)" at `sendPrompt`; does **not** clear
+  `listeningSuspended`; inside a GUIDANCE turn the pipeline does not open a driver turn or judge the
+  reply, and any tool call is emitted as `RealtimeToolCatalog.rejectedCall(id, name,
+  "NOT_A_DRIVER_TURN")`, which the dispatcher already fails without executing.
+- App gateway: `VoiceSessionGateway.sendPrompt(text, promptId): Boolean` — no `start`, no
+  activation; false when there is no active, non-failed session.
+
 ## Behaviour
 
 - **B1. Route per prompt.** The relay handles one prompt at a time. A new prompt goes to **Amap at
