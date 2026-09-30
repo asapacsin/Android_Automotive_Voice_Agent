@@ -3,7 +3,7 @@ package com.novadrive.app
 import com.novadrive.app.nav.PlaceSlot
 import com.novadrive.app.nav.SavedPlace
 import com.novadrive.app.nav.SavedPlaces
-import com.novadrive.app.vehicle.ClimateToolHandler
+import com.novadrive.app.tools.ToolRegistry
 import com.novadrive.app.voice.ActionClaimGuard
 import com.novadrive.app.voice.ClimateToolActions
 import com.novadrive.app.voice.ContextResolver
@@ -29,25 +29,6 @@ import org.json.JSONObject
  */
 object ToolCallGuards {
 
-    /**
-     * Every tool that acts on the world, where an identical second call in one driver turn is a
-     * protocol retry or the model repeating itself, never a second request: climate and music
-     * accumulate, `place_call` dials twice, `navigate_to` / `open_app` / `save_place` /
-     * `exit_navigation_mode` redo a visible action — and `query_live_info`, where a second identical
-     * lookup costs the owner's daily quota and re-opens the picker for nothing (SPEC-011 failure
-     * table: DUPLICATE_IN_TURN). Pure reads such as `describe_camera_view` are left out.
-     */
-    private val REPEAT_SENSITIVE = setOf(
-        ClimateToolHandler.TOOL,
-        "control_music",
-        LiveInfoTool.TOOL,
-        "place_call",
-        "navigate_to",
-        "open_app",
-        "save_place",
-        "exit_navigation_mode",
-    )
-
     private val TEMPERATURE_OR_FAN = setOf(
         ClimateToolActions.ADJUST_TEMPERATURE,
         ClimateToolActions.SET_TEMPERATURE,
@@ -70,7 +51,12 @@ object ToolCallGuards {
      * action is the more expensive mistake of the two.
      */
     fun repeatedInTurn(call: DomainVoiceEvent.ToolCall, context: DriverContext?): String? {
-        if (call.name !in REPEAT_SENSITIVE) return null
+        // Repeat-sensitive tools (ToolSpec.repeatSensitive) act on the world: an identical second call in
+        // one driver turn is a protocol retry, never a second request. Climate and music accumulate,
+        // place_call dials twice, navigate_to / open_app / save_place / exit_navigation_mode redo a
+        // visible action, and query_live_info costs daily quota (SPEC-011: DUPLICATE_IN_TURN). Pure
+        // reads such as describe_camera_view are left out.
+        if (ToolRegistry.PRODUCT.spec(call.name)?.repeatSensitive != true) return null
         if (context == null) return null
         val arguments = call.arguments.filterKeys { it != "_validation_error" }
         // SPEC-010 B4: the on-screen matcher may already have run this capability for this

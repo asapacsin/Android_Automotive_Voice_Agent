@@ -14,11 +14,21 @@ class RealtimeToolCatalogTest {
     /** Characterisation: captured from sessionUpdate before the catalogue was extracted. */
     @Test
     fun `baidu session update is byte-identical to the pre-extraction golden`() {
-        assertEquals(golden("baidu_session_update.json"), BaiduFlexProtocol.sessionUpdate("PERSONA"))
+        assertEquals(toolOrderFree(golden("baidu_session_update.json")), toolOrderFree(BaiduFlexProtocol.sessionUpdate("PERSONA")))
         assertEquals(
-            golden("baidu_session_update_variant.json"),
-            BaiduFlexProtocol.sessionUpdate("PERSONA", voice = "v2", speed = 1.25, vadThreshold = 0.75),
+            toolOrderFree(golden("baidu_session_update_variant.json")),
+            toolOrderFree(BaiduFlexProtocol.sessionUpdate("PERSONA", voice = "v2", speed = 1.25, vadThreshold = 0.75)),
         )
+    }
+
+    /** SPEC-016 B: tools are flattened in domain order, so declaration order is not pinned; each tool still is. */
+    private fun toolOrderFree(raw: String): String {
+        val root = JSONObject(raw)
+        val session = root.getJSONObject("session")
+        val tools = session.getJSONArray("tools")
+        val sorted = (0 until tools.length()).map { tools.getJSONObject(it) }.sortedBy { it.toString() }
+        session.put("tools", org.json.JSONArray(sorted))
+        return root.toString()
     }
 
     @Test
