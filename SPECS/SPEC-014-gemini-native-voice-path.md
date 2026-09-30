@@ -92,4 +92,7 @@ BLOCKED_BY: N-1 (default Gemini model) and N-2 (I-1 wording for clause release),
 
 ## Implementation status
 
-Nothing built. Evidence gathered: probe report F23–F32.
+Built 2026-09-30 on `claude/9-30` per [GEMINI_NATIVE_PLAN.md](../docs/GEMINI_NATIVE_PLAN.md): P1 model
+registry, P2 D-10, P3 repeat guard, P4 settle at `generationComplete`, P5 default model, P6 live
+smoke ([report](../docs/reports/2026-09-30-gemini-native-smoke.md)). Evidence level: JVM + live cloud
+API through the app's client. Device: `GEMINI-DEVICE-LATENCY-001`, `GATE-D10-DEVICE-001` (not run).

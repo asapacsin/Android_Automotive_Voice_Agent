@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-30T01:42:01",
+  "generated_at": "2026-09-30T03:05:33",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "3f41ef9",
-    "branch": "claude/9-29",
-    "subject": "Merge D-11: ignore tool results for calls the current turn never dispatched",
+    "commit": "705e245",
+    "branch": "claude/9-30",
+    "subject": "Merge P6: live smoke measures L1-L3 per model",
     "working_tree_clean": false,
-    "uncommitted_files": 1
+    "uncommitted_files": 2
   },
   "tests": {
     "available": true,
@@ -150,7 +150,7 @@
     "actionable_count": 71,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
-    "QUEUED_FOR_HUMAN": 17,
+    "QUEUED_FOR_HUMAN": 18,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
       {
