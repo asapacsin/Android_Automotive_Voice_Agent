@@ -2,7 +2,7 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-21 · 118 tests
+Updated 2026-09-21 · 120 tests
 
 | | |
 | --- | --- |
@@ -10,8 +10,8 @@ Updated 2026-09-21 · 118 tests
 | autonomous FAIL | 0 |
 | incomplete | 0 |
 | partial pass | 0 |
-| not run | 54 |
-| human required | 17 |
+| not run | 55 |
+| human required | 18 |
 | human pass | 0 |
 | human fail | 0 |
 | blocked external | 0 |
@@ -20,6 +20,7 @@ Updated 2026-09-21 · 118 tests
 
 **HUMAN_VALIDATION_READY = FALSE**
 
+- the registry does not validate: 5 problem(s)
 - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - TRUTH-MISHEARD-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -74,6 +75,7 @@ Updated 2026-09-21 · 118 tests
 - SPEECH-ARBITER-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - SPEECH-WORKLOAD-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - GEMINI-DEVICE-DUPLEX-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- GATE-D10-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - live_info.along_route requires END_TO_END but has no passing cover (linked: none)
 - live_info.place_details requires END_TO_END but has no passing cover (linked: none)
 - live_info.route_traffic requires END_TO_END but has no passing cover (linked: none)
@@ -104,7 +106,7 @@ Updated 2026-09-21 · 118 tests
 | security | 3 | 3 | 0 | 0 |
 | speech | 1 | 0 | 1 | 0 |
 | truthfulness | 9 | 4 | 0 | 5 |
-| turn_taking | 17 | 7 | 2 | 8 |
+| turn_taking | 19 | 7 | 3 | 9 |
 | unsupported | 1 | 0 | 0 | 1 |
 | vision | 2 | 0 | 0 | 2 |
 | wake | 2 | 1 | 1 | 0 |
@@ -211,7 +213,9 @@ Updated 2026-09-21 · 118 tests
 | BARGE-IN-EVIDENCE-001 | turn_taking | Barge-in needs time-scoped speech evidence; an unconfirmed echo turn is never heard | AUTONOMOUS | PASS | yes | 2026-09-24: BargeInEvidenceTest 11/11; full suite 1618/0; REGRESSION 41/41, CHAOS 26/26… |
 | BARGEIN-001 | turn_taking | 闭嘴 stops speech without ending the session | AUTONOMOUS | NOT_RUN | no | 2026-09-20: 20/20 suite |
 | ECHO-001 | turn_taking | Post-reply cabin echo does not become 「没听清」 | AUTONOMOUS | NOT_RUN | yes | STALE_BIND code_digest mismatch |
+| GATE-D10-DEVICE-001 | turn_taking | Claim gate D-10 orderings hold on real provider traffic | AUTONOMOUS | NOT_RUN | no | — |
 | GEMINI-DEVICE-DUPLEX-001 | turn_taking | Gemini reply through the speaker does not interrupt itself (G-M2) | AUTONOMOUS | NOT_RUN | no | — |
+| GEMINI-DEVICE-LATENCY-001 | turn_taking | Gemini (gemini-3.8-live) end of speech to first audio heard, on the phone | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | — |
 | LISTEN-IDLE-001 | turn_taking | Inactivity releases the microphone and then the socket | AUTONOMOUS | PASS | yes | ListeningLifecycleTest covers STANDBY, DEEP_IDLE, epoch-guarded timers, and meaningless… |
 | NOISE-001 | turn_taking | Room noise does not become a turn | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite |
 | PLAYBACK-BUFFER-ADAPT-001 | turn_taking | Playback buffer adapts to the size the platform applied and to real underruns only | AUTONOMOUS | PASS | yes | 2026-09-24: LowLatencyPlaybackBufferTest 7/7 with a clamping fake track (cloud Linux bu… |

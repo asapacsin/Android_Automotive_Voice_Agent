@@ -2590,7 +2590,7 @@ tests:
     purpose: "SPEC-014 A8. Cloud (JVM, 2026-09-30): L1 9/10 calls <=2.5 s (median 1.6 s; one earlier run 8/10), L2 gate release ~0 ms after generationComplete, L3 0 claims before result, 0 late frames. Playback, phone network and cabin not measured"
     type: device
     scope: COMPONENT
-    owner: HUMAN_DRIVER
+    owner: HUMAN_PHYSICAL
     status: HUMAN_REQUIRED
     release_blocking: false
     prerequisites: ["developer settings: Gemini enabled, model gemini-3.8-live selected (a saved extended-thinking choice is kept)", "GEMINI-DEVICE-REACH-001 passed"]

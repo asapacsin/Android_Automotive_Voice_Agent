@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-30T03:05:33",
+  "generated_at": "2026-09-30T03:05:53",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "705e245",
+    "commit": "ec93785",
     "branch": "claude/9-30",
-    "subject": "Merge P6: live smoke measures L1-L3 per model",
+    "subject": "Reconcile after P4-P6: SPEC-014 built (JVM + live cloud), phone latency test queued",
     "working_tree_clean": false,
-    "uncommitted_files": 2
+    "uncommitted_files": 4
   },
   "tests": {
     "available": true,
@@ -147,7 +147,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "A5: | A5 | Picker selection uses the registry; `tryLocalNavigationPick` is gone | production wiring | `FeaturePresenceRegressionTest` + existing picker tests green | not built — **deferred on purpose** to",
-    "actionable_count": 71,
+    "actionable_count": 70,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 18,
@@ -606,13 +606,6 @@
         "class": "recorded technical debt",
         "source": "docs/TECH_DEBT.md",
         "item": "D-9",
-        "blocked_by": null
-      },
-      {
-        "priority": 10,
-        "class": "stale state or harness defect",
-        "source": "state",
-        "item": "PROJECT_STATE.json",
         "blocked_by": null
       },
       {
