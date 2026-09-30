@@ -4,6 +4,7 @@ import com.novadrive.app.DebugVoiceLog
 import com.novadrive.app.GeminiApiConfig
 import com.novadrive.app.GeminiSettingsValidator
 import com.novadrive.app.PersonaProfiles
+import com.novadrive.app.SpeakingStyleState
 import com.novadrive.evaluation.EventType
 import com.novadrive.evaluation.Telemetry
 import com.novadrive.ingress.realtime.DomainVoiceEvent
@@ -162,7 +163,7 @@ class GeminiLiveClient(
     }
 
     private fun instructionsWithContext(raw: String): String {
-        val base = PersonaProfiles.sanitize(raw)
+        val base = PersonaProfiles.compose(raw, SpeakingStyleState.current)
         val hint = contextHint()
         if (hint != null) DebugVoiceLog.log("gemini_context_hint chars=${hint.length}")
         return if (hint == null) base else base.trim() + "\n" + hint
