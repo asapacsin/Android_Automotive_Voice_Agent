@@ -53,6 +53,14 @@
             android:name=".VoiceSessionService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
+        <service
+            android:name=".media.NovaMediaListener"
+            android:exported="true"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
     </application>
     <queries>
         <package android:name="com.autonavi.minimap" />
@@ -62,6 +70,8 @@
         <package android:name="com.kugou.android" />
         <package android:name="cn.kuwo.player" />
         <package android:name="com.spotify.music" />
+        <package android:name="org.videolan.vlc" />
+        <intent><action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" /></intent>
         <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="geo" /></intent>
     </queries>
 </manifest>
