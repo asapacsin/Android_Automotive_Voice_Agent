@@ -28,6 +28,7 @@ If you are about to argue for a different provider, a different navigation strat
 | [ADR-012](ADR-012-fuzzy-driving-requests.md) | Fuzzy driving requests: simulated body actuators, fixed comfort scenarios, speaking style | **Proposed** |
 | [ADR-013](ADR-013-gemini-default-provider.md) | Gemini Live is the default provider; no cross-provider fallback; Baidu retired after device gates | **Accepted** |
 | [ADR-014](ADR-014-guidance-spoken-by-assistant.md) | Navigation guidance spoken by the assistant voice; Amap voice only when the model cannot speak | **Accepted** |
+| [ADR-015](ADR-015-car-domain-servers.md) | Car functions as MCP-shaped in-process domain servers; Gemini stays the single agent | **Accepted** |
 
 ## Relationship to `docs/DECISIONS.md`
 

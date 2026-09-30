@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-30T05:10:44",
+  "generated_at": "2026-09-30T05:24:53",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "326a2b9",
+    "commit": "fe88cc0",
     "branch": "claude/fuzzy-logic-9-30",
-    "subject": "ADR-014: guidance spoken by the assistant voice, Amap voice as fallback",
+    "subject": "Owner test-run policy (short route 横琴创业谷→励骏庞都, no Gemini for non-voice tests); ADR-014 G-2 decided",
     "working_tree_clean": false,
-    "uncommitted_files": 3
+    "uncommitted_files": 2
   },
   "tests": {
     "available": true,
