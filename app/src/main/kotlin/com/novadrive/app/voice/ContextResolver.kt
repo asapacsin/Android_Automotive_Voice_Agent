@@ -64,6 +64,16 @@ object ContextResolver {
     private val NEUTRAL_UP = listOf("高", "大", "强")
     private val NEUTRAL_DOWN = listOf("低", "小", "弱")
 
+    private val WINDOW_WORDS = listOf("窗")
+    private val SEAT_WORDS = listOf("座椅", "座位", "座")
+    private val SEAT_UP = listOf("高", "升")
+    private val SEAT_DOWN = listOf("低", "降")
+    private val WINDOW_OPEN = listOf("开", "大", "多")
+    private val WINDOW_CLOSE = listOf("关", "小", "少")
+
+    /** Dimensions a neutral 高/低/大/小 can mean. A raised window is a closed one, so not WINDOW. */
+    private val NEUTRAL_CANDIDATES = setOf(Dimension.TEMPERATURE, Dimension.FAN, Dimension.SEAT_HEIGHT)
+
     private val REVERSAL = listOf("刚才那个", "刚才的", "调回来", "回来一点", "复原", "还原")
     private val RELATIVE_MARKERS = listOf("再", "更", "还是", "还要", "多一点", "一点", "一些")
 
@@ -81,7 +91,12 @@ object ContextResolver {
         context.pendingClarification(epoch)?.let { pending ->
             namedDimension(said)?.let { chosen ->
                 if (chosen in pending.options) {
-                    return adjustment(chosen, pending.delta, context, implicit = false)
+                    val delta = if (chosen.isClimate || pending.delta == 0.0) {
+                        pending.delta
+                    } else {
+                        Math.signum(pending.delta) * step(chosen)
+                    }
+                    return adjustment(chosen, delta, context, implicit = false)
                 }
             }
         }
@@ -102,9 +117,29 @@ object ContextResolver {
             return adjustment(dimension, delta, context, implicit = false)
         }
 
+        // 「再开一点」「再关一点」: only a window opens, and only when it is the one thing adjusted.
+        // A neutral 大/小 alongside (「再开大一点」) keeps its existing neutral meaning below.
+        val openClose = when {
+            neutralDirection(said) != null -> null
+            "开" in said -> 1.0
+            "关" in said -> -1.0
+            else -> null
+        }
+        if (openClose != null) {
+            val referents = context.validReferents().map { it.dimension }
+            if (referents == listOf(Dimension.WINDOW)) {
+                return adjustment(Dimension.WINDOW, openClose * step(Dimension.WINDOW), context, implicit = false)
+            }
+            return if (referents.isEmpty()) {
+                Resolution.Clarify(Dimension.entries.toList(), openClose * RELATIVE_STEP_C, REASON_NO_REFERENT)
+            } else {
+                Resolution.Clarify(referents, openClose * RELATIVE_STEP_C, REASON_AMBIGUOUS)
+            }
+        }
+
         // Dimension-neutral: 「再低一点」. Only the history can say what is being adjusted.
         val direction = neutralDirection(said) ?: return Resolution.NotContextual
-        val referents = context.validReferents()
+        val referents = context.validReferents().filter { it.dimension in NEUTRAL_CANDIDATES }
         return when (referents.size) {
             1 -> {
                 val dimension = referents.first().dimension
@@ -192,6 +227,8 @@ object ContextResolver {
         "热一点" in said || "冷一点" in said || "凉一点" in said || "暖一点" in said
 
     private fun lexicalDimension(said: String): Dimension? = when {
+        WINDOW_WORDS.any { it in said } -> Dimension.WINDOW
+        SEAT_WORDS.any { it in said } -> Dimension.SEAT_HEIGHT
         FAN_WORDS.any { it in said } -> Dimension.FAN
         TEMPERATURE_WORDS.any { it in said } -> Dimension.TEMPERATURE
         else -> null
@@ -199,6 +236,8 @@ object ContextResolver {
 
     /** A dimension the driver named outright, used to read an answer to a clarification. */
     private fun namedDimension(said: String): Dimension? = when {
+        "窗" in said -> Dimension.WINDOW
+        "座" in said -> Dimension.SEAT_HEIGHT
         "风" in said -> Dimension.FAN
         "温度" in said || "空调" in said || "度" in said -> Dimension.TEMPERATURE
         else -> null
@@ -206,6 +245,21 @@ object ContextResolver {
 
     private fun directionalDelta(said: String, dimension: Dimension): Double? {
         val magnitude = step(dimension)
+        if (dimension == Dimension.WINDOW) {
+            // 高/低 are not a window direction: a raised window is a closed one.
+            return when {
+                WINDOW_OPEN.any { it in said } -> magnitude
+                WINDOW_CLOSE.any { it in said } -> -magnitude
+                else -> null
+            }
+        }
+        if (dimension == Dimension.SEAT_HEIGHT) {
+            return when {
+                SEAT_DOWN.any { it in said } -> -magnitude
+                SEAT_UP.any { it in said } -> magnitude
+                else -> null
+            }
+        }
         return when {
             COOLER.any { it in said } && dimension == Dimension.TEMPERATURE -> -magnitude
             WARMER.any { it in said } && dimension == Dimension.TEMPERATURE -> magnitude
@@ -221,8 +275,12 @@ object ContextResolver {
         else -> null
     }
 
-    private fun step(dimension: Dimension): Double =
-        if (dimension == Dimension.FAN) FAN_STEP else RELATIVE_STEP_C
+    private fun step(dimension: Dimension): Double = when (dimension) {
+        Dimension.FAN -> FAN_STEP
+        Dimension.TEMPERATURE -> RELATIVE_STEP_C
+        Dimension.WINDOW -> BodyToolActions.WINDOW_STEP
+        Dimension.SEAT_HEIGHT -> BodyToolActions.SEAT_STEP
+    }
 
     /**
      * Adds the two facts only the execution record can supply: whether the climate is off (so the
@@ -241,7 +299,7 @@ object ContextResolver {
         return Resolution.Adjust(
             dimension = dimension,
             delta = delta,
-            powerOnFirst = implicit && climate != null && !climate.powerOn,
+            powerOnFirst = dimension.isClimate && implicit && climate != null && !climate.powerOn,
             atLimit = last?.limitReached == true && sameDirection,
         )
     }

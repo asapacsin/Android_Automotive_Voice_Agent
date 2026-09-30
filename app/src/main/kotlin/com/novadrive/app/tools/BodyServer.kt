@@ -18,13 +18,23 @@ class BodyServer(cabin: VehicleControlPort?) : ToolServer {
 
     override fun call(call: DomainVoiceEvent.ToolCall, env: ToolCallEnv): ToolDispatchResult =
         when (call.name) {
-            "control_window" -> respond(call, windows?.let { runBlocking { it.handle(call.arguments) } })
-            "control_seat" -> respond(call, seat?.let { runBlocking { it.handle(call.arguments) } })
+            "control_window" -> respond(call, env, windows?.let { runBlocking { it.handle(call.arguments) } })
+            "control_seat" -> respond(call, env, seat?.let { runBlocking { it.handle(call.arguments) } })
             else -> env.failed(call, "UNKNOWN_TOOL")
         }
 
-    private fun respond(call: DomainVoiceEvent.ToolCall, outcome: BodyToolOutcome?): ToolDispatchResult {
+    private fun respond(call: DomainVoiceEvent.ToolCall, env: ToolCallEnv, outcome: BodyToolOutcome?): ToolDispatchResult {
         val result = outcome ?: unavailable(call)
+        // Only ok=true results become referents; onBodyResult ignores the rest.
+        env.driverContext()?.let {
+            it.onBodyResult(
+                call.name,
+                call.arguments["action"].orEmpty(),
+                call.arguments["value"]?.toDoubleOrNull(),
+                result.output,
+                it.currentEpoch(),
+            )
+        }
         // A failure is worth hearing too: the driver must not assume the window moved.
         com.novadrive.app.voice.SpeechAuthority.arbiter.onConfirmation()
         return ToolDispatchResult(

@@ -101,7 +101,12 @@ object ToolCallGuards {
      */
     fun ambiguousReferent(call: DomainVoiceEvent.ToolCall, context: DriverContext?): String? {
         val action = call.arguments["action"] ?: return null
-        if (action != ClimateToolActions.ADJUST_TEMPERATURE && action != ClimateToolActions.ADJUST_FAN) return null
+        val relative = when (call.name) {
+            com.novadrive.app.voice.BodyToolActions.SEAT_TOOL -> action == com.novadrive.app.voice.BodyToolActions.SEAT_ADJUST_HEIGHT
+            com.novadrive.app.voice.BodyToolActions.WINDOW_TOOL -> action == com.novadrive.app.voice.BodyToolActions.WINDOW_ADJUST
+            else -> action == ClimateToolActions.ADJUST_TEMPERATURE || action == ClimateToolActions.ADJUST_FAN
+        }
+        if (!relative) return null
         if (context == null) return null
         val epoch = context.currentEpoch()
         if (epoch <= 0) return null
