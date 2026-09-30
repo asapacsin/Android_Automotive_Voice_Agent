@@ -18,7 +18,8 @@ class GeminiSettingsTest {
         assertFalse(s.consentAccepted)
         assertEquals("Kore", s.voice)
         assertEquals(GeminiThinkingLevel.LOW, s.thinkingLevel)
-        assertEquals(VoiceCatalog.GEMINI_LIVE, s.model)
+        assertEquals(VoiceCatalog.GEMINI_LIVE_DEFAULT, s.model)
+        assertEquals("gemini-3.8-live", s.model)
         assertNull(s.silenceDurationMs)
         assertNull(GeminiSettingsValidator.validateSettings(s))
         assertTrue(GeminiAppSettings.CONSENT_NOTICE.contains("Google"))
@@ -70,11 +71,18 @@ class GeminiSettingsTest {
 
     @Test
     fun bothDeclaredGeminiModelsAreValidAndSelectGemini() {
-        listOf(VoiceCatalog.GEMINI_LIVE_FAST, VoiceCatalog.GEMINI_LIVE).forEach { model ->
+        listOf(VoiceCatalog.GEMINI_LIVE_FAST, VoiceCatalog.GEMINI_LIVE_EXTENDED).forEach { model ->
             val s = valid.copy(model = model)
             assertNull(GeminiSettingsValidator.validateSettings(s))
             assertEquals(model, s.copy(voice = "Puck").model)
             assertEquals(VoiceProviderId.GEMINI_LIVE, VoiceProviderChoice.resolve(s, keyPresent = true))
         }
+    }
+
+    @Test
+    fun unsetModelLoadsAsDefaultAndSavedExtendedIsPreserved() {
+        assertEquals("gemini-3.8-live", storedGeminiModelOrDefault(null))
+        assertEquals("gemini-3.8-live", storedGeminiModelOrDefault("  "))
+        assertEquals(VoiceCatalog.GEMINI_LIVE_EXTENDED, storedGeminiModelOrDefault(VoiceCatalog.GEMINI_LIVE_EXTENDED))
     }
 }

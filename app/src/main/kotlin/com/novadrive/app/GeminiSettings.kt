@@ -21,7 +21,7 @@ enum class GeminiThinkingLevel(val wireName: String) {
 data class GeminiAppSettings(
     val enabled: Boolean = false,
     val consentAccepted: Boolean = false,
-    val model: String = VoiceCatalog.GEMINI_LIVE,
+    val model: String = VoiceCatalog.GEMINI_LIVE_DEFAULT,
     val endpoint: String = DEFAULT_ENDPOINT,
     val voice: String = DEFAULT_VOICE,
     val thinkingLevel: GeminiThinkingLevel = GeminiThinkingLevel.LOW,
@@ -84,6 +84,13 @@ object VoiceProviderChoice {
         ) VoiceProviderId.GEMINI_LIVE else VoiceProviderId.BAIDU_FLEX
 }
 
+/**
+ * An unset model loads as the default; a saved model (e.g. extended thinking) is kept as is —
+ * ADR-011 changes the default without migrating an owner's opt-in choice (ADR-010).
+ */
+internal fun storedGeminiModelOrDefault(stored: String?): String =
+    stored.orEmpty().ifBlank { VoiceCatalog.GEMINI_LIVE_DEFAULT }
+
 class GeminiSettingsRepository(
     context: Context,
     private val credentials: CredentialStore = AndroidKeystoreCredentialStore(context.applicationContext),
@@ -94,7 +101,7 @@ class GeminiSettingsRepository(
         GeminiAppSettings(
             enabled = prefs.getBoolean(KEY_ENABLED, false),
             consentAccepted = prefs.getBoolean(KEY_CONSENT, false),
-            model = prefs.getString(KEY_MODEL, null).orEmpty().ifBlank { VoiceCatalog.GEMINI_LIVE },
+            model = storedGeminiModelOrDefault(prefs.getString(KEY_MODEL, null)),
             endpoint = prefs.getString(KEY_ENDPOINT, null).orEmpty().ifBlank { GeminiAppSettings.DEFAULT_ENDPOINT },
             voice = prefs.getString(KEY_VOICE, null).orEmpty().ifBlank { GeminiAppSettings.DEFAULT_VOICE },
             thinkingLevel = GeminiThinkingLevel.fromWire(prefs.getString(KEY_THINKING, null)),

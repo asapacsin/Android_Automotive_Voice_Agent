@@ -35,7 +35,8 @@ class GeminiLiveProtocolTest {
             ),
         ).getJSONObject("setup").getJSONObject("generationConfig")
         assertFalse(gen(VoiceCatalog.GEMINI_LIVE_FAST).has("thinkingConfig"))
-        assertEquals("LOW", gen(VoiceCatalog.GEMINI_LIVE).getJSONObject("thinkingConfig").getString("thinkingLevel"))
+        assertFalse(gen(VoiceCatalog.defaultModel(com.novadrive.ingress.realtime.VoiceProviderId.GEMINI_LIVE)).has("thinkingConfig"))
+        assertEquals("LOW", gen(VoiceCatalog.GEMINI_LIVE_EXTENDED).getJSONObject("thinkingConfig").getString("thinkingLevel"))
     }
 
     @Test

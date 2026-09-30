@@ -26,7 +26,7 @@ class RealtimeProviderFactoryTest {
         try {
             assertTrue(built.provider is GeminiLiveProvider)
             assertEquals(VoiceProviderId.GEMINI_LIVE, built.session.provider)
-            assertEquals(VoiceCatalog.GEMINI_LIVE, built.session.model)
+            assertEquals(VoiceCatalog.GEMINI_LIVE_DEFAULT, built.session.model)
             assertEquals(24_000, built.outputSampleRateHz)
             assertEquals(24_000, built.session.audio.outputSampleRateHz)
             assertEquals(16_000, built.session.audio.inputSampleRateHz)
