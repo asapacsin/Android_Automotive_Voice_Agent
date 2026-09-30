@@ -243,3 +243,13 @@ squeezed into the wrong owner, and interactions between the holds become unreada
 **Next step.** Move the tool-call bookkeeping (duplicate-call suppression, `sendFunctionResult`'s
 execution-evidence and deferred `response.create` handling) into its own owner next to `DriverTurn`,
 then put the budget back to 900 in the same commit.
+
+## D-FLAKE-BAIDU — BaiduFlexClientTest timing tests fail under full-suite load (recorded 2026-09-30)
+
+`aReplyCancelledForALocalPickIsNotCorrected` and `appReplyRequestedWhileTheDriverSpeaksWaitsAndAnOverlapIsNotFatal`
+failed in full `./gradlew test` runs while 3–4 builds shared a 4-core container (planner integration run
+on d209e71's parent; W5c1 worker first full run), and passed alone and on rerun. Both use fixed
+`Thread.sleep` waits against a MockWebServer socket. Not caused by the Gemini/guidance work (no shared
+code), but not proven harmless either. Fix: replace sleeps with awaited conditions (poll `received`
+with a deadline). Until then, a failure of these two in a loaded run is rerun once in isolation; a
+failure alone is real.
