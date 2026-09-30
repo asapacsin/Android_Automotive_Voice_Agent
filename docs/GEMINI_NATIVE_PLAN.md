@@ -1,6 +1,8 @@
 # Gemini-native voice path — implementation plan
 
-Status: **Plan, 2026-09-30.** Wave 1 needs no owner decision; waves 2–3 wait for N-1/N-2.
+Status: **Built 2026-09-30** on `claude/9-30`. N-1/N-2 approved by the owner. P1–P6 and D-11 merged
+(reviewed; 2864 tests, 0 failures; live smoke in [the report](reports/2026-09-30-gemini-native-smoke.md)).
+Remaining: phone tests `GEMINI-DEVICE-LATENCY-001`, `GATE-D10-DEVICE-001`; owner decision D-9.
 Architecture: [GEMINI_NATIVE_ARCHITECTURE.md](GEMINI_NATIVE_ARCHITECTURE.md), **Revision 2 only**
 (cited `R2.n`). The original §5.1 clause release and §5.3 correction-by-trait are *not* built.
 Decision: [ADR-011](../DECISIONS/ADR-011-gemini-native-voice-path.md) (Proposed) · Requirement:
