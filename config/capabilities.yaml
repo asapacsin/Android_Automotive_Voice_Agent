@@ -448,6 +448,7 @@ change_impact:
       - ConversationResetPolicy
       - GeminiLiveClient
       - GeminiPromptTurn
+      - GuidanceClaims
       - GeminiLiveProtocol
       - GeminiLiveProvider
       - RealtimeProviderFactory
