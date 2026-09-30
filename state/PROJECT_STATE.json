@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-30T01:23:18",
+  "generated_at": "2026-09-30T01:42:01",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "ac40304",
+    "commit": "3f41ef9",
     "branch": "claude/9-29",
-    "subject": "Merge P2: D-10 claim-gate orderings (mid-response calls, phantom-then-content)",
+    "subject": "Merge D-11: ignore tool results for calls the current turn never dispatched",
     "working_tree_clean": false,
-    "uncommitted_files": 2
+    "uncommitted_files": 1
   },
   "tests": {
     "available": true,
@@ -123,7 +123,7 @@
     {
       "id": "D-11",
       "title": "A superseded turn's tool result is applied to the current turn",
-      "priority": "OPEN"
+      "priority": "RESOLVED"
     },
     {
       "id": "D-9",
@@ -147,7 +147,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "A5: | A5 | Picker selection uses the registry; `tryLocalNavigationPick` is gone | production wiring | `FeaturePresenceRegressionTest` + existing picker tests green | not built — **deferred on purpose** to",
-    "actionable_count": 72,
+    "actionable_count": 71,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 17,
@@ -599,13 +599,6 @@
         "class": "active milestone row",
         "source": "CURRENT_MILESTONE.md",
         "item": "Weather selected from speech ≥ 9/10 with no SPEC-008 regress",
-        "blocked_by": null
-      },
-      {
-        "priority": 8,
-        "class": "recorded technical debt",
-        "source": "docs/TECH_DEBT.md",
-        "item": "D-11",
         "blocked_by": null
       },
       {

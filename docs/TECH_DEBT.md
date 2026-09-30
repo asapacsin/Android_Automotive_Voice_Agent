@@ -174,7 +174,7 @@ release a held reply — see D-11.
 
 ---
 
-## D-11 — A superseded turn's tool result is applied to the current turn — **OPEN** (found by review 2026-09-30)
+## D-11 — A superseded turn's tool result is applied to the current turn — **RESOLVED at JVM level 2026-09-30** (`gn/D11` merge)
 
 **Problem.** `DriverTurnPipeline` routes a late result to the current `DriverTurn`. A result for a
 call that turn never registered can count as its proof and release a held reply
