@@ -26,6 +26,7 @@ If you are about to argue for a different provider, a different navigation strat
 | [ADR-010](ADR-010-gemini-live-second-provider.md) | Gemini Live as a second, opt-in realtime provider | Accepted |
 | [ADR-011](ADR-011-gemini-native-voice-path.md) | Gemini-native voice path: model profiles, clause release, fast model by default | Accepted (Revision 2) |
 | [ADR-012](ADR-012-fuzzy-driving-requests.md) | Fuzzy driving requests: simulated body actuators, fixed comfort scenarios, speaking style | **Proposed** |
+| [ADR-013](ADR-013-gemini-default-provider.md) | Gemini Live is the default provider; no cross-provider fallback; Baidu retired after device gates | **Accepted** |
 
 ## Relationship to `docs/DECISIONS.md`
 

@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-30T04:09:29",
+  "generated_at": "2026-09-30T04:56:21",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "2c720fa",
+    "commit": "78d817d",
     "branch": "claude/fuzzy-logic-9-30",
-    "subject": "BACKLOG: record B-029 fuzzy driving requests (owner doc 2026-09-30) with review notes",
+    "subject": "B-029: O-2 decided — speaking style is sticky until the driver asks to change it",
     "working_tree_clean": false,
-    "uncommitted_files": 4
+    "uncommitted_files": 2
   },
   "tests": {
     "available": true,
