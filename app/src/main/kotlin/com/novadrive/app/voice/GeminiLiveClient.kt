@@ -83,7 +83,8 @@ class GeminiLiveClient(
     // Turn state; mutated on the socket's reader thread and under `this` lock.
     private var turnOpen = false
     private var turnAudioSeen = false
-    private var generationDone = false
+    private var generationDone = false  // = gate settled; turnComplete is a playback later (N-2)
+    private var settledSuperseded = false
     private val turnCallIds = mutableListOf<String>()
     private val turnText = StringBuilder()
     private val inputText = StringBuilder()
@@ -262,6 +263,7 @@ class GeminiLiveClient(
         turnOpen = false
         turnAudioSeen = false
         generationDone = false
+        settledSuperseded = false
         turnCallIds.clear()
         turnText.setLength(0)
     }
@@ -484,6 +486,7 @@ class GeminiLiveClient(
             Telemetry.record(EventType.TTS_END)
             if (!pipeline.filter(DomainVoiceEvent.AudioDone)) emit(DomainVoiceEvent.AudioDone)
         }
+        if (!pipeline.takeSuperseded().also { settledSuperseded = it }) pipeline.settleResponse(ResponseOutcome(spoke = turnAudioSeen, toolCallIds = turnCallIds.toList(), unidentifiedToolCalls = 0))
     }
 
     private fun closeTurn(status: String) {
@@ -492,8 +495,7 @@ class GeminiLiveClient(
         if (!turnOpen) return
         finishGeneration()
         val outcome = ResponseOutcome(spoke = turnAudioSeen, toolCallIds = turnCallIds.toList(), unidentifiedToolCalls = 0)
-        val superseded = pipeline.takeSuperseded()
-        if (!superseded) pipeline.settleResponse(outcome)
+        val superseded = pipeline.takeSuperseded() or settledSuperseded
         pipeline.afterResponse(outcome, superseded)
         DebugVoiceLog.log("gemini_turn_done status=$status calls=${outcome.toolCallIds.size} spoke=${outcome.spoke}")
         Telemetry.record(EventType.RESPONSE_COMPLETED, detail = status)
