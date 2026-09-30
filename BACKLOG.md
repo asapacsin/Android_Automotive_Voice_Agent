@@ -586,7 +586,7 @@ What the owner asked for:
 | Driver says | Wanted | Today |
 | --- | --- | --- |
 | 说话能不能嗲一点 | 小诺 switches to a sweeter, more coquettish speaking style | Voice is fixed per session (B-023, 4196); no spoken style switch |
-| 座位有点高 / 有点低 | Seat height goes down / up | `windows_seats_doors_lights_wipers` is `unsupported` — no tool |
+| 座位有点高 / 有点低 | Seat height goes down / up | `windows_seats_doors_lights_wipers` was `unsupported` (2026-09-30: windows and seat height became `body.*`, the rest is `unsupported.sunroof_doors_lights_wipers`) — no tool |
 | 有蚊子 | Open the windows to let it out | Same — no window tool |
 | (every action) | 小诺 says what it actually did, e.g. 「已把车窗打开一半」 | Mostly true via the claim gate (I-11), not a stated rule for multi-action turns |
 | "and more like these" | Other fuzzy driving phrases | B-008/SPEC-006 covers 有点热/再凉一点 against existing tools |
