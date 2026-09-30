@@ -194,6 +194,7 @@ class DriverTurn(val epoch: Long) {
         awaitedAtResponseStart = awaitingResults.values.toSet()
         preCallHold = null
         midCallFailed = false
+        holdUntilEnd = false
         midCallFailure = null
         replacedHold = null
         replySoFar = ""
@@ -327,6 +328,9 @@ class DriverTurn(val epoch: Long) {
 
     /** A mid-response call of this response returned ok=false; [midCallFailure] is the first reason. */
     private var midCallFailed = false
+
+    /** A mid-response result left something the response end may still drop: nothing is released before it. */
+    private var holdUntilEnd = false
     private var midCallFailure: String? = null
 
     /** The assistant's wording so far in this response, as last passed to [onAssistantText]. */
@@ -393,6 +397,14 @@ class DriverTurn(val epoch: Long) {
             if (replyBeforeResult != null) return Verdict.Wait
         }
         holdReason = decideHold(lastDecideContext)
+        // Only a response whose every mid-response result succeeded, and whose words before the
+        // call pass, may be released now. Otherwise the response-end check may still drop it, and
+        // a drop after release would come after the driver heard the claim (review RC1).
+        if (midCallFailed || judgeWordsBeforeCall(replySoFar) != null) {
+            holdUntilEnd = true
+            if (holdReason == HoldReason.NONE) holdReason = HoldReason.AWAITING_TOOL_RESULT
+            return Verdict.Wait
+        }
         return when {
             holdReason != HoldReason.NONE -> Verdict.Wait
             proven -> Verdict.Release("execution_proved")
@@ -410,7 +422,7 @@ class DriverTurn(val epoch: Long) {
             return Verdict.Wait
         }
         if (callId != null) awaitingResults.remove(callId)
-        if (holdReason == HoldReason.AWAITING_TOOL_RESULT && replacedHold != null) {
+        if (holdReason == HoldReason.AWAITING_TOOL_RESULT && (replacedHold != null || holdUntilEnd)) {
             if (!ok) {
                 lastFailure = failure
                 executionFailed = true
@@ -496,9 +508,15 @@ class DriverTurn(val epoch: Long) {
         val postCall = if (preCallHold != null) wordsSinceCall(assistantText) else ""
         val postClaims = postCall.isNotEmpty() &&
             (ActionClaimGuard.claimsDone(postCall) || ActionClaimGuard.carActionClaim(postCall) != null)
-        val verdict = judgeWordsBeforeCall(assistantText) ?: replyBeforeResult ?: when {
-            midCallFailed && postClaims ->
+        val preCallVerdict = judgeWordsBeforeCall(assistantText)
+        val verdict = (
+            if (midCallFailed && (postClaims || preCallVerdict != null)) {
+                // A failed call is reported whichever side of the call the claim was said on.
                 Verdict.Drop("unproven_action_claim", ActionClaimGuard.reportFailure(midCallFailure ?: "操作失败"))
+            } else {
+                null
+            }
+            ) ?: preCallVerdict ?: replyBeforeResult ?: when {
             midCallPending && postCall.isNotEmpty() && speaksBeforeResult(postCall) ->
                 Verdict.Drop("reply_before_tool_result")
             else -> null
@@ -590,6 +608,7 @@ class DriverTurn(val epoch: Long) {
         wordsBeforeCall = 0
         preCallHold = null
         midCallFailed = false
+        holdUntilEnd = false
         midCallFailure = null
         replySoFar = ""
         if (phase == Phase.RESPONDING) phase = Phase.SETTLED
