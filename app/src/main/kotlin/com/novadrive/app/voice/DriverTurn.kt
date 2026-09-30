@@ -610,6 +610,15 @@ class DriverTurn(val epoch: Long) {
                         Verdict.Drop("unproven_action_claim", ActionClaimGuard.reportFailure(lastFailure ?: "操作失败"))
                     ActionClaimGuard.claimsDone(reply) ->
                         Verdict.Drop("unproven_action_claim", ActionClaimGuard.nudgeFor(requestText))
+                    // P42 (2026-09-30): 「有点热。」 was heard and resolved to a climate action, the
+                    // model said 「没听清，再说一遍。」, it was released, and ActionClaimGuard's
+                    // follow-up then ran control_climate: the driver was told they were not heard
+                    // and the car acted anyway. The action is understood, so the repair is dropped
+                    // unheard and the one correction asks for the action itself. Once per utterance.
+                    repairForHeardAction(reply) -> {
+                        repairRetried = true
+                        Verdict.Drop("repair_for_heard_action", ActionClaimGuard.nudgeFor(requestText))
+                    }
                     // A question, a refusal, a request to choose: its truth needs no execution.
                     else -> Verdict.Release("no_claim_made")
                 }
@@ -674,6 +683,11 @@ class DriverTurn(val epoch: Long) {
         repairRetried = true
         return Verdict.Drop("repair_for_heard_speech", ActionClaimGuard.answerHeardTranscript(requestText))
     }
+
+    /** An ACTION turn with a heard transcript answered 「没听清」: no length floor, the kind was resolved. */
+    private fun repairForHeardAction(reply: String): Boolean =
+        !repairRetried && userSpoke && kind == Kind.ACTION && requestText.isNotBlank() &&
+            PhantomTurnGate.asksToRepeat(reply)
 
     /** A repair of this utterance was already replaced by an answer to its transcript. */
     private var repairRetried = false

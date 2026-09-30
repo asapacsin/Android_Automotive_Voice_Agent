@@ -1588,3 +1588,41 @@ UI state.
 
 `VoiceSessionController`: entering SLEEP or DEEP_IDLE reports the driver as not speaking. Test:
 `SpeechArbiterUtteranceProtectTest.anUtteranceEndedBySleepDoesNotProtectTheNextPrompt`.
+
+---
+
+## P42 — 「没听清」 was played for a heard action, and then the car acted anyway
+
+**Status:** FIXED 2026-09-30 at JVM level — device/emulator check pending
+**Reported:** owner, emulator, Baidu Flex, 2026-09-30 03:53 (epoch 11):
+
+```
+03:53:17.682 TURN_HOLD epoch=11 reason=UNCLASSIFIED_CLAIM kind=UNKNOWN
+03:53:18.209 transcript (driver, 3 chars, implicit comfort request)
+03:53:18.519 TURN_RELEASE epoch=11 reason=no_claim_made events=11
+03:53:18.578 assistant: 没听清，再说一遍。          <- played
+03:53:18.730 TURN_HOLD epoch=11 reason=AWAITING_EXECUTION_PROOF kind=ACTION
+03:53:19.283 tool=control_climate result ok
+03:53:20.608 assistant: 已经调低了两度…
+```
+
+### Root cause
+
+The transcript arrived before the response ended and `DriverTurn.classify` made the turn ACTION
+(`ContextResolver.isImplicitComfortRequest`), so the hold became AWAITING_EXECUTION_PROOF. That
+branch released any reply that claimed nothing - including a repair - as `no_claim_made`, and
+`repairForHeardDriver` only covered CONVERSATION turns of at least 5 characters. After the release,
+`ActionClaimGuard.onResponseDone` saw a control request answered without a tool and sent its
+"perform" follow-up, which ran `control_climate`: the driver was told they were not heard and the
+car acted.
+
+### Fix
+
+`DriverTurn` AWAITING_EXECUTION_PROOF: a 「没听清」 to an ACTION turn with a heard transcript is dropped
+unheard (`repair_for_heard_action`) with `ActionClaimGuard.nudgeFor(request)` as the single
+correction (the pipeline's `alreadyCorrected` suppresses the guard's duplicate). Once per utterance
+(shares `repairRetried`); no length floor, since the kind is already resolved. An unintelligible
+transcript (classified CONVERSATION, under 5 chars) still hears the repair. Tests:
+`DriverTurnTest.aRepairToAHeardShortActionIsDroppedAndTheFollowUpReleasedAfterTheResult`,
+`anUnintelligibleShortUtteranceStillHearsTheRepair`; `aRepairToAFragmentOrAnActionIsLeftAlone`
+updated for the new action-turn behaviour.

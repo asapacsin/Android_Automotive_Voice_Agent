@@ -473,6 +473,44 @@ class DriverTurnTest {
         assertEquals(DriverTurn.Verdict.Release("no_claim_made"), t.onResponseDone("没听清，再说一遍。", false))
     }
 
+    /**
+     * P42, 2026-09-30 03:53: 「有点热。」 heard, model said 「没听清，再说一遍。」 (released), then the
+     * follow-up ran control_climate. The repair must be dropped unheard and the call's reply
+     * released after its result.
+     */
+    @Test
+    fun aRepairToAHeardShortActionIsDroppedAndTheFollowUpReleasedAfterTheResult() {
+        val t = DriverTurn(epoch = 11)
+        t.onResponseStarted(goodAudio, false)
+        t.hold("audio")
+        t.onUserTranscript("有点热。") { DriverTurn.classify(it) }
+        assertEquals(DriverTurn.Kind.ACTION, t.kind)
+        val first = t.onResponseDone("没听清，再说一遍。", false)
+        assertTrue(first is DriverTurn.Verdict.Drop, first.toString())
+        first as DriverTurn.Verdict.Drop
+        assertEquals("repair_for_heard_action", first.reason)
+        assertTrue(first.correction!!.contains("有点热"))
+        // The follow-up response calls the tool; its words are released only after the result.
+        t.onResponseStarted(null, false)
+        t.hold("audio")
+        t.onToolCall("c1", "control_climate")
+        assertEquals(DriverTurn.Verdict.Release("tool_called"), t.onResponseDone("", true))
+        t.onExecutionResult(true, null, callId = "c1")
+        t.onResponseStarted(null, false)
+        t.hold("audio")
+        val reply = t.onResponseDone("已经调低了两度，现在是22度。", false)
+        assertTrue(reply is DriverTurn.Verdict.Release, reply.toString())
+    }
+
+    @Test
+    fun anUnintelligibleShortUtteranceStillHearsTheRepair() {
+        val t = DriverTurn(epoch = 12)
+        t.onResponseStarted(goodAudio, false)
+        t.hold("audio")
+        t.onUserTranscript("嗯啊") { DriverTurn.classify(it) }
+        assertEquals(DriverTurn.Verdict.Release("no_claim_made"), t.onResponseDone("没听清，再说一遍。", false))
+    }
+
     @Test
     fun theAppsOwnLongerRepairWordingIsAlsoReplaced() {
         // 08:32:51: after the app's 「刚才没有听清楚…」 correction the model repeated it verbatim.
@@ -484,11 +522,12 @@ class DriverTurnTest {
     fun aRepairToAFragmentOrAnActionIsLeftAlone() {
         // 「这个。」 is exactly what a repair is for.
         assertEquals(DriverTurn.Verdict.Release("no_claim_made"), chatTurn("这个。").onResponseDone("没听清，再说一遍。", false))
-        // An action turn is judged on execution proof, not here.
+        // An action turn is judged on execution proof, not here - and since P42 a repair to an
+        // understood action is replaced by the action itself (repair_for_heard_action).
         val action = turn(DriverTurn.Kind.ACTION)
         action.onResponseStarted(goodAudio, false)
         action.hold("audio")
-        assertEquals(DriverTurn.Verdict.Release("no_claim_made"), action.onResponseDone("没听清，再说一遍。", false))
+        assertEquals("repair_for_heard_action", (action.onResponseDone("没听清，再说一遍。", false) as DriverTurn.Verdict.Drop).reason)
         // A real answer is untouched.
         assertEquals(
             DriverTurn.Verdict.Release("no_claim_made"),
