@@ -349,6 +349,20 @@ class FalseCapabilityClaimTest {
     }
 
     @Test
+    fun drivingTalkWithoutABodyNounIsNotAClaim() {
+        listOf("开到目的地大概还要二十分钟", "这条路开到头就是了").forEach { reply ->
+            assertEquals(null, ActionClaimGuard.carActionClaim(reply), reply)
+            val turn = DriverTurn(epoch = 1)
+            turn.onUserTranscript("我们聊聊天吧") { DriverTurn.classify(it) }
+            assertEquals(DriverTurn.Kind.CONVERSATION, turn.kind)
+            turn.onResponseStarted(goodAudio, false)
+            turn.onAssistantText(reply)
+            val verdict = turn.onResponseDone(reply, hadToolCallInResponse = false)
+            assertTrue(verdict is DriverTurn.Verdict.Release, "$reply: $verdict")
+        }
+    }
+
+    @Test
     fun openingTheSunroofDoesNotResolveAsAWindow() {
         assertTrue(ActionClaimGuard.isUnsupportedRequest("开天窗"))
         assertEquals(DriverTurn.Kind.NO_TOOL_ACTION, DriverTurn.classify("开天窗"))

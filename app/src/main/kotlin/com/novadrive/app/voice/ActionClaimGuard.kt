@@ -214,9 +214,23 @@ class ActionClaimGuard {
             "调", "打开", "开启", "开了", "关闭", "关掉", "关了", "播放", "暂停", "停止", "停了",
             "导航", "出发", "设置", "设为", "退出", "结束", "取消", "升", "降", "提高",
             "选", "开始",
-            // SPEC-015: the completion verbs ActionAnnouncement itself speaks for windows and seat.
-            "关好", "关上", "开到", "关到", "全开", "最低了", "最高了",
         )
+
+        /**
+         * SPEC-015 body pair rule: the completion wording ActionAnnouncement speaks for windows and
+         * seat counts only next to a body noun. 「开到」 alone is ordinary driving talk
+         * (「开到目的地还要二十分钟」), so these words are never global action words.
+         */
+        private val BODY_NOUNS = listOf("车窗", "窗户", "座椅", "座位")
+        private val BODY_COMPLETION_WORDS = listOf(
+            "关好", "关上", "开到", "关到", "全开", "最低了", "最高了", "开了", "关了", "升高", "降低", "调到",
+        )
+
+        private fun bodyClaimWords(reply: String): Pair<String, String>? {
+            val noun = BODY_NOUNS.firstOrNull { it in reply } ?: return null
+            val verb = BODY_COMPLETION_WORDS.firstOrNull { it in reply } ?: return null
+            return noun to verb
+        }
         private val DECLINE_WORDS = listOf(
             "不支持", "无法", "不能", "没法", "没有", "暂不", "暂时不", "抱歉", "对不起", "没听清", "再说一遍",
             "请问", "吗", "？", "?", "哪", "什么",
@@ -379,7 +393,9 @@ class ActionClaimGuard {
          * (「我可以帮你做很多事情」) names nothing and does not match.
          */
         fun describesCarAction(reply: String): Boolean =
-            !refuses(reply) && DEVICE_NOUNS.any { it in reply } && ACTION_WORDS.any { it in reply }
+            !refuses(reply) && (
+                (DEVICE_NOUNS.any { it in reply } && ACTION_WORDS.any { it in reply }) || bodyClaimWords(reply) != null
+            )
 
         private fun isNavigationResult(output: String): Boolean =
             output.contains("\"tool\":\"navigate_to\"") ||
@@ -404,7 +420,9 @@ class ActionClaimGuard {
                 "不要调用任何工具，只用一句话更正：导航还没开始，请说「开始导航」走推荐路线，或说第几条路线。"
 
         fun claimsDone(reply: String): Boolean =
-            !declines(reply) && DONE_WORDS.any { it in reply } && ACTION_WORDS.any { it in reply }
+            !declines(reply) && (
+                (DONE_WORDS.any { it in reply } && ACTION_WORDS.any { it in reply }) || bodyClaimWords(reply) != null
+            )
 
         /**
          * Why a reply with no tool behind it counts as claiming something happened *in this car*,
@@ -437,6 +455,9 @@ class ActionClaimGuard {
          */
         fun carActionClaimMatch(reply: String): ClaimMatch? {
             if (promptsDriver(reply) && !reportsCompletion(reply)) return null
+            if (!refuses(reply)) {
+                bodyClaimWords(reply)?.let { (noun, verb) -> return ClaimMatch("car_action", noun, verb) }
+            }
             if (describesCarAction(reply)) {
                 return ClaimMatch(
                     "car_action",
