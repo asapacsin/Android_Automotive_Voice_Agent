@@ -6,12 +6,11 @@ import android.provider.Settings
 import com.novadrive.app.nav.EmbeddedNavigation
 import com.novadrive.app.nav.EmbeddedNavigationController
 import com.novadrive.app.nav.NavigationChoice
-import com.novadrive.app.nav.NavigationLocalPickGuard
 import com.novadrive.app.nav.NavigationPickerIntercept
-import com.novadrive.app.nav.NavigationVoiceOutput
 import com.novadrive.app.nav.NavigationBackends
 import com.novadrive.app.nav.NavigationHostGateway
 import com.novadrive.app.tools.AppsServer
+import com.novadrive.app.tools.BodyServer
 import com.novadrive.app.tools.ClimateServer
 import com.novadrive.app.tools.LiveInfoServer
 import com.novadrive.app.tools.MediaServer
@@ -23,7 +22,6 @@ import com.novadrive.app.tools.ToolRegistry
 import com.novadrive.app.tools.ToolServer
 import com.novadrive.app.tools.VisionServer
 import com.novadrive.app.vehicle.ClimateToolHandler
-import com.novadrive.app.nav.PlaceSlot
 import com.novadrive.app.voice.DriverContext
 import com.novadrive.app.vision.CameraQuestionHandler
 import com.novadrive.evaluation.EventType
@@ -91,6 +89,8 @@ class AndroidToolDispatcher(
     private val phone: PhoneCallTool = PhoneCallTool.none(),
     /** `query_live_info` (SPEC-011): weather, route traffic, along-route POIs, place details. */
     private val liveInfo: LiveInfoTool = LiveInfoTool.none(),
+    /** Windows and seat (SPEC-015 body domain); null answers every body call VEHICLE_UNAVAILABLE. */
+    private val cabin: com.novadrive.vehicle.VehicleControlPort? = null,
     /**
      * Last so the common test call site can pass it as a trailing lambda. Everything above has a
      * default; this one is what nearly every dispatcher test overrides.
@@ -133,6 +133,7 @@ class AndroidToolDispatcher(
             AppsServer(executor),
             MediaServer(executor),
             ClimateServer(climate),
+            BodyServer(cabin),
             VisionServer(camera),
             PhoneServer(phone),
             LiveInfoServer(liveInfo),
@@ -157,11 +158,20 @@ class AndroidToolDispatcher(
         /** A spoken name matched no row but sounds like one: ask, do not select. */
         const val CONFIRM_CANDIDATE = "CONFIRM_CANDIDATE"
 
-        /** Servers by domain id; fails fast when a domain of [registry] has no server. */
+        /**
+         * Servers by domain id. Fails fast on a duplicate domain id, a server whose domain is not
+         * exactly one of the registry's domains, or a registry domain with no server.
+         */
         internal fun serverIndex(registry: ToolRegistry, servers: List<ToolServer>): Map<String, ToolServer> {
-            val index = servers.associateBy { it.domain.id }
-            registry.tools().forEach { spec ->
-                val domain = requireNotNull(registry.domainOf(spec.name))
+            val index = LinkedHashMap<String, ToolServer>()
+            servers.forEach { server ->
+                require(index.put(server.domain.id, server) == null) { "two ToolServers for domain ${server.domain.id}" }
+            }
+            val registered = registry.tools().mapNotNull { registry.domainOf(it.name) }.distinct()
+            servers.forEach { server ->
+                require(registered.any { it === server.domain }) { "domain ${server.domain.id} is not in the registry" }
+            }
+            registered.forEach { domain ->
                 require(domain.id in index) { "domain ${domain.id} has no ToolServer" }
             }
             return index

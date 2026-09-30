@@ -229,6 +229,24 @@ climate:
       When two dimensions were recently adjusted, or none was, 「再低一点」 must be asked about in one
       sentence and no tool called. Guessing correctly is still wrong.
 
+body:
+  window:
+    tool: control_window
+    verified: unit
+    required_scope: COMPONENT
+    protected_by: [BODY-UNIT-001]
+    backend: SimulatedVehicleControl
+    evidence: "WindowToolHandlerTest, BodyDomainTest, ActionAnnouncementTest (SPEC-015 B1/B4/B5)."
+    notes: "Simulated windows. Real vehicle = one new VehicleControlPort in VehicleControlProvider."
+  seat_height:
+    tool: control_seat
+    verified: unit
+    required_scope: COMPONENT
+    protected_by: [BODY-UNIT-001]
+    backend: SimulatedVehicleControl
+    evidence: "SeatToolHandlerTest, BodyDomainTest, ActionAnnouncementTest (SPEC-015 B1/B4/B5)."
+    notes: "Simulated seat. Real vehicle = one new VehicleControlPort in VehicleControlProvider."
+
 vision:
   describe_camera_view:
     tool: describe_camera_view
@@ -374,7 +392,7 @@ unsupported:
     recognised_by: UtteranceIntentResolver
     protected_by: [TRUTH-BAIT-001]
     required_behaviour: "One honest sentence. Never 正在调整音量."
-  windows_seats_doors_lights_wipers:
+  sunroof_doors_lights_wipers:
     tool: null
     verified: unsupported
     recognised_by: UtteranceIntentResolver

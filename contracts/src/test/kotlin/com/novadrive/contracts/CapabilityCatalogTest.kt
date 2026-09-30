@@ -40,6 +40,18 @@ class CapabilityCatalogTest {
     }
 
     @Test
+    fun windowsAndSeatAreSupportedAndTheSunroofIsNot() {
+        assertTrue(ProductCapabilities.isSupported(CapabilityIds.BODY_WINDOW))
+        assertTrue(ProductCapabilities.isSupported(CapabilityIds.BODY_SEAT_HEIGHT))
+        assertEquals(CapabilityStatus.UNSUPPORTED, ProductCapabilities.status(CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS))
+        assertTrue(ProductCapabilities.spokenHelpSummary().contains("车窗"))
+        val noBody = ProductCapabilities.overlay(
+            mapOf(CapabilityIds.BODY_WINDOW to false, CapabilityIds.BODY_SEAT_HEIGHT to false),
+        )
+        assertFalse(ProductCapabilities.spokenHelpSummary(noBody).contains("车窗"))
+    }
+
+    @Test
     fun fakePhonePortDoesNotNeedAndroid() {
         val zhang = ResolvedContact("1", "张三", "13800000000")
         val port = FakePhonePort(contacts = listOf(zhang))

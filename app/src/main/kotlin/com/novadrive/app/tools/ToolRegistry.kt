@@ -11,6 +11,9 @@ class ToolRegistry(domains: List<ToolDomain>) {
     private val domains: List<ToolDomain> = domains.toList()
     private val owners: Map<String, ToolDomain>
 
+    /** Tools whose identical second call in one driver turn is dropped (ToolCallGuards); computed once. */
+    val repeatSensitiveNames: Set<String>
+
     init {
         val ids = this.domains.map { it.id }
         require(ids.size == ids.toSet().size) { "duplicate domain id" }
@@ -21,6 +24,7 @@ class ToolRegistry(domains: List<ToolDomain>) {
             }
         }
         owners = map
+        repeatSensitiveNames = this.domains.flatMap { it.specs() }.filter { it.repeatSensitive }.map { it.name }.toSet()
     }
 
     /** All tools, flattened in domain order; fresh schema instances on every call. */
@@ -41,6 +45,7 @@ class ToolRegistry(domains: List<ToolDomain>) {
                     AppsDomain,
                     MediaDomain,
                     ClimateDomain,
+                    BodyDomain,
                     VisionDomain,
                     PhoneDomain,
                     LiveInfoDomain,

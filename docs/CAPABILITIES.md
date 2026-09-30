@@ -21,11 +21,13 @@ and keyword lists in `ActionClaimGuard` are not sources of truth
 | End navigation | `exit_navigation_mode()` | `EmbeddedNavigationController.endByVoice()` | `ok=true` `navigation_stopped` / `navigation_selection_cancelled` | `ok=false` `no_navigation_active` |
 | Play / stop music | `control_music(play\|stop)` | `BundledMusicPlayer` (in-app, `res/raw`) | `ok=true` `music_playing` / `music_stopped` | `ok=false` `MUSIC_UNAVAILABLE` |
 | Cabin climate | `control_climate(power_on\|power_off\|set_temperature\|set_fan\|…, value?)` | `ClimateToolHandler` → `VehicleControlPort` → **`SimulatedVehicleControl`** | `ok=true` with the state read back, plus `limit_reached` | `ok=false` `InvalidArgument` / `Unsupported` / `Unavailable` / `PermissionDenied` |
+| Windows | `control_window(open\|close\|set\|adjust\|get_state, window?, value?)` | `WindowToolHandler` → `VehicleControlPort` → **`SimulatedVehicleControl`** | `ok=true` with every window read back (`windows`), `limit_reached` and an `announce` sentence saying what changed | `ok=false` `INVALID_ARGUMENT` / `VEHICLE_UNSUPPORTED` / `VEHICLE_UNAVAILABLE` / `VEHICLE_PERMISSION_DENIED` / `VEHICLE_EXECUTION_FAILED` |
+| Seat height | `control_seat(adjust_height\|set_height\|get_state, seat?, value?)` | `SeatToolHandler` → `VehicleControlPort` → **`SimulatedVehicleControl`** | `ok=true` with `seat_height` read back, `limit_reached` and an `announce` sentence | `ok=false` as for windows |
 | Look through the camera | `describe_camera_view(question)` | `CameraQuestionHandler` → `CameraVisionGateway` + `QianfanVisionClient` | `ok=true` with the answer | `ok=false` — no camera, no permission, no frame, not configured, auth, request |
 | Open an app | `open_app(maps\|settings)` | `SafeAndroidActionExecutor` intents | `ok=true` | `ok=false` `APP_UNAVAILABLE` |
 | Stop talking / sleep | `set_speech_output(silent\|spoken)`, `end_conversation()` | `ListeningLifecycle` via `VoiceSessionGateway` | `ok=true` | `ok=false` `LISTENING_CONTROL_UNAVAILABLE` |
 | Live information (SPEC-011) | `query_live_info(kind, where?, day?, category?, target?)` — `weather`, `route_traffic`, `along_route`, `place_details` | `LiveInfoTool` → `AmapPoiClient` (REST weather / regeo / place detail) or `RouteLiveInfoSource` → `AmapRouteLiveInfo` (Navi `getTrafficStatuses`, Search `RoutePOISearch`); along-route results go to `EmbeddedNavigationController.requestCandidates`, the existing picker | `ok=true` with only the fields the source returned and `reported_at`; route traffic is counts and distances, never coordinates. `DriverTurn` releases a weather/traffic answer only when a lookup of that kind succeeded this turn | `ok=false` `AMAP_WEB_KEY_MISSING`, `NO_LOCATION`, `NO_DESTINATION`, `NOT_NAVIGATING`, `LIVE_INFO_UNAVAILABLE` (4 s timeout, HTTP, status≠1), `LIVE_INFO_QUOTA`, `NO_RESULTS`, `DUPLICATE_IN_TURN`, each with `next`. Weather and place details are unit-verified; route traffic and along-route have not run on a device |
-| Explain what the assistant can do | *(none — spoken answer only)* | `UtteranceIntentResolver` → `speech.capability_help`; copy from `ProductCapabilities.spokenHelpSummary` | Short list naming supported groups (导航/音乐/空调/摄像头/电话/地图·设置 as wired) | `help_incomplete` nudge — never 「没听清」 for a recognised help question |
+| Explain what the assistant can do | *(none — spoken answer only)* | `UtteranceIntentResolver` → `speech.capability_help`; copy from `ProductCapabilities.spokenHelpSummary` | Short list naming supported groups (导航/音乐/空调/车窗·座椅/摄像头/电话/地图·设置 as wired) | `help_incomplete` nudge — never 「没听清」 for a recognised help question |
 
 **Driving navigation presentation (no separate tool).** After the driver starts navigation, the embedded
 map must enter native turn-by-turn driving — lock-car tracking, heading-up map, traffic colouring,
@@ -37,7 +39,7 @@ maneuver/lane HUD, and a speed/limit chip from Amap data (`navigation.driving_pr
 `speech.post_speech_echo_protection` are enforced by `DriverTurn` / `ActionClaimGuard` and the
 post-reply mic hold — not by persona rules alone.
 
-**Climate is simulated.** `SimulatedVehicleControl` is a real state machine with real limits, but it
+**Climate, windows and seat are simulated.** `SimulatedVehicleControl` is a real state machine with real limits, but it
 drives nothing physical. Swapping in a vehicle is one new `VehicleControlPort` implementation
 selected in `VehicleControlProvider`.
 
@@ -48,7 +50,7 @@ the speaker, with no intermediate claim ([INVARIANTS.md](INVARIANTS.md) I-2, I-3
 
 | Request | Recognised by | Required response |
 | --- | --- | --- |
-| Volume, windows, sunroof, seats, doors, boot, lights, wipers | `UtteranceIntentResolver` → `CapabilityCatalog` (`unsupported.*`) | 「这个操作没有执行，暂时不支持。」 — never 「正在调整」 |
+| Volume, sunroof, doors, boot, lights, wipers | `UtteranceIntentResolver` → `CapabilityCatalog` (`unsupported.*`) | 「这个操作没有执行，暂时不支持。」 — never 「正在调整」 |
 | News, stocks, fuel prices, exchange rates, air quality, driving restrictions | `ActionClaimGuard.NO_SOURCE_INFO_WORDS` | An honest refusal with **no** figure, city or forecast. Weather and traffic moved to `query_live_info` (SPEC-011); a successful lookup never unlocks these |
 
 Adding a capability: declare the tool in its car domain (`app/tools/*Domain.kt`), execute it in that domain's `ToolServer` (ADR-015), give it a real executor

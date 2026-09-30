@@ -46,5 +46,13 @@
   "set_speech_output": {
     "description": "用户让小诺别说了、别吵、保持安静、停止说话、停止說話时用 mode=silent：小诺立刻停止说话，但继续听，下一句指令照常执行，不需要再唤醒；调用后不要再说任何话（不要「好的」之类确认）。这不是休眠（休眠用 end_conversation）。用户说「继续说」「可以说话了」「你说吧」时用 mode=spoken 恢复正常对话。不要用于音乐、导航播报或车辆音量。silent: stop talking now, no acknowledgement, wait for the next command (not sleep); spoken: talk normally.",
     "parameters": "{\"additionalProperties\":false,\"type\":\"object\",\"properties\":{\"mode\":{\"type\":\"string\",\"enum\":[\"silent\",\"spoken\"]}},\"required\":[\"mode\"]}"
+  },
+  "control_window": {
+    "description": "控制车窗（当前为模拟车窗）。「打开车窗」action=open；「关窗」「把车窗关上」action=close；「把车窗打开一半」action=set,value=50；「开一点主驾车窗」action=adjust,window=driver,value=20；「副驾车窗关小一点」action=adjust,window=passenger,value=-20；「车窗开了多少」action=get_state。不说哪个窗时 window=all。只根据返回的 windows 和 announce 确认结果；ok=false 时必须如实说没有成功。Control the windows (simulated backend); confirm only from the returned windows and announce.",
+    "parameters": "{\"additionalProperties\":false,\"type\":\"object\",\"properties\":{\"action\":{\"type\":\"string\",\"enum\":[\"open\",\"close\",\"set\",\"adjust\",\"get_state\"]},\"window\":{\"type\":\"string\",\"enum\":[\"all\",\"front\",\"rear\",\"driver\",\"passenger\",\"front_left\",\"front_right\",\"rear_left\",\"rear_right\"]},\"value\":{\"description\":\"set: 0-100 开度百分比；adjust: 变化量（正数开大，负数关小），默认 20\",\"type\":\"number\"}},\"required\":[\"action\"]}"
+  },
+  "control_seat": {
+    "description": "调节座椅高度（当前为模拟座椅）。「座位有点高」「座椅太高了」action=adjust_height,value=-1；「座位有点低」「座椅太低了」action=adjust_height,value=1；「座椅调到最低」action=set_height,value=0；「座椅调到最高」value=10；「座椅现在多高」action=get_state。不说哪个座位时 seat=driver。用户只描述感受时直接调节一档，不要反问。只根据返回的 seat_height 和 announce 确认结果；ok=false 时如实说没有成功。Adjust the seat height (simulated backend); confirm only from the returned seat_height and announce.",
+    "parameters": "{\"additionalProperties\":false,\"type\":\"object\",\"properties\":{\"seat\":{\"type\":\"string\",\"enum\":[\"driver\",\"passenger\"]},\"action\":{\"type\":\"string\",\"enum\":[\"adjust_height\",\"set_height\",\"get_state\"]},\"value\":{\"description\":\"set_height: 0-10 档；adjust_height: 变化档数（负数降低，正数升高），必填\",\"type\":\"number\"}},\"required\":[\"action\"]}"
   }
 }

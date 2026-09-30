@@ -47,13 +47,36 @@ class ToolServerRoutingTest {
         fakes.forEach { fake ->
             assertEquals(fake.domain.specs().map { it.name }, fake.calls, "domain ${fake.domain.id}")
         }
-        assertEquals(8, productDomains.size)
+        assertEquals(9, productDomains.size)
     }
 
     @Test
     fun aDomainWithoutAServerFailsConstruction() {
         val missing = productDomains.drop(1).map { Recording(it) }
         assertThrows<IllegalArgumentException> { AndroidToolDispatcher.serverIndex(ToolRegistry.PRODUCT, missing) }
+    }
+
+    @Test
+    fun twoServersForOneDomainFailConstruction() {
+        val fakes = productDomains.map { Recording(it) } + Recording(BodyDomain)
+        assertThrows<IllegalArgumentException> { AndroidToolDispatcher.serverIndex(ToolRegistry.PRODUCT, fakes) }
+    }
+
+    @Test
+    fun aServerForADomainOutsideTheRegistryFailsConstruction() {
+        val stranger = object : ToolDomain {
+            override val id = "body"
+            override fun specs() = BodyDomain.specs()
+            override fun validate(name: String, args: JSONObject): String? = null
+        }
+        val fakes = productDomains.filter { it.id != "body" }.map { Recording(it) } + Recording(stranger)
+        assertThrows<IllegalArgumentException> { AndroidToolDispatcher.serverIndex(ToolRegistry.PRODUCT, fakes) }
+        val extra = productDomains.map { Recording(it) } + Recording(object : ToolDomain {
+            override val id = "sunroof"
+            override fun specs() = emptyList<com.novadrive.app.voice.RealtimeToolCatalog.ToolSpec>()
+            override fun validate(name: String, args: JSONObject): String? = null
+        })
+        assertThrows<IllegalArgumentException> { AndroidToolDispatcher.serverIndex(ToolRegistry.PRODUCT, extra) }
     }
 
     @Test
