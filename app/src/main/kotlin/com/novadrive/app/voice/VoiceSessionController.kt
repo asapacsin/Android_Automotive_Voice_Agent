@@ -1,15 +1,11 @@
 package com.novadrive.app.voice
 
 import android.content.Context
-import com.novadrive.app.BaiduApiConfig
 import com.novadrive.app.NavigationState
-import com.novadrive.app.BaiduRuntimeProvider
-import com.novadrive.app.resolvedOutputSampleRateHz
 import com.novadrive.evaluation.EventType
 import com.novadrive.evaluation.Telemetry
 import com.novadrive.ingress.realtime.DomainVoiceEvent
 import com.novadrive.ingress.realtime.ProviderCapabilities
-import com.novadrive.ingress.realtime.RealtimeAudioConfig
 import com.novadrive.ingress.realtime.RealtimeSessionConfig
 import com.novadrive.ingress.realtime.RealtimeVoiceProvider
 import com.novadrive.ingress.realtime.ToolDispatchResult
@@ -51,7 +47,7 @@ class VoiceSessionController(
     private val playback = AndroidPlaybackPort(player, audioFocus) { lifecycle.speaks }
     @Volatile private var lastUiState: VoiceUiState = VoiceUiState.DISCONNECTED
     @Volatile private var playbackSpeaking = false
-    @Volatile private var lastConfig: BaiduApiConfig? = null
+    @Volatile private var lastConfig: SessionProviderConfig? = null
 
     private val callbacks =
         VoiceSessionCallbacks(
@@ -174,14 +170,16 @@ class VoiceSessionController(
         player.setOnPlaybackActiveChanged { active ->
             notifyPlaybackActiveForVad(active)
         }
+        microphone.onUplinkSegmentChanged = { open -> active.onLocalSpeechActivity(open) }
         com.novadrive.app.nav.NavigationGuidanceVoice.addListener(guidanceListener)
     }
 
     /** Starts a new realtime session and makes listening ACTIVE. */
-    fun startBaidu(apiConfig: BaiduApiConfig, reason: String = "start") {
-        openSession(apiConfig)
+    fun startSession(config: SessionProviderConfig, reason: String = "start") {
+        openSession(config)
         lifecycle.onSessionStarted(reason)
     }
+
 
     /**
      * Wake word, UI or an app prompt: resume listening (or restart the countdown). The wake word
@@ -211,8 +209,8 @@ class VoiceSessionController(
     /** The model ended the conversation: SLEEP once its short goodbye has played. */
     fun sleepAfterReply(reason: String) = lifecycle.sleepAfterReply(reason)
 
-    private fun openSession(apiConfig: BaiduApiConfig) {
-        lastConfig = apiConfig
+    private fun openSession(config: SessionProviderConfig) {
+        lastConfig = config
         active.stop()
         provider?.close()
         VoiceAec.release()
@@ -220,31 +218,16 @@ class VoiceSessionController(
         val sharedSessionId = VoiceAudioSession.allocate()
         player.configureAudioSession(sharedSessionId)
         microphone.configureAudioSession(sharedSessionId)
-        val outputRate = apiConfig.settings.resolvedOutputSampleRateHz()
-        player.configureSampleRate(outputRate)
-        val selected: RealtimeVoiceProvider = when (apiConfig.settings.runtimeProvider) {
-            BaiduRuntimeProvider.FLEX ->
-                BaiduFlexProvider(apiConfig, { microphone.measuredSegment() }, ::bargeInQualified)
-            BaiduRuntimeProvider.LITE -> BaiduDirectRealtimeProvider(apiConfig)
-        }
-        val providerId = if (apiConfig.settings.runtimeProvider == BaiduRuntimeProvider.FLEX) {
-            VoiceProviderId.BAIDU_FLEX
-        } else VoiceProviderId.BAIDU
-        provider = selected
-        active = newCore(
-            selected,
-            RealtimeSessionConfig(
-                provider = providerId,
-                model = apiConfig.settings.model,
-                audio = RealtimeAudioConfig(16_000, outputRate),
-            ),
-        )
+        val built = RealtimeProviderFactory.build(config, { microphone.measuredSegment() }, ::bargeInQualified)
+        player.configureSampleRate(built.outputSampleRateHz)
+        provider = built.provider
+        active = newCore(built.provider, built.session)
         active.start()
         startSessionDiagnostics()
     }
 
     private fun notifyPlaybackActiveForVad(active: Boolean) {
-        (provider as? BaiduFlexProvider)?.onPlaybackActiveChanged(active)
+        provider?.onPlaybackActiveChanged(active)
     }
 
     private var diagJob: Job? = null

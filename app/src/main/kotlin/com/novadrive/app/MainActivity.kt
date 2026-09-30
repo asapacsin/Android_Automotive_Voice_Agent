@@ -13,7 +13,9 @@ import android.os.Handler
 import android.os.Looper
 import com.novadrive.app.ui.AssistantNavigationScreen
 import com.novadrive.app.voice.PcmAudioPlayer
+import com.novadrive.app.voice.SessionProviderConfig
 import com.novadrive.app.voice.SessionServiceControl
+import com.novadrive.app.voice.sessionConfigFor
 import com.novadrive.app.voice.VoiceSessionController
 import com.novadrive.app.voice.VoiceSessionGateway
 import com.novadrive.ingress.realtime.VoiceUiState
@@ -137,7 +139,7 @@ class MainActivity : Activity() {
                 override fun stop() = VoiceSessionService.stop(this@MainActivity)
                 override fun hasMicPermission() =
                     checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-                override fun baiduConfig() = settingsRepository.config()
+                override fun sessionConfig() = chooseSessionConfig()
             },
         )
 
@@ -293,6 +295,18 @@ class MainActivity : Activity() {
 
     private fun showError(code: String, message: String) {
         if (::screen.isInitialized) screen.showError(code, message)
+    }
+
+    /** Which provider this session uses (ADR-010); the Gemini path needs no Baidu credentials. */
+    private fun chooseSessionConfig(): SessionProviderConfig {
+        val gemini = GeminiSettingsRepository(this)
+        val choice = gemini.choice()
+        DebugVoiceLog.log("session_provider choice=${choice.wireName}")
+        return sessionConfigFor(
+            choice,
+            gemini = { gemini.config(instructions = settingsRepository.loadSettings().instructions) },
+            baidu = { settingsRepository.config() },
+        )
     }
 
     companion object {

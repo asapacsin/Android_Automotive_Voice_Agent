@@ -2,16 +2,16 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-21 · 114 tests
+Updated 2026-09-21 · 120 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 45 |
+| autonomous PASS | 47 |
 | autonomous FAIL | 0 |
 | incomplete | 0 |
 | partial pass | 0 |
-| not run | 53 |
-| human required | 16 |
+| not run | 55 |
+| human required | 18 |
 | human pass | 0 |
 | human fail | 0 |
 | blocked external | 0 |
@@ -73,6 +73,8 @@ Updated 2026-09-21 · 114 tests
 - LIVE-INFO-REGRESSION-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - SPEECH-ARBITER-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - SPEECH-WORKLOAD-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- GEMINI-DEVICE-DUPLEX-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- GATE-D10-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - live_info.along_route requires END_TO_END but has no passing cover (linked: none)
 - live_info.place_details requires END_TO_END but has no passing cover (linked: none)
 - live_info.route_traffic requires END_TO_END but has no passing cover (linked: none)
@@ -84,7 +86,7 @@ Updated 2026-09-21 · 114 tests
 | Capability | Tests | Passing | Awaiting a human | Not run |
 | --- | --- | --- | --- | --- |
 | apps | 1 | 0 | 0 | 1 |
-| architecture | 3 | 2 | 0 | 1 |
+| architecture | 5 | 4 | 0 | 1 |
 | calling | 8 | 6 | 1 | 1 |
 | cantonese | 2 | 1 | 1 | 0 |
 | climate | 5 | 1 | 1 | 3 |
@@ -98,12 +100,12 @@ Updated 2026-09-21 · 114 tests
 | permissions | 3 | 2 | 0 | 1 |
 | regression | 2 | 1 | 0 | 1 |
 | release | 6 | 2 | 4 | 0 |
-| reliability | 7 | 4 | 0 | 3 |
+| reliability | 8 | 4 | 1 | 3 |
 | saved_places | 3 | 0 | 0 | 3 |
 | security | 3 | 3 | 0 | 0 |
 | speech | 1 | 0 | 1 | 0 |
 | truthfulness | 9 | 4 | 0 | 5 |
-| turn_taking | 16 | 7 | 2 | 7 |
+| turn_taking | 19 | 7 | 3 | 9 |
 | unsupported | 1 | 0 | 0 | 1 |
 | vision | 2 | 0 | 0 | 2 |
 | wake | 2 | 1 | 1 | 0 |
@@ -117,6 +119,8 @@ Updated 2026-09-21 · 114 tests
 | AFFORDANCE-DEVICE-001 | architecture | Spoken control names act on the phone with no model tool call | AUTONOMOUS | NOT_RUN | no | — |
 | AFFORDANCE-UNIT-001 | architecture | Spoken on-screen controls match whole utterances and run once per turn | AUTONOMOUS | PASS | yes | 2026-09-25 cloud: 2066 JVM tests, 0 failures |
 | ARCH-PROVIDER-001 | architecture | Vendor wire vocabulary stays inside adapters | AUTONOMOUS | PASS | no | checked against a deliberately reintroduced breach |
+| GEMINI-LIVE-CLOUD-001 | architecture | The app's Gemini client against the real API (cloud) | AUTONOMOUS | PASS | no | 2026-09-29: ac_on, fan_up, nav_wanda 3/3 PASS (docs/reports/2026-09-29-gemini-live-prob… |
+| GEMINI-UNIT-001 | architecture | Gemini Live adapter, shared gate and opt-in wiring | AUTONOMOUS | PASS | no | 2026-09-29 cloud, claude/9-29: app debug 1230/0, behavior-test 126/0, ingress 104/0 |
 | CALL-AMBIG-001 | calling | Two people with one name are offered, not chosen between | AUTONOMOUS | PASS | yes | PhoneCallToolTest, 2026-09-20 |
 | CALL-CLASSIFY-001 | calling | A call request is an action, not an unsupported refusal | AUTONOMOUS | PASS | yes | 2026-09-20 TEST_REVIEW: keyword list and registry both claimed ownership of calling |
 | CALL-CONFIRM-001 | calling | One match is never dialled on the first turn | AUTONOMOUS | PASS | yes | PhoneCallToolTest, 2026-09-20 |
@@ -184,6 +188,7 @@ Updated 2026-09-21 · 114 tests
 | AEC-FRAME-CONTINUITY-001 | reliability | Partial AEC frames stay pending and render reference follows accepted writes | AUTONOMOUS | PASS | yes | AecFrameContinuityTest JVM partition checks at 16/24 kHz |
 | AUDIOFOCUS-001 | reliability | Losing audio focus stops the assistant talking | AUTONOMOUS | PASS | no | 2026-09-20: the handling already existed in AndroidPlaybackPort and had no test, becaus… |
 | CAPTURE-TEARDOWN-001 | reliability | Capture stops and joins before recorder resources are released | AUTONOMOUS | PASS | yes | PcmAudioCapture stop/join ordering and mayStartAudioWorker guard |
+| GEMINI-DEVICE-REACH-001 | reliability | The phone opens a Gemini Live session on its normal network (G-M1) | HUMAN_CREDENTIAL | HUMAN_REQUIRED | no | c |
 | LIFECYCLE-ERROR-001 | reliability | A dead session stops showing that it is listening | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: verified by reproducing the rejection, then reverting it |
 | NET-RECOVER-001 | reliability | A cut connection recovers without the driver noticing | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: tool=control_climate after the socket was cancelled |
 | PLACE-NAV-001 | saved_places | 回家 resolves from the saved place, not a POI search | AUTONOMOUS | NOT_RUN | no | 2026-09-20: 4/5 - the ASR misses the two-character utterance about once in five, and th… |
@@ -207,6 +212,9 @@ Updated 2026-09-21 · 114 tests
 | BARGE-IN-EVIDENCE-001 | turn_taking | Barge-in needs time-scoped speech evidence; an unconfirmed echo turn is never heard | AUTONOMOUS | PASS | yes | 2026-09-24: BargeInEvidenceTest 11/11; full suite 1618/0; REGRESSION 41/41, CHAOS 26/26… |
 | BARGEIN-001 | turn_taking | 闭嘴 stops speech without ending the session | AUTONOMOUS | NOT_RUN | no | 2026-09-20: 20/20 suite |
 | ECHO-001 | turn_taking | Post-reply cabin echo does not become 「没听清」 | AUTONOMOUS | NOT_RUN | yes | STALE_BIND code_digest mismatch |
+| GATE-D10-DEVICE-001 | turn_taking | Claim gate D-10 orderings hold on real provider traffic | AUTONOMOUS | NOT_RUN | no | — |
+| GEMINI-DEVICE-DUPLEX-001 | turn_taking | Gemini reply through the speaker does not interrupt itself (G-M2) | AUTONOMOUS | NOT_RUN | no | — |
+| GEMINI-DEVICE-LATENCY-001 | turn_taking | Gemini (gemini-3.8-live) end of speech to first audio heard, on the phone | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | docs/reports/2026-09-30-gemini-native-smoke.md: live API through GeminiLiveClient, L1 9… |
 | LISTEN-IDLE-001 | turn_taking | Inactivity releases the microphone and then the socket | AUTONOMOUS | PASS | yes | ListeningLifecycleTest covers STANDBY, DEEP_IDLE, epoch-guarded timers, and meaningless… |
 | NOISE-001 | turn_taking | Room noise does not become a turn | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite |
 | PLAYBACK-BUFFER-ADAPT-001 | turn_taking | Playback buffer adapts to the size the platform applied and to real underruns only | AUTONOMOUS | PASS | yes | 2026-09-24: LowLatencyPlaybackBufferTest 7/7 with a clamping fake track (cloud Linux bu… |

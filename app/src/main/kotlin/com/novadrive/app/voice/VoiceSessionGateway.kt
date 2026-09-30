@@ -1,6 +1,5 @@
 package com.novadrive.app.voice
 
-import com.novadrive.app.BaiduApiConfig
 
 /**
  * Single application-scoped start/stop seam for the voice session.
@@ -52,7 +51,7 @@ object VoiceSessionGateway {
         }
         if (!session.hasMicPermission()) return StartResult.MicPermissionMissing
         return try {
-            session.startBaidu(reason)
+            session.startSession(reason)
             service?.start()
             StartResult.Started
         } catch (failure: IllegalArgumentException) {
@@ -135,7 +134,7 @@ interface SessionServiceControl {
     fun start()
     fun stop()
     fun hasMicPermission(): Boolean
-    fun baiduConfig(): BaiduApiConfig
+    fun sessionConfig(): SessionProviderConfig
 }
 
 sealed interface StartResult {
@@ -152,7 +151,7 @@ internal interface GatewaySession {
     /** True when the session ended in a terminal error and can only be recovered by restarting. */
     val hasFailed: Boolean get() = false
     fun hasMicPermission(): Boolean
-    fun startBaidu(reason: String = "start")
+    fun startSession(reason: String = "start")
     fun stop()
     fun activate(reason: String) {}
     fun sleep(reason: String) {}
@@ -176,8 +175,8 @@ private class ControllerGatewaySession(
 
     override fun hasMicPermission(): Boolean = service.hasMicPermission()
 
-    override fun startBaidu(reason: String) {
-        controller.startBaidu(service.baiduConfig(), reason)
+    override fun startSession(reason: String) {
+        controller.startSession(service.sessionConfig(), reason)
     }
 
     override fun activate(reason: String) {

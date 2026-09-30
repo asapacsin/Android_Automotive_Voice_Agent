@@ -9,6 +9,7 @@ enum class VoiceProviderId {
     GPT_LIVE,
     BAIDU,
     BAIDU_FLEX,
+    GEMINI_LIVE,
     FAKE,
     ;
 
@@ -19,6 +20,7 @@ enum class VoiceProviderId {
                 GPT_LIVE -> "gpt_live"
                 BAIDU -> "baidu"
                 BAIDU_FLEX -> "baidu_flex"
+                GEMINI_LIVE -> "gemini_live"
                 FAKE -> "fake"
             }
 
@@ -30,6 +32,7 @@ enum class VoiceProviderId {
                 "gpt_live", "gptlive", "openai_live" -> GPT_LIVE
                 "baidu" -> BAIDU
                 "baidu_flex", "flex" -> BAIDU_FLEX
+                "gemini_live", "gemini" -> GEMINI_LIVE
                 "fake", "mock" -> FAKE
                 else -> error("UNKNOWN_VOICE_PROVIDER")
             }
@@ -72,6 +75,14 @@ data class ProviderCapabilities(
     val unknownEventTolerance: Boolean,
     val requiresCredentials: Boolean,
     val realtimeAudio: Boolean = true,
+    /**
+     * The provider reports when the driver starts and stops speaking. False (Gemini Live): the
+     * local uplink gate supplies that evidence instead, through
+     * [VoiceSessionController.onLocalSpeechActivity]; see ADR-010.
+     */
+    val serverSpeechActivityEvents: Boolean = true,
+    /** The provider can withdraw a tool call it already issued ([DomainVoiceEvent.ToolCallCancelled]). */
+    val toolCallCancellation: Boolean = false,
 ) {
     val functionCalling: Boolean get() = customTools
 }
@@ -97,6 +108,11 @@ object VoiceCatalog {
     const val BAIDU_PRO_NEAR = "audio-realtime-near"
     const val BAIDU_PRO_FAR = "audio-realtime-far"
     const val BAIDU_FLEX = "qianfan-realtime-flex-v1"
+    const val GEMINI_LIVE_FAST = "gemini-3.8-live"
+    const val GEMINI_LIVE_EXTENDED = "gemini-3.8-live-extended-thinking"
+
+    /** Default Gemini model (ADR-011 N-1). Extended thinking stays opt-in and a saved choice is kept. */
+    const val GEMINI_LIVE_DEFAULT = GEMINI_LIVE_FAST
     const val FAKE_MODEL = "fake-realtime"
 
     val qwenModels: Map<String, String> =
@@ -114,11 +130,24 @@ object VoiceCatalog {
             BAIDU_PRO_FAR to "Pro Far",
         )
     val baiduFlexModels: Map<String, String> = mapOf(BAIDU_FLEX to "Flex")
+    val geminiLiveModels: Map<String, String> =
+        linkedMapOf(
+            GEMINI_LIVE_FAST to "Gemini 3.8 Live（推荐）",
+            GEMINI_LIVE_EXTENDED to "Gemini 3.8 Live Extended Thinking",
+        )
+
+    /**
+     * Declared per-model trait: the model accepts `thinkingConfig.thinkingLevel` in its setup.
+     * The fast model rejects it with close code 1007 (probe F27). Undeclared model -> false.
+     */
+    private val geminiThinkingLevelModels: Set<String> = setOf(GEMINI_LIVE_EXTENDED)
+
+    fun geminiAcceptsThinkingLevel(model: String): Boolean = model in geminiThinkingLevelModels
     val fakeModels: Map<String, String> =
         mapOf(FAKE_MODEL to "Fake")
 
     val selectableLabels: Map<String, String> =
-        qwenModels + gptLiveModels + baiduModels + baiduFlexModels + fakeModels
+        qwenModels + gptLiveModels + baiduModels + baiduFlexModels + geminiLiveModels + fakeModels
 
     fun defaultModel(provider: VoiceProviderId): String =
         when (provider) {
@@ -126,6 +155,7 @@ object VoiceCatalog {
             VoiceProviderId.GPT_LIVE -> GPT_LIVE_1
             VoiceProviderId.BAIDU -> BAIDU_LITE_NEAR
             VoiceProviderId.BAIDU_FLEX -> BAIDU_FLEX
+            VoiceProviderId.GEMINI_LIVE -> GEMINI_LIVE_DEFAULT
             VoiceProviderId.FAKE -> FAKE_MODEL
         }
 
@@ -135,6 +165,7 @@ object VoiceCatalog {
             VoiceProviderId.GPT_LIVE -> gptLiveModels
             VoiceProviderId.BAIDU -> baiduModels
             VoiceProviderId.BAIDU_FLEX -> baiduFlexModels
+            VoiceProviderId.GEMINI_LIVE -> geminiLiveModels
             VoiceProviderId.FAKE -> fakeModels
         }
 
@@ -144,6 +175,7 @@ object VoiceCatalog {
             in gptLiveModels -> VoiceProviderId.GPT_LIVE
             in baiduModels -> VoiceProviderId.BAIDU
             in baiduFlexModels -> VoiceProviderId.BAIDU_FLEX
+            in geminiLiveModels -> VoiceProviderId.GEMINI_LIVE
             in fakeModels -> VoiceProviderId.FAKE
             else -> error("UNKNOWN_MODEL")
         }
@@ -165,6 +197,7 @@ object VoiceCatalog {
             VoiceProviderId.GPT_LIVE -> "GPT_LIVE_INVALID_MODEL"
             VoiceProviderId.BAIDU -> "BAIDU_INVALID_MODEL"
             VoiceProviderId.BAIDU_FLEX -> "BAIDU_FLEX_INVALID_MODEL"
+            VoiceProviderId.GEMINI_LIVE -> "GEMINI_LIVE_INVALID_MODEL"
             VoiceProviderId.FAKE -> "FAKE_INVALID_MODEL"
         }
 
@@ -214,6 +247,22 @@ object VoiceCatalog {
                     unknownEventTolerance = true,
                     requiresCredentials = true,
                 )
+            // Measured 2026-09-29 (docs/reports/2026-09-29-gemini-live-probe.md): no client
+            // response cancel, server VAD interrupts by itself, no speech-started/stopped events,
+            // tool results as toolResponse, and toolCallCancellation in the protocol.
+            VoiceProviderId.GEMINI_LIVE ->
+                ProviderCapabilities(
+                    provider = provider,
+                    customTools = true,
+                    serverVadInterrupt = true,
+                    clientResponseCancel = false,
+                    optionalInputCommit = false,
+                    workResultInjection = true,
+                    unknownEventTolerance = true,
+                    requiresCredentials = true,
+                    serverSpeechActivityEvents = false,
+                    toolCallCancellation = true,
+                )
             VoiceProviderId.FAKE ->
                 ProviderCapabilities(
                     provider = provider,
@@ -240,6 +289,8 @@ object VoiceModels {
     const val GPT_LIVE_1 = VoiceCatalog.GPT_LIVE_1
     const val FAKE = VoiceCatalog.FAKE_MODEL
     const val FLEX = VoiceCatalog.BAIDU_FLEX
+    const val GEMINI_LIVE_DEFAULT = VoiceCatalog.GEMINI_LIVE_DEFAULT
+    const val GEMINI_LIVE_EXTENDED = VoiceCatalog.GEMINI_LIVE_EXTENDED
 
     val labels: Map<String, String>
         get() = VoiceCatalog.selectableLabels

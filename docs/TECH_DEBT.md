@@ -155,6 +155,57 @@ generated into `state/PROJECT_STATE.json`.
 
 ---
 
+## D-10 — Two orderings the claim gate misses — **RESOLVED at JVM level 2026-09-30** (`ac40304`; device: GATE-D10-DEVICE-001)
+
+**Problem.** Two orderings let a reply past the claim gate without being judged:
+
+1. A tool call that opens a response is registered after `decideHold` ran (`GeminiLiveClient`
+   `openTurn` → `onToolCall`, and Baidu's `response.created` → `function_call`), so
+   `AWAITING_TOOL_RESULT` never applies to that response.
+2. After `PHANTOM_AUDIO` releases on the first reply text with content, the rest of the reply is
+   never checked for a claim.
+
+**Resolution.** A call registered mid-response moves the hold to `AWAITING_TOOL_RESULT`; words
+before it are judged by the replaced hold, words after it by the result; a failed call keeps the
+reply held to its end and is reported (`reportFailure`) whatever the order. A phantom reply with
+content becomes `UNCLASSIFIED_CLAIM`. Reviewed PASS after two REVISE rounds. Remaining, not a
+regression: a result with no registered call (e.g. a superseded turn's slow result) can still
+release a held reply — see D-11.
+
+---
+
+## D-11 — A superseded turn's tool result is applied to the current turn — **RESOLVED at JVM level 2026-09-30** (`gn/D11` merge)
+
+**Problem.** `DriverTurnPipeline` routes a late result to the current `DriverTurn`. A result for a
+call that turn never registered can count as its proof and release a held reply
+(`onExecutionResult`, normal path; also ignores `holdUntilEnd`). Present at `c51650a` too.
+
+**Next step.** Ignore (log) results whose call id the current turn did not dispatch; test it.
+
+---
+
+## D-9 — The hold budget releases a reply whose words were never judged — **OPEN** (found 2026-09-29)
+
+**Problem.** `DriverTurnPipeline` releases everything held once a turn holds more than 120 events
+(`DriverTurn.onHoldBudgetExceeded`), whatever the hold reason. That includes
+`AWAITING_EXECUTION_PROOF` and `UNCLASSIFIED_CLAIM`, whose words are only judged at the end of the
+response. `DriverTurnTest.theHoldBudgetAlwaysReleasesRatherThanStalling` pins this on purpose, so
+that a stuck gate never loses a real reply.
+
+**Affected.** `DriverTurn.onHoldBudgetExceeded`, `DriverTurnPipeline.holdOrEmit`, both providers.
+
+**Risk.** An unproven action claim longer than the budget is heard: an I-1 gap. It is narrow on
+Baidu (120 deltas ≈ 6 s of audio) and on Gemini (0.16–0.64 s chunks, so 20–77 s), and it has not
+been observed. Found by reading the code while designing
+[GEMINI_NATIVE_ARCHITECTURE.md](GEMINI_NATIVE_ARCHITECTURE.md) §5.1 R-S5.
+
+**Next step.** Proposed in [ADR-011](../DECISIONS/ADR-011-gemini-native-voice-path.md) as part
+of N-2. At the budget, release only the clauses the claim check has judged clean. Past a 60 s hard
+cap, drop the remainder instead of releasing it. This changes a deliberate behaviour, so it waits
+for the owner's decision.
+
+---
+
 ## D-7 — A false claim could be spoken for *supported* actions — **RESOLVED 2026-09-18** (`89c9338`)
 
 **Problem.** The hold that prevents a false claim covers requests with **no** tool. For a supported
@@ -174,7 +225,9 @@ did not appear: in the normal flow the model answers *from* the tool result, so 
 
 ---
 
-## D-8 — `BaiduFlexClient` is over its line budget again — **OPEN** (found 2026-09-28)
+## D-8 — `BaiduFlexClient` is over its line budget again — **RESOLVED 2026-09-29** (found 2026-09-28)
+
+**Closed by** G1.3 of [GEMINI_LIVE_PLAN.md](GEMINI_LIVE_PLAN.md): the per-turn claim gate (DriverTurn wiring, action-claim follow-up, duplicate-call detection, superseded-output drop) moved to the provider-neutral `DriverTurnPipeline`, so the Gemini adapter reuses it. `BaiduFlexClient.kt` 939 → 725 lines; budget 950 → 800, `DriverTurnPipeline.kt` budgeted at 400.
 
 **Problem.** The demo-log fixes (`f1083fd`: call-scoped execution results, duplicate
 `choose_option` suppression, heard-speech repair) grew `BaiduFlexClient.kt` to 933 lines. Instead of

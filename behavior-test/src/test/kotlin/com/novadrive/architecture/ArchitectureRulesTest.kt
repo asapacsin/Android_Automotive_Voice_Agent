@@ -72,7 +72,8 @@ class ArchitectureRulesTest {
 
     @Test
     fun onlyAudioAndSubtitleMayBeHeld() {
-        val client = text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt")
+        // Owner of the per-turn gate: DriverTurnPipeline (ADR-010).
+        val client = text("app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt")
         assertTrue(client.contains("private fun holdOrEmit")) {
             "INVARIANT I-5: there must be exactly one place that decides what is held"
         }
@@ -92,10 +93,13 @@ class ArchitectureRulesTest {
 
     @Test
     fun executionProofOwnsActionClaims() {
-        val client = text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt")
+        // Owner of the per-turn gate: DriverTurnPipeline (ADR-010); the provider client is read too,
+        // so the loose per-turn flags below cannot come back in either file.
+        val client = text("app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt") +
+            text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt")
         // Proof enters the system at exactly one place: the tool result.
         assertTrue(client.contains("onExecutionResult(callId, output)")) {
-            "INVARIANT I-1: sendFunctionResult is the only source of execution evidence"
+            "INVARIANT I-1: the tool result (DriverTurnPipeline.onToolResult) is the only source of execution evidence"
         }
         val turn = text("app/src/main/kotlin/com/novadrive/app/voice/DriverTurn.kt")
         assertTrue(turn.contains("AWAITING_EXECUTION_PROOF")) {
@@ -196,11 +200,16 @@ class ArchitectureRulesTest {
         // Raising one is allowed — with a reason in the commit
         // message. See docs/AGENT_MAINTENANCE.md step 4 and docs/TECH_DEBT.md D-1.
         val budgets = mapOf(
-            "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt" to 950,
+            // D-8 closed 2026-09-29: the per-turn gate moved to DriverTurnPipeline (939 -> 725).
+            "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt" to 800,
+            "app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt" to 400,
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapNaviViewHost.kt" to 900,
             "app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt" to 470,
             "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt" to 500,
             "app/src/main/kotlin/com/novadrive/app/nav/EmbeddedNavigationController.kt" to 500,
+            // Gemini Live adapter (ADR-010), recorded 2026-09-29 at 465 and 56 lines.
+            "app/src/main/kotlin/com/novadrive/app/voice/GeminiLiveClient.kt" to 580,
+            "app/src/main/kotlin/com/novadrive/app/voice/RealtimeProviderFactory.kt" to 150,
         )
         val over = budgets.mapNotNull { (path, budget) ->
             val lines = File(root, path).readLines().size
