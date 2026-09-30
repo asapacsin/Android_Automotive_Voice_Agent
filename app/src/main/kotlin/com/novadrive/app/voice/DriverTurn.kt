@@ -139,6 +139,13 @@ class DriverTurn(val epoch: Long) {
     /** Call ids this turn dispatched whose result has not been delivered yet, with the tool name. */
     private val awaitingResults = linkedMapOf<String, String>()
 
+    /** Every call id this turn dispatched, settled or not: a result for any other id is foreign (D-11). */
+    private val registeredCalls = mutableSetOf<String>()
+
+    /** Results for calls this turn never dispatched; ignored, counted for the diagnostic line (D-11). */
+    var foreignResults: Int = 0
+        private set
+
     /** Tools that were still running when the current response started. */
     private var awaitedAtResponseStart: Set<String> = emptySet()
 
@@ -298,6 +305,7 @@ class DriverTurn(val epoch: Long) {
         }
         toolCalled = true
         if (callId != null) {
+            registeredCalls += callId
             awaitingResults[callId] = name.orEmpty()
             // D-10(a): a call registered after this response's hold was decided. Nothing said from
             // here on can be grounded in its result, so the response waits for it like one that
@@ -419,6 +427,12 @@ class DriverTurn(val epoch: Long) {
     fun onExecutionResult(ok: Boolean, failure: String?, liveInfoKind: String? = null, callId: String? = null): Verdict {
         if (!accepts()) {
             rejectedEvents++
+            return Verdict.Wait
+        }
+        // D-11 / I-1: only a result for a call this turn dispatched can prove or fail its action.
+        // A superseded turn's late result is ignored; a null id keeps the legacy path.
+        if (callId != null && callId !in registeredCalls) {
+            foreignResults++
             return Verdict.Wait
         }
         if (callId != null) awaitingResults.remove(callId)

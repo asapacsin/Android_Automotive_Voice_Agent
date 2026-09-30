@@ -100,4 +100,23 @@ class DriverTurnPipelineTest {
         assertFalse(pipeline.isDuplicateCall(call), "a new response starts clean")
         assertFalse(pipeline.isDuplicateCall(DomainVoiceEvent.AudioDone), "only tool calls can be duplicates")
     }
+
+    @Test
+    fun aSupersededTurnsLateResultDoesNotReleaseTheNewTurnsClaim() {
+        // D-11: the old turn's call_1 result arrives after a new driver turn began.
+        heldActionClaim()
+        pipeline.beginDriverTurn(playbackOrSpeaking = false, responseInProgress = false)
+        pipeline.onUserTranscript("帮我打开车窗")
+        pipeline.onResponseCreated()
+        val call = DomainVoiceEvent.ToolCall("call_2", "control_window", mapOf("action" to "open"))
+        assertFalse(pipeline.filter(call))
+        pipeline.onToolCallDispatched(call)
+        val audio2 = DomainVoiceEvent.AudioDelta("CCCC")
+        assertTrue(pipeline.filter(audio2))
+        pipeline.appendAssistantText("已为您打开车窗")
+        pipeline.onToolResult("call_1", """{"ok":true,"tool":"control_climate"}""")
+        assertTrue(host.emitted.isEmpty(), "a superseded turn's result is not this turn's proof")
+        pipeline.onToolResult("call_2", """{"ok":true,"tool":"control_window"}""")
+        assertTrue(audio2 in host.emitted, "the turn's own result still releases it")
+    }
 }
