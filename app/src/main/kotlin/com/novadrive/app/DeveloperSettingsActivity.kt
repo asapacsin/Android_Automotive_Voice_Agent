@@ -498,6 +498,22 @@ class DeveloperSettingsActivity : Activity() {
         val thinking = RadioGroup(this).apply {
             levels.forEach { (button, level) -> addView(button); if (level == saved.thinkingLevel) check(button.id) }
         }
+        val thinkingLabel = TextView(this).apply { text = "Thinking level" }
+        val geminiModels = VoiceCatalog.geminiLiveModels.entries.associate { (wire, label) ->
+            RadioButton(this).apply { text = label; id = View.generateViewId() } to wire
+        }
+        fun showThinkingFor(model: String) {
+            val visible = if (VoiceCatalog.geminiAcceptsThinkingLevel(model)) View.VISIBLE else View.GONE
+            thinking.visibility = visible
+            thinkingLabel.visibility = visible
+        }
+        val modelGroup = RadioGroup(this).apply {
+            geminiModels.forEach { (button, wire) -> addView(button); if (wire == saved.model) check(button.id) }
+            setOnCheckedChangeListener { _, id ->
+                geminiModels.entries.firstOrNull { it.key.id == id }?.let { showThinkingFor(it.value) }
+            }
+        }
+        showThinkingFor(saved.model)
         val silence = EditText(this).apply {
             setText(saved.silenceDurationMs?.toString().orEmpty())
             hint = "静音结束 ms（留空 = 服务器默认）/ silence ms, blank = server default"
@@ -511,6 +527,8 @@ class DeveloperSettingsActivity : Activity() {
                 val settings = saved.copy(
                     enabled = enabled.isChecked,
                     consentAccepted = consent.isChecked,
+                    model = geminiModels.entries.firstOrNull { it.key.id == modelGroup.checkedRadioButtonId }?.value
+                        ?: saved.model,
                     voice = voice.text.toString().trim().ifBlank { GeminiAppSettings.DEFAULT_VOICE },
                     thinkingLevel = levels.entries.firstOrNull { it.key.id == thinking.checkedRadioButtonId }?.value
                         ?: GeminiThinkingLevel.LOW,
@@ -531,8 +549,8 @@ class DeveloperSettingsActivity : Activity() {
         }
         return verticalGroup(
             TextView(this).apply { text = "Gemini Live (opt-in, ADR-010)"; textSize = 18f },
-            GeminiAppSettings.CONSENT_NOTICE, consent, enabled, "API Key", key, "Voice", voice,
-            "Thinking level", thinking, "Silence ms", silence, save, clearKey,
+            GeminiAppSettings.CONSENT_NOTICE, consent, enabled, "API Key", key, "Model", modelGroup, "Voice", voice,
+            thinkingLabel, thinking, "Silence ms", silence, save, clearKey,
             "Takes effect at the next session start.",
         )
     }

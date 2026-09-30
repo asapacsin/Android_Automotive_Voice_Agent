@@ -109,6 +109,7 @@ object VoiceCatalog {
     const val BAIDU_PRO_FAR = "audio-realtime-far"
     const val BAIDU_FLEX = "qianfan-realtime-flex-v1"
     const val GEMINI_LIVE = "gemini-3.8-live-extended-thinking"
+    const val GEMINI_LIVE_FAST = "gemini-3.8-live"
     const val FAKE_MODEL = "fake-realtime"
 
     val qwenModels: Map<String, String> =
@@ -126,7 +127,19 @@ object VoiceCatalog {
             BAIDU_PRO_FAR to "Pro Far",
         )
     val baiduFlexModels: Map<String, String> = mapOf(BAIDU_FLEX to "Flex")
-    val geminiLiveModels: Map<String, String> = mapOf(GEMINI_LIVE to "Gemini 3.8 Live Extended Thinking")
+    val geminiLiveModels: Map<String, String> =
+        linkedMapOf(
+            GEMINI_LIVE_FAST to "Gemini 3.8 Live（推荐）",
+            GEMINI_LIVE to "Gemini 3.8 Live Extended Thinking",
+        )
+
+    /**
+     * Declared per-model trait: the model accepts `thinkingConfig.thinkingLevel` in its setup.
+     * The fast model rejects it with close code 1007 (probe F27). Undeclared model -> false.
+     */
+    private val geminiThinkingLevelModels: Set<String> = setOf(GEMINI_LIVE)
+
+    fun geminiAcceptsThinkingLevel(model: String): Boolean = model in geminiThinkingLevelModels
     val fakeModels: Map<String, String> =
         mapOf(FAKE_MODEL to "Fake")
 

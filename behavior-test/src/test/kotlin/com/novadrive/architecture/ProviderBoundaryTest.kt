@@ -67,6 +67,19 @@ class ProviderBoundaryTest {
     }
 
     @Test
+    fun geminiModelIdsLiveOnlyInTheVoiceCatalog() {
+        // One model registry (VoiceCatalog); behaviour varies on declared traits, never on a name.
+        val catalog = "ingress/src/main/kotlin/com/novadrive/ingress/realtime/VoiceCatalog.kt"
+        val offenders = (root.listFiles()?.filter { File(it, "src/main").isDirectory }?.map { it.name } ?: emptyList())
+            .flatMap { module -> kotlinFiles("$module/src/main") }
+            .filterNot { relative(it) == catalog }
+            .filter { Regex("\"[^\"\\n]*gemini-", RegexOption.IGNORE_CASE).containsMatchIn(withoutComments(it.readText())) }
+            .map { relative(it) }
+        assertTrue(offenders.isEmpty()) { "a Gemini model id outside VoiceCatalog: $offenders" }
+        assertTrue(File(root, catalog).readText().contains("\"gemini-")) { "the registry must declare the ids" }
+    }
+
+    @Test
     fun theAdapterBoundaryStillExists() {
         // If these disappear, the boundary has been refactored away and the tests above would
         // pass vacuously — they only assert an absence.
