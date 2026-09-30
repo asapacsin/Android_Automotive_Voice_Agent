@@ -940,12 +940,13 @@ tests:
     type: unit
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: false
     prerequisites: []
     procedure: ["gradlew :app:testDebugUnitTest --tests *BodyDomainTest* --tests *WindowToolHandlerTest* --tests *SeatToolHandlerTest* --tests *ActionAnnouncementTest*"]
     pass_criteria: ["success results carry the read-back state and an announce sentence; clamping sets limit_reached; invalid and no-port calls are ok=false with no announce"]
-    evidence: []
+    evidence: ["2026-09-30 cloud, wt/W3a-body 58524f0: BodyDomainTest 6/0, WindowToolHandlerTest 11/0, SeatToolHandlerTest 6/0, ActionAnnouncementTest 4/0; full suite 2996 tests / 0 failures (planner read the JUnit XML); independent review REVISE resolved"]
+    last_run: {at: 2026-09-30, result: PASS}
     related: [SPEC-015]
 
 # ---- turn taking, lifecycle, recovery --------------------------------------------------------

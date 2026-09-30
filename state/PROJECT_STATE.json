@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-30T06:28:25",
+  "generated_at": "2026-09-30T07:19:15",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "25919b1",
+    "commit": "f75f035",
     "branch": "claude/fuzzy-logic-9-30",
-    "subject": "Merge W2: route tool calls to one ToolServer per car domain (SPEC-016 B2, ADR-015)",
+    "subject": "Merge W3a: body domain (control_window, control_seat) over the simulated port; windows and seat height supported everywhere; claim guard knows body nouns (SPEC-015)",
     "working_tree_clean": false,
-    "uncommitted_files": 4
+    "uncommitted_files": 1
   },
   "tests": {
     "available": true,
@@ -73,8 +73,8 @@
     "by_level": {
       "device": 36,
       "unsupported": 6,
+      "unit": 6,
       "human": 1,
-      "unit": 4,
       "implemented": 2
     },
     "human_verification_pending": [
