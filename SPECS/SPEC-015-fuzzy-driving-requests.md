@@ -1,6 +1,6 @@
 # SPEC-015 — Fuzzy driving requests: windows, seat, comfort scenarios, speaking style
 
-Status: **Draft 2026-09-30**
+Status: **Partly implemented 2026-09-30** (L2: port, body domain, style tool, context follow-ups; scenarios next)
 Raised: 2026-09-30 · Source: [B-029](../BACKLOG.md) · Architecture:
 [docs/FUZZY_DRIVING_ARCHITECTURE.md](../docs/FUZZY_DRIVING_ARCHITECTURE.md) ·
 [ADR-012](../DECISIONS/ADR-012-fuzzy-driving-requests.md)
@@ -122,7 +122,9 @@ None open. Tunables (percentages, TTL for `mosquito_done`: 10 min) are engineeri
 
 | Area | State | Proof |
 | --- | --- | --- |
-| Port + simulator | not built | — |
-| Body domain (window/seat) | not built | — |
+| Port + simulator | built (L2) | 947be79 — `SimulatedVehicleControlTest` |
+| Body domain (window/seat) | built (L2), review REVISE → fixed | f75f035 — `BodyDomainTest`, `WindowToolHandlerTest`, `SeatToolHandlerTest`, `ActionAnnouncementTest`, `FalseCapabilityClaimTest`; BODY-UNIT-001 PASS |
+| Context follow-ups (FZ-05, FZ-14) | built (L2) | d209e71 — `BodyContextResolverTest`, `ToolCallGuardBodyReferentTest` |
+| Speaking style | built (L2) | 39364a0 + a4a39eb — `PersonaProfilesTest`, `SpeakingStyleToolTest`; STYLE-UNIT-001 PASS |
 | Comfort domain (scenarios) | not built | — |
-| Speaking style | not built | — |
+| Model mapping FZ-01…14 (A8), device (A9) | not earned | queued |

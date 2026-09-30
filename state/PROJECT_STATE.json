@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-30T07:19:15",
+  "generated_at": "2026-09-30T07:49:39",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "f75f035",
+    "commit": "d209e71",
     "branch": "claude/fuzzy-logic-9-30",
-    "subject": "Merge W3a: body domain (control_window, control_seat) over the simulated port; windows and seat height supported everywhere; claim guard knows body nouns (SPEC-015)",
+    "subject": "Merge W3a2: window/seat follow-ups resolve from DriverContext; ambiguous body adjustments held by the guard (SPEC-015 B7, FZ-05/FZ-14)",
     "working_tree_clean": false,
-    "uncommitted_files": 1
+    "uncommitted_files": 5
   },
   "tests": {
     "available": true,
@@ -73,7 +73,7 @@
     "by_level": {
       "device": 36,
       "unsupported": 6,
-      "unit": 6,
+      "unit": 7,
       "human": 1,
       "implemented": 2
     },
@@ -147,7 +147,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "A0: | A0 | G-1 … G-1f measured on the short route | measurement (emulator) | `GUIDANCE-EMU-001` | not earned |",
-    "actionable_count": 112,
+    "actionable_count": 109,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 18,
@@ -381,13 +381,6 @@
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-015-fuzzy-driving-requests.md",
-        "item": "Body domain (window/seat)",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-015-fuzzy-driving-requests.md",
         "item": "Comfort domain (scenarios)",
         "blocked_by": null
       },
@@ -401,29 +394,15 @@
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "Model mapping FZ-01…14 (A8), device (A9)",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-016-gemini-default-and-domain-servers.md",
         "item": "Part A",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-015-fuzzy-driving-requests.md",
-        "item": "Port + simulator",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-015-fuzzy-driving-requests.md",
-        "item": "Speaking style",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-018-guidance-in-assistant-voice.md",
-        "item": "Step 1",
         "blocked_by": null
       },
       {

@@ -207,4 +207,4 @@ would reopen ADR-014 and is escalated, not decided here.
 | Area | State | Proof |
 | --- | --- | --- |
 | Design review | done — REVISE, all 10 changes taken (revision 2) | reviewer report 2026-09-30 |
-| Step 1 | not built | — |
+| Step 1 | built (L2), behind the developer toggle (off) | 68635ac (contract), 5e0d909 (speech owners), 144f3fb (relay, fidelity, Amap edge); code review in progress |
