@@ -30,11 +30,23 @@ import org.json.JSONObject
 object ToolCallGuards {
 
     /**
-     * Tools whose effect accumulates, so running one twice is not the same as running it once —
-     * and `query_live_info`, where a second identical lookup costs the owner's daily quota and
-     * re-opens the picker for nothing (SPEC-011 failure table: DUPLICATE_IN_TURN).
+     * Every tool that acts on the world, where an identical second call in one driver turn is a
+     * protocol retry or the model repeating itself, never a second request: climate and music
+     * accumulate, `place_call` dials twice, `navigate_to` / `open_app` / `save_place` /
+     * `exit_navigation_mode` redo a visible action — and `query_live_info`, where a second identical
+     * lookup costs the owner's daily quota and re-opens the picker for nothing (SPEC-011 failure
+     * table: DUPLICATE_IN_TURN). Pure reads such as `describe_camera_view` are left out.
      */
-    private val REPEAT_SENSITIVE = setOf(ClimateToolHandler.TOOL, "control_music", LiveInfoTool.TOOL)
+    private val REPEAT_SENSITIVE = setOf(
+        ClimateToolHandler.TOOL,
+        "control_music",
+        LiveInfoTool.TOOL,
+        "place_call",
+        "navigate_to",
+        "open_app",
+        "save_place",
+        "exit_navigation_mode",
+    )
 
     private val TEMPERATURE_OR_FAN = setOf(
         ClimateToolActions.ADJUST_TEMPERATURE,
@@ -69,9 +81,10 @@ object ToolCallGuards {
         ) {
             return DUPLICATE_IN_TURN
         }
-        val epoch = context.currentEpoch()
-        if (epoch <= 0) return null
-        return if (context.claimDispatch(epoch, call.name, arguments)) null else DUPLICATE_IN_TURN
+        // Keyed on speech onset, which is the driver turn: the transcript epoch arrives after the
+        // call under Gemini ordering, and until then still names the *previous* turn.
+        if (capabilityEpoch <= 0) return null
+        return if (context.claimDispatch(capabilityEpoch, call.name, arguments)) null else DUPLICATE_IN_TURN
     }
 
     /**
