@@ -192,6 +192,12 @@ class DriverTurn(val epoch: Long) {
         phase = Phase.RESPONDING
         if (audio == null) audio = segment
         awaitedAtResponseStart = awaitingResults.values.toSet()
+        responseContextAwaiting = contextAwaitingAnswer
+        replacedHold = null
+        replySoFar = ""
+        replyBeforeResult = null
+        midResponseTools.clear()
+        wordsBeforeCall = 0
         holdReason = decideHold(contextAwaitingAnswer)
         return holdReason
     }
@@ -287,7 +293,71 @@ class DriverTurn(val epoch: Long) {
             return
         }
         toolCalled = true
-        if (callId != null) awaitingResults[callId] = name.orEmpty()
+        if (callId != null) {
+            awaitingResults[callId] = name.orEmpty()
+            // D-10(a): a call registered after this response's hold was decided. Nothing said from
+            // here on can be grounded in its result, so the response waits for it like one that
+            // started with the call awaited; the hold it replaced is re-decided when the result is in.
+            if (phase == Phase.RESPONDING && holdReason != HoldReason.AWAITING_TOOL_RESULT) {
+                replacedHold = holdReason
+                holdReason = HoldReason.AWAITING_TOOL_RESULT
+                wordsBeforeCall = replySoFar.length
+            }
+            if (replacedHold != null) midResponseTools += name.orEmpty()
+        }
+    }
+
+    /** The hold a mid-response call replaced (D-10(a)); null when no such call is pending. */
+    private var replacedHold: HoldReason? = null
+
+    /** `contextAwaitingAnswer` as seen at this response's start, for re-deciding a replaced hold. */
+    private var responseContextAwaiting = false
+
+    /** The assistant's wording so far in this response, as last passed to [onAssistantText]. */
+    private var replySoFar = ""
+
+    /**
+     * Length of the wording already said when the mid-response call arrived. Those words were
+     * judged by the hold in force then and keep that verdict; only what follows the call waits.
+     */
+    private var wordsBeforeCall = 0
+
+    private fun wordsSinceCall(text: String): String =
+        if (text.length >= wordsBeforeCall) text.substring(wordsBeforeCall).trim() else text.trim()
+
+    /** Tools called mid-response (D-10(a)) in this response. */
+    private val midResponseTools = mutableSetOf<String>()
+
+    /** Words stating an outcome were said before a mid-response call's result: never heard. */
+    private var replyBeforeResult: Verdict.Drop? = null
+
+    /**
+     * The last result awaited by a mid-response call arrived (D-10(a)). Words said before it that
+     * state an outcome are invented and the response is dropped at its end; otherwise the kind's
+     * own hold is restored, now seeing [proven] / [executionFailed].
+     */
+    private fun settleMidResponseCall(ok: Boolean): Verdict {
+        replacedHold = null
+        val words = wordsSinceCall(replySoFar)
+        if (words.isNotEmpty()) {
+            val claims = ActionClaimGuard.claimsDone(words) || ActionClaimGuard.carActionClaim(words) != null
+            replyBeforeResult = when {
+                // Nothing about the picture exists until the look returns.
+                CAMERA_TOOL in midResponseTools -> Verdict.Drop("reply_before_tool_result")
+                // A failure announced for an action that then succeeded.
+                ok && ActionClaimGuard.refuses(words) -> Verdict.Drop("reply_before_tool_result")
+                // A done-claim for an action that then failed: the driver hears the failure (a2).
+                !ok && claims -> Verdict.Drop(
+                    "unproven_action_claim",
+                    ActionClaimGuard.reportFailure(lastFailure ?: "操作失败"),
+                )
+                // A done-claim proved by ok=true is true (D-7's designed release).
+                else -> null
+            }
+            if (replyBeforeResult != null) return Verdict.Wait
+        }
+        holdReason = decideHold(responseContextAwaiting)
+        return if (holdReason == HoldReason.NONE) Verdict.Release("execution_proved") else Verdict.Wait
     }
 
     /**
@@ -300,6 +370,16 @@ class DriverTurn(val epoch: Long) {
             return Verdict.Wait
         }
         if (callId != null) awaitingResults.remove(callId)
+        if (holdReason == HoldReason.AWAITING_TOOL_RESULT && replacedHold != null) {
+            if (!ok) {
+                lastFailure = failure
+                executionFailed = true
+            } else {
+                proven = true
+                if (liveInfoKind != null) liveInfoKinds += liveInfoKind
+            }
+            return if (awaitingToolResult || replyBeforeResult != null) Verdict.Wait else settleMidResponseCall(ok)
+        }
         // A response created before this result cannot have used it; it is judged when it ends.
         if (holdReason == HoldReason.AWAITING_TOOL_RESULT) {
             if (!ok) {
@@ -336,12 +416,15 @@ class DriverTurn(val epoch: Long) {
             rejectedEvents++
             return Verdict.Wait
         }
+        replySoFar = text
         return when (holdReason) {
             HoldReason.NONE -> Verdict.Wait
             HoldReason.PHANTOM_AUDIO ->
                 if (!PhantomTurnGate.isContentlessReply(text)) {
-                    holdReason = HoldReason.NONE
-                    Verdict.Release("real_reply")
+                    // D-10(b): real content proves the turn is not a phantom, not that the rest of
+                    // the reply claims nothing. It is judged at the end like any unclassified reply.
+                    holdReason = HoldReason.UNCLASSIFIED_CLAIM
+                    Verdict.Wait
                 } else {
                     Verdict.Wait
                 }
@@ -364,7 +447,12 @@ class DriverTurn(val epoch: Long) {
         }
         if (hadToolCallInResponse) toolCalled = true
         val reply = assistantText.trim()
-        val verdict = when (holdReason) {
+        // D-10(a): a mid-response call whose result has not arrived. Words stating an outcome are
+        // invented whatever else is true; anything else is judged as a response that called a tool.
+        val midCallPending = replacedHold != null && holdReason == HoldReason.AWAITING_TOOL_RESULT
+        val verdict = replyBeforeResult ?: if (midCallPending && wordsSinceCall(reply).let { it.isNotEmpty() && speaksBeforeResult(it) }) {
+            Verdict.Drop("reply_before_tool_result")
+        } else when (holdReason) {
             HoldReason.NONE -> Verdict.Release("not_held")
 
             // No correction: the pending result's own delivery asks the model for the real answer.
@@ -446,6 +534,11 @@ class DriverTurn(val epoch: Long) {
             }
         }
         if (verdict !is Verdict.Wait) holdReason = HoldReason.NONE
+        replacedHold = null
+        replyBeforeResult = null
+        midResponseTools.clear()
+        wordsBeforeCall = 0
+        replySoFar = ""
         if (phase == Phase.RESPONDING) phase = Phase.SETTLED
         return verdict
     }

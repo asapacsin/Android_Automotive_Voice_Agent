@@ -309,8 +309,10 @@ class DriverTurnTest {
         val t = DriverTurn(epoch = 1)
         t.onResponseStarted(doubtfulAudio, false)
         t.hold("audio")
-        val verdict = t.onAssistantText("前面第二个路口右转就到了。")
-        assertTrue(verdict is DriverTurn.Verdict.Release)
+        // D-10(b): content proves the turn real, not the reply honest; it is judged at the end.
+        assertEquals(DriverTurn.Verdict.Wait, t.onAssistantText("前面第二个路口右转就到了。"))
+        assertEquals(DriverTurn.HoldReason.UNCLASSIFIED_CLAIM, t.holdReason)
+        assertEquals(DriverTurn.Verdict.Release("no_claim_made"), t.onResponseDone("前面第二个路口右转就到了。", false))
     }
 
     // ---- ordering, cancellation, illegal combinations ----
@@ -492,5 +494,153 @@ class DriverTurnTest {
             DriverTurn.Verdict.Release("no_claim_made"),
             chatTurn("你办公室也不怎么吵。").onResponseDone("是啊，挺安静的。", false),
         )
+    }
+
+    // ---- D-10(a): a call registered mid-response, after the hold was decided ----
+
+    private fun actionMidCall(): DriverTurn {
+        val t = turn(DriverTurn.Kind.ACTION)
+        assertEquals(DriverTurn.HoldReason.AWAITING_EXECUTION_PROOF, t.onResponseStarted(goodAudio, false))
+        t.onToolCall("c1", "control_climate")
+        assertEquals(DriverTurn.HoldReason.AWAITING_TOOL_RESULT, t.holdReason)
+        t.hold("audio")
+        return t
+    }
+
+    @Test
+    fun d10a1MidResponseCallThenSuccessThenClaimIsReleased() {
+        val t = actionMidCall()
+        assertEquals(DriverTurn.Verdict.Release("execution_proved"), t.onExecutionResult(true, null, callId = "c1"))
+        assertEquals(DriverTurn.Verdict.Wait, t.onAssistantText("已为您打开空调。"))
+        assertEquals(DriverTurn.Verdict.Release("not_held"), t.onResponseDone("已为您打开空调。", true))
+    }
+
+    @Test
+    fun d10a2MidResponseCallThenFailureThenClaimReportsTheFailure() {
+        val t = actionMidCall()
+        assertEquals(DriverTurn.Verdict.Wait, t.onExecutionResult(false, "空调不可用", callId = "c1"))
+        assertEquals(DriverTurn.HoldReason.AWAITING_EXECUTION_PROOF, t.holdReason)
+        t.onAssistantText("已为您打开空调。")
+        val v = t.onResponseDone("已为您打开空调。", true)
+        assertEquals(
+            DriverTurn.Verdict.Drop("unproven_action_claim", ActionClaimGuard.reportFailure("空调不可用")),
+            v,
+        )
+    }
+
+    @Test
+    fun d10a3AFailureAnnouncedBeforeASuccessfulResultIsNeverHeard() {
+        val t = actionMidCall()
+        assertEquals(DriverTurn.Verdict.Wait, t.onAssistantText("抱歉，空调暂时无法使用。"))
+        assertEquals(DriverTurn.Verdict.Wait, t.onExecutionResult(true, null, callId = "c1"))
+        assertTrue(t.isHolding)
+        assertEquals(DriverTurn.Verdict.Drop("reply_before_tool_result"), t.onResponseDone("抱歉，空调暂时无法使用。", true))
+    }
+
+    @Test
+    fun d10a3AnyWordsBeforeAMidResponseCameraResultAreNeverHeard() {
+        val t = turn(DriverTurn.Kind.ACTION)
+        t.onResponseStarted(goodAudio, false)
+        t.onToolCall("v1", "describe_camera_view")
+        t.onAssistantText("前面是一辆白色的车。")
+        assertEquals(DriverTurn.Verdict.Wait, t.onExecutionResult(true, null, callId = "v1"))
+        assertEquals(DriverTurn.Verdict.Drop("reply_before_tool_result"), t.onResponseDone("前面是一辆白色的车。", true))
+    }
+
+    @Test
+    fun d10a3ADoneClaimBeforeAFailedResultReportsTheFailure() {
+        val t = actionMidCall()
+        t.onAssistantText("已为您打开空调。")
+        assertEquals(DriverTurn.Verdict.Wait, t.onExecutionResult(false, "空调不可用", callId = "c1"))
+        assertEquals(
+            DriverTurn.Verdict.Drop("unproven_action_claim", ActionClaimGuard.reportFailure("空调不可用")),
+            t.onResponseDone("已为您打开空调。", true),
+        )
+    }
+
+    @Test
+    fun d10a3ADoneClaimBeforeASuccessfulResultIsProved() {
+        val t = actionMidCall()
+        t.onAssistantText("已为您打开空调。")
+        assertEquals(DriverTurn.Verdict.Release("execution_proved"), t.onExecutionResult(true, null, callId = "c1"))
+    }
+
+    @Test
+    fun d10a3OutcomeWordsWithTheResultStillPendingAtTheEndAreDropped() {
+        val t = actionMidCall()
+        t.onAssistantText("已为您打开空调。")
+        assertEquals(DriverTurn.Verdict.Drop("reply_before_tool_result"), t.onResponseDone("已为您打开空调。", true))
+    }
+
+    @Test
+    fun d10a4WordsStatingNoOutcomeWaitForTheResultThenTheKindsHold() {
+        val ok = actionMidCall()
+        assertEquals(DriverTurn.Verdict.Wait, ok.onAssistantText("好的，稍等"))
+        assertEquals(DriverTurn.Verdict.Release("execution_proved"), ok.onExecutionResult(true, null, callId = "c1"))
+
+        val failed = actionMidCall()
+        failed.onAssistantText("好的，稍等")
+        assertEquals(DriverTurn.Verdict.Wait, failed.onExecutionResult(false, "空调不可用", callId = "c1"))
+        assertEquals(DriverTurn.HoldReason.AWAITING_EXECUTION_PROOF, failed.holdReason)
+        val v = failed.onResponseDone("好的，稍等已为您打开空调。", true)
+        assertTrue(v is DriverTurn.Verdict.Drop && v.reason == "unproven_action_claim")
+    }
+
+    @Test
+    fun d10a5NoWordsThenResultThenReplyInALaterResponseIsUnchanged() {
+        val t = actionMidCall()
+        assertEquals(DriverTurn.Verdict.Release("tool_called"), t.onResponseDone("", true))
+        // The hold was already settled with the response: the result proves, nothing is held.
+        assertEquals(DriverTurn.Verdict.Wait, t.onExecutionResult(true, null, callId = "c1"))
+        assertTrue(t.proven)
+        assertEquals(DriverTurn.HoldReason.NONE, t.onResponseStarted(goodAudio, false))
+        assertEquals(DriverTurn.Verdict.Release("not_held"), t.onResponseDone("已为您打开空调。", false))
+    }
+
+    @Test
+    fun d10a6AResponseThatStartedWithTheCallAwaitedIsUnchanged() {
+        val t = turn(DriverTurn.Kind.ACTION)
+        t.onToolCall("v1", "describe_camera_view")
+        assertEquals(DriverTurn.HoldReason.AWAITING_TOOL_RESULT, t.onResponseStarted(goodAudio, false))
+        t.onToolCall("c2", "control_climate")
+        t.onAssistantText("好的")
+        assertEquals(DriverTurn.Verdict.Wait, t.onExecutionResult(true, null, callId = "v1"))
+        assertEquals(DriverTurn.Verdict.Wait, t.onExecutionResult(true, null, callId = "c2"))
+        assertEquals(DriverTurn.Verdict.Drop("reply_before_tool_result"), t.onResponseDone("抱歉，摄像头暂时无法使用。", false))
+    }
+
+    // ---- D-10(b): phantom audio, then content ----
+
+    @Test
+    fun d10bPhantomThenClaimWithNoCallIsDropped() {
+        val t = DriverTurn(epoch = 1)
+        assertEquals(DriverTurn.HoldReason.PHANTOM_AUDIO, t.onResponseStarted(doubtfulAudio, false))
+        t.hold("audio")
+        assertEquals(DriverTurn.Verdict.Wait, t.onAssistantText("好的。"))
+        val claim = "好的，我已经为您把空调打开了，温度二十四度。"
+        assertEquals(DriverTurn.Verdict.Wait, t.onAssistantText(claim))
+        assertEquals(DriverTurn.HoldReason.UNCLASSIFIED_CLAIM, t.holdReason)
+        val v = t.onResponseDone(claim, false)
+        assertTrue(v is DriverTurn.Verdict.Drop && v.reason.startsWith("unverified_claim_"), "$v")
+    }
+
+    @Test
+    fun d10bPhantomThenChatIsReleasedAsNoClaim() {
+        val t = DriverTurn(epoch = 1)
+        t.onResponseStarted(doubtfulAudio, false)
+        t.hold("audio")
+        assertEquals(DriverTurn.Verdict.Wait, t.onAssistantText("今天路上车不多，大概二十分钟就能到公司。"))
+        assertEquals(DriverTurn.HoldReason.UNCLASSIFIED_CLAIM, t.holdReason)
+        assertEquals(DriverTurn.Verdict.Release("no_claim_made"), t.onResponseDone("今天路上车不多，大概二十分钟就能到公司。", false))
+    }
+
+    @Test
+    fun d10bAShortPhantomReplyStillGoesThroughThePhantomGate() {
+        val t = DriverTurn(epoch = 1)
+        t.onResponseStarted(doubtfulAudio, false)
+        assertEquals(DriverTurn.Verdict.Wait, t.onAssistantText("今天车不多。"))
+        assertEquals(DriverTurn.HoldReason.PHANTOM_AUDIO, t.holdReason)
+        val v = t.onResponseDone("今天车不多。", false)
+        assertTrue(v is DriverTurn.Verdict.Drop || v == DriverTurn.Verdict.Release("genuine_turn"), "$v")
     }
 }
