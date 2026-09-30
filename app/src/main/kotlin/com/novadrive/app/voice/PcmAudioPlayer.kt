@@ -603,16 +603,21 @@ class AndroidPlaybackPort(
                 focus?.requestSpeechFocus()
             } else {
                 focus?.abandon()
-                guidance.drained()?.let { id ->
-                    guidancePlayoutEnded()
-                    GuidanceClaims.onGuidanceDrained(id)
-                }
+                guidanceDrainedIfIdle() // R8b: an underrun before COMPLETED is not a drain
             }
         }
         // Single owner: AudioFocusController.onFocusChanged is one slot, not a listener list.
         focus?.onFocusChanged = { change -> applyFocusChange(change) }
         // SPEC-012 D1: the one playback-hold hook; SpeechAuthority.syncPlaybackHold drives it.
-        SpeechAuthority.playbackHold = { pause -> if (pause) player.pausePlayback() else player.resumePlayback() }
+        // R8a: a held guidance chunk is claimed as the hold lifts, before it is heard. Refused (Amap
+        // took it at its deadline): stay paused; the flush runs outside the hold lock.
+        SpeechAuthority.playbackHold = { pause ->
+            when {
+                pause -> player.pausePlayback()
+                guidance.startPlayout() -> player.resumePlayback()
+                else -> SpeechAuthority.scheduleRecheck(0L) { refusedGuidance(resume = true) }
+            }
+        }
         // D3: the 8 s workload cap must release even if distance updates stop.
         SpeechAuthority.scheduleRecheck = { delayMs, task ->
             runCatching {
@@ -689,6 +694,7 @@ class AndroidPlaybackPort(
             com.novadrive.ingress.realtime.DomainVoiceEvent.AppPromptTurn.Phase.COMPLETED -> {
                 guidance.completed(promptId) // playing stays set until the audio drains
                 arbiter.onAssistantGuidance(promptId, phase)
+                if (!player.isPlaying) guidanceDrainedIfIdle()
             }
             com.novadrive.ingress.realtime.DomainVoiceEvent.AppPromptTurn.Phase.VOIDED -> {
                 arbiter.onAssistantGuidance(promptId, phase)
@@ -700,6 +706,30 @@ class AndroidPlaybackPort(
             }
         }
         SpeechAuthority.syncPlaybackHold()
+    }
+
+    /** R8b: the drained prompt, only once COMPLETED was seen and nothing of it is queued. */
+    private fun guidanceDrainedIfIdle() {
+        guidance.drained()?.let { id ->
+            guidancePlayoutEnded()
+            GuidanceClaims.onGuidanceDrained(id)
+        }
+    }
+
+    /**
+     * R8a: queued guidance is about to be heard (the player is not held) — claim it now. A refused
+     * claim means Amap took the sentence at its deadline: the queued audio is thrown away.
+     */
+    private fun startGuidancePlayout() {
+        if (guidance.playing == null || SpeechAuthority.arbiter.guidanceHeld()) return
+        if (!guidance.startPlayout()) refusedGuidance()
+    }
+
+    private fun refusedGuidance(resume: Boolean = false) {
+        player.flushCurrentEpoch()
+        if (resume) player.resumePlayback()
+        guidancePlayoutEnded()
+        com.novadrive.app.DebugVoiceLog.log("guidance_audio_not_played reason=claimed_by_amap")
     }
 
     /** B2a: guidance audio about to be flushed before it finished — tell the relay, stop the playout. */
@@ -726,6 +756,7 @@ class AndroidPlaybackPort(
                 SpeechAuthority.arbiter.onGuidancePlayout(true)
                 SpeechAuthority.syncPlaybackHold() // HOLD (R1/R5) pauses before the chunk is visible
                 player.enqueue(pcm16le, epoch)
+                startGuidancePlayout() // no claim while HOLD-paused (R8a)
             }
         }
         return true
@@ -776,6 +807,10 @@ class AndroidPlaybackPort(
         cutGuidance()
         player.stop()
         SpeechAuthority.onReplyEnded()
+        // SPEC-018 R2: an open prompt must not route the next session's replies as guidance.
+        guidance.reset()
+        SpeechAuthority.arbiter.clearGuidance()
+        runCatching { GuidanceClaims.onSessionStopped() }
     }
 }
 

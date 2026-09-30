@@ -31,16 +31,50 @@ class GuidancePromptTrackerTest {
         // The route never consults the listening state; HOLD still queues (the player pauses).
         assertEquals(Route.QUEUE, tracker.route { Reply.HOLD })
         assertEquals(Route.QUEUE, tracker.route { Reply.PLAY })
-        assertEquals(1, claims)
+        assertEquals(0, claims) // R8a: queuing is not playing
         assertTrue(tracker.active)
     }
 
     @Test
-    fun claimFalseDropsAndAbandons() {
-        claim = false
+    fun claimIsMadeOnceAtPlayout() {
         tracker.opened("p1")
-        assertEquals(Route.DROP, tracker.route { Reply.PLAY })
+        tracker.route { Reply.PLAY }
+        assertTrue(tracker.startPlayout())
+        tracker.route { Reply.PLAY }
+        assertTrue(tracker.startPlayout())
+        assertEquals(1, claims)
+    }
+
+    @Test
+    fun heldChunkIsNeverClaimedAndARefusedClaimAbandons() {
+        claim = false // the deadline gave the prompt to Amap while the chunk sat HOLD-paused
+        tracker.opened("p1")
+        assertEquals(Route.QUEUE, tracker.route { Reply.HOLD })
+        assertEquals(0, claims)
+        assertFalse(tracker.startPlayout())
         assertEquals(listOf("p1"), abandoned)
+        assertEquals(null, tracker.playing)
+        assertEquals(Route.DROP, tracker.route { if (it in abandoned) Reply.DROP else Reply.PLAY })
+    }
+
+    @Test
+    fun underrunBeforeCompletedIsNotADrain() {
+        tracker.opened("p1")
+        tracker.route { Reply.PLAY }
+        assertEquals(null, tracker.drained())
+        assertTrue(tracker.active)
+        tracker.completed("p1")
+        assertEquals("p1", tracker.drained())
+    }
+
+    @Test
+    fun resetForgetsAnOpenPrompt() {
+        tracker.opened("p1")
+        tracker.route { Reply.PLAY }
+        tracker.reset()
+        assertFalse(tracker.active)
+        assertEquals(Route.ORDINARY, tracker.route { Reply.PLAY })
+        assertTrue(cuts.isEmpty())
     }
 
     @Test

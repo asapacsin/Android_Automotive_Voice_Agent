@@ -152,10 +152,12 @@ object SpeechAuthority {
 
     /**
      * The voice session ended: drop hold bookkeeping so nothing leaks into the next session.
-     * Never invokes [playbackHold] and keeps the arbiter instance.
+     * Never invokes [playbackHold] and keeps the arbiter instance; open guidance is cleared (R2).
      */
     fun onSessionEnded() {
         arbiter.onReplyEnded()
+        arbiter.clearGuidance() // SPEC-018 R2
+        runCatching { GuidanceClaims.onSessionStopped() }
         synchronized(holdLock) {
             pauseApplied = false
             replyQueued = false

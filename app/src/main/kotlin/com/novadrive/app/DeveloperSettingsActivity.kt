@@ -481,7 +481,6 @@ class DeveloperSettingsActivity : Activity() {
         )
     }
 
-    /** Voice provider choice and Gemini Live settings (ADR-010, ADR-013). The key is never displayed or logged; blank keeps the stored one. */
     /** SPEC-018 (experimental, default off): 小诺 speaks turn-by-turn guidance; read when navigation starts. */
     private fun guidanceRelayToggle(): CheckBox {
         val prefs = getSharedPreferences(
@@ -495,6 +494,7 @@ class DeveloperSettingsActivity : Activity() {
         }
     }
 
+    /** Voice provider choice and Gemini Live settings (ADR-010, ADR-013). The key is never displayed or logged; blank keeps the stored one. */
     private fun geminiSection(): LinearLayout {
         val gemini = GeminiSettingsRepository(this)
         val saved = gemini.loadSettings()

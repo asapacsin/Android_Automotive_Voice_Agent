@@ -250,7 +250,15 @@ internal object GuidanceBlockers {
         !connected -> "NOT_CONNECTED"
         !verbatim -> "NO_CAPABILITY"
         ui == com.novadrive.ingress.realtime.VoiceUiState.USER_SPEAKING -> "DRIVER_SPEAKING"
+        ui == com.novadrive.ingress.realtime.VoiceUiState.THINKING -> "RESPONSE_OPEN"
         pendingWork -> "WORK_PENDING"
         else -> null
     }
+
+    /**
+     * R7 (G-2 only when used): SLEEP keeps the connection while navigating only if the relay is
+     * active (toggle on) and the provider speaks prompts verbatim; otherwise today's timers apply.
+     */
+    fun keepsSleepConnected(navigating: Boolean, relayActive: Boolean, verbatim: Boolean): Boolean =
+        navigating && relayActive && verbatim
 }

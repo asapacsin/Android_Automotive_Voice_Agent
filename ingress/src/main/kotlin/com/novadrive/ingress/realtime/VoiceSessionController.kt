@@ -32,6 +32,8 @@ data class VoiceSessionCallbacks(
     val qualifyPlayoutBargeIn: () -> Boolean = { true },
     /** The response to an app prompt changed phase (SPEC-018); in order with the reply audio. */
     val onAppPromptTurn: (String, DomainVoiceEvent.AppPromptTurn.Phase) -> Unit = { _, _ -> },
+    /** SPEC-018 R5/R6: output transcription of a GUIDANCE turn (promptId, text); never a UI line. */
+    val onAppPromptTranscript: (String, String) -> Unit = { _, _ -> },
 )
 
 /**

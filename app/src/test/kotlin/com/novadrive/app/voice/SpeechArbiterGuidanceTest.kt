@@ -118,4 +118,33 @@ class SpeechArbiterGuidanceTest {
         arbiter.onDriverSpeaking(false)
         assertEquals(Uplink.CLOSED, arbiter.uplink())
     }
+
+    @Test
+    fun stopDuringAnOpenPromptLeavesNothingForTheNextSession() {
+        // R2: AndroidPlaybackPort.stop() / SpeechAuthority.onSessionEnded clear the tracker and the arbiter.
+        val tracker = GuidancePromptTracker(abandon = {}, claim = { true }, cut = {})
+        tracker.opened("p1")
+        arbiter.onAssistantGuidance("p1", Phase.OPENED)
+        tracker.route { arbiter.guidanceChunk(it) }
+        tracker.startPlayout()
+        arbiter.onGuidancePlayout(true)
+        assertEquals(Reply.HOLD, arbiter.reply())
+
+        tracker.reset()
+        arbiter.clearGuidance()
+
+        assertEquals(GuidancePromptTracker.Route.ORDINARY, tracker.route { arbiter.guidanceChunk(it) })
+        assertFalse(tracker.active) // a cancel is not spared
+        assertFalse(arbiter.assistantGuidanceActive())
+        assertEquals(Reply.PLAY, arbiter.reply())
+    }
+
+    @Test
+    fun clearGuidanceKeepsAmapGuidance() {
+        arbiter.onGuidanceSpeaking(true)
+        arbiter.onAssistantGuidance("p1", Phase.OPENED)
+        arbiter.clearGuidance()
+        assertTrue(arbiter.guidanceHeld())
+        assertEquals(Uplink.CLOSED, arbiter.uplink())
+    }
 }

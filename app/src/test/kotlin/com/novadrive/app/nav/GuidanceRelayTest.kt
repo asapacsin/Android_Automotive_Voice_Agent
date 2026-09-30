@@ -18,7 +18,16 @@ class GuidanceRelayTest {
     private var enabled = true
     private val logs = mutableListOf<String>()
 
-    private val relay = GuidanceRelay(
+    private val brackets = mutableListOf<Boolean>()
+    private lateinit var relay: GuidanceRelay
+
+    /** Amap's listener reports the end of what it was saying. */
+    private fun amapEnds() {
+        amapSpeaking = false
+        relay.onAmapSpeaking(false)
+    }
+
+    private fun build() = GuidanceRelay(
         clock = { now },
         schedule = { delay, task ->
             val cancelled = BooleanArray(1)
@@ -37,10 +46,19 @@ class GuidanceRelayTest {
             override fun amapSpeaking() = amapSpeaking
             override fun transientFocusLoss() = focusLoss
             override fun abandon(promptId: String) { abandoned += promptId }
+            override fun bracket(speaking: Boolean) {
+                brackets += speaking
+                amapSpeaking = speaking
+                if (!speaking) relay.onAmapSpeaking(false)
+            }
         },
         enabled = { enabled },
         log = { logs += it },
     )
+
+    init {
+        relay = build()
+    }
 
     private fun advance(ms: Long) {
         val target = now + ms
@@ -62,15 +80,18 @@ class GuidanceRelayTest {
             "NO_CAPABILITY" to { blocker = "NO_CAPABILITY" },
             "DRIVER_SPEAKING" to { blocker = "DRIVER_SPEAKING" },
             "WORK_PENDING" to { blocker = "WORK_PENDING" },
+            "RESPONSE_OPEN" to { blocker = "RESPONSE_OPEN" },
             "AMAP_SPEAKING" to { amapSpeaking = true },
             "FOCUS" to { focusLoss = true },
             "DISABLED" to { enabled = false },
         )
         for ((reason, setup) in cases) {
-            blocker = null; amapSpeaking = false; focusLoss = false; enabled = true
+            blocker = null; focusLoss = false; enabled = true
+            amapEnds()
             setup()
             relay.onGuidanceText("左转")
             assertTrue(lastRoute().contains("to=amap reason=$reason"), reason)
+            amapEnds() // G-1b+: a fallback over Amap waits for its end
         }
         assertEquals(cases.size, spoken.size)
         assertTrue(sent.isEmpty())
@@ -126,12 +147,13 @@ class GuidanceRelayTest {
 
     @Test
     fun twoConsecutiveFallbacksStartACooldownThenRetry() {
-        relay.onGuidanceText("a"); advance(1_200)
-        relay.onGuidanceText("b"); advance(1_200)
+        relay.onGuidanceText("a"); advance(1_200); amapEnds()
+        relay.onGuidanceText("b"); advance(1_200); amapEnds()
         assertEquals(2, sent.size)
         relay.onGuidanceText("c")
         assertTrue(lastRoute().contains("reason=COOLDOWN"))
         assertEquals(2, sent.size)
+        amapEnds()
         advance(60_000)
         relay.onGuidanceText("d")
         assertEquals(3, sent.size)
@@ -139,9 +161,9 @@ class GuidanceRelayTest {
 
     @Test
     fun assistantClaimResetsTheConsecutiveCounter() {
-        relay.onGuidanceText("a"); advance(1_200)
+        relay.onGuidanceText("a"); advance(1_200); amapEnds()
         relay.onGuidanceText("b"); relay.claimAssistant("g2"); relay.onCompleted("g2", "b"); relay.onDrained("g2")
-        relay.onGuidanceText("c"); advance(1_200)
+        relay.onGuidanceText("c"); advance(1_200); amapEnds()
         relay.onGuidanceText("d")
         assertEquals(4, sent.size)
     }
@@ -193,10 +215,10 @@ class GuidanceRelayTest {
         relay.onCompleted("g1", "前方右转"); relay.onDrained("g1")
         assertEquals(listOf("前方左转"), spoken)
         assertTrue(logs.contains("guidance_fidelity prompt=g1 result=MISMATCH_DIRECTION"))
+        amapEnds()
         relay.onGuidanceText("二百米直行")
         relay.claimAssistant("g2")
-        relay.onCompleted("g2", null); relay.onDrained("g2")
-        advance(1_500) // UNKNOWN after the grace: a strike, no re-speak
+        relay.onCompleted("g2", null); relay.onDrained("g2") // UNKNOWN: a strike, no re-speak
         assertEquals(1, spoken.size)
         relay.onGuidanceText("掉头")
         assertTrue(lastRoute().contains("reason=FIDELITY_STRIKES"))
@@ -205,8 +227,8 @@ class GuidanceRelayTest {
 
     @Test
     fun navigationEndClearsStrikesAndCooldown() {
-        relay.onGuidanceText("a"); advance(1_200)
-        relay.onGuidanceText("b"); advance(1_200)
+        relay.onGuidanceText("a"); advance(1_200); amapEnds()
+        relay.onGuidanceText("b"); advance(1_200); amapEnds()
         relay.onNavigationEnded()
         relay.onGuidanceText("c")
         assertEquals(3, sent.size)
@@ -216,6 +238,8 @@ class GuidanceRelayTest {
     fun toggleOffAlwaysAmapAndNeverSends() {
         enabled = false
         repeat(3) { relay.onGuidanceText("左转$it") }
+        assertEquals(1, spoken.size) // one at a time: never Amap over itself
+        amapEnds(); amapEnds()
         assertEquals(3, spoken.size)
         assertTrue(sent.isEmpty())
     }
@@ -267,45 +291,161 @@ class GuidanceRelayTest {
     }
 
     @Test
-    fun lateTranscriptWithinGraceMatchesWithoutStrike() {
-        repeat(2) { i ->
-            relay.onGuidanceText("前方左转")
-            val id = "g${i + 1}"
-            relay.claimAssistant(id)
-            relay.onCompleted(id, null)
-            relay.onDrained(id)
-            advance(1_000)
-            relay.onLateTranscript(id, "前方左转")
-            assertTrue(logs.contains("guidance_fidelity prompt=$id result=MATCH"))
-        }
-        relay.onGuidanceText("掉头")
-        assertEquals(3, sent.size) // no strikes accrued
-        assertTrue(spoken.isEmpty())
-    }
-
-    @Test
-    fun transcriptAfterGraceIsUnknownStrikeWithoutRespeak() {
-        relay.onGuidanceText("前方左转")
-        relay.claimAssistant("g1")
-        relay.onCompleted("g1", null)
-        relay.onDrained("g1")
-        advance(1_499)
-        assertFalse(logs.any { it.startsWith("guidance_fidelity") })
-        advance(1)
-        assertTrue(logs.contains("guidance_fidelity prompt=g1 result=UNKNOWN"))
-        relay.onLateTranscript("g1", "前方左转")
-        assertTrue(spoken.isEmpty())
-    }
-
-    @Test
     fun strikesAndCooldownDoNotCarryIntoTheNextNavigation() {
-        relay.onGuidanceText("左转"); relay.claimAssistant("g1"); relay.onCompleted("g1", "右转"); relay.onDrained("g1")
-        relay.onGuidanceText("右转"); relay.claimAssistant("g2"); relay.onCompleted("g2", "左转"); relay.onDrained("g2")
-        relay.onGuidanceText("a"); advance(1_200)
+        relay.onGuidanceText("左转"); relay.claimAssistant("g1"); relay.onCompleted("g1", "右转"); relay.onDrained("g1"); amapEnds()
+        relay.onGuidanceText("右转"); relay.claimAssistant("g2"); relay.onCompleted("g2", "左转"); relay.onDrained("g2"); amapEnds()
+        relay.onGuidanceText("a"); advance(1_200); amapEnds()
         relay.onGuidanceText("b")
         assertTrue(lastRoute().contains("reason=FIDELITY_STRIKES"))
+        amapSpeaking = false // the host's stop funnel ends Amap's voice
         relay.onNavigationEnded()
         relay.onGuidanceText("c")
         assertEquals("g5", sent.last().first)
+    }
+
+    // ---- revision 3: R1, typed transcript, G-1b+ ----------------------------------------------
+
+    @Test
+    fun claimDrainThenVoidedStillLetsTheNextPromptRoute() {
+        relay.onGuidanceText("前方左转")
+        relay.claimAssistant("g1")
+        relay.onDrained("g1") // drained, COMPLETED never came
+        relay.onVoided("g1")
+        assertEquals(listOf("前方左转"), spoken) // B2a
+        amapEnds()
+        relay.onGuidanceText("前方右转")
+        assertEquals("g2", sent.last().first)
+    }
+
+    @Test
+    fun claimDrainThenSessionStopStillLetsTheNextPromptRoute() {
+        relay.onGuidanceText("前方左转")
+        relay.claimAssistant("g1")
+        relay.onDrained("g1")
+        relay.onSessionStopped()
+        assertEquals(listOf("前方左转"), spoken)
+        assertTrue(lastRoute().contains("prompt=g1 to=amap reason=SESSION_STOPPED"))
+        amapEnds()
+        relay.onGuidanceText("前方右转")
+        assertEquals("g2", sent.last().first)
+    }
+
+    @Test
+    fun pendingThenVoidedGoesToAmapNowAndAbandons() {
+        relay.onGuidanceText("前方左转")
+        advance(300)
+        relay.onVoided("g1")
+        assertEquals(listOf("g1"), abandoned)
+        assertEquals(listOf("前方左转"), spoken)
+        assertTrue(lastRoute().contains("reason=VOIDED waited_ms=300"))
+        advance(5_000) // the cancelled deadline does not speak it twice
+        assertEquals(1, spoken.size)
+        assertFalse(relay.claimAssistant("g1"))
+    }
+
+    @Test
+    fun pendingThenSessionStoppedGoesToAmapAndTheQueueMovesOn() {
+        relay.onGuidanceText("前方左转")
+        relay.onGuidanceText("前方右转")
+        blocker = "NOT_CONNECTED"
+        relay.onSessionStopped()
+        assertEquals(listOf("g1"), abandoned)
+        assertEquals(listOf("前方左转"), spoken)
+        amapEnds()
+        assertEquals(listOf("前方左转", "前方右转"), spoken)
+    }
+
+    @Test
+    fun heldChunkNeverClaimedHandsThePromptToAmapAtTheDeadline() {
+        // R8a: the port claims only at playout; a HOLD-paused chunk makes no claim.
+        relay.onGuidanceText("前方左转")
+        advance(1_200)
+        assertEquals(listOf("前方左转"), spoken)
+        assertEquals(listOf("g1"), abandoned)
+        assertFalse(relay.claimAssistant("g1")) // the port flushes what it held
+    }
+
+    @Test
+    fun fidelityIsJudgedFromTheTypedTranscriptAtCompletedAfterDrain() {
+        GuidanceRelay.install(relay)
+        try {
+            relay.onGuidanceText("前方二百米左转")
+            relay.claimAssistant("g1")
+            val opened = com.novadrive.ingress.realtime.DomainVoiceEvent.AppPromptTurn.Phase.OPENED
+            val completed = com.novadrive.ingress.realtime.DomainVoiceEvent.AppPromptTurn.Phase.COMPLETED
+            GuidanceTranscripts.onAppPromptTurn("g1", opened)
+            GuidanceTranscripts.onAppPromptTranscript("g1", "前方二百米")
+            relay.onDrained("g1")
+            assertFalse(logs.any { it.startsWith("guidance_fidelity") })
+            GuidanceTranscripts.onAppPromptTranscript("g1", "右转")
+            GuidanceTranscripts.onAppPromptTurn("g1", completed)
+            assertTrue(logs.contains("guidance_fidelity prompt=g1 result=MISMATCH_DIRECTION"))
+            assertEquals(listOf("前方二百米左转"), spoken)
+        } finally {
+            GuidanceRelay.uninstall(relay)
+        }
+    }
+
+    @Test
+    fun fidelityAtDrainWhenCompletedCameFirst() {
+        relay.onGuidanceText("前方左转")
+        relay.claimAssistant("g1")
+        relay.onCompleted("g1", "前方左转")
+        assertFalse(logs.any { it.startsWith("guidance_fidelity") })
+        relay.onDrained("g1")
+        assertTrue(logs.contains("guidance_fidelity prompt=g1 result=MATCH"))
+    }
+
+    @Test
+    fun voidedThroughTheTranscriptCollectorReachesTheRelay() {
+        GuidanceRelay.install(relay)
+        try {
+            relay.onGuidanceText("前方左转")
+            GuidanceTranscripts.onAppPromptTurn("g1", com.novadrive.ingress.realtime.DomainVoiceEvent.AppPromptTurn.Phase.VOIDED)
+            assertEquals(listOf("前方左转"), spoken)
+        } finally {
+            GuidanceRelay.uninstall(relay)
+        }
+    }
+
+    @Test
+    fun relayNeverCallsPlayTtsWhileAmapSpeaks() {
+        amapSpeaking = true // Amap is speaking something
+        relay.onGuidanceText("前方左转")
+        assertTrue(lastRoute().contains("reason=AMAP_SPEAKING"))
+        assertTrue(spoken.isEmpty())
+        amapEnds()
+        assertEquals(listOf("前方左转"), spoken)
+        assertEquals(listOf(true), brackets)
+    }
+
+    @Test
+    fun ownBracketEndsOnTheListenerAndBlocksPromptsWhileOpen() {
+        sendAccepted = false
+        relay.onGuidanceText("左转") // SEND_FAILED → Amap, bracket opens
+        sendAccepted = true
+        relay.onGuidanceText("右转")
+        assertTrue(lastRoute().contains("reason=AMAP_SPEAKING"))
+        assertEquals(1, sent.size)
+        assertEquals(listOf("左转"), spoken)
+        amapEnds()
+        assertEquals(listOf("左转", "右转"), spoken)
+    }
+
+    @Test
+    fun ownBracketEndsByTheLengthEstimateWhenNoListenerEndArrives() {
+        sendAccepted = false
+        relay.onGuidanceText("前方左转") // 4 chars → estimate max(1500, 1200) = 1500 ms
+        assertEquals(listOf(true), brackets)
+        advance(1_499)
+        assertEquals(listOf(true), brackets)
+        advance(1)
+        assertEquals(listOf(true, false), brackets)
+        assertFalse(amapSpeaking)
+        relay.onGuidanceText("前".repeat(10)) // 3000 ms
+        advance(2_999)
+        assertEquals(3, brackets.size)
+        advance(1)
+        assertEquals(4, brackets.size)
     }
 }
