@@ -27,6 +27,7 @@ object VoiceContextHints {
         cameraOpen: Boolean,
         options: String? = null,
         climate: DriverContext.Climate? = null,
+        cabin: DriverContext.Cabin? = null,
         referents: List<DriverContext.Dimension> = emptyList(),
         pendingClarification: List<DriverContext.Dimension>? = null,
         screenControls: List<String> = emptyList(),
@@ -55,6 +56,7 @@ object VoiceContextHints {
             }
             if (cameraOpen) add("摄像头画面已打开；「这是什么」「前面有什么」等问题调用 describe_camera_view。")
             climate?.let { add(describeClimate(it)) }
+            cabin?.let(::describeCabin)?.let(::add)
             describeReferents(referents)?.let(::add)
             pendingClarification?.let { add(describePending(it)) }
             // SPEC-010 B1/A6: the model knows the bar's names too, in case the local match missed.
@@ -69,6 +71,29 @@ object VoiceContextHints {
         val power = if (climate.powerOn) "已打开" else "已关闭"
         return "空调$power，当前设定温度 ${ClimateToolHandlerText.temperature(climate.temperatureC)} 度，风量 ${climate.fanLevel} 档；" +
             "相对调节必须用 adjust_temperature / adjust_fan，不要自己推算原来的数值。"
+    }
+
+    private val WINDOW_NAMES = linkedMapOf(
+        "front_left" to "主驾",
+        "front_right" to "副驾",
+        "rear_left" to "左后",
+        "rear_right" to "右后",
+    )
+
+    private fun describeCabin(cabin: DriverContext.Cabin): String? {
+        val parts = buildList {
+            cabin.windows?.takeIf { it.isNotEmpty() }?.let { w ->
+                add("车窗：" + w.entries.joinToString("、") { "${WINDOW_NAMES[it.key] ?: it.key}${it.value}%" })
+            }
+            cabin.seatHeight?.let { add("座椅高度${it}档") }
+        }
+        return if (parts.isEmpty()) null else parts.joinToString("；") + "；相对调节用 control_window adjust / control_seat adjust_height。"
+    }
+
+    private fun toolFor(dimension: DriverContext.Dimension): String = when (dimension) {
+        DriverContext.Dimension.WINDOW -> "control_window 的 adjust"
+        DriverContext.Dimension.SEAT_HEIGHT -> "control_seat 的 adjust_height"
+        else -> "adjust_${dimension.wire}"
     }
 
     /**
@@ -89,19 +114,28 @@ object VoiceContextHints {
         1 -> {
             val what = readable(referents.first())
             "刚才调整的是$what；用户接下来说「再高一点」「再低一点」「再大一点」这类没有说明对象的话，" +
-                "指的就是$what，用 adjust_${referents.first().wire} 调节。"
+                "指的就是$what，用 ${toolFor(referents.first())} 调节。"
         }
-        else ->
+        else -> if (referents.all { it.isClimate }) {
             "刚才温度和风量都调过；如果用户说「再低一点」这类没有说明对象的话，" +
                 "必须用一句话反问是温度还是风量，不要自己选一个。"
+        } else {
+            val names = referents.joinToString("和") { readable(it) }
+            "刚才${names}都调过；如果用户说「再低一点」这类没有说明对象的话，" +
+                "必须用一句话反问是" + referents.joinToString("还是") { readable(it) } + "，不要自己选一个。"
+        }
     }
 
     private fun describePending(options: List<DriverContext.Dimension>): String =
         "你刚才已经问过用户是" + options.joinToString("还是") { readable(it) } +
             "；如果用户这句话回答的是其中一项，就按上一次的方向调节那一项，不要再问一遍。"
 
-    private fun readable(dimension: DriverContext.Dimension): String =
-        if (dimension == DriverContext.Dimension.FAN) "风量" else "温度"
+    private fun readable(dimension: DriverContext.Dimension): String = when (dimension) {
+        DriverContext.Dimension.FAN -> "风量"
+        DriverContext.Dimension.TEMPERATURE -> "温度"
+        DriverContext.Dimension.WINDOW -> "车窗"
+        DriverContext.Dimension.SEAT_HEIGHT -> "座椅高度"
+    }
 
     /** Live state, read when a session (or a reset conversation) is configured. */
     fun current(): String? =
@@ -145,6 +179,7 @@ object VoiceContextHints {
                 cameraOpen = cameraOpen,
                 options = options,
                 climate = context?.climateState(),
+                cabin = context?.cabinState(),
                 referents = referents,
                 pendingClarification = pending,
                 screenControls = if (!withControls) {
