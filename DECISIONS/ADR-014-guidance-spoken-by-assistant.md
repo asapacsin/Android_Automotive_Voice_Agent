@@ -11,8 +11,9 @@ per stage).
 
 1. **Amap's built-in voice is muted** (`setUseInnerVoice(false)`) while the realtime session can speak.
 2. **Every guidance sentence Amap produces** (`onGetNavigationText`, discarded today) is spoken by
-   the realtime model in the assistant's own voice, through the existing app-initiated speech path
-   (`VoiceSessionGateway.speak`, as the camera look already does), with a verbatim instruction.
+   the realtime model in the assistant's own voice, through a non-starting, non-waking prompt send
+   (`VoiceSessionGateway.sendPrompt(text, GUIDANCE)`, SPEC-018 revision 2 — not `speak`, which wakes the
+   assistant), with a verbatim instruction.
 3. **Fallback — owner decision:** when the model cannot speak it (no connection, session failed,
    timeout before audio starts), the same sentence is played by Amap's offline voice. Safety over
    the one-voice rule; this is the only exception to it.

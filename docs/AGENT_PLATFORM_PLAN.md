@@ -19,7 +19,7 @@ W1c Vehicle port: cabin state + generic result (015 port) ───────�
 W1d Speaking style store + compose (015 style, no tool) ─────────────────────────────────────► W3b speech tool
                                                                      W3a ──► W4a comfort scenarios + announce (015)
                                                                      W2  ──► W4b media domain: music hand-off (017)
-SPEC-018 design review (planner + reviewer) ──► W5 guidance relay / arbiter / pipeline / lifecycle (018)
+SPEC-018 design review: REVISE → revision 2 ──► W5 step 1 (relay switch OFF) ──► emulator G-1…G-1f ──► switch on
 ```
 
 Parallel only where files do not overlap:
