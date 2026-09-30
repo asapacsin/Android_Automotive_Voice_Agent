@@ -59,7 +59,7 @@ The model maps phrases to calls; this table is what the TEXT_LIVE benchmark chec
 | FZ-04 | 座位有点低 | `control_seat{adjust_height,+1}` | 「座椅升高了一档。」 |
 | FZ-05 | 再低一点 (after FZ-03) | `control_seat{adjust_height,-1}` via context | 「又降了一档。」 |
 | FZ-06 | 把车窗打开一半 | `control_window{set,all,50}` | 「车窗都开了一半。」 |
-| FZ-07 | 开一点主驾车窗 | `control_window{adjust,driver,25}` | 「主驾车窗开了一些。」 |
+| FZ-07 | 开一点主驾车窗 | `control_window{adjust,driver,20}` | 「主驾车窗开了一些。」 |
 | FZ-08 | 关窗 | `control_window{close,all}` | 「车窗关好了。」 |
 | FZ-09 | 有点闷 / 空气不好 / 有异味 | `run_scenario{stuffy}` | 「空调开了，风量调大一档，前窗开了一点。」 |
 | FZ-10 | 好困 / 有点犯困 | `run_scenario{drowsy}` | 「空调调低两度，前窗开了一点，放点音乐提提神。要不要找个服务区歇一下？」 |
@@ -70,7 +70,7 @@ The model maps phrases to calls; this table is what the TEXT_LIVE benchmark chec
 
 Rules:
 
-- **B1.** Window 0–100 % in steps of 10; relative default 25; seat height 0–10 (default 5), step 1.
+- **B1.** Window 0–100 % (any integer); relative default 20; seat height 0–10 (default 5), step 1.
   Absolute out of range → rejected; relative → clamped with `limit_reached`.
 - **B2.** A scenario runs its steps through the same handlers as direct calls. Independent steps
   run even when another failed; a dependent step is skipped when its prerequisite failed.

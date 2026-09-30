@@ -99,7 +99,7 @@ data class SeatState(val heightLevel: Int)                               // 0..1
 - **One result vocabulary.** `VehicleActionResult` becomes generic in its state
   (`Success<S>(state: S, limitReached)`); the failure variants are shared. There must be no second
   error taxonomy for body actuators. This is a mechanical change to `ClimateToolHandler` and its tests.
-- **Limits.** Windows 0–100 %, in steps of 10 %; the default relative step is 25 %. Seat height
+- **Limits.** Windows 0–100 % (any integer; refined 2026-09-30 from a 10 % grid); the default relative step is 20 %. Seat height
   0–10, default step 1 (「有点」 means one step). An absolute value out of range is rejected, never
   clamped. A relative change is clamped and reports `limit_reached`, as climate does.
 - **Real backend later.** An AAOS or OEM adapter maps "not while moving" and "child lock" onto
