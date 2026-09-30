@@ -1,6 +1,6 @@
 # SPEC-016 — One voice provider by default, and car functions as domain servers
 
-Status: **Draft 2026-09-30**
+Status: **Built (L2) 2026-09-30** — A8 (device) open
 Raised: 2026-09-30 · Source: owner decisions recorded in [ADR-013](../DECISIONS/ADR-013-gemini-default-provider.md)
 (Gemini default) and [ADR-015](../DECISIONS/ADR-015-car-domain-servers.md) (domain servers, option A)
 Depends on: I-1, I-10, I-11, I-13 ([INVARIANTS.md](../docs/INVARIANTS.md)); ADR-009 (provider-neutral
@@ -90,13 +90,13 @@ routing logs keep today's lines; no arguments are logged (I-8).
 
 | # | Criterion | Kind | Proven by | State |
 | --- | --- | --- | --- | --- |
-| A1 | Gemini is resolved by default; Baidu only by explicit preference | functional | `GeminiSettingsTest` (resolve table) | not built |
-| A2 | No silent fallback: missing key/consent → `ConfigInvalid`, no Baidu session | negative | `VoiceSessionGatewayTest` / `GeminiSettingsTest` | not built |
-| A3 | Tool declarations identical as a set, byte for byte per tool | regression protection | `ToolRegistryGoldenTest` against a golden captured at `a4e57a1` | not built |
-| A4 | Validation codes identical over the corpus | regression protection | `ToolRegistryValidationCorpusTest` | not built |
-| A5 | Dispatcher routes through servers; old `when` and `REPEAT_SENSITIVE` deleted | architectural | existing `AndroidToolDispatcher*` tests green; `ArchitectureRulesTest` rule: no tool-name literal branches in `AndroidToolDispatcher` | not built |
-| A6 | Duplicate tool name across domains is rejected | negative | `ToolRegistryTest` | not built |
-| A7 | APK builds | artifact | `:app:assembleDebug` | not built |
+| A1 | Gemini is resolved by default; Baidu only by explicit preference | functional | `GeminiSettingsTest` (resolve table) | **built** (L2) — 5d6dedd |
+| A2 | No silent fallback: missing key/consent → `ConfigInvalid`, no Baidu session | negative | `GeminiSettingsTest` (config path) + resume banner `configProblemTruthTable` | **built** (L2) — 5d6dedd, 57634eb |
+| A3 | Tool declarations identical as a set, byte for byte per tool | regression protection | `ToolDeclarationsGoldenTest` (golden captured before the split, 2cb1052) | **built** (L2) |
+| A4 | Validation codes identical over the corpus | regression protection | `ToolValidationCorpusTest` (69 cases) | **built** (L2) |
+| A5 | Dispatcher routes through servers; old `when` and `REPEAT_SENSITIVE` deleted | architectural | existing `AndroidToolDispatcher*` tests unchanged and green; `dispatcherDoesNotBranchOnToolNames`; `ToolServerRoutingTest` | **built** (L2) — 25919b1, review PASS |
+| A6 | Duplicate tool name across domains is rejected | negative | `ToolRegistryTest` | **built** (L2) |
+| A7 | APK builds | artifact | `:app:assembleDebug` | **built** — integrated run 2914 tests / 0 failures |
 | A8 | A session opens on the emulator/phone with the default settings plus a key | production wiring (L5) | `GEMINI-DEVICE-REACH-001` | not earned |
 
 ## Open product decisions
@@ -107,6 +107,6 @@ None. The owner decided the provider (ADR-013) and the shape (ADR-015); the rest
 
 | Area | State | Proof |
 | --- | --- | --- |
-| Part A | not built | — |
-| Part B declarations/validation | not built | — |
-| Part B runtime routing | not built | — |
+| Part A | built (L2) | 5d6dedd + 57634eb (banner); wake-word visibility not built (no screen channel) |
+| Part B declarations/validation | built (L2) | 6718e10 |
+| Part B runtime routing | built (L2) | 25919b1, review PASS |

@@ -51,7 +51,7 @@ the speaker, with no intermediate claim ([INVARIANTS.md](INVARIANTS.md) I-2, I-3
 | Volume, windows, sunroof, seats, doors, boot, lights, wipers | `UtteranceIntentResolver` → `CapabilityCatalog` (`unsupported.*`) | 「这个操作没有执行，暂时不支持。」 — never 「正在调整」 |
 | News, stocks, fuel prices, exchange rates, air quality, driving restrictions | `ActionClaimGuard.NO_SOURCE_INFO_WORDS` | An honest refusal with **no** figure, city or forecast. Weather and traffic moved to `query_live_info` (SPEC-011); a successful lookup never unlocks these |
 
-Adding a capability: declare the tool, route it in `AndroidToolDispatcher`, give it a real executor
+Adding a capability: declare the tool in its car domain (`app/tools/*Domain.kt`), execute it in that domain's `ToolServer` (ADR-015), give it a real executor
 and an honest failure result, add a row here **and** in `ProductCapabilities` /
 `config/capabilities.yaml`, and map the utterances in `UtteranceIntentResolver`. Do not add a
 second word-list that claims to know whether the capability exists.

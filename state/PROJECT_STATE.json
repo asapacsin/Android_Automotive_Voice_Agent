@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-30T06:09:07",
+  "generated_at": "2026-09-30T06:28:25",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "6718e10",
+    "commit": "25919b1",
     "branch": "claude/fuzzy-logic-9-30",
-    "subject": "Merge W1b: tool declarations and validation split into car domains behind ToolRegistry (SPEC-016 B1, ADR-015)",
-    "working_tree_clean": true,
-    "uncommitted_files": 0
+    "subject": "Merge W2: route tool calls to one ToolServer per car domain (SPEC-016 B2, ADR-015)",
+    "working_tree_clean": false,
+    "uncommitted_files": 4
   },
   "tests": {
     "available": true,
@@ -147,7 +147,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "A0: | A0 | G-1 … G-1f measured on the short route | measurement (emulator) | `GUIDANCE-EMU-001` | not earned |",
-    "actionable_count": 121,
+    "actionable_count": 112,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 18,
@@ -164,13 +164,6 @@
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-015-fuzzy-driving-requests.md",
-        "item": "A1",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-016-gemini-default-and-domain-servers.md",
         "item": "A1",
         "blocked_by": null
       },
@@ -205,13 +198,6 @@
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-016-gemini-default-and-domain-servers.md",
-        "item": "A2",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-017-music-from-description.md",
         "item": "A2",
         "blocked_by": null
@@ -233,13 +219,6 @@
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-016-gemini-default-and-domain-servers.md",
-        "item": "A3",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-017-music-from-description.md",
         "item": "A3",
         "blocked_by": null
@@ -255,13 +234,6 @@
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-015-fuzzy-driving-requests.md",
-        "item": "A4",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-016-gemini-default-and-domain-servers.md",
         "item": "A4",
         "blocked_by": null
       },
@@ -296,13 +268,6 @@
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-016-gemini-default-and-domain-servers.md",
-        "item": "A5",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-017-music-from-description.md",
         "item": "A5",
         "blocked_by": null
@@ -318,13 +283,6 @@
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-015-fuzzy-driving-requests.md",
-        "item": "A6",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-016-gemini-default-and-domain-servers.md",
         "item": "A6",
         "blocked_by": null
       },
@@ -353,13 +311,6 @@
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-015-fuzzy-driving-requests.md",
-        "item": "A7",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-016-gemini-default-and-domain-servers.md",
         "item": "A7",
         "blocked_by": null
       },
@@ -452,20 +403,6 @@
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-016-gemini-default-and-domain-servers.md",
         "item": "Part A",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-016-gemini-default-and-domain-servers.md",
-        "item": "Part B declarations/validation",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-016-gemini-default-and-domain-servers.md",
-        "item": "Part B runtime routing",
         "blocked_by": null
       },
       {

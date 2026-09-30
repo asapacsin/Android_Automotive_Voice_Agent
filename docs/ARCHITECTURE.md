@@ -47,8 +47,8 @@ One behaviour, one owner. If you need to change one of these, change it **here**
 | Spoken capability-help copy | `ProductCapabilities.spokenHelpSummary` — supported catalog groups only | `ActionClaimGuard` keyword lists, the persona prompt |
 | Capability-help turn handling | `DriverTurn.Kind.CAPABILITY_HELP` + `HoldReason.CAPABILITY_HELP` — release when the reply names ≥2 supported groups; else `help_incomplete` with catalog scripted speak | `unverified_claim` / `UNVERIFIED_ACTION_CLAIM` for help utterances |
 | Calling a contact | `PhoneCallTool` via `PhonePort`; `PhoneProvider` selects `AndroidContacts` | NLU, the catalog, the UI |
-| Which tools are declared, and whether a tool call is well-formed | `RealtimeToolCatalog` (names, descriptions, JSON Schema; `validate` for schema, bounds, enums), shared by every realtime adapter; `FlexFunctionCallAssembler` only assembles Baidu's streamed calls | the model, the dispatcher, a per-provider copy of the list |
-| Whether an action may execute | `AndroidToolDispatcher` (+ `SafetyPolicy` in `orchestration` for the JVM path) | the model |
+| Which tools are declared, and whether a tool call is well-formed | the owning car domain (`app/tools/*Domain.kt`: names, descriptions, JSON Schema, `validate`, `repeatSensitive`) assembled by `ToolRegistry` (ADR-015); `RealtimeToolCatalog` serves the registry's list to every realtime adapter; `FlexFunctionCallAssembler` only assembles Baidu's streamed calls | the model, the dispatcher, a per-provider copy of the list |
+| Whether an action may execute | `AndroidToolDispatcher` — validation errors, the guard chain, `UNKNOWN_TOOL` — before routing the call to its domain's `ToolServer` (+ `SafetyPolicy` in `orchestration` for the JVM path) | the model, a server (servers execute; they do not decide whether) |
 | Whether an action **did** execute | the `ToolDispatchResult` / `AndroidActionResult` returned by the executor | any sentence the model produced |
 | What may be claimed to the driver | `DriverTurn`, driven for every provider by `DriverTurnPipeline` (ADR-010) — holds reply audio+subtitle until execution proof exists; `PhantomTurnGate` judges phantom turns; `ActionClaimGuard` classifies requests and writes corrections | the persona prompt, the model's wording |
 | Per-utterance state (phase, kind, proof) | `DriverTurn`, one instance per driver turn, epoch-guarded | loose flags anywhere else |
@@ -144,9 +144,13 @@ The three reasons a reply is held are one mechanism: `PHANTOM_AUDIO` (the audio 
 `VoiceSessionController` holds the state machine, reconnect policy, work coordinator and the audio
 ports. It knows nothing about any vendor and must stay that way.
 
-### Tool dispatch — `app/AndroidToolDispatcher.kt`
+### Tool dispatch — `app/AndroidToolDispatcher.kt` and `app/tools/` (ADR-015)
 The only bridge from model output to device action. Every call is validated before execution: exact
-field sets, length bounds, enum membership. Unknown tools return `UNKNOWN_TOOL` without executing.
+field sets, length bounds, enum membership (by the owning domain's `validate`). Unknown tools return
+`UNKNOWN_TOOL` without executing. The dispatcher then runs the guard chain and routes the call to the
+`ToolServer` of the domain that declares it (navigation, apps, media, climate, vision, phone,
+live_info, speech); it contains no tool-name branch (`ArchitectureRulesTest.dispatcherDoesNotBranchOnToolNames`).
+A new car function is a new `ToolDomain` + `ToolServer` pair registered in `ToolRegistry.PRODUCT`.
 Failures carry `ToolFailureAdvice` so the model is told what to say without relying on the tool
 description surviving a conversation reset.
 

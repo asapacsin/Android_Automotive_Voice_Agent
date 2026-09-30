@@ -68,7 +68,7 @@ Unchanged owners that must be *extended*, not duplicated:
   「已把车窗打开一半」 with **no tool call** would not be recognised as a device claim. This is a
   **must-fix in the first wave**, in the same change that makes windows supported. Otherwise a new
   capability opens a new false-claim path (I-1, I-2).
-- **`ToolCallGuards.REPEAT_SENSITIVE`**: add `control_window`, `control_seat` and `run_scenario`.
+- **Repeat sensitivity**: `repeatSensitive = true` on the `control_window`, `control_seat` and `run_scenario` specs in their domains (ADR-015 replaced `ToolCallGuards.REPEAT_SENSITIVE` with the spec flag).
   Relative adjustments are not idempotent.
 - **`VoiceContextHints`**: describes window and seat state and referents in the same way it
   describes climate today.
@@ -259,7 +259,7 @@ BACKLOG review note requires.
 | `simulator` | `SimulatedVehicleControl` implements cabin state |
 | `app/vehicle` | `WindowToolHandler`, `SeatToolHandler`, `ComfortScenarios`, `ActionAnnouncement` |
 | `app/voice` | `RealtimeToolCatalog` (+4 tools), `DriverContext` / `ContextResolver` / `VoiceContextHints` (+dimensions), `ActionClaimGuard` (`DEVICE_NOUNS`, remove 车窗/窗户/座椅 from the fallback), `UtteranceIntentResolver` (cues → new ids) |
-| `app` | `AndroidToolDispatcher` routes, `ToolCallGuards.REPEAT_SENSITIVE`, `PersonaProfiles.compose`, `SpeakingStyleStore` |
+| `app` | new `body`/`comfort` domains + servers in `app/tools/` (ADR-015), `PersonaProfiles.compose`, `SpeakingStyleStore` |
 | `contracts` + `config/capabilities.yaml` + `docs/CAPABILITIES.md` | new ids `body.window`, `body.seat_height`, `comfort.scenario`, `speech.speaking_style`; `unsupported.windows_seats_doors_lights_wipers` becomes `unsupported.sunroof_doors_lights_wipers` |
 | docs | ARCHITECTURE owner rows, I-14, SPEC-015, TEST_MATRIX rows |
 
