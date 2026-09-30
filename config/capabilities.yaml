@@ -447,6 +447,7 @@ change_impact:
       - BaiduDirectRealtimeProvider
       - ConversationResetPolicy
       - GeminiLiveClient
+      - GeminiPromptTurn
       - GeminiLiveProtocol
       - GeminiLiveProvider
       - RealtimeProviderFactory
