@@ -112,7 +112,10 @@ Provider-neutral, extended by capability (ADR-009 §3), in `ingress`:
   only when the relay is active (toggle on) and the provider has `verbatimPromptSpeech`; otherwise
   today's timers apply unchanged.
 - **Claim at playout; drained means ended (R8).** ASSISTANT is claimed when the player actually
-  starts playing a guidance chunk (not at enqueue). "Drained" = COMPLETED seen, no queued chunk of
+  starts playing a guidance chunk (not at enqueue). Built approximation: the claim is made when
+  queued guidance becomes audible — at enqueue while the player is not held, or as the hold lifts —
+  so COMPLETED may arrive while the prompt is still PENDING; it is recorded (not claimed, deadline
+  kept) and judged once claimed and drained. "Drained" = COMPLETED seen, no queued chunk of
   the prompt, and the player idle; an early idle (underrun) is not a drain.
 - **Amap never over itself (G-1b+).** A fallback is spoken only when Amap is not speaking; the relay
   brackets its own `playTTS` for the arbiter (listener if G-1b+ shows it fires, else a length-based
@@ -132,7 +135,8 @@ Provider-neutral, extended by capability (ADR-009 §3), in `ingress`:
   failure when there is no connected, non-failed session → Amap.
 - **B2. Deadline and the claim.** Each prompt has one state, PENDING → ASSISTANT | AMAP, claimed
   atomically on one thread. ASSISTANT is claimed by the playback port when the first guidance chunk
-  is actually **played** (not merely received). If `deadlineMs` (default 1200 ms, set from G-1)
+  is actually **played** (not merely received) — as built, when queued guidance becomes audible
+  (enqueue while unheld, or hold lift); see R8. If `deadlineMs` (default 1200 ms, set from G-1)
   passes first, AMAP is claimed: Amap speaks the sentence and the arbiter answers DROP for every
   chunk of that prompt's response. Same-tick races resolve to whichever claim lands first; the
   other side is a no-op. Two consecutive AMAP fallbacks → cooldown: Amap for the next 60 s, then
@@ -235,4 +239,4 @@ would reopen ADR-014 and is escalated, not decided here.
 | Area | State | Proof |
 | --- | --- | --- |
 | Design review | done — REVISE, all 10 changes taken (revision 2) | reviewer report 2026-09-30 |
-| Step 1 | built (L2), behind the developer toggle (off); code review REVISE (R1–R8) — fixes in progress | 68635ac (contract), 5e0d909 (speech owners), 144f3fb (relay, fidelity, Amap edge); code review in progress |
+| Step 1 | step 1 built (L2), behind the developer toggle (off); review fixes applied; re-review I1 fixed | 68635ac (contract), 5e0d909 (speech owners), 144f3fb (relay, fidelity, Amap edge); code review in progress |

@@ -615,7 +615,9 @@ class AndroidPlaybackPort(
             when {
                 pause -> player.pausePlayback()
                 guidance.startPlayout() -> player.resumePlayback()
-                else -> SpeechAuthority.scheduleRecheck(0L) { refusedGuidance(resume = true) }
+                else -> SpeechAuthority.scheduleRecheck(0L) {
+                    refusedGuidance(resume = !SpeechAuthority.arbiter.guidanceHeld()) // held again: stay paused
+                }
             }
         }
         // D3: the 8 s workload cap must release even if distance updates stop.

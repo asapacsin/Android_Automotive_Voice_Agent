@@ -73,7 +73,13 @@ class GuidanceRelay(
     private var bracketTimer: Cancellable? = null
     private val effects = ArrayList<() -> Unit>()
 
+    /**
+     * Runs [block] under the lock, then the queued side effects outside it. Every entry is expected
+     * on one thread (main on device; `install`'s `post` moves player callbacks there), so effects
+     * keep their order; a debuggable build logs a violation.
+     */
     private fun <T> locked(block: () -> T): T {
+        checkMainLooper()
         val result = synchronized(lock) { block() }
         while (true) {
             val effect = synchronized(lock) { effects.removeFirstOrNull() } ?: break
@@ -117,7 +123,10 @@ class GuidanceRelay(
 
     /** The response to [promptId] completed, with its typed output transcription (B7). */
     fun onCompleted(promptId: String, transcript: String?) = locked {
-        val p = assistant(promptId) ?: return@locked
+        // PENDING too: the claim is made when queued audio becomes audible, so COMPLETED can arrive
+        // first. Record it without claiming; the deadline stays armed (Amap still takes it then).
+        val p = current?.takeIf { it.id == promptId && (it.state == State.PENDING || it.state == State.ASSISTANT) }
+            ?: return@locked
         p.completed = true
         p.transcript = transcript
         settle(p)
@@ -178,7 +187,7 @@ class GuidanceRelay(
 
     /** Judge and release [p] at max(COMPLETED, drained); the next prompt waits for this (no overlap). */
     private fun settle(p: Prompt) {
-        if (!p.completed || !p.drained) return
+        if (p.state != State.ASSISTANT || !p.completed || !p.drained) return
         release(p)
         val result = GuidanceFidelity.compare(p.text, p.transcript?.takeIf { it.isNotBlank() })
         log("guidance_fidelity prompt=${p.id} result=$result")
@@ -268,11 +277,29 @@ class GuidanceRelay(
         if (bracketOpen || arbiter.amapSpeaking()) return
         val text = amapBacklog.removeFirstOrNull() ?: return
         bracketOpen = true
-        bracketTimer = schedule(maxOf(BRACKET_MIN_MS, BRACKET_MS_PER_CHAR * text.length)) { onBracketEstimate() }
+        val timer = schedule(maxOf(BRACKET_MIN_MS, BRACKET_MS_PER_CHAR * text.length)) { onBracketEstimate() }
+        bracketTimer = timer
         effects += {
             arbiter.bracket(true)
-            amap.speak(text)
+            val accepted = runCatching { amap.speak(text) }.getOrDefault(false)
+            // Refused (the speaker logs `nav_guidance_fallback_tts accepted=false`): nothing is
+            // speaking, so close this bracket now rather than hold it for the estimate.
+            if (!accepted) onSpeakRefused(timer)
         }
+    }
+
+    private fun onSpeakRefused(timer: Cancellable) = locked {
+        if (!bracketOpen || bracketTimer !== timer) return@locked
+        closeBracket()
+        effects += { arbiter.bracket(false) }
+        speakAmapIfQuiet()
+        pump()
+    }
+
+    private fun checkMainLooper() {
+        if (!com.novadrive.app.DebugVoiceLog.isEnabled) return // debuggable builds only; off in JVM tests
+        val onMain = runCatching { android.os.Looper.myLooper() === android.os.Looper.getMainLooper() }.getOrDefault(true)
+        if (!onMain) com.novadrive.app.DebugVoiceLog.log("guidance_relay_off_main_looper")
     }
 
     private fun waited(p: Prompt): Long = clock() - p.enqueuedAt
