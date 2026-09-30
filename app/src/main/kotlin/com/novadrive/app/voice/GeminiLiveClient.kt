@@ -10,6 +10,7 @@ import com.novadrive.ingress.realtime.DomainVoiceEvent
 import com.novadrive.ingress.realtime.RealtimeEvent
 import com.novadrive.ingress.realtime.ResponseOutcome
 import com.novadrive.ingress.realtime.SystemSessionClock
+import com.novadrive.ingress.realtime.VoiceCatalog
 import com.novadrive.ingress.realtime.VoiceProviderException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -133,7 +134,8 @@ class GeminiLiveClient(
         val setup = GeminiLiveProtocol.setup(
             model = settings.model,
             voice = settings.voice,
-            thinkingLevel = settings.thinkingLevel.wireName,
+            thinkingLevel = settings.thinkingLevel.wireName
+                .takeIf { VoiceCatalog.geminiAcceptsThinkingLevel(settings.model) },
             instructions = instructionsWithContext(config.instructions),
             silenceDurationMs = settings.silenceDurationMs,
             resumptionHandle = resumptionHandle,

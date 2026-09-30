@@ -1,6 +1,7 @@
 package com.novadrive.app.voice
 
 import com.novadrive.ingress.realtime.ErrorClass
+import com.novadrive.ingress.realtime.VoiceCatalog
 import com.novadrive.ingress.realtime.classifyVoiceError
 import org.json.JSONObject
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -20,6 +21,22 @@ class GeminiLiveProtocolTest {
             resumptionHandle = handle,
         ),
     ).getJSONObject("setup")
+
+    @Test
+    fun setupPerModelFollowsTheThinkingLevelTrait() {
+        fun gen(model: String) = JSONObject(
+            GeminiLiveProtocol.setup(
+                model = model,
+                voice = "Kore",
+                thinkingLevel = "LOW".takeIf { VoiceCatalog.geminiAcceptsThinkingLevel(model) },
+                instructions = "你是小诺。",
+                silenceDurationMs = null,
+                resumptionHandle = null,
+            ),
+        ).getJSONObject("setup").getJSONObject("generationConfig")
+        assertFalse(gen(VoiceCatalog.GEMINI_LIVE_FAST).has("thinkingConfig"))
+        assertEquals("LOW", gen(VoiceCatalog.GEMINI_LIVE).getJSONObject("thinkingConfig").getString("thinkingLevel"))
+    }
 
     @Test
     fun setupCarriesModelVoiceThinkingLanguageAndTranscription() {

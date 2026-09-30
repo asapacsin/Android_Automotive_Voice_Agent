@@ -28,11 +28,12 @@ object GeminiLiveProtocol {
     /**
      * The first client message. Never `includeThoughts`, an explicit `behavior` (F18), `googleSearch`
      * or `parameters` (F17: rejects `additionalProperties`; `parametersJsonSchema` accepts it).
+     * [thinkingLevel] null omits `thinkingConfig` entirely (a model without the trait rejects it, F27).
      */
     fun setup(
         model: String,
         voice: String,
-        thinkingLevel: String,
+        thinkingLevel: String?,
         instructions: String,
         silenceDurationMs: Int?,
         resumptionHandle: String?,
@@ -51,23 +52,23 @@ object GeminiLiveProtocol {
         if (silenceDurationMs != null) activity.put("silenceDurationMs", silenceDurationMs)
         val resumption = JSONObject()
         if (!resumptionHandle.isNullOrEmpty()) resumption.put("handle", resumptionHandle)
+        val generation = JSONObject()
+            .put("responseModalities", JSONArray(listOf("AUDIO")))
+            .put(
+                "speechConfig",
+                JSONObject()
+                    .put("languageCode", LANGUAGE)
+                    .put(
+                        "voiceConfig",
+                        JSONObject().put("prebuiltVoiceConfig", JSONObject().put("voiceName", voice)),
+                    ),
+            )
+        if (thinkingLevel != null) {
+            generation.put("thinkingConfig", JSONObject().put("thinkingLevel", thinkingLevel))
+        }
         val setup = JSONObject()
             .put("model", modelName(model))
-            .put(
-                "generationConfig",
-                JSONObject()
-                    .put("responseModalities", JSONArray(listOf("AUDIO")))
-                    .put(
-                        "speechConfig",
-                        JSONObject()
-                            .put("languageCode", LANGUAGE)
-                            .put(
-                                "voiceConfig",
-                                JSONObject().put("prebuiltVoiceConfig", JSONObject().put("voiceName", voice)),
-                            ),
-                    )
-                    .put("thinkingConfig", JSONObject().put("thinkingLevel", thinkingLevel)),
-            )
+            .put("generationConfig", generation)
             .put("systemInstruction", JSONObject().put("parts", JSONArray().put(JSONObject().put("text", instructions.trimEnd() + "\n" + CALL_FIRST_HINT))))
             .put("tools", JSONArray().put(JSONObject().put("functionDeclarations", declarations)))
             .put("realtimeInputConfig", JSONObject().put("automaticActivityDetection", activity))

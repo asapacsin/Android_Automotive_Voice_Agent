@@ -67,4 +67,14 @@ class GeminiSettingsTest {
         assertEquals(GeminiThinkingLevel.LOW, GeminiThinkingLevel.fromWire("MINIMAL"))
         assertEquals(GeminiThinkingLevel.LOW, GeminiThinkingLevel.fromWire(null))
     }
+
+    @Test
+    fun bothDeclaredGeminiModelsAreValidAndSelectGemini() {
+        listOf(VoiceCatalog.GEMINI_LIVE_FAST, VoiceCatalog.GEMINI_LIVE).forEach { model ->
+            val s = valid.copy(model = model)
+            assertNull(GeminiSettingsValidator.validateSettings(s))
+            assertEquals(model, s.copy(voice = "Puck").model)
+            assertEquals(VoiceProviderId.GEMINI_LIVE, VoiceProviderChoice.resolve(s, keyPresent = true))
+        }
+    }
 }
