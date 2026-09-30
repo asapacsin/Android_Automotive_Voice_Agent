@@ -2,11 +2,11 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-21 · 120 tests
+Updated 2026-09-21 · 122 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 47 |
+| autonomous PASS | 49 |
 | autonomous FAIL | 0 |
 | incomplete | 0 |
 | partial pass | 0 |
@@ -87,6 +87,7 @@ Updated 2026-09-21 · 120 tests
 | --- | --- | --- | --- | --- |
 | apps | 1 | 0 | 0 | 1 |
 | architecture | 5 | 4 | 0 | 1 |
+| body | 1 | 1 | 0 | 0 |
 | calling | 8 | 6 | 1 | 1 |
 | cantonese | 2 | 1 | 1 | 0 |
 | climate | 5 | 1 | 1 | 3 |
@@ -103,7 +104,7 @@ Updated 2026-09-21 · 120 tests
 | reliability | 8 | 4 | 1 | 3 |
 | saved_places | 3 | 0 | 0 | 3 |
 | security | 3 | 3 | 0 | 0 |
-| speech | 1 | 0 | 1 | 0 |
+| speech | 2 | 1 | 1 | 0 |
 | truthfulness | 9 | 4 | 0 | 5 |
 | turn_taking | 19 | 7 | 3 | 9 |
 | unsupported | 1 | 0 | 0 | 1 |
@@ -121,6 +122,7 @@ Updated 2026-09-21 · 120 tests
 | ARCH-PROVIDER-001 | architecture | Vendor wire vocabulary stays inside adapters | AUTONOMOUS | PASS | no | checked against a deliberately reintroduced breach |
 | GEMINI-LIVE-CLOUD-001 | architecture | The app's Gemini client against the real API (cloud) | AUTONOMOUS | PASS | no | 2026-09-29: ac_on, fan_up, nav_wanda 3/3 PASS (docs/reports/2026-09-29-gemini-live-prob… |
 | GEMINI-UNIT-001 | architecture | Gemini Live adapter, shared gate and opt-in wiring | AUTONOMOUS | PASS | no | 2026-09-29 cloud, claude/9-29: app debug 1230/0, behavior-test 126/0, ingress 104/0 |
+| BODY-UNIT-001 | body | Windows and seat height act on the vehicle port and announce what was done | AUTONOMOUS | PASS | no | 2026-09-30 cloud, wt/W3a-body 58524f0: BodyDomainTest 6/0, WindowToolHandlerTest 11/0, … |
 | CALL-AMBIG-001 | calling | Two people with one name are offered, not chosen between | AUTONOMOUS | PASS | yes | PhoneCallToolTest, 2026-09-20 |
 | CALL-CLASSIFY-001 | calling | A call request is an action, not an unsupported refusal | AUTONOMOUS | PASS | yes | 2026-09-20 TEST_REVIEW: keyword list and registry both claimed ownership of calling |
 | CALL-CONFIRM-001 | calling | One match is never dialled on the first turn | AUTONOMOUS | PASS | yes | PhoneCallToolTest, 2026-09-20 |
@@ -197,6 +199,7 @@ Updated 2026-09-21 · 120 tests
 | EXPORTED-001 | security | The release build exposes no debug surface | AUTONOMOUS | PASS | yes | 2026-09-20, release manifest via aapt2: only MainActivity is exported; DeveloperSetting… |
 | RELEASE-LOG-001 | security | A release build does not log what the driver said | AUTONOMOUS | PASS | yes | 2026-09-20: DebugVoiceLog is the only logger in app/src/main, ingress/src/main and cont… |
 | SECRET-SCAN-001 | security | No secret is tracked by git | AUTONOMOUS | PASS | yes | part of the 737 |
+| STYLE-UNIT-001 | speech | set_speaking_style changes the tone, persists it and composes it | AUTONOMOUS | PASS | no | 2026-09-30 cloud, wt/W3b-style-tool 80b9072: SpeakingStyleToolTest 8/0, PersonaProfiles… |
 | VOICE-STYLE-001 | speech | Prefer a younger cute female voice (符玄-like) | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | Owner chose option B id 4196 on 2026-09-21 |
 | DUP-EXEC-001 | truthfulness | The same adjustment does not run twice in one turn | AUTONOMOUS | PASS | yes | 2026-09-20: FalseCapabilityClaimTest asserts a repeated adjust_temperature in one turn … |
 | FAILED-ACTION-REPORTED-001 | truthfulness | A failed action is reported after its false success claim is dropped | AUTONOMOUS | PASS | yes | 2026-09-24: 20/20 each; failed every run before the fix (also on 0ea4885) |
