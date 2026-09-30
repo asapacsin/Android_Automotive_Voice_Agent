@@ -43,6 +43,7 @@ class BodyDomainTest {
         assertEquals("INVALID_FIELD_VALUE", v("control_window", """{"action":"open","window":"sunroof"}"""))
         assertEquals("INVALID_FIELD_TYPE", v("control_window", """{"action":"set","value":"half"}"""))
         assertEquals("MISSING_VALUE", v("control_window", """{"action":"set"}"""))
+        assertEquals("INVALID_VALUE", v("control_window", """{"action":"adjust","value":0}"""))
     }
 
     @Test
@@ -56,6 +57,8 @@ class BodyDomainTest {
         assertEquals("INVALID_FIELD_TYPE", v("control_seat", """{"action":"set_height","value":"low"}"""))
         assertEquals("MISSING_VALUE", v("control_seat", """{"action":"adjust_height"}"""))
         assertEquals("MISSING_VALUE", v("control_seat", """{"action":"set_height"}"""))
+        assertEquals("INVALID_VALUE", v("control_seat", """{"action":"adjust_height","value":0}"""))
+        assertNull(v("control_seat", """{"action":"set_height","value":0}"""))
     }
 
     private class NoExecutor : AndroidActionExecutor {

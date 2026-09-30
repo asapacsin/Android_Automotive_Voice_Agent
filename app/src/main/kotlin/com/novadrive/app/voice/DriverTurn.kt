@@ -59,7 +59,7 @@ class DriverTurn(val epoch: Long) {
         /** A request this product can execute. Its confirmation needs execution proof. */
         ACTION,
 
-        /** A request with no tool at all (音量, 车窗 …). No proof is possible, ever. */
+        /** A request with no tool at all (音量, 天窗 …). No proof is possible, ever. */
         NO_TOOL_ACTION,
 
         /**

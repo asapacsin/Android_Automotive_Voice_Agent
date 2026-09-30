@@ -82,6 +82,28 @@ class WindowToolHandlerTest {
     }
 
     @Test
+    fun oneClampedWindowDoesNotMakeTheWholeGroupFull() {
+        run("action" to "set", "window" to "driver", "value" to "90")
+        val (_, json) = run("action" to "adjust", "window" to "front", "value" to "20")
+        assertTrue(json.getBoolean("limit_reached"))
+        val announce = json.getString("announce")
+        assertFalse(announce.contains("全开"), announce)
+        assertTrue(announce.contains("副驾车窗开到了20%"), announce)
+        run("action" to "close")
+        run("action" to "set", "window" to "driver", "value" to "90")
+        val all = run("action" to "adjust", "value" to "20").second
+        assertTrue(all.getBoolean("limit_reached"))
+        assertFalse(all.getString("announce").contains("全开"), all.getString("announce"))
+        assertTrue(all.getString("announce").contains("副驾车窗开到了20%"), all.getString("announce"))
+    }
+
+    @Test
+    fun aZeroAdjustIsRejected() {
+        val (outcome, _) = run("action" to "adjust", "value" to "0")
+        assertEquals("INVALID_VALUE", outcome.errorCode)
+    }
+
+    @Test
     fun getStateReadsBackWithoutChanging() {
         run("action" to "set", "value" to "30")
         val (_, json) = run("action" to "get_state")

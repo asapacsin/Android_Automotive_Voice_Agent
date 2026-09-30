@@ -28,6 +28,7 @@ class SeatToolHandler(private val port: VehicleControlPort) {
             ACTION_ADJUST_HEIGHT -> {
                 val step = value?.toWholeNumberOrNull()
                     ?: return rejected("MISSING_VALUE", "adjust_height needs a signed whole-number step")
+                if (step == 0) return rejected("INVALID_VALUE", "adjust_height step must not be 0")
                 delta = step
                 port.changeSeatHeight(seat, step)
             }

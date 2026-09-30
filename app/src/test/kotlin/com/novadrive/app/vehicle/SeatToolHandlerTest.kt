@@ -68,6 +68,7 @@ class SeatToolHandlerTest {
     fun invalidRequestsChangeNothing() {
         listOf(
             mapOf("action" to "adjust_height") to "MISSING_VALUE",
+            mapOf("action" to "adjust_height", "value" to "0") to "INVALID_VALUE",
             mapOf("action" to "set_height", "value" to "11") to "INVALID_ARGUMENT",
             mapOf("action" to "set_height", "value" to "1.5") to "INVALID_VALUE",
             mapOf("action" to "get_state", "seat" to "rear") to "INVALID_VALUE",

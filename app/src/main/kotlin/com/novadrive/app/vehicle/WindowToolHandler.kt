@@ -32,6 +32,7 @@ class WindowToolHandler(private val port: VehicleControlPort) {
             ACTION_ADJUST -> {
                 val step = if (value == null) CabinLimits.DEFAULT_WINDOW_STEP else value.toWholeNumberOrNull()
                     ?: return rejected("INVALID_VALUE", "adjust value must be a whole number")
+                if (step == 0) return rejected("INVALID_VALUE", "adjust value must not be 0")
                 delta = step
                 port.changeWindows(targets, step)
             }

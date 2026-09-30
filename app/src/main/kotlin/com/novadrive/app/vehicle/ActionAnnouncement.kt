@@ -43,9 +43,13 @@ object ActionAnnouncement {
         if (action == WindowToolHandler.ACTION_GET_STATE) return windowState(state)
         val values = targets.map { state.windows.getValue(it) }.toSet()
         val name = groupName(targets)
-        if (limitReached && delta != null && name != null) {
+        // The port reports limitReached when ANY window clamped; only claim the end for the group
+        // when every targeted window really reads back at it.
+        val atEnd = delta != null && values.size == 1 &&
+            values.single() == if (delta > 0) CabinLimits.WINDOW_MAX else CabinLimits.WINDOW_MIN
+        if (limitReached && atEnd && name != null) {
             val subject = if (targets == ALL) "车窗" else name
-            return if (delta > 0) "${subject}已经全开了" else "${subject}已经关到底了"
+            return if (delta!! > 0) "${subject}已经全开了" else "${subject}已经关到底了"
         }
         if (values.size == 1 && name != null) {
             val value = values.single()

@@ -77,6 +77,8 @@ class UtteranceIntentResolver(
                 "声音" to CapabilityIds.VOLUME_CONTROL,
                 "车窗" to CapabilityIds.BODY_WINDOW,
                 "窗户" to CapabilityIds.BODY_WINDOW,
+                "开窗" to CapabilityIds.BODY_WINDOW,
+                "关窗" to CapabilityIds.BODY_WINDOW,
                 "座椅" to CapabilityIds.BODY_SEAT_HEIGHT,
                 "座位" to CapabilityIds.BODY_SEAT_HEIGHT,
                 "天窗" to CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS,

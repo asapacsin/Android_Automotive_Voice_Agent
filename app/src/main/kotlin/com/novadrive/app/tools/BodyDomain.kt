@@ -62,6 +62,7 @@ object BodyDomain : ToolDomain {
                 keys.contains("window") && args.optString("window") !in WindowToolHandler.WINDOWS -> "INVALID_FIELD_VALUE"
                 keys.contains("value") && args.opt("value") !is Number -> "INVALID_FIELD_TYPE"
                 args.optString("action") == "set" && !keys.contains("value") -> "MISSING_VALUE"
+                args.optString("action") == "adjust" && keys.contains("value") && args.optDouble("value") == 0.0 -> "INVALID_VALUE"
                 else -> null
             }
             "control_seat" -> when {
@@ -73,6 +74,7 @@ object BodyDomain : ToolDomain {
                 keys.contains("seat") && args.optString("seat") !in SeatToolHandler.SEATS -> "INVALID_FIELD_VALUE"
                 keys.contains("value") && args.opt("value") !is Number -> "INVALID_FIELD_TYPE"
                 args.optString("action") in setOf("set_height", "adjust_height") && !keys.contains("value") -> "MISSING_VALUE"
+                args.optString("action") == "adjust_height" && args.optDouble("value") == 0.0 -> "INVALID_VALUE"
                 else -> null
             }
             else -> null

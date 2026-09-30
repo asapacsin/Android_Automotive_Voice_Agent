@@ -294,6 +294,67 @@ class FalseCapabilityClaimTest {
         assertFalse(verdict is DriverTurn.Verdict.Release, "$verdict")
     }
 
+    private fun assertNotReleased(request: String, reply: String) {
+        val turn = DriverTurn(epoch = 1)
+        turn.onUserTranscript(request) { DriverTurn.classify(it) }
+        assertEquals(DriverTurn.Kind.ACTION, turn.kind, request)
+        turn.onResponseStarted(goodAudio, false)
+        turn.onAssistantText(reply)
+        val verdict = turn.onResponseDone(reply, hadToolCallInResponse = false)
+        assertFalse(verdict is DriverTurn.Verdict.Release, "$request / $reply: $verdict")
+    }
+
+    @Test
+    fun announceStyleWindowClaimsWithNoToolCallAreNotReleased() {
+        assertNotReleased("把车窗关上", "车窗关好了")
+        assertNotReleased("关窗", "车窗都关好了")
+        assertNotReleased("把车窗打开一半", "车窗都开到了50%")
+        assertNotReleased("开窗", "好的，车窗关上了")
+    }
+
+    @Test
+    fun everyActionAnnouncementIsRecognisedAsAClaim() {
+        val all = com.novadrive.vehicle.WindowId.entries.toSet()
+        val front = setOf(com.novadrive.vehicle.WindowId.FRONT_LEFT, com.novadrive.vehicle.WindowId.FRONT_RIGHT)
+        fun state(fl: Int, fr: Int = fl, rl: Int = fl, rr: Int = fl) = com.novadrive.vehicle.CabinState.DEFAULT.copy(
+            windows = mapOf(
+                com.novadrive.vehicle.WindowId.FRONT_LEFT to fl, com.novadrive.vehicle.WindowId.FRONT_RIGHT to fr,
+                com.novadrive.vehicle.WindowId.REAR_LEFT to rl, com.novadrive.vehicle.WindowId.REAR_RIGHT to rr,
+            ),
+        )
+        val A = com.novadrive.app.vehicle.ActionAnnouncement
+        val driver = com.novadrive.vehicle.SeatId.DRIVER
+        // Every action template (get_state sentences report state; they are not action claims).
+        val sentences = listOf(
+            A.window("set", all, state(50), false),
+            A.window("open", all, state(100), false),
+            A.window("close", all, state(0), false),
+            A.window("set", all, state(30), false),
+            A.window("open", setOf(com.novadrive.vehicle.WindowId.FRONT_LEFT), state(100, 0, 0, 0), false),
+            A.window("close", setOf(com.novadrive.vehicle.WindowId.FRONT_LEFT), state(0), false),
+            A.window("adjust", setOf(com.novadrive.vehicle.WindowId.FRONT_LEFT), state(40, 0, 0, 0), false, 20),
+            A.window("adjust", front, state(40, 20, 0, 0), true, 20),
+            A.window("adjust", all, state(100), true, 20),
+            A.window("adjust", all, state(0), true, -20),
+            A.seat("adjust_height", driver, 4, false, -1),
+            A.seat("adjust_height", driver, 6, false, 1),
+            A.seat("adjust_height", driver, 0, true, -1),
+            A.seat("adjust_height", driver, 10, true, 1),
+            A.seat("set_height", driver, 3, false),
+        )
+        sentences.forEach {
+            assertTrue(ActionClaimGuard.claimsDone(it), "claimsDone: $it")
+            assertTrue(ActionClaimGuard.carActionClaim(it) != null, "carActionClaim: $it")
+        }
+    }
+
+    @Test
+    fun openingTheSunroofDoesNotResolveAsAWindow() {
+        assertTrue(ActionClaimGuard.isUnsupportedRequest("开天窗"))
+        assertEquals(DriverTurn.Kind.NO_TOOL_ACTION, DriverTurn.classify("开天窗"))
+        assertEquals(DriverTurn.Kind.ACTION, DriverTurn.classify("关窗"))
+    }
+
     @Test
     fun windowsAndSeatAreActionsButTheSunroofIsStillRefused() {
         listOf("把车窗打开一半", "座位有点高", "座椅调低一点").forEach {
