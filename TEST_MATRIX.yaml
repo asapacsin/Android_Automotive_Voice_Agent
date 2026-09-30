@@ -2641,10 +2641,11 @@ tests:
     type: unit
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: false
     prerequisites: []
     procedure: ["gradlew :app:testDebugUnitTest --tests *SpeakingStyleToolTest*"]
     pass_criteria: ["sweet/default set SpeakingStyleState and call persist", "result is ok=true with style and instruction, persisted=false only when the save failed", "invalid arguments are refused", "PersonaProfiles.compose carries SWEET_TONE after style=sweet"]
-    evidence: []
+    evidence: ["2026-09-30 cloud, wt/W3b-style-tool 80b9072: SpeakingStyleToolTest 8/0, PersonaProfilesTest 6/0, SpeakingStyleTest 2/0; full suite 3131 / 0 failures (planner read the JUnit XML)"]
     related: [SPEC-015]
+    last_run: {at: 2026-09-30, result: PASS}
