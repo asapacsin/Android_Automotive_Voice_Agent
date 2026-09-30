@@ -603,7 +603,7 @@ class DriverTurnTest {
         t.onToolCall("v1", "describe_camera_view")
         assertEquals(DriverTurn.HoldReason.AWAITING_TOOL_RESULT, t.onResponseStarted(goodAudio, false))
         t.onToolCall("c2", "control_climate")
-        t.onAssistantText("好的")
+        t.onAssistantText("抱歉，摄像头暂时无法使用。")
         assertEquals(DriverTurn.Verdict.Wait, t.onExecutionResult(true, null, callId = "v1"))
         assertEquals(DriverTurn.Verdict.Wait, t.onExecutionResult(true, null, callId = "c2"))
         assertEquals(DriverTurn.Verdict.Drop("reply_before_tool_result"), t.onResponseDone("抱歉，摄像头暂时无法使用。", false))
@@ -641,6 +641,97 @@ class DriverTurnTest {
         assertEquals(DriverTurn.Verdict.Wait, t.onAssistantText("今天车不多。"))
         assertEquals(DriverTurn.HoldReason.PHANTOM_AUDIO, t.holdReason)
         val v = t.onResponseDone("今天车不多。", false)
-        assertTrue(v is DriverTurn.Verdict.Drop || v == DriverTurn.Verdict.Release("genuine_turn"), "$v")
+        assertEquals(DriverTurn.Verdict.Drop("generic_repair_no_action_no_user_speech"), v)
+    }
+
+    // ---- D-10(a) review: words before the call, failures of any kind, order, proof, cancel ----
+
+    @Test
+    fun anActionClaimSaidBeforeAMidResponseCallIsNotHeardWhileTheResultIsPending() {
+        val t = turn(DriverTurn.Kind.ACTION)
+        t.onResponseStarted(goodAudio, false)
+        t.onAssistantText("导航已开始。")
+        t.onToolCall("n1", "navigate_to")
+        assertEquals(DriverTurn.Verdict.Drop("claim_before_call_unproven"), t.onResponseDone("导航已开始。", true))
+    }
+
+    @Test
+    fun anIncompleteHelpAnswerSaidBeforeAMidResponseCallIsNotHeard() {
+        val t = DriverTurn(epoch = 1)
+        t.onUserTranscript("你能做什么") { DriverTurn.Kind.CAPABILITY_HELP }
+        assertEquals(DriverTurn.HoldReason.CAPABILITY_HELP, t.onResponseStarted(goodAudio, false))
+        t.onAssistantText("好的。")
+        t.onToolCall("c1", "control_music")
+        assertEquals(DriverTurn.Verdict.Drop("claim_before_call_unproven"), t.onResponseDone("好的。", true))
+    }
+
+    @Test
+    fun aDoneClaimAfterAFailedMidResponseCallReportsTheFailureForEveryKind() {
+        val claim = "已为您打开空调。"
+        for (kind in listOf(
+            DriverTurn.Kind.UNKNOWN,
+            DriverTurn.Kind.CONVERSATION,
+            DriverTurn.Kind.NO_TOOL_ACTION,
+            DriverTurn.Kind.REALTIME_INFO,
+        )) {
+            val t = turn(kind)
+            t.onResponseStarted(goodAudio, false)
+            t.onToolCall("c1", "control_climate")
+            t.onExecutionResult(false, "空调不可用", callId = "c1")
+            t.onAssistantText(claim)
+            assertEquals(
+                DriverTurn.Verdict.Drop("unproven_action_claim", ActionClaimGuard.reportFailure("空调不可用")),
+                t.onResponseDone(claim, true),
+                "kind $kind",
+            )
+        }
+    }
+
+    private fun twoMidCalls(failFirst: Boolean, claimBeforeResults: Boolean): DriverTurn.Verdict {
+        val claim = "已为您打开空调。"
+        val t = turn(DriverTurn.Kind.ACTION)
+        t.onResponseStarted(goodAudio, false)
+        t.onToolCall("c1", "control_climate")
+        t.onToolCall("c2", "control_music")
+        if (claimBeforeResults) t.onAssistantText(claim)
+        if (failFirst) {
+            t.onExecutionResult(false, "空调不可用", callId = "c2")
+            t.onExecutionResult(true, null, callId = "c1")
+        } else {
+            t.onExecutionResult(true, null, callId = "c1")
+            t.onExecutionResult(false, "空调不可用", callId = "c2")
+        }
+        if (!claimBeforeResults) t.onAssistantText(claim)
+        return t.onResponseDone(claim, true)
+    }
+
+    @Test
+    fun aFailedMidResponseCallIsReportedWhateverOrderTheResultsCameIn() {
+        val expected = DriverTurn.Verdict.Drop("unproven_action_claim", ActionClaimGuard.reportFailure("空调不可用"))
+        for (claimBefore in listOf(true, false)) {
+            assertEquals(expected, twoMidCalls(failFirst = true, claimBeforeResults = claimBefore), "fail first, claimBefore=$claimBefore")
+            assertEquals(expected, twoMidCalls(failFirst = false, claimBeforeResults = claimBefore), "ok first, claimBefore=$claimBefore")
+        }
+    }
+
+    @Test
+    fun aFailedMidResponseCallNeverReleasesAsExecutionProved() {
+        val t = DriverTurn(epoch = 1)
+        t.onResponseStarted(goodAudio, true)
+        t.onUserTranscript("把音量调大一点") { DriverTurn.Kind.NO_TOOL_ACTION }
+        assertEquals(DriverTurn.HoldReason.NO_TOOL_REQUEST, t.holdReason)
+        t.onToolCall("c1", "control_climate")
+        val v = t.onExecutionResult(false, "空调不可用", callId = "c1")
+        assertEquals(DriverTurn.Verdict.Wait, v)
+        assertFalse(t.proven)
+    }
+
+    @Test
+    fun aTurnCancelledDuringAReplacedHoldReleasesNothingLater() {
+        val t = actionMidCall()
+        assertEquals(DriverTurn.Verdict.Drop("cancelled_superseded"), t.cancel("superseded"))
+        val rejected = t.rejectedEvents
+        assertEquals(DriverTurn.Verdict.Wait, t.onExecutionResult(true, null, callId = "c1"))
+        assertEquals(rejected + 1, t.rejectedEvents)
     }
 }
