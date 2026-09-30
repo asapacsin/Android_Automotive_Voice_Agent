@@ -1,49 +1,31 @@
 {
-  "generated_at": "2026-09-30T03:20:06",
+  "generated_at": "2026-09-30T16:02:37",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "3f28aeb",
+    "commit": "77cfe3b",
     "branch": "claude/9-30",
-    "subject": "TEST_MATRIX: complete GEMINI-DEVICE-LATENCY-001 human-test fields",
-    "working_tree_clean": false,
-    "uncommitted_files": 3
+    "subject": "P43: drop a climate-on claim that contradicts a climate-off result",
+    "working_tree_clean": true,
+    "uncommitted_files": 0
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-29T14:10:39",
+    "collected_at": "2026-09-30T12:53:45",
     "total": {
-      "tests": 1526,
+      "tests": 340,
       "failures": 0,
       "errors": 0,
-      "skipped": 1
+      "skipped": 0
     },
     "by_module": {
-      "evaluation": {
-        "tests": 27,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
       "app": {
-        "tests": 1246,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 1
-      },
-      "simulator": {
-        "tests": 15,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "safety": {
-        "tests": 2,
+        "tests": 67,
         "failures": 0,
         "errors": 0,
         "skipped": 0
       },
       "behavior-test": {
-        "tests": 126,
+        "tests": 123,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -54,8 +36,26 @@
         "errors": 0,
         "skipped": 0
       },
+      "evaluation": {
+        "tests": 27,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
       "ingress": {
-        "tests": 104,
+        "tests": 100,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "safety": {
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "simulator": {
+        "tests": 15,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 223710212,
-    "built_at": "2026-09-29T14:08:50"
+    "bytes": 224035526,
+    "built_at": "2026-09-30T12:55:23"
   },
   "capabilities": {
     "available": true,
@@ -147,7 +147,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "A5: | A5 | Picker selection uses the registry; `tryLocalNavigationPick` is gone | production wiring | `FeaturePresenceRegressionTest` + existing picker tests green | not built — **deferred on purpose** to",
-    "actionable_count": 70,
+    "actionable_count": 72,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 18,
@@ -609,6 +609,13 @@
         "blocked_by": null
       },
       {
+        "priority": 10,
+        "class": "stale state or harness defect",
+        "source": "state",
+        "item": "PROJECT_STATE.json",
+        "blocked_by": null
+      },
+      {
         "priority": 11,
         "class": "next authorised backlog item",
         "source": "BACKLOG.md",
@@ -669,6 +676,13 @@
         "class": "next authorised backlog item",
         "source": "BACKLOG.md",
         "item": "B-028",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-029",
         "blocked_by": null
       }
     ]
