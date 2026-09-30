@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-09-30T03:05:53",
+  "generated_at": "2026-09-30T03:06:59",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "ec93785",
+    "commit": "95a3374",
     "branch": "claude/9-30",
-    "subject": "Reconcile after P4-P6: SPEC-014 built (JVM + live cloud), phone latency test queued",
+    "subject": "TEST_MATRIX: valid owner for GEMINI-DEVICE-LATENCY-001; regenerate status files",
     "working_tree_clean": false,
     "uncommitted_files": 4
   },

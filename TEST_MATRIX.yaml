@@ -2592,10 +2592,15 @@ tests:
     scope: COMPONENT
     owner: HUMAN_PHYSICAL
     status: HUMAN_REQUIRED
+    automation_blocker: physical_world
+    human_reason: "Latency heard in the cabin depends on the phone's network to Google, playback and road noise; the cloud container measured only the wire and the gate"
     release_blocking: false
     prerequisites: ["developer settings: Gemini enabled, model gemini-3.8-live selected (a saved extended-thinking choice is kept)", "GEMINI-DEVICE-REACH-001 passed"]
     procedure: ["say 10 commands (空调, 导航, 音乐) and 5 chat questions", "note seconds from end of speech to the action and to the first word heard", "note any 'done' heard before the action happened"]
     pass_criteria: ["actions within ~2.5 s in at least 9 of 10", "chat replies start within ~2 s", "no claim heard before its action"]
+    autonomous_evidence: ["docs/reports/2026-09-30-gemini-native-smoke.md: live API through GeminiLiveClient, L1 9/10 (median 1.6 s), L2 ~0 ms gate release, L3 0 claims before result"]
+    remaining_uncertainty: ["seconds heard in the cabin on the phone's network", "whether gemini-3.8-live self-interrupts through the speaker (G-M2)"]
+    returns: ["commands acted within ~2.5 s, out of 10", "seconds to first word for the 5 chat questions", "any claim heard before its action"]
     evidence: []
     related: [SPEC-014]
   - id: GATE-D10-DEVICE-001

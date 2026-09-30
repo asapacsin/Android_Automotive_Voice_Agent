@@ -4,7 +4,6 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 
 > **Not ready yet.** This is a preview of the queue; autonomous work remains:
 >
-> - the registry does not validate: 5 problem(s)
 > - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - TRUTH-MISHEARD-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -12,6 +11,7 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 > - TRUTH-WEATHER-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - TRUTH-BAIT-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - PLACE-SAVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - PLACE-NAV-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 
 18 item(s) queued.
 
@@ -414,7 +414,13 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **Tag:** `LOCAL_DEVICE_REQUIRED`
 
-**Why this needs you.** 
+**Why this needs you.** Latency heard in the cabin depends on the phone's network to Google, playback and road noise; the cloud container measured only the wire and the gate
+
+**Automation blocker:** `physical_world`
+
+**Already established without you:**
+
+- docs/reports/2026-09-30-gemini-native-smoke.md: live API through GeminiLiveClient, L1 9/10 (median 1.6 s), L2 ~0 ms gate release, L3 0 claims before result
 
 **You will need:** developer settings: Gemini enabled, model gemini-3.8-live selected (a saved extended-thinking choice is kept); GEMINI-DEVICE-REACH-001 passed
 
@@ -429,6 +435,10 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 - actions within ~2.5 s in at least 9 of 10
 - chat replies start within ~2 s
 - no claim heard before its action
+
+**Tell me back:** commands acted within ~2.5 s, out of 10; seconds to first word for the 5 chat questions; any claim heard before its action
+
+**Still unknown until you do:** seconds heard in the cabin on the phone's network; whether gemini-3.8-live self-interrupts through the speaker (G-M2)
 
 ## B. Account and real-service tests
 

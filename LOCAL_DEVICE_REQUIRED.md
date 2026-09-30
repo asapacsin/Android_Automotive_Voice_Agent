@@ -15,7 +15,7 @@ Every case below **requires a physical Android device** (and usually a real cabi
 > - PLACE-SAVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - PLACE-NAV-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 
-**12 LOCAL_DEVICE_REQUIRED item(s).**
+**13 LOCAL_DEVICE_REQUIRED item(s).**
 
 Install tip (from a cloud-built APK, when one exists):
 
@@ -414,6 +414,36 @@ adb logcat -s NovaVoice:D
 **Still unknown until you do:** phonetic confusion cases beyond exact-name matching
 
 *Release-blocking.*
+
+### LOCAL_DEVICE_REQUIRED — GEMINI-DEVICE-LATENCY-001 — Gemini (gemini-3.8-live) end of speech to first audio heard, on the phone
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Latency heard in the cabin depends on the phone's network to Google, playback and road noise; the cloud container measured only the wire and the gate
+
+**Automation blocker:** `physical_world`
+
+**Already established without you:**
+
+- docs/reports/2026-09-30-gemini-native-smoke.md: live API through GeminiLiveClient, L1 9/10 (median 1.6 s), L2 ~0 ms gate release, L3 0 claims before result
+
+**You will need:** developer settings: Gemini enabled, model gemini-3.8-live selected (a saved extended-thinking choice is kept); GEMINI-DEVICE-REACH-001 passed
+
+**What to do:**
+
+1. say 10 commands (空调, 导航, 音乐) and 5 chat questions
+2. note seconds from end of speech to the action and to the first word heard
+3. note any 'done' heard before the action happened
+
+**It passes if:**
+
+- actions within ~2.5 s in at least 9 of 10
+- chat replies start within ~2 s
+- no claim heard before its action
+
+**Tell me back:** commands acted within ~2.5 s, out of 10; seconds to first word for the 5 chat questions; any claim heard before its action
+
+**Still unknown until you do:** seconds heard in the cabin on the phone's network; whether gemini-3.8-live self-interrupts through the speaker (G-M2)
 
 ---
 

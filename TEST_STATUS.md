@@ -20,7 +20,6 @@ Updated 2026-09-21 · 120 tests
 
 **HUMAN_VALIDATION_READY = FALSE**
 
-- the registry does not validate: 5 problem(s)
 - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - TRUTH-MISHEARD-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -215,7 +214,7 @@ Updated 2026-09-21 · 120 tests
 | ECHO-001 | turn_taking | Post-reply cabin echo does not become 「没听清」 | AUTONOMOUS | NOT_RUN | yes | STALE_BIND code_digest mismatch |
 | GATE-D10-DEVICE-001 | turn_taking | Claim gate D-10 orderings hold on real provider traffic | AUTONOMOUS | NOT_RUN | no | — |
 | GEMINI-DEVICE-DUPLEX-001 | turn_taking | Gemini reply through the speaker does not interrupt itself (G-M2) | AUTONOMOUS | NOT_RUN | no | — |
-| GEMINI-DEVICE-LATENCY-001 | turn_taking | Gemini (gemini-3.8-live) end of speech to first audio heard, on the phone | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | — |
+| GEMINI-DEVICE-LATENCY-001 | turn_taking | Gemini (gemini-3.8-live) end of speech to first audio heard, on the phone | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | docs/reports/2026-09-30-gemini-native-smoke.md: live API through GeminiLiveClient, L1 9… |
 | LISTEN-IDLE-001 | turn_taking | Inactivity releases the microphone and then the socket | AUTONOMOUS | PASS | yes | ListeningLifecycleTest covers STANDBY, DEEP_IDLE, epoch-guarded timers, and meaningless… |
 | NOISE-001 | turn_taking | Room noise does not become a turn | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite |
 | PLAYBACK-BUFFER-ADAPT-001 | turn_taking | Playback buffer adapts to the size the platform applied and to real underruns only | AUTONOMOUS | PASS | yes | 2026-09-24: LowLatencyPlaybackBufferTest 7/7 with a clamping fake track (cloud Linux bu… |
