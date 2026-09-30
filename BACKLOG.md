@@ -6,6 +6,7 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 
 | # | Demand | Raised | Status | Spec |
 | --- | --- | --- | --- | --- |
+| B-029 | **Fuzzy driving requests** — 嗲一点 (voice style), 座位高/低 (seat), 有蚊子 (windows), and every action announced from its result; plus more phrases of the same kind | 2026-09-30 | **Recorded**; needs architecture + SPEC | §B-029 below |
 | B-028 | **A Gemini-native architecture** — "design a new architecture that should optimise for the new Gemini API, because the last test said the old design is slow and poorly suited to it". Measured: the extended-thinking model is the cause of slow actions; the whole-reply claim hold is the cause of slow conversation | 2026-09-29 | **Specced**; proposal awaiting the owner (N-1, N-2) | [SPEC-014](SPECS/SPEC-014-gemini-native-voice-path.md) · [ADR-011](DECISIONS/ADR-011-gemini-native-voice-path.md) (Proposed) |
 | B-027 | **Gemini Live as a second voice provider** — the owner chose Gemini 3.8 Live Extended Thinking; build it behind the provider seam, opt-in, Baidu stays default | 2026-09-29 | **Built (code, cloud-verified)**; device rows open | [SPEC-013](SPECS/SPEC-013-gemini-live-provider.md) · [ADR-010](DECISIONS/ADR-010-gemini-live-second-provider.md) |
 | B-026 | **One owner for who may speak** — a single arbiter decides between Amap guidance, other apps' audio and 小诺's replies (calls later), using a driver-workload signal (distance to the next manoeuvre), replacing today's separate special cases. *Not* the assistant speaking first | 2026-09-24 | **In milestone** M4 | [SPEC-012](SPECS/SPEC-012-speech-arbiter.md) |
@@ -571,3 +572,42 @@ not re-spoken by us.
   phone TTS quality varies by vendor; reopens the no-separate-ASR/TTS rule.
 - **Real vehicle control** — HVAC and window properties need signature/privileged permissions a normal
   app cannot hold on a real car; emulator-only demo.
+
+## B-029 — Fuzzy driving requests (模糊意图)
+
+Raised 2026-09-30 by the owner (`D:\桌面\android_doc\fuzzy logic.docx`). Status: **Recorded** — needs
+architecture (seat/window tools do not exist) and a SPEC before building.
+
+What the owner asked for:
+
+| Driver says | Wanted | Today |
+| --- | --- | --- |
+| 说话能不能嗲一点 | 小诺 switches to a sweeter, more coquettish speaking style | Voice is fixed per session (B-023, 4196); no spoken style switch |
+| 座位有点高 / 有点低 | Seat height goes down / up | `windows_seats_doors_lights_wipers` is `unsupported` — no tool |
+| 有蚊子 | Open the windows to let it out | Same — no window tool |
+| (every action) | 小诺 says what it actually did, e.g. 「已把车窗打开一半」 | Mostly true via the claim gate (I-11), not a stated rule for multi-action turns |
+| "and more like these" | Other fuzzy driving phrases | B-008/SPEC-006 covers 有点热/再凉一点 against existing tools |
+
+Review notes (2026-09-30):
+
+1. **These are B-008 extended to new actuators.** The resolver pattern (UtteranceIntentResolver →
+   tool, context record, ambiguity policy) already exists; extend it, don't add a second one.
+2. **Seats and windows must be simulated vehicle state**, like climate: a car model + bottom-bar/overlay
+   display + `control_seat` / `control_window` tools with honest results. Real actuation needs
+   privileged permissions (see "Not recorded" above). `capabilities.yaml` flips from `unsupported`
+   only for what is built, and TRUTH-BAIT-001 must be updated in the same change.
+3. **有蚊子 is multi-action by nature** (open windows; optionally fan up, then close windows later).
+   Decide: one composite "scenario" tool owned by deterministic code, or the model chaining tools
+   (SPEC-006 left multi-intent to the model). Each executed step must be announced from its result.
+4. **嗲一点 is a voice/persona change, not a car action.** Options: switch Flex voice id at the next
+   session reset, or a style instruction in the session prompt. Keep it playful/sweet (撒娇 tone);
+   the product will not produce sexualised speech. Persona stays out of code (voice-persona memory).
+   Must persist until 正常一点 / 恢复.
+5. **"Announce every action"** becomes an invariant candidate: the spoken confirmation is built from
+   the executor's result, one short sentence listing each step (I-11, voice-replies-short).
+6. Candidate extra phrases (same tools, no new hardware): 有点冷, 起雾了/看不清 (defrost, fresh air),
+   有异味/空气不好 (outside air), 好困 (cooler + fresh air + music), 太吵了 (music down/pause),
+   太晒/刺眼 (sunshade — needs another simulated actuator), 腰不舒服 (lumbar/seat recline — seat tool).
+
+Next: architecture note + SPEC (tools, car-model state, UI, fuzzy-phrase table with expected actions,
+test rows), then implementation in waves.
