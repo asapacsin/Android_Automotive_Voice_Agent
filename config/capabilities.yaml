@@ -474,6 +474,7 @@ change_impact:
       - GeminiLiveClient
       - GeminiPromptTurn
       - GuidanceClaims
+      - GuidanceBlockers
       - GeminiLiveProtocol
       - GeminiLiveProvider
       - RealtimeProviderFactory
@@ -501,6 +502,13 @@ change_impact:
       - LiveDestinationCandidateSource
       - NavigationHostGateway
       - NavigationGuidanceVoice
+      - GuidanceRelay
+      - GuidanceFidelity
+      - GuidanceTranscripts
+      - GuidanceSession
+      - GuidanceSpeaker
+      - GuidanceArbiterView
+      - Cancellable
       - NaviPresentation
       - DrivingSpeedHud
       - DrivingSpeedHudView

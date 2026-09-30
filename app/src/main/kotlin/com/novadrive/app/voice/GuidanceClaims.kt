@@ -11,6 +11,9 @@ object GuidanceClaims {
 
     /** An open prompt's audio was flushed or cut before COMPLETED (B2a: the relay may re-speak it). */
     @Volatile var onGuidanceCut: (promptId: String) -> Unit = {}
+
+    /** [promptId]'s audio finished playing out (B3: the next guidance may speak only now). */
+    @Volatile var onGuidanceDrained: (promptId: String) -> Unit = {}
 }
 
 /**

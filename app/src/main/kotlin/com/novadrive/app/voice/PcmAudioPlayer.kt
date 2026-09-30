@@ -603,7 +603,10 @@ class AndroidPlaybackPort(
                 focus?.requestSpeechFocus()
             } else {
                 focus?.abandon()
-                if (guidance.drained() != null) guidancePlayoutEnded()
+                guidance.drained()?.let { id ->
+                    guidancePlayoutEnded()
+                    GuidanceClaims.onGuidanceDrained(id)
+                }
             }
         }
         // Single owner: AudioFocusController.onFocusChanged is one slot, not a listener list.

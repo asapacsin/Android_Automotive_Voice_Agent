@@ -64,7 +64,7 @@ class VoiceSessionController(
                 }
                 updateBusy()
             },
-            onTranscript = onTranscript,
+            onTranscript = { line -> com.novadrive.app.nav.GuidanceTranscripts.onTranscript(line); onTranscript(line) },
             onError = onError,
             onToolCall = onToolCall,
             onUserFinalTranscript = { text -> onUserUtterance(text) },
@@ -89,6 +89,7 @@ class VoiceSessionController(
                     "sessions_match" to VoiceAudioSession.sessionsMatch(),
                 )
             },
+            onAppPromptTurn = com.novadrive.app.nav.GuidanceTranscripts::onAppPromptTurn,
         )
 
     /**
@@ -438,6 +439,11 @@ class VoiceSessionController(
 
     /** SPEC-018: an app prompt, sent now or not at all (never queued, never starts anything). */
     fun sendPrompt(text: String, promptId: String): Boolean = active.sendPrompt(text, promptId)
+
+    /** SPEC-018 B1: why a guidance prompt may not be sent now (codes only), or null. */
+    fun guidanceBlocker(): String? = GuidanceBlockers.of(
+        active.connectedNow, provider?.capabilities?.verbatimPromptSpeech == true, lastUiState, active.hasPendingWork(),
+    )
 
     fun release() {
         lifecycle.onSessionStopped("released")

@@ -100,6 +100,18 @@ object VoiceSessionGateway {
         return session.sendPrompt(text, promptId)
     }
 
+    /**
+     * SPEC-018 B1: null when a guidance prompt may be sent now, else why not (a code only).
+     * There is no core signal for "a driver response is open with no audio yet"; pending work and
+     * the driver speaking are covered.
+     */
+    fun guidanceBlocker(): String? {
+        val session = starter ?: return "NOT_ATTACHED"
+        if (!session.isActive) return "NOT_ACTIVE"
+        if (session.hasFailed) return "FAILED"
+        return session.guidanceBlocker()
+    }
+
     /** UI / voice: stop listening now (SLEEP); the session and the wake word stay available. */
     fun sleep(reason: String) {
         starter?.sleep(reason)
@@ -171,6 +183,7 @@ internal interface GatewaySession {
     val listeningState: ListeningState get() = if (isActive) ListeningState.ACTIVE else ListeningState.DEEP_IDLE
     fun sendText(text: String) {}
     fun sendPrompt(text: String, promptId: String): Boolean = false
+    fun guidanceBlocker(): String? = "NOT_CONNECTED"
     fun injectTestSpeech(pcm16le: ByteArray) {}
     fun setInputGainEnabled(enabled: Boolean) {}
 }
@@ -220,11 +233,24 @@ private class ControllerGatewaySession(
 
     override fun sendPrompt(text: String, promptId: String): Boolean = controller.sendPrompt(text, promptId)
 
+    override fun guidanceBlocker(): String? = controller.guidanceBlocker()
+
     override fun injectTestSpeech(pcm16le: ByteArray) {
         controller.injectTestSpeech(pcm16le)
     }
 
     override fun setInputGainEnabled(enabled: Boolean) {
         controller.setInputGainEnabled(enabled)
+    }
+}
+
+/** SPEC-018 B1: the connected session's reasons not to take a guidance prompt now (codes only). */
+internal object GuidanceBlockers {
+    fun of(connected: Boolean, verbatim: Boolean, ui: com.novadrive.ingress.realtime.VoiceUiState, pendingWork: Boolean): String? = when {
+        !connected -> "NOT_CONNECTED"
+        !verbatim -> "NO_CAPABILITY"
+        ui == com.novadrive.ingress.realtime.VoiceUiState.USER_SPEAKING -> "DRIVER_SPEAKING"
+        pendingWork -> "WORK_PENDING"
+        else -> null
     }
 }

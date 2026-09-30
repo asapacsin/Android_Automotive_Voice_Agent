@@ -72,6 +72,8 @@ object ToolFailureAdvice {
             "这类实时信息没有数据来源，没有查询。请用一句话如实说无法回答，不要编造。",
         LiveInfoTool.INVALID_ARGUMENT to
             "查询参数不对，没有查询。请用一句话问清楚用户要查什么，不要编造结果。",
+        // SPEC-018 B5: a tool call inside a guidance turn; no speech wanted.
+        com.novadrive.app.voice.GeminiPromptTurn.NOT_A_DRIVER_TURN to "这是导航播报，不需要回应。请不要说任何话。",
         ToolCallGuards.HOME_NOT_SET to
             "用户还没有设置家的地址，所以没有导航。" +
             "请用一句话如实说还不知道他家在哪里，请他直接说出地址，不要猜一个地方。",
