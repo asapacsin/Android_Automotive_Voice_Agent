@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-09-30T04:56:21",
+  "generated_at": "2026-09-30T05:08:34",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "78d817d",
+    "commit": "69a26cc",
     "branch": "claude/fuzzy-logic-9-30",
-    "subject": "B-029: O-2 decided — speaking style is sticky until the driver asks to change it",
+    "subject": "ADR-013: Gemini Live default, no cross-provider fallback, Baidu retired after device gates",
     "working_tree_clean": false,
     "uncommitted_files": 2
   },
@@ -147,7 +147,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "A5: | A5 | Picker selection uses the registry; `tryLocalNavigationPick` is gone | production wiring | `FeaturePresenceRegressionTest` + existing picker tests green | not built — **deferred on purpose** to",
-    "actionable_count": 72,
+    "actionable_count": 71,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 18,
@@ -606,13 +606,6 @@
         "class": "recorded technical debt",
         "source": "docs/TECH_DEBT.md",
         "item": "D-9",
-        "blocked_by": null
-      },
-      {
-        "priority": 10,
-        "class": "stale state or harness defect",
-        "source": "state",
-        "item": "PROJECT_STATE.json",
         "blocked_by": null
       },
       {
