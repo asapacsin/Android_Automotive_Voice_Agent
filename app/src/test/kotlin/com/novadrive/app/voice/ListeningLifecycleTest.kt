@@ -472,4 +472,51 @@ class ListeningLifecycleTest {
         assertEquals(ListeningState.DEEP_IDLE, rig.state)
         assertTrue("close" in rig.controls.log)
     }
+
+    // ---- R7: with the relay off (toggle off) or no verbatim provider, navigating changes nothing ----
+
+    @Test
+    fun toggleOffNavigatingSleepStillGoesDeepIdle() = runTest {
+        val rig = Rig(this)
+        rig.start()
+        rig.lifecycle.onNavigating(GuidanceBlockers.keepsSleepConnected(navigating = true, relayActive = false, verbatim = true))
+        rig.lifecycle.sleep("user")
+        wait(ListeningTimeouts.DEEP_IDLE_AFTER_SLEEP_MS - 1_000)
+        assertEquals(ListeningState.SLEEP, rig.state)
+        wait(2_000)
+        assertEquals(ListeningState.DEEP_IDLE, rig.state)
+        assertTrue("close" in rig.controls.log)
+    }
+
+    @Test
+    fun toggleOffNavigatingConnectionLostInSleepGoesDeepIdle() = runTest {
+        val rig = Rig(this)
+        rig.start()
+        rig.lifecycle.onNavigating(GuidanceBlockers.keepsSleepConnected(navigating = true, relayActive = false, verbatim = true))
+        rig.lifecycle.sleep("user")
+        rig.lifecycle.onConnectionLost()
+        assertEquals(ListeningState.DEEP_IDLE, rig.state)
+    }
+
+    @Test
+    fun providerWithoutVerbatimSpeechNavigatingSleepStillGoesDeepIdle() = runTest {
+        val rig = Rig(this)
+        rig.start()
+        rig.lifecycle.onNavigating(GuidanceBlockers.keepsSleepConnected(navigating = true, relayActive = true, verbatim = false))
+        rig.lifecycle.sleep("user")
+        rig.lifecycle.onConnectionLost()
+        assertEquals(ListeningState.DEEP_IDLE, rig.state)
+    }
+
+    @Test
+    fun toggleOnVerbatimNavigatingKeepsTheConnectionInSleep() = runTest {
+        val rig = Rig(this)
+        rig.start()
+        rig.lifecycle.onNavigating(GuidanceBlockers.keepsSleepConnected(navigating = true, relayActive = true, verbatim = true))
+        rig.lifecycle.sleep("user")
+        wait(ListeningTimeouts.DEEP_IDLE_AFTER_SLEEP_MS * 2)
+        rig.lifecycle.onConnectionLost()
+        assertEquals(ListeningState.SLEEP, rig.state)
+        assertFalse("close" in rig.controls.log)
+    }
 }

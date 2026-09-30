@@ -41,8 +41,6 @@ class VoiceSessionController(
     private val scope = CoroutineScope(job + Dispatchers.Main.immediate)
     private val microphone = AndroidMicrophonePort(onError = { code -> onError(code, "microphone failed") })
     private val audioFocus = AudioFocusController(appContext)
-    // Reply audio is only played while listening is ACTIVE: after 「关闭小诺」 the cancelled reply
-    // must not start talking.
     // Replies are spoken only in ACTIVE: after 「闭嘴」 or 「休眠」 the cancelled reply stays silent.
     private val playback = AndroidPlaybackPort(player, audioFocus) { lifecycle.speaks }
     @Volatile private var lastUiState: VoiceUiState = VoiceUiState.DISCONNECTED
@@ -64,7 +62,7 @@ class VoiceSessionController(
                 }
                 updateBusy()
             },
-            onTranscript = { line -> com.novadrive.app.nav.GuidanceTranscripts.onTranscript(line); onTranscript(line) },
+            onTranscript = onTranscript,
             onError = onError,
             onToolCall = onToolCall,
             onUserFinalTranscript = { text -> onUserUtterance(text) },
@@ -90,6 +88,7 @@ class VoiceSessionController(
                 )
             },
             onAppPromptTurn = com.novadrive.app.nav.GuidanceTranscripts::onAppPromptTurn,
+            onAppPromptTranscript = com.novadrive.app.nav.GuidanceTranscripts::onAppPromptTranscript,
         )
 
     /**
@@ -173,9 +172,10 @@ class VoiceSessionController(
         }
         microphone.onUplinkSegmentChanged = { open -> active.onLocalSpeechActivity(open) }
         com.novadrive.app.nav.NavigationGuidanceVoice.addListener(guidanceListener)
-        // SPEC-018 G-2: the arbiter's navigating input (from NavigationState) also keeps SLEEP connected.
-        SpeechAuthority.arbiter.navigatingObserver = { navigating -> lifecycle.onNavigating(navigating) }
-        lifecycle.onNavigating(com.novadrive.app.NavigationState.navigating)
+        // SPEC-018 G-2 (R7): SLEEP stays connected only while the relay speaks guidance over it.
+        SpeechAuthority.arbiter.navigatingObserver = { syncGuidanceSleep() }
+        com.novadrive.app.nav.GuidanceRelay.onActiveChanged = { syncGuidanceSleep() }
+        syncGuidanceSleep()
     }
 
     /** Starts a new realtime session and makes listening ACTIVE. */
@@ -183,7 +183,6 @@ class VoiceSessionController(
         openSession(config)
         lifecycle.onSessionStarted(reason)
     }
-
 
     /**
      * Wake word, UI or an app prompt: resume listening (or restart the countdown). The wake word
@@ -232,6 +231,7 @@ class VoiceSessionController(
         provider = built.provider
         active = newCore(built.provider, built.session)
         active.start()
+        syncGuidanceSleep()
         startSessionDiagnostics()
     }
 
@@ -260,7 +260,6 @@ class VoiceSessionController(
             }
         }
     }
-
 
     fun stop() {
         NavigationState.reset()
@@ -441,6 +440,9 @@ class VoiceSessionController(
     fun sendPrompt(text: String, promptId: String): Boolean = active.sendPrompt(text, promptId)
 
     /** SPEC-018 B1: why a guidance prompt may not be sent now (codes only), or null. */
+    private fun syncGuidanceSleep() = lifecycle.onNavigating(GuidanceBlockers.keepsSleepConnected(NavigationState.navigating,
+        com.novadrive.app.nav.GuidanceRelay.active != null, provider?.capabilities?.verbatimPromptSpeech == true))
+
     fun guidanceBlocker(): String? = GuidanceBlockers.of(
         active.connectedNow, provider?.capabilities?.verbatimPromptSpeech == true, lastUiState, active.hasPendingWork(),
     )
@@ -455,6 +457,8 @@ class VoiceSessionController(
         com.novadrive.app.nav.NavigationGuidanceVoice.removeListener(guidanceListener)
         SpeechAuthority.arbiter.onGuidanceSpeaking(false)
         SpeechAuthority.onSessionEnded()
+        SpeechAuthority.arbiter.navigatingObserver = null
+        com.novadrive.app.nav.GuidanceRelay.onActiveChanged = {}
         scope.cancel()
     }
 

@@ -246,6 +246,11 @@ class VoiceSessionGatewayTest {
         assertEquals("DRIVER_SPEAKING", GuidanceBlockers.of(true, true, com.novadrive.ingress.realtime.VoiceUiState.USER_SPEAKING, false))
         assertEquals("WORK_PENDING", GuidanceBlockers.of(true, true, ui, true))
         assertEquals(null, GuidanceBlockers.of(true, true, ui, false))
+        assertEquals("RESPONSE_OPEN", GuidanceBlockers.of(true, true, com.novadrive.ingress.realtime.VoiceUiState.THINKING, false))
+        assertTrue(GuidanceBlockers.keepsSleepConnected(true, true, true))
+        assertFalse(GuidanceBlockers.keepsSleepConnected(true, false, true)) // R7: toggle off
+        assertFalse(GuidanceBlockers.keepsSleepConnected(true, true, false))
+        assertFalse(GuidanceBlockers.keepsSleepConnected(false, true, true))
     }
 
     private class FakeGatewaySession(

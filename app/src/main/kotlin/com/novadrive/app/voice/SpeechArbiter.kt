@@ -192,6 +192,12 @@ class SpeechArbiter(
         }
     }
 
+    /** SPEC-018 R2: the session stopped — no open or playing assistant guidance survives it. */
+    fun clearGuidance() = synchronized(lock) {
+        openGuidance = null
+        setGuidance(amapGuidance, assistant = false, restart = false)
+    }
+
     /** Session over: nothing held survives it (SPEC-009 epoch). */
     fun reset() = synchronized(lock) {
         navigating = false

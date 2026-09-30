@@ -31,6 +31,7 @@ internal object AmapGuidanceVoice : TTSPlayListener {
 
     /** SPEC-018: the relay of this navigation when 「助手播报导航」 is on, else null (today's path). */
     @Volatile private var relay: GuidanceRelay? = null
+    @Volatile private var amapListener: ((Boolean) -> Unit)? = null
 
     override fun onPlayStart(text: String?) {
         DebugVoiceLog.log("nav_guidance_play_start chars=${text?.length ?: 0}")
@@ -100,11 +101,17 @@ internal object AmapGuidanceVoice : TTSPlayListener {
                 override fun amapSpeaking() = NavigationGuidanceVoice.speaking
                 override fun transientFocusLoss() = SpeechAuthority.arbiter.guidanceHeld()
                 override fun abandon(promptId: String) = SpeechAuthority.arbiter.abandon(promptId)
+                // G-1b+: the relay's own playTTS is guidance for the arbiter (R1–R3) until its end.
+                override fun bracket(speaking: Boolean) =
+                    if (speaking) NavigationGuidanceVoice.onPlayStart() else NavigationGuidanceVoice.onPlayEnd()
             },
             enabled = { true },
         )
         this.relay = relay
-        GuidanceRelay.install(relay)
+        val listener: (Boolean) -> Unit = { speaking -> handler.post { relay.onAmapSpeaking(speaking) } }
+        amapListener = listener
+        NavigationGuidanceVoice.addListener(listener)
+        GuidanceRelay.install(relay) { task -> handler.post { task() } }
         DebugVoiceLog.log("nav_guidance_relay installed=true")
     }
 
@@ -145,6 +152,8 @@ internal object AmapGuidanceVoice : TTSPlayListener {
         runCatching { navi?.removeTTSPlayListener(this) }
         relay?.let { GuidanceRelay.uninstall(it) }
         relay = null
+        amapListener?.let { NavigationGuidanceVoice.removeListener(it) }
+        amapListener = null
         textReceiver = null
         // Guidance cut off mid-sentence may never report its end; do not leave the mic gated.
         if (NavigationGuidanceVoice.speaking) NavigationGuidanceVoice.onPlayEnd()
