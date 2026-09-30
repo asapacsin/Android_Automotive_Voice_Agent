@@ -28,9 +28,14 @@ class CapabilityContractTest {
             .joinToString(separator = " ")
     }
 
-    /** Tools offered to the model: RealtimeToolCatalog owns the list, shared by every adapter (ADR-010). */
+    /**
+     * Tools offered to the model: RealtimeToolCatalog serves the list to every adapter (ADR-010); the
+     * car domains under app/.../tools/ own the declarations (ADR-015).
+     */
     private val declaredTools: Set<String> by lazy {
-        val protocol = File(root, "app/src/main/kotlin/com/novadrive/app/voice/RealtimeToolCatalog.kt").readText()
+        val domains = File(root, "app/src/main/kotlin/com/novadrive/app/tools").listFiles { f -> f.name.endsWith(".kt") }.orEmpty().sortedBy { it.name }
+        val protocol = (listOf(File(root, "app/src/main/kotlin/com/novadrive/app/voice/RealtimeToolCatalog.kt")) + domains)
+            .joinToString("\n") { it.readText() }
         Regex("name = \"([a-z_]+)\"").findAll(protocol).map { it.groupValues[1] }.toSet() +
             Regex("const val [A-Z_]+ = \"([a-z_]+)\"").findAll(protocol).map { it.groupValues[1] }.toSet()
     }
