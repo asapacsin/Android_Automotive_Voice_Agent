@@ -1,7 +1,9 @@
 # Agent entry point — Nova Drive / 小诺
 
-An Android voice assistant for driving. Speech goes to **Baidu Qianfan Flex as end-to-end
-speech-to-speech with function calling** — there is no separate ASR or TTS. The map and turn-by-turn
+An Android voice assistant for driving. Speech goes to **Gemini Live as end-to-end
+speech-to-speech with function calling** (default since 2026-09-30,
+[ADR-013](DECISIONS/ADR-013-gemini-default-provider.md); Baidu Qianfan Flex only when the owner picks
+it) — there is no separate ASR or TTS. The map and turn-by-turn
 navigation are the **Amap Navigation SDK embedded in our own Activity**. Locale `zh-CN`.
 
 ## Commands
@@ -95,10 +97,12 @@ The rules are [harness/CONSTITUTION.md](harness/CONSTITUTION.md) 12 and 17–19;
 
 ## Two things that catch agents out
 
-**One default provider, one seam.** Baidu Qianfan Flex is the default realtime provider. Gemini
-Live is a second, **opt-in** provider behind the same seam
+**One default provider, one seam, one voice.** Gemini Live is the default realtime provider
+([ADR-013](DECISIONS/ADR-013-gemini-default-provider.md)); Baidu Qianfan Flex runs only when the
+owner explicitly selects it, and **never as an automatic fallback** — the driver must not hear two
+voices. Both sit behind the same seam
 ([ADR-010](DECISIONS/ADR-010-gemini-live-second-provider.md)), chosen once per session in
-`openSession`. The dormant Qwen, GPT-Live and PC-backend implementations were deleted on 2026-09-19
+`openSession`. Baidu is deleted once the Gemini device gates pass (ADR-013 step 2). The dormant Qwen, GPT-Live and PC-backend implementations were deleted on 2026-09-19
 ([ADR-008](DECISIONS/ADR-008-single-active-realtime-provider.md)) — do not revive them from git
 history. Behaviour varies on `ProviderCapabilities`, never on the provider name.
 

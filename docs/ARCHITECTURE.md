@@ -6,9 +6,11 @@ cannot do is in [CAPABILITIES.md](CAPABILITIES.md); known problems are in [TECH_
 
 ## What this is
 
-An Android voice assistant for driving. Speech goes to Baidu Qianfan Flex as **end-to-end
-speech-to-speech with function calling** — there is no separate ASR or TTS in this product, by
-decision ([ADR-002](../DECISIONS/ADR-002-baidu-flex-default-provider.md)). The map and turn-by-turn
+An Android voice assistant for driving. Speech goes to the realtime model — Gemini Live by default
+since 2026-09-30 ([ADR-013](../DECISIONS/ADR-013-gemini-default-provider.md)), Baidu Qianfan Flex only
+by the owner's explicit choice — as **end-to-end speech-to-speech with function calling**; there is
+no separate ASR or TTS in this product, by decision
+([ADR-002](../DECISIONS/ADR-002-baidu-flex-default-provider.md)). The map and turn-by-turn
 navigation are the Amap Navigation SDK embedded in our own Activity
 ([ADR-007](../DECISIONS/ADR-007-embedded-amap-navigation-sdk.md)).
 
@@ -60,7 +62,7 @@ One behaviour, one owner. If you need to change one of these, change it **here**
 | Live information (weather, route traffic, along-route, place details) | `LiveInfoTool` (`query_live_info`) — REST kinds via `AmapPoiClient` / `AmapLiveInfoParser`; SDK kinds via the `RouteLiveInfo` port / `nav/amap/AmapRouteLiveInfo` (SPEC-011) | the model's own knowledge |
 | Conversation lifetime | `ConversationResetPolicy` (reset after tool turns) + `ResponseTurnGate` (one reply at a time) | the model |
 | Credentials | `AndroidKeystoreCredentialStore` (`baidu_*`, `gemini_*`, `iflytek_*`, `amap_*`) | source, Gradle files, logs |
-| Which realtime provider a session uses | `VoiceProviderChoice` (Baidu Flex unless Gemini is enabled, consented and keyed), applied once in `VoiceSessionController.openSession` (ADR-010) | the adapters, the UI, anything mid-session |
+| Which realtime provider a session uses | `VoiceProviderChoice` (Gemini Live unless the owner's stored preference is Baidu; a missing key/consent fails the start with its code, never a fallback), applied once in `VoiceSessionController.openSession` (ADR-010, ADR-013) | the adapters, the UI, anything mid-session |
 | Gemini Live wire format | `GeminiLiveProtocol` / `GeminiLiveClient` / `GeminiLiveProvider` | `ingress`, policy code |
 | "Driver speaking" when the provider has no speech events | the local `SpeechUplinkGate` onset/offset, fed to the session core's `onLocalSpeechActivity` and honoured only when `ProviderCapabilities.serverSpeechActivityEvents` is false | the adapter, a provider-name branch |
 
