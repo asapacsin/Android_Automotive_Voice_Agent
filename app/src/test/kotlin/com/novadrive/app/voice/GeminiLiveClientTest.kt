@@ -62,7 +62,7 @@ class GeminiLiveClientTest {
     private fun fake(ready: Boolean = true) = FakeGemini(ready).also { server.enqueue(MockResponse().withWebSocketUpgrade(it)) }
 
     private fun config() = GeminiApiConfig(
-        settings = GeminiAppSettings(endpoint = server.url("/ws").toString().replaceFirst("http://", "ws://")),
+        settings = GeminiAppSettings(consentAccepted = true, endpoint = server.url("/ws").toString().replaceFirst("http://", "ws://")),
         apiKey = KEY,
         instructions = "你是小诺。",
     )

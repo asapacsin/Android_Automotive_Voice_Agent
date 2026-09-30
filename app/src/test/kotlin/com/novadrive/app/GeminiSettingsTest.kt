@@ -2,6 +2,7 @@ package com.novadrive.app
 
 import com.novadrive.ingress.realtime.VoiceCatalog
 import com.novadrive.ingress.realtime.VoiceProviderId
+import com.novadrive.app.voice.sessionConfigFor
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -9,12 +10,12 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class GeminiSettingsTest {
-    private val valid = GeminiAppSettings(enabled = true, consentAccepted = true)
+    private val valid = GeminiAppSettings(consentAccepted = true)
 
     @Test
-    fun defaultsAreOptOut() {
+    fun defaultsPreferGeminiWithoutConsent() {
         val s = GeminiAppSettings()
-        assertFalse(s.enabled)
+        assertEquals(VoiceProviderPreference.GEMINI, s.provider)
         assertFalse(s.consentAccepted)
         assertEquals("Kore", s.voice)
         assertEquals(GeminiThinkingLevel.LOW, s.thinkingLevel)
@@ -44,13 +45,57 @@ class GeminiSettingsTest {
 
     @Test
     fun resolverTruthTable() {
-        for (enabled in listOf(false, true)) for (consent in listOf(false, true)) for (key in listOf(false, true)) {
-            val expected = if (enabled && consent && key) VoiceProviderId.GEMINI_LIVE else VoiceProviderId.BAIDU_FLEX
-            assertEquals(expected, VoiceProviderChoice.resolve(GeminiAppSettings(enabled = enabled, consentAccepted = consent), key)) {
-                "enabled=$enabled consent=$consent key=$key"
+        for (pref in VoiceProviderPreference.entries) for (consent in listOf(false, true)) for (key in listOf(false, true)) {
+            val expected = if (pref == VoiceProviderPreference.BAIDU) VoiceProviderId.BAIDU_FLEX else VoiceProviderId.GEMINI_LIVE
+            assertEquals(expected, VoiceProviderChoice.resolve(GeminiAppSettings(provider = pref, consentAccepted = consent), key)) {
+                "pref=$pref consent=$consent key=$key"
             }
         }
-        assertEquals(VoiceProviderId.BAIDU_FLEX, VoiceProviderChoice.resolve(valid.copy(endpoint = "ws://x"), true))
+        // Invalid settings do not fall back to Baidu either; the config path reports the code.
+        assertEquals(VoiceProviderId.GEMINI_LIVE, VoiceProviderChoice.resolve(valid.copy(endpoint = "ws://x"), true))
+    }
+
+    @Test
+    fun preferenceWireNamesAndStoredDefaultIsGemini() {
+        assertEquals("gemini", VoiceProviderPreference.GEMINI.wireName)
+        assertEquals("baidu", VoiceProviderPreference.BAIDU.wireName)
+        assertEquals(VoiceProviderPreference.BAIDU, VoiceProviderPreference.fromWire("baidu"))
+        assertEquals(VoiceProviderPreference.GEMINI, VoiceProviderPreference.fromWire(null))
+        assertEquals(VoiceProviderPreference.GEMINI, VoiceProviderPreference.fromWire("garbage"))
+    }
+
+    private fun configCode(settings: GeminiAppSettings, key: String): Pair<VoiceProviderId, String?> {
+        val choice = VoiceProviderChoice.resolve(settings, key.isNotBlank())
+        var baiduTouched = false
+        val code = try {
+            sessionConfigFor(
+                choice,
+                gemini = { GeminiSettingsValidator.configOrThrow(settings, key, "persona") },
+                baidu = { baiduTouched = true; error("Baidu must not be opened") },
+            )
+            null
+        } catch (failure: IllegalArgumentException) {
+            failure.message
+        }
+        assertFalse(baiduTouched)
+        return choice to code
+    }
+
+    @Test
+    fun geminiPreferenceWithMissingKeyOrConsentFailsWithCodeAndNeverOpensBaidu() {
+        assertEquals(VoiceProviderId.GEMINI_LIVE to "GEMINI_API_KEY_MISSING", configCode(GeminiAppSettings(), ""))
+        assertEquals(VoiceProviderId.GEMINI_LIVE to "GEMINI_API_KEY_MISSING", configCode(valid, " "))
+        assertEquals(VoiceProviderId.GEMINI_LIVE to "GEMINI_CONSENT_MISSING", configCode(GeminiAppSettings(), "k"))
+        assertEquals(VoiceProviderId.GEMINI_LIVE to "GEMINI_ENDPOINT_INVALID", configCode(valid.copy(endpoint = "ws://x"), "k"))
+        assertEquals(VoiceProviderId.GEMINI_LIVE to null, configCode(valid, "k"))
+    }
+
+    @Test
+    fun configCodesMapToOneHonestSentence() {
+        assertEquals("语音服务未配置：请在开发者设置里填写 Gemini 密钥。", GeminiSettingsValidator.screenMessage("GEMINI_API_KEY_MISSING"))
+        assertEquals("请先在开发者设置里同意语音数据跨境传输提示。", GeminiSettingsValidator.screenMessage("GEMINI_CONSENT_MISSING"))
+        assertEquals("语音服务设置有误，请检查开发者设置。", GeminiSettingsValidator.screenMessage("GEMINI_VOICE_INVALID"))
+        assertNull(GeminiSettingsValidator.screenMessage("BAIDU_API_KEY_MISSING"))
     }
 
     @Test

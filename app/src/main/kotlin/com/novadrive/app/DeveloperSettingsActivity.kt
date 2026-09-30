@@ -480,13 +480,19 @@ class DeveloperSettingsActivity : Activity() {
         )
     }
 
-    /** Gemini Live opt-in (ADR-010). The key is never displayed or logged; blank keeps the stored one. */
+    /** Voice provider choice and Gemini Live settings (ADR-010, ADR-013). The key is never displayed or logged; blank keeps the stored one. */
     private fun geminiSection(): LinearLayout {
         val gemini = GeminiSettingsRepository(this)
         val saved = gemini.loadSettings()
         val consent = CheckBox(this).apply { text = "我已阅读并同意 / I accept"; isChecked = saved.consentAccepted }
-        val enabled = CheckBox(this).apply {
-            text = "使用 Gemini Live 作为语音模型 / Use Gemini Live"; isChecked = saved.enabled
+        val providerButtons = VoiceProviderPreference.entries.associateBy {
+            RadioButton(this).apply {
+                text = if (it == VoiceProviderPreference.GEMINI) "Gemini — 默认 / default" else "Baidu"
+                id = View.generateViewId()
+            }
+        }
+        val providerGroup = RadioGroup(this).apply {
+            providerButtons.forEach { (button, pref) -> addView(button); if (pref == saved.provider) check(button.id) }
         }
         val key = secretField(
             if (gemini.keyPresent()) "Gemini API Key（已配置 / configured；留空保留）" else "Gemini API Key",
@@ -522,10 +528,11 @@ class DeveloperSettingsActivity : Activity() {
         val save = Button(this).apply {
             text = "保存 Gemini 设置 / Save Gemini"
             setOnClickListener {
-                if (enabled.isChecked && !consent.isChecked) { result.text = "GEMINI_CONSENT_MISSING"; return@setOnClickListener }
+                val provider = providerButtons.entries.firstOrNull { it.key.id == providerGroup.checkedRadioButtonId }?.value
+                    ?: VoiceProviderPreference.GEMINI
                 val silenceText = silence.text.toString().trim()
                 val settings = saved.copy(
-                    enabled = enabled.isChecked,
+                    provider = provider,
                     consentAccepted = consent.isChecked,
                     model = geminiModels.entries.firstOrNull { it.key.id == modelGroup.checkedRadioButtonId }?.value
                         ?: saved.model,
@@ -548,8 +555,8 @@ class DeveloperSettingsActivity : Activity() {
             setOnClickListener { gemini.clearKey(); result.text = "GEMINI_KEY_CLEARED" }
         }
         return verticalGroup(
-            TextView(this).apply { text = "Gemini Live (opt-in, ADR-010)"; textSize = 18f },
-            GeminiAppSettings.CONSENT_NOTICE, consent, enabled, "API Key", key, "Model", modelGroup, "Voice", voice,
+            TextView(this).apply { text = "语音服务 / Voice provider (ADR-013)"; textSize = 18f },
+            GeminiAppSettings.CONSENT_NOTICE, consent, "Provider", providerGroup, "API Key", key, "Model", modelGroup, "Voice", voice,
             thinkingLabel, thinking, "Silence ms", silence, save, clearKey,
             "Takes effect at the next session start.",
         )

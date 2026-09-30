@@ -256,7 +256,8 @@ class MainActivity : Activity() {
         when (val result = VoiceSessionGateway.start("ui")) {
             com.novadrive.app.voice.StartResult.MicPermissionMissing ->
                 requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC)
-            is com.novadrive.app.voice.StartResult.ConfigInvalid -> showError("CONFIG", result.message)
+            is com.novadrive.app.voice.StartResult.ConfigInvalid ->
+                showError("CONFIG", GeminiSettingsValidator.screenMessage(result.message) ?: result.message)
             else -> Unit
         }
     }
@@ -302,11 +303,17 @@ class MainActivity : Activity() {
         val gemini = GeminiSettingsRepository(this)
         val choice = gemini.choice()
         DebugVoiceLog.log("session_provider choice=${choice.wireName}")
-        return sessionConfigFor(
-            choice,
-            gemini = { gemini.config(instructions = settingsRepository.loadSettings().instructions) },
-            baidu = { settingsRepository.config() },
-        )
+        return try {
+            sessionConfigFor(
+                choice,
+                gemini = { gemini.config(instructions = settingsRepository.loadSettings().instructions) },
+                baidu = { settingsRepository.config() },
+            )
+        } catch (failure: IllegalArgumentException) {
+            // Codes only (never the key); no fallback to another provider (ADR-013).
+            DebugVoiceLog.log("session_provider_unavailable reason=${failure.message ?: "INVALID_CONFIGURATION"}")
+            throw failure
+        }
     }
 
     companion object {

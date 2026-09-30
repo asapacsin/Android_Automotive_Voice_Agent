@@ -99,7 +99,7 @@ class GeminiLiveSmokeTest {
             live.events().collect { events += now() to it.payload }
         }
         val setupStart = now()
-        live.connect(GeminiApiConfig(GeminiAppSettings(enabled = true, consentAccepted = true, model = model), key, PersonaProfiles.DEFAULT_INSTRUCTIONS))
+        live.connect(GeminiApiConfig(GeminiAppSettings(consentAccepted = true, model = model), key, PersonaProfiles.DEFAULT_INSTRUCTIONS))
         println("smoke model=$model setup_ok ms=${(now() - setupStart).toInt()}")
         val readyBy = now() + 5_000
         while (now() < readyBy && synchronized(events) { events.none { it.second is DomainVoiceEvent.SessionReady } }) Thread.sleep(20)
