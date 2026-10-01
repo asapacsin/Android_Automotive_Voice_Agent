@@ -137,8 +137,12 @@ class AndroidToolDispatcher(
             MediaServer(executor, music),
             ClimateServer(climate),
             BodyServer(cabin),
-            // Scenario steps take the same server path as a direct call, minus the repeat guard.
-            ComfortServer(route = { dispatchUnrecorded(it) }, cabinState = { cabin?.cabinState?.value }),
+            // Scenario steps take the same server path as a direct call. Not the repeat or referent guards
+            // (fixed steps are neither driver repeats nor referents), but a named song still is not ours.
+            ComfortServer(
+                route = { step -> ToolCallGuards.unsupportedMedia(step, driverContext())?.let { failed(step, it) } ?: dispatchUnrecorded(step) },
+                cabinState = { cabin?.cabinState?.value },
+            ),
             VisionServer(camera),
             PhoneServer(phone),
             LiveInfoServer(liveInfo),

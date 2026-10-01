@@ -64,6 +64,7 @@ object CapabilityIds {
     const val SUNROOF_DOORS_LIGHTS_WIPERS = "unsupported.sunroof_doors_lights_wipers"
     const val BODY_WINDOW = "body.window"
     const val BODY_SEAT_HEIGHT = "body.seat_height"
+    const val COMFORT_SCENARIO = "comfort.scenario"
     const val MEDIA_PLAY_BY_DESCRIPTION = "media.play_by_description"
     const val MEDIA_NEXT_TRACK = "media.next_track"
     const val REALTIME_INFO = "unsupported.realtime_news_prices"
@@ -109,7 +110,7 @@ object ProductCapabilities : CapabilityCatalog {
             rec("climate.ambiguous_relative_request", null, true),
             rec("body.window", "control_window", true),
             rec("body.seat_height", "control_seat", true),
-            rec("comfort.scenario", "run_scenario", true),
+            rec(CapabilityIds.COMFORT_SCENARIO, "run_scenario", true),
             rec("vision.describe_camera_view", "describe_camera_view", true),
             rec("speech.tts", null, true),
             rec("speech.silent_mode", "set_speech_output", true),

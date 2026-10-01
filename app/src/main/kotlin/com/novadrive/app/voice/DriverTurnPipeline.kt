@@ -184,7 +184,7 @@ class DriverTurnPipeline(
      */
     @Synchronized
     private fun onExecutionResult(callId: String, output: String) {
-        val ok = output.contains("\"ok\":true")
+        val ok = toolResultProvesExecution(output)
         val failure = if (ok) null else Regex("\"error\":\"([^\"]+)\"").find(output)?.groupValues?.get(1)
         applyVerdict(turn, turn.onExecutionResult(ok, failure, liveInfoKindOf(output), callId, musicConfirmedOf(output)))
     }
@@ -338,4 +338,17 @@ class DriverTurnPipeline(
         /** ~6 s of held reply at typical delta sizes: a ceiling, not an expected value. */
         const val MAX_HELD_AUDIO_EVENTS = 120
     }
+}
+
+/**
+ * Whether a tool result proves something ran: top-level ok=true, or a `run_scenario` result
+ * with status=partial and at least one step ok (SPEC-015 B8). A nested step's ok alone, as in
+ * an all-failed scenario, proves nothing.
+ */
+internal fun toolResultProvesExecution(output: String): Boolean {
+    val json = runCatching { JSONObject(output) }.getOrNull() ?: return output.contains("\"ok\":true")
+    if (json.optBoolean("ok")) return true
+    if (json.optString("tool") != "run_scenario" || json.optString("status") != "partial") return false
+    val steps = json.optJSONArray("steps") ?: return false
+    return (0 until steps.length()).any { steps.optJSONObject(it)?.optBoolean("ok") == true }
 }

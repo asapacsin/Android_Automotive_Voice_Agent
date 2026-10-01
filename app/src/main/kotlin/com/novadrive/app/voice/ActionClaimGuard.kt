@@ -4,6 +4,7 @@ import com.novadrive.contracts.CapabilityCatalog
 import com.novadrive.contracts.CapabilityIds
 import com.novadrive.contracts.ProductCapabilities
 import com.novadrive.ingress.realtime.ResponseOutcome
+import org.json.JSONObject
 
 /**
  * Catches a reply that claims a car action happened when no tool was called.
@@ -26,6 +27,9 @@ class ActionClaimGuard {
     private var lastToolFailure: String? = null
     private var failureCorrected = false
 
+    /** The latest run_scenario result was partial: the clauses of the steps that were not done. */
+    private var scenarioNotDone: List<String>? = null
+
     /**
      * This utterance's tool results showed navigation actually starting. Measured 2026-09-27: after
      * a destination pick the model said 「导航已开始。」 while three routes waited for a choice -
@@ -42,6 +46,7 @@ class ActionClaimGuard {
         toolCalledThisTurn = false
         nudged = false
         lastToolFailure = null
+        scenarioNotDone = null
         failureCorrected = false
         navigationStarted = false
         navigationClaimCorrected = false
@@ -53,7 +58,11 @@ class ActionClaimGuard {
      */
     @Synchronized
     fun onToolResult(output: String) {
-        lastToolFailure = if (output.contains("\"ok\":false")) {
+        scenarioNotDone = partialScenarioNotDone(output)
+        lastToolFailure = if (scenarioNotDone != null) {
+            // An honest partial reply names the failed steps; judged in onResponseDone.
+            null
+        } else if (output.contains("\"ok\":false")) {
             Regex("\"message\":\"([^\"]+)\"").find(output)?.groupValues?.get(1)
                 ?: Regex("\"error\":\"([^\"]+)\"").find(output)?.groupValues?.get(1)
                 ?: "操作失败"
@@ -73,6 +82,13 @@ class ActionClaimGuard {
             return null
         }
         if (!outcome.spoke) return null
+        scenarioNotDone?.let { notDone ->
+            val reply = assistantText.trim()
+            if (!failureCorrected && claimsAllDone(reply, notDone)) {
+                failureCorrected = true
+                return correctionForFailure("部分步骤没有完成：${notDone.joinToString("，")}")
+            }
+        }
         val failure = lastToolFailure
         if (failure != null && !failureCorrected && claimsDone(assistantText.trim())) {
             failureCorrected = true
@@ -146,6 +162,7 @@ class ActionClaimGuard {
         toolCalledThisTurn = false
         nudged = false
         lastToolFailure = null
+        scenarioNotDone = null
         failureCorrected = false
         navigationStarted = false
         navigationClaimCorrected = false
@@ -156,7 +173,7 @@ class ActionClaimGuard {
             "空调", "温度", "度", "风量", "风速", "暖风", "冷风", "除雾",
             "音乐", "歌", "播放", "暂停",
             "导航", "带我去", "出发", "目的地",
-            "打开", "关闭", "关掉", "开启",
+            "打开", "关闭", "关掉", "开启", "关上",
             "调高", "调低", "调大", "调小", "调到", "升高", "降低",
             "结束", "退出", "取消", "算了", "不用了", "没事了", "返回",
             "路线", "第一", "第二", "第三", "第四", "第五", "最快", "最短", "免费", "红绿灯",
@@ -481,6 +498,34 @@ class ActionClaimGuard {
         const val NAVIGATION_NOT_STARTED =
             "你上一句说导航已经开始是错误的：目的地已选好，路线还在屏幕上等用户选择，导航还没有开始。" +
                 "不要调用任何工具，只用一句话更正：导航还没开始，请说「开始导航」走推荐路线，或说第几条路线。"
+
+        /**
+         * The not-done clauses of a `run_scenario` result with status=partial, or null for any
+         * other result (SPEC-015 B8).
+         */
+        fun partialScenarioNotDone(output: String): List<String>? {
+            if (!output.contains("\"tool\":\"run_scenario\"")) return null
+            val json = runCatching { JSONObject(output) }.getOrNull() ?: return null
+            if (json.optString("status") != "partial") return null
+            val array = json.optJSONArray("not_done") ?: return null
+            return (0 until array.length()).map { array.getString(it) }.ifEmpty { null }
+        }
+
+        /**
+         * A reply to a partial scenario that claims everything worked: 「都弄好了」, or a done-claim
+         * that names none of the steps that were not done. A reply naming a not-done step (its
+         * clause, or its subject with 没) is honest and released.
+         */
+        fun claimsAllDone(reply: String, notDone: List<String>): Boolean {
+            if (ALL_DONE_WORDS.any { it in reply }) return true
+            val mentions = notDone.any { clause ->
+                clause in reply || (clause.substringBefore("没").let { it.isNotEmpty() && it in reply } && "没" in reply)
+            }
+            if (mentions) return false
+            return claimsDone(reply) || describesCarAction(reply) || "好了" in reply
+        }
+
+        private val ALL_DONE_WORDS = listOf("都弄好了", "都好了", "都搞定了", "全部完成", "都调好了", "都办好了", "全都好了")
 
         fun claimsDone(reply: String): Boolean =
             !declines(reply) && !isMediaRefusalOnly(reply) && (

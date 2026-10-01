@@ -8,7 +8,12 @@ import com.novadrive.app.ToolCallGuards
 import com.novadrive.app.noCamera
 import com.novadrive.app.vehicle.ClimateToolHandler
 import com.novadrive.app.vehicle.ComfortScenarios
+import com.novadrive.app.voice.ActionClaimGuard
 import com.novadrive.app.voice.ContextResolver
+import com.novadrive.app.voice.DriverTurn
+import com.novadrive.app.voice.toolResultProvesExecution
+import com.novadrive.ingress.realtime.ResponseOutcome
+import com.novadrive.vehicle.CabinState
 import com.novadrive.app.voice.DriverContext
 import com.novadrive.ingress.realtime.DomainVoiceEvent
 import com.novadrive.simulator.SimulatedVehicleControl
@@ -21,6 +26,7 @@ import org.json.JSONObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -112,8 +118,8 @@ class ComfortScenariosTest {
         context.onSpeechStarted(2)
         context.onDriverUtterance("再大一点", 2)
         val next = ContextResolver.resolve("再大一点", context, 2)
-        assertTrue(next is ContextResolver.Resolution.Clarify ||
-            (next is ContextResolver.Resolution.Adjust && next.dimension == DriverContext.Dimension.FAN), next.toString())
+        // The fan step is the latest relative adjustment; the window step was absolute.
+        assertEquals(ContextResolver.Resolution.Adjust(DriverContext.Dimension.FAN, 1.0, powerOnFirst = false), next)
     }
 
     @Test
@@ -168,5 +174,102 @@ class ComfortScenariosTest {
         val r = ContextResolver.resolve("有点闷", fresh, 1)
         assertFalse(r is ContextResolver.Resolution.Adjust && r.dimension == DriverContext.Dimension.FAN, r.toString())
         assertNotEquals(true, ContextResolver.isImplicitComfortRequest("有点闷"))
+    }
+
+    private fun windowsFail(base: SimulatedVehicleControl) = object : VehicleControlPort by base {
+        override suspend fun setWindows(windows: Set<WindowId>, openPercent: Int): VehicleActionResult<CabinState> =
+            VehicleActionResult.Failure("fault")
+    }
+
+    private fun partialStuffyOutput(): String {
+        val result = dispatcher(powerFails(SimulatedVehicleControl())).dispatch(call("run_scenario", "name" to "stuffy"))
+        return result.output!!
+    }
+
+    @Test
+    fun anHonestPartialReplyIsReleasedAndAllDoneIsCorrected() {
+        val output = partialStuffyOutput()
+        val announce = JSONObject(output).getString("announce")
+        assertEquals("空调没打开，风量没调大，前排车窗开到了20%。", announce)
+
+        val honest = ActionClaimGuard()
+        honest.onUserTranscript("有点闷")
+        assertNull(honest.onResponseDone(ResponseOutcome.toolsOnly("c"), ""))
+        honest.onToolResult(output)
+        assertNull(honest.onResponseDone(ResponseOutcome.spokenOnly(), announce))
+
+        val liar = ActionClaimGuard()
+        liar.onUserTranscript("有点闷")
+        liar.onResponseDone(ResponseOutcome.toolsOnly("c"), "")
+        liar.onToolResult(output)
+        assertNotNull(liar.onResponseDone(ResponseOutcome.spokenOnly(), "好的，都弄好了"))
+
+        val omits = ActionClaimGuard()
+        omits.onUserTranscript("有点闷")
+        omits.onResponseDone(ResponseOutcome.toolsOnly("c"), "")
+        omits.onToolResult(output)
+        assertNotNull(omits.onResponseDone(ResponseOutcome.spokenOnly(), "好的，已经打开车窗了"))
+    }
+
+    @Test
+    fun onlyAPartialWithAnOkStepProvesExecution() {
+        assertTrue(toolResultProvesExecution(partialStuffyOutput()))
+        val allFailed = dispatcher(windowsFail(SimulatedVehicleControl())).dispatch(call("run_scenario", "name" to "mosquito"))
+        val out = JSONObject(allFailed.output!!)
+        assertEquals("failed", out.getString("status"))
+        assertEquals("VEHICLE_EXECUTION_FAILED", allFailed.blockedReason)
+        assertTrue(allFailed.successChip!!.contains("✗"))
+        assertFalse(toolResultProvesExecution(allFailed.output!!))
+    }
+
+    @Test
+    fun aSkippedStepIsMarkedInTheChip() {
+        val result = dispatcher(powerFails(SimulatedVehicleControl())).dispatch(call("run_scenario", "name" to "stuffy"))
+        assertEquals("场景 ✗ control_climate·power_on · – control_climate·adjust_fan · ✓ control_window·set", result.successChip)
+    }
+
+    @Test
+    fun everyScenarioPhraseIsAnAction() {
+        listOf("有蚊子", "有虫子飞进来了", "蚊子出去了", "好了关上吧", "有点闷", "空气不好", "有异味", "好困", "有点犯困", "有点困")
+            .forEach { assertEquals(DriverTurn.Kind.ACTION, DriverTurn.classify(it), it) }
+        assertNotEquals(DriverTurn.Kind.ACTION, DriverTurn.classify("这个问题有点难"))
+    }
+
+    @Test
+    fun mosquitoDoneNeedsARecentMosquito() {
+        val port = SimulatedVehicleControl()
+        val d = dispatcher(port)
+        d.dispatch(call("control_window", "action" to "set", "window" to "all", "value" to "50"))
+        val result = d.dispatch(call("run_scenario", "name" to "mosquito_done"))
+        assertEquals(ComfortServer.NO_RECENT_MOSQUITO, result.blockedReason)
+        assertTrue(JSONObject(result.output!!).has("next"))
+        assertTrue(port.cabinState.value.windows.values.all { it == 50 })
+    }
+
+    @Test
+    fun mosquitoDoneExpiresAfterTenMinutes() {
+        val port = SimulatedVehicleControl()
+        var clock = 0L
+        val body = BodyServer(port)
+        val env = ToolCallEnv({ null }, { c, code, _ -> com.novadrive.ingress.realtime.ToolDispatchResult(null, null, blockedReason = code, output = JSONObject().put("ok", false).put("tool", c.name).put("error", code).toString()) }, { c, _ -> com.novadrive.ingress.realtime.ToolDispatchResult(null, null, output = c.name) })
+        val server = ComfortServer(route = { body.call(it, env) }, cabinState = { port.cabinState.value }, now = { clock })
+        assertTrue(JSONObject(server.call(call("run_scenario", "name" to "mosquito"), env).output!!).getBoolean("ok"))
+        clock = ComfortServer.MOSQUITO_TTL_MS + 1
+        assertEquals(ComfortServer.NO_RECENT_MOSQUITO, server.call(call("run_scenario", "name" to "mosquito_done"), env).blockedReason)
+        clock = 0
+        assertTrue(JSONObject(server.call(call("run_scenario", "name" to "mosquito"), env).output!!).getBoolean("ok"))
+        clock = ComfortServer.MOSQUITO_TTL_MS - 1
+        assertTrue(JSONObject(server.call(call("run_scenario", "name" to "mosquito_done"), env).output!!).getBoolean("ok"))
+    }
+
+    @Test
+    fun drowsyWithANamedSongSkipsTheMusicStep() {
+        context.onSpeechStarted(2)
+        context.onDriverUtterance("好困，放周杰伦的歌", 2)
+        val out = scenario(dispatcher(), "drowsy")
+        val music = steps(out).last()
+        assertFalse(music.getBoolean("ok"))
+        assertEquals(ToolCallGuards.MEDIA_LIBRARY_UNSUPPORTED, music.getString("error"))
+        assertEquals(0, executor.plays)
     }
 }
