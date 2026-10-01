@@ -171,6 +171,11 @@ class GeminiTextLiveMappingTest {
             Case("FZ-12", "别嗲了，正常一点", "set_speaking_style{default}") { it.is_("set_speaking_style", "style" to { v -> v == "default" }) },
             Case("FZ-13", "打开天窗", "no call") { it == null },
             Case("FZ-14", "再低一点", "no call (clarify)", setup = listOf("座位有点高", "空调温度调到24度")) { it == null },
+            Case("FZ-15", "傲娇一点", "set_speaking_style{tsundere}") { it.is_("set_speaking_style", "style" to { v -> v == "tsundere" }) },
+            Case("FZ-16", "說話傲嬌一點", "set_speaking_style{tsundere}") { it.is_("set_speaking_style", "style" to { v -> v == "tsundere" }) },
+            Case("FZ-17", "温柔一点", "set_speaking_style{gentle}") { it.is_("set_speaking_style", "style" to { v -> v == "gentle" }) },
+            Case("FZ-18", "元气一点", "set_speaking_style{lively}") { it.is_("set_speaking_style", "style" to { v -> v == "lively" }) },
+            Case("FZ-19", "说话霸道一点", "no call (style not offered)") { it == null },
         )
 
         private fun music(id: String, phrase: String, expected: String, vararg any: Pair<String, String>) =

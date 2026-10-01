@@ -1,9 +1,13 @@
 package com.novadrive.app
 
 /** How 小诺 speaks. Tone only; the voice never changes (SPEC-015 B6). */
-enum class SpeakingStyle(val wireName: String) {
-    DEFAULT("default"),
-    SWEET("sweet");
+enum class SpeakingStyle(val wireName: String, val chipLabel: String) {
+    DEFAULT("default", "默认"),
+    SWEET("sweet", "甜"),
+    TSUNDERE("tsundere", "傲娇"),
+    GENTLE("gentle", "温柔"),
+    LIVELY("lively", "元气"),
+    ;
 
     companion object {
         fun fromWire(raw: String?): SpeakingStyle {

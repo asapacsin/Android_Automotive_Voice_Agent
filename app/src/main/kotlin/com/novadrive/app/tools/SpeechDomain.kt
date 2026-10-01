@@ -11,7 +11,7 @@ object SpeechDomain : ToolDomain {
     override val id = "speech"
 
     const val SET_SPEAKING_STYLE = "set_speaking_style"
-    val STYLES = listOf("sweet", "default")
+    val STYLES = com.novadrive.app.SpeakingStyle.entries.map { it.wireName }
 
     override fun specs(): List<ToolSpec> {
         val endConversation = specNoArgs(
@@ -35,7 +35,10 @@ object SpeechDomain : ToolDomain {
         val setSpeakingStyle = spec(
             name = SET_SPEAKING_STYLE,
             description = "切换小诺说话的语气（只改语气，不改声音）。用户说「说话能不能嗲一点」「撒个娇」「可爱一点」「甜一点」时 style=sweet；" +
-                "说「正常一点」「恢复」「别嗲了」「正常说话」时 style=default。设置会一直保持，直到用户再次要求更改。" +
+                "「傲娇一点」「傲嬌一點」「用傲娇的语气」「嘴硬一点」时 style=tsundere；" +
+                "「温柔一点」「温柔些」「说话轻一点」时 style=gentle；「元气一点」「活泼一点」「有活力一点」「开心一点地说」时 style=lively；" +
+                "说「正常一点」「恢复」「别嗲了」「别傲娇了」「正常说话」时 style=default。设置会一直保持，直到用户再次要求更改。" +
+                "用户要的语气不在这几种里（例如「霸道一点」「凶一点」）时不要调用，也不要换成别的语气，用一句话说暂时只有甜、傲娇、温柔、元气和正常这几种。" +
                 "调用后按返回的 instruction 用新的语气简短回应一句。" +
                 "Switches the assistant's speaking tone only (the voice never changes); the setting stays until the driver asks again.",
             properties = JSONObject().put(

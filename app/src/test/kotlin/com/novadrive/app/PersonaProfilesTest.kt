@@ -50,6 +50,24 @@ class PersonaProfilesTest {
         assertEquals("你是助手。\n${PersonaProfiles.SWEET_TONE}\n${PersonaProfiles.SWEET_VOICE_STYLE}", out)
     }
 
+    @Test fun everyNonDefaultStyleSwapsBothLinesAndKeepsTheRules() {
+        for (style in SpeakingStyle.entries - SpeakingStyle.DEFAULT) {
+            val (tone, voice) = PersonaProfiles.toneLines(style)!!
+            val out = PersonaProfiles.compose(null, style)
+            assertTrue(out.contains(tone) && out.contains(voice), "$style")
+            assertEquals(1, out.lines().count { it.startsWith("性格基调：") }, "$style")
+            assertEquals(PersonaProfiles.DEFAULT_INSTRUCTIONS.lines().size, out.lines().size, "$style")
+        }
+    }
+
+    @Test fun anActedToneNeverLicensesRefusingOrMisreporting() {
+        // 傲娇 must stay words: 「才不帮你开」 after the window opened would contradict the result.
+        for (style in listOf(SpeakingStyle.TSUNDERE, SpeakingStyle.GENTLE, SpeakingStyle.LIVELY)) {
+            assertTrue(PersonaProfiles.toneLines(style)!!.first.contains(PersonaProfiles.TONE_GUARD), "$style")
+        }
+        assertTrue(PersonaProfiles.TSUNDERE_TONE.contains("绝不刻薄"))
+    }
+
     @Test fun resultIsCapped() {
         val long = "性格基调：x\n" + "a".repeat(PersonaProfiles.MAX_INSTRUCTIONS_CHARS * 2)
         assertTrue(PersonaProfiles.compose(long, SpeakingStyle.SWEET).length <= PersonaProfiles.MAX_INSTRUCTIONS_CHARS)

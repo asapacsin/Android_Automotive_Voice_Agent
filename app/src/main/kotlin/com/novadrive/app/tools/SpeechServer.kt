@@ -40,7 +40,7 @@ class SpeechServer(private val executor: AndroidActionExecutor) : ToolServer {
         return ToolDispatchResult(
             null,
             null,
-            successChip = if (style == SpeakingStyle.SWEET) "✓ 语气：甜" else "✓ 语气：默认",
+            successChip = "✓ 语气：${style.chipLabel}",
             output = styleOutput(style, persisted),
         )
     }
@@ -48,13 +48,24 @@ class SpeechServer(private val executor: AndroidActionExecutor) : ToolServer {
     companion object {
         const val SWEET_INSTRUCTION = "从现在起用更甜、更会撒娇的语气说话，句子仍然简短，声音不变。现在用这种语气简短回应一句。"
         const val DEFAULT_INSTRUCTION = "从现在起恢复平常的语气说话。现在简短回应一句。"
+        const val TSUNDERE_INSTRUCTION = "从现在起用傲娇的语气说话：嘴上小别扭，但事情照办、结果说真话，句子仍然简短，声音不变。现在用这种语气简短回应一句。"
+        const val GENTLE_INSTRUCTION = "从现在起用温柔体贴的语气说话，句子仍然简短，声音不变。现在用这种语气简短回应一句。"
+        const val LIVELY_INSTRUCTION = "从现在起用元气、有活力的语气说话，句子仍然简短，声音不变。现在用这种语气简短回应一句。"
+
+        fun instructionFor(style: SpeakingStyle): String = when (style) {
+            SpeakingStyle.DEFAULT -> DEFAULT_INSTRUCTION
+            SpeakingStyle.SWEET -> SWEET_INSTRUCTION
+            SpeakingStyle.TSUNDERE -> TSUNDERE_INSTRUCTION
+            SpeakingStyle.GENTLE -> GENTLE_INSTRUCTION
+            SpeakingStyle.LIVELY -> LIVELY_INSTRUCTION
+        }
 
         fun styleOutput(style: SpeakingStyle, persisted: Boolean): String {
             val json = JSONObject()
                 .put("ok", true)
                 .put("tool", SpeechDomain.SET_SPEAKING_STYLE)
                 .put("style", style.wireName)
-                .put("instruction", if (style == SpeakingStyle.SWEET) SWEET_INSTRUCTION else DEFAULT_INSTRUCTION)
+                .put("instruction", instructionFor(style))
             if (!persisted) json.put("persisted", false)
             return json.toString()
         }

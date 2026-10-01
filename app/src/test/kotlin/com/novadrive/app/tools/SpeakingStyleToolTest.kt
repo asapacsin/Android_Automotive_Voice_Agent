@@ -112,6 +112,19 @@ class SpeakingStyleToolTest {
     }
 
     @Test
+    fun `every offered style applies, persists and returns its own instruction and chip`() {
+        for (style in SpeakingStyle.entries) {
+            val result = server.call(call(style.wireName), env)
+            assertEquals(style, SpeakingStyleState.current)
+            val json = JSONObject(result.output!!)
+            assertEquals(style.wireName, json.getString("style"))
+            assertEquals(SpeechServer.instructionFor(style), json.getString("instruction"))
+            assertEquals("✓ 语气：${style.chipLabel}", result.successChip)
+        }
+        assertNull(SpeechDomain.validate(SpeechDomain.SET_SPEAKING_STYLE, JSONObject().put("style", "tsundere")))
+    }
+
+    @Test
     fun `after the tool the composed persona carries the sweet tone`() {
         assertFalse(PersonaProfiles.compose("PERSONA", SpeakingStyleState.current).contains(PersonaProfiles.SWEET_TONE))
         server.call(call("sweet"), env)
