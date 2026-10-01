@@ -125,6 +125,7 @@ None open. Tunables (percentages, TTL for `mosquito_done`: 10 min) are engineeri
 | Port + simulator | built (L2) | 947be79 — `SimulatedVehicleControlTest` |
 | Body domain (window/seat) | built (L2), review REVISE → fixed | f75f035 — `BodyDomainTest`, `WindowToolHandlerTest`, `SeatToolHandlerTest`, `ActionAnnouncementTest`, `FalseCapabilityClaimTest`; BODY-UNIT-001 PASS |
 | Context follow-ups (FZ-05, FZ-14) | built (L2) | d209e71 — `BodyContextResolverTest`, `ToolCallGuardBodyReferentTest` |
+| FZ-14 question wording | fixed (L2) 2026-10-01 — the hold was right but the refusal and the no-call correction told the model to ask 温度还是风量; the refusal now carries `options` from the recorded question (e.g. 座椅高度还是温度) and the correction names all four dimensions | `ToolCallGuardBodyReferentTest`, `FalseCapabilityClaimTest`, `ActionClaimGuardTest`; full suite 3 382 / 0 |
 | Speaking style | built (L2) | 39364a0 + a4a39eb — `PersonaProfilesTest`, `SpeakingStyleToolTest`; STYLE-UNIT-001 PASS |
 | Comfort domain (scenarios) | built (L2), review REVISE → fixed, re-review PASS | 436d197 — `ComfortScenariosTest`; SCENARIO-UNIT-001 PASS |
 | Model mapping FZ-01…14 (A8), device (A9) | not earned | queued |

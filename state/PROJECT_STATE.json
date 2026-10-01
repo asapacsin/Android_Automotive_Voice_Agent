@@ -1,21 +1,21 @@
 {
-  "generated_at": "2026-10-01T02:59:03",
+  "generated_at": "2026-10-01T07:59:40",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "6fd3f29",
-    "branch": "claude/fuzzy-logic-9-30",
-    "subject": "Merge T-flake2: PhantomTurnSuppressionTest awaits events (D-FLAKE-PHANTOM resolved)",
-    "working_tree_clean": true,
-    "uncommitted_files": 0
+    "commit": "d8402a6",
+    "branch": "claude/10-1",
+    "subject": "fix(FZ-14): the ambiguity refusal names the real choices",
+    "working_tree_clean": false,
+    "uncommitted_files": 6
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-29T14:10:39",
+    "collected_at": "2026-10-01T07:57:49",
     "total": {
-      "tests": 1526,
+      "tests": 302,
       "failures": 0,
       "errors": 0,
-      "skipped": 1
+      "skipped": 0
     },
     "by_module": {
       "evaluation": {
@@ -25,13 +25,13 @@
         "skipped": 0
       },
       "app": {
-        "tests": 1246,
+        "tests": 1,
         "failures": 0,
         "errors": 0,
-        "skipped": 1
+        "skipped": 0
       },
       "simulator": {
-        "tests": 15,
+        "tests": 25,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -43,19 +43,19 @@
         "skipped": 0
       },
       "behavior-test": {
-        "tests": 126,
+        "tests": 128,
         "failures": 0,
         "errors": 0,
         "skipped": 0
       },
       "contracts": {
-        "tests": 6,
+        "tests": 7,
         "failures": 0,
         "errors": 0,
         "skipped": 0
       },
       "ingress": {
-        "tests": 104,
+        "tests": 112,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 223710212,
-    "built_at": "2026-09-29T14:08:50"
+    "bytes": 224021779,
+    "built_at": "2026-10-01T07:50:04"
   },
   "capabilities": {
     "available": true,
@@ -146,27 +146,13 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "FUZZY-TEXT-LIVE-001: STALE_BIND: The live model maps the fuzzy phrase table FZ-01…FZ-14 to the right calls",
-    "actionable_count": 108,
+    "NEXT_ACTION": "A0: | A0 | G-1 … G-1f measured on the short route | measurement (emulator) | `GUIDANCE-EMU-001` | not earned |",
+    "actionable_count": 106,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 21,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "FUZZY-TEXT-LIVE-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "MUSIC-TEXT-LIVE-001",
-        "blocked_by": null
-      },
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
