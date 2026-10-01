@@ -244,7 +244,7 @@ squeezed into the wrong owner, and interactions between the holds become unreada
 execution-evidence and deferred `response.create` handling) into its own owner next to `DriverTurn`,
 then put the budget back to 900 in the same commit.
 
-## D-FLAKE-BAIDU — BaiduFlexClientTest timing tests fail under full-suite load (recorded 2026-09-30)
+## D-FLAKE-BAIDU — BaiduFlexClientTest timing tests fail under full-suite load (recorded 2026-09-30) — RESOLVED 2026-10-01
 
 `aReplyCancelledForALocalPickIsNotCorrected` and `appReplyRequestedWhileTheDriverSpeaksWaitsAndAnOverlapIsNotFatal`
 failed in full `./gradlew test` runs while 3–4 builds shared a 4-core container (planner integration run
@@ -253,3 +253,14 @@ on d209e71's parent; W5c1 worker first full run), and passed alone and on rerun.
 code), but not proven harmless either. Fix: replace sleeps with awaited conditions (poll `received`
 with a deadline). Until then, a failure of these two in a loaded run is rerun once in isolation; a
 failure alone is real.
+
+**Resolved 2026-10-01.** Every fixed `Thread.sleep` in `BaiduFlexClientTest` that waited for something
+to happen is now an awaited condition (`awaitUntil`: polls with a 5 s deadline and fails with the
+current sent/seen state), keyed on what the client observably did: an emitted event (SpeechStarted,
+ResponseStarted, final UserTranscript, ResponseDone, ToolCall — collected by a subscriber registered
+before `connect`) or a message the mock server received. Sleeps that prove something does *not*
+happen remain, as short bounded waits taken only after the preceding positive event was awaited
+(load can only make them lenient). Assertions are unchanged. Recorded lists are
+`CopyOnWriteArrayList` so polling cannot race the socket thread. Evidence: the class run 10×
+consecutively with 4 × `yes > /dev/null` saturating the 4-core container — 10/10 green, 19 tests,
+0 failures each (JUnit XML); full `./gradlew test` green afterwards.
