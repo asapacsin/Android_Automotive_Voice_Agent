@@ -228,6 +228,10 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
         overlay.showError(code, message)
     }
 
+    fun clearError(code: String) {
+        overlay.clearError(code)
+    }
+
     /** Driver opened the camera: show it and have the assistant look once, without a button. */
     fun showCamera() {
         val wasShowing = camera.isShowing

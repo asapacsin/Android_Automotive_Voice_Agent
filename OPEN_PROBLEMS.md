@@ -1591,7 +1591,7 @@ UI state.
 
 ## P44 — The CONFIG card stays on the map after the setting it asks for is fixed
 
-**Status:** OPEN 2026-10-01 — seen on the emulator (nova_api34), branch `claude/10-1`
+**Status:** FIXED 2026-10-01 — unit-tested (`ShownErrorCardTest`); emulator check queued as CONFIG-CARD-EMU-001. Seen on the emulator (nova_api34), branch `claude/10-1`
 **Reported:** owner test run. The provider was Gemini. The card first said 「请在开发者设置里填写 Gemini 密钥」.
 After the key was saved it said 「请先在开发者设置里同意语音数据跨境传输提示」 (logged `config_banner
 reason=GEMINI_CONSENT_MISSING` 15:09:50). After consent was saved, `configProblem()` returned null:
@@ -1611,5 +1611,13 @@ On resume, when `configProblem()` is null, clear the error only if it is a CONFI
 unrelated error is not hidden. Also clear it when a session starts. Test: a resume with a valid
 config removes the CONFIG card. Device check: save the missing setting, come back to the map, and
 see no card.
+
+### Fix (done)
+
+`AssistantOverlayView` remembers which error code the bubble shows (`ShownErrorCard`);
+`clearError(code)` removes the card only when exactly that code is on screen, and a transcript line
+or a session error written into the bubble forgets it. `MainActivity` clears `CONFIG` on resume when
+`configProblem()` is null and when the session reaches `LISTENING`. An unrelated error is never
+cleared by a valid configuration.
 
 Numbered P44 because P42 and P43 are taken on `claude/9-30`, which is not merged into this branch.

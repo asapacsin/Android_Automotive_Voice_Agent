@@ -26,6 +26,9 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
     /** True while native Amap HUD owns the top of the screen. */
     private var drivingChrome = false
 
+    /** Which error card, if any, is in the bubble (P44: a fixed CONFIG problem must leave). */
+    private val shownError = ShownErrorCard()
+
     private val avatar: TextView
     private val stateDot: TextView
     private val stateLabel: TextView
@@ -273,6 +276,7 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
         )
         if (ui == AssistantUiState.ERROR && !error.isNullOrBlank()) {
             bubble.text = error
+            shownError.overwritten()
         }
         actionCard.visibility = GONE
     }
@@ -281,12 +285,24 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
         val current = bubble.text?.toString().orEmpty()
         val previous = if (current == context.getString(R.string.assistant_speech_placeholder)) "" else current
         bubble.text = recentTranscript(previous, line)
+        shownError.overwritten()
     }
 
     fun showError(code: String, message: String) {
+        shownError.show(code)
         bubble.text = "$code\n$message"
         stateLabel.text = context.getString(R.string.assistant_state_error)
         stateDot.setTextColor(Color.parseColor("#FFEF5350"))
+    }
+
+    /**
+     * Removes the error card for [code] once its cause is gone. Only that code: a different error
+     * on screen (or none) is left alone, so fixing the settings never hides an unrelated failure.
+     */
+    fun clearError(code: String) {
+        if (!shownError.clear(code)) return
+        bubble.text = context.getString(R.string.assistant_speech_placeholder)
+        bindState(lastVoiceState, null)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean = false
@@ -298,6 +314,29 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
 internal const val DRIVING_STRIP_DP = 44
 private const val COMPACT_AVATAR_DP = 32
 private const val FULL_AVATAR_DP = 64
+
+/**
+ * Which error code the bubble currently shows. [clear] answers true only when exactly that code is
+ * on screen; anything that overwrites the bubble (a transcript line) forgets it.
+ */
+internal class ShownErrorCard {
+    var code: String? = null
+        private set
+
+    fun show(code: String) {
+        this.code = code
+    }
+
+    fun overwritten() {
+        code = null
+    }
+
+    fun clear(code: String): Boolean {
+        if (this.code != code) return false
+        this.code = null
+        return true
+    }
+}
 
 /** Number of transcript lines the bubble keeps: the latest exchange only (driver + 小诺). */
 internal const val TRANSCRIPT_MAX_LINES = 2

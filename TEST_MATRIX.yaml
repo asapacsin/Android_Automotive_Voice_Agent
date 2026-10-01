@@ -2856,3 +2856,37 @@ tests:
     evidence: []
     related: [SPEC-018, ADR-014]
     last_run: {at: null, result: null}
+
+  - id: CONFIG-CARD-UNIT-001
+    capability: permissions
+    name: A fixed configuration problem removes its CONFIG card and nothing else
+    purpose: "OPEN_PROBLEMS P44 - the consent card stayed on the map after consent was saved"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: []
+    procedure: ["gradlew :app:testDebugUnitTest --tests *ShownErrorCardTest*"]
+    pass_criteria: ["clear(CONFIG) succeeds only while CONFIG is the card on screen", "an unrelated error is never cleared by a valid configuration", "a transcript line or a newer error replaces the CONFIG card"]
+    evidence: ["2026-10-01 cloud, claude/10-1: ShownErrorCardTest 6/0; full suite 3400 / 0 failures, 4 skipped; :app:assembleDebug built (planner read the JUnit XML)"]
+    related: [P44]
+    last_run: {at: 2026-10-01, result: PASS}
+
+  - id: CONFIG-CARD-EMU-001
+    capability: permissions
+    name: The CONFIG card leaves the map once the missing setting is saved
+    purpose: "OPEN_PROBLEMS P44 device check: the card the owner read as a failure must not survive the fix"
+    type: device
+    scope: END_TO_END
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    terminal_success: [card_gone_after_resume, card_gone_after_session_start, unrelated_error_kept]
+    covers: []
+    prerequisites: ["emulator nova_api34 (the owner's PC) with this build", "Gemini selected, consent not yet given"]
+    procedure: ["open the map: the consent CONFIG card shows", "save consent in developer settings and return to the map", "check the card is gone and no config_banner line is logged", "start a session: state=LISTENING, still no card"]
+    pass_criteria: ["no CONFIG card after the resume with a valid configuration", "no CONFIG card after gemini_setup_complete"]
+    evidence: []
+    related: [P44, CONFIG-CARD-UNIT-001]
+    last_run: {at: null, result: null}

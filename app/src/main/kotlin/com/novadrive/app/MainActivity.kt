@@ -186,11 +186,18 @@ class MainActivity : Activity() {
         showConfigBannerIfNeeded()
     }
 
-    /** Tell the driver before they try: a Gemini start without key/consent/valid settings would fail. */
+    /**
+     * Tell the driver before they try: a Gemini start without key/consent/valid settings would fail.
+     * Once the settings are fixed the card goes (P44); only a CONFIG card, never another error.
+     */
     private fun showConfigBannerIfNeeded() {
-        val code = GeminiSettingsRepository(this).configProblem() ?: return
+        val code = GeminiSettingsRepository(this).configProblem()
+        if (code == null) {
+            if (::screen.isInitialized) screen.clearError(CONFIG_ERROR)
+            return
+        }
         DebugVoiceLog.log("config_banner reason=$code")
-        showError("CONFIG", GeminiSettingsValidator.screenMessage(code) ?: code)
+        showError(CONFIG_ERROR, GeminiSettingsValidator.screenMessage(code) ?: code)
     }
 
     override fun onPause() {
@@ -271,7 +278,7 @@ class MainActivity : Activity() {
             com.novadrive.app.voice.StartResult.MicPermissionMissing ->
                 requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC)
             is com.novadrive.app.voice.StartResult.ConfigInvalid ->
-                showError("CONFIG", GeminiSettingsValidator.screenMessage(result.message) ?: result.message)
+                showError(CONFIG_ERROR, GeminiSettingsValidator.screenMessage(result.message) ?: result.message)
             else -> Unit
         }
     }
@@ -300,7 +307,11 @@ class MainActivity : Activity() {
     }
 
     private fun renderState(state: VoiceUiState, error: String?) {
-        if (::screen.isInitialized) screen.bindState(state, error)
+        if (::screen.isInitialized) {
+            // A session that reached LISTENING proves the configuration works (P44).
+            if (state == VoiceUiState.LISTENING) screen.clearError(CONFIG_ERROR)
+            screen.bindState(state, error)
+        }
         if (!controller.sessionActiveNow) VoiceSessionService.stop(this)
     }
 
@@ -335,5 +346,6 @@ class MainActivity : Activity() {
         private const val REQ_LOCATION = 24
         private const val REQ_CAMERA = 25
         private const val REQ_MIC = 26
+        private const val CONFIG_ERROR = "CONFIG"
     }
 }
