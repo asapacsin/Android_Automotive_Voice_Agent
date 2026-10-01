@@ -266,6 +266,16 @@ body:
     evidence: "SeatToolHandlerTest, BodyDomainTest, ActionAnnouncementTest (SPEC-015 B1/B4/B5)."
     notes: "Simulated seat. Real vehicle = one new VehicleControlPort in VehicleControlProvider."
 
+comfort:
+  scenario:
+    tool: run_scenario
+    verified: unit
+    required_scope: COMPONENT
+    protected_by: [SCENARIO-UNIT-001]
+    backend: SimulatedVehicleControl
+    evidence: "ComfortScenariosTest (SPEC-015 FZ-09/FZ-10, B7/B8): mosquito | mosquito_done | stuffy | drowsy through the same tool servers as a direct call."
+    notes: "Fixed playbooks in ComfortScenarios; partial failure reported step by step; drowsy only offers a rest stop."
+
 vision:
   describe_camera_view:
     tool: describe_camera_view

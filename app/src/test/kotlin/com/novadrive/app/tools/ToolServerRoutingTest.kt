@@ -47,7 +47,7 @@ class ToolServerRoutingTest {
         fakes.forEach { fake ->
             assertEquals(fake.domain.specs().map { it.name }, fake.calls, "domain ${fake.domain.id}")
         }
-        assertEquals(9, productDomains.size)
+        assertEquals(10, productDomains.size)
     }
 
     @Test

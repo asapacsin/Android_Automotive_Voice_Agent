@@ -25,6 +25,7 @@ object ClimateDomain : ToolDomain {
                 "「有点热」「太热了」「还是有点热」 action=adjust_temperature,value=-2；" +
                 "「有点冷」「太冷了」 action=adjust_temperature,value=2；" +
                 "「风太大」「风太吵」 action=adjust_fan,value=-1；「风太小」「不够风」 action=adjust_fan,value=1。" +
+                "「有点闷」「空气不好」不是调风量，改用 run_scenario name=stuffy。" +
                 "说「再凉一点」「再暖一点」这类带方向的话则是一次 1 度。" +
                 "Control the cabin climate (simulated backend).",
             properties = JSONObject()

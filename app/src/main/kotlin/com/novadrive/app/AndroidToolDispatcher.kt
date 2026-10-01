@@ -12,6 +12,7 @@ import com.novadrive.app.nav.NavigationHostGateway
 import com.novadrive.app.tools.AppsServer
 import com.novadrive.app.tools.BodyServer
 import com.novadrive.app.tools.ClimateServer
+import com.novadrive.app.tools.ComfortServer
 import com.novadrive.app.tools.LiveInfoServer
 import com.novadrive.app.tools.MediaServer
 import com.novadrive.app.tools.NavigationServer
@@ -136,6 +137,8 @@ class AndroidToolDispatcher(
             MediaServer(executor, music),
             ClimateServer(climate),
             BodyServer(cabin),
+            // Scenario steps take the same server path as a direct call, minus the repeat guard.
+            ComfortServer(route = { dispatchUnrecorded(it) }, cabinState = { cabin?.cabinState?.value }),
             VisionServer(camera),
             PhoneServer(phone),
             LiveInfoServer(liveInfo),

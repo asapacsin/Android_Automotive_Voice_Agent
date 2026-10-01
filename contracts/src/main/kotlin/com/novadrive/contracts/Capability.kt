@@ -109,6 +109,7 @@ object ProductCapabilities : CapabilityCatalog {
             rec("climate.ambiguous_relative_request", null, true),
             rec("body.window", "control_window", true),
             rec("body.seat_height", "control_seat", true),
+            rec("comfort.scenario", "run_scenario", true),
             rec("vision.describe_camera_view", "describe_camera_view", true),
             rec("speech.tts", null, true),
             rec("speech.silent_mode", "set_speech_output", true),

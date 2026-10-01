@@ -109,4 +109,29 @@ object ActionAnnouncement {
     }
 
     private fun steps(n: Int): String = if (n == 1) "一" else n.toString()
+    /** A climate result read back from the port ([powerOn], [temperatureC], [fanLevel]). */
+    fun climate(action: String, powerOn: Boolean, temperatureC: Double, fanLevel: Int): String {
+        val degrees = ClimateToolHandler.formatTemperature(temperatureC)
+        return when (action) {
+            ClimateToolHandler.ACTION_POWER_ON -> "空调打开了"
+            ClimateToolHandler.ACTION_POWER_OFF -> "空调关了"
+            ClimateToolHandler.ACTION_SET_TEMPERATURE, ClimateToolHandler.ACTION_ADJUST_TEMPERATURE -> "温度调到了${degrees}度"
+            ClimateToolHandler.ACTION_SET_FAN, ClimateToolHandler.ACTION_ADJUST_FAN -> "风量调到了${fanLevel}档"
+            else -> if (powerOn) "空调现在${degrees}度，风${fanLevel}档" else "空调现在关着"
+        }
+    }
+
+    /** What a step that failed or was skipped did *not* do; never phrased as done. */
+    fun notDone(tool: String, action: String, value: Double? = null): String = when (tool) {
+        ClimateToolHandler.TOOL -> when (action) {
+            ClimateToolHandler.ACTION_POWER_ON -> "空调没打开"
+            ClimateToolHandler.ACTION_POWER_OFF -> "空调没关上"
+            ClimateToolHandler.ACTION_ADJUST_TEMPERATURE -> if ((value ?: 1.0) < 0) "温度没调低" else "温度没调高"
+            ClimateToolHandler.ACTION_ADJUST_FAN -> if ((value ?: 1.0) < 0) "风量没调小" else "风量没调大"
+            else -> "空调没调成"
+        }
+        WindowToolHandler.TOOL -> if (action == WindowToolHandler.ACTION_CLOSE) "车窗没关上" else "车窗没打开"
+        "control_music" -> "音乐没放起来"
+        else -> "${tool}没做成"
+    }
 }
