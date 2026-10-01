@@ -142,7 +142,7 @@ Updated 2026-09-21 · 132 tests
 | CLIMATE-OFF-001 | climate | 关闭空调 turns it off | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite |
 | CLIMATE-SET-001 | climate | An explicit temperature is set | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite |
 | FUZZY-DEVICE-001 | comfort | Fuzzy requests on the emulator - chip on screen, one call per scenario, honest partial report | AUTONOMOUS | NOT_RUN | no | — |
-| FUZZY-TEXT-LIVE-001 | comfort | The live model maps the fuzzy phrase table FZ-01…FZ-14 to the right calls | AUTONOMOUS | PASS | yes | 2026-10-01 re-run after the FZ-14 wording fix (refusal carries options): GeminiTextLive… |
+| FUZZY-TEXT-LIVE-001 | comfort | The live model maps the fuzzy phrase table FZ-01…FZ-19 to the right calls | AUTONOMOUS | PASS | yes | 2026-10-01 cloud, gemini-3.8-live, after adding 傲娇/温柔/元气: FUZZY 18/19 — FZ-15 傲娇一点 and … |
 | SCENARIO-UNIT-001 | comfort | Comfort scenarios run their fixed steps through the direct-call servers and report partial failure honestly | AUTONOMOUS | PASS | no | 2026-10-01 cloud, integrated 436d197: ComfortScenariosTest 15/0; full suite 3378 / 0 fa… |
 | CTX-AMBIG-001 | dialogue_context | 再低一点 with no history asks which | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 「您是指温度还是风量呢？」 |
 | CTX-CHAIN-001 | dialogue_context | 再凉一点 continues the previous adjustment | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite |
@@ -211,7 +211,7 @@ Updated 2026-09-21 · 132 tests
 | EXPORTED-001 | security | The release build exposes no debug surface | AUTONOMOUS | PASS | yes | 2026-09-20, release manifest via aapt2: only MainActivity is exported; DeveloperSetting… |
 | RELEASE-LOG-001 | security | A release build does not log what the driver said | AUTONOMOUS | PASS | yes | 2026-09-20: DebugVoiceLog is the only logger in app/src/main, ingress/src/main and cont… |
 | SECRET-SCAN-001 | security | No secret is tracked by git | AUTONOMOUS | PASS | yes | part of the 737 |
-| STYLE-EAR-001 | speech | 嗲一点 sounds sweeter yet appropriate, with the same voice | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | STYLE-UNIT-001: compose swaps the tone paragraph; style persisted and sticky (JVM) |
+| STYLE-EAR-001 | speech | 嗲 / 傲娇 / 温柔 / 元气 each sound right and appropriate, with the same voice | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | STYLE-UNIT-001: compose swaps the tone paragraph; style persisted and sticky (JVM) |
 | STYLE-UNIT-001 | speech | set_speaking_style changes the tone, persists it and composes it | AUTONOMOUS | PASS | no | 2026-09-30 cloud, wt/W3b-style-tool 80b9072: SpeakingStyleToolTest 8/0, PersonaProfiles… |
 | VOICE-STYLE-001 | speech | Prefer a younger cute female voice (符玄-like) | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | Owner chose option B id 4196 on 2026-09-21 |
 | DUP-EXEC-001 | truthfulness | The same adjustment does not run twice in one turn | AUTONOMOUS | PASS | yes | 2026-09-20: FalseCapabilityClaimTest asserts a repeated adjust_temperature in one turn … |

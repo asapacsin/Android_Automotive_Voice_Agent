@@ -67,6 +67,11 @@ The model maps phrases to calls; this table is what the TEXT_LIVE benchmark chec
 | FZ-12 | 正常一点 / 恢复 / 别嗲了 | `set_speaking_style{default}` | back to the default tone |
 | FZ-13 | 打开天窗 | no call | 「这个操作没有执行，暂时不支持。」 |
 | FZ-14 | 再低一点 (after seat **and** temperature changed) | no call; one clarifying question | 「是座椅还是温度？」 |
+| FZ-15 | 傲娇一点 | `set_speaking_style{tsundere}` | the next replies are a little proud and teasing; voice unchanged; still does what is asked |
+| FZ-16 | 說話傲嬌一點 (traditional) | `set_speaking_style{tsundere}` | as FZ-15 |
+| FZ-17 | 温柔一点 | `set_speaking_style{gentle}` | softer, calmer tone |
+| FZ-18 | 元气一点 / 活泼一点 | `set_speaking_style{lively}` | brighter, energetic tone |
+| FZ-19 | 说话霸道一点 (not offered) | no call | one sentence: only 甜/傲娇/温柔/元气/正常 exist |
 
 Rules:
 
@@ -85,6 +90,11 @@ Rules:
   sweet text is playful, never sexualised, replies still at most two sentences.
 - **B7.** `DriverContext` gains `WINDOW` and `SEAT_HEIGHT`; only `ok=true` results are recorded;
   a scenario records each successful step as its own referent.
+- **B6a.** (2026-10-01, planner under the owner's delegation) Styles are `default`, `sweet`,
+  `tsundere`, `gentle`, `lively`. Every non-default tone carries `PersonaProfiles.TONE_GUARD`: the
+  request is always carried out at once and the words never contradict the result — a tsundere
+  「才不帮你开」 after the window opened is forbidden. A style that is not offered is declined, never
+  mapped to the nearest one.
 - **B8.** `control_window`, `control_seat`, `run_scenario`, `set_speaking_style` are repeat-sensitive.
 
 ## Failure behaviour
@@ -128,4 +138,6 @@ None open. Tunables (percentages, TTL for `mosquito_done`: 10 min) are engineeri
 | FZ-14 question wording | fixed (L2) 2026-10-01 — the hold was right but the refusal and the no-call correction told the model to ask 温度还是风量; the refusal now carries `options` from the recorded question (e.g. 座椅高度还是温度) and the correction names all four dimensions | `ToolCallGuardBodyReferentTest`, `FalseCapabilityClaimTest`, `ActionClaimGuardTest`; full suite 3 382 / 0 |
 | Speaking style | built (L2) | 39364a0 + a4a39eb — `PersonaProfilesTest`, `SpeakingStyleToolTest`; STYLE-UNIT-001 PASS |
 | Comfort domain (scenarios) | built (L2), review REVISE → fixed, re-review PASS | 436d197 — `ComfortScenariosTest`; SCENARIO-UNIT-001 PASS |
-| Model mapping FZ-01…14 (A8), device (A9) | not earned | queued |
+| Styles 傲娇/温柔/元气 (B6a, FZ-15…19) | built (L2) 2026-10-01 | `SpeakingStyleToolTest`, `PersonaProfilesTest`; live FZ-15…19 5/5 |
+| Model mapping FZ-01…19 (A8) | earned 18/19 (FZ-14 model miss, held at the dispatcher) | FUZZY-TEXT-LIVE-001 |
+| Device (A9) | not earned | queued |

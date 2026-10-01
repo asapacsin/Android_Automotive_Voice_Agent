@@ -440,7 +440,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **Still unknown until you do:** seconds heard in the cabin on the phone's network; whether gemini-3.8-live self-interrupts through the speaker (G-M2)
 
-### LOCAL_DEVICE_REQUIRED — STYLE-EAR-001 — 嗲一点 sounds sweeter yet appropriate, with the same voice
+### LOCAL_DEVICE_REQUIRED — STYLE-EAR-001 — 嗲 / 傲娇 / 温柔 / 元气 each sound right and appropriate, with the same voice
 
 **Tag:** `LOCAL_DEVICE_REQUIRED`
 
@@ -458,7 +458,9 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 1. say 说话能不能嗲一点, chat for three turns
 2. restart the app, chat again
-3. say 正常一点
+3. say 傲娇一点, then 把车窗打开一半: the window opens and 小诺 does not pretend to refuse
+4. say 温柔一点 and 元气一点, one turn each
+5. say 正常一点
 
 **It passes if:**
 

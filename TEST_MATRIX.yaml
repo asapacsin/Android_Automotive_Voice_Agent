@@ -968,8 +968,8 @@ tests:
       registry_digest: sha256:36f1bd13116237afa37238ca65b5f53baa0c1d44355cb505250764641df6e24f
       harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
       artifact_digests: {}
-      apk_digest: sha256:1d6c8a5a4837dd40b7a4d3e5f7518509e93a23b99ec2429e2b946ffd40b3a780
-      bound_commit: d8402a6
+      apk_digest: sha256:9b5c4f8e6290ffd3fab30429c057ffe194698fb59d360c6fa8243433889f1a06
+      bound_commit: e209c11
     related: [SPEC-017]
     last_run: {at: 2026-10-01, result: PASS}
 
@@ -2752,7 +2752,7 @@ tests:
 
   - id: FUZZY-TEXT-LIVE-001
     capability: comfort
-    name: The live model maps the fuzzy phrase table FZ-01…FZ-14 to the right calls
+    name: The live model maps the fuzzy phrase table FZ-01…FZ-19 to the right calls
     purpose: "SPEC-015 A8: 有蚊子/座位有点高/好困/嗲一点… reach run_scenario / control_seat / control_window / set_speaking_style, and 打开天窗 is refused"
     type: text_live
     scope: INTERMEDIATE_FLOW
@@ -2761,17 +2761,17 @@ tests:
     release_blocking: true
     evidence_bind:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:f2c0701c50827536bb9cfa760233a2d6f69916fc0c449d21ab4e201f895af959
+      procedure_digest: sha256:382c31bd299d3f0b6b576db1aff7827fc5197e4f049f3352023f5665b3833779
       registry_digest: sha256:6ac5cdbd9df4d89a845e9b4284c40c70f61fe64a27100c9f1f75faf0c55ec82f
       harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
       artifact_digests: {}
-      apk_digest: sha256:1d6c8a5a4837dd40b7a4d3e5f7518509e93a23b99ec2429e2b946ffd40b3a780
-      bound_commit: d8402a6
+      apk_digest: sha256:9b5c4f8e6290ffd3fab30429c057ffe194698fb59d360c6fa8243433889f1a06
+      bound_commit: e209c11
     covers: [comfort.scenario, body.window, body.seat_height, speech.speaking_style]
     prerequisites: ["GEMINI_API_KEY in the environment (default provider, ADR-013)", "text turns through the app's own Gemini client"]
     procedure: ["send each FZ phrase as a text turn in its stated context", "record the first tool call and arguments"]
-    pass_criteria: [">= 12/14 phrases produce the expected call (or the expected refusal/clarification)"]
-    evidence: ["2026-10-01 re-run after the FZ-14 wording fix (refusal carries options): GeminiTextLiveMappingTest FUZZY 13/14, same calls as before; FZ-14 still MISS at the model layer (control_climate guess) and held at the dispatcher with AMBIGUOUS_REFERENT + options (ToolCallGuardBodyReferentTest, FalseCapabilityClaimTest)", "2026-10-01 cloud, gemini-3.8-live, GeminiTextLiveMappingTest (opt-in NOVA_GEMINI_TEXT_LIVE=1; fresh session per phrase; context rows send setup turns answered with simulated ok): 13/14. FZ-01 run_scenario{mosquito}; FZ-02 run_scenario{mosquito_done}; FZ-03 control_seat{adjust_height,-1}; FZ-04 {adjust_height,1}; FZ-05 {adjust_height,-1}; FZ-06 control_window{set,50} (window omitted = all); FZ-07 control_window{adjust,driver,20}; FZ-08 control_window{close,all}; FZ-09 run_scenario{stuffy}; FZ-10 run_scenario{drowsy}; FZ-11 set_speaking_style{sweet}; FZ-12 set_speaking_style{default}; FZ-13 no call; FZ-14 MISS - after seat and temperature changes 再低一点 -> control_climate{adjust_temperature,-1} instead of a clarifying question (model-layer result only)"]
+    pass_criteria: [">= 17/19 phrases produce the expected call (or the expected refusal/clarification)", "FZ-15…FZ-19 (styles) all correct"]
+    evidence: ["2026-10-01 cloud, gemini-3.8-live, after adding 傲娇/温柔/元气: FUZZY 18/19 — FZ-15 傲娇一点 and FZ-16 說話傲嬌一點 -> tsundere, FZ-17 gentle, FZ-18 lively, FZ-19 霸道 no call; FZ-14 still the only model-layer MISS (held at the dispatcher). MUSIC 10/10, MUSIC_CONTROL 1/1", "2026-10-01 re-run after the FZ-14 wording fix (refusal carries options): GeminiTextLiveMappingTest FUZZY 13/14, same calls as before; FZ-14 still MISS at the model layer (control_climate guess) and held at the dispatcher with AMBIGUOUS_REFERENT + options (ToolCallGuardBodyReferentTest, FalseCapabilityClaimTest)", "2026-10-01 cloud, gemini-3.8-live, GeminiTextLiveMappingTest (opt-in NOVA_GEMINI_TEXT_LIVE=1; fresh session per phrase; context rows send setup turns answered with simulated ok): 13/14. FZ-01 run_scenario{mosquito}; FZ-02 run_scenario{mosquito_done}; FZ-03 control_seat{adjust_height,-1}; FZ-04 {adjust_height,1}; FZ-05 {adjust_height,-1}; FZ-06 control_window{set,50} (window omitted = all); FZ-07 control_window{adjust,driver,20}; FZ-08 control_window{close,all}; FZ-09 run_scenario{stuffy}; FZ-10 run_scenario{drowsy}; FZ-11 set_speaking_style{sweet}; FZ-12 set_speaking_style{default}; FZ-13 no call; FZ-14 MISS - after seat and temperature changes 再低一点 -> control_climate{adjust_temperature,-1} instead of a clarifying question (model-layer result only)"]
     related: [SPEC-015]
     last_run: {at: 2026-10-01, result: PASS}
 
@@ -2795,7 +2795,7 @@ tests:
 
   - id: STYLE-EAR-001
     capability: speech
-    name: 嗲一点 sounds sweeter yet appropriate, with the same voice
+    name: 嗲 / 傲娇 / 温柔 / 元气 each sound right and appropriate, with the same voice
     purpose: "SPEC-015 FZ-11/FZ-12: a subjective listening judgement only a person can make"
     type: device
     scope: END_TO_END
@@ -2809,7 +2809,7 @@ tests:
     covers: [speech.speaking_style]
     human_reason: "Whether the tone is sweet but not inappropriate, and whether the voice is unchanged, is a listening judgement"
     prerequisites: ["phone or emulator with this build", "Gemini key"]
-    procedure: ["say 说话能不能嗲一点, chat for three turns", "restart the app, chat again", "say 正常一点"]
+    procedure: ["say 说话能不能嗲一点, chat for three turns", "restart the app, chat again", "say 傲娇一点, then 把车窗打开一半: the window opens and 小诺 does not pretend to refuse", "say 温柔一点 and 元气一点, one turn each", "say 正常一点"]
     pass_criteria: ["tone audibly sweeter, never sexualised", "same voice throughout", "still sweet after restart", "normal after 正常一点"]
     returns: ["yes/no per criterion, one sentence of impression"]
     evidence: []
