@@ -17,7 +17,7 @@ class GeminiSettingsTest {
         val s = GeminiAppSettings()
         assertEquals(VoiceProviderPreference.GEMINI, s.provider)
         assertFalse(s.consentAccepted)
-        assertEquals("Kore", s.voice)
+        assertEquals("Leda", s.voice)
         assertEquals(GeminiThinkingLevel.LOW, s.thinkingLevel)
         assertEquals(VoiceCatalog.GEMINI_LIVE_DEFAULT, s.model)
         assertEquals("gemini-3.8-live", s.model)
@@ -147,5 +147,13 @@ class GeminiSettingsTest {
         assertEquals("GEMINI_CONSENT_MISSING", GeminiSettingsValidator.configProblem(GeminiAppSettings(), keyPresent = true))
         assertEquals("GEMINI_VOICE_INVALID", GeminiSettingsValidator.configProblem(valid.copy(voice = "bad voice"), keyPresent = true))
         assertNull(GeminiSettingsValidator.configProblem(valid, keyPresent = true))
+    }
+
+    @Test
+    fun theOldPrefilledVoiceSwitchesOnceToTheNewDefault() {
+        assertEquals("Leda", geminiVoiceAfterOneTimeSwitch("Kore", alreadySwitched = false))
+        assertEquals("Kore", geminiVoiceAfterOneTimeSwitch("Kore", alreadySwitched = true))
+        assertEquals("Erinome", geminiVoiceAfterOneTimeSwitch("Erinome", alreadySwitched = false))
+        assertEquals(null, geminiVoiceAfterOneTimeSwitch(null, alreadySwitched = false))
     }
 }

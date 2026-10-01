@@ -45,7 +45,15 @@ data class GeminiAppSettings(
     companion object {
         const val DEFAULT_ENDPOINT =
             "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
-        const val DEFAULT_VOICE = "Kore"
+        /**
+         * B-034 (owner, 2026-10-02: Kore sounded old; wants a young, clear, poised voice): Leda,
+         * Google's "youthful" prebuilt voice, highest-pitched of the A/B with Erinome
+         * (tools/gemini-live-probe/voice_ab.py). Provisional until the owner picks by ear.
+         */
+        const val DEFAULT_VOICE = "Leda"
+
+        /** The default before B-034; a stored copy of it was prefilled, never chosen. */
+        const val PREVIOUS_DEFAULT_VOICE = "Kore"
         const val MIN_SILENCE_MS = 100
         const val MAX_SILENCE_MS = 3000
         const val CONSENT_NOTICE =
@@ -139,6 +147,14 @@ internal fun storedGeminiModelOrDefault(stored: String?): String =
 internal fun geminiModelAfterOneTimeSwitch(stored: String?, alreadySwitched: Boolean): String? =
     if (!alreadySwitched && stored == VoiceCatalog.GEMINI_LIVE_EXTENDED) VoiceCatalog.GEMINI_LIVE_DEFAULT else stored
 
+/**
+ * One-time switch (B-034): the settings screen saved the prefilled voice, so a stored "Kore" is the
+ * old default, not a choice. It becomes the new default once; after that any saved voice is kept,
+ * Kore included.
+ */
+internal fun geminiVoiceAfterOneTimeSwitch(stored: String?, alreadySwitched: Boolean): String? =
+    if (!alreadySwitched && stored?.trim() == GeminiAppSettings.PREVIOUS_DEFAULT_VOICE) GeminiAppSettings.DEFAULT_VOICE else stored
+
 class GeminiSettingsRepository(
     context: Context,
     private val credentials: CredentialStore = AndroidKeystoreCredentialStore(context.applicationContext),
@@ -147,7 +163,17 @@ class GeminiSettingsRepository(
 
     fun loadSettings(): GeminiAppSettings {
         switchModelOnce()
+        switchVoiceOnce()
         return loadStored()
+    }
+
+    private fun switchVoiceOnce() {
+        if (prefs.getBoolean(KEY_VOICE_SWITCHED_B034, false)) return
+        val stored = prefs.getString(KEY_VOICE, null)
+        val switched = geminiVoiceAfterOneTimeSwitch(stored, alreadySwitched = false)
+        val editor = prefs.edit().putBoolean(KEY_VOICE_SWITCHED_B034, true)
+        if (switched != stored && switched != null) editor.putString(KEY_VOICE, switched)
+        editor.apply()
     }
 
     private fun switchModelOnce() {
@@ -212,6 +238,7 @@ class GeminiSettingsRepository(
         private const val KEY_MODEL_SWITCHED_011 = "model_switched_adr011"
         private const val KEY_ENDPOINT = "endpoint"
         private const val KEY_VOICE = "voice"
+        private const val KEY_VOICE_SWITCHED_B034 = "voice_switched_b034"
         private const val KEY_THINKING = "thinking_level"
         private const val KEY_SILENCE = "silence_duration_ms"
     }

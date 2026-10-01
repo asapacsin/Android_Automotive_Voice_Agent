@@ -2890,3 +2890,42 @@ tests:
     evidence: []
     related: [P44, CONFIG-CARD-UNIT-001]
     last_run: {at: null, result: null}
+
+  - id: VOICE-AB-001
+    capability: speech
+    name: Gemini prebuilt voices measured for a young, clear voice (B-034 shortlist)
+    purpose: "BACKLOG B-034: Kore sounded old to the owner; shortlist candidates by measured pitch before the owner listens"
+    type: measurement
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: ["GEMINI_API_KEY", "python3 with aiohttp"]
+    procedure: ["python tools/gemini-live-probe/voice_ab.py (model gemini-3.8-live, same Chinese lines for every voice)"]
+    pass_criteria: ["every candidate recorded with a median F0", "the default is the youthful/highest-pitched voice that reads the lines"]
+    evidence: ["2026-10-02 cloud, 3 runs, median F0 Hz: Erinome 235-250, Leda 222-235, Autonoe 211, Aoede 205, Zephyr 200, Despina 200, Callirrhoe 195, Kore 186, Laomedeia 178, Pulcherrima 154-170. Kore is among the lowest; Leda (Google: youthful) and Erinome (Google: clear) are the highest. Default set to Leda; clips not committed (synthetic sentences, regenerate with the tool)"]
+    related: [B-034, VOICE-EAR-001]
+    last_run: {at: 2026-10-02, result: PASS}
+
+  - id: VOICE-EAR-001
+    capability: speech
+    name: The owner picks the 符玄-like Gemini voice by ear
+    purpose: "BACKLOG B-034: whether a voice sounds young, clear and poised is a listening judgement"
+    type: device
+    scope: END_TO_END
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: subjective_perception
+    release_blocking: false
+    terminal_success: [voice_picked, default_matches_pick]
+    autonomous_evidence: ["VOICE-AB-001: measured pitch shortlist; default now Leda", "GeminiSettingsTest: a stored prefilled Kore switches once to the new default; a deliberate choice is kept"]
+    remaining_uncertainty: ["which voice the owner hears as 符玄-like", "how the pick sounds with 傲娇 (B-029)"]
+    covers: []
+    human_reason: "Young / clear / not old is a listening judgement"
+    prerequisites: ["PC with GEMINI_API_KEY and python3 + aiohttp", "emulator or phone with this build"]
+    procedure: ["$env:OUT='D:\\桌面\\android_doc\\voice_ab'; python tools/gemini-live-probe/voice_ab.py", "listen to the WAVs (Leda and Erinome first, Kore for comparison)", "in the app: chat once with the new default, then say 傲娇一点", "to try another voice: 开发者设置 → Voice field"]
+    pass_criteria: ["the owner names one voice", "the default is changed to it if it is not Leda"]
+    returns: ["the chosen voice name, one sentence of impression"]
+    evidence: []
+    related: [B-034, VOICE-AB-001, STYLE-EAR-001]
+    last_run: {at: null, result: null}

@@ -6,7 +6,7 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 
 | # | Demand | Raised | Status | Spec |
 | --- | --- | --- | --- | --- |
-| B-034 | **Gemini voice sounds like an old woman** — owner wants a 符玄-like voice (young, clear, poised) | 2026-10-02 | Open | §B-034 below |
+| B-034 | **Gemini voice sounds like an old woman** — owner wants a 符玄-like voice (young, clear, poised) | 2026-10-02 | **Default changed** (owner ear pick queued) | §B-034 below |
 | B-033 | **Status cards fade out** — an error/status card on the map disappears by itself after a while instead of staying forever | 2026-10-02 | **Done** (emulator check queued) | §B-033 below |
 | B-032 | **Car agent with domain servers** — "a more clever agent system that has several car MCP"; Gemini stays the one agent, car functions become MCP-shaped domain servers | 2026-09-30 | **Specced** | [SPEC-016](SPECS/SPEC-016-gemini-default-and-domain-servers.md) · [ADR-015](DECISIONS/ADR-015-car-domain-servers.md) |
 | B-031 | **Guidance in 小诺's voice** — mute Amap, the model speaks every guidance sentence; Amap only when the model cannot; Gemini everywhere (one voice) | 2026-09-30 | **Specced** | [SPEC-018](SPECS/SPEC-018-guidance-in-assistant-voice.md) · [ADR-013](DECISIONS/ADR-013-gemini-default-provider.md) · [ADR-014](DECISIONS/ADR-014-guidance-spoken-by-assistant.md) |
@@ -661,3 +661,17 @@ The persona notes are kept out of the code on purpose. Only the voice choice and
 3. The owner judges it by ear. A green test is not evidence that the voice sounds right.
 
 **Constraint:** this is a voice name change, not a cloned or imitated voice of a real voice actor.
+
+**Done 2026-10-02 (cloud):**
+- `tools/gemini-live-probe/voice_ab.py` records the same Chinese lines with each candidate prebuilt
+  voice (model `gemini-3.8-live`) and measures the median pitch. Three runs: Erinome 235–250 Hz,
+  Leda 222–235, Autonoe 211, Aoede 205, Zephyr 200, Despina 200, Callirrhoe 195, **Kore 186**,
+  Laomedeia 178, Pulcherrima 154–170. Kore is among the lowest, which matches "old woman".
+- Default is now **Leda** (Google calls it "youthful"; second-highest, reads the lines verbatim).
+  Erinome ("clear") is the runner-up.
+- A stored `Kore` was the prefilled value saved with the settings form, not a choice, so it switches
+  once to the new default (same pattern as the ADR-011 model switch). Any voice saved after that is
+  kept. Tests: `GeminiSettingsTest`.
+- Still the owner's: listen and pick (`VOICE-EAR-001`). Run the tool on the PC with
+  `OUT=D:\桌面\android_doc\voice_ab` to get the WAVs; clips are not committed.
+

@@ -22,6 +22,10 @@ python opt_probe.py
 # end of the utterance; transcript text only with SHOW_TEXT=1). MODEL, LVL, VAD=auto|manual,
 # HANGOVER_MS, PROMPT=app|persona|none; a clip of the form "text:..." sends a typed turn instead.
 MODEL=models/gemini-3.8-live python latency_probe.py ac_on.pcm 30
+
+# B-034 voice A/B: same lines per prebuilt voice -> <voice>.wav + median pitch + summary.json
+OUT=voice_ab python voice_ab.py                 # default candidate list
+OUT=voice_ab python voice_ab.py Leda Erinome Kore
 ```
 
 Output contains synthetic test transcripts only. Do not point these tools at recordings of real
