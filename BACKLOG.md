@@ -6,7 +6,7 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 
 | # | Demand | Raised | Status | Spec |
 | --- | --- | --- | --- | --- |
-| B-033 | **Status cards fade out** — an error/status card on the map disappears by itself after a while instead of staying forever | 2026-10-02 | Open | §B-033 below |
+| B-033 | **Status cards fade out** — an error/status card on the map disappears by itself after a while instead of staying forever | 2026-10-02 | **Done** (emulator check queued) | §B-033 below |
 | B-032 | **Car agent with domain servers** — "a more clever agent system that has several car MCP"; Gemini stays the one agent, car functions become MCP-shaped domain servers | 2026-09-30 | **Specced** | [SPEC-016](SPECS/SPEC-016-gemini-default-and-domain-servers.md) · [ADR-015](DECISIONS/ADR-015-car-domain-servers.md) |
 | B-031 | **Guidance in 小诺's voice** — mute Amap, the model speaks every guidance sentence; Amap only when the model cannot; Gemini everywhere (one voice) | 2026-09-30 | **Specced** | [SPEC-018](SPECS/SPEC-018-guidance-in-assistant-voice.md) · [ADR-013](DECISIONS/ADR-013-gemini-default-provider.md) · [ADR-014](DECISIONS/ADR-014-guidance-spoken-by-assistant.md) |
 | B-030 | **Music from a vague description** — 「梶浦的、空之境界里很燃的 OP」 → the AI picks and plays it, via the driver's music app | 2026-09-30 | **Specced** | [SPEC-017](SPECS/SPEC-017-music-from-description.md) |
@@ -632,3 +632,11 @@ Architecture proposed 2026-09-30: [docs/FUZZY_DRIVING_ARCHITECTURE.md](docs/FUZZ
 **Related:** an ordinary idle disconnect while asleep may not deserve an error card at all; it could show only 已断开. Decide this together with B-033.
 
 **Owner in code:** `AssistantOverlayView.showError` / `clearError` and `ShownErrorCard`. Test it with `ShownErrorCardTest`.
+
+**Done 2026-10-02:** a non-CONFIG card fades after `ERROR_CARD_FADE_MS` = 12 s and the state line
+shows the real state again; CONFIG cards never fade and leave only when fixed (P44). Each card has a
+token, so an older card's timer never clears a newer card or a transcript line. The related question
+(no card at all for an ordinary idle disconnect while asleep) is settled by the fade: the card shows
+briefly and goes, and the state line keeps 已断开. Tests: `ShownErrorCardTest` 10/0. Device check:
+`CONFIG-CARD-EMU-001` (fade step).
+

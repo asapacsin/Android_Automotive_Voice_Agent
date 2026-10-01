@@ -2868,10 +2868,10 @@ tests:
     release_blocking: false
     prerequisites: []
     procedure: ["gradlew :app:testDebugUnitTest --tests *ShownErrorCardTest*"]
-    pass_criteria: ["clear(CONFIG) succeeds only while CONFIG is the card on screen", "an unrelated error is never cleared by a valid configuration", "a transcript line or a newer error replaces the CONFIG card"]
-    evidence: ["2026-10-01 cloud, claude/10-1: ShownErrorCardTest 6/0; full suite 3400 / 0 failures, 4 skipped; :app:assembleDebug built (planner read the JUnit XML)"]
-    related: [P44]
-    last_run: {at: 2026-10-01, result: PASS}
+    pass_criteria: ["clear(CONFIG) succeeds only while CONFIG is the card on screen", "an unrelated error is never cleared by a valid configuration", "a transcript line or a newer error replaces the CONFIG card", "B-033: a transient card fades on its own timer; CONFIG never fades; an older timer never clears a newer card"]
+    evidence: ["2026-10-02 cloud, claude/10-1: ShownErrorCardTest 10/0 with the B-033 fade; full suite 3400 / 0 failures; :app:assembleDebug built (planner read the JUnit XML)", "2026-10-01 cloud, claude/10-1: ShownErrorCardTest 6/0; full suite 3400 / 0 failures, 4 skipped; :app:assembleDebug built (planner read the JUnit XML)"]
+    related: [P44, B-033]
+    last_run: {at: 2026-10-02, result: PASS}
 
   - id: CONFIG-CARD-EMU-001
     capability: permissions
@@ -2882,10 +2882,10 @@ tests:
     owner: AUTONOMOUS
     status: NOT_RUN
     release_blocking: false
-    terminal_success: [card_gone_after_resume, card_gone_after_session_start, unrelated_error_kept]
+    terminal_success: [card_gone_after_resume, card_gone_after_session_start, unrelated_error_kept, transient_card_fades]
     covers: []
     prerequisites: ["emulator nova_api34 (the owner's PC) with this build", "Gemini selected, consent not yet given"]
-    procedure: ["open the map: the consent CONFIG card shows", "save consent in developer settings and return to the map", "check the card is gone and no config_banner line is logged", "start a session: state=LISTENING, still no card"]
+    procedure: ["open the map: the consent CONFIG card shows", "save consent in developer settings and return to the map", "check the card is gone and no config_banner line is logged", "start a session: state=LISTENING, still no card", "B-033: let the session drop while asleep; the GEMINI_LIVE_CONNECTION_FAILED card goes after ~12 s and the state line shows 已断开"]
     pass_criteria: ["no CONFIG card after the resume with a valid configuration", "no CONFIG card after gemini_setup_complete"]
     evidence: []
     related: [P44, CONFIG-CARD-UNIT-001]

@@ -289,7 +289,11 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
     }
 
     fun showError(code: String, message: String) {
-        shownError.show(code)
+        val token = shownError.show(code)
+        // B-033: a transient card fades; a newer card is never cleared by this timer.
+        if (!ShownErrorCard.staysUntilFixed(code)) {
+            postDelayed({ if (shownError.expire(token)) restoreIdleBubble() }, ERROR_CARD_FADE_MS)
+        }
         bubble.text = "$code\n$message"
         stateLabel.text = context.getString(R.string.assistant_state_error)
         stateDot.setTextColor(Color.parseColor("#FFEF5350"))
@@ -301,6 +305,11 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
      */
     fun clearError(code: String) {
         if (!shownError.clear(code)) return
+        restoreIdleBubble()
+    }
+
+    /** The card is gone; the state line shows the real state again (e.g. 休眠中（已断开）). */
+    private fun restoreIdleBubble() {
         bubble.text = context.getString(R.string.assistant_speech_placeholder)
         bindState(lastVoiceState, null)
     }
@@ -323,12 +332,33 @@ internal class ShownErrorCard {
     var code: String? = null
         private set
 
-    fun show(code: String) {
+    private var generation = 0L
+
+    /** Shows [code]; the returned token identifies this card for [expire]. */
+    fun show(code: String): Long {
         this.code = code
+        return ++generation
     }
 
     fun overwritten() {
         code = null
+        generation++
+    }
+
+    /**
+     * B-033: the fade timer of the card shown with [token]. True only when that same card is still
+     * on screen and it is not one the driver must act on ([staysUntilFixed]).
+     */
+    fun expire(token: Long): Boolean {
+        val shown = code ?: return false
+        if (token != generation || staysUntilFixed(shown)) return false
+        code = null
+        return true
+    }
+
+    companion object {
+        /** Cards the driver must act on stay until the cause is fixed (P44), never fade. */
+        fun staysUntilFixed(code: String): Boolean = code == "CONFIG"
     }
 
     fun clear(code: String): Boolean {
@@ -337,6 +367,9 @@ internal class ShownErrorCard {
         return true
     }
 }
+
+/** B-033: how long a transient error card stays before it fades (the log keeps the detail). */
+internal const val ERROR_CARD_FADE_MS = 12_000L
 
 /** Number of transcript lines the bubble keeps: the latest exchange only (driver + 小诺). */
 internal const val TRANSCRIPT_MAX_LINES = 2

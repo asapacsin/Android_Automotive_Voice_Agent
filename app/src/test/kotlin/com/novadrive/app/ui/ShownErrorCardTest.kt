@@ -51,4 +51,37 @@ class ShownErrorCardTest {
         card.clear("CONFIG")
         assertFalse(card.clear("CONFIG"))
     }
+
+    @Test
+    fun aTransientCardFadesOnItsOwnTimer() {
+        val card = ShownErrorCard()
+        val token = card.show("GEMINI_LIVE_CONNECTION_FAILED")
+        assertTrue(card.expire(token))
+        assertNull(card.code)
+    }
+
+    @Test
+    fun aConfigCardNeverFades() {
+        val card = ShownErrorCard()
+        val token = card.show("CONFIG")
+        assertFalse(card.expire(token))
+        assertTrue(card.clear("CONFIG"))
+    }
+
+    @Test
+    fun anOlderTimerNeverClearsANewerCard() {
+        val card = ShownErrorCard()
+        val first = card.show("GEMINI_LIVE_CONNECTION_FAILED")
+        val second = card.show("GEMINI_LIVE_CONNECTION_FAILED")
+        assertFalse(card.expire(first))
+        assertTrue(card.expire(second))
+    }
+
+    @Test
+    fun aTimerAfterATranscriptLineDoesNothing() {
+        val card = ShownErrorCard()
+        val token = card.show("SESSION")
+        card.overwritten()
+        assertFalse(card.expire(token))
+    }
 }
