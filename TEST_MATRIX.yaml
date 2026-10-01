@@ -956,14 +956,14 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["Gemini Live (default provider, ADR-013) text turns with the owner's key (never logged)", "a set of 10 music descriptions"]
     procedure: ["send each description as a text turn", "record the play_music arguments per description"]
     pass_criteria: [">= 8/10 descriptions produce play_music with a plausible title or artist/work", "0/10 produce control_music{play}"]
-    evidence: []
+    evidence: ["2026-10-01 cloud, gemini-3.8-live, GeminiTextLiveMappingTest (opt-in NOVA_GEMINI_TEXT_LIVE=1; fresh session per phrase, app client + RealtimeToolCatalog + default persona): 9/10 play_music, 0/10 control_music. M-01 梶浦/空之境界 -> play_music{artist,album_or_work,mood,query} (no title); M-02 提神 -> {mood,query}; M-03 晴天 -> {title,artist,query}; M-04 下雨天 -> MISS no call; M-05 十年 -> {title,artist}; M-06 进击的巨人 -> {album_or_work}; M-07 钢琴 -> {mood,query}; M-08 红豆 -> {title,artist}; M-09 千与千寻 -> {album_or_work,query}; M-10 八十年代粤语 -> {query}. Control: 放首歌 -> control_music{play}"]
     related: [SPEC-017]
-    last_run: {at: null, result: null}
+    last_run: {at: 2026-10-01, result: PASS}
 
   - id: MUSIC-VLC-EMU-001
     capability: media
@@ -2749,15 +2749,15 @@ tests:
     type: text_live
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     covers: [comfort.scenario, body.window, body.seat_height, speech.speaking_style]
     prerequisites: ["GEMINI_API_KEY in the environment (default provider, ADR-013)", "text turns through the app's own Gemini client"]
     procedure: ["send each FZ phrase as a text turn in its stated context", "record the first tool call and arguments"]
     pass_criteria: [">= 12/14 phrases produce the expected call (or the expected refusal/clarification)"]
-    evidence: []
+    evidence: ["2026-10-01 cloud, gemini-3.8-live, GeminiTextLiveMappingTest (opt-in NOVA_GEMINI_TEXT_LIVE=1; fresh session per phrase; context rows send setup turns answered with simulated ok): 13/14. FZ-01 run_scenario{mosquito}; FZ-02 run_scenario{mosquito_done}; FZ-03 control_seat{adjust_height,-1}; FZ-04 {adjust_height,1}; FZ-05 {adjust_height,-1}; FZ-06 control_window{set,50} (window omitted = all); FZ-07 control_window{adjust,driver,20}; FZ-08 control_window{close,all}; FZ-09 run_scenario{stuffy}; FZ-10 run_scenario{drowsy}; FZ-11 set_speaking_style{sweet}; FZ-12 set_speaking_style{default}; FZ-13 no call; FZ-14 MISS - after seat and temperature changes 再低一点 -> control_climate{adjust_temperature,-1} instead of a clarifying question (model-layer result only)"]
     related: [SPEC-015]
-    last_run: {at: null, result: null}
+    last_run: {at: 2026-10-01, result: PASS}
 
   - id: FUZZY-DEVICE-001
     capability: comfort
