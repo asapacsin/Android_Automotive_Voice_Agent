@@ -968,8 +968,8 @@ tests:
       registry_digest: sha256:36f1bd13116237afa37238ca65b5f53baa0c1d44355cb505250764641df6e24f
       harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
       artifact_digests: {}
-      apk_digest: sha256:9b5c4f8e6290ffd3fab30429c057ffe194698fb59d360c6fa8243433889f1a06
-      bound_commit: e209c11
+      apk_digest: sha256:5848b04eaeb0c4783432add5da41d03c30501057072821d450d0fe24d11eb210
+      bound_commit: fb15da8
     related: [SPEC-017]
     last_run: {at: 2026-10-01, result: PASS}
 
@@ -2765,8 +2765,8 @@ tests:
       registry_digest: sha256:6ac5cdbd9df4d89a845e9b4284c40c70f61fe64a27100c9f1f75faf0c55ec82f
       harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
       artifact_digests: {}
-      apk_digest: sha256:9b5c4f8e6290ffd3fab30429c057ffe194698fb59d360c6fa8243433889f1a06
-      bound_commit: e209c11
+      apk_digest: sha256:5848b04eaeb0c4783432add5da41d03c30501057072821d450d0fe24d11eb210
+      bound_commit: fb15da8
     covers: [comfort.scenario, body.window, body.seat_height, speech.speaking_style]
     prerequisites: ["GEMINI_API_KEY in the environment (default provider, ADR-013)", "text turns through the app's own Gemini client"]
     procedure: ["send each FZ phrase as a text turn in its stated context", "record the first tool call and arguments"]

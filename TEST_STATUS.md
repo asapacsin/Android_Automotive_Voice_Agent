@@ -2,15 +2,15 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-21 · 132 tests
+Updated 2026-09-21 · 134 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 53 |
+| autonomous PASS | 54 |
 | autonomous FAIL | 0 |
 | incomplete | 0 |
 | partial pass | 0 |
-| not run | 58 |
+| not run | 59 |
 | human required | 21 |
 | human pass | 0 |
 | human fail | 0 |
@@ -78,6 +78,7 @@ Updated 2026-09-21 · 132 tests
 - GATE-D10-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - FUZZY-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - GUIDANCE-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- CONFIG-CARD-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - live_info.along_route requires END_TO_END but has no passing cover (linked: none)
 - live_info.place_details requires END_TO_END but has no passing cover (linked: none)
 - live_info.route_traffic requires END_TO_END but has no passing cover (linked: none)
@@ -101,7 +102,7 @@ Updated 2026-09-21 · 132 tests
 | microphone | 1 | 0 | 1 | 0 |
 | navigation | 24 | 6 | 4 | 14 |
 | performance | 2 | 2 | 0 | 0 |
-| permissions | 3 | 2 | 0 | 1 |
+| permissions | 5 | 3 | 0 | 2 |
 | regression | 2 | 1 | 0 | 1 |
 | release | 6 | 2 | 4 | 0 |
 | reliability | 8 | 4 | 1 | 3 |
@@ -186,6 +187,8 @@ Updated 2026-09-21 · 132 tests
 | NAV-UI-010 | navigation | Route-selection voice commands are unchanged | AUTONOMOUS | PASS | yes | 2026-09-20 unit, pre-existing tests still green |
 | LATENCY-001 | performance | Response latency from end of speech | AUTONOMOUS | PASS | no | 2026-09-20, 21 turns: min 328, median 734, p90 1007, max 1062 ms |
 | RESOURCE-IDLE-001 | performance | CPU and memory while idle and listening | AUTONOMOUS | PASS | no | 2026-09-20 on 2391ff70: ~62% CPU, 565 MB resident with the wake word ON |
+| CONFIG-CARD-EMU-001 | permissions | The CONFIG card leaves the map once the missing setting is saved | AUTONOMOUS | NOT_RUN | no | — |
+| CONFIG-CARD-UNIT-001 | permissions | A fixed configuration problem removes its CONFIG card and nothing else | AUTONOMOUS | PASS | no | 2026-10-01 cloud, claude/10-1: ShownErrorCardTest 6/0; full suite 3400 / 0 failures, 4 … |
 | PERM-CAMERA-001 | permissions | A camera question without permission fails honestly | AUTONOMOUS | PASS | yes | CameraQuestionHandlerTest.missingCameraPermissionFailsFastWithoutCaptureOrRequest |
 | PERM-CONTACTS-001 | permissions | Missing contacts permission is not reported as not-found | AUTONOMOUS | PASS | yes | 2026-09-20 TEST_REVIEW: AndroidContacts mapped READ_CONTACTS denial onto ContactMatchKi… |
 | PERM-DENY-001 | permissions | A revoked microphone permission fails honestly | AUTONOMOUS | NOT_RUN | yes | STALE_BIND apk_digest mismatch |
