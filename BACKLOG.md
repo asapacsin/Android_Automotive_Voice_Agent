@@ -1,4 +1,4 @@
-﻿# Backlog
+# Backlog
 
 Recorded demands from the product owner, newest first. See `agent/INTAKE.md` for how these move to shipped work.
 
