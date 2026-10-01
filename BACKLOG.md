@@ -6,6 +6,7 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 
 | # | Demand | Raised | Status | Spec |
 | --- | --- | --- | --- | --- |
+| B-034 | **Gemini voice sounds like an old woman** — owner wants a 符玄-like voice (young, clear, poised) | 2026-10-02 | Open | §B-034 below |
 | B-033 | **Status cards fade out** — an error/status card on the map disappears by itself after a while instead of staying forever | 2026-10-02 | **Done** (emulator check queued) | §B-033 below |
 | B-032 | **Car agent with domain servers** — "a more clever agent system that has several car MCP"; Gemini stays the one agent, car functions become MCP-shaped domain servers | 2026-09-30 | **Specced** | [SPEC-016](SPECS/SPEC-016-gemini-default-and-domain-servers.md) · [ADR-015](DECISIONS/ADR-015-car-domain-servers.md) |
 | B-031 | **Guidance in 小诺's voice** — mute Amap, the model speaks every guidance sentence; Amap only when the model cannot; Gemini everywhere (one voice) | 2026-09-30 | **Specced** | [SPEC-018](SPECS/SPEC-018-guidance-in-assistant-voice.md) · [ADR-013](DECISIONS/ADR-013-gemini-default-provider.md) · [ADR-014](DECISIONS/ADR-014-guidance-spoken-by-assistant.md) |
@@ -640,3 +641,23 @@ token, so an older card's timer never clears a newer card or a transcript line. 
 briefly and goes, and the state line keeps 已断开. Tests: `ShownErrorCardTest` 10/0. Device check:
 `CONFIG-CARD-EMU-001` (fade step).
 
+
+## B-034 — A 符玄-like voice on Gemini
+
+**Owner, 2026-10-02**, during the emulator test run on `claude/10-1` with the Gemini provider: "the current voice is terrible old woman voice, i prefer 符玄 like voice".
+
+**Current state:** Gemini uses `GeminiAppSettings.DEFAULT_VOICE = "Kore"`, unless the voice field in 开发者设置 overrides it. Baidu is not affected: its default is `BaiduFlexVoices.PREFERRED_YOUTHFUL_FEMALE`.
+
+**Target:** 符玄 (Honkai: Star Rail):
+- a young, bright, clear female voice;
+- confident and slightly proud; crisp, not breathy;
+- never old, deep or matronly.
+
+The persona notes are kept out of the code on purpose. Only the voice choice and the style instructions change.
+
+**Wanted:**
+1. A/B the Gemini prebuilt voices with the same Chinese test sentences. Candidates: Leda, Aoede, Zephyr, Puck, Kore and others. Save short 24 kHz clips in `D:\桌面\android_doc\` for the owner to pick. This is the same method as the 2026-09-30 Baidu voice A/B.
+2. Make the owner's pick the Gemini default. Check how it sounds together with the speaking styles (B-029: 傲娇 fits 符玄 well).
+3. The owner judges it by ear. A green test is not evidence that the voice sounds right.
+
+**Constraint:** this is a voice name change, not a cloned or imitated voice of a real voice actor.
