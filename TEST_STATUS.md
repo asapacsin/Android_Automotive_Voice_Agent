@@ -2,16 +2,16 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-21 · 122 tests
+Updated 2026-09-21 · 132 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 49 |
+| autonomous PASS | 51 |
 | autonomous FAIL | 0 |
 | incomplete | 0 |
 | partial pass | 0 |
-| not run | 55 |
-| human required | 18 |
+| not run | 60 |
+| human required | 21 |
 | human pass | 0 |
 | human fail | 0 |
 | blocked external | 0 |
@@ -49,6 +49,8 @@ Updated 2026-09-21 · 122 tests
 - CTX-AMBIG-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - MUSIC-PLAY-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - MUSIC-NAMED-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- MUSIC-TEXT-LIVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- MUSIC-VLC-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - BARGEIN-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - AEC-DELAY-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - PLAYBACK-BUFFER-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -75,11 +77,13 @@ Updated 2026-09-21 · 122 tests
 - SPEECH-WORKLOAD-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - GEMINI-DEVICE-DUPLEX-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - GATE-D10-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- FUZZY-TEXT-LIVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- FUZZY-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- GUIDANCE-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - live_info.along_route requires END_TO_END but has no passing cover (linked: none)
 - live_info.place_details requires END_TO_END but has no passing cover (linked: none)
 - live_info.route_traffic requires END_TO_END but has no passing cover (linked: none)
 - live_info.weather requires END_TO_END but has no passing cover (linked: none)
-- navigation.guidance_voice requires INTERMEDIATE_FLOW but has no passing cover (linked: NAV-MID-ROUTE-001)
 
 ## By capability
 
@@ -91,12 +95,13 @@ Updated 2026-09-21 · 122 tests
 | calling | 8 | 6 | 1 | 1 |
 | cantonese | 2 | 1 | 1 | 0 |
 | climate | 5 | 1 | 1 | 3 |
+| comfort | 3 | 1 | 0 | 2 |
 | dialogue_context | 4 | 1 | 0 | 3 |
 | lifecycle | 1 | 0 | 0 | 1 |
 | live_info | 4 | 1 | 0 | 3 |
-| media | 2 | 0 | 0 | 2 |
+| media | 6 | 1 | 1 | 4 |
 | microphone | 1 | 0 | 1 | 0 |
-| navigation | 22 | 6 | 3 | 13 |
+| navigation | 24 | 6 | 4 | 14 |
 | performance | 2 | 2 | 0 | 0 |
 | permissions | 3 | 2 | 0 | 1 |
 | regression | 2 | 1 | 0 | 1 |
@@ -104,7 +109,7 @@ Updated 2026-09-21 · 122 tests
 | reliability | 8 | 4 | 1 | 3 |
 | saved_places | 3 | 0 | 0 | 3 |
 | security | 3 | 3 | 0 | 0 |
-| speech | 2 | 1 | 1 | 0 |
+| speech | 3 | 1 | 2 | 0 |
 | truthfulness | 9 | 4 | 0 | 5 |
 | turn_taking | 19 | 7 | 3 | 9 |
 | unsupported | 1 | 0 | 0 | 1 |
@@ -138,6 +143,9 @@ Updated 2026-09-21 · 122 tests
 | CLIMATE-IMPLICIT-001 | climate | 有点热 produces a real adjustment | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite, after isControlRequest learned to ask ContextResolver |
 | CLIMATE-OFF-001 | climate | 关闭空调 turns it off | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite |
 | CLIMATE-SET-001 | climate | An explicit temperature is set | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite |
+| FUZZY-DEVICE-001 | comfort | Fuzzy requests on the emulator - chip on screen, one call per scenario, honest partial report | AUTONOMOUS | NOT_RUN | no | — |
+| FUZZY-TEXT-LIVE-001 | comfort | The live model maps the fuzzy phrase table FZ-01…FZ-14 to the right calls | AUTONOMOUS | NOT_RUN | yes | — |
+| SCENARIO-UNIT-001 | comfort | Comfort scenarios run their fixed steps through the direct-call servers and report partial failure honestly | AUTONOMOUS | PASS | no | 2026-10-01 cloud, integrated 436d197: ComfortScenariosTest 15/0; full suite 3378 / 0 fa… |
 | CTX-AMBIG-001 | dialogue_context | 再低一点 with no history asks which | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 「您是指温度还是风量呢？」 |
 | CTX-CHAIN-001 | dialogue_context | 再凉一点 continues the previous adjustment | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite |
 | HELP-001 | dialogue_context | 「你能做什么」 / 「你能干啥」 gets a short capability answer | AUTONOMOUS | NOT_RUN | yes | STALE_BIND apk_digest mismatch |
@@ -147,10 +155,16 @@ Updated 2026-09-21 · 122 tests
 | LIVE-INFO-L6-001 | live_info | Every live_info source returns real data with the owner's key | AUTONOMOUS | NOT_RUN | yes | 2026-09-25 partial: REST weatherInfo base/all, regeo and place/detail returned real dat… |
 | LIVE-INFO-REGRESSION-001 | live_info | SPEC-008 suite does not regress with query_live_info added | AUTONOMOUS | NOT_RUN | yes | — |
 | LIVE-INFO-UNIT-001 | live_info | query_live_info parses, fails honestly and opens the picker for along-route results | AUTONOMOUS | PASS | yes | 2026-09-25 cloud: :app ran in a stub-iFlytek mirror because vendor Msc.jar is absent in… |
-| MUSIC-NAMED-001 | media | A named song is refused, not substituted | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite |
+| MUSIC-APP-DEVICE-001 | media | 网易云 / QQ音乐 play a described song or fail honestly | HUMAN_ACCOUNT | HUMAN_REQUIRED | yes | MUSIC-UNIT-001 (JVM) |
+| MUSIC-NAMED-001 | media | A named song goes to play_music, never the bundled track | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite (old criterion: MEDIA_LIBRARY_UNSUPPORTED) |
 | MUSIC-PLAY-001 | media | 播放音乐 plays the bundled track | AUTONOMOUS | NOT_RUN | no | 2026-09-20: 20/20 suite |
+| MUSIC-TEXT-LIVE-001 | media | The model maps music descriptions to play_music fields | AUTONOMOUS | NOT_RUN | yes | — |
+| MUSIC-UNIT-001 | media | play_music validates, hands off and reports only what is playing | AUTONOMOUS | PASS | yes | 2026-10-01 cloud, integrated 436d197: MediaServerPlayMusicTest 12/0, MediaDomainPlayMus… |
+| MUSIC-VLC-EMU-001 | media | VLC plays a local file handed off by play_music and the readback names it | AUTONOMOUS | NOT_RUN | yes | MUSIC-UNIT-001 (JVM) covers the result rules with a fake session source |
 | MIC-CABIN-001 | microphone | Open-mic thresholds in real cabin acoustics | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | NOISE-001 PASS - room noise produces no turn |
 | AUDIO-QUALITY-001 | navigation | Guidance loudness and speech quality in a cabin | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | 21 guidance play start/end pairs observed on an emulator drive; the mic is gated while … |
+| GUIDANCE-DEVICE-001 | navigation | One voice on the short route; Amap audible only when the model cannot speak | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | GUIDANCE-EMU-001 measurements |
+| GUIDANCE-EMU-001 | navigation | Step-0 measurements for assistant-spoken guidance on the short route | AUTONOMOUS | NOT_RUN | yes | — |
 | NAV-CANCEL-001 | navigation | 算了 really cancels | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: nav_flow_cancelled |
 | NAV-CHOICE-STALE-001 | navigation | A spoken ordinal on a stale list is re-presented before it is accepted | AUTONOMOUS | PASS | yes | 2026-09-24: NavigationPendingChoiceTest 10/10 (cloud Linux build) |
 | NAV-CORRECT-001 | navigation | A mid-flow destination change replaces the list | AUTONOMOUS | NOT_RUN | no | 2026-09-20: 20/20 suite |
@@ -199,6 +213,7 @@ Updated 2026-09-21 · 122 tests
 | EXPORTED-001 | security | The release build exposes no debug surface | AUTONOMOUS | PASS | yes | 2026-09-20, release manifest via aapt2: only MainActivity is exported; DeveloperSetting… |
 | RELEASE-LOG-001 | security | A release build does not log what the driver said | AUTONOMOUS | PASS | yes | 2026-09-20: DebugVoiceLog is the only logger in app/src/main, ingress/src/main and cont… |
 | SECRET-SCAN-001 | security | No secret is tracked by git | AUTONOMOUS | PASS | yes | part of the 737 |
+| STYLE-EAR-001 | speech | 嗲一点 sounds sweeter yet appropriate, with the same voice | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | STYLE-UNIT-001: compose swaps the tone paragraph; style persisted and sticky (JVM) |
 | STYLE-UNIT-001 | speech | set_speaking_style changes the tone, persists it and composes it | AUTONOMOUS | PASS | no | 2026-09-30 cloud, wt/W3b-style-tool 80b9072: SpeakingStyleToolTest 8/0, PersonaProfiles… |
 | VOICE-STYLE-001 | speech | Prefer a younger cute female voice (符玄-like) | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | Owner chose option B id 4196 on 2026-09-21 |
 | DUP-EXEC-001 | truthfulness | The same adjustment does not run twice in one turn | AUTONOMOUS | PASS | yes | 2026-09-20: FalseCapabilityClaimTest asserts a repeated adjust_temperature in one turn … |
@@ -207,7 +222,7 @@ Updated 2026-09-21 · 122 tests
 | TRUTH-CLAIM-001 | truthfulness | A claim no tool performed is never spoken | AUTONOMOUS | PASS | yes | 2026-09-19 device: the fabrication is corrected, 「没听清，再说一遍。」 |
 | TRUTH-DUP-001 | truthfulness | One correction per response, not two | AUTONOMOUS | PASS | no | the test reports n=2 without the single-owner guard and n=1 with it |
 | TRUTH-LIVEINFO-NEWS-001 | truthfulness | News and prices stay refused even with a live result in the turn | AUTONOMOUS | NOT_RUN | yes | — |
-| TRUTH-MEDIA-001 | truthfulness | A song we cannot play is refused even when misheard | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 3/3 then 5/5 after the fix; before it, the bundled track played |
+| TRUTH-MEDIA-001 | truthfulness | A named or styled song never plays the bundled track, even when misheard | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 3/3 then 5/5 after the fix; before it, the bundled track played (old criter… |
 | TRUTH-MISHEARD-001 | truthfulness | A misheard driver is not told the car acted | AUTONOMOUS | NOT_RUN | yes | 2026-09-19: 「返屋企啦」 -> 「发诺克拉。」 -> correction, not a claim |
 | TRUTH-WEATHER-001 | truthfulness | Weather and traffic answers come only from a live lookup | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: refusal, 20/20 suite (pre-SPEC-011 criterion, superseded) |
 | ASTRA-DOUBLE-TALK-001 | turn_taking | Real double-talk and route-change acoustics | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | SpeechUplinkGate + qualifyPlayoutBargeIn uplinkGateOpen wiring |

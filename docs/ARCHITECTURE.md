@@ -62,6 +62,7 @@ One behaviour, one owner. If you need to change one of these, change it **here**
 | Simulated windows and seat height, and their limits | `VehicleControlPort` (`cabinState`, `setWindows`/`changeWindows`, `setSeatHeight`/`changeSeatHeight`) implemented by `SimulatedVehicleControl`, selected only in `VehicleControlProvider` | a second port, the UI, the handler |
 | `control_window` / `control_seat` → port, and what may be said about the result | `WindowToolHandler` / `SeatToolHandler` in the `body` domain (`BodyDomain` + `BodyServer`, ADR-015); the spoken clause is `ActionAnnouncement` (pure, from the read-back state), carried as `announce` | the model's wording, the dispatcher |
 | Speaking style (tone only; the voice never changes) and how long it lasts | `SpeakingStyleState` (sticky; persisted by `SpeakingStyleStore`) + `PersonaProfiles.compose`, used by both clients when they build instructions; changed only by `set_speaking_style` | a provider adapter, the voice id, anything mid-turn |
+| Multi-step comfort scenarios (有蚊子, 好闷, 好困) | `ComfortScenarios` (fixed playbook, dependencies) + `ComfortServer` in the `comfort` domain, which routes each step through the dispatcher's own server path (same validation, handlers, context recording); the joined `announce` and `not_done` come from `ActionAnnouncement`; an honest partial report is judged by `ActionClaimGuard` | the model choosing or ordering steps |
 | Playing a described song, and what may be said about it | `play_music` in the `media` domain → `media/` hand-off (`MEDIA_PLAY_FROM_SEARCH` to the driver's music app) → `NowPlayingVerifier` readback (MediaSession); only `now_playing` may be claimed | the model's identification of the song |
 | Who speaks each guidance sentence (assistant or Amap), per prompt | `GuidanceRelay` (SPEC-018; behind the developer toggle, off by default), with `GuidanceClaims` hooks from `AndroidPlaybackPort`; a guidance prompt is correlated to its response by `AppPromptTurn` (provider) and is never a driver turn | the model, `AmapGuidanceVoice` (it is the SDK edge only) |
 | Live information (weather, route traffic, along-route, place details) | `LiveInfoTool` (`query_live_info`) — REST kinds via `AmapPoiClient` / `AmapLiveInfoParser`; SDK kinds via the `RouteLiveInfo` port / `nav/amap/AmapRouteLiveInfo` (SPEC-011) | the model's own knowledge |
@@ -154,7 +155,7 @@ The only bridge from model output to device action. Every call is validated befo
 field sets, length bounds, enum membership (by the owning domain's `validate`). Unknown tools return
 `UNKNOWN_TOOL` without executing. The dispatcher then runs the guard chain and routes the call to the
 `ToolServer` of the domain that declares it (navigation, apps, media, climate, vision, phone,
-live_info, speech); it contains no tool-name branch (`ArchitectureRulesTest.dispatcherDoesNotBranchOnToolNames`).
+live_info, speech, body, comfort); it contains no tool-name branch (`ArchitectureRulesTest.dispatcherDoesNotBranchOnToolNames`).
 A new car function is a new `ToolDomain` + `ToolServer` pair registered in `ToolRegistry.PRODUCT`.
 Failures carry `ToolFailureAdvice` so the model is told what to say without relying on the tool
 description surviving a conversation reset.

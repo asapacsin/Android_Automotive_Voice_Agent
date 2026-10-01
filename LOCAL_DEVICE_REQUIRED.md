@@ -15,7 +15,7 @@ Every case below **requires a physical Android device** (and usually a real cabi
 > - PLACE-SAVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - PLACE-NAV-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 
-**13 LOCAL_DEVICE_REQUIRED item(s).**
+**15 LOCAL_DEVICE_REQUIRED item(s).**
 
 Install tip (from a cloud-built APK, when one exists):
 
@@ -444,6 +444,70 @@ adb logcat -s NovaVoice:D
 **Tell me back:** commands acted within ~2.5 s, out of 10; seconds to first word for the 5 chat questions; any claim heard before its action
 
 **Still unknown until you do:** seconds heard in the cabin on the phone's network; whether gemini-3.8-live self-interrupts through the speaker (G-M2)
+
+### LOCAL_DEVICE_REQUIRED — STYLE-EAR-001 — 嗲一点 sounds sweeter yet appropriate, with the same voice
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Whether the tone is sweet but not inappropriate, and whether the voice is unchanged, is a listening judgement
+
+**Automation blocker:** `subjective_perception`
+
+**Already established without you:**
+
+- STYLE-UNIT-001: compose swaps the tone paragraph; style persisted and sticky (JVM)
+
+**You will need:** phone or emulator with this build; Gemini key
+
+**What to do:**
+
+1. say 说话能不能嗲一点, chat for three turns
+2. restart the app, chat again
+3. say 正常一点
+
+**It passes if:**
+
+- tone audibly sweeter, never sexualised
+- same voice throughout
+- still sweet after restart
+- normal after 正常一点
+
+**Tell me back:** yes/no per criterion, one sentence of impression
+
+**Still unknown until you do:** how the model renders the sweet tone in audio; whether it ever drifts into inappropriate wording
+
+### LOCAL_DEVICE_REQUIRED — GUIDANCE-DEVICE-001 — One voice on the short route; Amap audible only when the model cannot speak
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Needs a person driving or riding the route and listening to which voice speaks each prompt
+
+**Automation blocker:** `physical_world`
+
+**Already established without you:**
+
+- GUIDANCE-EMU-001 measurements
+- SPEC-018 step 1 JVM suites (GuidanceRelayTest, SpeechArbiterGuidanceTest, GeminiLiveClientTest)
+
+**You will need:** test phone with this build, toggle on; GUIDANCE-EMU-001 passed; route 横琴创业谷 → 励骏庞都
+
+**What to do:**
+
+1. drive the route
+2. note any prompt spoken twice, missed, or in Amap's voice
+3. cut mobile data for one prompt
+
+**It passes if:**
+
+- every prompt heard exactly once
+- Amap's voice only when data was cut or the model failed
+- no prompt reworded in direction or distance
+
+**Tell me back:** per prompt: voice heard, correct yes/no
+
+**Still unknown until you do:** real-network latency vs the deadline; Amap SDK behaviour with the inner voice off on a real device
+
+*Release-blocking.*
 
 ---
 

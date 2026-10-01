@@ -940,14 +940,14 @@ tests:
     type: unit
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: []
     procedure: ["gradlew :app:testDebugUnitTest --tests *MediaDomainPlayMusicTest* --tests *MediaServerPlayMusicTest* --tests *FalseCapabilityClaimTest* --tests *NowPlayingVerifierTest* --tests *MediaSearchSpecsTest*"]
     pass_criteria: ["playing+match, playing+mismatch, requested_unverified, NOT_PLAYING, NO_MUSIC_APP, MUSIC_HANDOFF_UNAVAILABLE each produce the specified result", "requested_unverified names no song", "a track already playing before the hand-off is not success", "a 正在放 claim with no tool call is not released"]
-    evidence: []
+    evidence: ["2026-10-01 cloud, integrated 436d197: MediaServerPlayMusicTest 12/0, MediaDomainPlayMusicTest 4/0, DriverTurnMusicTest 7/0, NowPlayingVerifierTest 7/0; full suite 3378 / 0 failures (planner read the JUnit XML); review PASS after REVISE x2"]
     related: [SPEC-017]
-    last_run: {at: null, result: null}
+    last_run: {at: 2026-10-01, result: PASS}
 
   - id: MUSIC-TEXT-LIVE-001
     capability: media
@@ -1032,13 +1032,13 @@ tests:
     type: unit
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: false
     prerequisites: []
     procedure: ["gradlew :app:testDebugUnitTest --tests *ComfortScenariosTest*"]
     pass_criteria: ["steps run in order through AndroidToolDispatcher's server path; a dependent step is skipped when its prerequisite fails; partial is ok=false status=partial with an announce naming done and not done; per-step referents recorded; drowsy never navigates; repeat guard applies to run_scenario, not its sub-steps; 有点闷 no longer an implicit fan request"]
-    evidence: []
-    last_run: {at: null, result: null}
+    evidence: ["2026-10-01 cloud, integrated 436d197: ComfortScenariosTest 15/0; full suite 3378 / 0 failures (planner read the JUnit XML); review PASS after REVISE"]
+    last_run: {at: 2026-10-01, result: PASS}
     related: [SPEC-015]
 
 # ---- turn taking, lifecycle, recovery --------------------------------------------------------
@@ -2741,3 +2741,102 @@ tests:
     evidence: ["2026-09-30 cloud, wt/W3b-style-tool 80b9072: SpeakingStyleToolTest 8/0, PersonaProfilesTest 6/0, SpeakingStyleTest 2/0; full suite 3131 / 0 failures (planner read the JUnit XML)"]
     related: [SPEC-015]
     last_run: {at: 2026-09-30, result: PASS}
+
+  - id: FUZZY-TEXT-LIVE-001
+    capability: comfort
+    name: The live model maps the fuzzy phrase table FZ-01…FZ-14 to the right calls
+    purpose: "SPEC-015 A8: 有蚊子/座位有点高/好困/嗲一点… reach run_scenario / control_seat / control_window / set_speaking_style, and 打开天窗 is refused"
+    type: text_live
+    scope: INTERMEDIATE_FLOW
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: true
+    covers: [comfort.scenario, body.window, body.seat_height, speech.speaking_style]
+    prerequisites: ["GEMINI_API_KEY in the environment (default provider, ADR-013)", "text turns through the app's own Gemini client"]
+    procedure: ["send each FZ phrase as a text turn in its stated context", "record the first tool call and arguments"]
+    pass_criteria: [">= 12/14 phrases produce the expected call (or the expected refusal/clarification)"]
+    evidence: []
+    related: [SPEC-015]
+    last_run: {at: null, result: null}
+
+  - id: FUZZY-DEVICE-001
+    capability: comfort
+    name: Fuzzy requests on the emulator - chip on screen, one call per scenario, honest partial report
+    purpose: "SPEC-015 A9: what the driver sees and how long a scenario takes"
+    type: device
+    scope: END_TO_END
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    terminal_success: [scenario_executed_once, chip_visible, reply_matches_result]
+    covers: [comfort.scenario, body.window, body.seat_height]
+    prerequisites: ["KVM-capable host with the emulator (owner's PC; the cloud container has no /dev/kvm)", "this build", "Gemini key"]
+    procedure: ["say/inject 有蚊子, 好了关上吧, 座位有点高, 再低一点, 好困", "screencap the chip after each", "measure speech-end to first audio"]
+    pass_criteria: ["one run_scenario call per scenario phrase", "chip lists the steps", "reply names only what the result shows"]
+    evidence: []
+    related: [SPEC-015]
+    last_run: {at: null, result: null}
+
+  - id: STYLE-EAR-001
+    capability: speech
+    name: 嗲一点 sounds sweeter yet appropriate, with the same voice
+    purpose: "SPEC-015 FZ-11/FZ-12: a subjective listening judgement only a person can make"
+    type: device
+    scope: END_TO_END
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: subjective_perception
+    release_blocking: false
+    terminal_success: [tone_sweeter_and_appropriate, voice_unchanged, style_persists_restart]
+    autonomous_evidence: ["STYLE-UNIT-001: compose swaps the tone paragraph; style persisted and sticky (JVM)"]
+    remaining_uncertainty: ["how the model renders the sweet tone in audio", "whether it ever drifts into inappropriate wording"]
+    covers: [speech.speaking_style]
+    human_reason: "Whether the tone is sweet but not inappropriate, and whether the voice is unchanged, is a listening judgement"
+    prerequisites: ["phone or emulator with this build", "Gemini key"]
+    procedure: ["say 说话能不能嗲一点, chat for three turns", "restart the app, chat again", "say 正常一点"]
+    pass_criteria: ["tone audibly sweeter, never sexualised", "same voice throughout", "still sweet after restart", "normal after 正常一点"]
+    returns: ["yes/no per criterion, one sentence of impression"]
+    evidence: []
+    related: [SPEC-015]
+    last_run: {at: null, result: null}
+
+  - id: GUIDANCE-EMU-001
+    capability: navigation
+    name: Step-0 measurements for assistant-spoken guidance on the short route
+    purpose: "SPEC-018 A0 (G-1 … G-1f): latency to played audio, playTTS with the inner voice off, listener behaviour, setTtsPlaying, clientContent interruption, transcription accuracy, onGetNavigationText types"
+    type: device
+    scope: END_TO_END
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: true
+    terminal_success: [g1_measured, playtts_fallback_answered, transcription_accuracy_measured]
+    covers: [navigation.guidance_voice]
+    prerequisites: ["KVM-capable host with an ARM-translation emulator image (the owner's PC)", "this build with the developer toggle 「助手播报导航」 on", "Gemini key", "route 横琴创业谷 → 励骏庞都 only (owner test-run policy)"]
+    procedure: ["simulated drive of the short route", "collect guidance_route / guidance_claim / guidance_fidelity / nav_guidance_fallback_tts lines", "repeat once with the network cut mid-route"]
+    pass_criteria: ["every G-1…G-1f question answered with numbers", "G-1b: if playTTS is silent with the inner voice off, stop and escalate (ADR-014 fallback cannot be met)"]
+    evidence: []
+    related: [SPEC-018, ADR-014]
+    last_run: {at: null, result: null}
+
+  - id: GUIDANCE-DEVICE-001
+    capability: navigation
+    name: One voice on the short route; Amap audible only when the model cannot speak
+    purpose: "SPEC-018 A8: what the driver hears in a real car"
+    type: device
+    scope: END_TO_END
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: physical_world
+    release_blocking: true
+    terminal_success: [each_prompt_heard_once, fallback_only_when_model_cannot, no_reworded_direction]
+    autonomous_evidence: ["GUIDANCE-EMU-001 measurements", "SPEC-018 step 1 JVM suites (GuidanceRelayTest, SpeechArbiterGuidanceTest, GeminiLiveClientTest)"]
+    remaining_uncertainty: ["real-network latency vs the deadline", "Amap SDK behaviour with the inner voice off on a real device"]
+    covers: [navigation.guidance_voice]
+    human_reason: "Needs a person driving or riding the route and listening to which voice speaks each prompt"
+    prerequisites: ["test phone with this build, toggle on", "GUIDANCE-EMU-001 passed", "route 横琴创业谷 → 励骏庞都"]
+    procedure: ["drive the route", "note any prompt spoken twice, missed, or in Amap's voice", "cut mobile data for one prompt"]
+    pass_criteria: ["every prompt heard exactly once", "Amap's voice only when data was cut or the model failed", "no prompt reworded in direction or distance"]
+    returns: ["per prompt: voice heard, correct yes/no"]
+    evidence: []
+    related: [SPEC-018, ADR-014]
+    last_run: {at: null, result: null}

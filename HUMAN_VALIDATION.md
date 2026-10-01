@@ -13,7 +13,7 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 > - PLACE-SAVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - PLACE-NAV-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 
-18 item(s) queued.
+21 item(s) queued.
 
 Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEVICE_REQUIRED.md).
 
@@ -440,6 +440,70 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **Still unknown until you do:** seconds heard in the cabin on the phone's network; whether gemini-3.8-live self-interrupts through the speaker (G-M2)
 
+### LOCAL_DEVICE_REQUIRED — STYLE-EAR-001 — 嗲一点 sounds sweeter yet appropriate, with the same voice
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Whether the tone is sweet but not inappropriate, and whether the voice is unchanged, is a listening judgement
+
+**Automation blocker:** `subjective_perception`
+
+**Already established without you:**
+
+- STYLE-UNIT-001: compose swaps the tone paragraph; style persisted and sticky (JVM)
+
+**You will need:** phone or emulator with this build; Gemini key
+
+**What to do:**
+
+1. say 说话能不能嗲一点, chat for three turns
+2. restart the app, chat again
+3. say 正常一点
+
+**It passes if:**
+
+- tone audibly sweeter, never sexualised
+- same voice throughout
+- still sweet after restart
+- normal after 正常一点
+
+**Tell me back:** yes/no per criterion, one sentence of impression
+
+**Still unknown until you do:** how the model renders the sweet tone in audio; whether it ever drifts into inappropriate wording
+
+### LOCAL_DEVICE_REQUIRED — GUIDANCE-DEVICE-001 — One voice on the short route; Amap audible only when the model cannot speak
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Needs a person driving or riding the route and listening to which voice speaks each prompt
+
+**Automation blocker:** `physical_world`
+
+**Already established without you:**
+
+- GUIDANCE-EMU-001 measurements
+- SPEC-018 step 1 JVM suites (GuidanceRelayTest, SpeechArbiterGuidanceTest, GeminiLiveClientTest)
+
+**You will need:** test phone with this build, toggle on; GUIDANCE-EMU-001 passed; route 横琴创业谷 → 励骏庞都
+
+**What to do:**
+
+1. drive the route
+2. note any prompt spoken twice, missed, or in Amap's voice
+3. cut mobile data for one prompt
+
+**It passes if:**
+
+- every prompt heard exactly once
+- Amap's voice only when data was cut or the model failed
+- no prompt reworded in direction or distance
+
+**Tell me back:** per prompt: voice heard, correct yes/no
+
+**Still unknown until you do:** real-network latency vs the deadline; Amap SDK behaviour with the inner voice off on a real device
+
+*Release-blocking.*
+
 ## B. Account and real-service tests
 
 ### CALL-REAL-001 — A confirmed call reaches a real handset
@@ -474,6 +538,39 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 **Tell me back:** did it ring the right person; did refusing dial anything; any system prompt that appeared
 
 **Still unknown until you do:** ACTION_CALL on a real SIM, including any system confirmation MIUI adds; whether the dialled number matches the resolved contact
+
+*Release-blocking.*
+
+### MUSIC-APP-DEVICE-001 — 网易云 / QQ音乐 play a described song or fail honestly
+
+**Why this needs you.** Needs the owner's logged-in 网易云音乐 or QQ音乐 account (credential) and their consent for notification access on their phone
+
+**Automation blocker:** `credential_permission`
+
+**Already established without you:**
+
+- MUSIC-UNIT-001 (JVM)
+- MUSIC-TEXT-LIVE-001 for the model's field mapping
+
+**You will need:** test phone with this build; 网易云音乐 or QQ音乐 installed and logged in; notification access (通知使用权) granted to 小诺; VPN split tunnel: the music app excluded so its catalogue region is China
+
+**What to do:**
+
+1. say 「放梶浦由记的、空之境界里很燃的那首 OP」
+2. say 「不是这首」 once
+3. ask for one VIP-only song
+4. note what plays and what 小诺 says each time
+
+**It passes if:**
+
+- the described song or an honest mismatch question plays and is named only from now_playing
+- 「不是这首」 excludes the previous title
+- a VIP-only song gives NOT_PLAYING and 小诺 says it did not play
+- the map returns to the foreground
+
+**Tell me back:** per request: what played, what was said, status/error code; whether the split tunnel was needed
+
+**Still unknown until you do:** how each app interprets MEDIA_PLAY_FROM_SEARCH extras; whether VIP-only tracks start a preview that looks like playing
 
 *Release-blocking.*
 

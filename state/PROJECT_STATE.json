@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-30T07:49:39",
+  "generated_at": "2026-10-01T02:08:09",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "d209e71",
+    "commit": "436d197",
     "branch": "claude/fuzzy-logic-9-30",
-    "subject": "Merge W3a2: window/seat follow-ups resolve from DriverContext; ambiguous body adjustments held by the guard (SPEC-015 B7, FZ-05/FZ-14)",
+    "subject": "Merge W4a: comfort scenarios (run_scenario: mosquito, mosquito_done, stuffy, drowsy) through the same server path as direct calls (SPEC-015)",
     "working_tree_clean": false,
-    "uncommitted_files": 5
+    "uncommitted_files": 3
   },
   "tests": {
     "available": true,
@@ -72,8 +72,8 @@
     "available": true,
     "by_level": {
       "device": 36,
-      "unsupported": 6,
-      "unit": 7,
+      "unit": 9,
+      "unsupported": 5,
       "human": 1,
       "implemented": 2
     },
@@ -147,10 +147,10 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "A0: | A0 | G-1 … G-1f measured on the short route | measurement (emulator) | `GUIDANCE-EMU-001` | not earned |",
-    "actionable_count": 109,
+    "actionable_count": 108,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
-    "QUEUED_FOR_HUMAN": 18,
+    "QUEUED_FOR_HUMAN": 21,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
       {
@@ -164,13 +164,6 @@
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-015-fuzzy-driving-requests.md",
-        "item": "A1",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-017-music-from-description.md",
         "item": "A1",
         "blocked_by": null
       },
@@ -198,13 +191,6 @@
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-017-music-from-description.md",
-        "item": "A2",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-018-guidance-in-assistant-voice.md",
         "item": "A2",
         "blocked_by": null
@@ -219,13 +205,6 @@
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-017-music-from-description.md",
-        "item": "A3",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-018-guidance-in-assistant-voice.md",
         "item": "A3",
         "blocked_by": null
@@ -234,13 +213,6 @@
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-015-fuzzy-driving-requests.md",
-        "item": "A4",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-017-music-from-description.md",
         "item": "A4",
         "blocked_by": null
       },
@@ -352,13 +324,6 @@
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-017-music-from-description.md",
-        "item": "A8",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-018-guidance-in-assistant-voice.md",
         "item": "A8",
         "blocked_by": null
@@ -375,20 +340,6 @@
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-018-guidance-in-assistant-voice.md",
         "item": "A9",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-015-fuzzy-driving-requests.md",
-        "item": "Comfort domain (scenarios)",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-017-music-from-description.md",
-        "item": "Hand-off + readback",
         "blocked_by": null
       },
       {
@@ -396,6 +347,13 @@
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-015-fuzzy-driving-requests.md",
         "item": "Model mapping FZ-01…14 (A8), device (A9)",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-017-music-from-description.md",
+        "item": "On-screen one-time listener hint with the settings path",
         "blocked_by": null
       },
       {
@@ -409,7 +367,7 @@
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-017-music-from-description.md",
-        "item": "Tool + capability",
+        "item": "`MusicSource` port / `BundledTrackSource` split",
         "blocked_by": null
       },
       {
@@ -514,6 +472,20 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "FUZZY-DEVICE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "FUZZY-TEXT-LIVE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "GATE-D10-DEVICE-001",
         "blocked_by": null
       },
@@ -522,6 +494,13 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "GEMINI-DEVICE-DUPLEX-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "GUIDANCE-EMU-001",
         "blocked_by": null
       },
       {
@@ -571,6 +550,20 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "MUSIC-PLAY-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "MUSIC-TEXT-LIVE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "MUSIC-VLC-EMU-001",
         "blocked_by": null
       },
       {
