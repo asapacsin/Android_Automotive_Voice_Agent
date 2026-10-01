@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-01T02:08:09",
+  "generated_at": "2026-10-01T02:38:06",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "436d197",
+    "commit": "967a3da",
     "branch": "claude/fuzzy-logic-9-30",
-    "subject": "Merge W4a: comfort scenarios (run_scenario: mosquito, mosquito_done, stuffy, drowsy) through the same server path as direct calls (SPEC-015)",
-    "working_tree_clean": false,
-    "uncommitted_files": 3
+    "subject": "TECH_DEBT: PhantomTurnSuppressionTest load flake; plan: registry-protection check needs the device batch",
+    "working_tree_clean": true,
+    "uncommitted_files": 0
   },
   "tests": {
     "available": true,
@@ -146,13 +146,27 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "A0: | A0 | G-1 … G-1f measured on the short route | measurement (emulator) | `GUIDANCE-EMU-001` | not earned |",
+    "NEXT_ACTION": "FUZZY-TEXT-LIVE-001: STALE_BIND: The live model maps the fuzzy phrase table FZ-01…FZ-14 to the right calls",
     "actionable_count": 108,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 21,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "FUZZY-TEXT-LIVE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "MUSIC-TEXT-LIVE-001",
+        "blocked_by": null
+      },
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
@@ -479,13 +493,6 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
-        "item": "FUZZY-TEXT-LIVE-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 6,
-        "class": "behaviour without regression protection",
-        "source": "TEST_MATRIX.yaml",
         "item": "GATE-D10-DEVICE-001",
         "blocked_by": null
       },
@@ -550,13 +557,6 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "MUSIC-PLAY-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 6,
-        "class": "behaviour without regression protection",
-        "source": "TEST_MATRIX.yaml",
-        "item": "MUSIC-TEXT-LIVE-001",
         "blocked_by": null
       },
       {
