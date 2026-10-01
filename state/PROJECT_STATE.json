@@ -1,21 +1,21 @@
 {
-  "generated_at": "2026-10-01T15:25:40",
+  "generated_at": "2026-10-01T16:25:05",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "fb15da8",
+    "commit": "34f7492",
     "branch": "claude/10-1",
-    "subject": "fix(P44): the CONFIG card leaves once the setting is fixed",
+    "subject": "feat(B-033): transient error cards fade after 12 s; CONFIG cards stay until fixed",
     "working_tree_clean": false,
-    "uncommitted_files": 4
+    "uncommitted_files": 1
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-10-01T15:24:08",
+    "collected_at": "2026-10-01T16:24:43",
     "total": {
-      "tests": 1853,
+      "tests": 311,
       "failures": 0,
       "errors": 0,
-      "skipped": 2
+      "skipped": 0
     },
     "by_module": {
       "evaluation": {
@@ -25,10 +25,10 @@
         "skipped": 0
       },
       "app": {
-        "tests": 1552,
+        "tests": 10,
         "failures": 0,
         "errors": 0,
-        "skipped": 2
+        "skipped": 0
       },
       "simulator": {
         "tests": 25,
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 224131337,
-    "built_at": "2026-10-01T15:22:55"
+    "bytes": 224132993,
+    "built_at": "2026-10-01T16:18:58"
   },
   "capabilities": {
     "available": true,

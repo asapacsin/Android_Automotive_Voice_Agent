@@ -188,7 +188,7 @@ Updated 2026-09-21 · 134 tests
 | LATENCY-001 | performance | Response latency from end of speech | AUTONOMOUS | PASS | no | 2026-09-20, 21 turns: min 328, median 734, p90 1007, max 1062 ms |
 | RESOURCE-IDLE-001 | performance | CPU and memory while idle and listening | AUTONOMOUS | PASS | no | 2026-09-20 on 2391ff70: ~62% CPU, 565 MB resident with the wake word ON |
 | CONFIG-CARD-EMU-001 | permissions | The CONFIG card leaves the map once the missing setting is saved | AUTONOMOUS | NOT_RUN | no | — |
-| CONFIG-CARD-UNIT-001 | permissions | A fixed configuration problem removes its CONFIG card and nothing else | AUTONOMOUS | PASS | no | 2026-10-01 cloud, claude/10-1: ShownErrorCardTest 6/0; full suite 3400 / 0 failures, 4 … |
+| CONFIG-CARD-UNIT-001 | permissions | A fixed configuration problem removes its CONFIG card and nothing else | AUTONOMOUS | PASS | no | 2026-10-02 cloud, claude/10-1: ShownErrorCardTest 10/0 with the B-033 fade; full suite … |
 | PERM-CAMERA-001 | permissions | A camera question without permission fails honestly | AUTONOMOUS | PASS | yes | CameraQuestionHandlerTest.missingCameraPermissionFailsFastWithoutCaptureOrRequest |
 | PERM-CONTACTS-001 | permissions | Missing contacts permission is not reported as not-found | AUTONOMOUS | PASS | yes | 2026-09-20 TEST_REVIEW: AndroidContacts mapped READ_CONTACTS denial onto ContactMatchKi… |
 | PERM-DENY-001 | permissions | A revoked microphone permission fails honestly | AUTONOMOUS | NOT_RUN | yes | STALE_BIND apk_digest mismatch |
