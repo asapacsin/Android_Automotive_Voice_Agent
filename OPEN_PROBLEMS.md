@@ -1588,3 +1588,28 @@ UI state.
 
 `VoiceSessionController`: entering SLEEP or DEEP_IDLE reports the driver as not speaking. Test:
 `SpeechArbiterUtteranceProtectTest.anUtteranceEndedBySleepDoesNotProtectTheNextPrompt`.
+
+## P44 — The CONFIG card stays on the map after the setting it asks for is fixed
+
+**Status:** OPEN 2026-10-01 — seen on the emulator (nova_api34), branch `claude/10-1`
+**Reported:** owner test run. The provider was Gemini. The card first said 「请在开发者设置里填写 Gemini 密钥」.
+After the key was saved it said 「请先在开发者设置里同意语音数据跨境传输提示」 (logged `config_banner
+reason=GEMINI_CONSENT_MISSING` 15:09:50). After consent was saved, `configProblem()` returned null:
+no further `config_banner` line, and a start at 15:11:56 logged `gemini_setup_complete` and
+`state=LISTENING`. The CONFIG card still showed the old consent message, beside `休眠中`. The owner
+read it as a failure.
+
+### Root cause (from the code, not yet confirmed on device)
+
+`MainActivity.showConfigBannerIfNeeded()` (on resume) calls `showError("CONFIG", …)` only when
+`configProblem()` returns a code. When it returns null, the function returns early and nothing
+clears a CONFIG error that is already on screen.
+
+### Fix (proposed)
+
+On resume, when `configProblem()` is null, clear the error only if it is a CONFIG error, so an
+unrelated error is not hidden. Also clear it when a session starts. Test: a resume with a valid
+config removes the CONFIG card. Device check: save the missing setting, come back to the map, and
+see no card.
+
+Numbered P44 because P42 and P43 are taken on `claude/9-30`, which is not merged into this branch.
