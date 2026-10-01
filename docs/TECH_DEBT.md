@@ -265,9 +265,17 @@ happen remain, as short bounded waits taken only after the preceding positive ev
 consecutively with 4 × `yes > /dev/null` saturating the 4-core container — 10/10 green, 19 tests,
 0 failures each (JUnit XML); full `./gradlew test` green afterwards.
 
-## D-FLAKE-PHANTOM — PhantomTurnSuppressionTest (release variant) fails under full-suite load (recorded 2026-10-01)
+## D-FLAKE-PHANTOM — PhantomTurnSuppressionTest (release variant) fails under full-suite load (recorded 2026-10-01) — RESOLVED 2026-10-01
 
 `theSpokenResultOfAnActionIsNotJudgedOnItsOwn` failed twice in full `./gradlew test` runs on the
 T-textlive worktree (30a096b + a skipped test class) and passed 3/3 alone. Same pattern as
 D-FLAKE-BAIDU (resolved): likely fixed waits. Fix the same way (awaited conditions) and prove with a
 10× run under CPU load. Until then, rerun once in isolation; a failure alone is real.
+
+**Resolved 2026-10-01 (T-flake2).** Cause: every scenario waited a fixed `delay(500)` (the
+action test after awaiting only the *server's* send of response 2), so under load the
+confirmation's events had not yet reached the collector. Replaced with an awaited condition
+(`awaitUntil`, coroutine-polling, 15 s cap): the action test waits for both `ResponseDone` events,
+the other scenarios for their one `ResponseDone`. Assertions unchanged; no production change.
+Evidence: release class 10/10 green (10 tests each, 0 failures, JUnit XML) with 4× `yes` CPU load;
+full `./gradlew test` green, 3380 tests, 0 failures, 0 errors, 4 skipped (JUnit XML).
