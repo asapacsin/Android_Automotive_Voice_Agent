@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-10-01T02:38:06",
+  "generated_at": "2026-10-01T02:59:03",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "967a3da",
+    "commit": "6fd3f29",
     "branch": "claude/fuzzy-logic-9-30",
-    "subject": "TECH_DEBT: PhantomTurnSuppressionTest load flake; plan: registry-protection check needs the device batch",
+    "subject": "Merge T-flake2: PhantomTurnSuppressionTest awaits events (D-FLAKE-PHANTOM resolved)",
     "working_tree_clean": true,
     "uncommitted_files": 0
   },
