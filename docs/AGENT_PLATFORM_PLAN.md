@@ -62,3 +62,12 @@ device re-run, which no cloud task can earn. Fix **after the last code wave** (b
 again otherwise): `test_matrix.py --apply-stale` to requeue, re-run and `--bind` the component
 rows in the cloud, and queue the device rows for the human batch. Never mark a row PASS to satisfy
 the audit.
+
+## Registry-protection check, re-diagnosed 2026-10-01 (T-audit, BLOCKED honestly)
+
+`--apply-stale` finds 0 stale rows: the 30 failing capabilities are all `verified: device`, and
+`protection_audit()` accepts only a bind-current **PASS** for those (a queued row counts only for
+`verified: human`). Their protecting rows (APPS-001, CLIMATE-*, NAV-UI-*, ECHO-001, SLEEP-001, …) all
+need the phone or emulator. Nothing cloud-side can earn them without relabelling a unit test as
+runtime protection, which the audit forbids. Decision (planner): leave the check red until the device
+batch runs; do not change the script or the `verified` levels.

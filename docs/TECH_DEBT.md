@@ -264,3 +264,10 @@ happen remain, as short bounded waits taken only after the preceding positive ev
 `CopyOnWriteArrayList` so polling cannot race the socket thread. Evidence: the class run 10×
 consecutively with 4 × `yes > /dev/null` saturating the 4-core container — 10/10 green, 19 tests,
 0 failures each (JUnit XML); full `./gradlew test` green afterwards.
+
+## D-FLAKE-PHANTOM — PhantomTurnSuppressionTest (release variant) fails under full-suite load (recorded 2026-10-01)
+
+`theSpokenResultOfAnActionIsNotJudgedOnItsOwn` failed twice in full `./gradlew test` runs on the
+T-textlive worktree (30a096b + a skipped test class) and passed 3/3 alone. Same pattern as
+D-FLAKE-BAIDU (resolved): likely fixed waits. Fix the same way (awaited conditions) and prove with a
+10× run under CPU load. Until then, rerun once in isolation; a failure alone is real.
