@@ -1025,6 +1025,22 @@ tests:
     last_run: {at: 2026-09-30, result: PASS}
     related: [SPEC-015]
 
+  - id: SCENARIO-UNIT-001
+    capability: comfort
+    name: Comfort scenarios run their fixed steps through the direct-call servers and report partial failure honestly
+    purpose: "SPEC-015 FZ-09/FZ-10, B7/B8 - 有蚊子 / 蚊子出去了 / 有点闷 / 好困 run fixed steps; a failed step is named, never 「都弄好了」"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    prerequisites: []
+    procedure: ["gradlew :app:testDebugUnitTest --tests *ComfortScenariosTest*"]
+    pass_criteria: ["steps run in order through AndroidToolDispatcher's server path; a dependent step is skipped when its prerequisite fails; partial is ok=false status=partial with an announce naming done and not done; per-step referents recorded; drowsy never navigates; repeat guard applies to run_scenario, not its sub-steps; 有点闷 no longer an implicit fan request"]
+    evidence: []
+    last_run: {at: null, result: null}
+    related: [SPEC-015]
+
 # ---- turn taking, lifecycle, recovery --------------------------------------------------------
 
   - id: BARGEIN-001

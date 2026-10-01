@@ -79,6 +79,15 @@ class UtteranceIntentResolver(
                 "窗户" to CapabilityIds.BODY_WINDOW,
                 "开窗" to CapabilityIds.BODY_WINDOW,
                 "关窗" to CapabilityIds.BODY_WINDOW,
+                // SPEC-015 FZ-01/02/09/10: comfort scenarios. Not bare 困 (「困难」「被困」).
+                "蚊子" to CapabilityIds.COMFORT_SCENARIO,
+                "虫子" to CapabilityIds.COMFORT_SCENARIO,
+                "闷" to CapabilityIds.COMFORT_SCENARIO,
+                "空气不好" to CapabilityIds.COMFORT_SCENARIO,
+                "异味" to CapabilityIds.COMFORT_SCENARIO,
+                "好困" to CapabilityIds.COMFORT_SCENARIO,
+                "犯困" to CapabilityIds.COMFORT_SCENARIO,
+                "有点困" to CapabilityIds.COMFORT_SCENARIO,
                 "座椅" to CapabilityIds.BODY_SEAT_HEIGHT,
                 "座位" to CapabilityIds.BODY_SEAT_HEIGHT,
                 "天窗" to CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS,
@@ -90,4 +99,4 @@ class UtteranceIntentResolver(
         )
     }
 }
-
+

@@ -43,6 +43,8 @@ class ToolCoverageTest {
         "control_seat" to """{"action":"adjust_height","value":-1}""",
         // SPEC-017: with no music tool wired it answers MUSIC_HANDOFF_UNAVAILABLE - a dispatch.
         "play_music" to """{"title":"晴天","artist":"周杰伦"}""",
+        // SPEC-015 FZ-09: with no cabin port its steps answer VEHICLE_UNAVAILABLE - still a dispatch.
+        "run_scenario" to """{"name":"mosquito"}""",
     )
 
     private fun declaredTools(): List<String> {

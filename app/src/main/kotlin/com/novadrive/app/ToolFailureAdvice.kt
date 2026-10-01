@@ -30,6 +30,9 @@ object ToolFailureAdvice {
         "AMBIGUOUS_REFERENT" to
             "用户这句话没有说明要调的是温度还是风量，之前的记录也无法确定，所以没有执行。" +
             "请只用一句话反问用户是温度还是风量，不要再调用任何工具，也不要说已经调好了。",
+        com.novadrive.app.tools.ComfortServer.NO_RECENT_MOSQUITO to
+            "最近没有因为蚊子开过车窗，所以没有执行这个场景，车窗没有动。" +
+                "如果用户是想关窗，请用 control_window action=close 正常关窗；不要说已经关好了。",
         "DUPLICATE_IN_TURN" to
             "这个操作在本轮已经执行过一次，没有重复执行。请根据上一次的结果回答，不要说又调了一次。",
         PhoneCallTool.NO_TELEPHONY to

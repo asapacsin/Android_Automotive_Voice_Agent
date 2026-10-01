@@ -12,6 +12,7 @@ import com.novadrive.app.nav.NavigationHostGateway
 import com.novadrive.app.tools.AppsServer
 import com.novadrive.app.tools.BodyServer
 import com.novadrive.app.tools.ClimateServer
+import com.novadrive.app.tools.ComfortServer
 import com.novadrive.app.tools.LiveInfoServer
 import com.novadrive.app.tools.MediaServer
 import com.novadrive.app.tools.NavigationServer
@@ -136,6 +137,12 @@ class AndroidToolDispatcher(
             MediaServer(executor, music),
             ClimateServer(climate),
             BodyServer(cabin),
+            // Scenario steps take the same server path as a direct call. Not the repeat or referent guards
+            // (fixed steps are neither driver repeats nor referents), but a named song still is not ours.
+            ComfortServer(
+                route = { step -> ToolCallGuards.unsupportedMedia(step, driverContext())?.let { failed(step, it) } ?: dispatchUnrecorded(step) },
+                cabinState = { cabin?.cabinState?.value },
+            ),
             VisionServer(camera),
             PhoneServer(phone),
             LiveInfoServer(liveInfo),

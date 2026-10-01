@@ -56,7 +56,7 @@ object ContextResolver {
     private val HOT = listOf("热")
     private val COLD = listOf("冷")
     private val FAN_TOO_MUCH = listOf("风太大", "风太吵", "风大了", "风太强")
-    private val FAN_TOO_LITTLE = listOf("风太小", "不够风", "风小了", "闷")
+    private val FAN_TOO_LITTLE = listOf("风太小", "不够风", "风小了")
 
     private val COOLER = listOf("凉", "冷一点", "低")
     private val WARMER = listOf("暖", "热一点", "高")

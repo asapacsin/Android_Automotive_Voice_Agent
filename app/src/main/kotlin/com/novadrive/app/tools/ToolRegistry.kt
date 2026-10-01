@@ -46,6 +46,7 @@ class ToolRegistry(domains: List<ToolDomain>) {
                     MediaDomain,
                     ClimateDomain,
                     BodyDomain,
+                    ComfortDomain,
                     VisionDomain,
                     PhoneDomain,
                     LiveInfoDomain,

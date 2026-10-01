@@ -64,7 +64,7 @@ class BaiduFlexClientTest {
         assertEquals("Bearer placeholder-flex-key", request.getHeader("Authorization"))
         assertEquals(BaiduFlexProtocol.MODEL, request.requestUrl?.queryParameter("model"))
         assertEquals("session.update", JSONObject(received[0]).getString("type"))
-        assertEquals(16, JSONObject(received[0]).getJSONObject("session").getJSONArray("tools").length())
+        assertEquals(17, JSONObject(received[0]).getJSONObject("session").getJSONArray("tools").length())
         val output = received.map(::JSONObject).single { it.getString("type") == "conversation.item.create" }
         assertEquals("call_9", output.getJSONObject("item").getString("call_id"))
         assertTrue(received.map(::JSONObject).any { it.getString("type") == "response.create" })
