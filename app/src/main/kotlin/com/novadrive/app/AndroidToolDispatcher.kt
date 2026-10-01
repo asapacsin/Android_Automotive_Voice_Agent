@@ -211,7 +211,7 @@ class AndroidToolDispatcher(
         val code = ToolCallGuards.unsupportedMedia(call, context)
             ?: ToolCallGuards.ambiguousReferent(call, context)
             ?: ToolCallGuards.repeatedInTurn(call, context)
-        return code?.let { failed(call, it) }
+        return code?.let { failed(call, it, ToolCallGuards.refusalDetails(it, context)) }
     }
 
     private fun failed(

@@ -29,11 +29,11 @@ class DriverContext(private val clock: () -> Long = { System.currentTimeMillis()
      * A thing that can be adjusted relatively: the dimensions `control_climate` exposes, plus the
      * window opening and seat height of `control_window` / `control_seat` (SPEC-015 B7).
      */
-    enum class Dimension(val wire: String) {
-        TEMPERATURE("temperature"),
-        FAN("fan"),
-        WINDOW("window"),
-        SEAT_HEIGHT("seat_height"),
+    enum class Dimension(val wire: String, val spoken: String) {
+        TEMPERATURE("temperature", "温度"),
+        FAN("fan", "风量"),
+        WINDOW("window", "车窗"),
+        SEAT_HEIGHT("seat_height", "座椅高度"),
         ;
 
         val isClimate: Boolean get() = this == TEMPERATURE || this == FAN
@@ -233,6 +233,9 @@ class DriverContext(private val clock: () -> Long = { System.currentTimeMillis()
     fun pendingClarification(currentEpoch: Long): Clarification? = synchronized(lock) {
         clarification?.takeIf { currentEpoch - it.askedAtEpoch == 1L }
     }
+
+    /** The question most recently recorded, whatever turn it was asked in; for the refusal's wording. */
+    fun lastClarification(): Clarification? = synchronized(lock) { clarification }
 
     /** Called once the driver's answer has been used, or once it is clear they moved on. */
     fun clearClarification() = synchronized(lock) { clarification = null }

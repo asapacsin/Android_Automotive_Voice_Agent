@@ -292,9 +292,11 @@ class ActionClaimGuardTest {
         val correction = guard.onResponseDone(message, "好的，已经帮你调低了。")
         assertNotNull(correction)
         assertTrue(
-            correction!!.contains("温度还是风量"),
+            correction!!.contains("哪一项") && !correction.contains("没有听清"),
             "the driver must be asked which control, not told they were not heard: $correction",
         )
+        // SPEC-015: seat and window are adjustable too, so the question may not be climate-only.
+        assertTrue(correction.contains("座椅") && correction.contains("车窗"), correction)
     }
 
     @Test

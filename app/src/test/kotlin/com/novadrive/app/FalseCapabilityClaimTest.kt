@@ -254,6 +254,9 @@ class FalseCapabilityClaimTest {
         )
         // And the question is recorded, so the driver's one-word answer resolves next turn.
         assertEquals(2, context.pendingClarification(3)?.options?.size)
+        // The refusal names both choices, so the model's question matches the record.
+        val options = output.getString("options")
+        assertTrue("温度" in options && "风量" in options, options)
     }
 
     @Test

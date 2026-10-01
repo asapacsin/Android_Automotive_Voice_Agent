@@ -119,6 +119,18 @@ object ToolCallGuards {
     }
 
     /**
+     * What the refusal must name so the model asks the right question: 「再低一点」 after the seat
+     * and the temperature both changed is 「是座椅还是温度？」, not a climate-only question
+     * (SPEC-015 FZ-14). Empty for every other code.
+     */
+    fun refusalDetails(code: String, context: DriverContext?): Map<String, Any> {
+        if (code != AMBIGUOUS_REFERENT) return emptyMap()
+        val options = context?.lastClarification()?.options.orEmpty()
+        if (options.isEmpty()) return emptyMap()
+        return mapOf("options" to options.joinToString("还是") { it.spoken })
+    }
+
+    /**
      * A temperature or fan change that succeeded while the climate is **off**.
      *
      * The backend stores a new target happily with the system off, so the result is `ok=true` and

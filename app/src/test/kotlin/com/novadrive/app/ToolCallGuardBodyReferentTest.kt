@@ -6,6 +6,7 @@ import com.novadrive.ingress.realtime.DomainVoiceEvent
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /** SPEC-015 B7: an ambiguous relative seat/window call is held exactly like climate. */
@@ -22,6 +23,9 @@ class ToolCallGuardBodyReferentTest {
         context.onDriverUtterance("再低一点。", 2)
         assertEquals(ToolCallGuards.AMBIGUOUS_REFERENT, ToolCallGuards.ambiguousReferent(seatAdjust, context))
         assertNotNull(context.pendingClarification(3))
+        // The refusal names the real choices, so the model asks 「是座椅还是温度？」, not 温度还是风量.
+        val options = ToolCallGuards.refusalDetails(ToolCallGuards.AMBIGUOUS_REFERENT, context)["options"] as String
+        assertTrue("座椅" in options && "温度" in options && "风量" !in options, options)
         val window = DomainVoiceEvent.ToolCall("c2", "control_window", mapOf("action" to "adjust", "value" to "-20"))
         assertEquals(ToolCallGuards.AMBIGUOUS_REFERENT, ToolCallGuards.ambiguousReferent(window, context))
     }
@@ -40,5 +44,12 @@ class ToolCallGuardBodyReferentTest {
         context.onDriverUtterance("再低一点。", 2)
         val set = DomainVoiceEvent.ToolCall("c3", "control_seat", mapOf("action" to "set_height", "value" to "3"))
         assertNull(ToolCallGuards.ambiguousReferent(set, context))
+    }
+
+    @Test
+    fun `only the ambiguity refusal carries options`() {
+        val context = DriverContext()
+        assertTrue(ToolCallGuards.refusalDetails(ToolCallGuards.AMBIGUOUS_REFERENT, context).isEmpty())
+        assertTrue(ToolCallGuards.refusalDetails("DUPLICATE_IN_TURN", context).isEmpty())
     }
 }

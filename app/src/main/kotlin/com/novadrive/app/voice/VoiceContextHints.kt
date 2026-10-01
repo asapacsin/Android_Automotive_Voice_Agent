@@ -130,12 +130,7 @@ object VoiceContextHints {
         "你刚才已经问过用户是" + options.joinToString("还是") { readable(it) } +
             "；如果用户这句话回答的是其中一项，就按上一次的方向调节那一项，不要再问一遍。"
 
-    private fun readable(dimension: DriverContext.Dimension): String = when (dimension) {
-        DriverContext.Dimension.FAN -> "风量"
-        DriverContext.Dimension.TEMPERATURE -> "温度"
-        DriverContext.Dimension.WINDOW -> "车窗"
-        DriverContext.Dimension.SEAT_HEIGHT -> "座椅高度"
-    }
+    private fun readable(dimension: DriverContext.Dimension): String = dimension.spoken
 
     /** Live state, read when a session (or a reset conversation) is configured. */
     fun current(): String? =

@@ -28,8 +28,8 @@ object ToolFailureAdvice {
         "PREFERENCE_NOT_FOR_ROUTES" to "这个偏好只能用于地点，不能用于路线。请用户说第几条。",
         "NO_OPTIONS" to "现在没有可选的内容。请如实说明。",
         "AMBIGUOUS_REFERENT" to
-            "用户这句话没有说明要调的是温度还是风量，之前的记录也无法确定，所以没有执行。" +
-            "请只用一句话反问用户是温度还是风量，不要再调用任何工具，也不要说已经调好了。",
+            "用户这句话没有说明要调的是哪一项（options 里是可能的几项），之前的记录也无法确定，所以没有执行。" +
+            "请只用一句话反问用户是 options 里的哪一项（例如「是座椅还是温度？」），不要再调用任何工具，也不要说已经调好了。",
         com.novadrive.app.tools.ComfortServer.NO_RECENT_MOSQUITO to
             "最近没有因为蚊子开过车窗，所以没有执行这个场景，车窗没有动。" +
                 "如果用户是想关窗，请用 control_window action=close 正常关窗；不要说已经关好了。",
