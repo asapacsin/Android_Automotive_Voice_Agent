@@ -13,7 +13,7 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 > - PLACE-SAVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - PLACE-NAV-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 
-21 item(s) queued.
+22 item(s) queued.
 
 Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEVICE_REQUIRED.md).
 
@@ -505,6 +505,37 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 **Still unknown until you do:** real-network latency vs the deadline; Amap SDK behaviour with the inner voice off on a real device
 
 *Release-blocking.*
+
+### LOCAL_DEVICE_REQUIRED — VOICE-EAR-001 — The owner picks the 符玄-like Gemini voice by ear
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Young / clear / not old is a listening judgement
+
+**Automation blocker:** `subjective_perception`
+
+**Already established without you:**
+
+- VOICE-AB-001: measured pitch shortlist; default now Leda
+- GeminiSettingsTest: a stored prefilled Kore switches once to the new default; a deliberate choice is kept
+
+**You will need:** PC with GEMINI_API_KEY and python3 + aiohttp; emulator or phone with this build
+
+**What to do:**
+
+1. $env:OUT='D:\桌面\android_doc\voice_ab'; python tools/gemini-live-probe/voice_ab.py
+2. listen to the WAVs (Leda and Erinome first, Kore for comparison)
+3. in the app: chat once with the new default, then say 傲娇一点
+4. to try another voice: 开发者设置 → Voice field
+
+**It passes if:**
+
+- the owner names one voice
+- the default is changed to it if it is not Leda
+
+**Tell me back:** the chosen voice name, one sentence of impression
+
+**Still unknown until you do:** which voice the owner hears as 符玄-like; how the pick sounds with 傲娇 (B-029)
 
 ## B. Account and real-service tests
 

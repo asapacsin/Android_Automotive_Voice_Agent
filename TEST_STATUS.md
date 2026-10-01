@@ -2,16 +2,16 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-21 · 134 tests
+Updated 2026-09-21 · 136 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 54 |
+| autonomous PASS | 55 |
 | autonomous FAIL | 0 |
 | incomplete | 0 |
 | partial pass | 0 |
 | not run | 59 |
-| human required | 21 |
+| human required | 22 |
 | human pass | 0 |
 | human fail | 0 |
 | blocked external | 0 |
@@ -108,7 +108,7 @@ Updated 2026-09-21 · 134 tests
 | reliability | 8 | 4 | 1 | 3 |
 | saved_places | 3 | 0 | 0 | 3 |
 | security | 3 | 3 | 0 | 0 |
-| speech | 3 | 1 | 2 | 0 |
+| speech | 5 | 2 | 3 | 0 |
 | truthfulness | 9 | 4 | 0 | 5 |
 | turn_taking | 19 | 7 | 3 | 9 |
 | unsupported | 1 | 0 | 0 | 1 |
@@ -216,6 +216,8 @@ Updated 2026-09-21 · 134 tests
 | SECRET-SCAN-001 | security | No secret is tracked by git | AUTONOMOUS | PASS | yes | part of the 737 |
 | STYLE-EAR-001 | speech | 嗲 / 傲娇 / 温柔 / 元气 each sound right and appropriate, with the same voice | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | STYLE-UNIT-001: compose swaps the tone paragraph; style persisted and sticky (JVM) |
 | STYLE-UNIT-001 | speech | set_speaking_style changes the tone, persists it and composes it | AUTONOMOUS | PASS | no | 2026-09-30 cloud, wt/W3b-style-tool 80b9072: SpeakingStyleToolTest 8/0, PersonaProfiles… |
+| VOICE-AB-001 | speech | Gemini prebuilt voices measured for a young, clear voice (B-034 shortlist) | AUTONOMOUS | PASS | no | 2026-10-02 cloud, 3 runs, median F0 Hz: Erinome 235-250, Leda 222-235, Autonoe 211, Aoe… |
+| VOICE-EAR-001 | speech | The owner picks the 符玄-like Gemini voice by ear | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | VOICE-AB-001: measured pitch shortlist; default now Leda |
 | VOICE-STYLE-001 | speech | Prefer a younger cute female voice (符玄-like) | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | Owner chose option B id 4196 on 2026-09-21 |
 | DUP-EXEC-001 | truthfulness | The same adjustment does not run twice in one turn | AUTONOMOUS | PASS | yes | 2026-09-20: FalseCapabilityClaimTest asserts a repeated adjust_temperature in one turn … |
 | FAILED-ACTION-REPORTED-001 | truthfulness | A failed action is reported after its false success claim is dropped | AUTONOMOUS | PASS | yes | 2026-09-24: 20/20 each; failed every run before the fix (also on 0ea4885) |
