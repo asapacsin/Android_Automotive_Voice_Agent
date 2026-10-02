@@ -1621,3 +1621,46 @@ or a session error written into the bubble forgets it. `MainActivity` clears `CO
 cleared by a valid configuration.
 
 Numbered P44 because P42 and P43 are taken on `claude/9-30`, which is not merged into this branch.
+
+
+## P45 — A conversation reply was held for 9.4 s and never spoken; the next question got no reply
+
+**Status:** OPEN 2026-10-02 — seen once on the emulator (nova_api34). Branch `claude/10-2`, local build with 6efa047; Azure assistant voice on (Xiaoyi, `eastasia`). The owner spoke live through the host bridge (laptop microphone array, no echo cancellation on the PC side).
+
+**Reported:** the owner said 「你喜欢吃啥」 and heard nothing, then 「你能干什么」 and heard nothing again: "what the hell no voice".
+
+### Evidence (NovaVoice log, timings only)
+
+| Time | Event |
+| --- | --- |
+| 14:02:41.712 | Driver transcript; `TURN_HOLD epoch=1 reason=UNCLASSIFIED_CLAIM kind=CONVERSATION durationMs=-1`; `gemini_turn_open` |
+| 41.7 → 51.1 | **9.4 s with nothing released.** No transcript and no audio reached the voice |
+| 14:02:51.142 | `gemini_voice_activity type=ACTIVITY_START` (Gemini server VAD); `ACTIVITY_END` at 52.494 |
+| 51.146 | `TURN_RELEASE epoch=1 reason=no_claim_made events=3` |
+| 51.148 | `gemini_turn_done status=cancelled calls=0 spoke=true`; reply transcript only half a sentence |
+| 53.036 → 53.816 | `azure_tts_first_audio ms=1880`, `azure_tts_done bytes=141000`: the words of the cancelled reply were synthesised anyway |
+| — | The host audio tap received **no reply audio** for this turn (bridge log): the audio was discarded with the cancelled reply's playback epoch |
+| 14:02:57.693 | Driver transcript of the second question; **no `gemini_turn_open` followed** |
+| 14:03:04.768 | `listening ACTIVE->SLEEP reason=inactivity_timeout` |
+
+On the PC microphone, the level was about 20 when quiet and 3 000–11 000 in bursts around 51 s.
+
+**Control:** the same question as a clean injected clip (`say:eat`, 14:04) worked normally. The hold was released 2.6 s after the turn opened, the first Azure audio came 0.49 s later, the turn completed, and 5.05 s of audio played on the PC.
+
+### Most likely sequence (not proven)
+
+1. The reply stalled for 9.4 s inside the claim hold; this is the first fault.
+2. The owner, hearing nothing, started the second question at about 51 s.
+3. Gemini's VAD took that as a barge-in and cancelled the unheard reply.
+4. The second question then never opened a turn; this is the second fault.
+
+The owner says he did not speak at 51 s. If that is right, the barge-in was false: room sound on a microphone with no echo cancellation. The log cannot tell the two apart.
+
+### Faults to fix
+
+- **F1. Unknown where the 9.4 s went.** Either Gemini sent the three held events slowly, or the hold waited for a turn-complete that did not come. The hold has no deadline (`durationMs=-1`) for a CONVERSATION turn. **First step:** log, as timings only, each held event's arrival (audio / transcript / turn_complete) and the release time, so the next run shows where the time goes. Then decide whether a conversation hold needs an upper bound.
+- **F2. The words of a cancelled reply still go to the assistant voice.** A cancelled turn's released words cost an Azure request and are then discarded. A turn that ended `cancelled` should drop its words before TTS (SPEC-019 R1/R5).
+- **F3. No reply to the next question after a cancel.** The transcript arrived, but no `gemini_turn_open` followed for 7 s until sleep. Find out whether the client or the session was left waiting, for example on a turn or hold state that the cancel never cleared.
+
+**Owners:** `DriverTurn` / `DriverTurnPipeline` (the hold), `GeminiLiveClient` (turn events, cancel), and `AssistantVoiceRevoicer` (words after a cancel).
+**Test:** the timing logs first; then a JVM test that a cancelled turn's words never reach `AssistantVoice`, and a test that a question after a cancel opens a turn; then an emulator re-run with live speech and with headphones.

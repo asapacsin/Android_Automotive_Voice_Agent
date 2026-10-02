@@ -144,6 +144,28 @@ object VoiceContextHints {
     fun awaitingAnswer(): Boolean =
         describe(EmbeddedNavigation.currentOrNull(), CameraVisionGateway.current()?.isOpen == true, withControls = false) != null
 
+    /**
+     * B-035: whether a question is still open on screen: a destination or route list, the open
+     * camera, or a clarifying question. Narrower than [awaitingAnswer], which is true whenever any
+     * context exists (a climate change leaves a referent), and would keep the bubble forever.
+     */
+    fun questionOnScreen(): Boolean =
+        runCatching {
+            val phase = EmbeddedNavigation.currentOrNull()?.state()?.value
+            val context = DriverContext.currentOrNull()
+            questionOpen(
+                phase = phase,
+                cameraOpen = CameraVisionGateway.current()?.isOpen == true,
+                pendingClarification = context?.pendingClarification(context.currentEpoch() + 1)?.options?.isNotEmpty() == true,
+            )
+        }.getOrDefault(false)
+
+    internal fun questionOpen(phase: NavigationPhase?, cameraOpen: Boolean, pendingClarification: Boolean): Boolean =
+        phase == NavigationPhase.AWAITING_DESTINATION_SELECTION ||
+            phase == NavigationPhase.AWAITING_ROUTE_SELECTION ||
+            cameraOpen ||
+            pendingClarification
+
     /** The hint for a given navigation flow and camera state (also used by the simulation). */
     fun describe(
         navigation: com.novadrive.app.nav.EmbeddedNavigationController?,
