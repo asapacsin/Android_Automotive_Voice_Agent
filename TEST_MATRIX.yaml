@@ -2974,3 +2974,61 @@ tests:
       - {criterion: vendor_key_available, required: true, observed: false, evidence: "owner to enter an Azure Speech key + region in developer settings"}
     related: [B-034, ADR-016, VOICE-AB-002]
     last_run: {at: 2026-10-02, result: PARTIAL}
+
+  - id: TTS-UNIT-001
+    capability: speech
+    name: The assistant voice speaks only gate-released words, in order, and stops on barge-in
+    purpose: "SPEC-019 R1-R9 (ADR-016): Gemini's words spoken by the Azure voice; claim gate, ordering, cancellation, failure, styles, secrets, default off"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    prerequisites: []
+    procedure: ["gradlew :app:testDebugUnitTest --tests *AssistantVoiceRevoicerTest* --tests *ClauseSegmenterTest* --tests *AzureSpeechVoiceTest* --tests *AzureSpeechSettingsTest* --tests *GeminiLiveClientTest*", "gradlew :behavior-test:test"]
+    pass_criteria: ["all listed suites green", "full suite green", ":app:assembleDebug builds"]
+    evidence: []
+    related: [SPEC-019, ADR-016, B-034]
+    last_run: {at: null, result: null}
+
+  - id: TTS-VOICE-EMU-001
+    capability: speech
+    name: Xiaoyi speaks every reply and guidance prompt on the short route; barge-in stops her
+    purpose: "SPEC-019 step 3: the voice path end to end on the emulator; first-audio latency vs Gemini's own"
+    type: device
+    scope: END_TO_END
+    owner: AUTONOMOUS
+    status: BLOCKED_AUTONOMOUS
+    automation_blocker: "needs the owner's Azure Speech key in developer settings (agents never enter keys)"
+    release_blocking: false
+    terminal_success: [replies_in_xiaoyi, no_gemini_voice_heard, barge_in_stops_voice, guidance_in_xiaoyi, style_changes_delivery]
+    prerequisites: ["emulator nova_api34 with this build", "Gemini key + consent", "Azure key + region entered, 小诺的声音 switched on", "route 横琴创业谷 -> 励骏庞都 only (owner test-run policy)"]
+    procedure: ["start a session; ask 你能做什么 and 有点热", "say 傲娇一点, then 把车窗打开一半", "interrupt a long reply", "navigate the short route with 助手播报导航 on", "collect assistant_voice_first_audio, azure_tts_*, gemini_turn_* lines"]
+    pass_criteria: ["every reply and guidance prompt audible in Xiaoyi only", "barge-in stops the voice within one clause", "assistant_voice_first_audio p50 recorded; extra delay vs Gemini first audio <= 1.0 s (ADR-016 revisit threshold)", "no assistant_voice_failed lines"]
+    evidence: []
+    related: [SPEC-019, ADR-016, TTS-VOICE-DEVICE-001]
+    last_run: {at: null, result: null}
+
+  - id: TTS-VOICE-DEVICE-001
+    capability: speech
+    name: In the car, Xiaoyi is the only voice and the styles sound right
+    purpose: "SPEC-019 / ADR-016 step 3: the device gate before Xiaoyi becomes the default"
+    type: device
+    scope: END_TO_END
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: subjective_perception
+    release_blocking: false
+    terminal_success: [one_voice_heard, latency_acceptable, styles_sound_right]
+    autonomous_evidence: ["TTS-UNIT-001", "TTS-VOICE-EMU-001 (once run)"]
+    remaining_uncertainty: ["Azure latency on the owner's network", "how 傲娇 (disgruntled 0.6) sounds"]
+    covers: []
+    human_reason: "Whether the delay is acceptable and the styles sound right is a listening judgement in the car"
+    prerequisites: ["phone with this build", "Azure key entered and 小诺的声音 on"]
+    procedure: ["drive the short route; chat, give commands, interrupt", "try 嗲一点 / 傲娇一点 / 温柔一点 / 元气一点 / 正常一点"]
+    pass_criteria: ["only Xiaoyi is heard", "the delay before she speaks is acceptable", "each style sounds like itself"]
+    returns: ["yes/no per criterion; style degrees to change, if any"]
+    evidence: []
+    related: [SPEC-019, ADR-016, STYLE-EAR-001]
+    last_run: {at: null, result: null}
+

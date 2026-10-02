@@ -1,7 +1,7 @@
 # ADR-016 — Gemini stays the agent; one Chinese TTS voice speaks
 
 Status: **Accepted — direction** (2026-10-02). The planner decided under the owner's delegation: "you are going to find a solution for voice problem for me".
-**Voice picked 2026-10-02:** the owner chose **`zh-CN-XiaoyiNeural`** (Microsoft) by ear: "this one good use this as default". So the vendor is **Azure AI Speech**, the licensed service for that voice. The preview clips came from the free Bing read-aloud endpoint (edge-tts); it has no licence for product use and must never ship. **Still open:** an Azure Speech key and region, which the owner enters (`TTS-AUDITION-001`).
+**Voice picked 2026-10-02:** the owner chose **`zh-CN-XiaoyiNeural`** (Microsoft) by ear: "this one good use this as default". So the vendor is **Azure AI Speech**, the licensed service for that voice. The preview clips came from the free Bing read-aloud endpoint (edge-tts); it has no licence for product use and must never ship. **Still open:** an Azure Speech key and region, which the owner enters (`TTS-AUDITION-001`). **Step 1 is built** (2026-10-02, [SPEC-019](../SPECS/SPEC-019-assistant-voice-azure.md)) behind a developer setting that is off by default.
 **Amends:** "no separate TTS" in [ADR-002](ADR-002-baidu-flex-default-provider.md) and [ADR-013](ADR-013-gemini-default-provider.md), and the audio-out half of [ADR-011](ADR-011-gemini-native-voice-path.md).
 **Keeps:**
 - ADR-013: Gemini is the single agent and the only provider, with no fallback across providers.

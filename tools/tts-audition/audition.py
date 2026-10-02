@@ -13,6 +13,8 @@ so the pick is made by ear and costs no app work.
     MINIMAX_API_KEY=... python audition.py minimax-design
     # Baidu short TTS (the per ids the app already offers on Baidu Flex): speech-app AK/SK
     BAIDU_TTS_AK=... BAIDU_TTS_SK=... python audition.py baidu
+    # Azure AI Speech (the owner's pick, ADR-016): checks the key + region the app will use
+    AZURE_SPEECH_KEY=... AZURE_SPEECH_REGION=eastasia python audition.py azure
     # only some voices:  python audition.py volc zh_female_qingchezizi_moon_bigtts ...
 
 Output: OUT (default ./tts_audition)/<vendor>/<voice>.<ext> and summary.json. Keys come only from
@@ -54,6 +56,10 @@ MINIMAX_VOICES = [
     "female-tianmei",      # 甜美女性
     "female-yujie",        # 御姐
 ]
+AZURE_VOICES = ["zh-CN-XiaoyiNeural"]
+# The same style table as the app (ADR-016, AzureSpeechVoice.azureStyleFor): one clip per style.
+AZURE_STYLES = {"default": None, "sweet": ("affectionate", "1.2"), "tsundere": ("disgruntled", "0.6"),
+                "gentle": ("gentle", "1.0"), "lively": ("cheerful", "1.2")}
 BAIDU_VOICES = ["4196", "6562", "4194", "4103", "111", "4157"]  # = BaiduFlexVoices.CATALOG
 
 # Voice design: describe the style only. No character, game or person is named.
@@ -138,6 +144,29 @@ def minimax_design(name):
     return {"file": save("minimax-design", name, bytes.fromhex(d["trial_audio"]), "mp3"), "voice_id": d.get("voice_id")}
 
 
+def azure(voice):
+    from xml.sax.saxutils import escape
+    key, region = os.environ["AZURE_SPEECH_KEY"], os.environ["AZURE_SPEECH_REGION"].strip().lower()
+    host = f"{region}.tts.speech.azure.cn" if region.startswith("china") else f"{region}.tts.speech.microsoft.com"
+    files, first_ms = [], None
+    for name, style in AZURE_STYLES.items():
+        body = escape(TEXT)
+        if style:
+            body = f'<mstts:express-as style="{style[0]}" styledegree="{style[1]}">{body}</mstts:express-as>'
+        ssml = ('<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" '
+                'xmlns:mstts="https://www.w3.org/2001/mstts" xml:lang="zh-CN">'
+                f'<voice name="{escape(voice)}">{body}</voice></speak>')
+        started = time.monotonic()
+        status, ctype, raw = post(f"https://{host}/cognitiveservices/v1", ssml.encode("utf-8"),
+                                  {"Ocp-Apim-Subscription-Key": key, "Content-Type": "application/ssml+xml",
+                                   "X-Microsoft-OutputFormat": "riff-24khz-16bit-mono-pcm", "User-Agent": "NovaDrive"})
+        if status != 200 or not raw:
+            return {"error": f"HTTP {status} {short(raw)}"}
+        first_ms = first_ms or round((time.monotonic() - started) * 1000)
+        files.append(save("azure", f"{voice}-{name}", raw, "wav"))
+    return {"files": files, "first_request_ms": first_ms}
+
+
 _baidu_token = None
 
 
@@ -163,6 +192,7 @@ VENDORS = {
     "minimax": (minimax_tts, MINIMAX_VOICES, ["MINIMAX_API_KEY"]),
     "minimax-design": (minimax_design, list(DESIGN_PROMPTS), ["MINIMAX_API_KEY"]),
     "baidu": (baidu, BAIDU_VOICES, ["BAIDU_TTS_AK", "BAIDU_TTS_SK"]),
+    "azure": (azure, AZURE_VOICES, ["AZURE_SPEECH_KEY", "AZURE_SPEECH_REGION"]),
 }
 
 

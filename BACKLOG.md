@@ -737,3 +737,12 @@ Measured before deciding (`VOICE-AB-002`):
 
 The mapping is in ADR-016 §"Speaking styles with the TTS voice".
 
+**Built 2026-10-02 ([SPEC-019](SPECS/SPEC-019-assistant-voice-azure.md), step 1, L1/L2):** Gemini's released words are spoken by Xiaoyi through Azure, and each style changes the delivery. It sits behind 开发者设置 → 小诺的声音 and is off by default.
+
+**Next — the owner:**
+1. Create an Azure Speech resource.
+2. Check the key: `AZURE_SPEECH_KEY=… AZURE_SPEECH_REGION=… python tools/tts-audition/audition.py azure`. This writes one clip per style.
+3. Enter the key and region in the app, and switch the voice on.
+
+**Then — the agents:** `TTS-VOICE-EMU-001`.
+
