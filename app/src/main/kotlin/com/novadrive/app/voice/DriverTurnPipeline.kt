@@ -275,15 +275,20 @@ class DriverTurnPipeline(
     private fun dropSupersededOutput(event: DomainVoiceEvent): Boolean =
         supersededResponse && (
             event is DomainVoiceEvent.AudioDelta ||
+                event is DomainVoiceEvent.SpeechText ||
                 event is DomainVoiceEvent.AudioDone ||
                 event is DomainVoiceEvent.AssistantTranscript
             )
 
-    /** Held output is audio and its subtitle only — never a tool call, an error or a transcript. */
+    /**
+     * Held output is audio, its words (SpeechText, ADR-016: what the assistant voice will say) and
+     * its subtitle only — never a tool call, an error or a transcript.
+     */
     @Synchronized
     private fun holdOrEmit(event: DomainVoiceEvent): Boolean {
         if (!turn.isHolding) return false
         val holdable = event is DomainVoiceEvent.AudioDelta ||
+            event is DomainVoiceEvent.SpeechText ||
             event is DomainVoiceEvent.AudioDone ||
             event is DomainVoiceEvent.AssistantTranscript
         if (!holdable) return false

@@ -59,6 +59,11 @@ class GeminiLiveClient(
      * double-actuate.
      */
     private val correctionGraceMs: Long = 20_000,
+    /**
+     * ADR-016: an assistant voice speaks instead of Gemini's audio, so the words Gemini says are
+     * emitted as [DomainVoiceEvent.SpeechText] through the same gate as its audio.
+     */
+    private val speechTextEvents: Boolean = false,
 ) {
     /**
      * A held reply is released all at once at turn end: up to the pipeline's 120-event hold budget
@@ -453,6 +458,7 @@ class GeminiLiveClient(
             if (!turnOpen) {
                 strayOutput.append(chunk)
             } else if (prompt.open != null) {
+                speakText(chunk, guidance = true)
                 prompt.transcript(chunk)  // not judged, never a subtitle; also after generationComplete
             } else if (generationDone) {
                 // Too late to hold, not to correct: afterResponse judges it (subtitle already out).
@@ -461,6 +467,7 @@ class GeminiLiveClient(
             } else {
                 turnText.append(chunk)
                 pipeline.appendAssistantText(chunk)
+                speakText(chunk, guidance = false)
             }
         }
         message.toolCalls.forEach(::onToolCall)
@@ -483,6 +490,7 @@ class GeminiLiveClient(
             DebugVoiceLog.log("gemini_turn_open kind=guidance")
             emit(DomainVoiceEvent.ResponseStarted)
             prompt.markOpen(id)
+            speakText(strayOutput.toString(), guidance = true)
             prompt.transcript(strayOutput.toString()); strayOutput.setLength(0)
             return
         }
@@ -507,6 +515,22 @@ class GeminiLiveClient(
             strayOutput.setLength(0)
             turnText.append(text)
             pipeline.appendAssistantText(text)
+            speakText(text, guidance = false)
+        }
+    }
+
+    /**
+     * ADR-016: the words to speak, judged like the audio they replace — a driver turn's through the
+     * claim gate, a GUIDANCE turn's unjudged but dropped once voided. Only before generationComplete:
+     * audio after it is not played either.
+     */
+    private fun speakText(text: String, guidance: Boolean) {
+        if (!speechTextEvents || text.isEmpty() || generationDone) return
+        val event = DomainVoiceEvent.SpeechText(text)
+        if (guidance) {
+            if (!prompt.suppressed()) emit(event)
+        } else if (!pipeline.filter(event)) {
+            emit(event)
         }
     }
 

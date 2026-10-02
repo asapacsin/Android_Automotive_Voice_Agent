@@ -17,17 +17,28 @@ import kotlinx.coroutines.runBlocking
 class GeminiLiveProvider(
     private val apiConfig: GeminiApiConfig,
     private val client: GeminiLiveClient = GeminiLiveClient(),
+    /** ADR-016: when set, this voice speaks Gemini's words; the client must emit SpeechText. */
+    private val revoicer: AssistantVoiceRevoicer? = null,
 ) : RealtimeVoiceProvider {
     /** Secondary constructor: the microphone's measurement of the audio that caused each turn. */
     constructor(
         apiConfig: GeminiApiConfig,
         lastAudioSegment: () -> SpeechUplinkGate.Segment?,
         speechEvidence: () -> Boolean = { true },
-    ) : this(apiConfig, GeminiLiveClient(lastAudioSegment = lastAudioSegment, speechEvidence = speechEvidence))
+        assistantVoice: AssistantVoice? = null,
+    ) : this(
+        apiConfig,
+        GeminiLiveClient(
+            lastAudioSegment = lastAudioSegment,
+            speechEvidence = speechEvidence,
+            speechTextEvents = assistantVoice != null,
+        ),
+        assistantVoice?.let { AssistantVoiceRevoicer(it, style = { com.novadrive.app.SpeakingStyleState.current }) },
+    )
 
     override val providerId = "google.gemini.live.direct"
     override val capabilities: ProviderCapabilities = VoiceCatalog.capabilities(VoiceProviderId.GEMINI_LIVE)
-    override fun events(): Flow<RealtimeEvent> = client.events()
+    override fun events(): Flow<RealtimeEvent> = revoicer?.revoice(client.events()) ?: client.events()
     override suspend fun connect(config: RealtimeSessionConfig) {
         VoiceCatalog.requireAllowed(VoiceProviderId.GEMINI_LIVE, config.model)
         client.connect(apiConfig)

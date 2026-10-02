@@ -67,13 +67,14 @@ class GeminiLiveClientTest {
         instructions = "你是小诺。",
     )
 
-    private fun client(graceMs: Long = 300) = GeminiLiveClient(
+    private fun client(graceMs: Long = 300, speechText: Boolean = false) = GeminiLiveClient(
         http = OkHttpClient(),
         readyTimeoutMs = 3_000,
         requireTls = false,
         contextHint = { null },
         contextAwaitingAnswer = { false },
         correctionGraceMs = graceMs,
+        speechTextEvents = speechText,
     ).also { clients += it }
 
     private fun collect(client: GeminiLiveClient): MutableList<DomainVoiceEvent> {
@@ -1176,4 +1177,61 @@ class GeminiLiveClientTest {
     private companion object {
         const val KEY = "test-gemini-key-7f3a"
     }
+
+    // ---- ADR-016: SpeechText for the assistant voice ----------------------------------------
+
+    @Test
+    fun aReleasedReplyCarriesItsWordsAsSpeechTextInOrder() = runBlocking {
+        val fake = fake()
+        val client = client(speechText = true)
+        val events = collect(client)
+        client.connect(config())
+        client.onLocalSpeechActivity(true)
+        fake.send(input("你好"))
+        fake.send(audio())
+        fake.send(output("好的，"))
+        fake.send(audio())
+        fake.send(output("请问还需要什么"))
+        fake.send(content(""""generationComplete":true"""))
+        fake.send(output("迟到"))
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+        val snapshot = events.snapshot()
+        val words = snapshot.filterIsInstance<DomainVoiceEvent.SpeechText>().joinToString("") { it.text }
+        assertEquals("好的，请问还需要什么", words, "only words before generationComplete are spoken")
+        val started = snapshot.indexOf(DomainVoiceEvent.ResponseStarted)
+        val firstWords = snapshot.indexOfFirst { it is DomainVoiceEvent.SpeechText }
+        val audioDone = snapshot.indexOf(DomainVoiceEvent.AudioDone)
+        assertTrue(started in 0 until firstWords && firstWords < audioDone)
+    }
+
+    @Test
+    fun withoutAnAssistantVoiceNoSpeechTextIsEmitted() = runBlocking {
+        val fake = fake()
+        val client = client(speechText = false)
+        val events = collect(client)
+        client.connect(config())
+        client.onLocalSpeechActivity(true)
+        fake.send(input("你好"))
+        fake.send(audio())
+        fake.send(output("好的"))
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+        assertTrue(events.snapshot().none { it is DomainVoiceEvent.SpeechText })
+    }
+
+    @Test
+    fun aFalseClaimsWordsAreDroppedWithItsAudio() = runBlocking {
+        val fake = fake()
+        val client = client(graceMs = 60_000, speechText = true)
+        val events = collect(client)
+        client.connect(config())
+        client.onLocalSpeechActivity(true)
+        claimTurn(fake)
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+        val snapshot = events.snapshot()
+        assertTrue(snapshot.none { it is DomainVoiceEvent.SpeechText }, "the claim gate holds and drops the words too")
+        assertTrue(snapshot.none { it is DomainVoiceEvent.AudioDelta })
+    }
 }
+
