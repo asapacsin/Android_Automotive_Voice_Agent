@@ -259,6 +259,9 @@ class DriverTurnPipeline(
         }
     }
 
+    /** The current turn's reply is still held by the gate: nothing of it has reached the driver (P45). */
+    val isHolding: Boolean get() = synchronized(this) { turn.isHolding }
+
     /** True when the event is consumed by the gate (dropped or held) and must not be emitted now. */
     fun filter(event: DomainVoiceEvent): Boolean = dropSupersededOutput(event) || holdOrEmit(event)
 

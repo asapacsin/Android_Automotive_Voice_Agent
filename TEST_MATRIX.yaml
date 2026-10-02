@@ -2907,6 +2907,61 @@ tests:
     related: [B-035, B-033]
     last_run: {at: 2026-10-02, result: PASS}
 
+  - id: P45-UNIT-001
+    capability: speech
+    name: An interrupted unheard reply is never synthesised; a question restarts the sleep window; turn timings are logged
+    purpose: "OPEN_PROBLEMS P45 - a held reply was never spoken, its words were still sent to Azure, and the session slept 7 s after the next question"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: []
+    procedure: ["gradlew :app:testDebugUnitTest --tests *GeminiLiveClientTest* --tests *ListeningLifecycleTest* --tests *GeminiTurnTimingTest*", "gradlew test --rerun-tasks :app:assembleDebug"]
+    pass_criteria: ["a server interrupt of a still-held reply emits no SpeechText, AudioDelta, subtitle or correction", "a late answer after an empty turn is spoken when clean and held when it claims (I-1)", "a meaningful question with no busy edge restarts the 30 s window", "gemini_turn_done carries dur/first_audio/first_text/gen/msgs/max_gap"]
+    evidence: ["2026-10-02 cloud, claude/10-2: GeminiLiveClientTest 69/0, ListeningLifecycleTest 36/0, GeminiTurnTimingTest 4/0, behavior-test green; independent review PASS (planner read the JUnit XML)"]
+    related: [P45, SPEC-019]
+    last_run: {at: 2026-10-02, result: PASS}
+
+  - id: P45-EMU-001
+    capability: speech
+    name: The P45 conversation on the emulator with live speech, with the Azure voice
+    purpose: "P45 re-run: the device-level confirmation the JVM tests cannot give"
+    type: device
+    scope: END_TO_END
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    terminal_success: [no_tts_after_unheard_interrupt, no_early_sleep, stall_measured]
+    covers: []
+    prerequisites: ["emulator nova_api34 on the owner's PC with this build", "Azure voice on", "host bridge, once with headphones and once with speakers"]
+    procedure: ["ask 你喜欢吃啥, then 你能干什么, as the owner did; repeat 5 times", "capture NovaVoice; run tools/demo/check_demo_log.py --run B"]
+    pass_criteria: ["no azure_tts_* line between gemini_interrupted_unheard and the next gemini_turn_open", "no inactivity_timeout sooner than 30 s after a driver transcript", "gemini_turn_done max_gap_ms / gen_ms recorded for every turn; a stalled stream (max_gap_ms > 3000) or gemini_turn_empty counted"]
+    evidence: []
+    related: [P45, P45-UNIT-001, DEMO-10-2-001]
+    last_run: {at: null, result: null}
+
+  - id: DEMO-10-2-001
+    capability: speech
+    name: One demo run that exercises every claude/10-2 function, graded by the log checker
+    purpose: "Owner request 2026-10-02: a demo case covering all new functions with performance aligned to the recorded budgets (docs/DEMO_10-2.md)"
+    type: device
+    scope: END_TO_END
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: subjective_perception
+    release_blocking: false
+    human_reason: "Whether only Xiaoyi is heard, whether each speaking style sounds different and whether her delay is acceptable are judgements by ear; the owner also speaks the scenes live"
+    prerequisites: ["PC emulator nova_api34 or the phone, with this build", "Gemini key and consent; Azure Speech key and region", "headphones (the host bridge is the microphone)", "short route 横琴创业谷 → 励骏庞都 only"]
+    procedure: ["follow docs/DEMO_10-2.md: act C (cards), run A (assistant voice off), run B (on), optional failure drill", "capture adb logcat -v threadtime -s NovaVoice per run", "python tools/demo/check_demo_log.py --run A demo_runA.log", "python tools/demo/check_demo_log.py --run B demo_runB.log --baseline demo_runA.log", "tick the by-ear list"]
+    pass_criteria: ["checker: no FAIL in run A or run B (WARN reviewed)", "chat reply p50 <= 2000 ms; actions <= 2500 ms in >= 90 %; Xiaoyi extra delay p50 <= 1000 ms (ADR-016)", "every by-ear item ticked"]
+    autonomous_evidence: ["tools/demo/check_demo_log.py --selftest OK (2026-10-02 cloud)", "the JVM suites behind each scene (TTS-UNIT-001, TRANSCRIPT-FADE-UNIT-001, CONFIG-CARD-UNIT-001, SPEC-015/017/018 rows)"]
+    remaining_uncertainty: ["real latency through the PC or phone network to Gemini and Azure", "whether 嗲/傲娇/温柔/元气 are distinct by ear", "whether P45's 9.4 s Gemini stall recurs (the new timing lines will show it)"]
+    returns: ["the two checker reports", "the ticked by-ear list", "the commit"]
+    evidence: []
+    related: [P44, B-033, B-034, B-035, P45, SPEC-015, SPEC-017, SPEC-018, SPEC-019, TTS-VOICE-EMU-001, TRANSCRIPT-FADE-EMU-001]
+    last_run: {at: null, result: null}
+
   - id: TRANSCRIPT-FADE-EMU-001
     capability: permissions
     name: On the emulator the transcript bubble leaves the map about 10 s after the last line

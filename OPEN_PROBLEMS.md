@@ -1625,7 +1625,7 @@ Numbered P44 because P42 and P43 are taken on `claude/9-30`, which is not merged
 
 ## P45 — A conversation reply was held for 9.4 s and never spoken; the next question got no reply
 
-**Status:** OPEN 2026-10-02 — seen once on the emulator (nova_api34). Branch `claude/10-2`, local build with 6efa047; Azure assistant voice on (Xiaoyi, `eastasia`). The owner spoke live through the host bridge (laptop microphone array, no echo cancellation on the PC side).
+**Status:** FIXED at L1 2026-10-02 (F2, and the lifecycle half of F3). F1 is diagnosed only and the primary F3 cause is now logged; emulator re-run `P45-EMU-001`. First seen once on the emulator (nova_api34). Branch `claude/10-2`, local build with 6efa047; Azure assistant voice on (Xiaoyi, `eastasia`). The owner spoke live through the host bridge (laptop microphone array, no echo cancellation on the PC side).
 
 **Reported:** the owner said 「你喜欢吃啥」 and heard nothing, then 「你能干什么」 and heard nothing again: "what the hell no voice".
 
@@ -1664,3 +1664,32 @@ The owner says he did not speak at 51 s. If that is right, the barge-in was fals
 
 **Owners:** `DriverTurn` / `DriverTurnPipeline` (the hold), `GeminiLiveClient` (turn events, cancel), and `AssistantVoiceRevoicer` (words after a cancel).
 **Test:** the timing logs first; then a JVM test that a cancelled turn's words never reach `AssistantVoice`, and a test that a question after a cancel opens a turn; then an emulator re-run with live speech and with headphones.
+
+### Fix and diagnosis, 2026-10-02 (`claude/10-2`; independent review PASS)
+
+- **F2 fixed.**
+  - When Gemini's `interrupted` arrives while the claim gate still holds the reply (`DriverTurnPipeline.isHolding`, before `generationComplete`), the reply was never heard.
+  - The client now drops it like a client cancel (`gemini_interrupted_unheard`, then `TURN_DROP … client_cancelled`). Its words never reach the assistant voice, so there is no Azure request, no subtitle and no correction.
+  - Before the fix, `closeTurn` settled the gate *after* the `Interrupted` event. The words were released into the re-voicer's new epoch, synthesised (`azure_tts_first_audio ms=1880`) and discarded.
+  - A reply that was already audible keeps today's behaviour.
+- **F3: two faults; the second is fixed.**
+  1. **Gemini closed the second question's turn with no output.** From the code, `UserTranscript` is emitted only by `openTurn` or `closeTurn`. A transcript with no `gemini_turn_open` means a close with no turn open. The new `gemini_turn_empty status=<…>` line logs it. Nothing re-asks Gemini yet; whether to re-prompt after an empty turn is open.
+  2. **The session slept on a stale deadline.**
+     - `ListeningLifecycle` restarted the 30 s window only on a busy→idle edge. With no local speech activity (the x86 emulator skips the uplink gate) and the reply held, nothing ever made the session busy.
+     - The deadline from 14:02:34 then fired 7 s after the question, at exactly 14:03:04.768.
+     - Now a meaningful question in ACTIVE restarts the window when not busy, the same as SILENT_WAIT already did. Noise and listening-control phrases still never extend it.
+- **F1 diagnostics landed, cause not yet known.**
+  - `gemini_turn_done` now carries `dur_ms first_audio_ms first_text_ms gen_ms msgs max_gap_ms` (`GeminiTurnTiming`), timings only.
+  - A stalled stream shows as a large `max_gap_ms`; a missing `generationComplete` shows as `gen_ms=-1` with many messages.
+  - A deadline for conversation holds waits for those numbers. The structural answer is SPEC-014 clause release, still blocked on N-1/N-2.
+- **Tests:**
+  - `GeminiLiveClientTest` 69/0, with 6 new P45 tests:
+    - `aServerInterruptedHeldReplysWordsNeverReachTheVoiceOrTheScreen`
+    - `withoutTheVoiceAServerInterruptedHeldReplysAudioIsDroppedToo`
+    - `anInterruptedHeldClaimDrawsNoCorrection`
+    - `theNextQuestionAfterAnInterruptedHeldReplyIsSpokenWhenGeminiAnswersIt`
+    - `theObservedP45SequenceAnEmptyTurnThenALateAnswerIsSpokenAndJudged`
+    - `aLateAnswerAfterAnEmptyTurnIsStillJudgedForClaims`
+  - `ListeningLifecycleTest.aQuestionHeardWithoutABusyEdgeStillRestartsTheInactivityWindow`.
+  - `GeminiTurnTimingTest` 4/0.
+  - The full suite is green (see `P45-UNIT-001`).

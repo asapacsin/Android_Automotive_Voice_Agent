@@ -1401,7 +1401,7 @@ class GeminiLiveClientTest {
     }
 
     @Test
-    fun theNextQuestionAfterAnInterruptedHeldReplyIsAnsweredInTheVoice() = runBlocking {
+    fun theNextQuestionAfterAnInterruptedHeldReplyIsSpokenWhenGeminiAnswersIt() = runBlocking {
         val fake = fake()
         val client = client(graceMs = 300, speechText = true)
         val events = collect(client)
@@ -1420,5 +1420,65 @@ class GeminiLiveClientTest {
         val words = snapshot.filterIsInstance<DomainVoiceEvent.SpeechText>().joinToString("") { it.text }
         assertEquals("我是小诺，很高兴认识你。", words)
         assertEquals(DomainVoiceEvent.ResponseDone("completed"), snapshot.last { it is DomainVoiceEvent.ResponseDone })
+    }
+
+    @Test
+    fun anInterruptedHeldClaimDrawsNoCorrection() = runBlocking {
+        // Deliberate (P45 F2, like a superseded turn): words never heard need no repair.
+        val fake = fake()
+        val client = client(graceMs = 200, speechText = true)
+        val events = collect(client)
+        client.connect(config())
+        client.onLocalSpeechActivity(true)
+        fake.send(input("打开空调"))
+        fake.send(audio())
+        fake.send(output("已为您打开空调"))
+        fake.send(content(""""interrupted":true"""))
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+        Thread.sleep(700)
+        assertTrue(fake.messages("clientContent").isEmpty(), "no correction for an unheard claim")
+        assertTrue(events.snapshot().none { it is DomainVoiceEvent.SpeechText || it is DomainVoiceEvent.AssistantTranscript })
+    }
+
+    @Test
+    fun theObservedP45SequenceAnEmptyTurnThenALateAnswerIsSpokenAndJudged() = runBlocking {
+        // As logged: after the interrupt Gemini closed the second question's turn with no output
+        // (its transcript was flushed by that close), and no new onset was seen.
+        val fake = fake()
+        val client = client(graceMs = 300, speechText = true)
+        val events = collect(client)
+        client.connect(config())
+        heldReplyInterrupted(client, fake, events)
+        fake.send(input("你叫什么名字"))
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().count { it is DomainVoiceEvent.UserTranscript } == 2 }
+        assertEquals(1, events.snapshot().count { it is DomainVoiceEvent.ResponseDone }, "an empty close opens no response")
+        // Gemini answers later: the words reach the voice once judged (a conversation reply).
+        fake.send(audio())
+        fake.send(output("我是小诺，很高兴认识你。"))
+        fake.send(generationComplete)
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().count { it is DomainVoiceEvent.ResponseDone } == 2 }
+        val words = events.snapshot().filterIsInstance<DomainVoiceEvent.SpeechText>().joinToString("") { it.text }
+        assertEquals("我是小诺，很高兴认识你。", words)
+    }
+
+    @Test
+    fun aLateAnswerAfterAnEmptyTurnIsStillJudgedForClaims() = runBlocking {
+        val fake = fake()
+        val client = client(graceMs = 300, speechText = true)
+        val events = collect(client)
+        client.connect(config())
+        heldReplyInterrupted(client, fake, events)
+        fake.send(input("打开空调"))
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().count { it is DomainVoiceEvent.UserTranscript } == 2 }
+        fake.send(audio())
+        fake.send(output("已为您打开空调"))
+        fake.send(generationComplete)
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().count { it is DomainVoiceEvent.ResponseDone } == 2 }
+        Thread.sleep(150)
+        assertTrue(events.snapshot().none { it is DomainVoiceEvent.SpeechText }, "an unproven claim is never spoken (I-1)")
     }
 }

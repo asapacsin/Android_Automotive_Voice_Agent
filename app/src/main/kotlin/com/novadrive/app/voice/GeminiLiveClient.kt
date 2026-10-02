@@ -444,7 +444,7 @@ class GeminiLiveClient(
         if (!turnOpen && (message.audio.isNotEmpty() || message.toolCalls.isNotEmpty())) {
             openTurn()
         }
-        if (turnOpen) timing.message(message.outputTranscription != null, message.generationComplete)
+        if (turnOpen) timing.message(message.audio.isNotEmpty(), message.outputTranscription != null, message.generationComplete)
         if (turnOpen && generationDone && message.audio.isNotEmpty()) {
             // The gate already gave its verdict: nothing after it may reach the speaker unjudged.
             DebugVoiceLog.log("gemini_audio_after_settle count=${message.audio.size}")
@@ -477,8 +477,8 @@ class GeminiLiveClient(
         if (message.generationComplete) finishGeneration()
         if (message.interrupted) {
             if (!turnOpen || prompt.open != null) prompt.void("interrupted")  // never a driver turn's
-            // P45 F2: unheard before the verdict, so dropped like a client cancel (no TTS, subtitle or correction)
-            else if (!generationDone) clientCancelled = true.also { DebugVoiceLog.log("gemini_interrupted_unheard") }
+            // P45 F2: a reply still held was never heard; dropped like a client cancel (no TTS, subtitle or correction)
+            else if (!generationDone && pipeline.isHolding) clientCancelled = true.also { DebugVoiceLog.log("gemini_interrupted_unheard") }
             emit(DomainVoiceEvent.Interrupted("server_vad"))
             Telemetry.record(EventType.INTERRUPT_DETECTED)
             closeTurn("cancelled")
