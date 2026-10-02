@@ -20,6 +20,12 @@ interface AssistantVoice {
      */
     suspend fun synthesize(text: String, style: SpeakingStyle, onPcm: suspend (ByteArray) -> Unit)
 
+    /**
+     * Opens the connection ahead of the first clause, without waiting and without speaking. Called
+     * when the driver starts talking. Must never throw or block.
+     */
+    fun warmUp() {}
+
     companion object {
         const val OUTPUT_SAMPLE_RATE_HZ = 24_000
     }

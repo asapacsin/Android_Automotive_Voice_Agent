@@ -11,6 +11,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -24,7 +25,7 @@ class AzureSpeechVoiceTest {
     @AfterEach
     fun close() = server.close()
 
-    private fun voice() = AzureSpeechVoice(config, baseUrl = server.url("/").toString().trimEnd('/'))
+    private fun voice() = AzureSpeechVoice(config, http = AzureSpeechVoice.defaultHttp(), baseUrl = server.url("/").toString().trimEnd('/'))
 
     private fun pcm(n: Int) = ByteArray(n) { (it * 7 + 3).toByte() }
 
@@ -155,7 +156,7 @@ class AzureSpeechVoiceTest {
     @Test
     fun aTricklingResponseTimesOutWithAStableCode() {
         server.enqueue(MockResponse().setBody(Buffer().write(pcm(48_000))).throttleBody(100, 1, java.util.concurrent.TimeUnit.SECONDS))
-        val voice = AzureSpeechVoice(config, baseUrl = server.url("/").toString().trimEnd('/'), deadlineMs = { 400L })
+        val voice = AzureSpeechVoice(config, http = AzureSpeechVoice.defaultHttp(), baseUrl = server.url("/").toString().trimEnd('/'), deadlineMs = { 400L })
         val failure = assertThrows<AssistantVoiceException> {
             runBlocking { voice.synthesize("你好", SpeakingStyle.DEFAULT) {} }
         }
@@ -163,5 +164,17 @@ class AzureSpeechVoiceTest {
         assertEquals(4_400L, AzureSpeechVoice.clauseDeadlineMs(1))
         assertEquals(20_000L, AzureSpeechVoice.clauseDeadlineMs(40), "a 40-char clause is ~10 s of speech")
     }
-}
 
+    @Test
+    fun warmUpOpensTheConnectionWithoutKeyOrTextAndAtMostOncePer20s() {
+        server.enqueue(MockResponse().setResponseCode(405))
+        val v = voice()
+        v.warmUp()
+        v.warmUp()
+        val r = server.takeRequest(5, java.util.concurrent.TimeUnit.SECONDS)!!
+        assertEquals("HEAD", r.method)
+        assertNull(r.getHeader("Ocp-Apim-Subscription-Key"))
+        assertEquals(0L, r.bodySize)
+        assertNull(server.takeRequest(500, java.util.concurrent.TimeUnit.MILLISECONDS))
+    }
+}

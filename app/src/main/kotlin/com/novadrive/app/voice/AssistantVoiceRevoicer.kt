@@ -166,7 +166,13 @@ class AssistantVoiceRevoicer(
         upstream.collect { event ->
             when (val payload = event.payload) {
                 is DomainVoiceEvent.AudioDelta -> { droppedProviderAudio.incrementAndGet(); return@collect }
-                DomainVoiceEvent.SpeechStarted, DomainVoiceEvent.SpeechStopped -> { send(event); return@collect }
+                DomainVoiceEvent.SpeechStarted, DomainVoiceEvent.SpeechStopped -> {
+                    // The driver is talking: a reply follows in a few seconds, so open the voice's
+                    // connection now instead of paying its setup on the first clause.
+                    if (payload == DomainVoiceEvent.SpeechStarted) voice.warmUp()
+                    send(event)
+                    return@collect
+                }
                 is DomainVoiceEvent.Interrupted -> cancelCurrentReply("interrupted")
                 is DomainVoiceEvent.Error, DomainVoiceEvent.Closed -> cancelCurrentReply("session")
                 is DomainVoiceEvent.AppPromptTurn -> when (payload.phase) {

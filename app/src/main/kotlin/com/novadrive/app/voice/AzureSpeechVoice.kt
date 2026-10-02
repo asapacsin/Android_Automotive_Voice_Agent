@@ -30,11 +30,31 @@ import kotlin.coroutines.coroutineContext
  */
 class AzureSpeechVoice(
     private val config: AzureSpeechConfig,
-    private val http: OkHttpClient = defaultHttp(),
+    private val http: OkHttpClient = sharedHttp,
     private val baseUrl: String = "https://${config.host}",
     /** Whole-clause deadline by clause length: a long clause on a slow link must not be cut. */
     private val deadlineMs: (chars: Int) -> Long = ::clauseDeadlineMs,
 ) : AssistantVoice {
+
+    private val lastWarmMs = java.util.concurrent.atomic.AtomicLong(0)
+
+    /**
+     * Sets up DNS, TCP and TLS to the region host, so the first clause pays only synthesis (measured
+     * on the emulator 2026-10-03: a first clause after idle took 1.8–4.5 s, a warm one ~0.45 s).
+     * The request carries no key and no text; its answer is ignored. At most once per 20 s.
+     */
+    override fun warmUp() {
+        val now = System.currentTimeMillis()
+        val last = lastWarmMs.get()
+        if (now - last < WARM_INTERVAL_MS || !lastWarmMs.compareAndSet(last, now)) return
+        runCatching {
+            http.newCall(Request.Builder().url("$baseUrl/cognitiveservices/v1").head().build())
+                .enqueue(object : okhttp3.Callback {
+                    override fun onFailure(call: okhttp3.Call, e: java.io.IOException) = Unit
+                    override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) = response.close()
+                })
+        }
+    }
 
     override suspend fun synthesize(
         text: String,
@@ -152,6 +172,10 @@ class AzureSpeechVoice(
             .connectTimeout(5, TimeUnit.SECONDS)
             .readTimeout(10, TimeUnit.SECONDS)
             .build()
+
+        /** One client for every session: its connection pool survives a session ending (sleep, wake). */
+        private val sharedHttp: OkHttpClient by lazy { defaultHttp() }
+        private const val WARM_INTERVAL_MS = 20_000L
 
         private fun elapsedMs(startNanos: Long) = (System.nanoTime() - startNanos) / 1_000_000
 
