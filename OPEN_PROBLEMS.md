@@ -1693,3 +1693,23 @@ The owner says he did not speak at 51 s. If that is right, the barge-in was fals
   - `ListeningLifecycleTest.aQuestionHeardWithoutABusyEdgeStillRestartsTheInactivityWindow`.
   - `GeminiTurnTimingTest` 4/0.
   - The full suite is green (see `P45-UNIT-001`).
+
+
+### P45 addendum, 2026-10-03: the stall reproduces with a live microphone only
+
+Local PC emulator, build 381e446, Azure voice on. The same injected clips were sent each time; only the bridge's uplink changed.
+
+| Uplink from the PC | Result |
+| --- | --- |
+| Silence file (demo runs A and B, 28 turns) | Every turn completed. Claim hold → verdict p50 1.7 s, p90 2.5 s, max 4.1 s |
+| Live laptop microphone, room level 100–2 800 rms (16:19) | 「你能做什么」: `TURN_HOLD` at 16:20:01.07, then nothing for **31.8 s**. `inactivity_timeout` at 16:20:31.1 stopped the uplink, and `TURN_RELEASE` followed 1.7 s later. Gemini never sent `gemini_turn_done` for the turn |
+| Live laptop microphone (16:21) | 「你叫什么名字」: no driver transcript and no turn within 40 s |
+
+**Reading:** while room sound keeps streaming, Gemini's server-side end-of-turn detection (automatic activity detection) does not finish the turn. The reply is generated (7 held events) but never completed, and the claim gate waits for completion. When the uplink stops (sleep), the turn finishes. That matches the owner's 2026-10-02 run (live microphone, a 9.4 s hold).
+
+**Fix direction, owner of `GeminiLiveClient` setup:** do not rely on the server VAD alone with a noisy uplink. Options:
+- (a) Set `realtimeInputConfig.automaticActivityDetection` to a lower start-of-speech sensitivity and a higher end-of-speech sensitivity.
+- (b) Gate the uplink with the app's own speech evidence, so non-speech is sent as silence.
+- (c) Switch to manual activity signals from the local VAD.
+
+Measure each option against this same A/B, first silence and then the live microphone, before choosing.
