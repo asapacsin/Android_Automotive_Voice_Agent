@@ -11,6 +11,12 @@ sealed interface DomainVoiceEvent {
     data class AssistantTranscript(val text: String, val final: Boolean) : DomainVoiceEvent
     data class AudioDelta(val pcm16leBase64: String) : DomainVoiceEvent
     data object AudioDone : DomainVoiceEvent
+    /**
+     * The words of the reply audio, chunk by chunk as the provider transcribes its own speech
+     * (ADR-016). Emitted only when an external assistant voice speaks instead of the provider's
+     * audio; it is held, released and dropped exactly like [AudioDelta]. Never logged with text.
+     */
+    data class SpeechText(val text: String) : DomainVoiceEvent
     /** A new model reply started on the server (`response.created`). */
     data object ResponseStarted : DomainVoiceEvent
     data class ResponseDone(val status: String, val reason: String? = null) : DomainVoiceEvent

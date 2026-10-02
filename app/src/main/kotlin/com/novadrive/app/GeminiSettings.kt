@@ -68,9 +68,12 @@ data class GeminiApiConfig(
     val settings: GeminiAppSettings,
     val apiKey: String,
     val instructions: String,
+    /** ADR-016: when set, this voice speaks Gemini's words and Gemini's own audio is discarded. */
+    val assistantVoice: com.novadrive.app.voice.AzureSpeechConfig? = null,
 ) {
     override fun toString(): String =
-        "GeminiApiConfig(settings=$settings, apiKey=<redacted>, instructions=<${instructions.length} chars>)"
+        "GeminiApiConfig(settings=$settings, apiKey=<redacted>, instructions=<${instructions.length} chars>, " +
+            "assistantVoice=${assistantVoice ?: "none"})"
 }
 
 object GeminiSettingsValidator {
