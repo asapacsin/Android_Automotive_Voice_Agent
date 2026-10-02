@@ -746,3 +746,7 @@ The mapping is in ADR-016 §"Speaking styles with the TTS voice".
 
 **Then — the agents:** `TTS-VOICE-EMU-001`.
 
+
+**Owner confirmation, 2026-10-02:** "02_zh-CN-XiaoyiNeural ... this should be the default voice". The default stays **`zh-CN-XiaoyiNeural`**; the owner had briefly mentioned 01 Xiaoxiao and then confirmed 02. In code: `AzureSpeechConfig.DEFAULT_VOICE`.
+
+The app still speaks with Gemini's voice until the owner enters an Azure Speech key and region and switches on 开发者设置 → 小诺的声音 (`assistant_voice enabled=false` in the 03:39 log). Then `TTS-VOICE-EMU-001`.
