@@ -83,8 +83,9 @@ class AssistantVoiceRevoicer(
                 return speechParent()
             }
 
-            fun speak(clause: String, at: Long) {
+            fun speak(raw: String, at: Long) {
                 if (replyFailed.get() || at != epoch.get()) return
+                val clause = speakableText(raw) ?: return
                 val previous = tail
                 tail = launch(speechParent()) {
                     previous?.join()
@@ -187,4 +188,14 @@ class AssistantVoiceRevoicer(
     }
 
     private class Queued(val event: RealtimeEvent, val epoch: Long)
+}
+
+/**
+ * The words the assistant voice may read aloud, or null when nothing is left. Gemini sometimes sends
+ * a placeholder instead of words (seen on the emulator 2026-10-03: `<no speech>{pause}`), and the
+ * voice must never read markup like that out loud.
+ */
+internal fun speakableText(raw: String): String? {
+    val text = raw.replace(Regex("<[^>]*>"), "").replace(Regex("\\{[^}]*\\}"), "").trim()
+    return text.takeIf { t -> t.any { it.isLetterOrDigit() } }
 }
