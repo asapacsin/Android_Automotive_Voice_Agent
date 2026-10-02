@@ -151,5 +151,17 @@ class AzureSpeechVoiceTest {
         assertTrue((System.nanoTime() - started) / 1_000_000 < 1_500, "cancellation must not wait for the read timeout")
         assertTrue(job.isCancelled)
     }
+
+    @Test
+    fun aTricklingResponseTimesOutWithAStableCode() {
+        server.enqueue(MockResponse().setBody(Buffer().write(pcm(48_000))).throttleBody(100, 1, java.util.concurrent.TimeUnit.SECONDS))
+        val http = okhttp3.OkHttpClient.Builder().callTimeout(400, java.util.concurrent.TimeUnit.MILLISECONDS).build()
+        val voice = AzureSpeechVoice(config, http, server.url("/").toString().trimEnd('/'))
+        val failure = assertThrows<AssistantVoiceException> {
+            runBlocking { voice.synthesize("你好", SpeakingStyle.DEFAULT) {} }
+        }
+        assertEquals("AZURE_TTS_TIMEOUT", failure.code)
+        assertTrue(AzureSpeechVoice.CALL_TIMEOUT_S in 1..10, "a whole clause has a deadline")
+    }
 }
 

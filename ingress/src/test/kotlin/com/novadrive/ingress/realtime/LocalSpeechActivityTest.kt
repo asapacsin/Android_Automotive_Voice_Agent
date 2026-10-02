@@ -19,8 +19,12 @@ class LocalSpeechActivityTest {
         override val capabilities: ProviderCapabilities,
     ) : RealtimeVoiceProvider by fake {
         val localActivity = mutableListOf<Boolean>()
+        var flushes = 0
         override fun onLocalSpeechActivity(active: Boolean) {
             localActivity += active
+        }
+        override fun onPlaybackFlushed() {
+            flushes++
         }
     }
 
@@ -97,4 +101,34 @@ class LocalSpeechActivityTest {
             assertTrue(VoiceCatalog.capabilities(it).serverSpeechActivityEvents) { "$it" }
         }
     }
+
+    @Test
+    fun aQualifiedBargeInTellsTheProviderThePlaybackWasFlushed() =
+        runTest(UnconfinedTestDispatcher()) {
+            val fake = FakeRealtimeVoiceProvider()
+            val provider = FlaggedProvider(fake, VoiceCatalog.capabilities(VoiceProviderId.GEMINI_LIVE))
+            val playback = InMemoryPlaybackPort()
+            val controller = controller(provider, playback, this)
+            controller.start()
+            fake.emit(DomainVoiceEvent.AudioDelta("AAAA"))
+            val before = provider.flushes
+            controller.onLocalSpeechActivity(true)
+            assertTrue(provider.flushes > before, "ADR-016: a voice the provider produces must stop too")
+            controller.stop()
+        }
+
+    @Test
+    fun cancelCurrentResponseTellsTheProviderThePlaybackWasFlushed() =
+        runTest(UnconfinedTestDispatcher()) {
+            val fake = FakeRealtimeVoiceProvider()
+            val provider = FlaggedProvider(fake, VoiceCatalog.capabilities(VoiceProviderId.GEMINI_LIVE))
+            val controller = controller(provider, InMemoryPlaybackPort(), this)
+            controller.start()
+            fake.emit(DomainVoiceEvent.SessionReady(VoiceCatalog.FAKE_MODEL, interruptResponse = true))
+            val before = provider.flushes
+            controller.cancelCurrentResponse()
+            assertTrue(provider.flushes > before)
+            controller.stop()
+        }
 }
+

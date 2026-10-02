@@ -49,11 +49,10 @@ class GeminiLiveProvider(
 
     /** Gemini has no client-side cancel: the turn is only marked, its held output dropped locally. */
     override suspend fun cancelAssistantResponse(): DomainVoiceEvent {
-        client.markClientCancelled(); return DomainVoiceEvent.Interrupted("client_local_only")
+        client.markClientCancelled(); revoicer?.cancelCurrentReply("client_cancel")
+        return DomainVoiceEvent.Interrupted("client_local_only")
     }
-    override suspend fun cancelActiveResponse(): DomainVoiceEvent {
-        client.markClientCancelled(); return DomainVoiceEvent.Interrupted("client_local_only")
-    }
+    override suspend fun cancelActiveResponse(): DomainVoiceEvent = cancelAssistantResponse()
     override suspend fun injectWorkResult(result: WorkInjection): DomainVoiceEvent {
         client.sendToolResult(result.callId, result.output)
         return DomainVoiceEvent.WorkResult(result.callId, result.output)
@@ -62,12 +61,31 @@ class GeminiLiveProvider(
     override fun sendPrompt(text: String, promptId: String): Boolean = client.sendPrompt(text, promptId)
     override fun discardPendingAudio() = client.discardPendingAudio()
     override fun resumeListening() = client.resumeListening()
-    override fun onLocalSpeechActivity(active: Boolean) = client.onLocalSpeechActivity(active)
+    override fun onLocalSpeechActivity(active: Boolean) {
+        // ADR-016: a reply the voice has not started playing yet is not audible, so the driver's
+        // speech cannot be its echo — it is a new turn and the unplayed reply is dropped. While
+        // playback runs, the session's barge-in decision applies instead (onPlaybackFlushed).
+        if (active && !playbackActive) revoicer?.cancelCurrentReply("driver_onset_unplayed")
+        client.onLocalSpeechActivity(active)
+    }
     override fun interrupt() = runBlocking { cancelAssistantResponse() }
     override fun sendToolResult(result: ToolResult) = runBlocking {
         injectWorkResult(WorkInjection(result.callId, result.ok, result.output))
     }
     override fun close() = client.close()
 
-    override fun onPlaybackActiveChanged(active: Boolean) = client.onPlaybackActiveChanged(active)
+    @Volatile private var playbackActive = false
+
+    override fun onPlaybackActiveChanged(active: Boolean) {
+        playbackActive = active
+        client.onPlaybackActiveChanged(active)
+    }
+
+    /** The session flushed the reply (its barge-in, a cancel, an interrupt, a reconnect). */
+    override fun onPlaybackFlushed() {
+        revoicer?.cancelCurrentReply("playback_flushed")
+    }
+
+    /** Whether an assistant voice speaks for this provider (ADR-016). */
+    internal val revoicing: Boolean get() = revoicer != null
 }

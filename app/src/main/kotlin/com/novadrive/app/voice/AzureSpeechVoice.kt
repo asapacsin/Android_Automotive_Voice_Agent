@@ -48,21 +48,32 @@ class AzureSpeechVoice(
             .post(azureSsml(text, config.voice, style).toByteArray(Charsets.UTF_8).toRequestBody(SSML_MEDIA_TYPE))
             .build()
         val call = http.newCall(request)
+        val cancelledByUs = java.util.concurrent.atomic.AtomicBoolean(false)
         // Barge-in must stop a blocked read now, not at the read timeout: a cancelled coroutine
-        // cancels the call, which fails the read; ensureActive then rethrows the cancellation.
+        // cancels the call, which fails the read, and that failure is reported as the cancellation.
         coroutineScope {
             val watcher = launch(start = CoroutineStart.UNDISPATCHED) {
-                try { awaitCancellation() } finally { call.cancel() }
+                try {
+                    awaitCancellation()
+                } finally {
+                    cancelledByUs.set(true)
+                    call.cancel()
+                }
             }
             try {
-                stream(call, text, onPcm)
+                stream(call, text, onPcm) { cancelledByUs.get() }
             } finally {
                 watcher.cancel()
             }
         }
     }
 
-    private suspend fun stream(call: okhttp3.Call, text: String, onPcm: suspend (ByteArray) -> Unit) {
+    private suspend fun stream(
+        call: okhttp3.Call,
+        text: String,
+        onPcm: suspend (ByteArray) -> Unit,
+        cancelledByUs: () -> Boolean,
+    ) {
         withContext(Dispatchers.IO) {
             val start = System.nanoTime()
             try {
@@ -107,9 +118,15 @@ class AzureSpeechVoice(
                 throw e
             } catch (e: IOException) {
                 // Our own cancel (barge-in) closed the socket. The coroutine may not be marked
-                // cancelling yet on this thread (measured race), so ask the call, not the job.
-                if (call.isCanceled()) throw CancellationException("assistant voice cancelled")
+                // cancelling yet on this thread (measured race); a callTimeout also cancels the call, so
+                // ask whether WE cancelled it.
+                if (cancelledByUs()) throw CancellationException("assistant voice cancelled")
                 coroutineContext.ensureActive()
+                if (e is java.io.InterruptedIOException) {
+                    // callTimeout or a stalled read: the lane must not wait on a trickling response.
+                    DebugVoiceLog.log("azure_tts_failed code=AZURE_TTS_TIMEOUT")
+                    throw AssistantVoiceException("AZURE_TTS_TIMEOUT", "AZURE_TTS_TIMEOUT")
+                }
                 DebugVoiceLog.log("azure_tts_failed code=AZURE_TTS_NETWORK")
                 throw AssistantVoiceException("AZURE_TTS_NETWORK", "AZURE_TTS_NETWORK")
             }
@@ -118,11 +135,14 @@ class AzureSpeechVoice(
 
     companion object {
         private const val READ_BUFFER = 4800
+        const val CALL_TIMEOUT_S = 8L
         private val SSML_MEDIA_TYPE = "application/ssml+xml".toMediaType()
 
         fun defaultHttp(): OkHttpClient = OkHttpClient.Builder()
             .connectTimeout(5, TimeUnit.SECONDS)
             .readTimeout(10, TimeUnit.SECONDS)
+            // A whole clause, first byte to last; normal synthesis of one clause is well under 2 s.
+            .callTimeout(CALL_TIMEOUT_S, TimeUnit.SECONDS)
             .build()
 
         private fun elapsedMs(startNanos: Long) = (System.nanoTime() - startNanos) / 1_000_000

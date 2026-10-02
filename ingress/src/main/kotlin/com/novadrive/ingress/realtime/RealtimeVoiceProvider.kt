@@ -58,6 +58,13 @@ interface RealtimeVoiceProvider {
     /** The device started ([active] true) or stopped playing reply audio; for client-side VAD. */
     fun onPlaybackActiveChanged(active: Boolean) {}
 
+    /**
+     * The session discarded the current reply's playback (a qualified barge-in, a client cancel, a
+     * server interrupt or a reconnect). The session decides; a provider that produces reply audio
+     * itself (ADR-016 assistant voice) stops producing it. Must not block.
+     */
+    fun onPlaybackFlushed() {}
+
     /** Cancels a reply that is in progress even if its audio has not started yet. */
     suspend fun cancelActiveResponse(): DomainVoiceEvent = cancelAssistantResponse()
 

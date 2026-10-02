@@ -1233,5 +1233,128 @@ class GeminiLiveClientTest {
         assertTrue(snapshot.none { it is DomainVoiceEvent.SpeechText }, "the claim gate holds and drops the words too")
         assertTrue(snapshot.none { it is DomainVoiceEvent.AudioDelta })
     }
+
+    // ---- ADR-016 review fixes: the voice hears exactly what Gemini's audio would have played ----
+
+    /** Runs [script] with and without the assistant voice; returns (events off, events on). */
+    private fun parity(graceMs: Long = 60_000, script: (FakeGemini, GeminiLiveClient) -> Unit): Pair<List<DomainVoiceEvent>, List<DomainVoiceEvent>> {
+        fun once(speechText: Boolean): List<DomainVoiceEvent> = runBlocking {
+            val fake = fake()
+            val client = client(graceMs = graceMs, speechText = speechText)
+            val events = collect(client)
+            client.connect(config())
+            script(fake, client)
+            waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+            Thread.sleep(150)
+            events.snapshot()
+        }
+        return once(false) to once(true)
+    }
+
+    private fun assertWordsOnlyWhereAudioWas(script: (FakeGemini, GeminiLiveClient) -> Unit) {
+        val (off, on) = parity(script = script)
+        assertTrue(on.none { it is DomainVoiceEvent.AudioDelta }, "with the voice, Gemini audio is never emitted")
+        assertEquals(off.any { it is DomainVoiceEvent.AudioDelta }, on.any { it is DomainVoiceEvent.SpeechText })
+    }
+
+    @Test
+    fun theHoldWindowWithTheVoiceIsNoShorterThanWithout() {
+        for (pairs in listOf(60, 100)) {
+            val (off, on) = parity { fake, client ->
+                client.onLocalSpeechActivity(true)
+                fake.send(input("打开空调"))
+                repeat(pairs) {
+                    fake.send(audio())
+                    fake.send(output("已为您打开空调。"))
+                }
+                fake.send(generationComplete)
+                fake.send(turnComplete)
+            }
+            for (events in listOf(off, on)) {
+                assertTrue(events.none { it is DomainVoiceEvent.AudioDelta || it is DomainVoiceEvent.SpeechText }, "pairs=$pairs")
+                assertTrue(events.none { it is DomainVoiceEvent.AssistantTranscript }, "pairs=$pairs")
+            }
+        }
+    }
+
+    @Test
+    fun aSupersededHeldReplysWordsAreDropped() = assertWordsOnlyWhereAudioWas { fake, client ->
+        client.onLocalSpeechActivity(true)
+        fake.send(input("打开空调"))
+        fake.send(audio("SE9MRA=="))
+        fake.send(output("已为您打开空调"))
+        Thread.sleep(200)
+        client.onLocalSpeechActivity(true)
+        fake.send(generationComplete)
+        fake.send(audio("TEFURTI="))
+        fake.send(turnComplete)
+    }
+
+    @Test
+    fun aClientCancelledReplysWordsFollowItsAudio() = assertWordsOnlyWhereAudioWas { fake, client ->
+        client.onLocalSpeechActivity(true)
+        fake.send(input("开始导航"))
+        client.markClientCancelled()
+        fake.send(audio())
+        fake.send(output("导航启动中，请说目的地。"))
+        fake.send(generationComplete)
+        fake.send(turnComplete)
+    }
+
+    @Test
+    fun aCleanReplysWordsFollowItsAudio() = assertWordsOnlyWhereAudioWas { fake, client ->
+        client.onLocalSpeechActivity(true)
+        fake.send(input("你好"))
+        fake.send(audio())
+        fake.send(output("你好，有什么需要？"))
+        fake.send(generationComplete)
+        fake.send(turnComplete)
+    }
+
+    @Test
+    fun aDriverOnsetDuringGuidanceStopsItsWords() = runBlocking {
+        val fake = fake()
+        val client = client(speechText = true)
+        val events = collect(client)
+        client.connect(config())
+        assertTrue(client.sendPrompt("前方左转", "p1"))
+        fake.send(audio())
+        fake.send(output("前方"))
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.SpeechText } }
+        client.onLocalSpeechActivity(true)
+        waitUntil { promptEvents(events).any { it.phase == DomainVoiceEvent.AppPromptTurn.Phase.VOIDED } }
+        fake.send(audio())
+        fake.send(output("左转"))
+        fake.send(turnComplete)
+        Thread.sleep(300)
+        val snapshot = events.snapshot()
+        val voided = snapshot.indexOfFirst { it is DomainVoiceEvent.AppPromptTurn && it.phase == DomainVoiceEvent.AppPromptTurn.Phase.VOIDED }
+        assertTrue(snapshot.drop(voided).none { it is DomainVoiceEvent.SpeechText }, "no words after VOIDED")
+    }
+
+    @Test
+    fun anEarlierTurnsLateWordsAreNotSpokenInAGuidanceTurn() = runBlocking {
+        val fake = fake()
+        val client = client(speechText = true)
+        val events = collect(client)
+        client.connect(config())
+        client.onLocalSpeechActivity(true)
+        fake.send(input("你好"))
+        fake.send(audio())
+        fake.send(output("你好。"))
+        fake.send(generationComplete)
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+        fake.send(output("迟到"))
+        Thread.sleep(150)
+        assertTrue(client.sendPrompt("前方左转", "p1"))
+        fake.send(audio())
+        fake.send(output("前方左转"))
+        fake.send(turnComplete)
+        waitUntil { promptEvents(events).any { it.phase == DomainVoiceEvent.AppPromptTurn.Phase.COMPLETED } }
+        val words = events.snapshot().filterIsInstance<DomainVoiceEvent.SpeechText>().map { it.text }
+        assertTrue(words.none { "迟到" in it }, "late tail spoken: $words")
+        assertTrue(words.contains("前方左转"))
+    }
 }
 

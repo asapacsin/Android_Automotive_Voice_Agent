@@ -29,7 +29,7 @@ Status: **Accepted — direction** (2026-10-02). The planner decided under the o
 4. **A new port, `AssistantVoice`**, takes three calls: speak a text chunk for a turn epoch, finish, and cancel. One vendor adapter sits behind it at a time (the ADR-008 pattern; no dormant adapters). The audio goes through the existing playback port, so the echo-cancellation reference does not change.
 5. **The owners do not change:**
    - `DriverTurn` still decides what may be claimed. It now holds *text* before TTS rather than audio, which is simpler.
-   - Turn-taking still decides barge-in. Gemini's `interrupted` signal or new driver speech cancels both the TTS stream and the playback.
+   - Turn-taking still decides barge-in. Gemini's `interrupted` signal, or the session's barge-in or cancel (`onPlaybackFlushed`), cancels both the TTS stream and the playback. Driver speech over a reply that is not audible yet drops it (SPEC-019 R5).
    - Guidance goes to the TTS verbatim, so the model cannot reword it. That removes a SPEC-018 risk.
 6. **There is no fallback to Gemini's own voice, because that would be a second voice.** If the TTS fails, the subtitle still shows, the reply is not spoken, and the screen says the voice service is unavailable. Spoken guidance falls back to Amap exactly as ADR-014 already allows.
 7. **The vendor is chosen by ear.** The owner runs `tools/tts-audition/audition.py` with his own key. The suggested order:

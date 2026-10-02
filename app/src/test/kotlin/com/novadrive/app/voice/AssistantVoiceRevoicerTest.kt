@@ -173,6 +173,123 @@ class AssistantVoiceRevoicerTest {
         assertTrue(voiced > out.indexOf(opened) && voiced < out.indexOf(DomainVoiceEvent.AudioDone))
     }
 
+    /** A voice whose clauses starting with "慢" block until cancelled; records cancellations. */
+    private class SlowVoice : AssistantVoice {
+        val started = Collections.synchronizedList(mutableListOf<String>())
+        val cancelled = Collections.synchronizedList(mutableListOf<String>())
+        val inFlight = CompletableDeferred<Unit>()
+        override suspend fun synthesize(text: String, style: SpeakingStyle, onPcm: suspend (ByteArray) -> Unit) {
+            started += text
+            if (text.startsWith("慢")) {
+                inFlight.complete(Unit)
+                try { awaitCancellation() } finally { cancelled += text }
+            }
+            onPcm(VOICE_PCM)
+        }
+    }
+
+    private class Live(val revoicer: AssistantVoiceRevoicer, val upstream: Channel<RealtimeEvent>) {
+        val seen: MutableList<DomainVoiceEvent> = Collections.synchronizedList(mutableListOf())
+        fun send(event: DomainVoiceEvent) = upstream.trySend(RealtimeEvent(0L, event)).getOrThrow()
+        suspend fun waitFor(timeoutMs: Long = 3_000, condition: (List<DomainVoiceEvent>) -> Boolean) =
+            withTimeout(timeoutMs) { while (!condition(seen.toList())) kotlinx.coroutines.delay(5) }
+    }
+
+    private fun live(voice: AssistantVoice, block: suspend Live.() -> Unit) = runBlocking {
+        val upstream = Channel<RealtimeEvent>(Channel.UNLIMITED)
+        val it = Live(revoicer(voice), upstream)
+        val job = async(Dispatchers.Default) { it.revoicer.revoice(upstream.consumeAsFlow()).collect { e -> it.seen += e.payload } }
+        it.block()
+        upstream.close()
+        withTimeout(5_000) { job.await() }
+    }
+
+    @Test
+    fun aToolCallIsNotDelayedByAClauseBeingSynthesised() {
+        val voice = SlowVoice()
+        val call = DomainVoiceEvent.ToolCall("c1", "control_climate", mapOf("action" to "power_on"))
+        live(voice) {
+            send(DomainVoiceEvent.ResponseStarted)
+            send(DomainVoiceEvent.SpeechText("慢慢说。"))
+            withTimeout(3_000) { voice.inFlight.await() }
+            send(call)
+            waitFor { call in it }
+            assertTrue(seen.none { it.isVoice() }, "the clause is still in flight")
+            revoicer.cancelCurrentReply("test")
+        }
+    }
+
+    @Test
+    fun anOpenGuidanceTurnVoidedStopsItsWords() {
+        val voice = SlowVoice()
+        val opened = DomainVoiceEvent.AppPromptTurn("g1", DomainVoiceEvent.AppPromptTurn.Phase.OPENED)
+        val voided = DomainVoiceEvent.AppPromptTurn("g1", DomainVoiceEvent.AppPromptTurn.Phase.VOIDED)
+        live(voice) {
+            send(DomainVoiceEvent.ResponseStarted)
+            send(opened)
+            send(DomainVoiceEvent.SpeechText("慢行，前方。"))
+            send(DomainVoiceEvent.SpeechText("排队的一句。"))
+            send(DomainVoiceEvent.SpeechText("半句"))
+            withTimeout(3_000) { voice.inFlight.await() }
+            send(voided)
+            waitFor { voided in it }
+            send(DomainVoiceEvent.ResponseDone("completed"))
+            waitFor { DomainVoiceEvent.ResponseDone("completed") in it }
+        }
+        assertEquals(listOf("慢行，"), voice.started.toList(), "queued and half clauses are never synthesised")
+        assertEquals(listOf("慢行，"), voice.cancelled.toList())
+    }
+
+    @Test
+    fun aPromptVoidedBeforeItOpenedDoesNotCutTheReplyBeingSpoken() {
+        val voice = FakeVoice()
+        val out = run(
+            voice,
+            DomainVoiceEvent.ResponseStarted,
+            DomainVoiceEvent.SpeechText("这句要说完。"),
+            DomainVoiceEvent.AppPromptTurn("g9", DomainVoiceEvent.AppPromptTurn.Phase.VOIDED),
+            DomainVoiceEvent.AudioDone,
+            DomainVoiceEvent.ResponseDone("completed"),
+        )
+        assertEquals(listOf("这句要说完。"), voice.spoken.map { it.first })
+        assertEquals(1, out.count { it.isVoice() })
+    }
+
+    @Test
+    fun cancelCurrentReplyDropsQueuedWordsAndTheNextReplyIsNotHeldBack() {
+        val voice = SlowVoice()
+        live(voice) {
+            send(DomainVoiceEvent.ResponseStarted)
+            send(DomainVoiceEvent.SpeechText("慢的一句。"))
+            send(DomainVoiceEvent.SpeechText("排队的一句。"))
+            withTimeout(3_000) { voice.inFlight.await() }
+            revoicer.cancelCurrentReply("barge_in")
+            send(DomainVoiceEvent.AudioDone)
+            send(DomainVoiceEvent.ResponseDone("completed"))
+            send(DomainVoiceEvent.ResponseStarted)
+            send(DomainVoiceEvent.SpeechText("新回复。"))
+            send(DomainVoiceEvent.AudioDone)
+            waitFor(1_000) { list -> list.count { it == DomainVoiceEvent.ResponseStarted } == 2 && list.any { it.isVoice() } }
+        }
+        assertEquals(listOf("慢的一句。", "新回复。"), voice.started.toList())
+        assertEquals(listOf("慢的一句。"), voice.cancelled.toList())
+    }
+
+    @Test
+    fun aLeftoverHalfClauseIsNotSpokenIntoTheNextReply() {
+        val voice = FakeVoice()
+        run(
+            voice,
+            DomainVoiceEvent.ResponseStarted,
+            DomainVoiceEvent.SpeechText("没说完"),
+            DomainVoiceEvent.ResponseStarted,
+            DomainVoiceEvent.SpeechText("新的。"),
+            DomainVoiceEvent.AudioDone,
+            DomainVoiceEvent.ResponseDone("completed"),
+        )
+        assertEquals(listOf("新的。"), voice.spoken.map { it.first })
+    }
+
     private companion object {
         val VOICE_PCM = byteArrayOf(1, 0, 2, 0)
         val VOICE_B64: String = Base64.getEncoder().encodeToString(VOICE_PCM)

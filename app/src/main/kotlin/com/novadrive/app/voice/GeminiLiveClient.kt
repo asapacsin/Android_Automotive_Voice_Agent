@@ -193,6 +193,7 @@ class GeminiLiveClient(
         prompt.refusal(ready?.isCompleted == true, onsetSeen, turnOpen)?.let { reason ->
             DebugVoiceLog.log("gemini_prompt_refused id=$promptId reason=$reason"); return false
         }
+        strayOutput.setLength(0)  // an earlier turn's late transcript is not this prompt's words
         prompt.arm(promptId)
         if (!trySend(GeminiLiveProtocol.textTurn(text))) { prompt.disarm(); return false }
         DebugVoiceLog.log("gemini_prompt id=$promptId chars=${text.length}")
@@ -450,6 +451,7 @@ class GeminiLiveClient(
                 turnAudioSeen = true
                 Telemetry.record(EventType.TTS_START)
             }
+            if (speechTextEvents) return@forEach  // ADR-016: the voice speaks; Gemini audio is never held or emitted
             val event = DomainVoiceEvent.AudioDelta(data)
             if (prompt.open != null) { if (!prompt.suppressed()) emit(event) } else if (!pipeline.filter(event)) emit(event)
         }

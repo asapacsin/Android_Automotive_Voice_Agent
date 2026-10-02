@@ -488,6 +488,7 @@ class VoiceSessionController(
     private fun invalidatePlaybackEpoch() {
         playbackEpoch += 1
         playback.flush(playbackEpoch)
+        provider.onPlaybackFlushed()
         replyOpen = false
         acceptingReplyAudio = false
     }
