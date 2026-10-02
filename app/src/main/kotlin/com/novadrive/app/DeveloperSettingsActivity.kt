@@ -22,6 +22,7 @@ import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import com.novadrive.app.voice.AzureSpeechConfig
 import com.novadrive.app.voice.BaiduRealtimeClient
 import com.novadrive.app.voice.BaiduFlexClient
 import com.novadrive.app.voice.PcmAudioCapture
@@ -316,6 +317,7 @@ class DeveloperSettingsActivity : Activity() {
             addView(amapKey)
             addView(openAccessibility)
             addView(geminiSection())
+            addView(azureVoiceSection())
             addView(guidanceRelayToggle())
             addView(voiceToggle)
             addView("讯飞 APPID（唤醒词 你好小诺；MSC 只需要 APPID，不需要 API Key/Secret）".label())
@@ -572,6 +574,46 @@ class DeveloperSettingsActivity : Activity() {
             TextView(this).apply { text = "语音服务 / Voice provider (ADR-013)"; textSize = 18f },
             GeminiAppSettings.CONSENT_NOTICE, consent, "Provider", providerGroup, "API Key", key, "Model", modelGroup, "Voice", voice,
             thinkingLabel, thinking, "Silence ms", silence, save, clearKey,
+            "Takes effect at the next session start.",
+        )
+    }
+
+    /** ADR-016: the owner's assistant voice. Off by default; the key is never displayed or logged; blank keeps it. */
+    private fun azureVoiceSection(): LinearLayout {
+        val azure = AzureSpeechSettingsRepository(this)
+        val saved = azure.loadSettings()
+        val enabled = CheckBox(this).apply { text = "用 Azure 声音说话 / Speak with the Azure voice"; isChecked = saved.enabled }
+        val key = secretField(
+            if (azure.keyPresent()) "Azure Speech Key（已配置 / configured；留空保留）" else "Azure Speech Key",
+        )
+        val region = EditText(this).apply { setText(saved.region); hint = "eastasia / chinaeast2" }
+        val voice = EditText(this).apply { setText(saved.voice); hint = AzureSpeechConfig.DEFAULT_VOICE }
+        val save = Button(this).apply {
+            text = "保存声音设置 / Save voice"
+            setOnClickListener {
+                val settings = AzureSpeechSettings(
+                    enabled = enabled.isChecked,
+                    region = region.text.toString().trim(),
+                    voice = voice.text.toString().trim().ifBlank { AzureSpeechConfig.DEFAULT_VOICE },
+                )
+                val message = try {
+                    azure.save(settings, update(key))
+                    key.text.clear()
+                    "AZURE_VOICE_SAVED enabled=${settings.enabled} keyPresent=${azure.keyPresent()}"
+                } catch (failure: IllegalArgumentException) {
+                    failure.message ?: "AZURE_SETTINGS_INVALID"
+                }
+                result.text = message
+                Toast.makeText(this@DeveloperSettingsActivity, message, Toast.LENGTH_SHORT).show()
+            }
+        }
+        val clearKey = Button(this).apply {
+            text = "清除 Azure Key / Clear Azure key"
+            setOnClickListener { azure.clearKey(); result.text = "AZURE_KEY_CLEARED" }
+        }
+        return verticalGroup(
+            TextView(this).apply { text = "小诺的声音 / Assistant voice (Azure, ADR-016)"; textSize = 18f },
+            enabled, "Azure Key", key, "Region", region, "Voice", voice, save, clearKey,
             "Takes effect at the next session start.",
         )
     }
