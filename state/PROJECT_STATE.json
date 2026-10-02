@@ -1,21 +1,21 @@
 {
-  "generated_at": "2026-10-02T12:52:38",
+  "generated_at": "2026-10-02T14:56:49",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "9e62c76",
+    "commit": "7999d59",
     "branch": "claude/10-2",
-    "subject": "B-035: debug probe activity for the overlay fade on software-only emulators",
-    "working_tree_clean": false,
-    "uncommitted_files": 2
+    "subject": "P45 review follow-ups, records, and the claude/10-2 demo kit",
+    "working_tree_clean": true,
+    "uncommitted_files": 0
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-10-02T10:12:14",
+    "collected_at": "2026-10-02T14:56:42",
     "total": {
-      "tests": 530,
+      "tests": 1930,
       "failures": 0,
       "errors": 0,
-      "skipped": 0
+      "skipped": 2
     },
     "by_module": {
       "evaluation": {
@@ -25,10 +25,10 @@
         "skipped": 0
       },
       "app": {
-        "tests": 227,
+        "tests": 1627,
         "failures": 0,
         "errors": 0,
-        "skipped": 0
+        "skipped": 2
       },
       "simulator": {
         "tests": 25,
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 224220969,
-    "built_at": "2026-10-02T10:08:12"
+    "bytes": 224120139,
+    "built_at": "2026-10-02T14:54:03"
   },
   "capabilities": {
     "available": true,
@@ -147,10 +147,10 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "FUZZY-TEXT-LIVE-001: STALE_BIND: The live model maps the fuzzy phrase table FZ-01…FZ-19 to the right calls",
-    "actionable_count": 112,
+    "actionable_count": 113,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
-    "QUEUED_FOR_HUMAN": 24,
+    "QUEUED_FOR_HUMAN": 25,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
       {
@@ -676,6 +676,13 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "NOISE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "P45-EMU-001",
         "blocked_by": null
       },
       {
