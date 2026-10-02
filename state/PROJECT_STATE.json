@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-10-02T02:46:48",
+  "generated_at": "2026-10-02T02:57:13",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "930217e",
+    "commit": "84f6ec6",
     "branch": "claude/10-2",
-    "subject": "test-matrix: TTS-UNIT-001 PASS at 9305ede (3504 / 0)",
+    "subject": "fix(SPEC-019): re-review notes — speech evidence, scaled clause deadline",
     "working_tree_clean": false,
     "uncommitted_files": 1
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-10-02T02:46:00",
+    "collected_at": "2026-10-02T02:56:52",
     "total": {
-      "tests": 1906,
+      "tests": 1907,
       "failures": 0,
       "errors": 0,
       "skipped": 2
@@ -25,7 +25,7 @@
         "skipped": 0
       },
       "app": {
-        "tests": 1603,
+        "tests": 1604,
         "failures": 0,
         "errors": 0,
         "skipped": 2
@@ -66,7 +66,7 @@
   "apk": {
     "built": true,
     "bytes": 224103699,
-    "built_at": "2026-10-02T02:43:48"
+    "built_at": "2026-10-02T02:54:44"
   },
   "capabilities": {
     "available": true,
