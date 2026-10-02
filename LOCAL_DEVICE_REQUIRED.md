@@ -6,6 +6,7 @@ Every case below **requires a physical Android device** (and usually a real cabi
 
 > Autonomous work may still be open. Prefer finishing cloud-verifiable work first; this file is still the device queue.
 >
+> - the registry does not validate: 2 problem(s)
 > - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - TRUTH-MISHEARD-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -13,7 +14,6 @@ Every case below **requires a physical Android device** (and usually a real cabi
 > - TRUTH-WEATHER-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - TRUTH-BAIT-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - PLACE-SAVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
-> - PLACE-NAV-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 
 **18 LOCAL_DEVICE_REQUIRED item(s).**
 

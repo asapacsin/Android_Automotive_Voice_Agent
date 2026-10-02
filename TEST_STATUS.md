@@ -2,15 +2,15 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-21 · 141 tests
+Updated 2026-09-21 · 143 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 57 |
+| autonomous PASS | 58 |
 | autonomous FAIL | 0 |
 | incomplete | 0 |
 | partial pass | 0 |
-| not run | 59 |
+| not run | 60 |
 | human required | 23 |
 | human pass | 0 |
 | human fail | 1 |
@@ -20,6 +20,7 @@ Updated 2026-09-21 · 141 tests
 
 **HUMAN_VALIDATION_READY = FALSE**
 
+- the registry does not validate: 2 problem(s)
 - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - TRUTH-MISHEARD-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -79,6 +80,7 @@ Updated 2026-09-21 · 141 tests
 - FUZZY-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - GUIDANCE-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - CONFIG-CARD-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- TRANSCRIPT-FADE-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - TTS-VOICE-EMU-001 is AUTONOMOUS and BLOCKED_AUTONOMOUS - run it or fix it
 - live_info.along_route requires END_TO_END but has no passing cover (linked: none)
 - live_info.place_details requires END_TO_END but has no passing cover (linked: none)
@@ -103,7 +105,7 @@ Updated 2026-09-21 · 141 tests
 | microphone | 1 | 0 | 1 | 0 |
 | navigation | 24 | 6 | 4 | 14 |
 | performance | 2 | 2 | 0 | 0 |
-| permissions | 5 | 3 | 0 | 2 |
+| permissions | 7 | 4 | 0 | 3 |
 | regression | 2 | 1 | 0 | 1 |
 | release | 6 | 2 | 4 | 0 |
 | reliability | 8 | 4 | 1 | 3 |
@@ -144,7 +146,7 @@ Updated 2026-09-21 · 141 tests
 | CLIMATE-OFF-001 | climate | 关闭空调 turns it off | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite |
 | CLIMATE-SET-001 | climate | An explicit temperature is set | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite |
 | FUZZY-DEVICE-001 | comfort | Fuzzy requests on the emulator - chip on screen, one call per scenario, honest partial report | AUTONOMOUS | NOT_RUN | no | — |
-| FUZZY-TEXT-LIVE-001 | comfort | The live model maps the fuzzy phrase table FZ-01…FZ-19 to the right calls | AUTONOMOUS | PASS | yes | 2026-10-01 cloud, gemini-3.8-live, after adding 傲娇/温柔/元气: FUZZY 18/19 — FZ-15 傲娇一点 and … |
+| FUZZY-TEXT-LIVE-001 | comfort | The live model maps the fuzzy phrase table FZ-01…FZ-19 to the right calls | AUTONOMOUS | STALE | yes | 2026-10-01 cloud, gemini-3.8-live, after adding 傲娇/温柔/元气: FUZZY 18/19 — FZ-15 傲娇一点 and … |
 | SCENARIO-UNIT-001 | comfort | Comfort scenarios run their fixed steps through the direct-call servers and report partial failure honestly | AUTONOMOUS | PASS | no | 2026-10-01 cloud, integrated 436d197: ComfortScenariosTest 15/0; full suite 3378 / 0 fa… |
 | CTX-AMBIG-001 | dialogue_context | 再低一点 with no history asks which | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 「您是指温度还是风量呢？」 |
 | CTX-CHAIN-001 | dialogue_context | 再凉一点 continues the previous adjustment | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite |
@@ -158,7 +160,7 @@ Updated 2026-09-21 · 141 tests
 | MUSIC-APP-DEVICE-001 | media | 网易云 / QQ音乐 play a described song or fail honestly | HUMAN_ACCOUNT | HUMAN_REQUIRED | yes | MUSIC-UNIT-001 (JVM) |
 | MUSIC-NAMED-001 | media | A named song goes to play_music, never the bundled track | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite (old criterion: MEDIA_LIBRARY_UNSUPPORTED) |
 | MUSIC-PLAY-001 | media | 播放音乐 plays the bundled track | AUTONOMOUS | NOT_RUN | no | 2026-09-20: 20/20 suite |
-| MUSIC-TEXT-LIVE-001 | media | The model maps music descriptions to play_music fields | AUTONOMOUS | PASS | yes | 2026-10-01 re-run after the FZ-14 wording fix: GeminiTextLiveMappingTest MUSIC 10/10 |
+| MUSIC-TEXT-LIVE-001 | media | The model maps music descriptions to play_music fields | AUTONOMOUS | STALE | yes | 2026-10-01 re-run after the FZ-14 wording fix: GeminiTextLiveMappingTest MUSIC 10/10 |
 | MUSIC-UNIT-001 | media | play_music validates, hands off and reports only what is playing | AUTONOMOUS | PASS | yes | 2026-10-01 cloud, integrated 436d197: MediaServerPlayMusicTest 12/0, MediaDomainPlayMus… |
 | MUSIC-VLC-EMU-001 | media | VLC plays a local file handed off by play_music and the readback names it | AUTONOMOUS | NOT_RUN | yes | MUSIC-UNIT-001 (JVM) covers the result rules with a fake session source |
 | MIC-CABIN-001 | microphone | Open-mic thresholds in real cabin acoustics | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | NOISE-001 PASS - room noise produces no turn |
@@ -193,6 +195,8 @@ Updated 2026-09-21 · 141 tests
 | PERM-CAMERA-001 | permissions | A camera question without permission fails honestly | AUTONOMOUS | PASS | yes | CameraQuestionHandlerTest.missingCameraPermissionFailsFastWithoutCaptureOrRequest |
 | PERM-CONTACTS-001 | permissions | Missing contacts permission is not reported as not-found | AUTONOMOUS | PASS | yes | 2026-09-20 TEST_REVIEW: AndroidContacts mapped READ_CONTACTS denial onto ContactMatchKi… |
 | PERM-DENY-001 | permissions | A revoked microphone permission fails honestly | AUTONOMOUS | NOT_RUN | yes | STALE_BIND apk_digest mismatch |
+| TRANSCRIPT-FADE-EMU-001 | permissions | On the emulator the transcript bubble leaves the map about 10 s after the last line | AUTONOMOUS | NOT_RUN | no | 2026-10-02 cloud attempt, not a result: the app installed on nova34 (software-only) but… |
+| TRANSCRIPT-FADE-UNIT-001 | permissions | The last exchange clears after a quiet period and never while the conversation is live | AUTONOMOUS | PASS | no | 2026-10-02 cloud, claude/10-2: TranscriptBubbleFadeTest 7/0, TranscriptBubbleSessionSim… |
 | SUITE-SCENARIO-001 | regression | The live scenario suite | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20, exit 0 |
 | SUITE-UNIT-001 | regression | The whole unit and architecture suite | AUTONOMOUS | PASS | yes | 2026-09-21: 819 tests, 0 failures, 0 skipped (post-P31 full suite --rerun-tasks) |
 | ABI-POLICY-001 | release | Must armeabi-v7a keep working? | HUMAN_DECISION | HUMAN_REQUIRED | no | — |

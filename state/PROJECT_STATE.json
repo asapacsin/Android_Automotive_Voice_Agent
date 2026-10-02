@@ -1,21 +1,21 @@
 {
-  "generated_at": "2026-10-02T02:57:13",
+  "generated_at": "2026-10-02T12:52:38",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "84f6ec6",
+    "commit": "9e62c76",
     "branch": "claude/10-2",
-    "subject": "fix(SPEC-019): re-review notes — speech evidence, scaled clause deadline",
+    "subject": "B-035: debug probe activity for the overlay fade on software-only emulators",
     "working_tree_clean": false,
-    "uncommitted_files": 1
+    "uncommitted_files": 2
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-10-02T02:56:52",
+    "collected_at": "2026-10-02T10:12:14",
     "total": {
-      "tests": 1907,
+      "tests": 530,
       "failures": 0,
       "errors": 0,
-      "skipped": 2
+      "skipped": 0
     },
     "by_module": {
       "evaluation": {
@@ -25,10 +25,10 @@
         "skipped": 0
       },
       "app": {
-        "tests": 1604,
+        "tests": 227,
         "failures": 0,
         "errors": 0,
-        "skipped": 2
+        "skipped": 0
       },
       "simulator": {
         "tests": 25,
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 224103699,
-    "built_at": "2026-10-02T02:54:44"
+    "bytes": 224220969,
+    "built_at": "2026-10-02T10:08:12"
   },
   "capabilities": {
     "available": true,
@@ -146,13 +146,27 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "A0: | A0 | G-1 … G-1f measured on the short route | measurement (emulator) | `GUIDANCE-EMU-001` | not earned |",
-    "actionable_count": 109,
+    "NEXT_ACTION": "FUZZY-TEXT-LIVE-001: STALE_BIND: The live model maps the fuzzy phrase table FZ-01…FZ-19 to the right calls",
+    "actionable_count": 112,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 24,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "FUZZY-TEXT-LIVE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "MUSIC-TEXT-LIVE-001",
+        "blocked_by": null
+      },
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
@@ -732,6 +746,13 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "SUITE-SCENARIO-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "TRANSCRIPT-FADE-EMU-001",
         "blocked_by": null
       },
       {

@@ -2918,10 +2918,10 @@ tests:
     release_blocking: false
     terminal_success: [bubble_shows_line, bubble_kept_before_fade, bubble_cleared_after_fade]
     covers: []
-    prerequisites: ["an API 34 Google APIs x86_64 emulator (arm64 translation) with this build"]
-    procedure: ["switch device location off so 📍 writes a transcript line (map_recenter_no_service)", "tap 📍 and dump the UI: the line is in the bubble", "dump again at ~5 s: still there", "dump again at ~14 s: the bubble shows the placeholder"]
-    pass_criteria: ["the line is shown, kept at 5 s, and replaced by the placeholder by 14 s"]
-    evidence: []
+    prerequisites: ["emulator nova_api34 on the owner's PC (KVM/WHPX) with this debug build; the cloud container cannot run it (docs/CLOUD_BUILD.md, re-measured 2026-10-02)"]
+    procedure: ["probe (the overlay alone): adb shell am start -n com.novadrive.app/.TranscriptFadeProbeActivity --el speaking_ms 5000 --el held_ms 15000; read logcat NovaVoice transcript_bubble_shown / transcript_bubble_faded since_line_ms", "full app: switch device location off so 📍 writes a transcript line (map_recenter_no_service); tap 📍; the bubble shows the line, then the placeholder ~10-11 s later (transcript_bubble_faded)", "with a Gemini key: one spoken exchange; the bubble clears ~10 s after 小诺 stops being audible, not while she speaks"]
+    pass_criteria: ["probe: transcript_bubble_faded since_line_ms between 25000 and 27000 (held 15 s + 10 s quiet)", "full app: the line is shown, still there at ~5 s, replaced by the placeholder by ~12 s", "spoken exchange: never cleared while SPEAKING or audible"]
+    evidence: ["2026-10-02 cloud attempt, not a result: the app installed on nova34 (software-only) but the system starved (ANRs, system_server restarts); the probe could not attach within the process-start timeout. Run on the PC."]
     related: [B-035, TRANSCRIPT-FADE-UNIT-001]
     last_run: {at: null, result: null}
 
