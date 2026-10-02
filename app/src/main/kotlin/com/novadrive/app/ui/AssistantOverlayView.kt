@@ -38,10 +38,16 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
      */
     var transcriptHeld: () -> Boolean = { false }
 
+    /** When the newest line was written; for the fade log line only. */
+    private var lineShownAtMs = 0L
+
     private val transcriptFadeTick = object : Runnable {
         override fun run() {
             val held = runCatching { transcriptHeld() }.getOrDefault(true)
-            if (transcriptFade.tick(android.os.SystemClock.uptimeMillis(), lastVoiceState, held)) {
+            val now = android.os.SystemClock.uptimeMillis()
+            if (transcriptFade.tick(now, lastVoiceState, held)) {
+                // Timing only, never the words (I-8).
+                com.novadrive.app.DebugVoiceLog.log("transcript_bubble_faded since_line_ms=${now - lineShownAtMs}")
                 restoreIdleBubble()
                 return
             }
@@ -308,6 +314,8 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
         bubble.text = recentTranscript(previous, line)
         shownError.overwritten()
         transcriptFade.lineShown()
+        lineShownAtMs = android.os.SystemClock.uptimeMillis()
+        com.novadrive.app.DebugVoiceLog.log("transcript_bubble_shown")
         scheduleTranscriptFade()
     }
 
