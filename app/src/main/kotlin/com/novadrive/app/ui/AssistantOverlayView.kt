@@ -47,7 +47,9 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
             val now = android.os.SystemClock.uptimeMillis()
             if (transcriptFade.tick(now, lastVoiceState, held)) {
                 // Timing only, never the words (I-8).
-                com.novadrive.app.DebugVoiceLog.log("transcript_bubble_faded since_line_ms=${now - lineShownAtMs}")
+                com.novadrive.app.DebugVoiceLog.log(
+                    "transcript_bubble_faded since_line_ms=${now - lineShownAtMs} quiet_ms=${transcriptFade.lastQuietMs}",
+                )
                 restoreIdleBubble()
                 return
             }
@@ -338,7 +340,12 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
         val token = shownError.show(code)
         // B-033: a transient card fades; a newer card is never cleared by this timer.
         if (!ShownErrorCard.staysUntilFixed(code)) {
-            postDelayed({ if (shownError.expire(token)) restoreIdleBubble() }, ERROR_CARD_FADE_MS)
+            postDelayed({
+                if (shownError.expire(token)) {
+                    com.novadrive.app.DebugVoiceLog.log("error_card_faded code=$code after_ms=$ERROR_CARD_FADE_MS")
+                    restoreIdleBubble()
+                }
+            }, ERROR_CARD_FADE_MS)
         }
         bubble.text = "$code\n$message"
         transcriptFade.replaced()
@@ -352,6 +359,7 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
      */
     fun clearError(code: String) {
         if (!shownError.clear(code)) return
+        com.novadrive.app.DebugVoiceLog.log("error_card_cleared code=$code")
         restoreIdleBubble()
     }
 

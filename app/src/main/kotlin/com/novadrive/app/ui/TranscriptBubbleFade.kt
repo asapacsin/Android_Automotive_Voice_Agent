@@ -19,6 +19,10 @@ internal class TranscriptBubbleFade(private val fadeMs: Long = TRANSCRIPT_FADE_M
 
     private var quietSinceMs: Long? = null
 
+    /** How long the conversation had been quiet when the last fade fired (for the log). */
+    var lastQuietMs: Long = 0L
+        private set
+
     /** A transcript line was written into the bubble: the quiet period starts again. */
     fun lineShown() {
         showing = true
@@ -44,6 +48,7 @@ internal class TranscriptBubbleFade(private val fadeMs: Long = TRANSCRIPT_FADE_M
         }
         val since = quietSinceMs ?: nowMs.also { quietSinceMs = it }
         if (nowMs - since < fadeMs) return false
+        lastQuietMs = nowMs - since
         replaced()
         return true
     }

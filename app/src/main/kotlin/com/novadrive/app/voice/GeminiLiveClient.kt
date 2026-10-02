@@ -151,7 +151,7 @@ class GeminiLiveClient(
             resumptionHandle = resumptionHandle,
         )
         setupResumed = !resumptionHandle.isNullOrEmpty()
-        DebugVoiceLog.log("gemini_connect resume=$setupResumed")
+        DebugVoiceLog.log("gemini_connect resume=$setupResumed voice=${settings.voice} model=${settings.model}")
         // The key goes in this header and nowhere else: not the URL, not a log, not an exception.
         val request = Request.Builder().url(settings.endpoint.trim())
             .header(GeminiLiveProtocol.API_KEY_HEADER, config.apiKey).build()

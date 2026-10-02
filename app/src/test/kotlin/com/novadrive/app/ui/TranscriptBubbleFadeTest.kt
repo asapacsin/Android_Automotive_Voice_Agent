@@ -1,6 +1,7 @@
 package com.novadrive.app.ui
 
 import com.novadrive.ingress.realtime.VoiceUiState
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -20,6 +21,7 @@ class TranscriptBubbleFadeTest {
         assertFalse(fade.pollUntil(1_000, 10_000), "quiet since 1 s: not yet at 10 s")
         assertTrue(fade.tick(11_000, idle, held = false))
         assertFalse(fade.showing)
+        assertEquals(10_000L, fade.lastQuietMs, "the log reports the quiet period that caused the fade")
     }
 
     @Test

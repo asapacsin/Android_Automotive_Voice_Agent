@@ -64,7 +64,7 @@ class AzureSpeechVoice(
                 }
             }
             try {
-                stream(call, text, onPcm) { cancelledByUs.get() }
+                stream(call, text, style, onPcm) { cancelledByUs.get() }
             } finally {
                 watcher.cancel()
             }
@@ -74,6 +74,7 @@ class AzureSpeechVoice(
     private suspend fun stream(
         call: okhttp3.Call,
         text: String,
+        style: SpeakingStyle,
         onPcm: suspend (ByteArray) -> Unit,
         cancelledByUs: () -> Boolean,
     ) {
@@ -105,7 +106,8 @@ class AzureSpeechVoice(
                             if (first) {
                                 first = false
                                 DebugVoiceLog.log(
-                                    "azure_tts_first_audio ms=${elapsedMs(start)} chars=${text.length}",
+                                    "azure_tts_first_audio ms=${elapsedMs(start)} chars=${text.length} " +
+                                        "style=${azureStyleFor(style)?.first ?: "none"}",
                                 )
                             }
                             onPcm(out)
