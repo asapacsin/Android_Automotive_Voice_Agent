@@ -6,7 +6,6 @@ Every case below **requires a physical Android device** (and usually a real cabi
 
 > Autonomous work may still be open. Prefer finishing cloud-verifiable work first; this file is still the device queue.
 >
-> - the registry does not validate: 5 problem(s)
 > - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - TRUTH-MISHEARD-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -14,8 +13,9 @@ Every case below **requires a physical Android device** (and usually a real cabi
 > - TRUTH-WEATHER-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - TRUTH-BAIT-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - PLACE-SAVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - PLACE-NAV-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 
-**17 LOCAL_DEVICE_REQUIRED item(s).**
+**18 LOCAL_DEVICE_REQUIRED item(s).**
 
 Install tip (from a cloud-built APK, when one exists):
 
@@ -570,6 +570,36 @@ adb logcat -s NovaVoice:D
 **Tell me back:** vendor, voice id, one sentence of impression
 
 **Still unknown until you do:** vendor first-packet latency on the owner's network
+
+### LOCAL_DEVICE_REQUIRED — TTS-VOICE-DEVICE-001 — In the car, Xiaoyi is the only voice and the styles sound right
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Whether the delay is acceptable and the styles sound right is a listening judgement in the car
+
+**Automation blocker:** `subjective_perception`
+
+**Already established without you:**
+
+- TTS-UNIT-001
+- TTS-VOICE-EMU-001 (once run)
+
+**You will need:** phone with this build; Azure key entered and 小诺的声音 on
+
+**What to do:**
+
+1. drive the short route; chat, give commands, interrupt
+2. try 嗲一点 / 傲娇一点 / 温柔一点 / 元气一点 / 正常一点
+
+**It passes if:**
+
+- only Xiaoyi is heard
+- the delay before she speaks is acceptable
+- each style sounds like itself
+
+**Tell me back:** yes/no per criterion; style degrees to change, if any
+
+**Still unknown until you do:** Azure latency on the owner's network; how 傲娇 (disgruntled 0.6) sounds
 
 ---
 

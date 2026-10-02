@@ -963,13 +963,13 @@ tests:
     pass_criteria: [">= 8/10 descriptions produce play_music with a plausible title or artist/work", "0/10 produce control_music{play}"]
     evidence: ["2026-10-01 re-run after the FZ-14 wording fix: GeminiTextLiveMappingTest MUSIC 10/10", "2026-10-01 cloud, gemini-3.8-live, GeminiTextLiveMappingTest (opt-in NOVA_GEMINI_TEXT_LIVE=1; fresh session per phrase, app client + RealtimeToolCatalog + default persona): 9/10 play_music, 0/10 control_music. M-01 梶浦/空之境界 -> play_music{artist,album_or_work,mood,query} (no title); M-02 提神 -> {mood,query}; M-03 晴天 -> {title,artist,query}; M-04 下雨天 -> MISS no call; M-05 十年 -> {title,artist}; M-06 进击的巨人 -> {album_or_work}; M-07 钢琴 -> {mood,query}; M-08 红豆 -> {title,artist}; M-09 千与千寻 -> {album_or_work,query}; M-10 八十年代粤语 -> {query}. Control: 放首歌 -> control_music{play}"]
     evidence_bind:
-      code_digest: sha256:991636f56eea600a7dba99b1f4e0bc8e69bae299563101997f9b0faeab243262
+      code_digest: sha256:f16df4b229059b5da99c4573a54359826bc99a0eeeb53052fe76811eb41d5cd5
       procedure_digest: sha256:f803e58b4943f7015563223448ac11f0c1c47350bad177b7f2682550c6bb0c81
       registry_digest: sha256:36f1bd13116237afa37238ca65b5f53baa0c1d44355cb505250764641df6e24f
       harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
       artifact_digests: {}
-      apk_digest: sha256:da3d19423f964a3c58fb5ec8c2cdba88ed0563af141cb99bc9fbbefbb75d373c
-      bound_commit: 696d9dd
+      apk_digest: sha256:71e477606ee68ef97fc6c942671ccca503525b072de9e46ca4d0ab454c8c3134
+      bound_commit: 930217e
     related: [SPEC-017]
     last_run: {at: 2026-10-01, result: PASS}
 
@@ -2765,8 +2765,8 @@ tests:
       registry_digest: sha256:6ac5cdbd9df4d89a845e9b4284c40c70f61fe64a27100c9f1f75faf0c55ec82f
       harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
       artifact_digests: {}
-      apk_digest: sha256:da3d19423f964a3c58fb5ec8c2cdba88ed0563af141cb99bc9fbbefbb75d373c
-      bound_commit: 696d9dd
+      apk_digest: sha256:71e477606ee68ef97fc6c942671ccca503525b072de9e46ca4d0ab454c8c3134
+      bound_commit: 930217e
     covers: [comfort.scenario, body.window, body.seat_height, speech.speaking_style]
     prerequisites: ["GEMINI_API_KEY in the environment (default provider, ADR-013)", "text turns through the app's own Gemini client"]
     procedure: ["send each FZ phrase as a text turn in its stated context", "record the first tool call and arguments"]

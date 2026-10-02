@@ -4,7 +4,6 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 
 > **Not ready yet.** This is a preview of the queue; autonomous work remains:
 >
-> - the registry does not validate: 5 problem(s)
 > - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - TRUTH-MISHEARD-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -12,8 +11,9 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 > - TRUTH-WEATHER-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - TRUTH-BAIT-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - PLACE-SAVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - PLACE-NAV-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 
-23 item(s) queued.
+24 item(s) queued.
 
 Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEVICE_REQUIRED.md).
 
@@ -565,6 +565,36 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 **Tell me back:** vendor, voice id, one sentence of impression
 
 **Still unknown until you do:** vendor first-packet latency on the owner's network
+
+### LOCAL_DEVICE_REQUIRED — TTS-VOICE-DEVICE-001 — In the car, Xiaoyi is the only voice and the styles sound right
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Whether the delay is acceptable and the styles sound right is a listening judgement in the car
+
+**Automation blocker:** `subjective_perception`
+
+**Already established without you:**
+
+- TTS-UNIT-001
+- TTS-VOICE-EMU-001 (once run)
+
+**You will need:** phone with this build; Azure key entered and 小诺的声音 on
+
+**What to do:**
+
+1. drive the short route; chat, give commands, interrupt
+2. try 嗲一点 / 傲娇一点 / 温柔一点 / 元气一点 / 正常一点
+
+**It passes if:**
+
+- only Xiaoyi is heard
+- the delay before she speaks is acceptable
+- each style sounds like itself
+
+**Tell me back:** yes/no per criterion; style degrees to change, if any
+
+**Still unknown until you do:** Azure latency on the owner's network; how 傲娇 (disgruntled 0.6) sounds
 
 ## B. Account and real-service tests
 
