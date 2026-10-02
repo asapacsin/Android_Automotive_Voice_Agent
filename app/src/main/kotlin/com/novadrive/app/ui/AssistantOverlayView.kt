@@ -29,6 +29,26 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
     /** Which error card, if any, is in the bubble (P44: a fixed CONFIG problem must leave). */
     private val shownError = ShownErrorCard()
 
+    /** B-035: the last exchange clears itself once the conversation has been quiet for a while. */
+    private val transcriptFade = TranscriptBubbleFade()
+
+    /**
+     * B-035: true while the exchange must stay although the turn state is idle: 小诺's words are
+     * still playing out, or a question waits on screen. Set by the activity; read on the main thread.
+     */
+    var transcriptHeld: () -> Boolean = { false }
+
+    private val transcriptFadeTick = object : Runnable {
+        override fun run() {
+            val held = runCatching { transcriptHeld() }.getOrDefault(true)
+            if (transcriptFade.tick(android.os.SystemClock.uptimeMillis(), lastVoiceState, held)) {
+                restoreIdleBubble()
+                return
+            }
+            if (transcriptFade.showing) postDelayed(this, TRANSCRIPT_FADE_POLL_MS)
+        }
+    }
+
     private val avatar: TextView
     private val stateDot: TextView
     private val stateLabel: TextView
@@ -277,6 +297,7 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
         if (ui == AssistantUiState.ERROR && !error.isNullOrBlank()) {
             bubble.text = error
             shownError.overwritten()
+            transcriptFade.replaced()
         }
         actionCard.visibility = GONE
     }
@@ -286,6 +307,23 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
         val previous = if (current == context.getString(R.string.assistant_speech_placeholder)) "" else current
         bubble.text = recentTranscript(previous, line)
         shownError.overwritten()
+        transcriptFade.lineShown()
+        scheduleTranscriptFade()
+    }
+
+    private fun scheduleTranscriptFade() {
+        removeCallbacks(transcriptFadeTick)
+        if (transcriptFade.showing) postDelayed(transcriptFadeTick, TRANSCRIPT_FADE_POLL_MS)
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        scheduleTranscriptFade()
+    }
+
+    override fun onDetachedFromWindow() {
+        removeCallbacks(transcriptFadeTick)
+        super.onDetachedFromWindow()
     }
 
     fun showError(code: String, message: String) {
@@ -295,6 +333,7 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
             postDelayed({ if (shownError.expire(token)) restoreIdleBubble() }, ERROR_CARD_FADE_MS)
         }
         bubble.text = "$code\n$message"
+        transcriptFade.replaced()
         stateLabel.text = context.getString(R.string.assistant_state_error)
         stateDot.setTextColor(Color.parseColor("#FFEF5350"))
     }
@@ -311,6 +350,7 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
     /** The card is gone; the state line shows the real state again (e.g. 休眠中（已断开）). */
     private fun restoreIdleBubble() {
         bubble.text = context.getString(R.string.assistant_speech_placeholder)
+        transcriptFade.replaced()
         bindState(lastVoiceState, null)
     }
 

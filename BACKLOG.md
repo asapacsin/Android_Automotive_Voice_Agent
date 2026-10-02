@@ -6,7 +6,7 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 
 | # | Demand | Raised | Status | Spec |
 | --- | --- | --- | --- | --- |
-| B-035 | **Transcript bubble fades out** — the last 你:/小诺: exchange stays on the map forever; it should clear after a while | 2026-10-02 | Open | §B-035 below |
+| B-035 | **Transcript bubble fades out** — the last 你:/小诺: exchange stays on the map forever; it should clear after a while | 2026-10-02 | **Done** (L1 + session simulation; emulator `TRANSCRIPT-FADE-EMU-001`) | §B-035 below |
 | B-034 | **Gemini voice sounds like an old woman** — owner wants a 符玄-like voice; owner ear test rejected every Gemini prebuilt voice | 2026-10-02 | **Decided** — [ADR-016](DECISIONS/ADR-016-chinese-voice-for-gemini.md); owner audition `TTS-AUDITION-001` next | §B-034 below |
 | B-033 | **Status cards fade out** — an error/status card on the map disappears by itself after a while instead of staying forever | 2026-10-02 | **Done** (emulator check queued) | §B-033 below |
 | B-032 | **Car agent with domain servers** — "a more clever agent system that has several car MCP"; Gemini stays the one agent, car functions become MCP-shaped domain servers | 2026-09-30 | **Specced** | [SPEC-016](SPECS/SPEC-016-gemini-default-and-domain-servers.md) · [ADR-015](DECISIONS/ADR-015-car-domain-servers.md) |
@@ -765,3 +765,15 @@ The app still speaks with Gemini's voice until the owner enters an Azure Speech 
 - While navigating, the bubble takes map space, so clearing it matters most there.
 
 **Owner in code:** `AssistantOverlayView` (`appendTranscript`, `recentTranscript`), with the B-033 timer pattern (`ShownErrorCard`). Test: a JVM test of the timer policy, then an emulator check that the bubble is gone about 10 s after a reply.
+
+**Done, 2026-10-02 (`claude/10-2`).** `TranscriptBubbleFade` (in `ui/`) is the policy and `AssistantOverlayView` polls it once a second while a line is shown.
+
+- The bubble returns to the placeholder after **10 s of quiet** (`TRANSCRIPT_FADE_MS`).
+- "Quiet" means the turn state is not USER_SPEAKING, THINKING or SPEAKING, **and** nothing holds it:
+  - `PcmAudioPlayer.isPlaying`: 小诺 is still audible. ResponseDone arrives before the playout ends, so the timer starts from the end of the playout, not the end of the reply.
+  - `VoiceContextHints.awaitingAnswer()`: a selection list or the camera question is waiting.
+- Any busy moment or new line restarts the quiet period, so an older wait never clears a newer exchange. Error cards keep their own B-033 timer; this fade never clears one.
+- Tests:
+  - `TranscriptBubbleFadeTest`, 7 tests.
+  - `TranscriptBubbleSessionSimulationTest`, 4 tests: the real `VoiceSessionController` drives the states and lines. The owner's exchange leaves 10–12 s after its playout. It survives a follow-up, a barge-in and a waiting route list.
+  - The emulator check is `TRANSCRIPT-FADE-EMU-001`.

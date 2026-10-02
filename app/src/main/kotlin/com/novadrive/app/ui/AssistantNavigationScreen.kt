@@ -224,6 +224,13 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
         overlay.appendTranscript(line)
     }
 
+    /** B-035: what keeps the last exchange on screen although the turn is over. */
+    var transcriptHeld: () -> Boolean
+        get() = overlay.transcriptHeld
+        set(value) {
+            overlay.transcriptHeld = value
+        }
+
     fun showError(code: String, message: String) {
         overlay.showError(code, message)
     }

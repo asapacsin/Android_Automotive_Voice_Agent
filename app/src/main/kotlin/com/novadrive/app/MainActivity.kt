@@ -162,6 +162,8 @@ class MainActivity : Activity() {
                 }
                 onCameraPermissionNeeded = { runOnUiThread { requestCameraPermission() } }
                 onListeningToggle = { toggleListening() }
+                // B-035: the exchange stays while 小诺 is still audible or a question waits on screen.
+                transcriptHeld = { player.isPlaying || com.novadrive.app.voice.VoiceContextHints.awaitingAnswer() }
             }
         setContentView(screen)
         screen.bindControls(screenControls)

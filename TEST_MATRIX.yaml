@@ -2891,6 +2891,40 @@ tests:
     related: [P44, CONFIG-CARD-UNIT-001]
     last_run: {at: null, result: null}
 
+  - id: TRANSCRIPT-FADE-UNIT-001
+    capability: permissions
+    name: The last exchange clears after a quiet period and never while the conversation is live
+    purpose: "BACKLOG B-035 - the 你:/小诺: bubble stayed over the map forever"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: []
+    procedure: ["gradlew :app:testDebugUnitTest --tests *TranscriptBubbleFadeTest* --tests *TranscriptBubbleSessionSimulationTest*"]
+    pass_criteria: ["cleared after 10 s of quiet (polled every 1 s)", "never cleared while USER_SPEAKING, THINKING or SPEAKING", "never cleared while held (playout audible, a question waiting on screen)", "a new line or a busy moment restarts the quiet period, so an older wait never clears a newer exchange", "an error card or the placeholder is never cleared by it", "session simulation (real VoiceSessionController): the exchange leaves 10-12 s after the playout ends, not at ResponseDone; survives barge-in and a waiting route list"]
+    evidence: ["2026-10-02 cloud, claude/10-2: TranscriptBubbleFadeTest 7/0, TranscriptBubbleSessionSimulationTest 4/0 (planner read the JUnit XML)"]
+    related: [B-035, B-033]
+    last_run: {at: 2026-10-02, result: PASS}
+
+  - id: TRANSCRIPT-FADE-EMU-001
+    capability: permissions
+    name: On the emulator the transcript bubble leaves the map about 10 s after the last line
+    purpose: "BACKLOG B-035 device check: the real overlay, its main-thread poll and restore to the placeholder"
+    type: device
+    scope: END_TO_END
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    terminal_success: [bubble_shows_line, bubble_kept_before_fade, bubble_cleared_after_fade]
+    covers: []
+    prerequisites: ["an API 34 Google APIs x86_64 emulator (arm64 translation) with this build"]
+    procedure: ["switch device location off so 📍 writes a transcript line (map_recenter_no_service)", "tap 📍 and dump the UI: the line is in the bubble", "dump again at ~5 s: still there", "dump again at ~14 s: the bubble shows the placeholder"]
+    pass_criteria: ["the line is shown, kept at 5 s, and replaced by the placeholder by 14 s"]
+    evidence: []
+    related: [B-035, TRANSCRIPT-FADE-UNIT-001]
+    last_run: {at: null, result: null}
+
   - id: VOICE-AB-001
     capability: speech
     name: Gemini prebuilt voices measured for a young, clear voice (B-034 shortlist)
