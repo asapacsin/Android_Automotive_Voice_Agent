@@ -1,6 +1,7 @@
 package com.novadrive.app.voice
 
 import com.novadrive.app.SpeakingStyle
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -41,7 +42,7 @@ class AzureSpeechVoiceTest {
         assertEquals("POST", r.method)
         assertEquals("/cognitiveservices/v1", r.path)
         assertEquals(key, r.getHeader("Ocp-Apim-Subscription-Key"))
-        assertTrue(r.getHeader("Content-Type")!!.startsWith("application/ssml+xml"))
+        assertEquals("application/ssml+xml", r.getHeader("Content-Type"), "no charset parameter appended")
         assertEquals("raw-24khz-16bit-mono-pcm", r.getHeader("X-Microsoft-OutputFormat"))
         assertEquals("NovaDrive", r.getHeader("User-Agent"))
         val body = r.body.readUtf8()
@@ -134,4 +135,21 @@ class AzureSpeechVoiceTest {
         assertEquals(0, collect(text = "  ").size)
         assertEquals(0, server.requestCount)
     }
+
+    @Test
+    fun cancellingMidStreamStopsTheReadPromptly() = runBlocking {
+        // 48 000 bytes trickled at 4 800 bytes per second: a full read would take ~10 s.
+        server.enqueue(MockResponse().setBody(Buffer().write(pcm(48_000))).throttleBody(4_800, 1, java.util.concurrent.TimeUnit.SECONDS))
+        val firstChunk = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val job = launch(kotlinx.coroutines.Dispatchers.Default) {
+            voice().synthesize("很长的一句话", SpeakingStyle.DEFAULT) { firstChunk.complete(Unit) }
+        }
+        kotlinx.coroutines.withTimeout(5_000) { firstChunk.await() }
+        val started = System.nanoTime()
+        job.cancel()
+        kotlinx.coroutines.withTimeout(2_000) { job.join() }
+        assertTrue((System.nanoTime() - started) / 1_000_000 < 1_500, "cancellation must not wait for the read timeout")
+        assertTrue(job.isCancelled)
+    }
 }
+

@@ -3,7 +3,11 @@ package com.novadrive.app.voice
 import com.novadrive.app.DebugVoiceLog
 import com.novadrive.app.SpeakingStyle
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -41,11 +45,25 @@ class AzureSpeechVoice(
             .header("Ocp-Apim-Subscription-Key", config.key)
             .header("X-Microsoft-OutputFormat", "raw-24khz-16bit-mono-pcm")
             .header("User-Agent", "NovaDrive")
-            .post(azureSsml(text, config.voice, style).toRequestBody(SSML_MEDIA_TYPE))
+            .post(azureSsml(text, config.voice, style).toByteArray(Charsets.UTF_8).toRequestBody(SSML_MEDIA_TYPE))
             .build()
+        val call = http.newCall(request)
+        // Barge-in must stop a blocked read now, not at the read timeout: a cancelled coroutine
+        // cancels the call, which fails the read; ensureActive then rethrows the cancellation.
+        coroutineScope {
+            val watcher = launch(start = CoroutineStart.UNDISPATCHED) {
+                try { awaitCancellation() } finally { call.cancel() }
+            }
+            try {
+                stream(call, text, onPcm)
+            } finally {
+                watcher.cancel()
+            }
+        }
+    }
+
+    private suspend fun stream(call: okhttp3.Call, text: String, onPcm: suspend (ByteArray) -> Unit) {
         withContext(Dispatchers.IO) {
-            val call = http.newCall(request)
-            val handle = coroutineContext[Job]?.invokeOnCompletion { if (it != null) call.cancel() }
             val start = System.nanoTime()
             try {
                 call.execute().use { response ->
@@ -88,11 +106,12 @@ class AzureSpeechVoice(
                 DebugVoiceLog.log("azure_tts_failed code=${e.code}")
                 throw e
             } catch (e: IOException) {
+                // Our own cancel (barge-in) closed the socket. The coroutine may not be marked
+                // cancelling yet on this thread (measured race), so ask the call, not the job.
+                if (call.isCanceled()) throw CancellationException("assistant voice cancelled")
                 coroutineContext.ensureActive()
                 DebugVoiceLog.log("azure_tts_failed code=AZURE_TTS_NETWORK")
                 throw AssistantVoiceException("AZURE_TTS_NETWORK", "AZURE_TTS_NETWORK")
-            } finally {
-                handle?.dispose()
             }
         }
     }

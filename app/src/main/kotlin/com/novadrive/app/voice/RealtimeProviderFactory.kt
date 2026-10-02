@@ -46,7 +46,8 @@ object RealtimeProviderFactory {
             }
         }
         is SessionProviderConfig.Gemini -> built(
-            GeminiLiveProvider(config.api, lastAudioSegment, speechEvidence),
+            // ADR-016: the owner's assistant voice, when configured, speaks instead of Gemini's audio.
+            GeminiLiveProvider(config.api, lastAudioSegment, speechEvidence, config.api.assistantVoice?.let(::AzureSpeechVoice)),
             VoiceProviderId.GEMINI_LIVE, config.api.settings.model, GEMINI_OUTPUT_SAMPLE_RATE_HZ,
         )
     }
