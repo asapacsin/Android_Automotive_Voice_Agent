@@ -32,6 +32,8 @@ class AzureSpeechVoice(
     private val config: AzureSpeechConfig,
     private val http: OkHttpClient = defaultHttp(),
     private val baseUrl: String = "https://${config.host}",
+    /** Whole-clause deadline by clause length: a long clause on a slow link must not be cut. */
+    private val deadlineMs: (chars: Int) -> Long = ::clauseDeadlineMs,
 ) : AssistantVoice {
 
     override suspend fun synthesize(
@@ -48,6 +50,7 @@ class AzureSpeechVoice(
             .post(azureSsml(text, config.voice, style).toByteArray(Charsets.UTF_8).toRequestBody(SSML_MEDIA_TYPE))
             .build()
         val call = http.newCall(request)
+        call.timeout().timeout(deadlineMs(text.length), TimeUnit.MILLISECONDS)
         val cancelledByUs = java.util.concurrent.atomic.AtomicBoolean(false)
         // Barge-in must stop a blocked read now, not at the read timeout: a cancelled coroutine
         // cancels the call, which fails the read, and that failure is reported as the cancellation.
@@ -135,14 +138,17 @@ class AzureSpeechVoice(
 
     companion object {
         private const val READ_BUFFER = 4800
-        const val CALL_TIMEOUT_S = 8L
+
+        /**
+         * First byte to last for one clause: 4 s plus 0.4 s per character. A character is ~0.25 s of
+         * speech, so the deadline only trips below ~0.6x real-time delivery (review 2026-10-02).
+         */
+        fun clauseDeadlineMs(chars: Int): Long = 4_000L + 400L * chars
         private val SSML_MEDIA_TYPE = "application/ssml+xml".toMediaType()
 
         fun defaultHttp(): OkHttpClient = OkHttpClient.Builder()
             .connectTimeout(5, TimeUnit.SECONDS)
             .readTimeout(10, TimeUnit.SECONDS)
-            // A whole clause, first byte to last; normal synthesis of one clause is well under 2 s.
-            .callTimeout(CALL_TIMEOUT_S, TimeUnit.SECONDS)
             .build()
 
         private fun elapsedMs(startNanos: Long) = (System.nanoTime() - startNanos) / 1_000_000

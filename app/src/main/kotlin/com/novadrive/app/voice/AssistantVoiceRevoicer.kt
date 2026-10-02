@@ -75,8 +75,12 @@ class AssistantVoiceRevoicer(
 
             fun speechParent(): Job {
                 speech.get()?.takeIf { it.isActive }?.let { return it }
+                val current = speech.get()
+                if (current != null && current.isActive) return current
                 val created = SupervisorJob(workerJob)
-                return if (speech.compareAndSet(speech.get(), created)) created else speechParent()
+                if (speech.compareAndSet(current, created)) return created
+                created.cancel()  // lost a race with cancelCurrentReply: never leave it open
+                return speechParent()
             }
 
             fun speak(clause: String, at: Long) {

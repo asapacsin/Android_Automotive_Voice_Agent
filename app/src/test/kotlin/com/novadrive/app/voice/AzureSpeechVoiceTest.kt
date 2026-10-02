@@ -155,13 +155,13 @@ class AzureSpeechVoiceTest {
     @Test
     fun aTricklingResponseTimesOutWithAStableCode() {
         server.enqueue(MockResponse().setBody(Buffer().write(pcm(48_000))).throttleBody(100, 1, java.util.concurrent.TimeUnit.SECONDS))
-        val http = okhttp3.OkHttpClient.Builder().callTimeout(400, java.util.concurrent.TimeUnit.MILLISECONDS).build()
-        val voice = AzureSpeechVoice(config, http, server.url("/").toString().trimEnd('/'))
+        val voice = AzureSpeechVoice(config, baseUrl = server.url("/").toString().trimEnd('/'), deadlineMs = { 400L })
         val failure = assertThrows<AssistantVoiceException> {
             runBlocking { voice.synthesize("你好", SpeakingStyle.DEFAULT) {} }
         }
         assertEquals("AZURE_TTS_TIMEOUT", failure.code)
-        assertTrue(AzureSpeechVoice.CALL_TIMEOUT_S in 1..10, "a whole clause has a deadline")
+        assertEquals(4_400L, AzureSpeechVoice.clauseDeadlineMs(1))
+        assertEquals(20_000L, AzureSpeechVoice.clauseDeadlineMs(40), "a 40-char clause is ~10 s of speech")
     }
 }
 

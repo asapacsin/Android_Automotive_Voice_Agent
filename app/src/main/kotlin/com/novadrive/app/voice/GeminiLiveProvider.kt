@@ -19,6 +19,8 @@ class GeminiLiveProvider(
     private val client: GeminiLiveClient = GeminiLiveClient(),
     /** ADR-016: when set, this voice speaks Gemini's words; the client must emit SpeechText. */
     private val revoicer: AssistantVoiceRevoicer? = null,
+    /** The microphone's judgement that the onset is speech, not a cough or road noise. */
+    private val speechEvidence: () -> Boolean = { true },
 ) : RealtimeVoiceProvider {
     /** Secondary constructor: the microphone's measurement of the audio that caused each turn. */
     constructor(
@@ -34,6 +36,7 @@ class GeminiLiveProvider(
             speechTextEvents = assistantVoice != null,
         ),
         assistantVoice?.let { AssistantVoiceRevoicer(it, style = { com.novadrive.app.SpeakingStyleState.current }) },
+        speechEvidence,
     )
 
     override val providerId = "google.gemini.live.direct"
@@ -65,7 +68,10 @@ class GeminiLiveProvider(
         // ADR-016: a reply the voice has not started playing yet is not audible, so the driver's
         // speech cannot be its echo — it is a new turn and the unplayed reply is dropped. While
         // playback runs, the session's barge-in decision applies instead (onPlaybackFlushed).
-        if (active && !playbackActive) revoicer?.cancelCurrentReply("driver_onset_unplayed")
+        // A raw onset can be a cough or road noise, so only speech evidence drops the reply.
+        if (active && !playbackActive && revoicer != null && speechEvidence()) {
+            revoicer.cancelCurrentReply("driver_onset_unplayed")
+        }
         client.onLocalSpeechActivity(active)
     }
     override fun interrupt() = runBlocking { cancelAssistantResponse() }

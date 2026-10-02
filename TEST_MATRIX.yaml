@@ -3004,7 +3004,7 @@ tests:
     terminal_success: [replies_in_xiaoyi, no_gemini_voice_heard, barge_in_stops_voice, guidance_in_xiaoyi, style_changes_delivery]
     prerequisites: ["emulator nova_api34 with this build", "Gemini key + consent", "Azure key + region entered, 小诺的声音 switched on", "route 横琴创业谷 -> 励骏庞都 only (owner test-run policy)"]
     procedure: ["start a session; ask 你能做什么 and 有点热", "say 傲娇一点, then 把车窗打开一半", "interrupt a long reply", "navigate the short route with 助手播报导航 on", "collect assistant_voice_first_audio, azure_tts_*, gemini_turn_* lines"]
-    pass_criteria: ["every reply and guidance prompt audible in Xiaoyi only", "barge-in stops the voice within one clause", "assistant_voice_first_audio p50 recorded; extra delay vs Gemini first audio <= 1.0 s (ADR-016 revisit threshold)", "no assistant_voice_failed lines"]
+    pass_criteria: ["every reply and guidance prompt audible in Xiaoyi only", "barge-in stops the voice within one clause", "assistant_voice_first_audio p50 recorded; extra delay vs Gemini first audio <= 1.0 s (ADR-016 revisit threshold)", "no assistant_voice_failed lines", "every assistant_voice_cancelled reason=driver_onset_unplayed is followed by a driver transcript (no reply lost to noise)", "no AZURE_TTS_TIMEOUT on a long clause"]
     evidence: []
     related: [SPEC-019, ADR-016, TTS-VOICE-DEVICE-001]
     last_run: {at: null, result: null}

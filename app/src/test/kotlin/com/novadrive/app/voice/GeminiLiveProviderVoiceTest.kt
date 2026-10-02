@@ -37,10 +37,10 @@ class GeminiLiveProviderVoiceTest {
     }
 
     /** Starts a reply whose first clause blocks, runs [action] on the provider, reports whether the voice was cancelled. */
-    private fun cancelledBy(playbackActive: Boolean, action: suspend (GeminiLiveProvider) -> Unit): Boolean = runBlocking {
+    private fun cancelledBy(playbackActive: Boolean, speech: Boolean = true, action: suspend (GeminiLiveProvider) -> Unit): Boolean = runBlocking {
         val voice = BlockingVoice()
         val revoicer = AssistantVoiceRevoicer(voice, style = { SpeakingStyle.DEFAULT }, onFailure = {}, clock = { 0L })
-        val provider = GeminiLiveProvider(config, GeminiLiveClient(), revoicer)
+        val provider = GeminiLiveProvider(config, GeminiLiveClient(), revoicer, speechEvidence = { speech })
         provider.onPlaybackActiveChanged(playbackActive)
         val upstream = Channel<RealtimeEvent>(Channel.UNLIMITED)
         val job = async(Dispatchers.Default) { revoicer.revoice(upstream.consumeAsFlow()).collect {} }
@@ -58,6 +58,11 @@ class GeminiLiveProviderVoiceTest {
     @Test
     fun driverSpeechOverAReplyNotYetAudibleDropsIt() {
         assertTrue(cancelledBy(playbackActive = false) { it.onLocalSpeechActivity(true) })
+    }
+
+    @Test
+    fun aNoiseWithoutSpeechEvidenceDoesNotDropAnUnplayedReply() {
+        assertFalse(cancelledBy(playbackActive = false, speech = false) { it.onLocalSpeechActivity(true) })
     }
 
     @Test
