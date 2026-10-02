@@ -1356,5 +1356,69 @@ class GeminiLiveClientTest {
         assertTrue(words.none { "迟到" in it }, "late tail spoken: $words")
         assertTrue(words.contains("前方左转"))
     }
-}
 
+    // ---- P45: a held reply the server interrupted; the next question -----------------------
+
+    /**
+     * P45's first turn: the local onset opened driver turn 1, its conversation reply is still held
+     * (no generationComplete), and Gemini's own VAD then interrupts it. The ACTIVITY_START does not
+     * open a second driver turn (the onset was seen), so nothing supersedes the held reply.
+     */
+    private fun heldReplyInterrupted(client: GeminiLiveClient, fake: FakeGemini, events: List<DomainVoiceEvent>) {
+        client.onLocalSpeechActivity(true)
+        fake.send(input("你喜欢吃啥"))
+        fake.send(audio("SEVMRA=="))
+        fake.send(output("我喜欢吃火锅。"))
+        fake.send(voiceActivity("ACTIVITY_START"))
+        fake.send(content(""""interrupted":true"""))
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+    }
+
+    @Test
+    fun aServerInterruptedHeldReplysWordsNeverReachTheVoiceOrTheScreen() = runBlocking {
+        val fake = fake()
+        val client = client(graceMs = 300, speechText = true)
+        val events = collect(client)
+        client.connect(config())
+        heldReplyInterrupted(client, fake, events)
+        Thread.sleep(600)
+        val snapshot = events.snapshot()
+        assertTrue(snapshot.none { it is DomainVoiceEvent.SpeechText }, "unheard words must not be synthesised (P45 F2)")
+        assertTrue(snapshot.none { it is DomainVoiceEvent.AssistantTranscript }, "nor shown as a subtitle")
+        assertTrue(fake.messages("clientContent").isEmpty(), "an unheard reply needs no correction")
+        assertEquals(DomainVoiceEvent.ResponseDone("cancelled"), snapshot.single { it is DomainVoiceEvent.ResponseDone })
+    }
+
+    @Test
+    fun withoutTheVoiceAServerInterruptedHeldReplysAudioIsDroppedToo() = runBlocking {
+        val fake = fake()
+        val client = client(graceMs = 300)
+        val events = collect(client)
+        client.connect(config())
+        heldReplyInterrupted(client, fake, events)
+        Thread.sleep(300)
+        assertTrue(events.snapshot().none { it == DomainVoiceEvent.AudioDelta("SEVMRA==") })
+    }
+
+    @Test
+    fun theNextQuestionAfterAnInterruptedHeldReplyIsAnsweredInTheVoice() = runBlocking {
+        val fake = fake()
+        val client = client(graceMs = 300, speechText = true)
+        val events = collect(client)
+        client.connect(config())
+        heldReplyInterrupted(client, fake, events)
+        fake.send(voiceActivity("ACTIVITY_END"))
+        fake.send(voiceActivity("ACTIVITY_START"))
+        fake.send(input("你叫什么名字"))
+        fake.send(audio())
+        fake.send(output("我是小诺，很高兴认识你。"))
+        fake.send(generationComplete)
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().count { it is DomainVoiceEvent.ResponseDone } == 2 }
+        val snapshot = events.snapshot()
+        assertEquals(2, snapshot.count { it == DomainVoiceEvent.ResponseStarted }, "the second question opens a turn")
+        val words = snapshot.filterIsInstance<DomainVoiceEvent.SpeechText>().joinToString("") { it.text }
+        assertEquals("我是小诺，很高兴认识你。", words)
+        assertEquals(DomainVoiceEvent.ResponseDone("completed"), snapshot.last { it is DomainVoiceEvent.ResponseDone })
+    }
+}

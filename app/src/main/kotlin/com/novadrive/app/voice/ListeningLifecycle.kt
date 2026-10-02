@@ -212,7 +212,12 @@ class ListeningLifecycle(
      */
     fun onMeaningfulUserTurn() = synchronized(lock) {
         when (_state.value) {
-            ListeningState.ACTIVE -> meaningfulTurnInProgress = true
+            ListeningState.ACTIVE -> {
+                meaningfulTurnInProgress = true
+                // P45: a question can arrive with no busy edge (no local speech activity, reply
+                // still held). Its window starts now, not at a deadline set before it was asked.
+                if (!busy) restartInactivityLocked()
+            }
             ListeningState.SILENT_WAIT -> {
                 cancelTimerLocked()
                 transitionLocked(ListeningState.ACTIVE, "user_command")

@@ -210,7 +210,8 @@ class ArchitectureRulesTest {
             // Gemini Live adapter (ADR-010), recorded 2026-09-29 at 465 and 56 lines.
             // SPEC-018 step 1: GUIDANCE-turn hooks at the client's turn points; correlation state already extracted to GeminiPromptTurn.kt
             // ADR-016 / SPEC-019 (2026-10-02): four SpeechText call sites at the transcript points; the logic is in GeminiSpeechText.kt.
-            "app/src/main/kotlin/com/novadrive/app/voice/GeminiLiveClient.kt" to 635,
+            // P45 (2026-10-02): interrupt-before-verdict drop, empty-turn log, timing call sites; the timing logic is in GeminiTurnTiming.kt.
+            "app/src/main/kotlin/com/novadrive/app/voice/GeminiLiveClient.kt" to 640,
             "app/src/main/kotlin/com/novadrive/app/voice/RealtimeProviderFactory.kt" to 150,
         )
         val over = budgets.mapNotNull { (path, budget) ->

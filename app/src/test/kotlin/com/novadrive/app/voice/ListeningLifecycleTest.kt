@@ -87,6 +87,23 @@ class ListeningLifecycleTest {
     }
 
     @Test
+    fun aQuestionHeardWithoutABusyEdgeStillRestartsTheInactivityWindow() = runTest {
+        // P45: with no local speech activity (the emulator skips the uplink gate) and the reply
+        // held, nothing made the session busy; the old deadline slept it 7 s after the question.
+        val rig = Rig(this)
+        rig.start()
+        wait(23_000)
+        rig.lifecycle.onMeaningfulUserTurn()
+        wait(7_001)
+        assertEquals(ListeningState.ACTIVE, rig.state, "the deadline from before the question must not fire")
+        wait(22_998)
+        assertEquals(ListeningState.ACTIVE, rig.state)
+        wait(2)
+        assertEquals(ListeningState.SLEEP, rig.state)
+        assertEquals("inactivity_timeout", rig.transitions.last().second)
+    }
+
+    @Test
     fun noTimerFiresMidUtteranceOrWhileAnswering() = runTest {
         val rig = Rig(this)
         rig.start()

@@ -119,6 +119,7 @@ class GeminiLiveClient(
     )
 
     private val speech = GeminiSpeechText(speechTextEvents, ::emit, pipeline::filter, prompt::suppressed)
+    private val timing = GeminiTurnTiming()
 
     fun events(): Flow<RealtimeEvent> = eventFlow.asSharedFlow()
 
@@ -443,6 +444,7 @@ class GeminiLiveClient(
         if (!turnOpen && (message.audio.isNotEmpty() || message.toolCalls.isNotEmpty())) {
             openTurn()
         }
+        if (turnOpen) timing.message(message.outputTranscription != null, message.generationComplete)
         if (turnOpen && generationDone && message.audio.isNotEmpty()) {
             // The gate already gave its verdict: nothing after it may reach the speaker unjudged.
             DebugVoiceLog.log("gemini_audio_after_settle count=${message.audio.size}")
@@ -475,6 +477,8 @@ class GeminiLiveClient(
         if (message.generationComplete) finishGeneration()
         if (message.interrupted) {
             if (!turnOpen || prompt.open != null) prompt.void("interrupted")  // never a driver turn's
+            // P45 F2: unheard before the verdict, so dropped like a client cancel (no TTS, subtitle or correction)
+            else if (!generationDone) clientCancelled = true.also { DebugVoiceLog.log("gemini_interrupted_unheard") }
             emit(DomainVoiceEvent.Interrupted("server_vad"))
             Telemetry.record(EventType.INTERRUPT_DETECTED)
             closeTurn("cancelled")
@@ -487,7 +491,7 @@ class GeminiLiveClient(
         prompt.takeArmed(driverSpoke = inputText.isNotBlank())?.let { id ->
             // A GUIDANCE turn (SPEC-018 B5): no driver turn, no claim judgement, no hold.
             clearTurnState()
-            turnOpen = true
+            turnOpen = true; timing.open()
             DebugVoiceLog.log("gemini_turn_open kind=guidance")
             emit(DomainVoiceEvent.ResponseStarted)
             prompt.markOpen(id)
@@ -507,7 +511,7 @@ class GeminiLiveClient(
         pipeline.clearCallsThisResponse()
         pipeline.onResponseCreated()
         clearTurnState()
-        turnOpen = true
+        turnOpen = true; timing.open()
         Telemetry.record(EventType.AGENT_REQUEST_START)
         DebugVoiceLog.log("gemini_turn_open")
         emit(DomainVoiceEvent.ResponseStarted)
@@ -559,13 +563,14 @@ class GeminiLiveClient(
     }
 
     private fun closeTurn(status: String) {
+        val unanswered = !turnOpen && inputText.isNotBlank()  // P45: a question Gemini closed with no reply
         flushInput()
         strayOutput.setLength(0)
-        if (!turnOpen) return
+        if (!turnOpen) return run { if (unanswered) DebugVoiceLog.log("gemini_turn_empty status=$status") }
         finishGeneration()  // the verdict was given there (at generationComplete, or now)
         if (prompt.open != null) {
             prompt.complete()
-            DebugVoiceLog.log("gemini_turn_done kind=guidance status=$status spoke=$turnAudioSeen")
+            DebugVoiceLog.log("gemini_turn_done kind=guidance status=$status spoke=$turnAudioSeen ${timing.summary()}")
             emit(DomainVoiceEvent.ResponseDone(status))
             clearTurnState(); clientCancelled = false
             return
@@ -574,7 +579,7 @@ class GeminiLiveClient(
         val superseded = pipeline.takeSuperseded() or settledSuperseded
         pipeline.afterResponse(outcome, superseded)
         stashedCorrection?.let { stashedCorrection = null; deferCorrection(it) }
-        DebugVoiceLog.log("gemini_turn_done status=$status calls=${outcome.toolCallIds.size} spoke=${outcome.spoke}")
+        DebugVoiceLog.log("gemini_turn_done status=$status calls=${outcome.toolCallIds.size} spoke=${outcome.spoke} ${timing.summary()}")
         Telemetry.record(EventType.RESPONSE_COMPLETED, detail = status)
         emit(DomainVoiceEvent.ResponseDone(status))
         pipeline.releaseFallback()
