@@ -2914,7 +2914,7 @@ tests:
     type: device
     scope: END_TO_END
     owner: HUMAN_PHYSICAL
-    status: HUMAN_REQUIRED
+    status: HUMAN_FAIL
     automation_blocker: subjective_perception
     release_blocking: false
     terminal_success: [voice_picked, default_matches_pick]
@@ -2926,6 +2926,48 @@ tests:
     procedure: ["$env:OUT='D:\\桌面\\android_doc\\voice_ab'; python tools/gemini-live-probe/voice_ab.py", "listen to the WAVs (Leda and Erinome first, Kore for comparison)", "in the app: chat once with the new default, then say 傲娇一点", "to try another voice: 开发者设置 → Voice field"]
     pass_criteria: ["the owner names one voice", "the default is changed to it if it is not Leda"]
     returns: ["the chosen voice name, one sentence of impression"]
-    evidence: []
+    evidence: ["2026-10-02 owner, emulator at 34d629d: 10 voices recorded through the app (Erinome 250 Hz ... Pulcherrima 178 Hz); all rejected (\"gemini voice are all old woman\"). Superseded by ADR-016 / TTS-AUDITION-001"]
+    acceptance:
+      - {criterion: voice_picked, required: true, observed: false, evidence: "owner:BACKLOG.md B-034 ear test 2026-10-02, clips D:/桌面/android_doc/voice_pick_2026-10-02/"}
+    ended_by: manual
     related: [B-034, VOICE-AB-001, STYLE-EAR-001]
+    last_run: {at: 2026-10-02, result: HUMAN_FAIL}
+
+  - id: VOICE-AB-002
+    capability: speech
+    name: No Gemini-side lever makes the voice younger in conversation; the transcript can feed a TTS
+    purpose: "ADR-016 basis: prompt voice direction, TEXT output, and output-transcript timing measured on gemini-3.8-live"
+    type: measurement
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: ["GEMINI_API_KEY", "python3 with aiohttp"]
+    procedure: ["voice_ab.py-style sessions: read-aloud and app-persona conversation (你能做什么 / 有点热), with and without a stronger 语音风格 line, Leda and Erinome, 2 runs each", "setup with responseModalities TEXT", "text turns with outputAudioTranscription, timing first audio vs first clause"]
+    pass_criteria: ["each lever measured with numbers"]
+    evidence: ["2026-10-02 cloud: read-aloud young line Leda 222->258-276 Hz, Erinome ->242-258 Hz; app persona conversation stronger line Leda 216-229 vs 211-242, Erinome 211-242 vs 222-267 (no lift). TEXT modality: close 1007 not supported (all Live models are native audio). Transcript arrives with the audio; first clause 0-740 ms after first audio; generation ~3x real time (6 turns)"]
+    related: [B-034, ADR-016, VOICE-AB-001]
+    last_run: {at: 2026-10-02, result: PASS}
+
+  - id: TTS-AUDITION-001
+    capability: speech
+    name: The owner picks a Chinese TTS voice (and vendor) by ear
+    purpose: "ADR-016 step 0: the vendor and voice are a listening judgement, and the key is the owner's"
+    type: device
+    scope: END_TO_END
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: subjective_perception
+    release_blocking: false
+    terminal_success: [voice_picked, vendor_key_available]
+    autonomous_evidence: ["VOICE-AB-002: Gemini-side levers closed", "tools/tts-audition/audition.py reaches openspeech.bytedance.com and api.minimaxi.com / api.minimax.io and parses their auth errors (2026-10-02 cloud, dummy keys)"]
+    remaining_uncertainty: ["which voice the owner hears as young, clear and poised", "vendor first-packet latency on the owner's network"]
+    covers: []
+    human_reason: "Voice preference is a listening judgement; vendor keys are entered by the owner only"
+    prerequisites: ["PC with python3", "a key for at least one vendor: VOLC_APP_ID + VOLC_ACCESS_TOKEN, MINIMAX_API_KEY, or BAIDU_TTS_AK + BAIDU_TTS_SK"]
+    procedure: ["$env:OUT='D:\\桌面\\android_doc\\tts_audition'; python tools/tts-audition/audition.py volc   (and/or minimax, minimax-design, baidu)", "listen; optional: pass other voice ids from the vendor console after the vendor name", "tell the agent the vendor and voice id"]
+    pass_criteria: ["the owner names one vendor and one voice"]
+    returns: ["vendor, voice id, one sentence of impression"]
+    evidence: []
+    related: [B-034, ADR-016, VOICE-AB-002]
     last_run: {at: null, result: null}

@@ -6,7 +6,7 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 
 | # | Demand | Raised | Status | Spec |
 | --- | --- | --- | --- | --- |
-| B-034 | **Gemini voice sounds like an old woman** — owner wants a 符玄-like voice; owner ear test rejected every Gemini prebuilt voice, options A–D in §B-034 | 2026-10-02 | Open — **owner decision** | §B-034 below |
+| B-034 | **Gemini voice sounds like an old woman** — owner wants a 符玄-like voice; owner ear test rejected every Gemini prebuilt voice | 2026-10-02 | **Decided** — [ADR-016](DECISIONS/ADR-016-chinese-voice-for-gemini.md); owner audition `TTS-AUDITION-001` next | §B-034 below |
 | B-033 | **Status cards fade out** — an error/status card on the map disappears by itself after a while instead of staying forever | 2026-10-02 | **Done** (emulator check queued) | §B-033 below |
 | B-032 | **Car agent with domain servers** — "a more clever agent system that has several car MCP"; Gemini stays the one agent, car functions become MCP-shaped domain servers | 2026-09-30 | **Specced** | [SPEC-016](SPECS/SPEC-016-gemini-default-and-domain-servers.md) · [ADR-015](DECISIONS/ADR-015-car-domain-servers.md) |
 | B-031 | **Guidance in 小诺's voice** — mute Amap, the model speaks every guidance sentence; Amap only when the model cannot; Gemini everywhere (one voice) | 2026-09-30 | **Specced** | [SPEC-018](SPECS/SPEC-018-guidance-in-assistant-voice.md) · [ADR-013](DECISIONS/ADR-013-gemini-default-provider.md) · [ADR-014](DECISIONS/ADR-014-guidance-spoken-by-assistant.md) |
@@ -699,3 +699,21 @@ The owner rejected Leda ("your default just shit") and then the whole set: "gemi
 **Recommendation given to the owner:** try B with a voice-design service first. Generate a few sample sentences in a young, clear, confident, slightly proud voice and let the owner judge them before any ADR. The owner enters the service key; agents never do. For the demo, A is the quickest fix.
 
 **Hard constraint:** never train on, clone or imitate the real 符玄 game voice or any real voice actor without their consent. A new synthetic voice in the same *style* is fine.
+
+### Decision 2026-10-02 (planner, owner delegated: "find a solution for voice problem for me")
+
+**Gemini stays the agent; one Chinese TTS voice speaks.** [ADR-016](DECISIONS/ADR-016-chinese-voice-for-gemini.md) (option B, built on Gemini's output transcript).
+
+Measured before deciding (`VOICE-AB-002`):
+
+- **The voice line in the prompt is closed.** A forceful 「十七八岁少女」 read-aloud instruction lifted Leda to 258–276 Hz. In conversation with the app persona, a stronger 语音风格 line gave no lift: Leda 216–229 vs 211–242 Hz, Erinome 211–242 vs 222–267 Hz.
+- **Gemini Live cannot send text instead of audio.** Every Live model is native audio, and `gemini-3.8-live` refuses `TEXT` output (close 1007).
+- **Gemini's own transcript arrives with its audio.** The first clause arrives 0–740 ms after the first audio, and generation is about 3× real time. So a TTS fed from it adds about 0.2–1.0 s per reply.
+
+**Next — the owner:**
+
+1. Run `tools/tts-audition/audition.py` with a vendor key: `volc`, `minimax`, `minimax-design` or `baidu`. Listen, and name a voice.
+2. **For a demo today:** select Baidu and voice 6562 (元气少女) or 111 (软萌) in developer settings. This is option A; Baidu stays scheduled for retirement.
+
+**Then — the agents:** SPEC-019 and the integration (ADR-016 steps 1–3).
+
