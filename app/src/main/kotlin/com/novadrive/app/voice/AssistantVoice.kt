@@ -52,3 +52,16 @@ data class AzureSpeechConfig(
         const val DEFAULT_VOICE = "zh-CN-XiaoyiNeural"
     }
 }
+
+/**
+ * How a voice failure reaches the screen (ADR-016 §6: subtitle stays, reply not spoken, the driver
+ * is told the voice service is unavailable). The activity registers [listener]; the re-voicer calls
+ * [report] with a stable code. No fallback to the provider's own voice (that would be a second voice).
+ */
+object AssistantVoiceNotices {
+    @Volatile var listener: ((code: String) -> Unit)? = null
+
+    fun report(code: String) {
+        listener?.invoke(code)
+    }
+}
