@@ -70,3 +70,28 @@ Status: **Accepted — direction** (2026-10-02). The planner decided under the o
    - JVM tests with a fake voice.
 2. The vendor adapter, with golden tests of its protocol and a live text-to-audio probe.
 3. An emulator run on the short route, then `TTS-VOICE-DEVICE-001` on the phone. After that, the TTS voice becomes the default and the docs that say "no separate TTS" are updated.
+
+## Speaking styles with the TTS voice (2026-10-02)
+
+The owner observed that today 嗲 and 傲娇 mostly change the *words*. Measured: Gemini's voice hardly moves for a prompt line (`VOICE-AB-002`).
+
+With the picked voice, a style changes the delivery as well, and the voice itself stays the same.
+
+**Words.** Unchanged. `PersonaProfiles.compose` still swaps the tone line, so Gemini writes 傲娇 or 嗲 sentences.
+
+**Delivery.** The Azure adapter wraps each chunk in SSML: `<mstts:express-as style="…" styledegree="…">`. `zh-CN-XiaoyiNeural` supports affectionate, angry, cheerful, disgruntled, embarrassed, fearful, gentle, sad and serious (Microsoft voice-styles table, read 2026-10-02).
+
+| `SpeakingStyle` | Azure style | Degree (start, tuned by ear) |
+| --- | --- | --- |
+| DEFAULT | none (neutral) | — |
+| SWEET 嗲 | affectionate | 1.2 |
+| TSUNDERE 傲娇 | disgruntled | 0.6 (a light grumble, never real anger) |
+| GENTLE 温柔 | gentle | 1.0 |
+| LIVELY 元气 | cheerful | 1.2 |
+
+Rules:
+- **One voice per stage still holds.** The voice name never changes; only `express-as` does.
+- **The mapping belongs to the Azure adapter.** It is vendor vocabulary. `SpeakingStyle` stays vendor-neutral, and another adapter maps the same enum to its own controls.
+- **Option:** `zh-CN-Xiaoyi:DragonHDFlashLatestNeural` adds `cute`, `shy` and `complaining`, which fit 嗲 and 傲娇 more closely. Use it only if its first-packet latency fits the budget; measure it in SPEC-019.
+- **The owner judges the styles by ear** in `STYLE-EAR-001`, extended to the TTS voice.
+

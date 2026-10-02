@@ -727,3 +727,13 @@ Measured before deciding (`VOICE-AB-002`):
   2. Build SPEC-019: the `AssistantVoice` port and an Azure adapter.
   3. An emulator run, then `TTS-VOICE-DEVICE-001`.
   4. Only after that does Xiaoyi become the default voice (ADR-016 step 9).
+
+**Styles with Xiaoyi (owner observation 2026-10-02: 「嗲 / 傲娇 might simply change the word used rather than voice change」).** True today: with Gemini audio, styles mostly change the words. With the Azure voice, each style also changes the delivery of the same voice through SSML `express-as`:
+
+- 嗲 → affectionate
+- 傲娇 → disgruntled, kept light
+- 温柔 → gentle
+- 元气 → cheerful
+
+The mapping is in ADR-016 §"Speaking styles with the TTS voice".
+
