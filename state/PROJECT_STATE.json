@@ -1,37 +1,49 @@
 {
-  "generated_at": "2026-10-02T01:46:21",
+  "generated_at": "2026-10-02T09:55:35",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "a2f0c8b",
-    "branch": "claude/10-1",
-    "subject": "decide(B-034): ADR-016 — Gemini stays the agent, one Chinese TTS voice speaks",
-    "working_tree_clean": true,
-    "uncommitted_files": 0
+    "commit": "22dfa3a",
+    "branch": "claude/10-2",
+    "subject": "B-034 / ADR-016: owner picks zh-CN-XiaoyiNeural; vendor is Azure AI Speech, key pending",
+    "working_tree_clean": false,
+    "uncommitted_files": 3
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-10-02T01:46:13",
+    "collected_at": "2026-09-30T16:13:49",
     "total": {
-      "tests": 1858,
+      "tests": 1581,
       "failures": 0,
       "errors": 0,
-      "skipped": 2
+      "skipped": 1
     },
     "by_module": {
+      "app": {
+        "tests": 1298,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 1
+      },
+      "behavior-test": {
+        "tests": 127,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "contracts": {
+        "tests": 6,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
       "evaluation": {
         "tests": 27,
         "failures": 0,
         "errors": 0,
         "skipped": 0
       },
-      "app": {
-        "tests": 1557,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 2
-      },
-      "simulator": {
-        "tests": 25,
+      "ingress": {
+        "tests": 106,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -42,20 +54,8 @@
         "errors": 0,
         "skipped": 0
       },
-      "behavior-test": {
-        "tests": 128,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "contracts": {
-        "tests": 7,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "ingress": {
-        "tests": 112,
+      "simulator": {
+        "tests": 15,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 224132993,
-    "built_at": "2026-10-01T17:19:20"
+    "bytes": 224138989,
+    "built_at": "2026-10-02T01:43:46"
   },
   "capabilities": {
     "available": true,
@@ -146,13 +146,27 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "A0: | A0 | G-1 … G-1f measured on the short route | measurement (emulator) | `GUIDANCE-EMU-001` | not earned |",
-    "actionable_count": 108,
+    "NEXT_ACTION": "FUZZY-TEXT-LIVE-001: STALE_BIND: The live model maps the fuzzy phrase table FZ-01…FZ-19 to the right calls",
+    "actionable_count": 110,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 23,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "FUZZY-TEXT-LIVE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "MUSIC-TEXT-LIVE-001",
+        "blocked_by": null
+      },
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",

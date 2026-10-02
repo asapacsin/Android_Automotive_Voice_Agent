@@ -4,6 +4,7 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 
 > **Not ready yet.** This is a preview of the queue; autonomous work remains:
 >
+> - the registry does not validate: 5 problem(s)
 > - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - TRUTH-MISHEARD-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -11,7 +12,6 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 > - TRUTH-WEATHER-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - TRUTH-BAIT-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - PLACE-SAVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
-> - PLACE-NAV-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 
 23 item(s) queued.
 
@@ -564,7 +564,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 **Tell me back:** vendor, voice id, one sentence of impression
 
-**Still unknown until you do:** which voice the owner hears as young, clear and poised; vendor first-packet latency on the owner's network
+**Still unknown until you do:** vendor first-packet latency on the owner's network
 
 ## B. Account and real-service tests
 
