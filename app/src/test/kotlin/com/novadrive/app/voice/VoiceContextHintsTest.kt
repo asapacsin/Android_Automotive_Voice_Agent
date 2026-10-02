@@ -8,6 +8,17 @@ import org.junit.jupiter.api.Test
 
 class VoiceContextHintsTest {
     @Test
+    fun aClimateChangeAloneIsNotAnOpenQuestion() {
+        // B-035: after 有点热 only a referent exists; the bubble must still be allowed to fade.
+        assertFalse(VoiceContextHints.questionOpen(null, cameraOpen = false, pendingClarification = false))
+        assertFalse(VoiceContextHints.questionOpen(NavigationPhase.NAVIGATING, cameraOpen = false, pendingClarification = false))
+        assertTrue(VoiceContextHints.questionOpen(NavigationPhase.AWAITING_DESTINATION_SELECTION, false, false))
+        assertTrue(VoiceContextHints.questionOpen(NavigationPhase.AWAITING_ROUTE_SELECTION, false, false))
+        assertTrue(VoiceContextHints.questionOpen(null, cameraOpen = true, pendingClarification = false))
+        assertTrue(VoiceContextHints.questionOpen(null, cameraOpen = false, pendingClarification = true))
+    }
+
+    @Test
     fun nothingOnScreenMeansNoHint() {
         assertNull(VoiceContextHints.compose(null, cameraOpen = false))
         assertNull(VoiceContextHints.compose(NavigationPhase.IDLE, cameraOpen = false))
