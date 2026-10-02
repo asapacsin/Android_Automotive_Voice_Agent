@@ -494,6 +494,11 @@ change_impact:
       - GeminiLiveProtocol
       - GeminiLiveProvider
       - RealtimeProviderFactory
+      - AssistantVoice
+      - AssistantVoiceRevoicer
+      - AzureSpeechVoice
+      - ClauseSegmenter
+      - GeminiSpeechText
       - HostAudioTap
       - PlayoutBargeInQualification
       - Results
