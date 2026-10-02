@@ -48,7 +48,11 @@ object GeminiLiveProtocol {
                     .put("parametersJsonSchema", spec.parameters),
             )
         }
+        // P45: room sound on the uplink kept the server VAD from ending the turn (a 31.8 s hold on
+        // the emulator). Starting a turn needs clearer speech; ending one needs less silence.
         val activity = JSONObject()
+            .put("startOfSpeechSensitivity", "START_SENSITIVITY_LOW")
+            .put("endOfSpeechSensitivity", "END_SENSITIVITY_HIGH")
         if (silenceDurationMs != null) activity.put("silenceDurationMs", silenceDurationMs)
         val resumption = JSONObject()
         if (!resumptionHandle.isNullOrEmpty()) resumption.put("handle", resumptionHandle)
