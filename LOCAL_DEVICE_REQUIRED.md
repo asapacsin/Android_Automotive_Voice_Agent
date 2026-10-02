@@ -15,7 +15,7 @@ Every case below **requires a physical Android device** (and usually a real cabi
 > - PLACE-SAVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - PLACE-NAV-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 
-**16 LOCAL_DEVICE_REQUIRED item(s).**
+**17 LOCAL_DEVICE_REQUIRED item(s).**
 
 Install tip (from a cloud-built APK, when one exists):
 
@@ -541,6 +541,35 @@ adb logcat -s NovaVoice:D
 **Tell me back:** the chosen voice name, one sentence of impression
 
 **Still unknown until you do:** which voice the owner hears as 符玄-like; how the pick sounds with 傲娇 (B-029)
+
+### LOCAL_DEVICE_REQUIRED — TTS-AUDITION-001 — The owner picks a Chinese TTS voice (and vendor) by ear
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Voice preference is a listening judgement; vendor keys are entered by the owner only
+
+**Automation blocker:** `subjective_perception`
+
+**Already established without you:**
+
+- VOICE-AB-002: Gemini-side levers closed
+- tools/tts-audition/audition.py reaches openspeech.bytedance.com and api.minimaxi.com / api.minimax.io and parses their auth errors (2026-10-02 cloud, dummy keys)
+
+**You will need:** PC with python3; a key for at least one vendor: VOLC_APP_ID + VOLC_ACCESS_TOKEN, MINIMAX_API_KEY, or BAIDU_TTS_AK + BAIDU_TTS_SK
+
+**What to do:**
+
+1. $env:OUT='D:\桌面\android_doc\tts_audition'; python tools/tts-audition/audition.py volc   (and/or minimax, minimax-design, baidu)
+2. listen; optional: pass other voice ids from the vendor console after the vendor name
+3. tell the agent the vendor and voice id
+
+**It passes if:**
+
+- the owner names one vendor and one voice
+
+**Tell me back:** vendor, voice id, one sentence of impression
+
+**Still unknown until you do:** which voice the owner hears as young, clear and poised; vendor first-packet latency on the owner's network
 
 ---
 
