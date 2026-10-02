@@ -2982,14 +2982,14 @@ tests:
     type: unit
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: false
     prerequisites: []
     procedure: ["gradlew :app:testDebugUnitTest --tests *AssistantVoiceRevoicerTest* --tests *ClauseSegmenterTest* --tests *AzureSpeechVoiceTest* --tests *AzureSpeechSettingsTest* --tests *GeminiLiveClientTest*", "gradlew :behavior-test:test"]
     pass_criteria: ["all listed suites green", "full suite green", ":app:assembleDebug builds"]
-    evidence: []
+    evidence: ["2026-10-02 cloud, claude/10-2 9305ede (after the independent review REVISE fixes): AssistantVoiceRevoicerTest 11/0 (3 reruns), GeminiLiveProviderVoiceTest 5/0 (3 reruns), ClauseSegmenterTest 5/0, AzureSpeechVoiceTest 10/0, AzureSpeechSettingsTest 6/0, GeminiLiveClientTest 63/0, LocalSpeechActivityTest 6/0; full suite 3504 / 0 failures (4 skipped); :app:assembleDebug built (planner read the JUnit XML)"]
     related: [SPEC-019, ADR-016, B-034]
-    last_run: {at: null, result: null}
+    last_run: {at: 2026-10-02, result: PASS}
 
   - id: TTS-VOICE-EMU-001
     capability: speech
