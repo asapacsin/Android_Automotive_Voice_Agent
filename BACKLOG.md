@@ -6,6 +6,7 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 
 | # | Demand | Raised | Status | Spec |
 | --- | --- | --- | --- | --- |
+| B-035 | **Transcript bubble fades out** — the last 你:/小诺: exchange stays on the map forever; it should clear after a while | 2026-10-02 | Open | §B-035 below |
 | B-034 | **Gemini voice sounds like an old woman** — owner wants a 符玄-like voice; owner ear test rejected every Gemini prebuilt voice | 2026-10-02 | **Decided** — [ADR-016](DECISIONS/ADR-016-chinese-voice-for-gemini.md); owner audition `TTS-AUDITION-001` next | §B-034 below |
 | B-033 | **Status cards fade out** — an error/status card on the map disappears by itself after a while instead of staying forever | 2026-10-02 | **Done** (emulator check queued) | §B-033 below |
 | B-032 | **Car agent with domain servers** — "a more clever agent system that has several car MCP"; Gemini stays the one agent, car functions become MCP-shaped domain servers | 2026-09-30 | **Specced** | [SPEC-016](SPECS/SPEC-016-gemini-default-and-domain-servers.md) · [ADR-015](DECISIONS/ADR-015-car-domain-servers.md) |
@@ -750,3 +751,17 @@ The mapping is in ADR-016 §"Speaking styles with the TTS voice".
 **Owner confirmation, 2026-10-02:** "02_zh-CN-XiaoyiNeural ... this should be the default voice". The default stays **`zh-CN-XiaoyiNeural`**; the owner had briefly mentioned 01 Xiaoxiao and then confirmed 02. In code: `AzureSpeechConfig.DEFAULT_VOICE`.
 
 The app still speaks with Gemini's voice until the owner enters an Azure Speech key and region and switches on 开发者设置 → 小诺的声音 (`assistant_voice enabled=false` in the 03:39 log). Then `TTS-VOICE-EMU-001`.
+
+## B-035 — The transcript bubble fades out over time
+
+**Owner, 2026-10-02**, during the emulator run on `claude/10-2`. The bubble still showed 「你: 你能做什么? / 小诺: 哼，本姑娘能帮你导航…」 long after the exchange: "this one is quite annoying it seems this would not gone overtime".
+
+**Now:** `AssistantOverlayView.appendTranscript` keeps the last exchange (`TRANSCRIPT_MAX_LINES = 2`), and nothing clears it. It stays over the map until the next transcript line or an error replaces it. B-033 made *error* cards fade, but not the transcript.
+
+**Wanted:**
+- After a turn ends and 小诺 has finished speaking, the transcript bubble clears by itself. The proposal is about 8–10 s after playout ends; the exact time is still to be chosen. The bubble returns to the placeholder, or is hidden so the map is visible.
+- It never clears while 小诺 is still speaking, while the driver is speaking, or while a follow-up question is waiting for an answer.
+- A new line restarts the timer. An older timer never clears a newer exchange (same rule as B-033).
+- While navigating, the bubble takes map space, so clearing it matters most there.
+
+**Owner in code:** `AssistantOverlayView` (`appendTranscript`, `recentTranscript`), with the B-033 timer pattern (`ShownErrorCard`). Test: a JVM test of the timer policy, then an emulator check that the bubble is gone about 10 s after a reply.
