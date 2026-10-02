@@ -717,3 +717,13 @@ Measured before deciding (`VOICE-AB-002`):
 
 **Then — the agents:** SPEC-019 and the integration (ADR-016 steps 1–3).
 
+
+**Voice picked, 2026-10-02 (`claude/10-2`):** the vendor accounts had no keys yet, so I made a preview with the free Microsoft neural voices. They read the same 4 audition lines, using edge-tts; clips in `D:\桌面\android_doc\tts_audition\edge_preview\`. The owner picked **02 `zh-CN-XiaoyiNeural`**: "this one good use this as default".
+
+- **Vendor follows from the voice: Azure AI Speech**, which has a streaming TTS API, a free F0 tier, and an Azure China region.
+- edge-tts goes through the unofficial Bing read-aloud endpoint. Use it only for previews; it must never ship.
+- **Next (ADR-016):**
+  1. The owner creates an Azure Speech resource and enters the key and region in developer settings. Agents never do this.
+  2. Build SPEC-019: the `AssistantVoice` port and an Azure adapter.
+  3. An emulator run, then `TTS-VOICE-DEVICE-001`.
+  4. Only after that does Xiaoyi become the default voice (ADR-016 step 9).

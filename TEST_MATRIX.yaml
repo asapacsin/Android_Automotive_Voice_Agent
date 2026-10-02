@@ -2961,13 +2961,16 @@ tests:
     release_blocking: false
     terminal_success: [voice_picked, vendor_key_available]
     autonomous_evidence: ["VOICE-AB-002: Gemini-side levers closed", "tools/tts-audition/audition.py reaches openspeech.bytedance.com and api.minimaxi.com / api.minimax.io and parses their auth errors (2026-10-02 cloud, dummy keys)"]
-    remaining_uncertainty: ["which voice the owner hears as young, clear and poised", "vendor first-packet latency on the owner's network"]
+    remaining_uncertainty: ["vendor first-packet latency on the owner's network"]
     covers: []
     human_reason: "Voice preference is a listening judgement; vendor keys are entered by the owner only"
     prerequisites: ["PC with python3", "a key for at least one vendor: VOLC_APP_ID + VOLC_ACCESS_TOKEN, MINIMAX_API_KEY, or BAIDU_TTS_AK + BAIDU_TTS_SK"]
     procedure: ["$env:OUT='D:\\桌面\\android_doc\\tts_audition'; python tools/tts-audition/audition.py volc   (and/or minimax, minimax-design, baidu)", "listen; optional: pass other voice ids from the vendor console after the vendor name", "tell the agent the vendor and voice id"]
     pass_criteria: ["the owner names one vendor and one voice"]
     returns: ["vendor, voice id, one sentence of impression"]
-    evidence: []
+    evidence: ["2026-10-02 owner, by ear on edge_preview clips (D:/桌面/android_doc/tts_audition/edge_preview/): picked zh-CN-XiaoyiNeural (\"this one good use this as default\"). Those clips came from the unofficial Bing read-aloud endpoint (edge-tts), which is not usable in the product; the licensed service for the same voice is Azure AI Speech. vendor_key_available: no Azure Speech key yet"]
+    acceptance:
+      - {criterion: voice_picked, required: true, observed: true, evidence: "owner chat 2026-10-02: zh-CN-XiaoyiNeural (Microsoft / Azure AI Speech)"}
+      - {criterion: vendor_key_available, required: true, observed: false, evidence: "owner to enter an Azure Speech key + region in developer settings"}
     related: [B-034, ADR-016, VOICE-AB-002]
-    last_run: {at: null, result: null}
+    last_run: {at: 2026-10-02, result: PARTIAL}
