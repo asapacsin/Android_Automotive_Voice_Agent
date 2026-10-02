@@ -302,9 +302,11 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
                 else -> Color.parseColor("#B0BEC5")
             },
         )
-        if (ui == AssistantUiState.ERROR && !error.isNullOrBlank()) {
+        // B-033: a session error (e.g. GEMINI_LIVE_CONNECTION_FAILED) is a card like showError's and
+        // fades the same way; the same error re-bound does not restart its timer.
+        if (ui == AssistantUiState.ERROR && !error.isNullOrBlank() && shownError.code != error) {
+            scheduleCardFade(error, shownError.show(error))
             bubble.text = error
-            shownError.overwritten()
             transcriptFade.replaced()
         }
         actionCard.visibility = GONE
@@ -337,20 +339,22 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
     }
 
     fun showError(code: String, message: String) {
-        val token = shownError.show(code)
-        // B-033: a transient card fades; a newer card is never cleared by this timer.
-        if (!ShownErrorCard.staysUntilFixed(code)) {
-            postDelayed({
-                if (shownError.expire(token)) {
-                    com.novadrive.app.DebugVoiceLog.log("error_card_faded code=$code after_ms=$ERROR_CARD_FADE_MS")
-                    restoreIdleBubble()
-                }
-            }, ERROR_CARD_FADE_MS)
-        }
+        scheduleCardFade(code, shownError.show(code))
         bubble.text = "$code\n$message"
         transcriptFade.replaced()
         stateLabel.text = context.getString(R.string.assistant_state_error)
         stateDot.setTextColor(Color.parseColor("#FFEF5350"))
+    }
+
+    /** B-033: a transient card fades; a newer card is never cleared by this timer. */
+    private fun scheduleCardFade(code: String, token: Long) {
+        if (ShownErrorCard.staysUntilFixed(code)) return
+        postDelayed({
+            if (shownError.expire(token)) {
+                com.novadrive.app.DebugVoiceLog.log("error_card_faded code=$code after_ms=$ERROR_CARD_FADE_MS")
+                restoreIdleBubble()
+            }
+        }, ERROR_CARD_FADE_MS)
     }
 
     /**
