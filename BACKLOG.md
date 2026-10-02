@@ -675,3 +675,27 @@ The persona notes are kept out of the code on purpose. Only the voice choice and
 - Still the owner's: listen and pick (`VOICE-EAR-001`). Run the tool on the PC with
   `OUT=D:\桌面\android_doc\voice_ab` to get the WAVs; clips are not committed.
 
+
+**Owner ear test, 2026-10-02 (emulator, `claude/10-1` at 34d629d):** I recorded 小诺 in 10 voices through the app itself. Each voice answered 「你能做什么」 and 「有点热」, and the clips are the exact bytes the app played, 24 kHz. They are in `D:\桌面\android_doc\voice_pick_2026-10-02\` and are not committed.
+
+Pitch of these app recordings: Erinome 250 Hz, Aoede 233, Leda 231, Callirrhoe 226, Zephyr 220, Autonoe 218, Despina 207, Kore 207, Laomedeia 202, Pulcherrima 178.
+
+The owner rejected Leda ("your default just shit") and then the whole set: "gemini voice are all old woman compare to chinese model and japanese". The emulator is set to Erinome for now; this is not a pick.
+
+### Problem: no Gemini prebuilt voice can be 符玄-like
+
+- **Why.** Gemini Live has only a fixed set of prebuilt voices. Google built them mainly for English and uses the same voice in every language, so in Mandarin they sound like a calm adult woman. There is no custom voice, no cloning, no training and no age setting. The persona prompt and the speaking styles (B-029) change wording and attitude, not how old the voice sounds.
+- **Result.** Picking a different Gemini voice cannot meet B-034. Picking a voice (`VOICE-EAR-001`) is blocked on the decision below.
+
+### Options (owner decision pending)
+
+| Option | Voice | Cost / risk |
+| --- | --- | --- |
+| A. Baidu Flex speaks (owner selects Baidu) | Youthful female 4196; younger than any Gemini voice. In the 9-30 run the owner complained about noise, not age. | ADR-013 makes Gemini the default and plans to delete Baidu. Baidu's tool calling is weaker. |
+| B. Gemini text + our own Chinese TTS | Any voice: a commercial voice library, a "voice design" voice made from a text description, or a voice trained (CosyVoice, GPT-SoVITS, …) on recordings from a voice actor who has agreed to it. | Breaks "end to end, no separate TTS" (ADR-002/013), so it **needs a new ADR**. Each reply starts about 0.3–0.8 s later. Barge-in and the playout claim gate (DriverTurn) have to be re-done for TTS audio. A few days to integrate. |
+| C. A Chinese end-to-end realtime model (e.g. Doubao realtime) | Chinese-first voice catalogue, including young voices. | A new provider behind the seam (ADR-010 shape). Tool-calling quality is unknown. ADR-008 says do not revive deleted providers, but this one is new. |
+| D. Pitch-shift Gemini audio on the device | A small gain only. | Shifts beyond +2 to 3 semitones sound artificial. Does not produce 符玄. |
+
+**Recommendation given to the owner:** try B with a voice-design service first. Generate a few sample sentences in a young, clear, confident, slightly proud voice and let the owner judge them before any ADR. The owner enters the service key; agents never do. For the demo, A is the quickest fix.
+
+**Hard constraint:** never train on, clone or imitate the real 符玄 game voice or any real voice actor without their consent. A new synthetic voice in the same *style* is fine.
