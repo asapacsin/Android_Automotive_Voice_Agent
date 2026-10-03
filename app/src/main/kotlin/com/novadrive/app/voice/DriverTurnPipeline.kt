@@ -37,8 +37,12 @@ class DriverTurnPipeline(
     interface Host {
         fun emit(event: DomainVoiceEvent)
 
-        /** Send a corrective text turn to the model. */
-        fun sendCorrection(text: String)
+        /**
+         * Send a corrective text turn to the model. [callMayFollow] is false when the driver asked
+         * for nothing actionable (chat, a capability question, a request with no tool), so no model
+         * call can still arrive and the correction need not wait for one.
+         */
+        fun sendCorrection(text: String, callMayFollow: Boolean = true)
 
         /** This client cancelled the response in progress; its held output is not shown (P40). */
         val responseCancelledByClient: Boolean
@@ -255,7 +259,7 @@ class DriverTurnPipeline(
             }
             DebugVoiceLog.log("flex_action_claim_unverified follow_up=true kind=$kind")
             Telemetry.record(EventType.GUARD_FOLLOW_UP)
-            host.sendCorrection(nudge)
+            host.sendCorrection(nudge, callMayFollow(turn.kind))
         }
     }
 
@@ -330,7 +334,7 @@ class DriverTurnPipeline(
                 // answered an utterance the app handled itself (P40): nothing to correct.
                 verdict.correction?.takeIf { !host.listeningSuspended && !host.responseCancelledByClient }?.let {
                     correctionSentThisResponse = true
-                    host.sendCorrection(it)
+                    host.sendCorrection(it, callMayFollow(target.kind))
                 }
             }
         }
@@ -360,3 +364,10 @@ internal fun toolResultProvesExecution(output: String): Boolean {
     val steps = json.optJSONArray("steps") ?: return false
     return (0 until steps.length()).any { steps.optJSONObject(it)?.optBoolean("ok") == true }
 }
+
+/**
+ * Whether a model call may still arrive for a driver turn of [kind], so a correction must wait for
+ * it. Chat, a capability question and a request no tool serves can never get one.
+ */
+internal fun callMayFollow(kind: DriverTurn.Kind): Boolean =
+    kind != DriverTurn.Kind.CONVERSATION && kind != DriverTurn.Kind.CAPABILITY_HELP && kind != DriverTurn.Kind.NO_TOOL_ACTION

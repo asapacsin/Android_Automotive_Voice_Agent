@@ -424,4 +424,12 @@ class ActionClaimGuardTest {
             ActionClaimGuard.carActionClaimMatch("好的，已为你打开。")!!.describe(),
         )
     }
+
+    @Test
+    fun aListOfAbilitiesIsNotAClaimButADoneActionStillIs() {
+        // Owner emulator run 2026-10-03: 「你干什么?」 -> this answer was dropped as a 播放 claim.
+        assertNull(ActionClaimGuard.carActionClaimMatch("哼，本姑娘能帮你导航、播放音乐、调空调，还能看摄像头和打电话呢。"))
+        assertNull(ActionClaimGuard.carActionClaimMatch("我可以帮您导航、播放音乐、调节空调。"))
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("已经帮你播放音乐了。"))
+    }
 }

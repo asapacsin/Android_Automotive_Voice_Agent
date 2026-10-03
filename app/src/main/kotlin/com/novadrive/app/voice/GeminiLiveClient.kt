@@ -104,6 +104,7 @@ class GeminiLiveClient(
     /** Set while the gate settles at generationComplete: a correction then waits for closeTurn. */
     @Volatile private var settling = false
     @Volatile private var stashedCorrection: String? = null
+    @Volatile private var stashedCallMayFollow = true
     private val prompt = GeminiPromptTurn(::emit)  // SPEC-018; guarded by `this`
 
     private val pipeline = DriverTurnPipeline(
@@ -112,7 +113,7 @@ class GeminiLiveClient(
         speechEvidence = speechEvidence,
         host = object : DriverTurnPipeline.Host {
             override fun emit(event: DomainVoiceEvent) = this@GeminiLiveClient.emit(event)
-            override fun sendCorrection(text: String) = deferCorrection(text)
+            override fun sendCorrection(text: String, callMayFollow: Boolean) = deferCorrection(text, callMayFollow)
             override val responseCancelledByClient: Boolean get() = clientCancelled
             override val listeningSuspended: Boolean get() = this@GeminiLiveClient.listeningSuspended
         },
@@ -298,10 +299,11 @@ class GeminiLiveClient(
      * model call may still come; once a call was dispatched in this driver turn the correction
      * cannot race one and goes out now.
      */
-    private fun deferCorrection(text: String) {
+    private fun deferCorrection(text: String, callMayFollow: Boolean = true) {
         if (settling) {
             // Settled early; the grace is still measured from turnComplete (closeTurn sends it).
             stashedCorrection = text
+            stashedCallMayFollow = callMayFollow
             return
         }
         val current = generation.get()
@@ -311,10 +313,14 @@ class GeminiLiveClient(
             sendCorrectionNow(text)
             return
         }
-        DebugVoiceLog.log("gemini_correction_deferred graceMs=$correctionGraceMs")
+        // No call can follow a chat turn, so its correction waits only a moment, not the 20 s a
+        // spoken command needs (owner emulator run 2026-10-03: 24 s and 28 s of silence after a
+        // dropped chat reply).
+        val graceMs = if (callMayFollow) correctionGraceMs else minOf(correctionGraceMs, CHAT_CORRECTION_GRACE_MS)
+        DebugVoiceLog.log("gemini_correction_deferred graceMs=$graceMs")
         lateinit var job: Job
         job = scope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
-            delay(correctionGraceMs)
+            delay(graceMs)
             if (generation.get() != current) return@launch
             // Only clear our own slot: a newer correction may have replaced this one.
             if (pendingCorrection === job) pendingCorrection = null
@@ -578,7 +584,7 @@ class GeminiLiveClient(
         val outcome = ResponseOutcome(spoke = turnAudioSeen, toolCallIds = turnCallIds.toList(), unidentifiedToolCalls = 0)
         val superseded = pipeline.takeSuperseded() or settledSuperseded
         pipeline.afterResponse(outcome, superseded)
-        stashedCorrection?.let { stashedCorrection = null; deferCorrection(it) }
+        stashedCorrection?.let { stashedCorrection = null; deferCorrection(it, stashedCallMayFollow) }
         DebugVoiceLog.log("gemini_turn_done status=$status calls=${outcome.toolCallIds.size} spoke=${outcome.spoke} ${timing.summary()}")
         Telemetry.record(EventType.RESPONSE_COMPLETED, detail = status)
         emit(DomainVoiceEvent.ResponseDone(status))
@@ -630,6 +636,9 @@ class GeminiLiveClient(
     }
 
     companion object {
+        /** A chat turn's correction: long enough for turnComplete to settle, no call to wait for. */
+        const val CHAT_CORRECTION_GRACE_MS = 1_500L
+
         private fun defaultHttp() = OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS).readTimeout(0, TimeUnit.MILLISECONDS)
             .pingInterval(20, TimeUnit.SECONDS).build()

@@ -564,6 +564,7 @@ class ActionClaimGuard {
         fun carActionClaimMatch(reply: String): ClaimMatch? {
             if (promptsDriver(reply) && !reportsCompletion(reply)) return null
             if (isMediaRefusalOnly(reply)) return null
+            if (listsAbilities(reply) && !reportsCompletion(reply)) return null
             if (!refuses(reply)) {
                 pairClaimWords(reply)?.let { (noun, verb) -> return ClaimMatch("car_action", noun, verb) }
             }
@@ -579,6 +580,16 @@ class ActionClaimGuard {
             }
             return null
         }
+
+        /**
+         * 「我能帮你导航、放音乐…」: what she can do, not what she did. Owner emulator run 2026-10-03:
+         * 「你干什么?」 (not help grammar on purpose: it can mean "what are you doing") got exactly
+         * that answer, dropped as a 播放 claim; the driver heard 28 s of nothing and then 没听清.
+         */
+        private fun listsAbilities(reply: String): Boolean =
+            ABILITY_MODAL.containsMatchIn(reply) && answersCapabilityHelp(reply)
+
+        private val ABILITY_MODAL = Regex("(能|可以|会)(帮你|帮您|给你|替你)?")
 
         /** The reply asks the driver to choose or to say something, rather than reporting. */
         private fun promptsDriver(reply: String): Boolean = PROMPT_WORDS.any { it in reply }

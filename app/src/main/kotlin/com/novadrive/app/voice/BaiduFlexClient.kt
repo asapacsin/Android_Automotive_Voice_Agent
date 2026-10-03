@@ -105,7 +105,7 @@ class BaiduFlexClient(
         speechEvidence = speechEvidence,
         host = object : DriverTurnPipeline.Host {
             override fun emit(event: DomainVoiceEvent) = this@BaiduFlexClient.emit(event)
-            override fun sendCorrection(text: String) = sendUserText(text)
+            override fun sendCorrection(text: String, callMayFollow: Boolean) = sendUserText(text)
             override val responseCancelledByClient: Boolean get() = cancelSentThisResponse
             override val listeningSuspended: Boolean get() = this@BaiduFlexClient.listeningSuspended
         },

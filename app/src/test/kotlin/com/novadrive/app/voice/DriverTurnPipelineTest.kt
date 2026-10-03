@@ -16,7 +16,7 @@ class DriverTurnPipelineTest {
         val emitted = mutableListOf<DomainVoiceEvent>()
         val corrections = mutableListOf<String>()
         override fun emit(event: DomainVoiceEvent) { emitted += event }
-        override fun sendCorrection(text: String) { corrections += text }
+        override fun sendCorrection(text: String, callMayFollow: Boolean) { corrections += text }
         override val responseCancelledByClient: Boolean = false
         override val listeningSuspended: Boolean = false
     }
@@ -118,5 +118,16 @@ class DriverTurnPipelineTest {
         assertTrue(host.emitted.isEmpty(), "a superseded turn's result is not this turn's proof")
         pipeline.onToolResult("call_2", """{"ok":true,"tool":"control_window"}""")
         assertTrue(audio2 in host.emitted, "the turn's own result still releases it")
+    }
+
+    @Test
+    fun onlyAnActionRequestWaitsForALateCallBeforeItsCorrection() {
+        // Owner emulator run 2026-10-03: a dropped chat reply waited the full 20 s grace twice.
+        assertFalse(callMayFollow(DriverTurn.Kind.CONVERSATION))
+        assertFalse(callMayFollow(DriverTurn.Kind.CAPABILITY_HELP))
+        assertFalse(callMayFollow(DriverTurn.Kind.NO_TOOL_ACTION))
+        for (kind in DriverTurn.Kind.values().filter { it !in setOf(DriverTurn.Kind.CONVERSATION, DriverTurn.Kind.CAPABILITY_HELP, DriverTurn.Kind.NO_TOOL_ACTION) }) {
+            assertTrue(callMayFollow(kind), "$kind")
+        }
     }
 }
