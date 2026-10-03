@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Checks a claude/10-2 demo run (docs/DEMO_10-2.md) from the app's NovaVoice log.
+"""Checks a demo run (docs/DEMO_10-3.md; --scenes 10-2 for docs/DEMO_10-2.md) from the app's NovaVoice log.
 
 Capture during the run (Windows PowerShell or Linux):
     adb logcat -c
@@ -24,7 +24,8 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-SCENES = Path(__file__).with_name("scenes_10_2.json")
+SCENE_FILES = {"10-2": "scenes_10_2.json", "10-3": "scenes_10_3.json"}
+SCENES = Path(__file__).with_name(SCENE_FILES["10-3"])
 
 # Budgets: (value, source). "demo target" = no settled budget exists; proposed for this demo.
 BUDGET = {
@@ -38,6 +39,9 @@ BUDGET = {
     "bubble_quiet_max_ms": (11600, "B-035: 10 s + one 1 s poll + main-thread slack"),
     "error_card_ms": (12000, "B-033: ERROR_CARD_FADE_MS"),
     "sleep_after_question_ms": (30000, "P45 F3: SLEEP_AFTER_INACTIVITY_MS from the last question"),
+    "hold_max_ms": (20000, "P45 / 4f857e9: a turn the server VAD never ends (31.8 s seen) is a stall"),
+    "chat_correction_ms": (1500, "9696ce5: CHAT_CORRECTION_GRACE_MS"),
+    "azure_cold_ms": (1000, "demo target; 574e0ff measured 426 ms after 60 s idle (was 1.8-4.5 s)"),
     "hold_p90_ms": (5000, "demo target: P45 saw 9.4 s; SPEC-014 clause release is the real fix"),
 }
 BUSY = {"USER_SPEAKING", "THINKING", "SPEAKING"}
@@ -180,6 +184,22 @@ def check_scenes(events: list[Event], scenes: list[dict], voice_on: bool, res: R
                 problems.append(f"no Azure audio (style {want} expected)")
             elif any(x != want for x in styles):
                 problems.append(f"style {sorted(set(styles))} != {want}")
+        if s["expect"] == "chat":
+            grace = [field_int(e.msg, "graceMs") for e in window if e.msg.startswith("gemini_correction_deferred")]
+            want, _ = BUDGET["chat_correction_ms"]
+            if any(g is not None and g > want for g in grace):
+                problems.append(f"chat correction waited {max(grace)} ms (> {want})")
+        if s.get("no_drop"):
+            drops = [field_str(e.msg, "reason") for e in window if e.msg.startswith("TURN_DROP") and "client_cancelled" not in e.msg]
+            if drops:
+                problems.append(f"reply dropped by the claim gate {sorted(set(drops))}")
+        if s.get("cold") and voice_on:
+            first = next((field_int(e.msg, "ms") for e in window if e.msg.startswith("azure_tts_first_audio")), None)
+            want, _ = BUDGET["azure_cold_ms"]
+            if first is None:
+                problems.append("no Azure audio")
+            elif first > want:
+                problems.append(f"first Azure clause {first} ms after idle (> {want})")
         timing = ""
         if start is not None:
             if s["kind"] == "chat" and heard is not None and heard >= start:
@@ -337,6 +357,9 @@ def check_p45(events: list[Event], res: Result) -> None:
         budget, src = BUDGET["hold_p90_ms"]
         p90 = pct(spans, 0.9)
         res.add("claim-gate hold to verdict", "PASS" if p90 <= budget else "WARN", f"p50 {pct(spans, 0.5)} ms, p90 {p90} ms, max {max(spans)} ms ({src})")
+        cap, src = BUDGET["hold_max_ms"]
+        stalls = sum(1 for x in spans if x > cap)
+        res.add("P45 no stalled turn (VAD)", "PASS" if stalls == 0 else "FAIL", f"{stalls} holds over {cap} ms ({src})")
     done = [e.msg for e in events if e.msg.startswith("gemini_turn_done") and "max_gap_ms" in e.msg]
     if done:
         gaps = [field_int(m, "max_gap_ms") or 0 for m in done]
@@ -355,8 +378,8 @@ def report(title: str, res: Result) -> str:
     return "\n".join(out)
 
 
-def check(run: str, text: str, baseline_text: str | None = None) -> Result:
-    scenes = json.loads(SCENES.read_text(encoding="utf-8"))["runs"]
+def check(run: str, text: str, baseline_text: str | None = None, scene_file: Path | None = None) -> Result:
+    scenes = json.loads((scene_file or SCENES).read_text(encoding="utf-8"))["runs"]
     events = parse(text)
     res = Result()
     if not events:
@@ -413,9 +436,19 @@ def selftest() -> int:
         ("11:00:50.000", "TURN_HOLD epoch=5 reason=UNCLASSIFIED_CLAIM kind=CONVERSATION durationMs=-1"),
         ("11:00:51.000", "TURN_RELEASE epoch=5 reason=no_claim_made events=3"),
         ("11:00:51.100", "gemini_turn_done status=completed calls=0 spoke=true dur_ms=1500 first_text_ms=100 gen_ms=900 msgs=9 max_gap_ms=300"),
+        ("11:00:55.000", "state=THINKING err=-"),
+        ("11:00:55.800", "transcript=你: 你干什么"),
+        ("11:00:56.000", "TURN_HOLD epoch=6 reason=UNCLASSIFIED_CLAIM kind=CONVERSATION durationMs=-1"),
+        ("11:00:56.900", "TURN_DROP epoch=6 reason=claim kind=CONVERSATION events=4"),
+        ("11:00:57.000", "gemini_correction_deferred graceMs=20000"),
+        ("11:00:58.000", "state=SPEAKING err=-"),
+        ("11:00:58.500", "state=THINKING err=-"),
+        ("11:00:59.000", "transcript=你: 讲个冷知识"),
+        ("11:00:59.200", "azure_tts_first_audio ms=2400 chars=8 style=none"),
+        ("11:00:59.600", "state=SPEAKING err=-"),
         ("11:01:00.000", "error=GEMINI_LIVE_CONNECTION_FAILED x"),
         ("11:01:12.000", "error_card_faded code=GEMINI_LIVE_CONNECTION_FAILED after_ms=12000"),
-        ("11:01:13.000", "listening ACTIVE->SLEEP reason=inactivity_timeout cloudStreamingMs=1"),
+        ("11:01:30.000", "listening ACTIVE->SLEEP reason=inactivity_timeout cloudStreamingMs=1"),
     ])
     res = check("B", run_b, run_a)
     rows = {c: (v, d) for c, v, d in res.rows}
@@ -429,17 +462,26 @@ def selftest() -> int:
         "B-033 transient cards fade": "PASS",
         "P44 CONFIG card leaves once fixed": "PASS",
         "P45 no sleep within 30 s of a question": "PASS",   # slept 30.8 s after the last question
+        "scene AB-1": "FAIL",            # dropped as a claim, 20 s correction: both flagged
+        "scene WARM-1": "FAIL",          # 2400 ms cold first clause
+        "P45 no stalled turn (VAD)": "PASS",
     }
     problems = [f"{k}: {rows.get(k, ('missing',))[0]} != {v}" for k, v in expect.items() if rows.get(k, ("missing",))[0] != v]
     # B chat 1500 (B1) and 2000 (S-chat1) -> p50 1750; A 1000 and 1200 -> p50 1100; extra 650 ms.
     if rows["assistant-voice extra delay"][0] != "PASS" or not rows["assistant-voice extra delay"][1].startswith("650 ms"):
         problems.append(f"extra delay: {rows['assistant-voice extra delay']}")
-    early = check("B", run_b.replace("11:01:13.000", "11:00:50.000"))
+    early = check("B", run_b.replace("11:01:30.000", "11:00:50.000"))
     if dict((c, v) for c, v, _ in early.rows)["P45 no sleep within 30 s of a question"] != "FAIL":
         problems.append("an early sleep was not flagged")
     leaked = [d for _, _, d in res.rows if "喜欢" in d or "傲娇" in d or "名字" in d]
     if leaked:
         problems.append("the report leaked driver words")
+    ab = rows.get("scene AB-1", ("", ""))[1]
+    if "claim gate" not in ab or "20000" not in ab:
+        problems.append(f"AB-1 detail: {ab}")
+    stall = check("B", run_b.replace("10-02 11:00:51.000  100  100 D NovaVoice: TURN_RELEASE", "10-02 11:01:15.000  100  100 D NovaVoice: TURN_RELEASE"))
+    if dict((c, v) for c, v, _ in stall.rows).get("P45 no stalled turn (VAD)") != "FAIL":
+        problems.append("a 25 s hold was not flagged as a stall")
     if parse("garbage\n"):
         problems.append("parsed a non-log line")
     print(report("selftest run B", res))
@@ -452,6 +494,7 @@ def main() -> int:
     ap.add_argument("log", nargs="?", help="NovaVoice logcat capture of the run")
     ap.add_argument("--run", choices=["A", "B"], default="B")
     ap.add_argument("--baseline", help="run A capture, for the assistant-voice extra delay")
+    ap.add_argument("--scenes", choices=sorted(SCENE_FILES), default="10-3", help="which demo's scene list")
     ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args()
     if args.selftest:
@@ -460,8 +503,9 @@ def main() -> int:
         ap.error("a log file is required (or --selftest)")
     text = Path(args.log).read_text(encoding="utf-8", errors="replace")
     base = Path(args.baseline).read_text(encoding="utf-8", errors="replace") if args.baseline else None
-    scenes = json.loads(SCENES.read_text(encoding="utf-8"))["runs"]
-    res = check(args.run, text, base)
+    scene_file = Path(__file__).with_name(SCENE_FILES[args.scenes])
+    scenes = json.loads(scene_file.read_text(encoding="utf-8"))["runs"]
+    res = check(args.run, text, base, scene_file)
     print(report(scenes[args.run]["title"], res))
     return 1 if res.failed else 0
 

@@ -1,6 +1,6 @@
-# Demo and acceptance run — branch `claude/10-2`
+# Demo and acceptance run — branch `claude/10-3`
 
-One run that exercises every function added on `claude/10-2`. Each step says what to say or do, what you should see or hear, and the log line that proves it. The script `tools/demo/check_demo_log.py` grades the log against the scene list (`tools/demo/scenes_10_2.json`) and the performance budgets below. It prints PASS, FAIL, WARN, NOT_SEEN or INFO per check, and never prints what was said (I-8).
+One run that exercises the essential functions and everything added on `claude/10-2` and `claude/10-3`. It supersedes [DEMO_10-2.md](DEMO_10-2.md), which stays for its recorded results. Each step says what to say or do, what you should see or hear, and the log line that proves it. The script `tools/demo/check_demo_log.py` grades the log against the scene list (`tools/demo/scenes_10_3.json`) and the performance budgets below. It prints PASS, FAIL, WARN, NOT_SEEN or INFO per check, and never prints what was said (I-8).
 
 It takes about 30 minutes on the PC emulator (`nova_api34`, see [EMULATOR_TESTING.md](EMULATOR_TESTING.md)), or on the phone. The cloud container cannot run it ([CLOUD_BUILD.md](CLOUD_BUILD.md)).
 
@@ -24,6 +24,12 @@ It takes about 30 minutes on the PC emulator (`nova_api34`, see [EMULATOR_TESTIN
 | Music from a description, honest result | SPEC-017 | run B, music |
 | Guidance spoken by the assistant (developer toggle) | SPEC-018 | run B, navigation |
 | An interrupted unheard reply is not synthesised; a question restarts the sleep window; turn timing logs | P45 | run B (`S-chat1`, global checks) |
+| **10-3:** a session error card (state ERROR) fades after 12 s too | a19f90f (B-033) | C2 |
+| **10-3:** Gemini's placeholder markup (`<no speech>{pause}`) is never read aloud | 381e446 (SPEC-019) | run B, barge-in (by ear) |
+| **10-3:** Gemini VAD start LOW / end HIGH: a turn ends in room noise | 4f857e9 (P45) | run B, `MIC-1`; global stall check |
+| **10-3:** the Azure connection is kept across sessions and warmed when the driver starts talking | 574e0ff (SPEC-019) | run B, `WARM-1` |
+| **10-3:** a dropped chat reply is corrected in 1.5 s, not 20 s | 9696ce5 | every chat scene |
+| **10-3:** a list of abilities is not an action claim | 9696ce5 | run B, `AB-1` |
 
 ## Before the run
 
@@ -49,7 +55,7 @@ It takes about 30 minutes on the PC emulator (`nova_api34`, see [EMULATOR_TESTIN
 | Step | Do | See | Log |
 | --- | --- | --- | --- |
 | C1 | 开发者设置 → untick 我已阅读并同意 → 保存 → back to the map. Wait 15 s. Then tick it, 保存, back | A CONFIG card. It is **still there after 15 s**. It is gone after the fix | `config_banner reason=…`; no `error_card_faded code=CONFIG`; then `error_card_cleared code=CONFIG` |
-| C2 | `adb shell cmd connectivity airplane-mode enable`, tap the listening dot to start, wait 15 s, then `… airplane-mode disable` | A connection error card. It leaves by itself after about 12 s, and the state line shows the real state (已断开) | `error=<code>`, then `error_card_faded code=<code> after_ms=12000` |
+| C2 | `adb shell cmd connectivity airplane-mode enable`, tap the listening dot to start, wait 15 s, then `… airplane-mode disable` | A connection error card (e.g. `GEMINI_LIVE_CONNECTION_FAILED`, which arrives as state ERROR). It leaves by itself after about 12 s — before a19f90f it stayed over a minute — and the state line shows the real state (已断开) | `error=<code>`, then `error_card_faded code=<code> after_ms=12000` |
 | C3 | `adb shell am start -n com.novadrive.app/.TranscriptFadeProbeActivity --el speaking_ms 5000 --el held_ms 15000`, then return to the app | One exchange in the bubble. It stays 15 s (held), then 10 s more, then the placeholder | `transcript_bubble_faded since_line_ms≈25000 quiet_ms≈10000` |
 
 ## Run A — Gemini's own voice (baseline)
@@ -67,7 +73,7 @@ The assistant voice is off. Start a session, then say each line and let her answ
 Stop the capture. These five give the baseline latency for the voice A/B. Then check the run:
 
 ```
-python tools\demo\check_demo_log.py --scenes 10-2 --run A demo_runA.log
+python tools\demo\check_demo_log.py --run A demo_runA.log
 ```
 
 ## Run B — Xiaoyi, every new function
@@ -79,6 +85,14 @@ python tools\demo\check_demo_log.py --scenes 10-2 --run A demo_runA.log
 The first line should be `assistant_voice enabled=true`.
 
 **1. The same five as run A (B1–B5).** You should hear Xiaoyi only, never two voices. The bubble clears about 10 s after she stops, including after 有点热 and the window (the 6efa047 fix).
+
+**1b. New on 10-3.**
+
+| Scene | Do / say | Expect | Log |
+| --- | --- | --- | --- |
+| AB-1 | 你干什么 | A heard answer listing what she can do, within about 2 s. Not 20+ s of silence followed by 没听清 | no `TURN_DROP` in the turn; any `gemini_correction_deferred graceMs` ≤ 1500 |
+| WARM-1 | Stay silent ≥ 60 s (let her sleep, then wake her). Say 讲个冷知识 | Xiaoyi starts without the long first-reply pause | first `azure_tts_first_audio ms` ≤ 1000 (was 1800–4500) |
+| MIC-1 | **Take the headphones off**, turn on a fan or low music. Say 你喜欢什么颜色. Put the headphones back on | An answer within a few seconds; the next question also gets an answer | no `TURN_DROP`; no hold longer than 20 s in the whole run |
 
 **2. Car (SPEC-015),** in this order. The order matters for the follow-ups.
 
@@ -108,7 +122,7 @@ The first line should be `assistant_voice enabled=true`.
 
 **4. Barge-in** (SPEC-019 R5):
 - BI-1: say 讲一个长一点的故事.
-- BI-2: while she is still speaking, say 好了停一下. She stops within about one clause and listens.
+- BI-2: while she is still speaking, say 好了停一下. She stops within about one clause and listens. **She never reads out anything like 「no speech」 or 「pause」** (381e446).
 - Then **cough once and knock on the desk** while no reply is playing. No reply may be lost to the noise: every `driver_onset_unplayed` must be followed by your speech.
 
 **5. Music** (SPEC-017):
@@ -127,8 +141,10 @@ The first line should be `assistant_voice enabled=true`.
 Stop the capture and run:
 
 ```
-python tools\demo\check_demo_log.py --scenes 10-2 --run B demo_runB.log --baseline demo_runA.log
+python tools\demo\check_demo_log.py --run B demo_runB.log --baseline demo_runA.log
 ```
+
+(`--scenes 10-2` grades a log against the old 10-2 script.)
 
 ### Failure drill (optional, at the end)
 
@@ -158,6 +174,10 @@ The checker applies these numbers. A "demo target" has no settled budget in the 
 | Claim-gate hold → verdict, p90 | ≤ 5000 ms (WARN above) | demo target; P45 saw 9.4 s; the real fix is SPEC-014 clause release |
 | Gemini stream gaps (`max_gap_ms`), unheard interrupts, empty turns | recorded (INFO) | P45 F1 |
 | Guidance fidelity mismatches | 0 | SPEC-018 |
+| Any claim-gate hold | ≤ 20 000 ms (FAIL above) | P45 / 4f857e9: a stalled VAD held 31.8 s |
+| Correction wait on a chat turn (`gemini_correction_deferred graceMs`) | ≤ 1500 ms | 9696ce5 `CHAT_CORRECTION_GRACE_MS` |
+| Chat replies with `no_drop` (AB-1, MIC-1) dropped by the claim gate | 0 | 9696ce5, 4f857e9 |
+| First Azure clause after ≥ 60 s idle (WARM-1) | ≤ 1000 ms | demo target; 574e0ff measured 426 ms |
 
 The checker measures latency from the logged end of speech: `state=THINKING` (the phone's uplink gate) or `gemini_voice_activity type=ACTIVITY_END` (the server's VAD, on the emulator). Audible output is `state=SPEAKING`. If neither end-of-speech mark is logged, the turn has no latency figure rather than a wrong one.
 
@@ -172,6 +192,8 @@ Tick each one during run B.
 - [ ] Guidance prompts: once each, in Xiaoyi's voice, matching the screen.
 - [ ] Music: she never names a song that is not actually playing.
 - [ ] The bubble never disappears while she is still speaking, or while a list or question waits.
+- [ ] She never reads markup aloud (「no speech」, 「pause」, angle or curly brackets).
+- [ ] No answer takes more than about 3 s, including with room noise (MIC-1) and after a long idle (WARM-1).
 
 ## Results
 
@@ -179,4 +201,4 @@ Tick each one during run B.
 | --- | --- | --- | --- | --- | --- | --- |
 | | | | PASS / FAIL counts | PASS / FAIL counts | ticks | |
 
-Keep the two logs and the checker output beside this table, in android_doc `demo_10-2_<date>/`. They hold timings and codes only, but they also contain `transcript=` lines, so do not publish them.
+Keep the two logs and the checker output beside this table, in android_doc `demo_10-3_<date>/`. They hold timings and codes only, but they also contain `transcript=` lines, so do not publish them.
