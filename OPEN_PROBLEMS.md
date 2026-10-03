@@ -1714,6 +1714,16 @@ Local PC emulator, build 381e446, Azure voice on. The same injected clips were s
 
 Measure each option against this same A/B, first silence and then the live microphone, before choosing.
 
+### P45 addendum 2, 2026-10-03: short commands can get no turn even with a clean uplink
+
+Demo recording on the PC emulator, build 9696ce5 (VAD start LOW / end HIGH). The uplink was synthetic speech followed by digital silence. In take 2, 2 of 21 driver lines got no turn:
+- 「你傲娇一点」 (1.2 s)
+- 「第一个」 (0.8 s)
+
+For each one, Gemini logged `ACTIVITY_START` and `ACTIVITY_END` (1.6–1.8 s apart), then sent no transcript and no reply. The words came back only inside the **next** utterance's transcript (「你要加一点。你喜欢吃什么」 and 「第一个。开始导航」), about 20 s later. The same clips worked in other takes, and slightly longer phrasings (「就去第一个吧」, 「好，开始导航吧」) worked every time.
+
+This is not the start-sensitivity change: the server did detect the activity. The driver experiences it as a short command that does nothing until the next sentence. The next step is to log `serverContent` for those turns: is there an empty `turnComplete`, or nothing at all? Then decide whether the client should nudge the turn (for example with `audioStreamEnd`, or a text turn carrying the input transcription) when `ACTIVITY_END` is followed by nothing within ~3 s.
+
 ## P46 — Assistant-spoken guidance (SPEC-018) gives up on the first prompt and never comes back
 
 **Status:** OPEN, found 2026-10-03 while recording the demo video. PC emulator nova_api34, build 9696ce5 (`claude/10-3`), Azure voice on, 助手播报导航 on. Short drive to 长隆海洋王国 started by voice, emulator speed 60 km/h.
