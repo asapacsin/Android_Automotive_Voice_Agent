@@ -12,5 +12,9 @@
                 <action android:name="com.novadrive.app.DEBUG_TOOL" />
             </intent-filter>
         </receiver>
+        <!-- B-035 probe: the overlay alone, for software-only emulators (TRANSCRIPT-FADE-EMU-001). -->
+        <activity
+            android:name="com.novadrive.app.TranscriptFadeProbeActivity"
+            android:exported="true" />
     </application>
 </manifest>

@@ -94,7 +94,8 @@ class ActionClaimGuardTest {
             assertTrue(ActionClaimGuard.isControlRequest(it), "must be an action we can perform: $it")
         }
         assertTrue(ActionClaimGuard.isUnsupportedRequest("把音量调大。"))
-        assertTrue(ActionClaimGuard.isUnsupportedRequest("打开车窗。"))
+        assertTrue(ActionClaimGuard.isUnsupportedRequest("打开天窗。"))
+        assertFalse(ActionClaimGuard.isUnsupportedRequest("打开车窗。"), "SPEC-015: windows have control_window")
     }
 
     @Test
@@ -291,9 +292,11 @@ class ActionClaimGuardTest {
         val correction = guard.onResponseDone(message, "好的，已经帮你调低了。")
         assertNotNull(correction)
         assertTrue(
-            correction!!.contains("温度还是风量"),
+            correction!!.contains("哪一项") && !correction.contains("没有听清"),
             "the driver must be asked which control, not told they were not heard: $correction",
         )
+        // SPEC-015: seat and window are adjustable too, so the question may not be climate-only.
+        assertTrue(correction.contains("座椅") && correction.contains("车窗"), correction)
     }
 
     @Test
@@ -420,5 +423,13 @@ class ActionClaimGuardTest {
             "predicate=done_claim noun=- verb=打开",
             ActionClaimGuard.carActionClaimMatch("好的，已为你打开。")!!.describe(),
         )
+    }
+
+    @Test
+    fun aListOfAbilitiesIsNotAClaimButADoneActionStillIs() {
+        // Owner emulator run 2026-10-03: 「你干什么?」 -> this answer was dropped as a 播放 claim.
+        assertNull(ActionClaimGuard.carActionClaimMatch("哼，本姑娘能帮你导航、播放音乐、调空调，还能看摄像头和打电话呢。"))
+        assertNull(ActionClaimGuard.carActionClaimMatch("我可以帮您导航、播放音乐、调节空调。"))
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("已经帮你播放音乐了。"))
     }
 }

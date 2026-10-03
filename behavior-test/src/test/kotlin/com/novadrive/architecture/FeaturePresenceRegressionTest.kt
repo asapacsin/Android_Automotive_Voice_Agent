@@ -138,9 +138,9 @@ class FeaturePresenceRegressionTest {
             "a reply to an echo candidate must be held",
         )
         assertContains(
-            "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt",
+            "app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt",
             "turn.onSpeechDuringPlayback(qualified = speechEvidence())",
-            "the client must mark speech over playback with its post-AEC evidence",
+            "the per-turn gate (DriverTurnPipeline) must mark speech over playback with its post-AEC evidence",
         )
     }
 
@@ -313,7 +313,8 @@ class FeaturePresenceRegressionTest {
         val capture = "app/src/main/kotlin/com/novadrive/app/voice/PcmAudioCapture.kt"
         assertContains(capture, "gateAndSend(bytes, onFrame)", "live frames must pass the uplink gate")
         assertContains(capture, "gateForInjection", "harness audio goes through the same gate or it proves nothing")
-        val client = "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt"
+        // The per-turn gate's owner is DriverTurnPipeline (ADR-010); provider clients only feed it.
+        val client = "app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt"
         assertContains(client, "onResponseCreated()", "a suspicious turn's reply audio must be held")
         assertContains(client, "finishResponse(hadToolCall =", "the verdict needs the tool-call fact")
         assertContains(client, "TURN_DROP", "every suppression must say why")

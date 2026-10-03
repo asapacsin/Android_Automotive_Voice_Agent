@@ -8,6 +8,7 @@ import com.novadrive.app.BaiduAuthMode
 import com.novadrive.app.DebugVoiceLog
 import com.novadrive.app.NavigationState
 import com.novadrive.app.PersonaProfiles
+import com.novadrive.app.SpeakingStyleState
 import com.novadrive.ingress.realtime.DomainVoiceEvent
 import com.novadrive.ingress.realtime.RealtimeEvent
 import com.novadrive.ingress.realtime.ResponseOutcome
@@ -50,7 +51,7 @@ class BaiduFlexClient(
     @Volatile private var ready: CompletableDeferred<Unit>? = null
     @Volatile private var sessionCreated = false
     @Volatile private var assistantSpeaking = false
-    @Volatile private var instructions: String = PersonaProfiles.DEFAULT_INSTRUCTIONS
+    @Volatile private var rawInstructions: String? = null
     @Volatile private var voice: String = BaiduAppSettings.DEFAULT_VOICE
     @Volatile private var speed: Double = BaiduAppSettings.DEFAULT_SPEED
     @Volatile private var sentVoice: String = BaiduAppSettings.DEFAULT_VOICE
@@ -93,27 +94,22 @@ class BaiduFlexClient(
     @Volatile private var responseInProgress = false
     @Volatile private var ttsStartedForResponse = false
 
-    /** Reply-latency measurement for B-014; see the response.done branch. */
-    /** A correction was already sent for the response being finished; see onResponseDone. */
-    @Volatile private var correctionSentThisResponse = false
-
-    /**
-     * The response in progress belongs to a driver turn that was superseded (the driver spoke over
-     * it while it was held). Its remaining audio and subtitle are discarded, and its response.done
-     * is not judged against the new turn. Measured 2026-09-28 (owner demo, 08:32:41, 08:32:57,
-     * 08:33:12, 08:36:31): after `TURN_DROP cancelled_superseded replyChars=0` the rest of the
-     * cancelled reply (「我没听清，再说一遍。」, 「这个偏好只能用于路线，不能」) was still emitted,
-     * because the gate only asked whether the *new* turn was holding.
-     */
-    @Volatile private var supersededResponse = false
-
     @Volatile private var responseStartedAtMs = 0L
 
     @Volatile private var firstAudioAtMs = 0L
 
-    /** Replies that claim an action without a tool call get one corrective follow-up. */
-    private val actionGuard = ActionClaimGuard()
-    private val assistantText = StringBuffer()
+    /** The per-driver-turn output gate (INVARIANT I-1); this client only feeds it. */
+    private val pipeline = DriverTurnPipeline(
+        lastAudioSegment = lastAudioSegment,
+        contextAwaitingAnswer = contextAwaitingAnswer,
+        speechEvidence = speechEvidence,
+        host = object : DriverTurnPipeline.Host {
+            override fun emit(event: DomainVoiceEvent) = this@BaiduFlexClient.emit(event)
+            override fun sendCorrection(text: String, callMayFollow: Boolean) = sendUserText(text)
+            override val responseCancelledByClient: Boolean get() = cancelSentThisResponse
+            override val listeningSuspended: Boolean get() = this@BaiduFlexClient.listeningSuspended
+        },
+    )
 
     /** Incremented on every conversation reset; a queued turn from an older one may be stale. */
     @Volatile private var conversationEpoch = 0
@@ -124,7 +120,7 @@ class BaiduFlexClient(
         lastConfig = config
         cancelReset()
         turnGate.clear()
-        actionGuard.reset()
+        pipeline.resetGuard()
         openSession(config)
     }
 
@@ -150,7 +146,7 @@ class BaiduFlexClient(
         assembler.clear()
         emptyRetry.reset()
         resetPolicy.reset()
-        instructions = PersonaProfiles.sanitize(effective.settings.instructions)
+        rawInstructions = effective.settings.instructions
         voice = effective.settings.voice
         speed = effective.settings.speed
         sentVoice = voice
@@ -338,18 +334,9 @@ class BaiduFlexClient(
         messages.forEach(::sendControl)
     }
 
-    /**
-     * Calls already emitted in the current response, by name and arguments. Found by the
-     * simulation benchmark (2026-09-17): the same call emitted twice in one response was executed
-     * twice — harmless for 「播放」, wrong for 「调高一点」.
-     */
-    private val callsThisResponse = java.util.Collections.synchronizedSet(mutableSetOf<String>())
-
     /** Filters a repeated identical call and answers it without executing it. */
     private fun dropDuplicateCall(event: DomainVoiceEvent): Boolean {
-        if (event !is DomainVoiceEvent.ToolCall || event.arguments.containsKey("_validation_error")) return false
-        val signature = event.name + "|" + event.arguments.toSortedMap()
-        if (callsThisResponse.add(signature)) return false
+        if (event !is DomainVoiceEvent.ToolCall || !pipeline.isDuplicateCall(event)) return false
         DebugVoiceLog.log("flex_duplicate_call_ignored tool=${event.name}")
         trySend(
             BaiduFlexProtocol.functionCallOutput(
@@ -365,10 +352,8 @@ class BaiduFlexClient(
     fun sendFunctionResult(callId: String, output: String) {
         sendControl(BaiduFlexProtocol.functionCallOutput(callId, output))
         resetPolicy.onToolResultSent(callId)
-        actionGuard.onToolResult(output)
-        // The one place execution evidence enters this client. INVARIANT I-1: a reply that claims
-        // an action happened is released only once a result with ok=true has arrived.
-        onExecutionResult(callId, output)
+        // The one place execution evidence enters this client (INVARIANT I-1; see DriverTurnPipeline).
+        pipeline.onToolResult(callId, output)
         // The call id belongs to this conversation: after a reset there is nothing to answer.
         val reply = ResponseTurnGate.Turn(listOf(BaiduFlexProtocol.responseCreate()), emptyList(), conversationEpoch)
         if (!turnGate.submit(reply)) {
@@ -399,8 +384,7 @@ class BaiduFlexClient(
         closeSocket()
         // S2 of SPEC-006: a referent does not survive the session that produced it. 「再低一点」 after
         // a reconnect must be asked about, not answered from what the driver said before.
-        driverContext.onSessionEnded()
-        DriverContext.clear()
+        pipeline.onSessionEnded()
     }
 
     private fun closeSocket() {
@@ -426,6 +410,7 @@ class BaiduFlexClient(
     private fun instructionsWithContext(): String {
         val hint = contextHint()
         if (hint != null) DebugVoiceLog.log("flex_context_hint chars=${hint.length}")
+        val instructions = PersonaProfiles.compose(rawInstructions, SpeakingStyleState.current)
         return if (hint == null) instructions else instructions.trim() + "\n" + hint
     }
 
@@ -455,45 +440,14 @@ class BaiduFlexClient(
             // phantoms. Decided here, where the outputs are already parsed.
             // Decided before the verdict: a correction the verdict sends must wait for the new
             // conversation rather than go out on the socket the reset is about to close.
-            val superseded = supersededResponse
-            supersededResponse = false
+            val superseded = pipeline.takeSuperseded()
             val resetNow = resetPolicy.onResponseDone(outcome, superseded)
             if (resetNow) resetPending = true
             // A superseded response was already dropped with its turn; judging it now would judge
             // the driver's *new* turn by the old reply.
-            if (!superseded) finishResponse(hadToolCall = outcome.requestedTool)
+            if (!superseded) pipeline.settleResponse(outcome)
             if (resetNow) resetConversation()
-            val spoken = assistantText.toString()
-            assistantText.setLength(0)
-            if (superseded) {
-                DebugVoiceLog.log("flex_superseded_response_done tool=${outcome.requestedTool}")
-                // Its tool calls still happened; its words were never heard and need no correction.
-                if (outcome.requestedTool) actionGuard.onResponseDone(outcome, spoken)
-                return@runCatching emptyRetry.onResponseDone(status, kinds.size)
-            }
-            if (spoken.isNotBlank()) lastSpokenReply = spoken
-            // DriverTurn may already have corrected this response when it dropped the reply. Two
-            // corrections mean the model is told the same thing twice: measured on device
-            // 2026-09-19, 「算了」 produced two identical follow-ups and `exit_navigation_mode` ran
-            // twice. It is idempotent and nothing broke; `adjust_temperature{-2}` twice is -4 degC
-            // and would have, were it not for the dispatcher's own duplicate guard. One owner.
-            val alreadyCorrected = correctionSentThisResponse
-            correctionSentThisResponse = false
-            val cancelledByUs = cancelSentThisResponse
-            actionGuard.onResponseDone(outcome, spoken)?.takeIf { !listeningSuspended && !alreadyCorrected && !cancelledByUs }?.let { nudge ->
-                // Which follow-up, not just that there was one: "we did not catch that" and
-                // "which control did you mean" are different product behaviours, and a suite that
-                // cannot tell them apart passes S16 either way.
-                val kind = when (nudge) {
-                    ActionClaimGuard.CLARIFY_REFERENT -> "clarify"
-                    ActionClaimGuard.UNVERIFIED_ACTION_CLAIM -> "unheard"
-                    ActionClaimGuard.NAVIGATION_NOT_STARTED -> "navigation_not_started"
-                    else -> "perform"
-                }
-                DebugVoiceLog.log("flex_action_claim_unverified follow_up=true kind=$kind")
-                Telemetry.record(EventType.GUARD_FOLLOW_UP)
-                sendUserText(nudge)
-            }
+            pipeline.afterResponse(outcome, superseded)
             emptyRetry.onResponseDone(status, kinds.size)
         }.getOrDefault(false)
 
@@ -564,7 +518,7 @@ class BaiduFlexClient(
             if (type == "input_audio_buffer.speech_started") {
                 emptyRetry.onSpeechStarted()
                 turnGate.onSpeechStarted()
-                beginDriverTurn()
+                pipeline.beginDriverTurn(playbackActive || assistantSpeaking, responseInProgress)
             }
             if (type == "input_audio_buffer.speech_stopped") {
                 turnGate.onSpeechStopped()
@@ -576,20 +530,16 @@ class BaiduFlexClient(
             }
             if (type == "response.created") {
                 cancelSentThisResponse = false
-                supersededResponse = false
                 turnGate.onResponseCreated()
-                assistantText.setLength(0)
-                onResponseCreated()
+                pipeline.onResponseCreated()
             }
             if (type == "response.audio_transcript.done" || type == "response.text.done") {
                 val raw = JSONObject(text)
-                assistantText.append(raw.optString("transcript").ifEmpty { raw.optString("text") })
-                onAssistantText(assistantText.toString())
+                pipeline.appendAssistantText(raw.optString("transcript").ifEmpty { raw.optString("text") })
             }
             if (type == "conversation.item.input_audio_transcription.completed") {
                 val transcript = JSONObject(text).optString("transcript")
-                actionGuard.onUserTranscript(transcript)
-                onUserTranscript(transcript)
+                pipeline.onUserTranscript(transcript)
             }
             if (type == "error" && BaiduFlexProtocol.isResponseAlreadyActive(text)) {
                 DebugVoiceLog.log("flex_turn_rejected_busy retry=true")
@@ -606,16 +556,15 @@ class BaiduFlexClient(
                 // Fail-safe: finishResponse clears the buffer on either verdict, so this only
                 // fires when the parse above returned early. Better a spoken reply than audio
                 // stranded in a list.
-                applyVerdict(turn, DriverTurn.Verdict.Release("response_done_fallback"))
+                pipeline.releaseFallback()
             }
             events.forEach { event ->
                 if (dropCallFromCancelledResponse(event)) return@forEach
                 if (dropDuplicateCall(event)) return@forEach
                 // A tool call proves the driver's turn was real; never let one sit behind a hold,
                 // and remember it so the spoken result of the action is not judged on its own.
-                if (event is DomainVoiceEvent.ToolCall) onToolCallDispatched(event)
-                if (dropSupersededOutput(event)) return@forEach
-                if (holdOrEmit(event)) return@forEach
+                if (event is DomainVoiceEvent.ToolCall) pipeline.onToolCallDispatched(event)
+                if (pipeline.filter(event)) return@forEach
                 if (event is DomainVoiceEvent.Error && !pending.isCompleted) {
                     if (!voiceFallbackUsed && sentVoice != BaiduAppSettings.FALLBACK_VOICE) {
                         voiceFallbackUsed = true
@@ -631,7 +580,7 @@ class BaiduFlexClient(
 
         override fun onFailure(webSocket: WebSocket, failure: Throwable, response: Response?) {
             if (generation.get() != current) return
-            dropHeldAudio("socket_failure")
+            pipeline.dropHeld("socket_failure")
             Telemetry.record(EventType.SOCKET_DISCONNECTED, detail = "failure")
             val mapped = mapFailure(failure, response)
             if (!pending.completeExceptionally(mapped)) emit(DomainVoiceEvent.Error(mapped.code, mapped.safeMessage))
@@ -648,7 +597,7 @@ class BaiduFlexClient(
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
             if (generation.get() != current) return
-            dropHeldAudio("socket_closed")
+            pipeline.dropHeld("socket_closed")
             Telemetry.record(EventType.SOCKET_DISCONNECTED, detail = "server_closed code=$code")
             val failure = VoiceProviderException("BAIDU_FLEX_CONNECTION_CLOSED", "Baidu Flex WebSocket closed (status=$code)")
             if (!pending.completeExceptionally(failure)) {
@@ -676,7 +625,7 @@ class BaiduFlexClient(
                 Telemetry.record(EventType.ASR_RESULT) { JSONObject(text).optString("transcript") }
             "response.created" -> {
                 responseInProgress = true
-                callsThisResponse.clear()
+                pipeline.clearCallsThisResponse()
                 ttsStartedForResponse = false
                 responseStartedAtMs = System.currentTimeMillis()
                 firstAudioAtMs = 0L
@@ -721,165 +670,6 @@ class BaiduFlexClient(
         )
     }
 
-    // ---- per-turn output gate ---------------------------------------------
-    //
-    // One object owns everything known about the driver's current utterance and decides whether
-    // the reply may be heard yet: DriverTurn. The rule it enforces is
-    // docs/INVARIANTS.md I-1 — only deterministic execution evidence may establish that an
-    // external action occurred. Reply audio and its subtitle wait for that evidence; the
-    // transcript, the tool call, the execution and any error never wait for anything.
-
-    @Volatile
-    private var turn: DriverTurn = DriverTurn(0)
-
-    private val turnEpoch = java.util.concurrent.atomic.AtomicLong(0)
-
-    /**
-     * Cross-turn context, owned here because the driver turn is owned here. Installed so the tool
-     * dispatcher and [VoiceContextHints] read this record rather than each keeping their own.
-     */
-    private val driverContext = DriverContext().also { DriverContext.install(it) }
-
-    /**
-     * A new **driver** turn, not a new response. One command produces several responses — the tool
-     * call, then the spoken result — and the transcript belongs to the utterance, not the response.
-     */
-    @Synchronized
-    private fun beginDriverTurn() {
-        val previous = turn
-        if (previous.isHolding || previous.heldCount > 0) {
-            // A superseded turn's output is discarded: it can no longer be true or timely, and
-            // nothing it produced may be referred to by the utterance that replaced it (S5).
-            applyVerdict(previous, previous.cancel("superseded"))
-            driverContext.cancel(previous.epoch)
-            // ...including what the response still streams after this point.
-            if (responseInProgress) supersededResponse = true
-        }
-        turn = DriverTurn(turnEpoch.incrementAndGet())
-        driverContext.onSpeechStarted(turn.epoch)
-        if (playbackActive || assistantSpeaking) turn.onSpeechDuringPlayback(qualified = speechEvidence())
-    }
-
-    /** What the assistant last said, so its own words heard back are not taken for a driver. */
-    @Volatile private var lastSpokenReply = ""
-
-    @Synchronized
-    private fun onResponseCreated() {
-        val reason = turn.onResponseStarted(lastAudioSegment(), contextAwaitingAnswer())
-        if (reason != DriverTurn.HoldReason.NONE) {
-            DebugVoiceLog.log(
-                "TURN_HOLD epoch=${turn.epoch} reason=$reason kind=${turn.kind} " +
-                    "durationMs=${turn.audio?.durationMs ?: -1}",
-            )
-        }
-    }
-
-    @Synchronized
-    private fun onUserTranscript(text: String) {
-        val before = turn.isHolding
-        val reason = turn.onUserTranscript(text, echoOf = lastSpokenReply) { DriverTurn.classify(it) }
-        if (turn.userSpoke) driverContext.onDriverUtterance(text, turn.epoch)
-        if (before && reason == DriverTurn.HoldReason.NONE) {
-            applyVerdict(turn, DriverTurn.Verdict.Release("user_spoke"))
-        } else if (!before && reason != DriverTurn.HoldReason.NONE) {
-            DebugVoiceLog.log("TURN_HOLD epoch=${turn.epoch} reason=$reason kind=${turn.kind}")
-        }
-    }
-
-    /**
-     * Execution evidence. This is the only path in the client by which an external action can be
-     * shown to have happened; a `ok=false` result explicitly does not release a claim.
-     */
-    @Synchronized
-    private fun onExecutionResult(callId: String, output: String) {
-        val ok = output.contains("\"ok\":true")
-        val failure = if (ok) null else Regex("\"error\":\"([^\"]+)\"").find(output)?.groupValues?.get(1)
-        applyVerdict(turn, turn.onExecutionResult(ok, failure, liveInfoKindOf(output), callId))
-    }
-
-    /** The `kind` of a `query_live_info` result, or null for any other tool (SPEC-011 B3). */
-    private fun liveInfoKindOf(output: String): String? =
-        if (!output.contains("\"tool\":\"${BaiduFlexProtocol.QUERY_LIVE_INFO}\"")) null
-        else runCatching { JSONObject(output).optString("kind").ifEmpty { null } }.getOrNull()
-
-    @Synchronized
-    private fun onAssistantText(text: String) {
-        applyVerdict(turn, turn.onAssistantText(text))
-    }
-
-    @Synchronized
-    private fun onToolCallDispatched(call: DomainVoiceEvent.ToolCall) {
-        turn.onToolCall(call.callId, call.name)
-    }
-
-    @Synchronized
-    private fun finishResponse(hadToolCall: Boolean) {
-        applyVerdict(turn, turn.onResponseDone(assistantText.toString(), hadToolCall))
-    }
-
-    /** Reply audio and subtitle still arriving for a superseded turn; see [supersededResponse]. */
-    private fun dropSupersededOutput(event: DomainVoiceEvent): Boolean =
-        supersededResponse && (
-            event is DomainVoiceEvent.AudioDelta ||
-                event is DomainVoiceEvent.AudioDone ||
-                event is DomainVoiceEvent.AssistantTranscript
-            )
-
-    /** Held output is audio and its subtitle only — never a tool call, an error or a transcript. */
-    @Synchronized
-    private fun holdOrEmit(event: DomainVoiceEvent): Boolean {
-        if (!turn.isHolding) return false
-        val holdable = event is DomainVoiceEvent.AudioDelta ||
-            event is DomainVoiceEvent.AudioDone ||
-            event is DomainVoiceEvent.AssistantTranscript
-        if (!holdable) return false
-        turn.hold(event)
-        if (turn.heldCount > MAX_HELD_AUDIO_EVENTS) {
-            applyVerdict(turn, turn.onHoldBudgetExceeded())
-        }
-        return true
-    }
-
-    private fun applyVerdict(target: DriverTurn, verdict: DriverTurn.Verdict) {
-        when (verdict) {
-            DriverTurn.Verdict.Wait -> Unit
-            is DriverTurn.Verdict.Release -> {
-                val pending = target.takeHeld()
-                // A reply this client cancelled (a local pick answered the driver) is not shown
-                // either: 「导航启动中，请说目的地。」 appeared as a subtitle during guidance (P40).
-                if (cancelSentThisResponse && pending.isNotEmpty()) {
-                    DebugVoiceLog.log("TURN_DROP epoch=${target.epoch} reason=client_cancelled events=${pending.size}")
-                } else if (pending.isNotEmpty()) {
-                    DebugVoiceLog.log(
-                        "TURN_RELEASE epoch=${target.epoch} reason=${verdict.reason} events=${pending.size}",
-                    )
-                    pending.forEach { emit(it as DomainVoiceEvent) }
-                }
-            }
-            is DriverTurn.Verdict.Drop -> {
-                val dropped = target.takeHeld().size
-                DebugVoiceLog.log(
-                    "TURN_DROP epoch=${target.epoch} reason=${verdict.reason} kind=${target.kind} " +
-                        "proven=${target.proven} events=$dropped replyChars=${assistantText.length}" +
-                        (verdict.detail?.let { " $it" } ?: ""),
-                )
-                Telemetry.record(EventType.AUDIO_STOPPED, detail = "turn_dropped_${verdict.reason}")
-                // In standby the client sends no turns of its own (see discardPendingAudio), and a
-                // reply we cancelled answered an utterance the app handled itself (P40): nothing to correct.
-                verdict.correction?.takeIf { !listeningSuspended && !cancelSentThisResponse }?.let {
-                    correctionSentThisResponse = true
-                    sendUserText(it)
-                }
-            }
-        }
-    }
-
-    /** The socket went away: held output can never be played, so it is discarded. */
-    @Synchronized
-    private fun dropHeldAudio(reason: String) {
-        applyVerdict(turn, turn.cancel(reason))
-    }
-
     private fun emit(event: DomainVoiceEvent) {
         eventFlow.tryEmit(RealtimeEvent(SystemSessionClock.nowMs(), event))
     }
@@ -894,8 +684,6 @@ class BaiduFlexClient(
 
         private const val SPEECH_STOPPED_FLUSH_MS = 1_600L
 
-        /** ~6 s of held reply at typical delta sizes: a ceiling, not an expected value. */
-        private const val MAX_HELD_AUDIO_EVENTS = 120
         private fun defaultHttp() = OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS).readTimeout(0, TimeUnit.MILLISECONDS)
             .pingInterval(20, TimeUnit.SECONDS).build()

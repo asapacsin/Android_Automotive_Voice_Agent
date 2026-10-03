@@ -49,7 +49,8 @@ All credentials are entered on the device and stored as AES/GCM ciphertext under
 
 > **Decided direction, not yet shipped (2026-09-16, `ADR-007`):** navigation moves from handing off to the installed Amap app to the **Amap Navigation SDK embedded in our own Activity**, with the assistant layered above the map. Items 4–5 under *Primary user experience* and the *Navigation* feature line describe the currently installed build and will be rewritten when SPEC-005 Phase 4 ships. Until then, do not add new work to the deep-link path.
 
-Default provider: **Baidu Flex** (`qianfan-realtime-flex-v1`), with function calling.
+Default provider: **Gemini Live** (since 2026-09-30, ADR-013), with function calling; no automatic fallback to another provider.
+Owner-selectable alternative until its removal: **Baidu Flex** (`qianfan-realtime-flex-v1`), with function calling.
 Selectable alternative: **Baidu Pro/Lite** (`audio-mini-realtime-near` and siblings) — conversation only, no function calling.
 
 ## Intentionally dormant compatibility code

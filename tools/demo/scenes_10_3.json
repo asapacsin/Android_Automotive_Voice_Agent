@@ -1,0 +1,534 @@
+{
+ "_doc": "Demo scenes for branch claude/10-3 (docs/DEMO_10-3.md). Matched in order against driver transcripts in the NovaVoice log. 'match' lists alternative phrases (punctuation and spaces ignored); the first not-yet-matched scene of the run whose phrase occurs is taken. 'expect' is one of: chat (a reply is heard, no tool), tool (one of 'tools' runs), no_tool (refusal or question, no tool), event (one of 'events' is logged). 'style' is the Azure express-as style the reply must use (assistant voice on only; 'none' = default). 10-3 fields: 'no_drop' = the claim gate must not drop the reply; 'cold' = the first Azure clause of the turn must arrive within the cold-start budget (asked after >= 60 s of silence).",
+ "runs": {
+  "A": {
+   "title": "Run A: Gemini's own voice (assistant voice OFF) - baseline",
+   "scenes": [
+    {
+     "id": "A1",
+     "say": "你能做什么",
+     "match": [
+      "你能做什么",
+      "你能干什么",
+      "你会做什么"
+     ],
+     "expect": "chat",
+     "kind": "chat",
+     "feature": "SPEC-013/016 Gemini default; B-034 voice Leda"
+    },
+    {
+     "id": "A2",
+     "say": "你叫什么名字",
+     "match": [
+      "你叫什么名字",
+      "你叫什么"
+     ],
+     "expect": "chat",
+     "kind": "chat",
+     "feature": "baseline chat latency"
+    },
+    {
+     "id": "A3",
+     "say": "给我讲个短笑话",
+     "match": [
+      "笑话"
+     ],
+     "expect": "chat",
+     "kind": "chat",
+     "feature": "baseline chat latency"
+    },
+    {
+     "id": "A4",
+     "say": "有点热",
+     "match": [
+      "有点热",
+      "好热"
+     ],
+     "expect": "tool",
+     "tools": [
+      "control_climate",
+      "run_scenario"
+     ],
+     "kind": "action",
+     "feature": "SPEC-015 comfort"
+    },
+    {
+     "id": "A5",
+     "say": "把车窗打开一半",
+     "match": [
+      "车窗打开一半",
+      "窗户打开一半",
+      "车窗开一半"
+     ],
+     "expect": "tool",
+     "tools": [
+      "control_window"
+     ],
+     "kind": "action",
+     "feature": "SPEC-015 FZ-06"
+    }
+   ]
+  },
+  "B": {
+   "title": "Run B: Xiaoyi (assistant voice ON) - every function of 10-2 and 10-3",
+   "scenes": [
+    {
+     "id": "B1",
+     "say": "你能做什么",
+     "match": [
+      "你能做什么",
+      "你能干什么",
+      "你会做什么"
+     ],
+     "expect": "chat",
+     "kind": "chat",
+     "style": "none",
+     "feature": "ADR-016/SPEC-019 Xiaoyi speaks"
+    },
+    {
+     "id": "B2",
+     "say": "你叫什么名字",
+     "match": [
+      "你叫什么名字",
+      "你叫什么"
+     ],
+     "expect": "chat",
+     "kind": "chat",
+     "style": "none",
+     "feature": "A/B latency"
+    },
+    {
+     "id": "B3",
+     "say": "给我讲个短笑话",
+     "match": [
+      "笑话"
+     ],
+     "expect": "chat",
+     "kind": "chat",
+     "style": "none",
+     "feature": "A/B latency"
+    },
+    {
+     "id": "B4",
+     "say": "有点热",
+     "match": [
+      "有点热",
+      "好热"
+     ],
+     "expect": "tool",
+     "tools": [
+      "control_climate",
+      "run_scenario"
+     ],
+     "kind": "action",
+     "feature": "A/B action latency"
+    },
+    {
+     "id": "B5",
+     "say": "把车窗打开一半",
+     "match": [
+      "车窗打开一半",
+      "窗户打开一半",
+      "车窗开一半"
+     ],
+     "expect": "tool",
+     "tools": [
+      "control_window"
+     ],
+     "kind": "action",
+     "feature": "SPEC-015 FZ-06"
+    },
+    {
+     "id": "AB-1",
+     "say": "你干什么",
+     "match": [
+      "你干什么",
+      "你在干什么",
+      "你在干嘛"
+     ],
+     "expect": "chat",
+     "kind": "chat",
+     "no_drop": true,
+     "feature": "9696ce5: an ability list is not a claim; the reply is heard"
+    },
+    {
+     "id": "WARM-1",
+     "say": "讲个冷知识 (after >= 60 s of silence; wake her first if she slept)",
+     "match": [
+      "冷知识"
+     ],
+     "expect": "chat",
+     "kind": "chat",
+     "cold": true,
+     "feature": "574e0ff: Azure connection kept and warmed on speech start"
+    },
+    {
+     "id": "MIC-1",
+     "say": "你喜欢什么颜色 (speakers on, a fan or low music in the room)",
+     "match": [
+      "什么颜色"
+     ],
+     "expect": "chat",
+     "kind": "chat",
+     "no_drop": true,
+     "feature": "4f857e9: VAD LOW/HIGH, the turn ends in room noise (P45)"
+    },
+    {
+     "id": "FZ-08",
+     "say": "关窗",
+     "match": [
+      "关窗",
+      "把窗关上",
+      "关上车窗"
+     ],
+     "expect": "tool",
+     "tools": [
+      "control_window"
+     ],
+     "kind": "action",
+     "feature": "SPEC-015 FZ-08"
+    },
+    {
+     "id": "FZ-01",
+     "say": "有蚊子",
+     "match": [
+      "蚊子",
+      "虫子飞进"
+     ],
+     "expect": "tool",
+     "tools": [
+      "run_scenario"
+     ],
+     "kind": "action",
+     "feature": "SPEC-015 FZ-01 scenario"
+    },
+    {
+     "id": "FZ-02",
+     "say": "蚊子出去了",
+     "match": [
+      "出去了",
+      "好了关上吧"
+     ],
+     "expect": "tool",
+     "tools": [
+      "run_scenario",
+      "control_window"
+     ],
+     "kind": "action",
+     "feature": "SPEC-015 FZ-02 within TTL"
+    },
+    {
+     "id": "FZ-03",
+     "say": "座位有点高",
+     "match": [
+      "座位有点高",
+      "座椅有点高"
+     ],
+     "expect": "tool",
+     "tools": [
+      "control_seat"
+     ],
+     "kind": "action",
+     "feature": "SPEC-015 FZ-03"
+    },
+    {
+     "id": "FZ-05",
+     "say": "再低一点",
+     "match": [
+      "再低一点",
+      "再低点"
+     ],
+     "expect": "tool",
+     "tools": [
+      "control_seat"
+     ],
+     "kind": "action",
+     "feature": "SPEC-015 FZ-05 follow-up from context"
+    },
+    {
+     "id": "T1",
+     "say": "温度调低一度",
+     "match": [
+      "温度调低",
+      "调低一度",
+      "空调调低"
+     ],
+     "expect": "tool",
+     "tools": [
+      "control_climate"
+     ],
+     "kind": "action",
+     "feature": "sets up FZ-14"
+    },
+    {
+     "id": "FZ-14",
+     "say": "再低一点",
+     "match": [
+      "再低一点",
+      "再低点"
+     ],
+     "expect": "no_tool",
+     "kind": "chat",
+     "feature": "SPEC-015 FZ-14 asks 座椅还是温度"
+    },
+    {
+     "id": "FZ-13",
+     "say": "打开天窗",
+     "match": [
+      "天窗"
+     ],
+     "expect": "no_tool",
+     "kind": "chat",
+     "feature": "SPEC-015 FZ-13 honest refusal"
+    },
+    {
+     "id": "FZ-09",
+     "say": "有点闷",
+     "match": [
+      "有点闷",
+      "空气不好",
+      "有异味"
+     ],
+     "expect": "tool",
+     "tools": [
+      "run_scenario"
+     ],
+     "kind": "action",
+     "feature": "SPEC-015 FZ-09 stuffy"
+    },
+    {
+     "id": "FZ-15",
+     "say": "傲娇一点",
+     "match": [
+      "傲娇",
+      "傲嬌"
+     ],
+     "expect": "tool",
+     "tools": [
+      "set_speaking_style"
+     ],
+     "kind": "action",
+     "style": "disgruntled",
+     "feature": "SPEC-015 FZ-15 + SSML style"
+    },
+    {
+     "id": "S-chat1",
+     "say": "你喜欢吃什么",
+     "match": [
+      "喜欢吃"
+     ],
+     "expect": "chat",
+     "kind": "chat",
+     "style": "disgruntled",
+     "feature": "傲娇 delivery persists; P45 regression"
+    },
+    {
+     "id": "FZ-11",
+     "say": "说话嗲一点",
+     "match": [
+      "嗲"
+     ],
+     "expect": "tool",
+     "tools": [
+      "set_speaking_style"
+     ],
+     "kind": "action",
+     "style": "affectionate",
+     "feature": "SPEC-015 FZ-11"
+    },
+    {
+     "id": "FZ-17",
+     "say": "温柔一点",
+     "match": [
+      "温柔"
+     ],
+     "expect": "tool",
+     "tools": [
+      "set_speaking_style"
+     ],
+     "kind": "action",
+     "style": "gentle",
+     "feature": "SPEC-015 FZ-17"
+    },
+    {
+     "id": "FZ-18",
+     "say": "元气一点",
+     "match": [
+      "元气",
+      "活泼"
+     ],
+     "expect": "tool",
+     "tools": [
+      "set_speaking_style"
+     ],
+     "kind": "action",
+     "style": "cheerful",
+     "feature": "SPEC-015 FZ-18"
+    },
+    {
+     "id": "FZ-19",
+     "say": "说话霸道一点",
+     "match": [
+      "霸道"
+     ],
+     "expect": "no_tool",
+     "kind": "chat",
+     "style": "cheerful",
+     "feature": "SPEC-015 FZ-19 not offered; style unchanged"
+    },
+    {
+     "id": "FZ-12",
+     "say": "正常一点",
+     "match": [
+      "正常一点",
+      "恢复正常",
+      "别嗲了"
+     ],
+     "expect": "tool",
+     "tools": [
+      "set_speaking_style"
+     ],
+     "kind": "action",
+     "style": "none",
+     "feature": "SPEC-015 FZ-12"
+    },
+    {
+     "id": "BI-1",
+     "say": "讲一个长一点的故事",
+     "match": [
+      "故事"
+     ],
+     "expect": "chat",
+     "kind": "chat",
+     "feature": "long reply to interrupt"
+    },
+    {
+     "id": "BI-2",
+     "say": "好了停一下 (while she is still talking)",
+     "match": [
+      "停一下",
+      "好了",
+      "别说了"
+     ],
+     "expect": "event",
+     "events": [
+      "playout_barge_in",
+      "assistant_voice_cancelled",
+      "listening_shut_up"
+     ],
+     "kind": "barge",
+     "feature": "SPEC-019 R5 barge-in stops Xiaoyi"
+    },
+    {
+     "id": "M1",
+     "say": "放点梶浦由记的，空之境界里很燃的那首",
+     "match": [
+      "梶浦",
+      "空之境界",
+      "空の境界"
+     ],
+     "expect": "tool",
+     "tools": [
+      "play_music"
+     ],
+     "kind": "action",
+     "feature": "SPEC-017 B1 music from description"
+    },
+    {
+     "id": "M2",
+     "say": "不是这首",
+     "match": [
+      "不是这首",
+      "换一首"
+     ],
+     "expect": "tool",
+     "tools": [
+      "play_music",
+      "control_music"
+     ],
+     "kind": "action",
+     "feature": "SPEC-017 B3"
+    },
+    {
+     "id": "M3",
+     "say": "停止播放",
+     "match": [
+      "停止播放",
+      "关掉音乐",
+      "别放了",
+      "暂停"
+     ],
+     "expect": "tool",
+     "tools": [
+      "control_music"
+     ],
+     "kind": "action",
+     "feature": "SPEC-017 honest stop"
+    },
+    {
+     "id": "N1",
+     "say": "导航去励骏庞都",
+     "match": [
+      "励骏",
+      "庞都",
+      "励俊"
+     ],
+     "expect": "tool",
+     "tools": [
+      "navigate_to"
+     ],
+     "kind": "action",
+     "feature": "short route (test policy)"
+    },
+    {
+     "id": "N2",
+     "say": "第一个",
+     "match": [
+      "第一个"
+     ],
+     "expect": "event",
+     "events": [
+      "tool=choose_navigation_option",
+      "nav_voice_choice",
+      "nav_route_candidates"
+     ],
+     "kind": "action",
+     "feature": "destination pick"
+    },
+    {
+     "id": "N3",
+     "say": "开始导航",
+     "match": [
+      "开始导航",
+      "就这条",
+      "最快的"
+     ],
+     "expect": "event",
+     "events": [
+      "tool=choose_navigation_option",
+      "nav_route_selected",
+      "nav_start",
+      "nav_started"
+     ],
+     "kind": "action",
+     "feature": "route pick + start; SPEC-018 guidance follows"
+    },
+    {
+     "id": "N4",
+     "say": "结束导航",
+     "match": [
+      "结束导航",
+      "不去了",
+      "退出导航"
+     ],
+     "expect": "tool",
+     "tools": [
+      "exit_navigation_mode"
+     ],
+     "kind": "action",
+     "feature": "exit"
+    }
+   ]
+  }
+ }
+}

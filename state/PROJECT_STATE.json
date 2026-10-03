@@ -1,49 +1,37 @@
 {
-  "generated_at": "2026-09-29T03:26:22",
+  "generated_at": "2026-10-03T03:08:41",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "f4a1b43",
-    "branch": "cursor/9-28",
-    "subject": "Debug tool nav_read: start a real guidance prompt on demand.",
-    "working_tree_clean": true,
-    "uncommitted_files": 0
+    "commit": "480b435",
+    "branch": "claude/10-3",
+    "subject": "demo(10-3): checklist and log checker for the essential and claude/10-3 functions",
+    "working_tree_clean": false,
+    "uncommitted_files": 6
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-09-29T03:25:57",
+    "collected_at": "2026-10-02T14:56:42",
     "total": {
-      "tests": 1458,
+      "tests": 1930,
       "failures": 0,
       "errors": 0,
-      "skipped": 0
+      "skipped": 2
     },
     "by_module": {
-      "app": {
-        "tests": 1185,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "behavior-test": {
-        "tests": 123,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "contracts": {
-        "tests": 6,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
       "evaluation": {
         "tests": 27,
         "failures": 0,
         "errors": 0,
         "skipped": 0
       },
-      "ingress": {
-        "tests": 100,
+      "app": {
+        "tests": 1627,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 2
+      },
+      "simulator": {
+        "tests": 25,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -54,8 +42,20 @@
         "errors": 0,
         "skipped": 0
       },
-      "simulator": {
-        "tests": 15,
+      "behavior-test": {
+        "tests": 128,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "contracts": {
+        "tests": 7,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "ingress": {
+        "tests": 114,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,16 +65,16 @@
   },
   "apk": {
     "built": true,
-    "bytes": 223611908,
-    "built_at": "2026-09-29T03:24:35"
+    "bytes": 224120139,
+    "built_at": "2026-10-02T14:54:03"
   },
   "capabilities": {
     "available": true,
     "by_level": {
       "device": 36,
-      "unsupported": 6,
+      "unit": 9,
+      "unsupported": 5,
       "human": 1,
-      "unit": 4,
       "implemented": 2
     },
     "human_verification_pending": [
@@ -116,6 +116,21 @@
       "priority": "RESOLVED"
     },
     {
+      "id": "D-10",
+      "title": "Two orderings the claim gate misses",
+      "priority": "RESOLVED"
+    },
+    {
+      "id": "D-11",
+      "title": "A superseded turn's tool result is applied to the current turn",
+      "priority": "RESOLVED"
+    },
+    {
+      "id": "D-9",
+      "title": "The hold budget releases a reply whose words were never judged",
+      "priority": "OPEN"
+    },
+    {
       "id": "D-7",
       "title": "A false claim could be spoken for *supported* actions",
       "priority": "RESOLVED"
@@ -123,7 +138,7 @@
     {
       "id": "D-8",
       "title": "`BaiduFlexClient` is over its line budget again",
-      "priority": "OPEN"
+      "priority": "RESOLVED"
     }
   ],
   "work_frontier": {
@@ -131,18 +146,228 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "A5: | A5 | Picker selection uses the registry; `tryLocalNavigationPick` is gone | production wiring | `FeaturePresenceRegressionTest` + existing picker tests green | not built — **deferred on purpose** to",
-    "actionable_count": 65,
+    "NEXT_ACTION": "A0: | A0 | G-1 … G-1f measured on the short route | measurement (emulator) | `GUIDANCE-EMU-001` | not earned |",
+    "actionable_count": 112,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
-    "QUEUED_FOR_HUMAN": 16,
+    "QUEUED_FOR_HUMAN": 26,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-018-guidance-in-assistant-voice.md",
+        "item": "A0",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "A1",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-018-guidance-in-assistant-voice.md",
+        "item": "A1",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "A10",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "A2",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-018-guidance-in-assistant-voice.md",
+        "item": "A2",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "A3",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-018-guidance-in-assistant-voice.md",
+        "item": "A3",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "A4",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-018-guidance-in-assistant-voice.md",
+        "item": "A4",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-010-screen-affordances.md",
         "item": "A5",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "A5",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-017-music-from-description.md",
+        "item": "A5",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-018-guidance-in-assistant-voice.md",
+        "item": "A5",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "A6",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-017-music-from-description.md",
+        "item": "A6",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-018-guidance-in-assistant-voice.md",
+        "item": "A6",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-013-gemini-live-provider.md",
+        "item": "A7",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "A7",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-017-music-from-description.md",
+        "item": "A7",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-018-guidance-in-assistant-voice.md",
+        "item": "A7",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-013-gemini-live-provider.md",
+        "item": "A8",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "A8",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-016-gemini-default-and-domain-servers.md",
+        "item": "A8",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-018-guidance-in-assistant-voice.md",
+        "item": "A8",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "A9",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-018-guidance-in-assistant-voice.md",
+        "item": "A9",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "Device (A9)",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-017-music-from-description.md",
+        "item": "On-screen one-time listener hint with the settings path",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-016-gemini-default-and-domain-servers.md",
+        "item": "Part A",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-017-music-from-description.md",
+        "item": "`MusicSource` port / `BundledTrackSource` split",
         "blocked_by": null
       },
       {
@@ -226,6 +451,13 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "CONFIG-CARD-EMU-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "CTX-AMBIG-001",
         "blocked_by": null
       },
@@ -241,6 +473,41 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "ECHO-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "FUZZY-DEVICE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "FUZZY-TEXT-LIVE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "GATE-D10-DEVICE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "GEMINI-DEVICE-DUPLEX-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "GUIDANCE-EMU-001",
         "blocked_by": null
       },
       {
@@ -290,6 +557,20 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "MUSIC-PLAY-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "MUSIC-TEXT-LIVE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "MUSIC-VLC-EMU-001",
         "blocked_by": null
       },
       {
@@ -401,6 +682,13 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "P45-EMU-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "PERM-DENY-001",
         "blocked_by": null
       },
@@ -471,6 +759,13 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "TRANSCRIPT-FADE-EMU-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "TRUTH-BAIT-001",
         "blocked_by": null
       },
@@ -500,6 +795,13 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "TRUTH-WEATHER-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "TTS-VOICE-EMU-001",
         "blocked_by": null
       },
       {
@@ -562,14 +864,7 @@
         "priority": 8,
         "class": "recorded technical debt",
         "source": "docs/TECH_DEBT.md",
-        "item": "D-8",
-        "blocked_by": null
-      },
-      {
-        "priority": 10,
-        "class": "stale state or harness defect",
-        "source": "state",
-        "item": "PROJECT_STATE.json",
+        "item": "D-9",
         "blocked_by": null
       },
       {
@@ -619,6 +914,55 @@
         "class": "next authorised backlog item",
         "source": "BACKLOG.md",
         "item": "B-026",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-027",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-028",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-029",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-030",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-031",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-032",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-034",
         "blocked_by": null
       }
     ]

@@ -13,7 +13,7 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 > - PLACE-SAVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - PLACE-NAV-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 
-16 item(s) queued.
+26 item(s) queued.
 
 Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEVICE_REQUIRED.md).
 
@@ -329,6 +329,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 **Already established without you:**
 
 - NavigationLocalPickGuard turn/list authority + NavigationPickSession executor results
+- P32: suppressed navigate_to reports destination_selected + route list; ActionClaimGuard corrects a navigation-started claim without navigation_started evidence (ActionClaimGuardTest, AndroidToolDispatcherTest)
 
 **You will need:** installed debug APK; network; map entitlement
 
@@ -341,6 +342,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 - correct destination and route selected once
 - no duplicate navigate_to after local pick
+- no 导航已开始 before nav_navigation_started (P32)
 
 **Tell me back:** destination and route reached; whether any touch was required; duplicate tool calls observed
 
@@ -408,6 +410,259 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 *Release-blocking.*
 
+### LOCAL_DEVICE_REQUIRED — GEMINI-DEVICE-LATENCY-001 — Gemini (gemini-3.8-live) end of speech to first audio heard, on the phone
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Latency heard in the cabin depends on the phone's network to Google, playback and road noise; the cloud container measured only the wire and the gate
+
+**Automation blocker:** `physical_world`
+
+**Already established without you:**
+
+- docs/reports/2026-09-30-gemini-native-smoke.md: live API through GeminiLiveClient, L1 9/10 (median 1.6 s), L2 ~0 ms gate release, L3 0 claims before result
+
+**You will need:** developer settings: Gemini enabled, model gemini-3.8-live selected (a saved extended-thinking choice is kept); GEMINI-DEVICE-REACH-001 passed
+
+**What to do:**
+
+1. say 10 commands (空调, 导航, 音乐) and 5 chat questions
+2. note seconds from end of speech to the action and to the first word heard
+3. note any 'done' heard before the action happened
+
+**It passes if:**
+
+- actions within ~2.5 s in at least 9 of 10
+- chat replies start within ~2 s
+- no claim heard before its action
+
+**Tell me back:** commands acted within ~2.5 s, out of 10; seconds to first word for the 5 chat questions; any claim heard before its action
+
+**Still unknown until you do:** seconds heard in the cabin on the phone's network; whether gemini-3.8-live self-interrupts through the speaker (G-M2)
+
+### LOCAL_DEVICE_REQUIRED — STYLE-EAR-001 — 嗲 / 傲娇 / 温柔 / 元气 each sound right and appropriate, with the same voice
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Whether the tone is sweet but not inappropriate, and whether the voice is unchanged, is a listening judgement
+
+**Automation blocker:** `subjective_perception`
+
+**Already established without you:**
+
+- STYLE-UNIT-001: compose swaps the tone paragraph; style persisted and sticky (JVM)
+
+**You will need:** phone or emulator with this build; Gemini key
+
+**What to do:**
+
+1. say 说话能不能嗲一点, chat for three turns
+2. restart the app, chat again
+3. say 傲娇一点, then 把车窗打开一半: the window opens and 小诺 does not pretend to refuse
+4. say 温柔一点 and 元气一点, one turn each
+5. say 正常一点
+
+**It passes if:**
+
+- tone audibly sweeter, never sexualised
+- same voice throughout
+- still sweet after restart
+- normal after 正常一点
+
+**Tell me back:** yes/no per criterion, one sentence of impression
+
+**Still unknown until you do:** how the model renders the sweet tone in audio; whether it ever drifts into inappropriate wording
+
+### LOCAL_DEVICE_REQUIRED — GUIDANCE-DEVICE-001 — One voice on the short route; Amap audible only when the model cannot speak
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Needs a person driving or riding the route and listening to which voice speaks each prompt
+
+**Automation blocker:** `physical_world`
+
+**Already established without you:**
+
+- GUIDANCE-EMU-001 measurements
+- SPEC-018 step 1 JVM suites (GuidanceRelayTest, SpeechArbiterGuidanceTest, GeminiLiveClientTest)
+
+**You will need:** test phone with this build, toggle on; GUIDANCE-EMU-001 passed; route 横琴创业谷 → 励骏庞都
+
+**What to do:**
+
+1. drive the route
+2. note any prompt spoken twice, missed, or in Amap's voice
+3. cut mobile data for one prompt
+
+**It passes if:**
+
+- every prompt heard exactly once
+- Amap's voice only when data was cut or the model failed
+- no prompt reworded in direction or distance
+
+**Tell me back:** per prompt: voice heard, correct yes/no
+
+**Still unknown until you do:** real-network latency vs the deadline; Amap SDK behaviour with the inner voice off on a real device
+
+*Release-blocking.*
+
+### LOCAL_DEVICE_REQUIRED — DEMO-10-2-001 — One demo run that exercises every claude/10-2 function, graded by the log checker
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Whether only Xiaoyi is heard, whether each speaking style sounds different and whether her delay is acceptable are judgements by ear; the owner also speaks the scenes live
+
+**Automation blocker:** `subjective_perception`
+
+**Already established without you:**
+
+- tools/demo/check_demo_log.py --selftest OK (2026-10-02 cloud)
+- the JVM suites behind each scene (TTS-UNIT-001, TRANSCRIPT-FADE-UNIT-001, CONFIG-CARD-UNIT-001, SPEC-015/017/018 rows)
+
+**You will need:** PC emulator nova_api34 or the phone, with this build; Gemini key and consent; Azure Speech key and region; headphones (the host bridge is the microphone); short route 横琴创业谷 → 励骏庞都 only
+
+**What to do:**
+
+1. follow docs/DEMO_10-2.md: act C (cards), run A (assistant voice off), run B (on), optional failure drill
+2. capture adb logcat -v threadtime -s NovaVoice per run
+3. python tools/demo/check_demo_log.py --scenes 10-2 --run A demo_runA.log
+4. python tools/demo/check_demo_log.py --scenes 10-2 --run B demo_runB.log --baseline demo_runA.log
+5. tick the by-ear list
+
+**It passes if:**
+
+- checker: no FAIL in run A or run B (WARN reviewed)
+- chat reply p50 <= 2000 ms; actions <= 2500 ms in >= 90 %; Xiaoyi extra delay p50 <= 1000 ms (ADR-016)
+- every by-ear item ticked
+
+**Tell me back:** the two checker reports; the ticked by-ear list; the commit
+
+**Still unknown until you do:** real latency through the PC or phone network to Gemini and Azure; whether 嗲/傲娇/温柔/元气 are distinct by ear; whether P45's 9.4 s Gemini stall recurs (the new timing lines will show it)
+
+### LOCAL_DEVICE_REQUIRED — DEMO-10-3-001 — One demo run that exercises the essential functions and every claude/10-2 and claude/10-3 function, graded by the log checker
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Whether only Xiaoyi is heard, whether each speaking style sounds different and whether her delay is acceptable are judgements by ear; the owner also speaks the scenes live
+
+**Automation blocker:** `subjective_perception`
+
+**Already established without you:**
+
+- tools/demo/check_demo_log.py --selftest OK (2026-10-03 cloud, 10-3 checks included)
+- the JVM suites behind each scene (TTS-UNIT-001, TRANSCRIPT-FADE-UNIT-001, CONFIG-CARD-UNIT-001, SPEC-015/017/018 rows)
+
+**You will need:** PC emulator nova_api34 or the phone, with this build; Gemini key and consent; Azure Speech key and region; headphones (the host bridge is the microphone); short route 横琴创业谷 → 励骏庞都 only
+
+**What to do:**
+
+1. follow docs/DEMO_10-3.md: act C (cards), run A (assistant voice off), run B (on), optional failure drill
+2. capture adb logcat -v threadtime -s NovaVoice per run
+3. python tools/demo/check_demo_log.py --run A demo_runA.log
+4. python tools/demo/check_demo_log.py --run B demo_runB.log --baseline demo_runA.log
+5. tick the by-ear list
+
+**It passes if:**
+
+- checker: no FAIL in run A or run B (WARN reviewed)
+- chat reply p50 <= 2000 ms; actions <= 2500 ms in >= 90 %; Xiaoyi extra delay p50 <= 1000 ms (ADR-016)
+- AB-1 and MIC-1 replies heard (no TURN_DROP); no claim-gate hold over 20 s; chat correction graceMs <= 1500; WARM-1 first Azure clause <= 1000 ms
+- every by-ear item ticked
+
+**Tell me back:** the two checker reports; the ticked by-ear list; the commit
+
+**Still unknown until you do:** real latency through the PC or phone network to Gemini and Azure; whether 嗲/傲娇/温柔/元气 are distinct by ear; whether P45's 9.4 s Gemini stall recurs (the new timing lines will show it)
+
+### LOCAL_DEVICE_REQUIRED — VOICE-EAR-001 — The owner picks the 符玄-like Gemini voice by ear
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Young / clear / not old is a listening judgement
+
+**Automation blocker:** `subjective_perception`
+
+**Already established without you:**
+
+- VOICE-AB-001: measured pitch shortlist; default now Leda
+- GeminiSettingsTest: a stored prefilled Kore switches once to the new default; a deliberate choice is kept
+
+**You will need:** PC with GEMINI_API_KEY and python3 + aiohttp; emulator or phone with this build
+
+**What to do:**
+
+1. $env:OUT='D:\桌面\android_doc\voice_ab'; python tools/gemini-live-probe/voice_ab.py
+2. listen to the WAVs (Leda and Erinome first, Kore for comparison)
+3. in the app: chat once with the new default, then say 傲娇一点
+4. to try another voice: 开发者设置 → Voice field
+
+**It passes if:**
+
+- the owner names one voice
+- the default is changed to it if it is not Leda
+
+**Tell me back:** the chosen voice name, one sentence of impression
+
+**Still unknown until you do:** which voice the owner hears as 符玄-like; how the pick sounds with 傲娇 (B-029)
+
+### LOCAL_DEVICE_REQUIRED — TTS-AUDITION-001 — The owner picks a Chinese TTS voice (and vendor) by ear
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Voice preference is a listening judgement; vendor keys are entered by the owner only
+
+**Automation blocker:** `subjective_perception`
+
+**Already established without you:**
+
+- VOICE-AB-002: Gemini-side levers closed
+- tools/tts-audition/audition.py reaches openspeech.bytedance.com and api.minimaxi.com / api.minimax.io and parses their auth errors (2026-10-02 cloud, dummy keys)
+
+**You will need:** PC with python3; a key for at least one vendor: VOLC_APP_ID + VOLC_ACCESS_TOKEN, MINIMAX_API_KEY, or BAIDU_TTS_AK + BAIDU_TTS_SK
+
+**What to do:**
+
+1. $env:OUT='D:\桌面\android_doc\tts_audition'; python tools/tts-audition/audition.py volc   (and/or minimax, minimax-design, baidu)
+2. listen; optional: pass other voice ids from the vendor console after the vendor name
+3. tell the agent the vendor and voice id
+
+**It passes if:**
+
+- the owner names one vendor and one voice
+
+**Tell me back:** vendor, voice id, one sentence of impression
+
+**Still unknown until you do:** vendor first-packet latency on the owner's network
+
+### LOCAL_DEVICE_REQUIRED — TTS-VOICE-DEVICE-001 — In the car, Xiaoyi is the only voice and the styles sound right
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Whether the delay is acceptable and the styles sound right is a listening judgement in the car
+
+**Automation blocker:** `subjective_perception`
+
+**Already established without you:**
+
+- TTS-UNIT-001
+- TTS-VOICE-EMU-001 (once run)
+
+**You will need:** phone with this build; Azure key entered and 小诺的声音 on
+
+**What to do:**
+
+1. drive the short route; chat, give commands, interrupt
+2. try 嗲一点 / 傲娇一点 / 温柔一点 / 元气一点 / 正常一点
+
+**It passes if:**
+
+- only Xiaoyi is heard
+- the delay before she speaks is acceptable
+- each style sounds like itself
+
+**Tell me back:** yes/no per criterion; style degrees to change, if any
+
+**Still unknown until you do:** Azure latency on the owner's network; how 傲娇 (disgruntled 0.6) sounds
+
 ## B. Account and real-service tests
 
 ### CALL-REAL-001 — A confirmed call reaches a real handset
@@ -445,6 +700,39 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 *Release-blocking.*
 
+### MUSIC-APP-DEVICE-001 — 网易云 / QQ音乐 play a described song or fail honestly
+
+**Why this needs you.** Needs the owner's logged-in 网易云音乐 or QQ音乐 account (credential) and their consent for notification access on their phone
+
+**Automation blocker:** `credential_permission`
+
+**Already established without you:**
+
+- MUSIC-UNIT-001 (JVM)
+- MUSIC-TEXT-LIVE-001 for the model's field mapping
+
+**You will need:** test phone with this build; 网易云音乐 or QQ音乐 installed and logged in; notification access (通知使用权) granted to 小诺; VPN split tunnel: the music app excluded so its catalogue region is China
+
+**What to do:**
+
+1. say 「放梶浦由记的、空之境界里很燃的那首 OP」
+2. say 「不是这首」 once
+3. ask for one VIP-only song
+4. note what plays and what 小诺 says each time
+
+**It passes if:**
+
+- the described song or an honest mismatch question plays and is named only from now_playing
+- 「不是这首」 excludes the previous title
+- a VIP-only song gives NOT_PLAYING and 小诺 says it did not play
+- the map returns to the foreground
+
+**Tell me back:** per request: what played, what was said, status/error code; whether the split tunnel was needed
+
+**Still unknown until you do:** how each app interprets MEDIA_PLAY_FROM_SEARCH extras; whether VIP-only tracks start a preview that looks like playing
+
+*Release-blocking.*
+
 ## C. Required credentials
 
 ### RELEASE-SIGN-001 — A signed release build installs and works
@@ -478,6 +766,268 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 **Still unknown until you do:** release-only runtime behaviour, especially anything reflection-based in the three vendor SDKs; whether enabling R8 is safe - it can only be judged against an installed signed build
 
 *Release-blocking.*
+
+### GEMINI-DEVICE-REACH-001 — The phone opens a Gemini Live session on its normal network (G-M1)
+
+**Why this needs you.** Needs the owner's Gemini key entered on the phone and the owner's own acceptance of the cross-border notice
+
+**Automation blocker:** `credential_permission`
+
+**Already established without you:**
+
+- c
+- l
+- o
+- u
+- d
+-  
+- c
+- o
+- n
+- t
+- a
+- i
+- n
+- e
+- r
+- ,
+-  
+- o
+- u
+- t
+- s
+- i
+- d
+- e
+-  
+- C
+- h
+- i
+- n
+- a
+- :
+-  
+- s
+- e
+- t
+- u
+- p
+-  
+- a
+- c
+- c
+- e
+- p
+- t
+- e
+- d
+-  
+- w
+- i
+- t
+- h
+-  
+- t
+- h
+- e
+-  
+- a
+- p
+- p
+- '
+- s
+-  
+- f
+- u
+- l
+- l
+-  
+- c
+- o
+- n
+- f
+- i
+- g
+- u
+- r
+- a
+- t
+- i
+- o
+- n
+-  
+- i
+- n
+-  
+- 0
+- .
+- 8
+- -
+- 1
+- .
+- 1
+-  
+- s
+- ;
+-  
+- s
+- p
+- o
+- k
+- e
+- n
+-  
+- 空
+- 调
+- 打
+- 开
+-  
+- a
+- n
+- d
+-  
+- 导
+- 航
+- 到
+- 万
+- 达
+-  
+- r
+- e
+- a
+- c
+- h
+- e
+- d
+-  
+- c
+- o
+- n
+- t
+- r
+- o
+- l
+- _
+- c
+- l
+- i
+- m
+- a
+- t
+- e
+-  
+- a
+- n
+- d
+-  
+- n
+- a
+- v
+- i
+- g
+- a
+- t
+- e
+- _
+- t
+- o
+-  
+- t
+- h
+- r
+- o
+- u
+- g
+- h
+-  
+- t
+- h
+- e
+-  
+- a
+- p
+- p
+- '
+- s
+-  
+- o
+- w
+- n
+-  
+- c
+- l
+- i
+- e
+- n
+- t
+-  
+- (
+- G
+- E
+- M
+- I
+- N
+- I
+- -
+- L
+- I
+- V
+- E
+- -
+- C
+- L
+- O
+- U
+- D
+- -
+- 0
+- 0
+- 1
+- ,
+-  
+- p
+- r
+- o
+- b
+- e
+-  
+- r
+- e
+- p
+- o
+- r
+- t
+-  
+- s
+- e
+- c
+- o
+- n
+- d
+-  
+- r
+- o
+- u
+- n
+- d
+- )
+
+**You will need:** debug APK from claude/9-29; Gemini key
+
+**What to do:**
+
+1. Developer settings > Gemini Live: paste key, tick consent, tick use Gemini, save
+2. start a session; say 打开空调 and 导航到万达
+3. read logcat NovaVoice for gemini_setup_complete, gemini_tool_call, session_provider choice=gemini_live
+
+**It passes if:**
+
+- gemini_setup_complete within 3 s
+- both commands reach a tool call
+
+**Tell me back:** t; h; e;  ; t; h; r; e; e;  ; l; o; g; c; a; t;  ; l; i; n; e; s;  ; (; o; r;  ; t; h; e; i; r;  ; a; b; s; e; n; c; e; ); ,;  ; t; h; e;  ; t; i; m; e;  ; f; r; o; m;  ; s; e; s; s; i; o; n;  ; s; t; a; r; t;  ; t; o;  ; g; e; m; i; n; i; _; s; e; t; u; p; _; c; o; m; p; l; e; t; e; ,;  ; a; n; d;  ; w; h; i; c; h;  ; n; e; t; w; o; r; k;  ; t; h; e;  ; p; h; o; n; e;  ; w; a; s;  ; o; n;  ; (; V; P; N;  ; o; n; /; o; f; f; )
+
+**Still unknown until you do:** w; h; e; t; h; e; r;  ; t; h; e;  ; p; h; o; n; e; '; s;  ; n; e; t; w; o; r; k;  ; (; w; i; t; h;  ; t; h; e;  ; o; w; n; e; r; '; s;  ; V; P; N; );  ; r; e; a; c; h; e; s;  ; g; e; n; e; r; a; t; i; v; e; l; a; n; g; u; a; g; e; .; g; o; o; g; l; e; a; p; i; s; .; c; o; m;  ; a; t;  ; a; l; l; ,;  ; a; n; d;  ; t; h; e;  ; s; e; t; u; p;  ; a; n; d;  ; f; i; r; s; t; -; a; u; d; i; o;  ; l; a; t; e; n; c; y;  ; f; r; o; m;  ; t; h; e; r; e
 
 ## D. Product decisions
 

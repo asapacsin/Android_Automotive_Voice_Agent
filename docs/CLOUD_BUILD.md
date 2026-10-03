@@ -60,6 +60,15 @@ about 220 MB, almost all of it the Amap navigation SDK's native libraries.
 - The plain x86_64 image has no ARM translation (`ro.product.cpu.abilist=x86_64`), and the app
   ships only `arm64-v8a`/`armeabi-v7a` native libraries, so the APK cannot install there.
 
+Re-measured 2026-10-02 with the existing `nova34` AVD (API 34 Google APIs x86_64 r14, arm64 translation 0.2.3):
+
+- **Boot:** it boots headless in 6–20 minutes. Only one host core is used (`-accel tcg,thread=multi` never brought adbd up in 20 minutes).
+- **Load:** with the app open, the Amap map under translation keeps the guest load at 13–27. The app, System UI, Launcher, phone and GMS all ANR, and system_server restarts several times an hour.
+- **Install:** a 224 MB install often kills system_server (`Broken pipe`). Two installs succeeded, each right after a fresh `-wipe-data` boot.
+- **AVD damage:** repeated kills damaged the AVD (`libstatspull.so` missing, zygote restart loop); `-wipe-data` repaired it.
+- **Probe:** even the map-free `TranscriptFadeProbeActivity` failed to attach within the 10 s process-start timeout, and `adb shell` calls took over 30 s.
+- **Conclusion:** no device-level UI check is possible in this container; queue it for the PC.
+
 A KVM-capable host (the Windows PC, see [EMULATOR_TESTING.md](EMULATOR_TESTING.md)) with a Google
 APIs image that includes ARM translation is the minimum for emulator runs. Audio, echo
 cancellation and wake-word behaviour still require the physical device.

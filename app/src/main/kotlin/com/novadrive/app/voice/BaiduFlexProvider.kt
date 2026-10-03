@@ -53,5 +53,5 @@ class BaiduFlexProvider(
     }
     override fun close() = client.close()
 
-    fun onPlaybackActiveChanged(active: Boolean) = client.onPlaybackActiveChanged(active)
+    override fun onPlaybackActiveChanged(active: Boolean) = client.onPlaybackActiveChanged(active)
 }

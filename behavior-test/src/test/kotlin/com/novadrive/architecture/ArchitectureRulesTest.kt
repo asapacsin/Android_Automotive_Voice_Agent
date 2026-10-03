@@ -72,7 +72,8 @@ class ArchitectureRulesTest {
 
     @Test
     fun onlyAudioAndSubtitleMayBeHeld() {
-        val client = text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt")
+        // Owner of the per-turn gate: DriverTurnPipeline (ADR-010).
+        val client = text("app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt")
         assertTrue(client.contains("private fun holdOrEmit")) {
             "INVARIANT I-5: there must be exactly one place that decides what is held"
         }
@@ -92,10 +93,13 @@ class ArchitectureRulesTest {
 
     @Test
     fun executionProofOwnsActionClaims() {
-        val client = text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt")
+        // Owner of the per-turn gate: DriverTurnPipeline (ADR-010); the provider client is read too,
+        // so the loose per-turn flags below cannot come back in either file.
+        val client = text("app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt") +
+            text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt")
         // Proof enters the system at exactly one place: the tool result.
         assertTrue(client.contains("onExecutionResult(callId, output)")) {
-            "INVARIANT I-1: sendFunctionResult is the only source of execution evidence"
+            "INVARIANT I-1: the tool result (DriverTurnPipeline.onToolResult) is the only source of execution evidence"
         }
         val turn = text("app/src/main/kotlin/com/novadrive/app/voice/DriverTurn.kt")
         assertTrue(turn.contains("AWAITING_EXECUTION_PROOF")) {
@@ -196,11 +200,19 @@ class ArchitectureRulesTest {
         // Raising one is allowed — with a reason in the commit
         // message. See docs/AGENT_MAINTENANCE.md step 4 and docs/TECH_DEBT.md D-1.
         val budgets = mapOf(
-            "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt" to 950,
+            // D-8 closed 2026-09-29: the per-turn gate moved to DriverTurnPipeline (939 -> 725).
+            "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt" to 800,
+            "app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt" to 400,
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapNaviViewHost.kt" to 900,
             "app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt" to 470,
             "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt" to 500,
             "app/src/main/kotlin/com/novadrive/app/nav/EmbeddedNavigationController.kt" to 500,
+            // Gemini Live adapter (ADR-010), recorded 2026-09-29 at 465 and 56 lines.
+            // SPEC-018 step 1: GUIDANCE-turn hooks at the client's turn points; correlation state already extracted to GeminiPromptTurn.kt
+            // ADR-016 / SPEC-019 (2026-10-02): four SpeechText call sites at the transcript points; the logic is in GeminiSpeechText.kt.
+            // P45 (2026-10-02): interrupt-before-verdict drop, empty-turn log, timing call sites; the timing logic is in GeminiTurnTiming.kt.
+            "app/src/main/kotlin/com/novadrive/app/voice/GeminiLiveClient.kt" to 640,
+            "app/src/main/kotlin/com/novadrive/app/voice/RealtimeProviderFactory.kt" to 150,
         )
         val over = budgets.mapNotNull { (path, budget) ->
             val lines = File(root, path).readLines().size
@@ -236,10 +248,11 @@ class ArchitectureRulesTest {
 
     @Test
     fun declaredToolsAndDispatchedToolsAgree() {
-        val protocol = text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexProtocol.kt")
-        val dispatcher = text("app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt")
-        val declared = Regex("name = \"([a-z_]+)\"").findAll(protocol).map { it.groupValues[1] }.toSet() +
-            Regex("const val [A-Z_]+ = \"([a-z_]+)\"").findAll(protocol).map { it.groupValues[1] }.toSet()
+        // Declarations: RealtimeToolCatalog plus the car domains; routing: the dispatcher plus one
+        // ToolServer per domain (ADR-015). Same sources as CapabilityContractTest.
+        val declared = declaredToolNames()
+        val dispatcher = (listOf("app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt") + serverFiles())
+            .joinToString("\n") { text(it) }
         // A tool reaches an executor either as a literal branch, via a constant branch, or through
         // a handler that declares TOOL = "name". All three count as routed.
         val handlers = listOf(
@@ -257,6 +270,40 @@ class ArchitectureRulesTest {
         val undocumented = declared.filter { it !in ARGUMENT_VALUES && !capabilities.contains(it) }
         assertTrue(undocumented.isEmpty()) {
             "INVARIANT I-10: every tool must appear in docs/CAPABILITIES.md. Missing: $undocumented"
+        }
+    }
+
+    private val toolsDir = "app/src/main/kotlin/com/novadrive/app/tools"
+
+    private fun serverFiles(): List<String> =
+        File(root, toolsDir).listFiles { f -> f.name.endsWith("Server.kt") }.orEmpty()
+            .map { "$toolsDir/${it.name}" }.sorted()
+
+    private fun declaredToolNames(): Set<String> {
+        val domains = File(root, toolsDir).listFiles { f -> f.name.endsWith(".kt") }.orEmpty().sortedBy { it.name }
+        val protocol = (listOf(File(root, "app/src/main/kotlin/com/novadrive/app/voice/RealtimeToolCatalog.kt")) + domains)
+            .joinToString("\n") { it.readText() }
+        return Regex("name = \"([a-z_]+)\"").findAll(protocol).map { it.groupValues[1] }.toSet() +
+            Regex("const val [A-Z_]+ = \"([a-z_]+)\"").findAll(protocol).map { it.groupValues[1] }.toSet()
+    }
+
+    // ---- the dispatcher routes by domain, never by tool name (SPEC-016 B, ADR-015) ----
+
+    @Test
+    fun dispatcherDoesNotBranchOnToolNames() {
+        val file = text("app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt")
+        val start = file.indexOf("class AndroidToolDispatcher(")
+        assertTrue(start >= 0, "AndroidToolDispatcher class not found")
+        val end = file.indexOf("\n}\n", start).let { if (it < 0) file.length else it }
+        val body = file.substring(start, end)
+        val tools = declaredToolNames() - ARGUMENT_VALUES
+        val literalBranches = Regex("\"([a-z_]+)\" ->").findAll(body).map { it.groupValues[1] }.toList()
+        val constantBranches = Regex("([A-Z_]{4,}) ->").findAll(body).map { it.groupValues[1].lowercase() }
+            .filter { it in tools }.toList()
+        val literals = tools.filter { body.contains("\"$it\"") }
+        assertTrue(literalBranches.isEmpty() && constantBranches.isEmpty() && literals.isEmpty()) {
+            "AndroidToolDispatcher must route through the domain ToolServers, not by tool name: " +
+                "branches=$literalBranches constants=$constantBranches literals=$literals"
         }
     }
 

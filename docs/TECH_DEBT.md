@@ -155,6 +155,57 @@ generated into `state/PROJECT_STATE.json`.
 
 ---
 
+## D-10 — Two orderings the claim gate misses — **RESOLVED at JVM level 2026-09-30** (`ac40304`; device: GATE-D10-DEVICE-001)
+
+**Problem.** Two orderings let a reply past the claim gate without being judged:
+
+1. A tool call that opens a response is registered after `decideHold` ran (`GeminiLiveClient`
+   `openTurn` → `onToolCall`, and Baidu's `response.created` → `function_call`), so
+   `AWAITING_TOOL_RESULT` never applies to that response.
+2. After `PHANTOM_AUDIO` releases on the first reply text with content, the rest of the reply is
+   never checked for a claim.
+
+**Resolution.** A call registered mid-response moves the hold to `AWAITING_TOOL_RESULT`; words
+before it are judged by the replaced hold, words after it by the result; a failed call keeps the
+reply held to its end and is reported (`reportFailure`) whatever the order. A phantom reply with
+content becomes `UNCLASSIFIED_CLAIM`. Reviewed PASS after two REVISE rounds. Remaining, not a
+regression: a result with no registered call (e.g. a superseded turn's slow result) can still
+release a held reply — see D-11.
+
+---
+
+## D-11 — A superseded turn's tool result is applied to the current turn — **RESOLVED at JVM level 2026-09-30** (`gn/D11` merge)
+
+**Problem.** `DriverTurnPipeline` routes a late result to the current `DriverTurn`. A result for a
+call that turn never registered can count as its proof and release a held reply
+(`onExecutionResult`, normal path; also ignores `holdUntilEnd`). Present at `c51650a` too.
+
+**Next step.** Ignore (log) results whose call id the current turn did not dispatch; test it.
+
+---
+
+## D-9 — The hold budget releases a reply whose words were never judged — **OPEN** (found 2026-09-29)
+
+**Problem.** `DriverTurnPipeline` releases everything held once a turn holds more than 120 events
+(`DriverTurn.onHoldBudgetExceeded`), whatever the hold reason. That includes
+`AWAITING_EXECUTION_PROOF` and `UNCLASSIFIED_CLAIM`, whose words are only judged at the end of the
+response. `DriverTurnTest.theHoldBudgetAlwaysReleasesRatherThanStalling` pins this on purpose, so
+that a stuck gate never loses a real reply.
+
+**Affected.** `DriverTurn.onHoldBudgetExceeded`, `DriverTurnPipeline.holdOrEmit`, both providers.
+
+**Risk.** An unproven action claim longer than the budget is heard: an I-1 gap. It is narrow on
+Baidu (120 deltas ≈ 6 s of audio) and on Gemini (0.16–0.64 s chunks, so 20–77 s), and it has not
+been observed. Found by reading the code while designing
+[GEMINI_NATIVE_ARCHITECTURE.md](GEMINI_NATIVE_ARCHITECTURE.md) §5.1 R-S5.
+
+**Next step.** Proposed in [ADR-011](../DECISIONS/ADR-011-gemini-native-voice-path.md) as part
+of N-2. At the budget, release only the clauses the claim check has judged clean. Past a 60 s hard
+cap, drop the remainder instead of releasing it. This changes a deliberate behaviour, so it waits
+for the owner's decision.
+
+---
+
 ## D-7 — A false claim could be spoken for *supported* actions — **RESOLVED 2026-09-18** (`89c9338`)
 
 **Problem.** The hold that prevents a false claim covers requests with **no** tool. For a supported
@@ -174,7 +225,9 @@ did not appear: in the normal flow the model answers *from* the tool result, so 
 
 ---
 
-## D-8 — `BaiduFlexClient` is over its line budget again — **OPEN** (found 2026-09-28)
+## D-8 — `BaiduFlexClient` is over its line budget again — **RESOLVED 2026-09-29** (found 2026-09-28)
+
+**Closed by** G1.3 of [GEMINI_LIVE_PLAN.md](GEMINI_LIVE_PLAN.md): the per-turn claim gate (DriverTurn wiring, action-claim follow-up, duplicate-call detection, superseded-output drop) moved to the provider-neutral `DriverTurnPipeline`, so the Gemini adapter reuses it. `BaiduFlexClient.kt` 939 → 725 lines; budget 950 → 800, `DriverTurnPipeline.kt` budgeted at 400.
 
 **Problem.** The demo-log fixes (`f1083fd`: call-scoped execution results, duplicate
 `choose_option` suppression, heard-speech repair) grew `BaiduFlexClient.kt` to 933 lines. Instead of
@@ -190,3 +243,39 @@ squeezed into the wrong owner, and interactions between the holds become unreada
 **Next step.** Move the tool-call bookkeeping (duplicate-call suppression, `sendFunctionResult`'s
 execution-evidence and deferred `response.create` handling) into its own owner next to `DriverTurn`,
 then put the budget back to 900 in the same commit.
+
+## D-FLAKE-BAIDU — BaiduFlexClientTest timing tests fail under full-suite load (recorded 2026-09-30) — RESOLVED 2026-10-01
+
+`aReplyCancelledForALocalPickIsNotCorrected` and `appReplyRequestedWhileTheDriverSpeaksWaitsAndAnOverlapIsNotFatal`
+failed in full `./gradlew test` runs while 3–4 builds shared a 4-core container (planner integration run
+on d209e71's parent; W5c1 worker first full run), and passed alone and on rerun. Both use fixed
+`Thread.sleep` waits against a MockWebServer socket. Not caused by the Gemini/guidance work (no shared
+code), but not proven harmless either. Fix: replace sleeps with awaited conditions (poll `received`
+with a deadline). Until then, a failure of these two in a loaded run is rerun once in isolation; a
+failure alone is real.
+
+**Resolved 2026-10-01.** Every fixed `Thread.sleep` in `BaiduFlexClientTest` that waited for something
+to happen is now an awaited condition (`awaitUntil`: polls with a 5 s deadline and fails with the
+current sent/seen state), keyed on what the client observably did: an emitted event (SpeechStarted,
+ResponseStarted, final UserTranscript, ResponseDone, ToolCall — collected by a subscriber registered
+before `connect`) or a message the mock server received. Sleeps that prove something does *not*
+happen remain, as short bounded waits taken only after the preceding positive event was awaited
+(load can only make them lenient). Assertions are unchanged. Recorded lists are
+`CopyOnWriteArrayList` so polling cannot race the socket thread. Evidence: the class run 10×
+consecutively with 4 × `yes > /dev/null` saturating the 4-core container — 10/10 green, 19 tests,
+0 failures each (JUnit XML); full `./gradlew test` green afterwards.
+
+## D-FLAKE-PHANTOM — PhantomTurnSuppressionTest (release variant) fails under full-suite load (recorded 2026-10-01) — RESOLVED 2026-10-01
+
+`theSpokenResultOfAnActionIsNotJudgedOnItsOwn` failed twice in full `./gradlew test` runs on the
+T-textlive worktree (30a096b + a skipped test class) and passed 3/3 alone. Same pattern as
+D-FLAKE-BAIDU (resolved): likely fixed waits. Fix the same way (awaited conditions) and prove with a
+10× run under CPU load. Until then, rerun once in isolation; a failure alone is real.
+
+**Resolved 2026-10-01 (T-flake2).** Cause: every scenario waited a fixed `delay(500)` (the
+action test after awaiting only the *server's* send of response 2), so under load the
+confirmation's events had not yet reached the collector. Replaced with an awaited condition
+(`awaitUntil`, coroutine-polling, 15 s cap): the action test waits for both `ResponseDone` events,
+the other scenarios for their one `ResponseDone`. Assertions unchanged; no production change.
+Evidence: release class 10/10 green (10 tests each, 0 failures, JUnit XML) with 4× `yes` CPU load;
+full `./gradlew test` green, 3380 tests, 0 failures, 0 errors, 4 skipped (JUnit XML).

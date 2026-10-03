@@ -65,7 +65,12 @@ class DebugToolReceiver : BroadcastReceiver() {
                 }
                 else -> "unknown tool"
             }
-            val safeArg = if (tool == "nav_desk_origin" || arg.startsWith("@")) "<redacted>" else arg
+            val safeArg = when {
+                tool == "nav_desk_origin" || arg.startsWith("@") -> "<redacted>"
+                // Argument values can name a song, a person or a place (I-8): keys only.
+                tool == "dispatch" -> redactDispatchArg(arg)
+                else -> arg
+            }
             Log.d("NovaVoice", "debug_tool tool=$tool arg=$safeArg result=$result")
         } catch (e: Exception) {
             Log.d("NovaVoice", "debug_tool failed: ${e.message}")
@@ -288,6 +293,8 @@ class DebugToolReceiver : BroadcastReceiver() {
             com.novadrive.app.vision.VisionProvider.handler(context),
             phone = PhoneCallTool(com.novadrive.app.phone.PhoneProvider.port(context)),
             liveInfo = LiveInfoTool.live(context),
+            cabin = com.novadrive.app.vehicle.VehicleControlProvider.port,
+            music = com.novadrive.app.media.AndroidMusicHandoffTool(context),
             places = SavedPlaceTool(
                 read = com.novadrive.app.nav.SavedPlaceStore(context)::get,
                 write = com.novadrive.app.nav.SavedPlaceStore(context)::set,
@@ -301,7 +308,37 @@ class DebugToolReceiver : BroadcastReceiver() {
         val result = dispatcher.dispatch(
             com.novadrive.ingress.realtime.DomainVoiceEvent.ToolCall("debug", name, arguments),
         )
-        return result.output ?: "blocked=${result.blockedReason ?: "-"}"
+        val deferred = result.deferredOutput
+        if (deferred != null) {
+            // A readback takes seconds: off the main thread, and the real result is logged when
+            // it arrives (code-only fields for play_music, I-8).
+            Thread {
+                val output = runCatching { kotlinx.coroutines.runBlocking { deferred() } }
+                    .getOrElse { "failed=${it.javaClass.simpleName}" }
+                Log.d("NovaVoice", "debug_tool tool=dispatch arg=${redactDispatchArg(arg)} deferred_result=${safeOutput(name, output)}")
+            }.start()
+            return "deferred"
+        }
+        return safeOutput(name, result.output ?: "blocked=${result.blockedReason ?: "-"}")
+    }
+
+    companion object {
+        /** `play_music:title=晴天,artist=周杰伦` -> `play_music:title,artist`. */
+        internal fun redactDispatchArg(arg: String): String {
+            val name = arg.substringBefore(':')
+            val keys = arg.substringAfter(':', "").split(',').filter { it.contains('=') }
+                .map { it.substringBefore('=').trim() }
+            return if (keys.isEmpty()) name else "$name:${keys.joinToString(",")}"
+        }
+
+        /** play_music results name what is playing: only the codes are logged. */
+        internal fun safeOutput(tool: String, output: String): String {
+            if (tool != "play_music" && tool != "control_music") return output
+            val json = runCatching { org.json.JSONObject(output) }.getOrNull() ?: return "unparsed"
+            return listOf("ok", "status", "error", "matches_request")
+                .filter { json.has(it) }
+                .joinToString(" ") { "$it=${json.get(it)}" }
+        }
     }
 
     /**

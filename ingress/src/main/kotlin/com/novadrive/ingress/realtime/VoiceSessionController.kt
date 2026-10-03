@@ -30,6 +30,10 @@ data class VoiceSessionCallbacks(
      * Real near-end speech (post-AEC ≈ raw) must still return true.
      */
     val qualifyPlayoutBargeIn: () -> Boolean = { true },
+    /** The response to an app prompt changed phase (SPEC-018); in order with the reply audio. */
+    val onAppPromptTurn: (String, DomainVoiceEvent.AppPromptTurn.Phase) -> Unit = { _, _ -> },
+    /** A GUIDANCE turn's transcription chunk (promptId, text), in event order; never logged. */
+    val onAppPromptTranscript: (String, String) -> Unit = { _, _ -> },
 )
 
 /**
@@ -206,6 +210,21 @@ class VoiceSessionController(
         }
     }
 
+    /**
+     * Local evidence (the uplink gate) that the driver started or stopped speaking. Only a provider
+     * that sends no speech events of its own ([ProviderCapabilities.serverSpeechActivityEvents]
+     * false) is driven by it; it then gets exactly the handling a server `SpeechStarted` /
+     * `SpeechStopped` gets (turn state, barge-in candidate). For every other provider this is a
+     * no-op, so the server stays the one source and nothing is counted twice.
+     */
+    fun onLocalSpeechActivity(active: Boolean) {
+        if (provider.capabilities.serverSpeechActivityEvents || !sessionActive.get()) return
+        provider.onLocalSpeechActivity(active)
+        scope.launch {
+            handleEvent(if (active) DomainVoiceEvent.SpeechStarted else DomainVoiceEvent.SpeechStopped)
+        }
+    }
+
     /** Stops the assistant's current reply: local playback now, and the reply on the server. */
     fun cancelCurrentResponse() {
         if (!sessionActive.get()) return
@@ -240,6 +259,21 @@ class VoiceSessionController(
         pendingTexts += text
         if (providerConnected.get()) flushTexts()
         log.info("text_queued", mapOf("chars" to text.length))
+    }
+
+    /**
+     * Sends an app prompt now or fails (SPEC-018 B1a): false unless the provider is connected and
+     * has [ProviderCapabilities.verbatimPromptSpeech]. Never queued, never replayed.
+     */
+    fun sendPrompt(text: String, promptId: String): Boolean {
+        if (!sessionActive.get() || !providerConnected.get() || text.isBlank()) return false
+        if (!provider.capabilities.verbatimPromptSpeech) return false
+        return try {
+            provider.sendPrompt(text, promptId)
+        } catch (ex: Exception) {
+            log.warn("prompt_send_failed", mapOf("error" to (ex.message ?: "send")))
+            false
+        }
     }
 
     private fun markConnectedAndFlushTexts() {
@@ -379,6 +413,13 @@ class VoiceSessionController(
                 is DomainVoiceEvent.WorkProgress -> {
                     workCoordinator.updateProgress(event.workId, event.message)
                 }
+                is DomainVoiceEvent.AppPromptTurn -> {
+                    playback.onAppPromptTurn(event.promptId, event.phase, playbackEpoch)
+                    callbacks.onAppPromptTurn(event.promptId, event.phase)
+                }
+                is DomainVoiceEvent.AppPromptTranscript -> {
+                    callbacks.onAppPromptTranscript(event.promptId, event.text)
+                }
                 else -> Unit
             }
             if (event is DomainVoiceEvent.ResponseDone) {
@@ -447,6 +488,7 @@ class VoiceSessionController(
     private fun invalidatePlaybackEpoch() {
         playbackEpoch += 1
         playback.flush(playbackEpoch)
+        provider.onPlaybackFlushed()
         replyOpen = false
         acceptingReplyAudio = false
     }

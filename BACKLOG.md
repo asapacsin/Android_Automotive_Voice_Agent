@@ -6,6 +6,15 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 
 | # | Demand | Raised | Status | Spec |
 | --- | --- | --- | --- | --- |
+| B-035 | **Transcript bubble fades out** — the last 你:/小诺: exchange stays on the map forever; it should clear after a while | 2026-10-02 | **Done** (L1 + session simulation; emulator `TRANSCRIPT-FADE-EMU-001`) | §B-035 below |
+| B-034 | **Gemini voice sounds like an old woman** — owner wants a 符玄-like voice; owner ear test rejected every Gemini prebuilt voice | 2026-10-02 | **Decided** — [ADR-016](DECISIONS/ADR-016-chinese-voice-for-gemini.md); owner audition `TTS-AUDITION-001` next | §B-034 below |
+| B-033 | **Status cards fade out** — an error/status card on the map disappears by itself after a while instead of staying forever | 2026-10-02 | **Done** (emulator check queued) | §B-033 below |
+| B-032 | **Car agent with domain servers** — "a more clever agent system that has several car MCP"; Gemini stays the one agent, car functions become MCP-shaped domain servers | 2026-09-30 | **Specced** | [SPEC-016](SPECS/SPEC-016-gemini-default-and-domain-servers.md) · [ADR-015](DECISIONS/ADR-015-car-domain-servers.md) |
+| B-031 | **Guidance in 小诺's voice** — mute Amap, the model speaks every guidance sentence; Amap only when the model cannot; Gemini everywhere (one voice) | 2026-09-30 | **Specced** | [SPEC-018](SPECS/SPEC-018-guidance-in-assistant-voice.md) · [ADR-013](DECISIONS/ADR-013-gemini-default-provider.md) · [ADR-014](DECISIONS/ADR-014-guidance-spoken-by-assistant.md) |
+| B-030 | **Music from a vague description** — 「梶浦的、空之境界里很燃的 OP」 → the AI picks and plays it, via the driver's music app | 2026-09-30 | **Specced** | [SPEC-017](SPECS/SPEC-017-music-from-description.md) |
+| B-029 | **Fuzzy driving requests** — 嗲一点 (voice style), 座位高/低 (seat), 有蚊子 (windows), and every action announced from its result; plus more phrases of the same kind | 2026-09-30 | **Specced**; all decisions taken | [SPEC-015](SPECS/SPEC-015-fuzzy-driving-requests.md) · [architecture](docs/FUZZY_DRIVING_ARCHITECTURE.md) · [ADR-012](DECISIONS/ADR-012-fuzzy-driving-requests.md) |
+| B-028 | **A Gemini-native architecture** — "design a new architecture that should optimise for the new Gemini API, because the last test said the old design is slow and poorly suited to it". Measured: the extended-thinking model is the cause of slow actions; the whole-reply claim hold is the cause of slow conversation | 2026-09-29 | **Specced**; proposal awaiting the owner (N-1, N-2) | [SPEC-014](SPECS/SPEC-014-gemini-native-voice-path.md) · [ADR-011](DECISIONS/ADR-011-gemini-native-voice-path.md) (Proposed) |
+| B-027 | **Gemini Live as a second voice provider** — the owner chose Gemini 3.8 Live Extended Thinking; build it behind the provider seam, opt-in, Baidu stays default | 2026-09-29 | **Built (code, cloud-verified)**; device rows open | [SPEC-013](SPECS/SPEC-013-gemini-live-provider.md) · [ADR-010](DECISIONS/ADR-010-gemini-live-second-provider.md) |
 | B-026 | **One owner for who may speak** — a single arbiter decides between Amap guidance, other apps' audio and 小诺's replies (calls later), using a driver-workload signal (distance to the next manoeuvre), replacing today's separate special cases. *Not* the assistant speaking first | 2026-09-24 | **In milestone** M4 | [SPEC-012](SPECS/SPEC-012-speech-arbiter.md) |
 | B-025 | **Live information from Amap** — weather at the destination, traffic on the route, along-route search (fuel, charging, service areas, toilets), place details (hours, parking); one tool each with an honest failure result | 2026-09-24 | **In milestone** M4 | [SPEC-011](SPECS/SPEC-011-amap-live-info.md) |
 | B-024 | **Say anything on screen (可见即可说)** — every visible control publishes id, label, aliases, position and action; a deterministic matcher resolves the driver's words without the model | 2026-09-24 | **In milestone** M4 | [SPEC-010](SPECS/SPEC-010-screen-affordances.md) |
@@ -569,3 +578,202 @@ not re-spoken by us.
   phone TTS quality varies by vendor; reopens the no-separate-ASR/TTS rule.
 - **Real vehicle control** — HVAC and window properties need signature/privileged permissions a normal
   app cannot hold on a real car; emulator-only demo.
+
+## B-029 — Fuzzy driving requests (模糊意图)
+
+Raised 2026-09-30 by the owner (`D:\桌面\android_doc\fuzzy logic.docx`). Status: **Recorded** — needs
+architecture (seat/window tools do not exist) and a SPEC before building.
+
+What the owner asked for:
+
+| Driver says | Wanted | Today |
+| --- | --- | --- |
+| 说话能不能嗲一点 | 小诺 switches to a sweeter, more coquettish speaking style | Voice is fixed per session (B-023, 4196); no spoken style switch |
+| 座位有点高 / 有点低 | Seat height goes down / up | `windows_seats_doors_lights_wipers` was `unsupported` (2026-09-30: windows and seat height became `body.*`, the rest is `unsupported.sunroof_doors_lights_wipers`) — no tool |
+| 有蚊子 | Open the windows to let it out | Same — no window tool |
+| (every action) | 小诺 says what it actually did, e.g. 「已把车窗打开一半」 | Mostly true via the claim gate (I-11), not a stated rule for multi-action turns |
+| "and more like these" | Other fuzzy driving phrases | B-008/SPEC-006 covers 有点热/再凉一点 against existing tools |
+
+Review notes (2026-09-30):
+
+1. **These are B-008 extended to new actuators.** The resolver pattern (UtteranceIntentResolver →
+   tool, context record, ambiguity policy) already exists; extend it, don't add a second one.
+2. **Seats and windows must be simulated vehicle state**, like climate: a car model + bottom-bar/overlay
+   display + `control_seat` / `control_window` tools with honest results. Real actuation needs
+   privileged permissions (see "Not recorded" above). `capabilities.yaml` flips from `unsupported`
+   only for what is built, and TRUTH-BAIT-001 must be updated in the same change.
+3. **有蚊子 is multi-action by nature** (open windows; optionally fan up, then close windows later).
+   Decide: one composite "scenario" tool owned by deterministic code, or the model chaining tools
+   (SPEC-006 left multi-intent to the model). Each executed step must be announced from its result.
+4. **嗲一点 is a voice/persona change, not a car action.** Options: switch Flex voice id at the next
+   session reset, or a style instruction in the session prompt. Keep it playful/sweet (撒娇 tone);
+   the product will not produce sexualised speech. Persona stays out of code (voice-persona memory).
+   Must persist until 正常一点 / 恢复.
+5. **"Announce every action"** becomes an invariant candidate: the spoken confirmation is built from
+   the executor's result, one short sentence listing each step (I-11, voice-replies-short).
+6. Candidate extra phrases (same tools, no new hardware): 有点冷, 起雾了/看不清 (defrost, fresh air),
+   有异味/空气不好 (outside air), 好困 (cooler + fresh air + music), 太吵了 (music down/pause),
+   太晒/刺眼 (sunshade — needs another simulated actuator), 腰不舒服 (lumbar/seat recline — seat tool).
+
+Architecture proposed 2026-09-30: [docs/FUZZY_DRIVING_ARCHITECTURE.md](docs/FUZZY_DRIVING_ARCHITECTURE.md),
+[ADR-012](DECISIONS/ADR-012-fuzzy-driving-requests.md). Next: the owner decides O-1…O-5, then SPEC-015
+(fuzzy-phrase table with expected actions, test rows), then implementation in waves.
+
+## B-033 — Status cards fade out over time
+
+**Asked by the owner 2026-10-02** during the emulator test run on `claude/10-1`: "those log should disappear over time rather than stay that forever".
+
+**What happened:** after an idle disconnect while asleep (15:37:39, `connection_lost_in_sleep`), the card `GEMINI_LIVE_CONNECTION_FAILED` stayed on the map. Nothing new happened after it was shown, and the owner read it as a current failure. P44 covers the same thing for CONFIG cards: they are cleared when the cause is fixed.
+
+**Wanted:**
+- A transient error/status card (connection lost, provider error) disappears by itself after a short time. The proposal is about 10–15 s; the exact time is still to be chosen.
+- When it disappears, the state line still shows the real state (休眠中（已断开）), so nothing is hidden. The detail stays in the log.
+- A card the driver must act on (CONFIG: missing key, no consent) stays while the problem is still there, and goes away when it is fixed (P44).
+- A newer card is not cleared by an older card's timer.
+
+**Related:** an ordinary idle disconnect while asleep may not deserve an error card at all; it could show only 已断开. Decide this together with B-033.
+
+**Owner in code:** `AssistantOverlayView.showError` / `clearError` and `ShownErrorCard`. Test it with `ShownErrorCardTest`.
+
+**Done 2026-10-02:** a non-CONFIG card fades after `ERROR_CARD_FADE_MS` = 12 s and the state line
+shows the real state again; CONFIG cards never fade and leave only when fixed (P44). Each card has a
+token, so an older card's timer never clears a newer card or a transcript line. The related question
+(no card at all for an ordinary idle disconnect while asleep) is settled by the fade: the card shows
+briefly and goes, and the state line keeps 已断开. Tests: `ShownErrorCardTest` 10/0. Device check:
+`CONFIG-CARD-EMU-001` (fade step).
+
+
+## B-034 — A 符玄-like voice on Gemini
+
+**Owner, 2026-10-02**, during the emulator test run on `claude/10-1` with the Gemini provider: "the current voice is terrible old woman voice, i prefer 符玄 like voice".
+
+**Current state:** Gemini uses `GeminiAppSettings.DEFAULT_VOICE = "Kore"`, unless the voice field in 开发者设置 overrides it. Baidu is not affected: its default is `BaiduFlexVoices.PREFERRED_YOUTHFUL_FEMALE`.
+
+**Target:** 符玄 (Honkai: Star Rail):
+- a young, bright, clear female voice;
+- confident and slightly proud; crisp, not breathy;
+- never old, deep or matronly.
+
+The persona notes are kept out of the code on purpose. Only the voice choice and the style instructions change.
+
+**Wanted:**
+1. A/B the Gemini prebuilt voices with the same Chinese test sentences. Candidates: Leda, Aoede, Zephyr, Puck, Kore and others. Save short 24 kHz clips in `D:\桌面\android_doc\` for the owner to pick. This is the same method as the 2026-09-30 Baidu voice A/B.
+2. Make the owner's pick the Gemini default. Check how it sounds together with the speaking styles (B-029: 傲娇 fits 符玄 well).
+3. The owner judges it by ear. A green test is not evidence that the voice sounds right.
+
+**Constraint:** this is a voice name change, not a cloned or imitated voice of a real voice actor.
+
+**Done 2026-10-02 (cloud):**
+- `tools/gemini-live-probe/voice_ab.py` records the same Chinese lines with each candidate prebuilt
+  voice (model `gemini-3.8-live`) and measures the median pitch. Three runs: Erinome 235–250 Hz,
+  Leda 222–235, Autonoe 211, Aoede 205, Zephyr 200, Despina 200, Callirrhoe 195, **Kore 186**,
+  Laomedeia 178, Pulcherrima 154–170. Kore is among the lowest, which matches "old woman".
+- Default is now **Leda** (Google calls it "youthful"; second-highest, reads the lines verbatim).
+  Erinome ("clear") is the runner-up.
+- A stored `Kore` was the prefilled value saved with the settings form, not a choice, so it switches
+  once to the new default (same pattern as the ADR-011 model switch). Any voice saved after that is
+  kept. Tests: `GeminiSettingsTest`.
+- Still the owner's: listen and pick (`VOICE-EAR-001`). Run the tool on the PC with
+  `OUT=D:\桌面\android_doc\voice_ab` to get the WAVs; clips are not committed.
+
+
+**Owner ear test, 2026-10-02 (emulator, `claude/10-1` at 34d629d):** I recorded 小诺 in 10 voices through the app itself. Each voice answered 「你能做什么」 and 「有点热」, and the clips are the exact bytes the app played, 24 kHz. They are in `D:\桌面\android_doc\voice_pick_2026-10-02\` and are not committed.
+
+Pitch of these app recordings: Erinome 250 Hz, Aoede 233, Leda 231, Callirrhoe 226, Zephyr 220, Autonoe 218, Despina 207, Kore 207, Laomedeia 202, Pulcherrima 178.
+
+The owner rejected Leda ("your default just shit") and then the whole set: "gemini voice are all old woman compare to chinese model and japanese". The emulator is set to Erinome for now; this is not a pick.
+
+### Problem: no Gemini prebuilt voice can be 符玄-like
+
+- **Why.** Gemini Live has only a fixed set of prebuilt voices. Google built them mainly for English and uses the same voice in every language, so in Mandarin they sound like a calm adult woman. There is no custom voice, no cloning, no training and no age setting. The persona prompt and the speaking styles (B-029) change wording and attitude, not how old the voice sounds.
+- **Result.** Picking a different Gemini voice cannot meet B-034. Picking a voice (`VOICE-EAR-001`) is blocked on the decision below.
+
+### Options (owner decision pending)
+
+| Option | Voice | Cost / risk |
+| --- | --- | --- |
+| A. Baidu Flex speaks (owner selects Baidu) | Youthful female 4196; younger than any Gemini voice. In the 9-30 run the owner complained about noise, not age. | ADR-013 makes Gemini the default and plans to delete Baidu. Baidu's tool calling is weaker. |
+| B. Gemini text + our own Chinese TTS | Any voice: a commercial voice library, a "voice design" voice made from a text description, or a voice trained (CosyVoice, GPT-SoVITS, …) on recordings from a voice actor who has agreed to it. | Breaks "end to end, no separate TTS" (ADR-002/013), so it **needs a new ADR**. Each reply starts about 0.3–0.8 s later. Barge-in and the playout claim gate (DriverTurn) have to be re-done for TTS audio. A few days to integrate. |
+| C. A Chinese end-to-end realtime model (e.g. Doubao realtime) | Chinese-first voice catalogue, including young voices. | A new provider behind the seam (ADR-010 shape). Tool-calling quality is unknown. ADR-008 says do not revive deleted providers, but this one is new. |
+| D. Pitch-shift Gemini audio on the device | A small gain only. | Shifts beyond +2 to 3 semitones sound artificial. Does not produce 符玄. |
+
+**Recommendation given to the owner:** try B with a voice-design service first. Generate a few sample sentences in a young, clear, confident, slightly proud voice and let the owner judge them before any ADR. The owner enters the service key; agents never do. For the demo, A is the quickest fix.
+
+**Hard constraint:** never train on, clone or imitate the real 符玄 game voice or any real voice actor without their consent. A new synthetic voice in the same *style* is fine.
+
+### Decision 2026-10-02 (planner, owner delegated: "find a solution for voice problem for me")
+
+**Gemini stays the agent; one Chinese TTS voice speaks.** [ADR-016](DECISIONS/ADR-016-chinese-voice-for-gemini.md) (option B, built on Gemini's output transcript).
+
+Measured before deciding (`VOICE-AB-002`):
+
+- **The voice line in the prompt is closed.** A forceful 「十七八岁少女」 read-aloud instruction lifted Leda to 258–276 Hz. In conversation with the app persona, a stronger 语音风格 line gave no lift: Leda 216–229 vs 211–242 Hz, Erinome 211–242 vs 222–267 Hz.
+- **Gemini Live cannot send text instead of audio.** Every Live model is native audio, and `gemini-3.8-live` refuses `TEXT` output (close 1007).
+- **Gemini's own transcript arrives with its audio.** The first clause arrives 0–740 ms after the first audio, and generation is about 3× real time. So a TTS fed from it adds about 0.2–1.0 s per reply.
+
+**Next — the owner:**
+
+1. Run `tools/tts-audition/audition.py` with a vendor key: `volc`, `minimax`, `minimax-design` or `baidu`. Listen, and name a voice.
+2. **For a demo today:** select Baidu and voice 6562 (元气少女) or 111 (软萌) in developer settings. This is option A; Baidu stays scheduled for retirement.
+
+**Then — the agents:** SPEC-019 and the integration (ADR-016 steps 1–3).
+
+
+**Voice picked, 2026-10-02 (`claude/10-2`):** the vendor accounts had no keys yet, so I made a preview with the free Microsoft neural voices. They read the same 4 audition lines, using edge-tts; clips in `D:\桌面\android_doc\tts_audition\edge_preview\`. The owner picked **02 `zh-CN-XiaoyiNeural`**: "this one good use this as default".
+
+- **Vendor follows from the voice: Azure AI Speech**, which has a streaming TTS API, a free F0 tier, and an Azure China region.
+- edge-tts goes through the unofficial Bing read-aloud endpoint. Use it only for previews; it must never ship.
+- **Next (ADR-016):**
+  1. The owner creates an Azure Speech resource and enters the key and region in developer settings. Agents never do this.
+  2. Build SPEC-019: the `AssistantVoice` port and an Azure adapter.
+  3. An emulator run, then `TTS-VOICE-DEVICE-001`.
+  4. Only after that does Xiaoyi become the default voice (ADR-016 step 9).
+
+**Styles with Xiaoyi (owner observation 2026-10-02: 「嗲 / 傲娇 might simply change the word used rather than voice change」).** True today: with Gemini audio, styles mostly change the words. With the Azure voice, each style also changes the delivery of the same voice through SSML `express-as`:
+
+- 嗲 → affectionate
+- 傲娇 → disgruntled, kept light
+- 温柔 → gentle
+- 元气 → cheerful
+
+The mapping is in ADR-016 §"Speaking styles with the TTS voice".
+
+**Built 2026-10-02 ([SPEC-019](SPECS/SPEC-019-assistant-voice-azure.md), step 1, L1/L2):** Gemini's released words are spoken by Xiaoyi through Azure, and each style changes the delivery. It sits behind 开发者设置 → 小诺的声音 and is off by default.
+
+**Next — the owner:**
+1. Create an Azure Speech resource.
+2. Check the key: `AZURE_SPEECH_KEY=… AZURE_SPEECH_REGION=… python tools/tts-audition/audition.py azure`. This writes one clip per style.
+3. Enter the key and region in the app, and switch the voice on.
+
+**Then — the agents:** `TTS-VOICE-EMU-001`.
+
+
+**Owner confirmation, 2026-10-02:** "02_zh-CN-XiaoyiNeural ... this should be the default voice". The default stays **`zh-CN-XiaoyiNeural`**; the owner had briefly mentioned 01 Xiaoxiao and then confirmed 02. In code: `AzureSpeechConfig.DEFAULT_VOICE`.
+
+The app still speaks with Gemini's voice until the owner enters an Azure Speech key and region and switches on 开发者设置 → 小诺的声音 (`assistant_voice enabled=false` in the 03:39 log). Then `TTS-VOICE-EMU-001`.
+
+## B-035 — The transcript bubble fades out over time
+
+**Owner, 2026-10-02**, during the emulator run on `claude/10-2`. The bubble still showed 「你: 你能做什么? / 小诺: 哼，本姑娘能帮你导航…」 long after the exchange: "this one is quite annoying it seems this would not gone overtime".
+
+**Now:** `AssistantOverlayView.appendTranscript` keeps the last exchange (`TRANSCRIPT_MAX_LINES = 2`), and nothing clears it. It stays over the map until the next transcript line or an error replaces it. B-033 made *error* cards fade, but not the transcript.
+
+**Wanted:**
+- After a turn ends and 小诺 has finished speaking, the transcript bubble clears by itself. The proposal is about 8–10 s after playout ends; the exact time is still to be chosen. The bubble returns to the placeholder, or is hidden so the map is visible.
+- It never clears while 小诺 is still speaking, while the driver is speaking, or while a follow-up question is waiting for an answer.
+- A new line restarts the timer. An older timer never clears a newer exchange (same rule as B-033).
+- While navigating, the bubble takes map space, so clearing it matters most there.
+
+**Owner in code:** `AssistantOverlayView` (`appendTranscript`, `recentTranscript`), with the B-033 timer pattern (`ShownErrorCard`). Test: a JVM test of the timer policy, then an emulator check that the bubble is gone about 10 s after a reply.
+
+**Done, 2026-10-02 (`claude/10-2`).** `TranscriptBubbleFade` (in `ui/`) is the policy and `AssistantOverlayView` polls it once a second while a line is shown.
+
+- The bubble returns to the placeholder after **10 s of quiet** (`TRANSCRIPT_FADE_MS`).
+- "Quiet" means the turn state is not USER_SPEAKING, THINKING or SPEAKING, **and** nothing holds it:
+  - `PcmAudioPlayer.isPlaying`: 小诺 is still audible. ResponseDone arrives before the playout ends, so the timer starts from the end of the playout, not the end of the reply.
+  - `VoiceContextHints.awaitingAnswer()`: a selection list or the camera question is waiting.
+- Any busy moment or new line restarts the quiet period, so an older wait never clears a newer exchange. Error cards keep their own B-033 timer; this fade never clears one.
+- Tests:
+  - `TranscriptBubbleFadeTest`, 7 tests.
+  - `TranscriptBubbleSessionSimulationTest`, 4 tests: the real `VoiceSessionController` drives the states and lines. The owner's exchange leaves 10–12 s after its playout. It survives a follow-up, a barge-in and a waiting route list.
+  - The emulator check is `TRANSCRIPT-FADE-EMU-001`.

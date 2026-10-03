@@ -3,7 +3,7 @@ package com.novadrive.app
 import com.novadrive.app.nav.PlaceSlot
 import com.novadrive.app.nav.SavedPlace
 import com.novadrive.app.nav.SavedPlaces
-import com.novadrive.app.vehicle.ClimateToolHandler
+import com.novadrive.app.tools.ToolRegistry
 import com.novadrive.app.voice.ActionClaimGuard
 import com.novadrive.app.voice.ClimateToolActions
 import com.novadrive.app.voice.ContextResolver
@@ -29,13 +29,6 @@ import org.json.JSONObject
  */
 object ToolCallGuards {
 
-    /**
-     * Tools whose effect accumulates, so running one twice is not the same as running it once —
-     * and `query_live_info`, where a second identical lookup costs the owner's daily quota and
-     * re-opens the picker for nothing (SPEC-011 failure table: DUPLICATE_IN_TURN).
-     */
-    private val REPEAT_SENSITIVE = setOf(ClimateToolHandler.TOOL, "control_music", LiveInfoTool.TOOL)
-
     private val TEMPERATURE_OR_FAN = setOf(
         ClimateToolActions.ADJUST_TEMPERATURE,
         ClimateToolActions.SET_TEMPERATURE,
@@ -58,7 +51,12 @@ object ToolCallGuards {
      * action is the more expensive mistake of the two.
      */
     fun repeatedInTurn(call: DomainVoiceEvent.ToolCall, context: DriverContext?): String? {
-        if (call.name !in REPEAT_SENSITIVE) return null
+        // Repeat-sensitive tools (ToolSpec.repeatSensitive) act on the world: an identical second call in
+        // one driver turn is a protocol retry, never a second request. Climate and music accumulate,
+        // place_call dials twice, navigate_to / open_app / save_place / exit_navigation_mode redo a
+        // visible action, and query_live_info costs daily quota (SPEC-011: DUPLICATE_IN_TURN). Pure
+        // reads such as describe_camera_view are left out.
+        if (call.name !in ToolRegistry.PRODUCT.repeatSensitiveNames) return null
         if (context == null) return null
         val arguments = call.arguments.filterKeys { it != "_validation_error" }
         // SPEC-010 B4: the on-screen matcher may already have run this capability for this
@@ -69,15 +67,17 @@ object ToolCallGuards {
         ) {
             return DUPLICATE_IN_TURN
         }
-        val epoch = context.currentEpoch()
-        if (epoch <= 0) return null
-        return if (context.claimDispatch(epoch, call.name, arguments)) null else DUPLICATE_IN_TURN
+        // Keyed on speech onset, which is the driver turn: the transcript epoch arrives after the
+        // call under Gemini ordering, and until then still names the *previous* turn.
+        if (capabilityEpoch <= 0) return null
+        return if (context.claimDispatch(capabilityEpoch, call.name, arguments)) null else DUPLICATE_IN_TURN
     }
 
     /**
-     * A request for *particular* music. There is one bundled track and no library, so starting it
-     * would make `ok=true` mean "you got what you asked for"
-     * ([I-2](../../../../../../docs/INVARIANTS.md)).
+     * A request for *particular* music on `control_music{play}`. That tool is the one bundled
+     * track, so starting it would make `ok=true` mean "you got what you asked for"
+     * ([I-2](../../../../../../docs/INVARIANTS.md)); the refusal's advice redirects the model to
+     * `play_music` (SPEC-017).
      */
     fun unsupportedMedia(call: DomainVoiceEvent.ToolCall, context: DriverContext?): String? {
         if (call.name != "control_music" || call.arguments["action"] != "play") return null
@@ -102,7 +102,12 @@ object ToolCallGuards {
      */
     fun ambiguousReferent(call: DomainVoiceEvent.ToolCall, context: DriverContext?): String? {
         val action = call.arguments["action"] ?: return null
-        if (action != ClimateToolActions.ADJUST_TEMPERATURE && action != ClimateToolActions.ADJUST_FAN) return null
+        val relative = when (call.name) {
+            com.novadrive.app.voice.BodyToolActions.SEAT_TOOL -> action == com.novadrive.app.voice.BodyToolActions.SEAT_ADJUST_HEIGHT
+            com.novadrive.app.voice.BodyToolActions.WINDOW_TOOL -> action == com.novadrive.app.voice.BodyToolActions.WINDOW_ADJUST
+            else -> action == ClimateToolActions.ADJUST_TEMPERATURE || action == ClimateToolActions.ADJUST_FAN
+        }
+        if (!relative) return null
         if (context == null) return null
         val epoch = context.currentEpoch()
         if (epoch <= 0) return null
@@ -111,6 +116,18 @@ object ToolCallGuards {
         if (resolution.reason == ContextResolver.REASON_NOTHING_TO_REVERSE) return null
         context.recordClarification(resolution.options, resolution.delta, epoch)
         return AMBIGUOUS_REFERENT
+    }
+
+    /**
+     * What the refusal must name so the model asks the right question: 「再低一点」 after the seat
+     * and the temperature both changed is 「是座椅还是温度？」, not a climate-only question
+     * (SPEC-015 FZ-14). Empty for every other code.
+     */
+    fun refusalDetails(code: String, context: DriverContext?): Map<String, Any> {
+        if (code != AMBIGUOUS_REFERENT) return emptyMap()
+        val options = context?.lastClarification()?.options.orEmpty()
+        if (options.isEmpty()) return emptyMap()
+        return mapOf("options" to options.joinToString("还是") { it.spoken })
     }
 
     /**

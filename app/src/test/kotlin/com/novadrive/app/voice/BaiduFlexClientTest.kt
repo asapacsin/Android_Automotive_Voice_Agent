@@ -23,9 +23,10 @@ import org.json.JSONObject
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import java.util.Collections
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
@@ -33,6 +34,7 @@ class BaiduFlexClientTest {
     private val server = MockWebServer()
     @AfterEach
     fun close() {
+        collectorScope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
         NavigationState.onNavigatingChanged = null
         NavigationState.reset()
         server.close()
@@ -40,7 +42,7 @@ class BaiduFlexClientTest {
 
     @Test
     fun authenticatesWaitsForCreatedThenUpdatedAndSendsFunctionResultLoop() = runBlocking {
-        val received = Collections.synchronizedList(mutableListOf<String>())
+        val received = CopyOnWriteArrayList<String>()
         val resultMessages = CountDownLatch(3)
         server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
@@ -64,7 +66,7 @@ class BaiduFlexClientTest {
         assertEquals("Bearer placeholder-flex-key", request.getHeader("Authorization"))
         assertEquals(BaiduFlexProtocol.MODEL, request.requestUrl?.queryParameter("model"))
         assertEquals("session.update", JSONObject(received[0]).getString("type"))
-        assertEquals(12, JSONObject(received[0]).getJSONObject("session").getJSONArray("tools").length())
+        assertEquals(17, JSONObject(received[0]).getJSONObject("session").getJSONArray("tools").length())
         val output = received.map(::JSONObject).single { it.getString("type") == "conversation.item.create" }
         assertEquals("call_9", output.getJSONObject("item").getString("call_id"))
         assertTrue(received.map(::JSONObject).any { it.getString("type") == "response.create" })
@@ -72,7 +74,7 @@ class BaiduFlexClientTest {
 
     @Test
     fun rejectedVoiceFallsBackToDefaultAndStillReachesSessionUpdated() = runBlocking {
-        val received = Collections.synchronizedList(mutableListOf<String>())
+        val received = CopyOnWriteArrayList<String>()
         server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
                 webSocket.send("""{"type":"session.created","session":{"model":"qianfan-realtime-flex-v1"}}""")
@@ -134,7 +136,7 @@ class BaiduFlexClientTest {
 
     @Test
     fun navigationFlipDoesNotResendSessionUpdateMidSession() = runBlocking {
-        val received = Collections.synchronizedList(mutableListOf<String>())
+        val received = CopyOnWriteArrayList<String>()
         val first = CountDownLatch(1)
         server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
@@ -163,7 +165,7 @@ class BaiduFlexClientTest {
 
     @Test
     fun connectWhileNavigatingUsesRaisedVadThreshold() = runBlocking {
-        val received = Collections.synchronizedList(mutableListOf<String>())
+        val received = CopyOnWriteArrayList<String>()
         val first = CountDownLatch(1)
         server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
@@ -189,7 +191,7 @@ class BaiduFlexClientTest {
 
     @Test
     fun emptyCompletedResponseAfterUtteranceRequestsExactlyOneReply() = runBlocking {
-        val received = Collections.synchronizedList(mutableListOf<String>())
+        val received = CopyOnWriteArrayList<String>()
         server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
                 webSocket.send("""{"type":"session.created","session":{"model":"qianfan-realtime-flex-v1"}}""")
@@ -208,10 +210,13 @@ class BaiduFlexClientTest {
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
         }))
         val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
+        val seen = collectEvents(client)
         client.connect(config())
-        Thread.sleep(800)
-        val creates = received.map(::JSONObject).count { it.getString("type") == "response.create" }
-        assertEquals(1, creates)
+        awaitUntil({ "response.done events: $seen" }) { seen.count { it is DomainVoiceEvent.ResponseDone } >= 2 }
+        fun creates() = received.map(::JSONObject).count { it.getString("type") == "response.create" }
+        awaitUntil({ "sent: $received" }) { creates() >= 1 }
+        Thread.sleep(NEGATIVE_WAIT_MS)
+        assertEquals(1, creates())
         client.disconnect()
     }
 
@@ -219,7 +224,7 @@ class BaiduFlexClientTest {
     fun appReplyRequestedWhileTheDriverSpeaksWaitsAndAnOverlapIsNotFatal() = runBlocking {
         // Measured 2026-09-17: the camera's read-aloud turn was sent mid-question, Baidu refused
         // the driver's turn ("already has an active response") and the session went to ERROR.
-        val received = Collections.synchronizedList(mutableListOf<String>())
+        val received = CopyOnWriteArrayList<String>()
         var serverSocket: WebSocket? = null
         server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
@@ -235,42 +240,43 @@ class BaiduFlexClientTest {
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
         }))
         val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
-        val errors = Collections.synchronizedList(mutableListOf<DomainVoiceEvent.Error>())
-        val collector = launch(kotlinx.coroutines.Dispatchers.IO) {
-            client.events().collect { (it.payload as? DomainVoiceEvent.Error)?.let(errors::add) }
-        }
+        val seen = collectEvents(client)
+        fun errors() = seen.filterIsInstance<DomainVoiceEvent.Error>()
         client.connect(config())
         fun creates() = received.map(::JSONObject).count { it.getString("type") == "response.create" }
         fun textItems() = received.map(::JSONObject).count { it.getString("type") == "conversation.item.create" }
         val socket = serverSocket!!
 
         socket.send("""{"type":"input_audio_buffer.speech_started"}""")
-        Thread.sleep(200)
+        awaitUntil({ "events: $seen" }) { DomainVoiceEvent.SpeechStarted in seen }
         client.sendUserText("请把刚才的画面描述读出来")
         socket.send("""{"type":"input_audio_buffer.speech_stopped"}""")
         socket.send("""{"type":"response.created","response":{"id":"r1"}}""")
         socket.send("""{"type":"error","error":{"code":"invalid_request","message":"Conversation already has an active response in progress: r1. Wait until the response is finished before creating a new one."}}""")
+        awaitUntil({ "events: $seen" }) { DomainVoiceEvent.ResponseStarted in seen }
+        // Negative wait: longer than the client's own deferred-turn flush after speech_stopped.
         Thread.sleep(2_000)
         assertEquals(0, creates(), "nothing may be requested while the driver's reply runs")
         assertEquals(0, textItems())
 
         socket.send("""{"type":"response.done","response":{"status":"completed","output":[{"type":"message"}]}}""")
-        Thread.sleep(400)
+        awaitUntil({ "sent: $received" }) { creates() >= 1 }
+        Thread.sleep(NEGATIVE_WAIT_MS)
         assertEquals(1, creates(), "the refused reply is retried first, once")
         socket.send("""{"type":"response.created","response":{"id":"r2"}}""")
         socket.send("""{"type":"response.done","response":{"status":"completed","output":[{"type":"message"}]}}""")
-        Thread.sleep(400)
+        awaitUntil({ "sent: $received" }) { textItems() >= 1 && creates() >= 2 }
+        Thread.sleep(NEGATIVE_WAIT_MS)
         assertEquals(1, textItems(), "then the app's own turn goes out")
         assertEquals(2, creates())
-        assertTrue(errors.isEmpty(), "an overlap must not surface as a session error: $errors")
-        collector.cancel()
+        assertTrue(errors().isEmpty(), "an overlap must not surface as a session error: ${errors()}")
         client.disconnect()
     }
 
     @Test
     fun aClaimedActionWithoutAToolCallGetsOneCorrectiveTurn() = runBlocking {
         // Event order and wording as measured on device 2026-09-17.
-        val received = Collections.synchronizedList(mutableListOf<String>())
+        val received = CopyOnWriteArrayList<String>()
         server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
                 webSocket.send("""{"type":"session.created","session":{"model":"qianfan-realtime-flex-v1"}}""")
@@ -290,7 +296,12 @@ class BaiduFlexClientTest {
         }))
         val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
         client.connect(config())
-        Thread.sleep(800)
+        awaitUntil({ "sent: $received" }) {
+            received.map(::JSONObject).let { sent ->
+                sent.any { it.getString("type") == "conversation.item.create" } && sent.any { it.getString("type") == "response.create" }
+            }
+        }
+        Thread.sleep(NEGATIVE_WAIT_MS)
         val sent = received.map(::JSONObject)
         val followUp = sent.filter { it.getString("type") == "conversation.item.create" }
         assertEquals(1, followUp.size)
@@ -307,7 +318,7 @@ class BaiduFlexClientTest {
      */
     @Test
     fun aSupersededReplyIsNeitherShownNorCountedAsATurn() = runBlocking {
-        val received = Collections.synchronizedList(mutableListOf<String>())
+        val received = CopyOnWriteArrayList<String>()
         server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
                 webSocket.send("""{"type":"session.created","session":{"model":"qianfan-realtime-flex-v1"}}""")
@@ -339,24 +350,15 @@ class BaiduFlexClientTest {
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
         }))
         val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
-        val transcripts = Collections.synchronizedList(mutableListOf<String>())
-        var audioDeltas = 0
-        val collector = launch(kotlinx.coroutines.Dispatchers.IO) {
-            client.events().collect {
-                when (val p = it.payload) {
-                    is DomainVoiceEvent.AssistantTranscript -> transcripts += p.text
-                    is DomainVoiceEvent.AudioDelta -> audioDeltas++
-                    else -> Unit
-                }
-            }
-        }
+        val seen = collectEvents(client)
         client.connect(config())
-        Thread.sleep(800)
-        assertEquals(listOf("那真好，继续加油。", "那真好，继续加油。"), transcripts.toList(), "the superseded reply is never shown")
-        assertEquals(0, audioDeltas, "nor heard")
+        awaitUntil({ "events: $seen" }) { seen.count { it is DomainVoiceEvent.ResponseDone } >= 3 }
+        Thread.sleep(NEGATIVE_WAIT_MS)
+        val transcripts = seen.filterIsInstance<DomainVoiceEvent.AssistantTranscript>().map { it.text }
+        assertEquals(listOf("那真好，继续加油。", "那真好，继续加油。"), transcripts, "the superseded reply is never shown")
+        assertEquals(0, seen.count { it is DomainVoiceEvent.AudioDelta }, "nor heard")
         assertEquals(1, server.requestCount, "a reply the driver talked over does not reset the conversation mid-utterance")
         assertEquals(0, received.count { JSONObject(it).optString("type") == "conversation.item.create" }, "and is not corrected")
-        collector.cancel()
         client.disconnect()
     }
 
@@ -390,7 +392,7 @@ class BaiduFlexClientTest {
     @Test
     fun afterStandbyTheClientSendsNoTurnsOfItsOwn() = runBlocking {
         // 「关闭小诺」: the reply to it is cancelled and must not trigger a false-claim follow-up.
-        val received = Collections.synchronizedList(mutableListOf<String>())
+        val received = CopyOnWriteArrayList<String>()
         var serverSocket: WebSocket? = null
         server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
@@ -406,16 +408,18 @@ class BaiduFlexClientTest {
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
         }))
         val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
+        val seen = collectEvents(client)
         client.connect(config())
         val socket = serverSocket!!
         socket.send("""{"type":"response.created","response":{"id":"r1"}}""")
         socket.send("""{"type":"conversation.item.input_audio_transcription.completed","item_id":"i1","transcript":"空调关闭小诺"}""")
-        Thread.sleep(200)
+        awaitUntil({ "events: $seen" }) { seen.any { it is DomainVoiceEvent.UserTranscript && it.final } }
         client.discardPendingAudio()
         client.cancelActiveResponse()
         socket.send("""{"type":"response.audio_transcript.done","transcript":"好的，已关闭。"}""")
         socket.send("""{"type":"response.done","response":{"status":"cancelled","output":[{"type":"message"}]}}""")
-        Thread.sleep(500)
+        awaitUntil({ "events: $seen" }) { seen.any { it is DomainVoiceEvent.ResponseDone } }
+        Thread.sleep(NEGATIVE_WAIT_MS)
         val types = received.map { JSONObject(it).getString("type") }
         assertTrue("response.cancel" in types, "the reply in progress is cancelled before any audio: $types")
         assertEquals(0, types.count { it == "conversation.item.create" }, "no follow-up turn in standby")
@@ -428,7 +432,7 @@ class BaiduFlexClientTest {
         // P40, emulator replay 2026-09-28: 「开始导航」 during guidance was answered by the app; Baidu
         // still completed the cancelled reply 「导航已开始」, and the correction for that unproven
         // claim made the model call navigate_to with no destination.
-        val received = Collections.synchronizedList(mutableListOf<String>())
+        val received = CopyOnWriteArrayList<String>()
         var serverSocket: WebSocket? = null
         server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
@@ -444,17 +448,19 @@ class BaiduFlexClientTest {
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
         }))
         val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
+        val seen = collectEvents(client)
         client.connect(config())
         val socket = serverSocket!!
         socket.send("""{"type":"input_audio_buffer.speech_started"}""")
         socket.send("""{"type":"input_audio_buffer.speech_stopped"}""")
         socket.send("""{"type":"response.created","response":{"id":"r1"}}""")
         socket.send("""{"type":"conversation.item.input_audio_transcription.completed","item_id":"i1","transcript":"开始导航。"}""")
-        Thread.sleep(200)
+        awaitUntil({ "events: $seen" }) { seen.any { it is DomainVoiceEvent.UserTranscript && it.final } }
         client.cancelActiveResponse()
         socket.send("""{"type":"response.audio_transcript.done","transcript":"导航已开始。"}""")
         socket.send("""{"type":"response.done","response":{"status":"completed","output":[{"type":"message"}]}}""")
-        Thread.sleep(500)
+        awaitUntil({ "events: $seen" }) { seen.any { it is DomainVoiceEvent.ResponseDone } }
+        Thread.sleep(NEGATIVE_WAIT_MS)
         val types = received.map { JSONObject(it).getString("type") }
         assertTrue("response.cancel" in types, "the reply was cancelled: $types")
         assertEquals(0, types.count { it == "conversation.item.create" }, "no correction turn: $types")
@@ -478,24 +484,23 @@ class BaiduFlexClientTest {
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
         }))
         val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
-        val seen = Collections.synchronizedList(mutableListOf<DomainVoiceEvent>())
-        val collector = launch(Dispatchers.IO) { client.events().collect { seen += it.payload } }
+        val seen = collectEvents(client)
         client.connect(config())
         val socket = serverSocket!!
         socket.send("""{"type":"input_audio_buffer.speech_started"}""")
         socket.send("""{"type":"input_audio_buffer.speech_stopped"}""")
         socket.send("""{"type":"response.created","response":{"id":"r1"}}""")
         socket.send("""{"type":"conversation.item.input_audio_transcription.completed","item_id":"i1","transcript":"开始导航。"}""")
-        Thread.sleep(200)
+        awaitUntil({ "events: $seen" }) { seen.any { it is DomainVoiceEvent.UserTranscript && it.final } }
         client.cancelActiveResponse()
         socket.send("""{"type":"response.audio_transcript.done","transcript":"导航启动中，请说目的地。"}""")
         socket.send("""{"type":"response.done","response":{"status":"cancelled","status_details":{"reason":"client_cancelled"},"output":[{"type":"message"}]}}""")
-        Thread.sleep(500)
+        awaitUntil({ "events: $seen" }) { seen.any { it is DomainVoiceEvent.ResponseDone } }
+        Thread.sleep(NEGATIVE_WAIT_MS)
         assertTrue(
             seen.none { it is DomainVoiceEvent.AssistantTranscript || it is DomainVoiceEvent.AudioDelta },
             "a cancelled reply is neither heard nor shown: $seen",
         )
-        collector.cancel()
         client.disconnect()
     }
 
@@ -538,6 +543,7 @@ class BaiduFlexClientTest {
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
         }))
         val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
+        val seen = collectEvents(client)
         client.connect(config())
 
         // A tool turn: the model calls a tool, the result goes back, the model replies.
@@ -545,7 +551,9 @@ class BaiduFlexClientTest {
         first.send("""{"type":"response.output_item.added","item":{"id":"i1","type":"function_call","call_id":"call_1","name":"control_climate"}}""")
         first.send("""{"type":"response.function_call_arguments.done","call_id":"call_1","arguments":"{\"action\":\"power_on\"}"}""")
         first.send("""{"type":"response.done","response":{"status":"completed","output":[{"type":"function_call"}]}}""")
-        Thread.sleep(300)
+        awaitUntil({ "events: $seen" }) {
+            seen.any { it is DomainVoiceEvent.ToolCall } && seen.any { it is DomainVoiceEvent.ResponseDone }
+        }
         client.sendFunctionResult("call_1", "{\"ok\":true}")
 
         // The reset has opened a second conversation and is waiting for it to be ready.
@@ -572,8 +580,8 @@ class BaiduFlexClientTest {
 
     @Test
     fun cancelResponseSendsOnlyWhenAssistantIsSpeaking() = runBlocking {
-        val received = Collections.synchronizedList(mutableListOf<String>())
-        val sockets = Collections.synchronizedList(mutableListOf<WebSocket>())
+        val received = CopyOnWriteArrayList<String>()
+        val sockets = CopyOnWriteArrayList<WebSocket>()
         val audioAppended = CountDownLatch(1)
         val cancelSent = CountDownLatch(1)
         server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
@@ -619,7 +627,7 @@ class BaiduFlexClientTest {
      */
     @Test
     fun aCallFromACancelledResponseIsNotRunAndTheResponseIsCancelledOnce() = runBlocking {
-        val received = Collections.synchronizedList(mutableListOf<String>())
+        val received = CopyOnWriteArrayList<String>()
         var serverSocket: WebSocket? = null
         server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
@@ -635,26 +643,25 @@ class BaiduFlexClientTest {
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
         }))
         val client = BaiduFlexClient(OkHttpClient(), READY_TIMEOUT_MS, requireTls = false)
-        val calls = Collections.synchronizedList(mutableListOf<DomainVoiceEvent.ToolCall>())
-        val collector = launch(kotlinx.coroutines.Dispatchers.IO) {
-            client.events().collect { (it.payload as? DomainVoiceEvent.ToolCall)?.let(calls::add) }
-        }
+        val seen = collectEvents(client)
+        fun calls() = seen.filterIsInstance<DomainVoiceEvent.ToolCall>()
         client.connect(config())
         val socket = serverSocket!!
         socket.send("""{"type":"response.created","response":{"id":"r1"}}""")
         socket.send("""{"type":"response.output_item.added","item":{"id":"i1","type":"function_call","call_id":"call_music","name":"control_music"}}""")
         socket.send("""{"type":"response.function_call_arguments.delta","call_id":"call_music","delta":"{\"action\":\"pl"}""")
-        Thread.sleep(200)
+        awaitUntil({ "events: $seen" }) { DomainVoiceEvent.ResponseStarted in seen }
         // The on-screen path took the utterance; both 「闭嘴」 paths also ask for a cancel.
         client.cancelActiveResponse()
         client.cancelActiveResponse()
-        Thread.sleep(200)
+        awaitUntil({ "sent: $received" }) { received.any { JSONObject(it).optString("type") == "response.cancel" } }
         socket.send("""{"type":"response.function_call_arguments.done","call_id":"call_music","arguments":"{\"action\":\"pl"}""")
         socket.send("""{"type":"response.done","response":{"status":"cancelled","output":[{"type":"function_call"}]}}""")
-        Thread.sleep(400)
+        awaitUntil({ "events: $seen" }) { seen.any { it is DomainVoiceEvent.ResponseDone } }
+        Thread.sleep(NEGATIVE_WAIT_MS)
         val types = received.map { JSONObject(it).getString("type") }
         assertEquals(1, types.count { it == "response.cancel" }, "one cancel per response: $types")
-        assertTrue(calls.isEmpty(), "the cancelled reply's call is neither run nor failed: $calls")
+        assertTrue(calls().isEmpty(), "the cancelled reply's call is neither run nor failed: ${calls()}")
         assertEquals(0, types.count { it == "conversation.item.create" }, "no failure result goes back")
         assertEquals(0, types.count { it == "response.create" }, "no reply is asked for")
 
@@ -662,13 +669,38 @@ class BaiduFlexClientTest {
         socket.send("""{"type":"response.created","response":{"id":"r2"}}""")
         socket.send("""{"type":"response.output_item.added","item":{"id":"i2","type":"function_call","call_id":"call_stop","name":"control_music"}}""")
         socket.send("""{"type":"response.function_call_arguments.done","call_id":"call_stop","arguments":"{\"action\":\"stop\"}"}""")
-        Thread.sleep(400)
-        assertEquals(listOf("call_stop"), calls.map { it.callId })
+        awaitUntil({ "events: $seen" }) { calls().isNotEmpty() }
+        Thread.sleep(NEGATIVE_WAIT_MS)
+        assertEquals(listOf("call_stop"), calls().map { it.callId })
         client.cancelActiveResponse()
-        Thread.sleep(200)
+        awaitUntil({ "sent: $received" }) { received.count { JSONObject(it).optString("type") == "response.cancel" } >= 2 }
+        Thread.sleep(NEGATIVE_WAIT_MS)
         assertEquals(2, received.count { JSONObject(it).optString("type") == "response.cancel" })
-        collector.cancel()
         client.disconnect()
+    }
+
+    /**
+     * Records every event the client emits. Subscribed before this returns (UNDISPATCHED), so no
+     * event emitted after it can be missed; cancelled after each test.
+     */
+    private fun collectEvents(client: BaiduFlexClient): MutableList<DomainVoiceEvent> {
+        val seen = CopyOnWriteArrayList<DomainVoiceEvent>()
+        collectorScope.launch(start = CoroutineStart.UNDISPATCHED) { client.events().collect { seen += it.payload } }
+        return seen
+    }
+
+    private val collectorScope = kotlinx.coroutines.CoroutineScope(Dispatchers.IO + kotlinx.coroutines.SupervisorJob())
+
+    /**
+     * Waits for a condition the client reaches asynchronously instead of sleeping a fixed time
+     * (D-FLAKE-BAIDU): fixed sleeps failed when the machine was loaded.
+     */
+    private fun awaitUntil(state: () -> String, timeoutMs: Long = AWAIT_TIMEOUT_MS, condition: () -> Boolean) {
+        val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs)
+        while (!condition()) {
+            if (System.nanoTime() > deadline) fail<Unit>("condition not reached within ${timeoutMs}ms; ${state()}")
+            Thread.sleep(10)
+        }
     }
 
     private fun config(voice: String = BaiduAppSettings.DEFAULT_VOICE) = BaiduApiConfig(
@@ -719,5 +751,14 @@ class BaiduFlexClientTest {
          * covered by [aSessionThatNeverBecomesReadyFails], with its own short value.
          */
         const val READY_TIMEOUT_MS = 30_000L
+
+        /** Deadline for an awaited positive condition; generous so load cannot fail a test. */
+        const val AWAIT_TIMEOUT_MS = 5_000L
+
+        /**
+         * Bounded wait used only to show that something does NOT happen, always taken after the
+         * preceding positive event has been awaited. Load can only make it more lenient, never fail.
+         */
+        const val NEGATIVE_WAIT_MS = 300L
     }
 }
