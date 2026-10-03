@@ -1713,3 +1713,30 @@ Local PC emulator, build 381e446, Azure voice on. The same injected clips were s
 - (c) Switch to manual activity signals from the local VAD.
 
 Measure each option against this same A/B, first silence and then the live microphone, before choosing.
+
+## P46 — Assistant-spoken guidance (SPEC-018) gives up on the first prompt and never comes back
+
+**Status:** OPEN, found 2026-10-03 while recording the demo video. PC emulator nova_api34, build 9696ce5 (`claude/10-3`), Azure voice on, 助手播报导航 on. Short drive to 长隆海洋王国 started by voice, emulator speed 60 km/h.
+
+**Seen:** the driver hears no guidance from 小诺. Every prompt goes to Amap's own voice.
+
+### Evidence (NovaVoice log, timings only)
+
+| Time (s after 开始导航) | Event |
+| --- | --- |
+| 0.0 | `nav_navigation_started`; Gemini opens a turn for the confirmation 「导航已为您开始」 (`gemini_turn_open`) |
+| 1.4 | `gemini_prompt_refused id=g1 reason=turn_open`, then `guidance_route prompt=g1 to=amap reason=SEND_FAILED`, then `nav_guidance_fallback_tts accepted=true` |
+| 1.4 → 40 | g2 … g36: every one `to=amap reason=AMAP_SPEAKING waited_ms=0`. No prompt is sent to the assistant again |
+
+### Cause
+
+1. `GuidanceRelay.pump()` treats a `turn_open` refusal as a final failure, and hands the prompt to Amap at once. The relay's deadline would have allowed it to wait about 1 s for the confirmation turn to close.
+2. Once one prompt is with Amap, `amapReason()` returns `AMAP_SPEAKING` while the Amap bracket is open or the backlog is not empty. On the emulator, prompts arrive every ~3 s, so the bracket never closes and the relay never gets the voice back.
+
+### Fix direction (owner: `GuidanceRelay`)
+
+- Treat `turn_open` as "not yet": keep the prompt queued and retry when the turn closes, within `deadlineMs`, as for the other wait reasons.
+- Let a later prompt return to the assistant once Amap finishes the one in progress, instead of following the backlog for the rest of the drive.
+- Add a unit test with a confirmation turn open when g1 arrives. Then re-run the drive on the emulator and check for `guidance_route … to=assistant reason=SENT`.
+
+The toggle is experimental and off by default, so a driver on default settings is not affected. The demo video was recorded with it off.
