@@ -956,20 +956,12 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
     prerequisites: ["Gemini Live (default provider, ADR-013) text turns with the owner's key (never logged)", "a set of 10 music descriptions"]
     procedure: ["send each description as a text turn", "record the play_music arguments per description"]
     pass_criteria: [">= 8/10 descriptions produce play_music with a plausible title or artist/work", "0/10 produce control_music{play}"]
-    evidence: ["2026-10-01 re-run after the FZ-14 wording fix: GeminiTextLiveMappingTest MUSIC 10/10", "2026-10-01 cloud, gemini-3.8-live, GeminiTextLiveMappingTest (opt-in NOVA_GEMINI_TEXT_LIVE=1; fresh session per phrase, app client + RealtimeToolCatalog + default persona): 9/10 play_music, 0/10 control_music. M-01 梶浦/空之境界 -> play_music{artist,album_or_work,mood,query} (no title); M-02 提神 -> {mood,query}; M-03 晴天 -> {title,artist,query}; M-04 下雨天 -> MISS no call; M-05 十年 -> {title,artist}; M-06 进击的巨人 -> {album_or_work}; M-07 钢琴 -> {mood,query}; M-08 红豆 -> {title,artist}; M-09 千与千寻 -> {album_or_work,query}; M-10 八十年代粤语 -> {query}. Control: 放首歌 -> control_music{play}"]
-    evidence_bind:
-      code_digest: sha256:f16df4b229059b5da99c4573a54359826bc99a0eeeb53052fe76811eb41d5cd5
-      procedure_digest: sha256:f803e58b4943f7015563223448ac11f0c1c47350bad177b7f2682550c6bb0c81
-      registry_digest: sha256:36f1bd13116237afa37238ca65b5f53baa0c1d44355cb505250764641df6e24f
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
-      artifact_digests: {}
-      apk_digest: sha256:634460553cf9548e3d4ad1f6a18438cb98f8ae709cf269c72fa57ec38ff29e98
-      bound_commit: 84f6ec6
+    evidence: ["2026-10-01 re-run after the FZ-14 wording fix: GeminiTextLiveMappingTest MUSIC 10/10", "2026-10-01 cloud, gemini-3.8-live, GeminiTextLiveMappingTest (opt-in NOVA_GEMINI_TEXT_LIVE=1; fresh session per phrase, app client + RealtimeToolCatalog + default persona): 9/10 play_music, 0/10 control_music. M-01 梶浦/空之境界 -> play_music{artist,album_or_work,mood,query} (no title); M-02 提神 -> {mood,query}; M-03 晴天 -> {title,artist,query}; M-04 下雨天 -> MISS no call; M-05 十年 -> {title,artist}; M-06 进击的巨人 -> {album_or_work}; M-07 钢琴 -> {mood,query}; M-08 红豆 -> {title,artist}; M-09 千与千寻 -> {album_or_work,query}; M-10 八十年代粤语 -> {query}. Control: 放首歌 -> control_music{play}", "STALE_BIND code_digest mismatch"]
     related: [SPEC-017]
     last_run: {at: 2026-10-01, result: PASS}
 
@@ -2757,21 +2749,13 @@ tests:
     type: text_live
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: PASS
+    status: NOT_RUN
     release_blocking: true
-    evidence_bind:
-      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:382c31bd299d3f0b6b576db1aff7827fc5197e4f049f3352023f5665b3833779
-      registry_digest: sha256:6ac5cdbd9df4d89a845e9b4284c40c70f61fe64a27100c9f1f75faf0c55ec82f
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
-      artifact_digests: {}
-      apk_digest: sha256:634460553cf9548e3d4ad1f6a18438cb98f8ae709cf269c72fa57ec38ff29e98
-      bound_commit: 84f6ec6
     covers: [comfort.scenario, body.window, body.seat_height, speech.speaking_style]
     prerequisites: ["GEMINI_API_KEY in the environment (default provider, ADR-013)", "text turns through the app's own Gemini client"]
     procedure: ["send each FZ phrase as a text turn in its stated context", "record the first tool call and arguments"]
     pass_criteria: [">= 17/19 phrases produce the expected call (or the expected refusal/clarification)", "FZ-15…FZ-19 (styles) all correct"]
-    evidence: ["2026-10-01 cloud, gemini-3.8-live, after adding 傲娇/温柔/元气: FUZZY 18/19 — FZ-15 傲娇一点 and FZ-16 說話傲嬌一點 -> tsundere, FZ-17 gentle, FZ-18 lively, FZ-19 霸道 no call; FZ-14 still the only model-layer MISS (held at the dispatcher). MUSIC 10/10, MUSIC_CONTROL 1/1", "2026-10-01 re-run after the FZ-14 wording fix (refusal carries options): GeminiTextLiveMappingTest FUZZY 13/14, same calls as before; FZ-14 still MISS at the model layer (control_climate guess) and held at the dispatcher with AMBIGUOUS_REFERENT + options (ToolCallGuardBodyReferentTest, FalseCapabilityClaimTest)", "2026-10-01 cloud, gemini-3.8-live, GeminiTextLiveMappingTest (opt-in NOVA_GEMINI_TEXT_LIVE=1; fresh session per phrase; context rows send setup turns answered with simulated ok): 13/14. FZ-01 run_scenario{mosquito}; FZ-02 run_scenario{mosquito_done}; FZ-03 control_seat{adjust_height,-1}; FZ-04 {adjust_height,1}; FZ-05 {adjust_height,-1}; FZ-06 control_window{set,50} (window omitted = all); FZ-07 control_window{adjust,driver,20}; FZ-08 control_window{close,all}; FZ-09 run_scenario{stuffy}; FZ-10 run_scenario{drowsy}; FZ-11 set_speaking_style{sweet}; FZ-12 set_speaking_style{default}; FZ-13 no call; FZ-14 MISS - after seat and temperature changes 再低一点 -> control_climate{adjust_temperature,-1} instead of a clarifying question (model-layer result only)"]
+    evidence: ["2026-10-01 cloud, gemini-3.8-live, after adding 傲娇/温柔/元气: FUZZY 18/19 — FZ-15 傲娇一点 and FZ-16 說話傲嬌一點 -> tsundere, FZ-17 gentle, FZ-18 lively, FZ-19 霸道 no call; FZ-14 still the only model-layer MISS (held at the dispatcher). MUSIC 10/10, MUSIC_CONTROL 1/1", "2026-10-01 re-run after the FZ-14 wording fix (refusal carries options): GeminiTextLiveMappingTest FUZZY 13/14, same calls as before; FZ-14 still MISS at the model layer (control_climate guess) and held at the dispatcher with AMBIGUOUS_REFERENT + options (ToolCallGuardBodyReferentTest, FalseCapabilityClaimTest)", "2026-10-01 cloud, gemini-3.8-live, GeminiTextLiveMappingTest (opt-in NOVA_GEMINI_TEXT_LIVE=1; fresh session per phrase; context rows send setup turns answered with simulated ok): 13/14. FZ-01 run_scenario{mosquito}; FZ-02 run_scenario{mosquito_done}; FZ-03 control_seat{adjust_height,-1}; FZ-04 {adjust_height,1}; FZ-05 {adjust_height,-1}; FZ-06 control_window{set,50} (window omitted = all); FZ-07 control_window{adjust,driver,20}; FZ-08 control_window{close,all}; FZ-09 run_scenario{stuffy}; FZ-10 run_scenario{drowsy}; FZ-11 set_speaking_style{sweet}; FZ-12 set_speaking_style{default}; FZ-13 no call; FZ-14 MISS - after seat and temperature changes 再低一点 -> control_climate{adjust_temperature,-1} instead of a clarifying question (model-layer result only)", "STALE_BIND apk_digest mismatch"]
     related: [SPEC-015]
     last_run: {at: 2026-10-01, result: PASS}
 
@@ -2954,6 +2938,7 @@ tests:
     human_reason: "Whether only Xiaoyi is heard, whether each speaking style sounds different and whether her delay is acceptable are judgements by ear; the owner also speaks the scenes live"
     prerequisites: ["PC emulator nova_api34 or the phone, with this build", "Gemini key and consent; Azure Speech key and region", "headphones (the host bridge is the microphone)", "short route 横琴创业谷 → 励骏庞都 only"]
     procedure: ["follow docs/DEMO_10-2.md: act C (cards), run A (assistant voice off), run B (on), optional failure drill", "capture adb logcat -v threadtime -s NovaVoice per run", "python tools/demo/check_demo_log.py --scenes 10-2 --run A demo_runA.log", "python tools/demo/check_demo_log.py --scenes 10-2 --run B demo_runB.log --baseline demo_runA.log", "tick the by-ear list"]
+    terminal_success: [checker_no_fail, by_ear_list_ticked]
     pass_criteria: ["checker: no FAIL in run A or run B (WARN reviewed)", "chat reply p50 <= 2000 ms; actions <= 2500 ms in >= 90 %; Xiaoyi extra delay p50 <= 1000 ms (ADR-016)", "every by-ear item ticked"]
     autonomous_evidence: ["tools/demo/check_demo_log.py --selftest OK (2026-10-02 cloud)", "the JVM suites behind each scene (TTS-UNIT-001, TRANSCRIPT-FADE-UNIT-001, CONFIG-CARD-UNIT-001, SPEC-015/017/018 rows)"]
     remaining_uncertainty: ["real latency through the PC or phone network to Gemini and Azure", "whether 嗲/傲娇/温柔/元气 are distinct by ear", "whether P45's 9.4 s Gemini stall recurs (the new timing lines will show it)"]
@@ -2974,6 +2959,7 @@ tests:
     human_reason: "Whether only Xiaoyi is heard, whether each speaking style sounds different and whether her delay is acceptable are judgements by ear; the owner also speaks the scenes live"
     prerequisites: ["PC emulator nova_api34 or the phone, with this build", "Gemini key and consent; Azure Speech key and region", "headphones (the host bridge is the microphone)", "short route 横琴创业谷 → 励骏庞都 only"]
     procedure: ["follow docs/DEMO_10-3.md: act C (cards), run A (assistant voice off), run B (on), optional failure drill", "capture adb logcat -v threadtime -s NovaVoice per run", "python tools/demo/check_demo_log.py --run A demo_runA.log", "python tools/demo/check_demo_log.py --run B demo_runB.log --baseline demo_runA.log", "tick the by-ear list"]
+    terminal_success: [checker_no_fail, by_ear_list_ticked]
     pass_criteria: ["checker: no FAIL in run A or run B (WARN reviewed)", "chat reply p50 <= 2000 ms; actions <= 2500 ms in >= 90 %; Xiaoyi extra delay p50 <= 1000 ms (ADR-016)", "AB-1 and MIC-1 replies heard (no TURN_DROP); no claim-gate hold over 20 s; chat correction graceMs <= 1500; WARM-1 first Azure clause <= 1000 ms", "every by-ear item ticked"]
     autonomous_evidence: ["tools/demo/check_demo_log.py --selftest OK (2026-10-03 cloud, 10-3 checks included)", "the JVM suites behind each scene (TTS-UNIT-001, TRANSCRIPT-FADE-UNIT-001, CONFIG-CARD-UNIT-001, SPEC-015/017/018 rows)"]
     remaining_uncertainty: ["real latency through the PC or phone network to Gemini and Azure", "whether 嗲/傲娇/温柔/元气 are distinct by ear", "whether P45's 9.4 s Gemini stall recurs (the new timing lines will show it)"]

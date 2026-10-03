@@ -6,7 +6,6 @@ Every case below **requires a physical Android device** (and usually a real cabi
 
 > Autonomous work may still be open. Prefer finishing cloud-verifiable work first; this file is still the device queue.
 >
-> - the registry does not validate: 2 problem(s)
 > - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - TRUTH-MISHEARD-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -14,8 +13,9 @@ Every case below **requires a physical Android device** (and usually a real cabi
 > - TRUTH-WEATHER-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - TRUTH-BAIT-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - PLACE-SAVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - PLACE-NAV-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 
-**18 LOCAL_DEVICE_REQUIRED item(s).**
+**20 LOCAL_DEVICE_REQUIRED item(s).**
 
 Install tip (from a cloud-built APK, when one exists):
 
@@ -510,6 +510,73 @@ adb logcat -s NovaVoice:D
 **Still unknown until you do:** real-network latency vs the deadline; Amap SDK behaviour with the inner voice off on a real device
 
 *Release-blocking.*
+
+### LOCAL_DEVICE_REQUIRED — DEMO-10-2-001 — One demo run that exercises every claude/10-2 function, graded by the log checker
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Whether only Xiaoyi is heard, whether each speaking style sounds different and whether her delay is acceptable are judgements by ear; the owner also speaks the scenes live
+
+**Automation blocker:** `subjective_perception`
+
+**Already established without you:**
+
+- tools/demo/check_demo_log.py --selftest OK (2026-10-02 cloud)
+- the JVM suites behind each scene (TTS-UNIT-001, TRANSCRIPT-FADE-UNIT-001, CONFIG-CARD-UNIT-001, SPEC-015/017/018 rows)
+
+**You will need:** PC emulator nova_api34 or the phone, with this build; Gemini key and consent; Azure Speech key and region; headphones (the host bridge is the microphone); short route 横琴创业谷 → 励骏庞都 only
+
+**What to do:**
+
+1. follow docs/DEMO_10-2.md: act C (cards), run A (assistant voice off), run B (on), optional failure drill
+2. capture adb logcat -v threadtime -s NovaVoice per run
+3. python tools/demo/check_demo_log.py --scenes 10-2 --run A demo_runA.log
+4. python tools/demo/check_demo_log.py --scenes 10-2 --run B demo_runB.log --baseline demo_runA.log
+5. tick the by-ear list
+
+**It passes if:**
+
+- checker: no FAIL in run A or run B (WARN reviewed)
+- chat reply p50 <= 2000 ms; actions <= 2500 ms in >= 90 %; Xiaoyi extra delay p50 <= 1000 ms (ADR-016)
+- every by-ear item ticked
+
+**Tell me back:** the two checker reports; the ticked by-ear list; the commit
+
+**Still unknown until you do:** real latency through the PC or phone network to Gemini and Azure; whether 嗲/傲娇/温柔/元气 are distinct by ear; whether P45's 9.4 s Gemini stall recurs (the new timing lines will show it)
+
+### LOCAL_DEVICE_REQUIRED — DEMO-10-3-001 — One demo run that exercises the essential functions and every claude/10-2 and claude/10-3 function, graded by the log checker
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Whether only Xiaoyi is heard, whether each speaking style sounds different and whether her delay is acceptable are judgements by ear; the owner also speaks the scenes live
+
+**Automation blocker:** `subjective_perception`
+
+**Already established without you:**
+
+- tools/demo/check_demo_log.py --selftest OK (2026-10-03 cloud, 10-3 checks included)
+- the JVM suites behind each scene (TTS-UNIT-001, TRANSCRIPT-FADE-UNIT-001, CONFIG-CARD-UNIT-001, SPEC-015/017/018 rows)
+
+**You will need:** PC emulator nova_api34 or the phone, with this build; Gemini key and consent; Azure Speech key and region; headphones (the host bridge is the microphone); short route 横琴创业谷 → 励骏庞都 only
+
+**What to do:**
+
+1. follow docs/DEMO_10-3.md: act C (cards), run A (assistant voice off), run B (on), optional failure drill
+2. capture adb logcat -v threadtime -s NovaVoice per run
+3. python tools/demo/check_demo_log.py --run A demo_runA.log
+4. python tools/demo/check_demo_log.py --run B demo_runB.log --baseline demo_runA.log
+5. tick the by-ear list
+
+**It passes if:**
+
+- checker: no FAIL in run A or run B (WARN reviewed)
+- chat reply p50 <= 2000 ms; actions <= 2500 ms in >= 90 %; Xiaoyi extra delay p50 <= 1000 ms (ADR-016)
+- AB-1 and MIC-1 replies heard (no TURN_DROP); no claim-gate hold over 20 s; chat correction graceMs <= 1500; WARM-1 first Azure clause <= 1000 ms
+- every by-ear item ticked
+
+**Tell me back:** the two checker reports; the ticked by-ear list; the commit
+
+**Still unknown until you do:** real latency through the PC or phone network to Gemini and Azure; whether 嗲/傲娇/温柔/元气 are distinct by ear; whether P45's 9.4 s Gemini stall recurs (the new timing lines will show it)
 
 ### LOCAL_DEVICE_REQUIRED — VOICE-EAR-001 — The owner picks the 符玄-like Gemini voice by ear
 

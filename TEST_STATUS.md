@@ -2,16 +2,16 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-21 · 143 tests
+Updated 2026-09-21 · 147 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 58 |
+| autonomous PASS | 57 |
 | autonomous FAIL | 0 |
 | incomplete | 0 |
 | partial pass | 0 |
-| not run | 60 |
-| human required | 23 |
+| not run | 63 |
+| human required | 25 |
 | human pass | 0 |
 | human fail | 1 |
 | blocked external | 0 |
@@ -20,7 +20,6 @@ Updated 2026-09-21 · 143 tests
 
 **HUMAN_VALIDATION_READY = FALSE**
 
-- the registry does not validate: 2 problem(s)
 - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - TRUTH-MISHEARD-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -50,6 +49,7 @@ Updated 2026-09-21 · 143 tests
 - CTX-AMBIG-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - MUSIC-PLAY-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - MUSIC-NAMED-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- MUSIC-TEXT-LIVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - MUSIC-VLC-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - BARGEIN-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - AEC-DELAY-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -77,9 +77,11 @@ Updated 2026-09-21 · 143 tests
 - SPEECH-WORKLOAD-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - GEMINI-DEVICE-DUPLEX-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - GATE-D10-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- FUZZY-TEXT-LIVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - FUZZY-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - GUIDANCE-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - CONFIG-CARD-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- P45-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - TRANSCRIPT-FADE-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - TTS-VOICE-EMU-001 is AUTONOMOUS and BLOCKED_AUTONOMOUS - run it or fix it
 - live_info.along_route requires END_TO_END but has no passing cover (linked: none)
@@ -97,11 +99,11 @@ Updated 2026-09-21 · 143 tests
 | calling | 8 | 6 | 1 | 1 |
 | cantonese | 2 | 1 | 1 | 0 |
 | climate | 5 | 1 | 1 | 3 |
-| comfort | 3 | 2 | 0 | 1 |
+| comfort | 3 | 1 | 0 | 2 |
 | dialogue_context | 4 | 1 | 0 | 3 |
 | lifecycle | 1 | 0 | 0 | 1 |
 | live_info | 4 | 1 | 0 | 3 |
-| media | 6 | 2 | 1 | 3 |
+| media | 6 | 1 | 1 | 4 |
 | microphone | 1 | 0 | 1 | 0 |
 | navigation | 24 | 6 | 4 | 14 |
 | performance | 2 | 2 | 0 | 0 |
@@ -111,7 +113,7 @@ Updated 2026-09-21 · 143 tests
 | reliability | 8 | 4 | 1 | 3 |
 | saved_places | 3 | 0 | 0 | 3 |
 | security | 3 | 3 | 0 | 0 |
-| speech | 10 | 4 | 5 | 0 |
+| speech | 14 | 5 | 7 | 1 |
 | truthfulness | 9 | 4 | 0 | 5 |
 | turn_taking | 19 | 7 | 3 | 9 |
 | unsupported | 1 | 0 | 0 | 1 |
@@ -146,7 +148,7 @@ Updated 2026-09-21 · 143 tests
 | CLIMATE-OFF-001 | climate | 关闭空调 turns it off | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite |
 | CLIMATE-SET-001 | climate | An explicit temperature is set | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite |
 | FUZZY-DEVICE-001 | comfort | Fuzzy requests on the emulator - chip on screen, one call per scenario, honest partial report | AUTONOMOUS | NOT_RUN | no | — |
-| FUZZY-TEXT-LIVE-001 | comfort | The live model maps the fuzzy phrase table FZ-01…FZ-19 to the right calls | AUTONOMOUS | STALE | yes | 2026-10-01 cloud, gemini-3.8-live, after adding 傲娇/温柔/元气: FUZZY 18/19 — FZ-15 傲娇一点 and … |
+| FUZZY-TEXT-LIVE-001 | comfort | The live model maps the fuzzy phrase table FZ-01…FZ-19 to the right calls | AUTONOMOUS | NOT_RUN | yes | 2026-10-01 cloud, gemini-3.8-live, after adding 傲娇/温柔/元气: FUZZY 18/19 — FZ-15 傲娇一点 and … |
 | SCENARIO-UNIT-001 | comfort | Comfort scenarios run their fixed steps through the direct-call servers and report partial failure honestly | AUTONOMOUS | PASS | no | 2026-10-01 cloud, integrated 436d197: ComfortScenariosTest 15/0; full suite 3378 / 0 fa… |
 | CTX-AMBIG-001 | dialogue_context | 再低一点 with no history asks which | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 「您是指温度还是风量呢？」 |
 | CTX-CHAIN-001 | dialogue_context | 再凉一点 continues the previous adjustment | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite |
@@ -160,7 +162,7 @@ Updated 2026-09-21 · 143 tests
 | MUSIC-APP-DEVICE-001 | media | 网易云 / QQ音乐 play a described song or fail honestly | HUMAN_ACCOUNT | HUMAN_REQUIRED | yes | MUSIC-UNIT-001 (JVM) |
 | MUSIC-NAMED-001 | media | A named song goes to play_music, never the bundled track | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite (old criterion: MEDIA_LIBRARY_UNSUPPORTED) |
 | MUSIC-PLAY-001 | media | 播放音乐 plays the bundled track | AUTONOMOUS | NOT_RUN | no | 2026-09-20: 20/20 suite |
-| MUSIC-TEXT-LIVE-001 | media | The model maps music descriptions to play_music fields | AUTONOMOUS | STALE | yes | 2026-10-01 re-run after the FZ-14 wording fix: GeminiTextLiveMappingTest MUSIC 10/10 |
+| MUSIC-TEXT-LIVE-001 | media | The model maps music descriptions to play_music fields | AUTONOMOUS | NOT_RUN | yes | 2026-10-01 re-run after the FZ-14 wording fix: GeminiTextLiveMappingTest MUSIC 10/10 |
 | MUSIC-UNIT-001 | media | play_music validates, hands off and reports only what is playing | AUTONOMOUS | PASS | yes | 2026-10-01 cloud, integrated 436d197: MediaServerPlayMusicTest 12/0, MediaDomainPlayMus… |
 | MUSIC-VLC-EMU-001 | media | VLC plays a local file handed off by play_music and the readback names it | AUTONOMOUS | NOT_RUN | yes | MUSIC-UNIT-001 (JVM) covers the result rules with a fake session source |
 | MIC-CABIN-001 | microphone | Open-mic thresholds in real cabin acoustics | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | NOISE-001 PASS - room noise produces no turn |
@@ -219,6 +221,10 @@ Updated 2026-09-21 · 143 tests
 | EXPORTED-001 | security | The release build exposes no debug surface | AUTONOMOUS | PASS | yes | 2026-09-20, release manifest via aapt2: only MainActivity is exported; DeveloperSetting… |
 | RELEASE-LOG-001 | security | A release build does not log what the driver said | AUTONOMOUS | PASS | yes | 2026-09-20: DebugVoiceLog is the only logger in app/src/main, ingress/src/main and cont… |
 | SECRET-SCAN-001 | security | No secret is tracked by git | AUTONOMOUS | PASS | yes | part of the 737 |
+| DEMO-10-2-001 | speech | One demo run that exercises every claude/10-2 function, graded by the log checker | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | tools/demo/check_demo_log.py --selftest OK (2026-10-02 cloud) |
+| DEMO-10-3-001 | speech | One demo run that exercises the essential functions and every claude/10-2 and claude/10-3 function, graded by the log checker | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | tools/demo/check_demo_log.py --selftest OK (2026-10-03 cloud, 10-3 checks included) |
+| P45-EMU-001 | speech | The P45 conversation on the emulator with live speech, with the Azure voice | AUTONOMOUS | NOT_RUN | no | — |
+| P45-UNIT-001 | speech | An interrupted unheard reply is never synthesised; a question restarts the sleep window; turn timings are logged | AUTONOMOUS | PASS | no | 2026-10-02 cloud, claude/10-2: GeminiLiveClientTest 69/0, ListeningLifecycleTest 36/0, … |
 | STYLE-EAR-001 | speech | 嗲 / 傲娇 / 温柔 / 元气 each sound right and appropriate, with the same voice | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | STYLE-UNIT-001: compose swaps the tone paragraph; style persisted and sticky (JVM) |
 | STYLE-UNIT-001 | speech | set_speaking_style changes the tone, persists it and composes it | AUTONOMOUS | PASS | no | 2026-09-30 cloud, wt/W3b-style-tool 80b9072: SpeakingStyleToolTest 8/0, PersonaProfiles… |
 | TTS-AUDITION-001 | speech | The owner picks a Chinese TTS voice (and vendor) by ear | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | 2026-10-02 owner, by ear on edge_preview clips (D:/桌面/android_doc/tts_audition/edge_pre… |
