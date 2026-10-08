@@ -440,5 +440,7 @@ class ActionClaimGuardTest {
         assertNull(ActionClaimGuard.carActionClaimMatch("我帮你导航、放音乐、调空调，还能看摄像头、打电话。"))
         assertNull(ActionClaimGuard.carActionClaimMatch("导航、音乐、空调、车窗这些都行。"))
         assertNotNull(ActionClaimGuard.carActionClaimMatch("已经帮你打开空调、车窗和座椅了。"))
+        // Three groups and no 已/好的, but 「开了」 says it happened: still a claim.
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("帮你开了空调、车窗、座椅。"))
     }
 }

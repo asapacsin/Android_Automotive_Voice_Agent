@@ -621,7 +621,7 @@ class ActionClaimGuard {
         )
         private val COMPLETION_WORDS = listOf("已", "好的", "好了", "正在", "这就", "马上")
         private val FINISHED_VERB = Regex(
-            "(打开|开启|关闭|关掉|关上|关好|开到|关到|升高|降低|播放|暂停|导航|调高|调低|调到|调成|设为|设置|退出|开始|选择?)(了|中|啦|好)",
+            "(打开|开启|关闭|关掉|关上|关好|开到|关到|升高|降低|播放|暂停|导航|调高|调低|调到|调成|设为|设置|退出|开始|选择?|开|关|调)(了|中|啦|好)",
         )
 
         private val CONTROL_VERBS = listOf(
