@@ -43,22 +43,41 @@ object WaitCues {
 data class WaitCue(val code: String, val text: String)
 
 /**
- * One driver turn's wait-cue state, from the end of his speech until her reply is audible. At most one
- * of C1/C2, one of C3/C4/C5 and one C6 per turn. Not thread-safe: the caller synchronises.
+ * One driver turn's wait-cue state, from his onset until her reply is audible. It remembers what was
+ * seen since the onset; the clock starts at his end of speech. At most one of C1/C2, one of C3/C4/C5
+ * and one C6 per turn. Not thread-safe: the caller synchronises.
  */
 class WaitCueTurn {
     var toolName: String? = null
         private set
-    private var responseStarted = false
+    var responseStarted = false
+        private set
+    /** A tool call was seen and no ResponseStarted came after it: Gemini answers in a fresh response. */
+    var toolOutstanding = false
+        private set
+    /** Her reply's words were queued or became audible: no clock may start, a running one stops. */
+    var replyUnderway = false
+    /** The closed uplink segment looked like a cough or a knock, not a sentence. */
+    var suspiciousAudio = false
+    var clockStarted = false
+    var stopped = false
+    var noEvidenceLogged = false
     private var ackDone = false
     private var reasonDone = false
     private var stillDone = false
 
-    fun onToolCall(name: String) { if (toolName == null) toolName = name }
-    fun onResponseStarted() { responseStarted = true }
+    fun onToolCall(name: String) { if (toolName == null) toolName = name; toolOutstanding = true }
+    fun onResponseStarted() { responseStarted = true; toolOutstanding = false }
+
+    /** Something says the driver spoke to her: the model answered, or the audio looked like speech. */
+    val hasEvidence: Boolean get() = responseStarted || toolName != null || !suspiciousAudio
+
+    /** The clock runs and may still speak. */
+    val live: Boolean get() = clockStarted && !stopped
 
     /** The cue due at [elapsedMs] (marking it used), or null. Call repeatedly until null. */
     fun due(elapsedMs: Long): WaitCue? {
+        if (!hasEvidence) return null  // C2, C3 and C6 never speak without evidence; C1, C4, C5 need it
         val tool = toolName
         if (!ackDone && (elapsedMs >= WaitCues.ACK_CHAT_MS || (tool != null && elapsedMs >= WaitCues.ACK_ACTION_MS))) {
             ackDone = true
@@ -83,6 +102,4 @@ class WaitCueTurn {
         }
         return null
     }
-
-    val finished: Boolean get() = stillDone
 }

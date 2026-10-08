@@ -11,6 +11,8 @@ sealed interface DomainVoiceEvent {
     data class AssistantTranscript(val text: String, val final: Boolean) : DomainVoiceEvent
     data class AudioDelta(val pcm16leBase64: String) : DomainVoiceEvent
     data object AudioDone : DomainVoiceEvent
+    /** SPEC-020: a fixed wait cue in the assistant voice, spoken by the app while the model works. Played on the reply playback path in a stamp of its own; not a model reply: it does not change the session state, open or end a response, or count as first reply audio. */
+    data class WaitCueAudio(val pcm16leBase64: String) : DomainVoiceEvent
     /**
      * The words of the reply audio, chunk by chunk as the provider transcribes its own speech
      * (ADR-016). Emitted only when an external assistant voice speaks instead of the provider's

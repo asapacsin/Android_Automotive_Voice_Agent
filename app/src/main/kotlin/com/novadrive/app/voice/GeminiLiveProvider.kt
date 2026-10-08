@@ -22,6 +22,8 @@ class GeminiLiveProvider(
     private val revoicer: AssistantVoiceRevoicer? = null,
     /** The microphone's judgement that the onset is speech, not a cough or road noise. */
     private val speechEvidence: () -> Boolean = { true },
+    /** SPEC-020: the closed uplink segment, read at the end of speech as wait-cue turn evidence. */
+    private val endOfSpeechSegment: () -> SpeechUplinkGate.Segment? = { null },
 ) : RealtimeVoiceProvider {
     /** Secondary constructor: the microphone's measurement of the audio that caused each turn. */
     constructor(
@@ -40,6 +42,7 @@ class GeminiLiveProvider(
         ),
         assistantVoice?.let { AssistantVoiceRevoicer(it, style = { com.novadrive.app.SpeakingStyleState.current }, quiet = { !repliesSpoken() }) },
         speechEvidence,
+        lastAudioSegment,
     )
 
     override val providerId = "google.gemini.live.direct"
@@ -75,7 +78,10 @@ class GeminiLiveProvider(
         if (active && !playbackActive && revoicer != null && speechEvidence()) {
             revoicer.cancelCurrentReply("driver_onset_unplayed")
         }
-        revoicer?.onDriverSpeech(active)  // SPEC-020: Gemini's end of speech is local only
+        // SPEC-020: Gemini's end of speech is local only. The gate closed after HANGOVER_MS of silence,
+        // and the snapshot is the segment it just closed.
+        if (active) revoicer?.onDriverSpeech(true)
+        else revoicer?.onDriverSpeech(false, SpeechUplinkGate.HANGOVER_MS.toLong(), endOfSpeechSegment()?.isSuspicious() == true)
         if (!active && revoicer == null) DebugVoiceLog.log("wait_cue_skipped reason=no_assistant_voice")
         client.onLocalSpeechActivity(active)
     }

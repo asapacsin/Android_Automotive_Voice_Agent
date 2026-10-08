@@ -12,6 +12,9 @@ import com.novadrive.ingress.realtime.VoiceCatalog
 import com.novadrive.ingress.realtime.VoiceProviderId
 import com.novadrive.ingress.realtime.VoiceSessionCallbacks
 import com.novadrive.ingress.realtime.VoiceSessionController
+import com.novadrive.ingress.realtime.ToolDispatchResult
+import com.novadrive.ingress.realtime.VoiceUiState
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.test.TestScope
@@ -24,7 +27,8 @@ import org.junit.jupiter.api.Test
 
 /**
  * SPEC-020 at integration level: the real ingress session core, fed by the fake provider through the
- * revoicer, on a virtual clock. Cue audio must reach `playback.played` past the core's reply stamps.
+ * revoicer, on a virtual clock. Cue audio (WaitCueAudio) must reach `playback.played` past the core's
+ * reply stamps, and must not hold the session in SPEAKING (tool results are delivered at LISTENING/THINKING).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class WaitCueCoreIntegrationTest {
@@ -38,6 +42,7 @@ class WaitCueCoreIntegrationTest {
 
     private class Rig(val test: TestScope) {
         val fake = FakeRealtimeVoiceProvider()
+        val toolGate = CompletableDeferred<String>()
         val playback = InMemoryPlaybackPort()
         val revoicer = AssistantVoiceRevoicer(
             TextVoice(), style = { SpeakingStyle.DEFAULT }, onFailure = {},
@@ -49,7 +54,9 @@ class WaitCueCoreIntegrationTest {
         val core = VoiceSessionController(
             provider = revoiced, microphone = InMemoryMicrophonePort(), playback = playback, scope = test,
             config = RealtimeSessionConfig(VoiceProviderId.FAKE, VoiceCatalog.FAKE_MODEL),
-            callbacks = VoiceSessionCallbacks(),
+            callbacks = VoiceSessionCallbacks(
+                onToolCall = { ToolDispatchResult(null, null, deferredOutput = { toolGate.await() }) },
+            ),
         )
 
         init { core.start(); test.runCurrent() }
@@ -110,6 +117,20 @@ class WaitCueCoreIntegrationTest {
         rig.emit(DomainVoiceEvent.SpeechText("迟到的半句。"))
         rig.after(100)
         assertEquals(listOf(WaitCues.ACK_CHAT), rig.played())
+        rig.core.stop()
+    }
+
+    @Test
+    fun e_aCueDuringADeferredToolDoesNotBlockItsResultDelivery() = runTest(UnconfinedTestDispatcher()) {
+        val rig = Rig(this)
+        rig.emit(DomainVoiceEvent.SpeechStarted, DomainVoiceEvent.SpeechStopped)
+        rig.emit(DomainVoiceEvent.ResponseStarted, DomainVoiceEvent.ToolCall("c1", "control_climate", emptyMap()))
+        rig.after(1_100)
+        assertEquals(listOf(WaitCues.ACK_ACTION), rig.played())
+        assertEquals(VoiceUiState.THINKING, rig.core.machine.state)
+        rig.toolGate.complete("""{"ok":true}""")
+        rig.after(100)
+        assertEquals(listOf("c1"), rig.fake.workInjections.map { it.callId }, "the tool result reached the model")
         rig.core.stop()
     }
 }

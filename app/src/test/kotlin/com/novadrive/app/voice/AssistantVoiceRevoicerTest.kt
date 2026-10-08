@@ -237,7 +237,8 @@ class AssistantVoiceRevoicerTest {
             send(DomainVoiceEvent.ResponseDone("completed"))
             waitFor { DomainVoiceEvent.ResponseDone("completed") in it }
         }
-        assertEquals("慢行，", voice.started.first())
+        // Two clauses are fetched concurrently, so which request starts first is a race.
+        assertTrue("慢行，" in voice.started.take(2), "the first clause is among the first two started")
         assertTrue("半句" !in voice.started, "the half clause is never synthesised")
         assertEquals(listOf("慢行，"), voice.cancelled.toList())
     }

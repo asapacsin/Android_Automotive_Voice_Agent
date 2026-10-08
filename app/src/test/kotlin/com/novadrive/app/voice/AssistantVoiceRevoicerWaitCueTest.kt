@@ -19,11 +19,15 @@ import java.util.Base64
 
 /** SPEC-020 A1–A3, A5: wait cues on a virtual clock. Audio carries its text so order is visible. */
 class AssistantVoiceRevoicerWaitCueTest {
-    private class Voice(val hold: Map<String, CompletableDeferred<Unit>> = emptyMap()) : AssistantVoice {
+    private class Voice(
+        val hold: Map<String, CompletableDeferred<Unit>> = emptyMap(),
+        val failing: Set<String> = emptySet(),
+    ) : AssistantVoice {
         val spoken = mutableListOf<String>()
         override suspend fun synthesize(text: String, style: SpeakingStyle, onPcm: suspend (ByteArray) -> Unit) {
             spoken += text
             hold[text]?.await()
+            if (text in failing) throw AssistantVoiceException("TEST_FAIL")
             onPcm(text.toByteArray())
         }
     }
@@ -39,13 +43,14 @@ class AssistantVoiceRevoicerWaitCueTest {
     private fun heard(
         voice: Voice = Voice(),
         quiet: Boolean = false,
+        failures: MutableList<String> = mutableListOf(),
         block: suspend Run.() -> Unit,
     ): List<String> {
         val out = mutableListOf<RealtimeEvent>()
         runTest {
             val up = Channel<RealtimeEvent>(Channel.UNLIMITED)
             val revoicer = AssistantVoiceRevoicer(
-                voice, style = { SpeakingStyle.TSUNDERE }, onFailure = {},
+                voice, style = { SpeakingStyle.TSUNDERE }, onFailure = { failures += it },
                 clock = { testScheduler.currentTime }, quiet = { quiet },
             )
             val job = launch { revoicer.revoice(up.consumeAsFlow()).toList(out) }
@@ -54,7 +59,13 @@ class AssistantVoiceRevoicerWaitCueTest {
             up.close()
             job.join()
         }
-        return out.mapNotNull { (it.payload as? DomainVoiceEvent.AudioDelta)?.let { a -> String(Base64.getDecoder().decode(a.pcm16leBase64)) } }
+        return out.mapNotNull {
+            when (val p = it.payload) {
+                is DomainVoiceEvent.AudioDelta -> p.pcm16leBase64
+                is DomainVoiceEvent.WaitCueAudio -> p.pcm16leBase64
+                else -> null
+            }?.let { b64 -> String(Base64.getDecoder().decode(b64)) }
+        }
     }
 
     @Test
@@ -195,5 +206,115 @@ class AssistantVoiceRevoicerWaitCueTest {
         }
         assertEquals(listOf(WaitCues.ACK_CHAT, WaitCues.ACK_CHAT), out)
         assertEquals(1, voice.spoken.count { it == WaitCues.ACK_CHAT })
+    }
+
+    // R2: the turn remembers everything since the driver's onset; the clock runs from his last word.
+
+    @Test
+    fun r2_toolCallDuringSpeechGivesActionAckThenToolRunning() {
+        val out = heard {
+            revoicer.onDriverSpeech(true)
+            send(DomainVoiceEvent.ToolCall("c1", "control_climate", emptyMap()))
+            revoicer.onDriverSpeech(false)
+            after(6_000)
+        }
+        assertEquals(listOf(WaitCues.ACK_ACTION, WaitCues.TOOL_DEFAULT), out)
+    }
+
+    @Test
+    fun r2_replyStartedDuringSpeechGivesVerifyingNotProviderSlow() {
+        val out = heard {
+            revoicer.onDriverSpeech(true)
+            send(DomainVoiceEvent.ResponseStarted)
+            revoicer.onDriverSpeech(false)
+            after(6_000)
+        }
+        assertEquals(listOf(WaitCues.ACK_CHAT, WaitCues.VERIFYING), out)
+    }
+
+    @Test
+    fun r2_replyAudibleDuringSpeechStartsNoClock() {
+        val out = heard {
+            revoicer.onDriverSpeech(true)
+            send(DomainVoiceEvent.ResponseStarted, DomainVoiceEvent.SpeechText("好的。"), DomainVoiceEvent.AudioDone)
+            revoicer.onDriverSpeech(false)
+            after(20_000)
+        }
+        assertEquals(listOf("好的。"), out)
+    }
+
+    @Test
+    fun r2_theClockIsBackdatedByTheSilenceAlreadyHeard() {
+        val chat = mutableListOf<List<String>>()
+        chat += heard { revoicer.onDriverSpeech(true); revoicer.onDriverSpeech(false, silenceMs = 1_200); after(599) }
+        chat += heard { revoicer.onDriverSpeech(true); revoicer.onDriverSpeech(false, silenceMs = 1_200); after(600) }
+        assertEquals(listOf(emptyList(), listOf(WaitCues.ACK_CHAT)), chat, "C2 600 ms after the end call")
+        val action = heard {
+            revoicer.onDriverSpeech(true)
+            send(DomainVoiceEvent.ToolCall("c1", "control_climate", emptyMap()))
+            revoicer.onDriverSpeech(false, silenceMs = 1_200)
+            scope.runCurrent()
+        }
+        assertEquals(listOf(WaitCues.ACK_ACTION), action, "C1 at once")
+    }
+
+    // R3: once her words are queued, no cue.
+
+    @Test
+    fun r3_noCueOnceReplyWordsAreQueuedEvenIfTheirAudioIsLate() {
+        val held = CompletableDeferred<Unit>()
+        val out = heard(Voice(mapOf("今天晴。" to held))) {
+            send(DomainVoiceEvent.SpeechStopped)
+            after(500)
+            send(DomainVoiceEvent.ResponseStarted, DomainVoiceEvent.SpeechText("今天晴。"))
+            after(3_000)
+            held.complete(Unit)
+            send(DomainVoiceEvent.AudioDone)
+            after(20_000)
+        }
+        assertEquals(listOf("今天晴。"), out)
+    }
+
+    // R4: cues stay truthful.
+
+    @Test
+    fun r4_aResponseDoneWithNothingAudibleEndsTheCues() {
+        val out = heard {
+            send(DomainVoiceEvent.SpeechStopped, DomainVoiceEvent.ResponseStarted)
+            after(2_000)
+            send(DomainVoiceEvent.ResponseDone("completed"))
+            after(20_000)
+        }
+        assertEquals(listOf(WaitCues.ACK_CHAT), out, "no C5, no C6")
+    }
+
+    @Test
+    fun r4_suspiciousAudioWithoutProviderEventsGivesNoCue() {
+        assertEquals(emptyList<String>(), heard { revoicer.onDriverSpeech(false, suspiciousAudio = true); after(20_000) })
+    }
+
+    @Test
+    fun r4_lateEvidenceFiresTheDueAckOnArrival() {
+        val out = mutableListOf<List<String>>()
+        out += heard {
+            revoicer.onDriverSpeech(false, suspiciousAudio = true)
+            after(2_500)
+            send(DomainVoiceEvent.ResponseStarted)
+        }
+        assertEquals(listOf(listOf(WaitCues.ACK_CHAT)), out)
+    }
+
+    // R6: a cue's failure is its own.
+
+    @Test
+    fun r6_aFailedCueNeitherFailsNorSilencesTheReply() {
+        val failures = mutableListOf<String>()
+        val out = heard(Voice(failing = setOf(WaitCues.ACK_CHAT)), failures = failures) {
+            send(DomainVoiceEvent.SpeechStopped)
+            after(2_000)
+            send(DomainVoiceEvent.ResponseStarted, DomainVoiceEvent.SpeechText("好的。"), DomainVoiceEvent.AudioDone)
+        }
+        assertEquals(listOf("好的。"), out)
+        assertEquals(emptyList<String>(), failures)
     }
 }
