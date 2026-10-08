@@ -2777,6 +2777,47 @@ tests:
     related: [SPEC-015]
     last_run: {at: null, result: null}
 
+  - id: QWEN-PROBE-Q1-001
+    capability: speech
+    name: "ADR-017 gate Q-1: Qwen-Omni Realtime + Maia measured outside the app, side by side with Gemini + Xiaoyi"
+    purpose: "ADR-017 Q-1: the latency, tool turn, barge-in and text-input facts SPEC-021 rests on; if Q-1 fails, ADR-017 is revised"
+    type: measurement
+    scope: END_TO_END
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    terminal_success: [runs_recorded, compare_printed, text_input_answered]
+    covers: []
+    prerequisites: ["the owner's PC with DASHSCOPE_API_KEY and DASHSCOPE_WORKSPACE_ID set (agents never enter keys)", "tools/speech-harness/speech clips", "Python 3 with aiohttp"]
+    procedure: ["python tools/qwen-omni-probe/qwen_probe.py --selftest", "$env:OUT='tools\\qwen-omni-probe\\out'; .\\tools\\qwen-omni-probe\\run_q1.ps1", "keep out/runs.jsonl, the compare output and the say/ WAV clips"]
+    pass_criteria: ["every mode ran without session.update errors", "chat: last word to first audio p50 recorded and compared with 3.4-4.6 s", "tool turn: total to the spoken result recorded", "barge: speech_started to cancel recorded, with and without CLIENT_CANCEL; cough and knock did not interrupt (semantic_vad)", "text: input_text accepted or refused, recorded (SPEC-021 open question 1)"]
+    evidence: []
+    related: [ADR-017, SPEC-021, QWEN-VOICE-EAR-001, P48]
+    last_run: {at: null, result: null}
+
+  - id: QWEN-VOICE-EAR-001
+    capability: speech
+    name: "ADR-017 gate Q-2: Maia against Xiaoyi, by ear, on the probe's clips"
+    purpose: "ADR-017 Q-2: the owner picked Maia from the voice list; this confirms it on our own lines, including the SPEC-020 cue texts"
+    type: device
+    scope: END_TO_END
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: subjective_perception
+    release_blocking: false
+    terminal_success: [maia_preferred_or_rejected, cue_clips_usable]
+    autonomous_evidence: ["tools/qwen-omni-probe say mode writes one 24 kHz WAV per line plus summary.json (selftest OK, 2026-10-09 cloud)"]
+    remaining_uncertainty: ["how Maia sounds on our lines", "whether a style instruction changes her delivery", "whether the cue clips are clean enough to bundle (SPEC-021 step 4)"]
+    covers: []
+    human_reason: "Which voice sounds right is the owner's listening judgement (B-034)"
+    prerequisites: ["QWEN-PROBE-Q1-001 run, with its say/ clips", "the 2026-10-08 Xiaoyi demo clips for comparison"]
+    procedure: ["listen to say/*.wav next to the Xiaoyi clips of the same lines", "listen to the ten wait-cue clips"]
+    pass_criteria: ["Maia preferred to Xiaoyi, or the reason she is not", "each cue clip clean and natural, or marked unusable"]
+    returns: ["yes/no per criterion, one sentence of impression"]
+    evidence: []
+    related: [ADR-017, B-034, QWEN-PROBE-Q1-001, SPEC-021]
+    last_run: {at: null, result: null}
+
   - id: STYLE-EAR-001
     capability: speech
     name: 嗲 / 傲娇 / 温柔 / 元气 each sound right and appropriate, with the same voice
