@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-02T14:56:49",
+  "generated_at": "2026-10-03T03:08:41",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "7999d59",
-    "branch": "claude/10-2",
-    "subject": "P45 review follow-ups, records, and the claude/10-2 demo kit",
-    "working_tree_clean": true,
-    "uncommitted_files": 0
+    "commit": "480b435",
+    "branch": "claude/10-3",
+    "subject": "demo(10-3): checklist and log checker for the essential and claude/10-3 functions",
+    "working_tree_clean": false,
+    "uncommitted_files": 6
   },
   "tests": {
     "available": true,
@@ -146,27 +146,13 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "FUZZY-TEXT-LIVE-001: STALE_BIND: The live model maps the fuzzy phrase table FZ-01…FZ-19 to the right calls",
-    "actionable_count": 113,
+    "NEXT_ACTION": "A0: | A0 | G-1 … G-1f measured on the short route | measurement (emulator) | `GUIDANCE-EMU-001` | not earned |",
+    "actionable_count": 112,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
-    "QUEUED_FOR_HUMAN": 25,
+    "QUEUED_FOR_HUMAN": 26,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "FUZZY-TEXT-LIVE-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "MUSIC-TEXT-LIVE-001",
-        "blocked_by": null
-      },
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
@@ -500,6 +486,13 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "FUZZY-TEXT-LIVE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "GATE-D10-DEVICE-001",
         "blocked_by": null
       },
@@ -564,6 +557,13 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "MUSIC-PLAY-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "MUSIC-TEXT-LIVE-001",
         "blocked_by": null
       },
       {
@@ -865,13 +865,6 @@
         "class": "recorded technical debt",
         "source": "docs/TECH_DEBT.md",
         "item": "D-9",
-        "blocked_by": null
-      },
-      {
-        "priority": 10,
-        "class": "stale state or harness defect",
-        "source": "state",
-        "item": "PROJECT_STATE.json",
         "blocked_by": null
       },
       {

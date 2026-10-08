@@ -488,6 +488,7 @@ change_impact:
       - BaiduDirectRealtimeProvider
       - ConversationResetPolicy
       - GeminiLiveClient
+      - GeminiTurnTiming
       - GeminiPromptTurn
       - GuidanceClaims
       - GuidanceBlockers
