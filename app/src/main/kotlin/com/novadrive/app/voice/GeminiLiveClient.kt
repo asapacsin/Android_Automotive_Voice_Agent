@@ -220,7 +220,7 @@ class GeminiLiveClient(
     }
 
     fun onLocalSpeechActivity(active: Boolean) {
-        if (!active) return
+        if (!active) { if (GeminiLiveProtocol.endOfSpeech().all(::trySend)) DebugVoiceLog.log("gemini_audio_stream_end"); return }
         synchronized(this) { cancelCorrection("driver_turn"); beginDriverTurnLocked() }
     }
 

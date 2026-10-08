@@ -357,6 +357,13 @@ class AndroidMicrophonePort(
     @Volatile var uplinkGateEnabled: Boolean =
         !(com.novadrive.app.DebugVoiceLog.isEnabled && com.novadrive.app.TranslatedAbi.active)
 
+    /**
+     * Only the emulator's HAL chops speech. Frames from the debug host bridge ([HostAudioTap]) are
+     * clean 20 ms PCM, so they are gated exactly as a phone's microphone is — which also gives the
+     * provider its local end of speech (SPEC-020 wait cues, F19 onset) on the emulator.
+     */
+    private val gateBypassed: Boolean get() = !uplinkGateEnabled && HostAudioTap.source == null
+
     /** The processing every outgoing microphone frame gets; the speech harness uses it too. */
     fun processForSend(frame: ByteArray): ByteArray =
         if (inputGainEnabled) inputGain.process(frame, PcmAudioCapture.FRAME_MS) else frame
@@ -410,7 +417,7 @@ class AndroidMicrophonePort(
                             droppedGuidance.incrementAndGet()
                             noteCaptureInterrupted()
                         }
-                        !uplinkGateEnabled -> onFrame(processForSend(bytes))
+                        gateBypassed -> onFrame(processForSend(bytes))
                         else -> {
                             interrupted = false
                             gateAndSend(bytes, onFrame)

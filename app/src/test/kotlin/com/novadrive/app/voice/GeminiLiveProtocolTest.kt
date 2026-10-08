@@ -23,6 +23,19 @@ class GeminiLiveProtocolTest {
     ).getJSONObject("setup")
 
     @Test
+    fun `the gate closing ends the audio stream so the server VAD can end the turn`() {
+        val input = JSONObject(GeminiLiveProtocol.audioStreamEnd()).getJSONObject("realtimeInput")
+        assertTrue(input.getBoolean("audioStreamEnd"))
+        assertEquals(1, input.length())
+        // 1.5 s of 16 kHz PCM16 zeros: the rest of the silence the server VAD waits for (P48)
+        assertEquals(48_000, GeminiLiveProtocol.trailingSilence.size)
+        assertTrue(GeminiLiveProtocol.trailingSilence.all { it == 0.toByte() })
+        val (silence, end) = GeminiLiveProtocol.endOfSpeech()
+        assertTrue(JSONObject(silence).getJSONObject("realtimeInput").has("audio"))
+        assertEquals(GeminiLiveProtocol.audioStreamEnd(), end)
+    }
+
+    @Test
     fun setupPerModelFollowsTheThinkingLevelTrait() {
         fun gen(model: String) = JSONObject(
             GeminiLiveProtocol.setup(
