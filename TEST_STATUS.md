@@ -2,15 +2,15 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-21 · 147 tests
+Updated 2026-09-21 · 149 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 57 |
+| autonomous PASS | 58 |
 | autonomous FAIL | 0 |
 | incomplete | 0 |
 | partial pass | 0 |
-| not run | 63 |
+| not run | 64 |
 | human required | 25 |
 | human pass | 0 |
 | human fail | 1 |
@@ -82,6 +82,7 @@ Updated 2026-09-21 · 147 tests
 - GUIDANCE-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - CONFIG-CARD-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - P45-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- WAIT-CUE-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - TRANSCRIPT-FADE-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - TTS-VOICE-EMU-001 is AUTONOMOUS and BLOCKED_AUTONOMOUS - run it or fix it
 - live_info.along_route requires END_TO_END but has no passing cover (linked: none)
@@ -113,7 +114,7 @@ Updated 2026-09-21 · 147 tests
 | reliability | 8 | 4 | 1 | 3 |
 | saved_places | 3 | 0 | 0 | 3 |
 | security | 3 | 3 | 0 | 0 |
-| speech | 14 | 5 | 7 | 1 |
+| speech | 16 | 6 | 7 | 2 |
 | truthfulness | 9 | 4 | 0 | 5 |
 | turn_taking | 19 | 7 | 3 | 9 |
 | unsupported | 1 | 0 | 0 | 1 |
@@ -235,6 +236,8 @@ Updated 2026-09-21 · 147 tests
 | VOICE-AB-002 | speech | No Gemini-side lever makes the voice younger in conversation; the transcript can feed a TTS | AUTONOMOUS | PASS | no | 2026-10-02 cloud: read-aloud young line Leda 222->258-276 Hz, Erinome ->242-258 Hz; app… |
 | VOICE-EAR-001 | speech | The owner picks the 符玄-like Gemini voice by ear | HUMAN_PHYSICAL | HUMAN_FAIL | no | 2026-10-02 owner, emulator at 34d629d: 10 voices recorded through the app (Erinome 250 … |
 | VOICE-STYLE-001 | speech | Prefer a younger cute female voice (符玄-like) | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | Owner chose option B id 4196 on 2026-09-21 |
+| WAIT-CUE-EMU-001 | speech | Wait cues on the emulator with live Gemini and the Azure voice (SPEC-020 A6) | AUTONOMOUS | NOT_RUN | no | — |
+| WAIT-CUE-UNIT-001 | speech | Wait cues fire on time from the last word, truthfully, once, and never block a tool result | AUTONOMOUS | PASS | no | 2026-10-08 cloud, claude/10-8 (merge 92a36ec): AssistantVoiceRevoicerWaitCueTest 25/0, … |
 | DUP-EXEC-001 | truthfulness | The same adjustment does not run twice in one turn | AUTONOMOUS | PASS | yes | 2026-09-20: FalseCapabilityClaimTest asserts a repeated adjust_temperature in one turn … |
 | FAILED-ACTION-REPORTED-001 | truthfulness | A failed action is reported after its false success claim is dropped | AUTONOMOUS | PASS | yes | 2026-09-24: 20/20 each; failed every run before the fix (also on 0ea4885) |
 | TRUTH-BAIT-001 | truthfulness | An explicit request to lie is not obeyed | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 20/20 suite |

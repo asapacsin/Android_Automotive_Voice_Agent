@@ -1,49 +1,37 @@
 {
-  "generated_at": "2026-10-08T12:53:30",
+  "generated_at": "2026-10-08T07:02:12",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "7caaa93",
-    "branch": "claude/10-3",
-    "subject": "Merge remote-tracking branch 'origin/claude/10-3' into claude/10-3",
-    "working_tree_clean": false,
-    "uncommitted_files": 2
+    "commit": "3b0ef27",
+    "branch": "claude/10-8",
+    "subject": "refactor: chat-correction grace moves to GeminiCorrectionGrace; GeminiLiveClient back to its 640-line budget",
+    "working_tree_clean": true,
+    "uncommitted_files": 0
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-10-08T12:50:47",
+    "collected_at": "2026-10-02T14:56:42",
     "total": {
-      "tests": 383,
-      "failures": 3,
+      "tests": 1930,
+      "failures": 0,
       "errors": 0,
-      "skipped": 0
+      "skipped": 2
     },
     "by_module": {
-      "app": {
-        "tests": 80,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "behavior-test": {
-        "tests": 128,
-        "failures": 2,
-        "errors": 0,
-        "skipped": 0
-      },
-      "contracts": {
-        "tests": 7,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
       "evaluation": {
         "tests": 27,
-        "failures": 1,
+        "failures": 0,
         "errors": 0,
         "skipped": 0
       },
-      "ingress": {
-        "tests": 114,
+      "app": {
+        "tests": 1627,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 2
+      },
+      "simulator": {
+        "tests": 25,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -54,19 +42,31 @@
         "errors": 0,
         "skipped": 0
       },
-      "simulator": {
-        "tests": 25,
+      "behavior-test": {
+        "tests": 128,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "contracts": {
+        "tests": 7,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "ingress": {
+        "tests": 114,
         "failures": 0,
         "errors": 0,
         "skipped": 0
       }
     },
-    "passing": false
+    "passing": true
   },
   "apk": {
     "built": true,
-    "bytes": 224785041,
-    "built_at": "2026-10-08T11:57:50"
+    "bytes": 224120139,
+    "built_at": "2026-10-02T14:54:03"
   },
   "capabilities": {
     "available": true,
@@ -162,27 +162,13 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "com.novadrive.evaluation.ExecutorAndCatalogTest: 1 failing in com.novadrive.evaluation.ExecutorAndCatalogTest",
-    "actionable_count": 118,
+    "NEXT_ACTION": "A0: | A0 | G-1 … G-1f measured on the short route | measurement (emulator) | `GUIDANCE-EMU-001` | not earned |",
+    "actionable_count": 117,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 26,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "test report",
-        "item": "com.novadrive.evaluation.ExecutorAndCatalogTest",
-        "blocked_by": null
-      },
-      {
-        "priority": 3,
-        "class": "invariant violation",
-        "source": "test report",
-        "item": "com.novadrive.architecture.ArchitectureRulesTest",
-        "blocked_by": null
-      },
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
@@ -846,6 +832,13 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "VISION-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "WAIT-CUE-EMU-001",
         "blocked_by": null
       },
       {
