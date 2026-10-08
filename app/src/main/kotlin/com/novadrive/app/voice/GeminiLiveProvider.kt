@@ -40,7 +40,7 @@ class GeminiLiveProvider(
             speechEvidence = speechEvidence,
             speechTextEvents = assistantVoice != null,
         ),
-        assistantVoice?.let { AssistantVoiceRevoicer(it, style = { com.novadrive.app.SpeakingStyleState.current }, quiet = { !repliesSpoken() }) },
+        assistantVoice?.let { AssistantVoiceRevoicer(it, style = { com.novadrive.app.SpeakingStyleState.current }, quiet = { !repliesSpoken() }, prefillAcks = true) },
         speechEvidence,
         lastAudioSegment,
     )

@@ -44,6 +44,7 @@ class AssistantVoiceRevoicerWaitCueTest {
         voice: Voice = Voice(),
         quiet: Boolean = false,
         failures: MutableList<String> = mutableListOf(),
+        prefill: Boolean = false,
         block: suspend Run.() -> Unit,
     ): List<String> {
         val out = mutableListOf<RealtimeEvent>()
@@ -51,7 +52,7 @@ class AssistantVoiceRevoicerWaitCueTest {
             val up = Channel<RealtimeEvent>(Channel.UNLIMITED)
             val revoicer = AssistantVoiceRevoicer(
                 voice, style = { SpeakingStyle.TSUNDERE }, onFailure = { failures += it },
-                clock = { testScheduler.currentTime }, quiet = { quiet },
+                clock = { testScheduler.currentTime }, quiet = { quiet }, prefillAcks = prefill,
             )
             val job = launch { revoicer.revoice(up.consumeAsFlow()).toList(out) }
             runCurrent()
@@ -66,6 +67,28 @@ class AssistantVoiceRevoicerWaitCueTest {
                 else -> null
             }?.let { b64 -> String(Base64.getDecoder().decode(b64)) }
         }
+    }
+
+    @Test
+    fun prefill_theAcksAreSynthesisedAtOnsetAndTheCueComesFromTheCache() {
+        val voice = Voice()
+        var atOnset = emptyList<String>()
+        val out = heard(voice, prefill = true) {
+            send(DomainVoiceEvent.SpeechStarted)
+            atOnset = voice.spoken.toList()
+            send(DomainVoiceEvent.SpeechStopped)
+            after(1_900)
+        }
+        assertEquals(listOf(WaitCues.ACK_ACTION, WaitCues.ACK_CHAT), atOnset, "synthesised while he is talking")
+        assertEquals(listOf(WaitCues.ACK_CHAT), out, "the cue itself")
+        assertEquals(2, voice.spoken.size, "from the cache: no second synthesis")
+    }
+
+    @Test
+    fun prefill_nothingIsSynthesisedWhileQuiet() {
+        val voice = Voice()
+        heard(voice, quiet = true, prefill = true) { send(DomainVoiceEvent.SpeechStarted); after(100) }
+        assertEquals(emptyList<String>(), voice.spoken)
     }
 
     @Test

@@ -58,6 +58,8 @@ class AssistantVoiceRevoicer(
     private val onFailure: (String) -> Unit = AssistantVoiceNotices::report,
     private val clock: () -> Long = SystemSessionClock::nowMs,
     private val quiet: () -> Boolean = { false },
+    /** Synthesise the two acknowledgements at the driver's onset, so the first cue is not late (P49). */
+    private val prefillAcks: Boolean = false,
 ) {
     private val epoch = AtomicLong(0)
     private val speech = AtomicReference<Job?>(null)
@@ -86,6 +88,7 @@ class AssistantVoiceRevoicer(
             }
             if (timer?.isActive == true) DebugVoiceLog.log("wait_cue_cancelled reason=driver_speech")
             timer?.cancel()
+            if (prefillAcks && !quiet()) prefillAcks()
             return
         }
         if (closing) return
@@ -98,6 +101,22 @@ class AssistantVoiceRevoicer(
             turn.clockStarted = true
             cueStartMs = clock() - silenceMs
             cueTimer = host.scope.launch { runWaitCues(turn, host) }
+        }
+    }
+
+    /**
+     * While he is still talking, fill the cache for the current style: the first cue of a session
+     * otherwise paid a synthesis round trip (0.8–1.0 s on the emulator, 2026-10-08) on top of its
+     * threshold. Nothing is spoken here.
+     */
+    private fun prefillAcks() {
+        val host = cueHost ?: return
+        val missing = listOf(WaitCues.ACK_ACTION, WaitCues.ACK_CHAT).filter { !cueCache.containsKey(it to style()) }
+        if (missing.isEmpty()) return
+        host.scope.launch {
+            missing.forEach { text ->
+                try { cuePcm(text) } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) {}
+            }
         }
     }
 
