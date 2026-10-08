@@ -1,32 +1,32 @@
 {
-  "generated_at": "2026-10-08T12:53:30",
+  "generated_at": "2026-10-08T16:57:19",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "7caaa93",
-    "branch": "claude/10-3",
-    "subject": "Merge remote-tracking branch 'origin/claude/10-3' into claude/10-3",
-    "working_tree_clean": false,
-    "uncommitted_files": 2
+    "commit": "93a626c",
+    "branch": "claude/10-8",
+    "subject": "demo recorder: wait-cue scenes and grading; WAIT-CUE-EMU-001 partial evidence",
+    "working_tree_clean": true,
+    "uncommitted_files": 0
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-10-08T12:50:47",
+    "collected_at": "2026-10-08T16:38:34",
     "total": {
-      "tests": 383,
-      "failures": 3,
+      "tests": 1990,
+      "failures": 2,
       "errors": 0,
-      "skipped": 0
+      "skipped": 2
     },
     "by_module": {
       "app": {
-        "tests": 80,
+        "tests": 1683,
         "failures": 0,
         "errors": 0,
-        "skipped": 0
+        "skipped": 2
       },
       "behavior-test": {
         "tests": 128,
-        "failures": 2,
+        "failures": 1,
         "errors": 0,
         "skipped": 0
       },
@@ -43,7 +43,7 @@
         "skipped": 0
       },
       "ingress": {
-        "tests": 114,
+        "tests": 118,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 224785041,
-    "built_at": "2026-10-08T11:57:50"
+    "bytes": 224816029,
+    "built_at": "2026-10-08T16:35:42"
   },
   "capabilities": {
     "available": true,
@@ -163,7 +163,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "com.novadrive.evaluation.ExecutorAndCatalogTest: 1 failing in com.novadrive.evaluation.ExecutorAndCatalogTest",
-    "actionable_count": 118,
+    "actionable_count": 119,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 26,
@@ -846,6 +846,13 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "VISION-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "WAIT-CUE-EMU-001",
         "blocked_by": null
       },
       {

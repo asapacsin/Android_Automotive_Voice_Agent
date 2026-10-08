@@ -11,11 +11,24 @@
 - `4bd714b`: [SPEC-020](SPECS/SPEC-020-wait-cues.md) wait cues, authorised by the owner. When a reply is slow she says 「收到，正在处理。」 or 「嗯，我想想。」. At 5 s she says a truthful reason; at 12 s she says she is still waiting.
 - `tools/demo/recorder/`: the silent emulator demo recorder and its grader (PC only).
 
-**In progress — continue here:**
-1. **SPEC-020 implementation.** It is unfinished and unverified on branch `claude/spec020-wip` (`f838713`, based on `4bd714b`). It includes the approved one-line hook in `GeminiLiveProvider.onLocalSpeechActivity`, which forwards local end of speech to the revoicer: for Gemini, `SpeechStopped` never reaches the revoicer's stream. Finish it against acceptance A1–A5, run the acceptance commands, and merge into `claude/10-3`. `:behavior-test` has 2 failures that predate this work (GeminiLiveClient line budget, the `end_conversation` literal). `:evaluation` has 1 CRLF snapshot failure, also present at the base commit.
+**Done on `claude/10-8` (cloud, 2026-10-08):** [SPEC-020](SPECS/SPEC-020-wait-cues.md) wait cues, merged as `92a36ec` from the owner's WIP.
+- The independent review went REVISE, REVISE, then PASS.
+- Fixed before merging:
+  - Cue audio sent as model reply audio would have held the session in SPEAKING. Tool results would then never be delivered, so a slow navigation or music turn could never finish. A cue is now `WaitCueAudio`, played by the core in a stamp of its own.
+  - The core silently dropped cue audio after any finished or interrupted reply.
+  - The clock started 1.2 s late. It is now measured from the last word.
+  - A cue could be spoken between a reply's clauses.
+  - A cough, a reply that ended silent, or an app-handled 「第一个」 could get a cue.
+- JVM: app 1677/0, ingress 118/0, `WAIT-CUE-UNIT-001`.
+- Two flaky `AssistantVoiceRevoicerTest` cases, which predate this work, were de-raced.
+- `tools/demo/check_demo_log.py` grades the cues (A6).
+
+**Next — needs the owner's PC:**
+1. **`WAIT-CUE-EMU-001`** (SPEC-020 A6): the cues on the emulator, with live Gemini and the Azure voice.
 2. **Re-record the demo on the PC emulator.** This cannot be done in the cloud. Use `tools/demo/recorder/README.md`. A take passes only if `check_req.py` passes.
-   - The scenes are: ability (你会干啥 / 你都能帮我干嘛), 有点闷, styles (嗲 / 吃什么 / 元气 / 霸道 / 正常) and the error card.
-   - The output goes to `android_doc/demo_new_functions_<date>/`. That folder already holds the 2026-10-08 videos from the build before these fixes.
+   - The scenes are: ability (你会干啥 / 你都能帮我干嘛), 有点闷, styles (嗲 / 吃什么 / 元气 / 霸道 / 正常) and the error card. Add one slow turn (navigation or music) to hear the wait cue.
+   - The output goes to `android_doc/demo_new_functions_<date>/`.
+- `:behavior-test` is green again. The GeminiLiveClient line budget (646 lines against 640, from `9696ce5`) is back to 640: the chat-correction grace moved to `GeminiCorrectionGrace`.
 
 **Still slow:** 2.6–4.2 s from the driver's last word to her voice. The parts:
 - Gemini's end-of-speech detection: 1.0–2.0 s.

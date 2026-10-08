@@ -107,7 +107,8 @@ class AssistantVoiceRevoicerTest {
         upstream.send(ev(DomainVoiceEvent.ResponseDone("cancelled")))
         upstream.close()
         val out = withTimeout(5_000) { result.await() }
-        assertEquals("第一句话很长。", voice.spoken.first().first)
+        // Two clauses are fetched concurrently (dcc609a): which starts first is a race.
+        assertTrue("第一句话很长。" in voice.spoken.toList().take(2).map { it.first })
         assertTrue(out.none { it is DomainVoiceEvent.AudioDelta })
         assertTrue(out.indexOf(DomainVoiceEvent.SpeechStarted) < out.indexOf(DomainVoiceEvent.Interrupted("server_vad")))
         assertTrue(out.contains(DomainVoiceEvent.ResponseDone("cancelled")))
@@ -237,7 +238,8 @@ class AssistantVoiceRevoicerTest {
             send(DomainVoiceEvent.ResponseDone("completed"))
             waitFor { DomainVoiceEvent.ResponseDone("completed") in it }
         }
-        assertEquals("慢行，", voice.started.first())
+        // Two clauses are fetched concurrently, so which request starts first is a race.
+        assertTrue("慢行，" in voice.started.take(2), "the first clause is among the first two started")
         assertTrue("半句" !in voice.started, "the half clause is never synthesised")
         assertEquals(listOf("慢行，"), voice.cancelled.toList())
     }
@@ -273,7 +275,7 @@ class AssistantVoiceRevoicerTest {
             send(DomainVoiceEvent.AudioDone)
             waitFor(1_000) { list -> list.count { it == DomainVoiceEvent.ResponseStarted } == 2 && list.any { it.isVoice() } }
         }
-        assertEquals("慢的一句。", voice.started.first())
+        assertTrue("慢的一句。" in voice.started.toList().take(2), "fetched concurrently with the next clause (dcc609a)")
         assertEquals("新回复。", voice.started.last())
         assertEquals(listOf("慢的一句。"), voice.cancelled.toList())
     }

@@ -1,5 +1,6 @@
 package com.novadrive.app.voice
 
+import com.novadrive.app.DebugVoiceLog
 import com.novadrive.app.GeminiApiConfig
 import com.novadrive.ingress.realtime.DomainVoiceEvent
 import com.novadrive.ingress.realtime.ProviderCapabilities
@@ -21,6 +22,8 @@ class GeminiLiveProvider(
     private val revoicer: AssistantVoiceRevoicer? = null,
     /** The microphone's judgement that the onset is speech, not a cough or road noise. */
     private val speechEvidence: () -> Boolean = { true },
+    /** SPEC-020: the closed uplink segment, read at the end of speech as wait-cue turn evidence. */
+    private val endOfSpeechSegment: () -> SpeechUplinkGate.Segment? = { null },
 ) : RealtimeVoiceProvider {
     /** Secondary constructor: the microphone's measurement of the audio that caused each turn. */
     constructor(
@@ -28,6 +31,8 @@ class GeminiLiveProvider(
         lastAudioSegment: () -> SpeechUplinkGate.Segment?,
         speechEvidence: () -> Boolean = { true },
         assistantVoice: AssistantVoice? = null,
+        /** SPEC-020: false in SILENT_WAIT or sleep, when no wait cue may be spoken. */
+        repliesSpoken: () -> Boolean = { true },
     ) : this(
         apiConfig,
         GeminiLiveClient(
@@ -35,8 +40,9 @@ class GeminiLiveProvider(
             speechEvidence = speechEvidence,
             speechTextEvents = assistantVoice != null,
         ),
-        assistantVoice?.let { AssistantVoiceRevoicer(it, style = { com.novadrive.app.SpeakingStyleState.current }) },
+        assistantVoice?.let { AssistantVoiceRevoicer(it, style = { com.novadrive.app.SpeakingStyleState.current }, quiet = { !repliesSpoken() }, prefillAcks = true) },
         speechEvidence,
+        lastAudioSegment,
     )
 
     override val providerId = "google.gemini.live.direct"
@@ -53,11 +59,15 @@ class GeminiLiveProvider(
     /** Gemini has no client-side cancel: the turn is only marked, its held output dropped locally. */
     override suspend fun cancelAssistantResponse(): DomainVoiceEvent {
         client.markClientCancelled(); revoicer?.cancelCurrentReply("client_cancel")
+        // Only app-side cancels reach here for Gemini (no clientResponseCancel): the app handled this
+        // utterance itself (a pick, an affordance, the wake word, 闭嘴), so no wait cue for it (SPEC-020).
+        revoicer?.endWaitCueTurn("client_cancel")
         return DomainVoiceEvent.Interrupted("client_local_only")
     }
     override suspend fun cancelActiveResponse(): DomainVoiceEvent = cancelAssistantResponse()
     override suspend fun injectWorkResult(result: WorkInjection): DomainVoiceEvent {
         client.sendToolResult(result.callId, result.output)
+        revoicer?.onToolResultDelivered()  // Gemini answers in the same response, with no new ResponseStarted
         return DomainVoiceEvent.WorkResult(result.callId, result.output)
     }
     override suspend fun sendText(text: String) = client.sendUserText(text)
@@ -72,6 +82,11 @@ class GeminiLiveProvider(
         if (active && !playbackActive && revoicer != null && speechEvidence()) {
             revoicer.cancelCurrentReply("driver_onset_unplayed")
         }
+        // SPEC-020: Gemini's end of speech is local only. The gate closed after HANGOVER_MS of silence,
+        // and the snapshot is the segment it just closed.
+        if (active) revoicer?.onDriverSpeech(true)
+        else revoicer?.onDriverSpeech(false, SpeechUplinkGate.HANGOVER_MS.toLong(), endOfSpeechSegment()?.isSuspicious() == true)
+        if (!active && revoicer == null) DebugVoiceLog.log("wait_cue_skipped reason=no_assistant_voice")
         client.onLocalSpeechActivity(active)
     }
     override fun interrupt() = runBlocking { cancelAssistantResponse() }

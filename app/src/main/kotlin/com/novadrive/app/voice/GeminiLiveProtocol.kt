@@ -91,6 +91,25 @@ object GeminiLiveProtocol {
             JSONObject().put("audio", JSONObject().put("data", base64Pcm).put("mimeType", INPUT_AUDIO_MIME)),
         ).toString()
 
+    /**
+     * The local uplink gate closed, so no more audio follows until the next onset. Without this the
+     * server VAD never hears the trailing silence it needs and the turn stays open until the next
+     * sound (11 s on the emulator, 2026-10-08). Audio may resume after it.
+     */
+    fun audioStreamEnd(): String = JSONObject().put("realtimeInput", JSONObject().put("audioStreamEnd", true)).toString()
+
+    /**
+     * Digital silence sent when the local gate closes. audioStreamEnd alone did not end the turn
+     * (emulator, 2026-10-08), and the gate's 1.2 s hangover is shorter than the 1–2 s the server VAD
+     * waits (P48), so the server is given the rest of the silence at once instead of never.
+     */
+    const val TRAILING_SILENCE_MS = 1_500
+    val trailingSilence: ByteArray get() = ByteArray(16_000 * 2 * TRAILING_SILENCE_MS / 1_000)
+
+    /** What the client sends when the local gate closes: the trailing silence, then [audioStreamEnd]. */
+    fun endOfSpeech(): List<String> =
+        listOf(audio(java.util.Base64.getEncoder().encodeToString(trailingSilence)), audioStreamEnd())
+
     fun textTurn(text: String): String {
         require(text.length <= RealtimeToolCatalog.MAX_ARGUMENT_BYTES) { "GEMINI_LIVE_TEXT_TOO_LARGE" }
         val turn = JSONObject().put("role", "user").put("parts", JSONArray().put(JSONObject().put("text", text)))

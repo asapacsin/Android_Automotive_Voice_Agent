@@ -443,4 +443,12 @@ class ActionClaimGuardTest {
         // Three groups and no 已/好的, but 「开了」 says it happened: still a claim.
         assertNotNull(ActionClaimGuard.carActionClaimMatch("帮你开了空调、车窗、座椅。"))
     }
+
+    @Test
+    fun noWaitCueIsAClaim() {  // SPEC-020 A4
+        WaitCues.ALL.forEach { cue ->
+            assertNull(ActionClaimGuard.carActionClaimMatch(cue), cue)
+            assertFalse(ActionClaimGuard.claimsDone(cue), cue)
+        }
+    }
 }

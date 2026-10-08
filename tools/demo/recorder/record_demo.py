@@ -294,7 +294,7 @@ def turn(s, key, **kw):
 
 
 def sc_intro(s):
-    s.title("小诺 · 新功能演示", "What is new on claude/10-3 — recorded 2026-10-08")
+    s.title("小诺 · 新功能演示", "What is new on claude/10-8 — recorded 2026-10-08")
     time.sleep(4)
 
 
@@ -362,8 +362,24 @@ def sc_error(s):
     time.sleep(3)
 
 
+def sc_cue(s):
+    s.title("7  需要等的时候，先应一声", "A slow task: she says she is on it, and why if it takes longer")
+    turn(s, "weather", timeout=40)
+    turn(s, "music", timeout=40)
+
+
+def sc_nav(s):
+    s.title("7  需要等的时候，先应一声", "A slow task: she says she is on it")
+    turn(s, "nav", timeout=40)
+
+
+def sc_think(s):
+    s.title("8  想一想的问题", "A question that needs thought gets a short 'let me think'")
+    turn(s, "philo", timeout=40)
+
+
 SCENES = {"intro": sc_intro, "ability": sc_ability, "ability2": sc_ability2, "scenario": sc_scenario, "style": sc_style, "noise": sc_noise,
-          "warm": sc_warm, "error": sc_error, "prep": sc_prep}
+          "warm": sc_warm, "error": sc_error, "prep": sc_prep, "cue": sc_cue, "nav": sc_nav, "think": sc_think}
 
 if __name__ == "__main__":
     run(sys.argv[1], sys.argv[2:] or list(SCENES))

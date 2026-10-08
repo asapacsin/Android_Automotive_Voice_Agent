@@ -2925,6 +2925,40 @@ tests:
     related: [P45, P45-UNIT-001, DEMO-10-2-001]
     last_run: {at: null, result: null}
 
+  - id: WAIT-CUE-UNIT-001
+    capability: speech
+    name: Wait cues fire on time from the last word, truthfully, once, and never block a tool result
+    purpose: "SPEC-020 A1-A5 - owner request 2026-10-08: say she is on it when a reply is slow, and why when it takes longer"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: []
+    procedure: ["gradlew :app:testDebugUnitTest --tests *AssistantVoiceRevoicerWaitCueTest* --tests *WaitCueCoreIntegrationTest* --tests *WaitCuesTest* --tests *GeminiLiveProviderVoiceTest* --tests *ActionClaimGuardTest*", "gradlew :ingress:test --tests *WaitCueAudioTest*", "gradlew test --rerun-tasks :app:assembleDebug"]
+    pass_criteria: ["C1 at 1.0 s / C2 at 1.8 s from the last word (hangover backdated), C3/C4/C5 at 5 s by reason, C6 at 12 s, each once", "no cue once reply words are queued or audible, after a silent ResponseDone, without turn evidence, after an app-side cancel, in SILENT_WAIT/sleep or with a GUIDANCE prompt open", "a reply arriving during a cue follows it; a cancel stops both", "a cue during a deferred tool leaves the session THINKING and the result is delivered", "no cue text is a claim (I-1)"]
+    evidence: ["2026-10-08 cloud, claude/10-8 (merge 92a36ec): AssistantVoiceRevoicerWaitCueTest 25/0, WaitCueCoreIntegrationTest 5/0, WaitCueAudioTest 4/0, GeminiLiveProviderVoiceTest 8/0; app 1677/0, ingress 118/0; independent review REVISE, REVISE, PASS (planner read the JUnit XML)"]
+    related: [SPEC-020, P48, WAIT-CUE-EMU-001]
+    last_run: {at: 2026-10-08, result: PASS}
+
+  - id: WAIT-CUE-EMU-001
+    capability: speech
+    name: Wait cues on the emulator with live Gemini and the Azure voice (SPEC-020 A6)
+    purpose: "The device-level confirmation the JVM tests cannot give: real Gemini timing, the real uplink gate, the real player"
+    type: device
+    scope: END_TO_END
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    terminal_success: [cues_on_time, no_overlap, tool_turn_completes]
+    covers: []
+    prerequisites: ["emulator nova_api34 on the owner's PC with this build", "Azure voice on", "host bridge with headphones"]
+    procedure: ["5 slow turns each: 导航去励骏庞都, 放点梶浦由记的歌, a chat question; plus 第一个 in the picker and a cough", "capture NovaVoice; python tools/demo/check_demo_log.py --run B <log>", "listen to the recorder audio for overlap"]
+    pass_criteria: ["checker row 'SPEC-020 wait cues on time' PASS: ack_action <= 1500 ms, ack_chat <= 2300 ms from the last word", "no wait_cue_failed", "every tool turn reaches work_delivered and a spoken result", "no cue after the picker's 第一个 or after the cough", "by ear: no cue in the middle of a reply, never two voices"]
+    evidence: ["2026-10-08 f8e29b6 partial (demo recorder, not this procedure): 12 turns, every one cued; ack_chat 1808-1900 ms PASS; ack_action 1608-1755 ms FAIL vs 1500 - it fires on the tool call's arrival, which Gemini sent 1.6-1.75 s after the last word; tool turns (query_live_info, play_music) completed and spoken; no wait_cue_failed; cue then reply in order on the player timeline (not checked by ear). Not run: navigation, picker 第一个, cough"]
+    related: [SPEC-020, WAIT-CUE-UNIT-001, DEMO-10-3-001, P48]
+    last_run: {at: null, result: null}
+
   - id: DEMO-10-2-001
     capability: speech
     name: One demo run that exercises every claude/10-2 function, graded by the log checker

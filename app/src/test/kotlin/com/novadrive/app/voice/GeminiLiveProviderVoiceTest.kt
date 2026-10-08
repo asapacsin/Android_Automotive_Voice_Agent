@@ -11,6 +11,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -85,5 +86,54 @@ class GeminiLiveProviderVoiceTest {
         assertFalse(GeminiLiveProvider(config, lastAudioSegment = { null }).revoicing)
         assertTrue(GeminiLiveProvider(config, lastAudioSegment = { null }, assistantVoice = BlockingVoice()).revoicing)
         assertEquals(false, GeminiLiveProvider(config).revoicing)
+    }
+
+    private class CountingVoice : AssistantVoice {
+        val spoken: MutableList<String> = Collections.synchronizedList(mutableListOf())
+        override suspend fun synthesize(text: String, style: SpeakingStyle, onPcm: suspend (ByteArray) -> Unit) {
+            spoken += text
+            onPcm(ByteArray(2))
+        }
+    }
+
+    /** SPEC-020 A5: the factory's `repliesSpoken` (the lifecycle's `speaks`) reaches the revoicer as `quiet`. */
+    private fun cuesSpoken(repliesSpoken: Boolean): List<String> = runBlocking {
+        val voice = CountingVoice()
+        val provider = GeminiLiveProvider(config, { null }, { true }, voice, repliesSpoken = { repliesSpoken })
+        val job = async(Dispatchers.Default) { provider.events().collect {} }
+        delay(100)
+        provider.onLocalSpeechActivity(false)
+        delay(2_100)
+        job.cancel()
+        voice.spoken.toList()
+    }
+
+    @Test
+    fun noWaitCueWhenRepliesAreNotSpoken() {
+        assertEquals(listOf(WaitCues.ACK_CHAT), cuesSpoken(repliesSpoken = true))
+        assertEquals(emptyList<String>(), cuesSpoken(repliesSpoken = false))
+    }
+
+    /** SPEC-020 R7: the provider's client cancel (only app-side for Gemini) ends the turn's cues. */
+    @Test
+    fun aClientCancelEndsTheWaitCueTurn() {
+        val voice = CountingVoice()
+        kotlinx.coroutines.test.runTest {
+            val revoicer = AssistantVoiceRevoicer(voice, style = { SpeakingStyle.DEFAULT }, onFailure = {}, clock = { testScheduler.currentTime })
+            val provider = GeminiLiveProvider(config, GeminiLiveClient(), revoicer)
+            val upstream = Channel<RealtimeEvent>(Channel.UNLIMITED)
+            val job = launch { revoicer.revoice(upstream.consumeAsFlow()).collect {} }
+            testScheduler.runCurrent()
+            provider.onLocalSpeechActivity(true)
+            upstream.send(RealtimeEvent(0L, DomainVoiceEvent.ResponseStarted))
+            testScheduler.runCurrent()
+            provider.cancelAssistantResponse()
+            provider.onLocalSpeechActivity(false)
+            testScheduler.advanceTimeBy(20_000)
+            testScheduler.runCurrent()
+            upstream.close()
+            job.join()
+        }
+        assertEquals(emptyList<String>(), voice.spoken.toList())
     }
 }

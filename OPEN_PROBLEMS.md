@@ -1811,3 +1811,26 @@ Measured from the driver's **last audible word**, not the end of the clip; edge-
   | Azure first audio | 0.26–0.49 s | done |
 
   Row 3 (SPEC-014 clause release) is now the largest piece the app controls. It needs the owner's decision: ADR-011 Revision 2 deferred it.
+
+## P49 — With the local gate on, Gemini never ends the turn, and the emulator never ran the gate
+
+**Status:** FIXED on the emulator 2026-10-08 (`claude/10-8`); phone not yet verified. Found while recording the SPEC-020 demo on nova_api34.
+
+**Seen:**
+1. **No wait cue at all on the emulator.** `PcmAudioCapture` bypasses `SpeechUplinkGate` in a debug build on an x86 emulator, because the emulator HAL zero-fills about 30% of samples. With the gate bypassed, `onUplinkSegmentChanged` never fires, so the SPEC-020 clock never starts. The cue path had never run on the emulator, and the turn was opened by the `gemini_driver_turn_fallback source=voice_activity` path.
+2. **With the gate on, the turn never ends.** The gate stops sending frames after its 1.2 s hangover. Gemini's server VAD waits 1.0–2.0 s of silence (P48), so it never heard enough, and `ACTIVITY_END` came only with the next sound: 11 s later, twice in a row. `audioStreamEnd` alone did not end the turn.
+
+**Fix:**
+- Frames from the debug host bridge (`HostAudioTap.source`) are clean, so they now go through the gate exactly like a phone's microphone. The emulator HAL path is still bypassed.
+- When the gate closes, `GeminiLiveClient` sends 1.5 s of digital silence and then `audioStreamEnd` (`GeminiLiveProtocol.endOfSpeech`). Both go through `trySend`, so a closed socket raises no error. `ACTIVITY_END` now follows the gate's close by 0.15–0.4 s.
+
+**Measured, take `c_cue5`, from the driver's last audible word:**
+
+| Turn | Cue heard | Real reply |
+| --- | --- | --- |
+| 今天珠海天气怎么样 (`query_live_info`) | 「收到，正在处理。」, 3.2 s (cue log 1.76 s; first synthesis 744 ms) | 5.2 s |
+| 放一首轻松的歌 (`play_music`) | 1.9 s | 5.0 s |
+
+**Risk and next:**
+- The phone has always run the gate, so on Gemini the same stall may be behind P45's 12 s `ACTIVITY_END`. This fix applies there too. Verify on the phone.
+- A mid-sentence pause longer than the 1.2 s hangover now ends the turn at once. Before, the server would also have ended it after its own 1–2 s.

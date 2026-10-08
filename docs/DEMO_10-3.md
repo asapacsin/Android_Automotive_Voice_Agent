@@ -30,6 +30,7 @@ It takes about 30 minutes on the PC emulator (`nova_api34`, see [EMULATOR_TESTIN
 | **10-3:** the Azure connection is kept across sessions and warmed when the driver starts talking | 574e0ff (SPEC-019) | run B, `WARM-1` |
 | **10-3:** a dropped chat reply is corrected in 1.5 s, not 20 s | 9696ce5 | every chat scene |
 | **10-3:** a list of abilities is not an action claim | 9696ce5 | run B, `AB-1` |
+| **10-8:** wait cues — 「收到，正在处理。」 about 1.0 s or 「嗯，我想想。」 about 1.8 s after the last word when a reply is slow; a truthful reason at 5 s and 12 s; the reply follows without overlap; a tool turn still completes | SPEC-020 (A6) | run B, any slow turn (navigation and music are the usual ones); checker row `SPEC-020 wait cues on time`, plus by ear: no cue in the middle of a reply, no cue after a cough |
 
 ## Before the run
 
@@ -175,7 +176,7 @@ The checker applies these numbers. A "demo target" has no settled budget in the 
 | Gemini stream gaps (`max_gap_ms`), unheard interrupts, empty turns | recorded (INFO) | P45 F1 |
 | Guidance fidelity mismatches | 0 | SPEC-018 |
 | Any claim-gate hold | ≤ 20 000 ms (FAIL above) | P45 / 4f857e9: a stalled VAD held 31.8 s |
-| Correction wait on a chat turn (`gemini_correction_deferred graceMs`) | ≤ 1500 ms | 9696ce5 `CHAT_CORRECTION_GRACE_MS` |
+| Correction wait on a chat turn (`gemini_correction_deferred graceMs`) | ≤ 1500 ms | 9696ce5 `GeminiCorrectionGrace.CHAT_CORRECTION_GRACE_MS` |
 | Chat replies with `no_drop` (AB-1, MIC-1) dropped by the claim gate | 0 | 9696ce5, 4f857e9 |
 | First Azure clause after ≥ 60 s idle (WARM-1) | ≤ 1000 ms | demo target; 574e0ff measured 426 ms |
 
