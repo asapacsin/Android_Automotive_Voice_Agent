@@ -41,6 +41,11 @@ Qwen-Omni Realtime, from Alibaba Model Studio, is end to end. It hears the drive
 5. **Keys:** the owner creates the DashScope key and stores it. On the PC it is the user environment variable `DASHSCOPE_API_KEY`; in the app it goes in developer settings and the Keystore. Agents never enter, print, log or commit it.
 6. **Stock voices only (B-034).** Qwen offers voice cloning; it is never used to copy a real character's or voice actor's voice.
 
+**Correction (2026-10-09, from the official docs, before Q-1):**
+- `qwen3.8-omni-flash-realtime` is served only from the *workspace* endpoint: `wss://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/api-ws/v1/realtime`. `dashscope-intl.aliyuncs.com` does not serve it.
+- So besides the key, the owner supplies the Model Studio workspace ID. On the PC it is the user environment variable `DASHSCOPE_WORKSPACE_ID`; in the app it goes in developer settings.
+- The decision itself is unchanged. The details are in [SPEC-021](../SPECS/SPEC-021-qwen-omni-provider.md).
+
 ## Gates — Gemini + Xiaoyi stays the default until every gate passes
 
 | Gate | What | Who |
