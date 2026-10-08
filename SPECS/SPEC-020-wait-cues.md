@@ -14,6 +14,8 @@ The driver never waits in silence wondering whether she heard:
 
 `AssistantVoiceRevoicer`. It already sees the driver's speech events, the reply boundaries, the tool calls and every reply clause it voices. The cue is fixed app wording spoken through the same `AssistantVoice`, so there is still exactly one voice. Cue audio goes out as ordinary reply audio on the same playback path, so `SpeechArbiter` and barge-in apply to it unchanged.
 
+Clock source (deviation, 2026-10-08): Gemini sends no speech events of its own; the session core synthesises `SpeechStarted`/`SpeechStopped` downstream of the provider stream. So `GeminiLiveProvider.onLocalSpeechActivity` forwards the local end of speech to `AssistantVoiceRevoicer.onDriverSpeech`. Stream `SpeechStarted`/`SpeechStopped` (Baidu) reach the same method. One clock per driver turn, whichever arrives first.
+
 Not owners: the model or the prompt (the cue must hold when the model is slow or silent), `DriverTurn` (cues claim nothing, so there is nothing to judge), and the UI.
 
 ## Behaviour
@@ -51,11 +53,13 @@ Rules:
 
 ## Acceptance
 
-| # | Criterion | Proven by |
-| --- | --- | --- |
-| A1 | C1/C2 fire at their thresholds when no reply audio exists, and not when reply audio started first | `AssistantVoiceRevoicerTest` with a virtual clock |
-| A2 | C3/C4/C5 pick the right reason from the events seen; C6 at 12 s; each at most once per turn | same |
-| A3 | A reply arriving during a cue plays after it, in order, with nothing lost; a cancel stops both | same |
-| A4 | No cue text is a claim | `ActionClaimGuardTest` over every cue string |
-| A5 | No cue with the assistant voice off, in SILENT_WAIT, or with a guidance prompt open | unit |
-| A6 | Emulator: the driver hears 「嗯，我想想。」 or 「收到，正在处理。」 within 1.5 s of his last word on every slow turn, and the reply follows it without overlap | `wait_cue` log lines plus the demo recorder's audio |
+| # | Criterion | Proven by | State |
+| --- | --- | --- | --- |
+| A1 | C1/C2 fire at their thresholds when no reply audio exists, and not when reply audio started first | `AssistantVoiceRevoicerTest` with a virtual clock | unit PASS 2026-10-08 |
+| A2 | C3/C4/C5 pick the right reason from the events seen; C6 at 12 s; each at most once per turn | same | unit PASS 2026-10-08 |
+| A3 | A reply arriving during a cue plays after it, in order, with nothing lost; a cancel stops both | same | unit PASS 2026-10-08 |
+| A4 | No cue text is a claim | `ActionClaimGuardTest` over every cue string | unit PASS 2026-10-08 |
+| A5 | No cue with the assistant voice off, in SILENT_WAIT, or with a guidance prompt open | unit | unit PASS 2026-10-08 for the GUIDANCE prompt and the `quiet` predicate; the SILENT_WAIT/sleep wiring is still open, see note |
+| A6 | Emulator: the driver hears 「嗯，我想想。」 or 「收到，正在处理。」 within 1.5 s of his last word on every slow turn, and the reply follows it without overlap | `wait_cue` log lines plus the demo recorder's audio | open (device) |
+
+Note: the revoicer takes a `quiet: () -> Boolean` (SILENT_WAIT, sleep). It is not wired yet: `GeminiLiveProvider` is built in `RealtimeProviderFactory`, which has no access to `ListeningLifecycle`. With the assistant voice off there is no revoicer, so no `wait_cue_skipped reason=no_assistant_voice` line is written.
