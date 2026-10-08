@@ -96,7 +96,7 @@ class ArchitectureRulesTest {
         // Owner of the per-turn gate: DriverTurnPipeline (ADR-010); the provider client is read too,
         // so the loose per-turn flags below cannot come back in either file.
         val client = text("app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt") +
-            text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt")
+            text("app/src/main/kotlin/com/novadrive/app/voice/OpenAiRealtimeClient.kt")
         // Proof enters the system at exactly one place: the tool result.
         assertTrue(client.contains("onExecutionResult(callId, output)")) {
             "INVARIANT I-1: the tool result (DriverTurnPipeline.onToolResult) is the only source of execution evidence"
@@ -202,6 +202,8 @@ class ArchitectureRulesTest {
         val budgets = mapOf(
             // D-8 closed 2026-09-29: the per-turn gate moved to DriverTurnPipeline (939 -> 725).
             "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt" to 800,
+            // SPEC-021 step 1 (2026-10-08): the turn handling moved out of BaiduFlexClient, recorded at 675.
+            "app/src/main/kotlin/com/novadrive/app/voice/OpenAiRealtimeClient.kt" to 675,
             "app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt" to 400,
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapNaviViewHost.kt" to 900,
             "app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt" to 470,

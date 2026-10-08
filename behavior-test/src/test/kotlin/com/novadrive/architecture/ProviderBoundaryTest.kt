@@ -111,6 +111,9 @@ class ProviderBoundaryTest {
          */
         val ADAPTERS = setOf(
             "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt",
+            "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexDialect.kt",
+            "app/src/main/kotlin/com/novadrive/app/voice/OpenAiRealtimeClient.kt",
+            "app/src/main/kotlin/com/novadrive/app/voice/RealtimeDialect.kt",
             "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexProtocol.kt",
             "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexProvider.kt",
             "app/src/main/kotlin/com/novadrive/app/voice/BaiduRealtimeClient.kt",

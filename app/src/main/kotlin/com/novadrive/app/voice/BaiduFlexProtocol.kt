@@ -192,12 +192,12 @@ object BaiduFlexProtocol {
 /** Stateful, bounded assembler. It emits nothing until the authoritative done event. */
 class FlexFunctionCallAssembler(
     private val onMalformed: (String) -> Unit = { com.novadrive.app.DebugVoiceLog.log(it) },
-) {
+) : RealtimeCallAssembler {
     private data class Pending(val name: String, val itemId: String, val delta: StringBuilder = StringBuilder())
     private val pending = mutableMapOf<String, Pending>()
     private val completed = mutableSetOf<String>()
 
-    fun consume(text: String): List<DomainVoiceEvent> {
+    override fun consume(text: String): List<DomainVoiceEvent> {
         val raw = JSONObject(text)
         return when (raw.optString("type")) {
             "response.output_item.added", "response.output_item.done" -> {
@@ -228,7 +228,7 @@ class FlexFunctionCallAssembler(
         }
     }
 
-    fun clear() {
+    override fun clear() {
         pending.clear()
         completed.clear()
     }

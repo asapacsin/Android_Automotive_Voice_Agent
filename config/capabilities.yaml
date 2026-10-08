@@ -480,6 +480,9 @@ change_impact:
       - EmptyResponseRetryPolicy
       - NetworkFaults
       - BaiduFlexClient
+      - OpenAiRealtimeClient
+      - RealtimeDialect
+      - BaiduFlexDialect
       - BaiduRealtimeClient
       - BaiduFlexProvider
       - BaiduFlexProtocol

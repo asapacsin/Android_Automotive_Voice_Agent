@@ -21,14 +21,14 @@ microphone
   → PcmAudioCapture (16 kHz PCM16, WebRTC AEC3 before gain/gate)
   → AndroidMicrophonePort         gates: muted / guidance / sleep (model playback stays uplinked)
   → SpeechUplinkGate              200 ms of voice before anything is uploaded
-  → BaiduFlexClient (WSS)         input_audio_buffer.append
+  → OpenAiRealtimeClient (WSS)    input_audio_buffer.append (BaiduFlexClient = + BaiduFlexDialect)
         ↑ server VAD decides where a turn starts and ends
   → response.created / function_call / audio deltas
   → FlexFunctionCallAssembler     validates name, fields, bounds, enums
   → AndroidToolDispatcher         the ONLY bridge from model output to device action
   → SafeAndroidActionExecutor / EmbeddedNavigationController / ClimateToolHandler / …
   → ToolDispatchResult            {ok, status|error, next}  ← the truth about what happened
-  → BaiduFlexClient.sendFunctionResult → the model answers from the result
+  → OpenAiRealtimeClient.sendFunctionResult → the model answers from the result
   → PhantomTurnGate               may hold or drop the reply audio + subtitle
   → AndroidPlaybackPort → PcmAudioPlayer (USAGE_ASSISTANT, media stream)
   → AssistantOverlayView          subtitle
@@ -133,7 +133,9 @@ The rules are in [SPEC-006](../SPECS/SPEC-006-complex-voice-commands.md); the pa
 oracle is proven by `ContextResolverTest`.
 
 ### Realtime provider — `app/voice/BaiduFlexClient.kt`
-Owns the vendor protocol and wires the per-turn machinery: `ResponseTurnGate` (one reply at a time),
+SPEC-021: `OpenAiRealtimeClient` owns OpenAI-Realtime turn handling for every dialect; the wire
+differences (endpoint, auth, session.update, error codes, log prefix, voice fallback) sit behind
+`RealtimeDialect`. `BaiduFlexClient` is that client driven by `BaiduFlexDialect`. The client wires the per-turn machinery: `ResponseTurnGate` (one reply at a time),
 `ConversationResetPolicy` (a fresh conversation after tool turns), `EmptyResponseRetryPolicy`, and
 `ActionClaimGuard`.
 
