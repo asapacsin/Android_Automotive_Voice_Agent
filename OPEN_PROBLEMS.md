@@ -1750,3 +1750,30 @@ This is not the start-sensitivity change: the server did detect the activity. Th
 - Add a unit test with a confirmation turn open when g1 arrives. Then re-run the drive on the emulator and check for `guidance_route … to=assistant reason=SENT`.
 
 The toggle is experimental and off by default, so a driver on default settings is not affected. The demo video was recorded with it off.
+
+## P47 — Steady background noise: Gemini never detects the start of speech
+
+**Status:** OPEN, found 2026-10-08 while recording the new-functions demo. PC emulator nova_api34, build e0ba94f (`claude/10-3`), Gemini VAD start LOW / end HIGH (4f857e9), host audio bridge as the microphone.
+
+**Seen:** a fan-like noise bed (brown + pink noise, steady) was mixed into the uplink from 3 s before the driver's line 「你喜欢什么颜色」 (synthetic speech, about −23 dBFS RMS). Gemini logged **no `ACTIVITY_START`** and the driver got no reply.
+
+| Noise RMS (before the app's input gain) | `ACTIVITY_START` | Reply |
+| --- | --- | --- |
+| −32 dBFS | none | none |
+| −40 dBFS | none | none |
+| −46 dBFS | none | none |
+| off (same clip, same session setup) | yes, 1.9 s later `ACTIVITY_END` | yes |
+
+The app did capture the speech: `session_diag peak` rose to about 10 900 during the line, with the noise at about 700, `gated=false`, and no uplink drops in that window. So the audio reached the client; the server VAD did not open a turn.
+
+**Hypothesis:** START_SENSITIVITY_LOW sets its threshold relative to a background that is not silent, so a steady floor raises it above the speech. Before 4f857e9 the start sensitivity was higher. The P45 change fixed turns that never *ended* in room noise; this one never *starts*.
+
+**Next:**
+1. Repeat with a real microphone and a real fan (DEMO_10-3 MIC-1, `HUMAN_REQUIRED`). Synthetic noise on the emulator is software-path evidence only.
+2. If it reproduces, compare start sensitivity HIGH with end HIGH on the same clips. Then decide between server VAD tuning and client-side activity signals (`activityStart`/`activityEnd` with automatic detection off) — that choice is an ADR.
+
+### P45 addendum 3, 2026-10-08: the stall and the warm-up on build e0ba94f
+
+- **The stall again, with a clean uplink:** after a sleep and wake, a 1.2 s line got `ACTIVITY_START` 1.5 s after the wake but `ACTIVITY_END` only **12.0 s** later. Nothing followed the line but digital silence, and the host bridge reported no drops in that window. The driver heard the reply about 12 s after he stopped.
+- **The warm Azure connection after a ≥ 60 s sleep (574e0ff) is inconsistent.** Over 4 tries, the first `azure_tts_first_audio` was 1161, 424, 362 and 1512 ms. The demo target is ≤ 1000 ms.
+- **Emulator caveat:** in takes longer than about a minute, the host bridge itself began dropping uplink audio (`dropped_ms` rising by up to 87 s). Turns lost that way are not app evidence, and they are excluded above.
