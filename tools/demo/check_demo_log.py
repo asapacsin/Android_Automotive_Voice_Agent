@@ -43,6 +43,8 @@ BUDGET = {
     "chat_correction_ms": (1500, "9696ce5: CHAT_CORRECTION_GRACE_MS"),
     "azure_cold_ms": (1000, "demo target; 574e0ff measured 426 ms after 60 s idle (was 1.8-4.5 s)"),
     "hold_p90_ms": (5000, "demo target: P45 saw 9.4 s; SPEC-014 clause release is the real fix"),
+    "cue_ack_action_ms": (1500, "SPEC-020 A6: C1 at 1.0 s after the last word + 0.5 s"),
+    "cue_ack_chat_ms": (2300, "SPEC-020 A6: C2 at 1.8 s after the last word + 0.5 s"),
 }
 BUSY = {"USER_SPEAKING", "THINKING", "SPEAKING"}
 LINE = re.compile(r"^(\d\d)-(\d\d)\s+(\d\d):(\d\d):(\d\d)\.(\d{3})\s.*?NovaVoice\s*:\s?(.*)$")
@@ -282,6 +284,8 @@ def check_global(events: list[Event], run: str, res: Result) -> None:
     check_cards(events, res)
     check_guidance(msgs, res)
     check_p45(events, res)
+    if run == "B":
+        check_wait_cues(msgs, res)
 
 
 def check_bubble(events: list[Event], res: Result) -> None:
@@ -368,6 +372,32 @@ def check_p45(events: list[Event], res: Result) -> None:
         res.add("P45 F1 Gemini stream gaps", "INFO", f"max gap p50 {pct(gaps, 0.5)} ms, p90 {pct(gaps, 0.9)} ms; interrupted unheard {unheard}; empty turns {empty}")
 
 
+def check_wait_cues(msgs: list[str], res: Result) -> None:
+    """SPEC-020: wait cues are timed from the driver's last word, and a cue never fails a reply."""
+    cues = [(field_str(m, "code"), field_int(m, "after_ms")) for m in msgs if m.startswith("wait_cue code=")]
+    if not cues:
+        res.add("SPEC-020 wait cues on time", "NOT_SEEN", "no wait_cue line (no reply was slow, or the build predates SPEC-020)")
+    else:
+        late = []
+        for code, after in cues:
+            key = {"ack_action": "cue_ack_action_ms", "ack_chat": "cue_ack_chat_ms"}.get(code or "")
+            if key and after is not None and after > BUDGET[key][0]:
+                late.append(f"{code} {after} ms")
+        counts = {c: sum(1 for x, _ in cues if x == c) for c in sorted({x for x, _ in cues if x})}
+        res.add("SPEC-020 wait cues on time", "PASS" if not late else "FAIL",
+                f"{counts}; late: {late or 'none'} (A6: C1 <= {BUDGET['cue_ack_action_ms'][0]} ms, C2 <= {BUDGET['cue_ack_chat_ms'][0]} ms)")
+    failed = sum(1 for m in msgs if m.startswith("wait_cue_failed"))
+    if failed:
+        res.add("SPEC-020 wait cue synthesis", "FAIL", f"{failed} wait_cue_failed")
+    reasons: dict[str, int] = {}
+    for m in msgs:
+        if m.startswith(("wait_cue_skipped", "wait_cue_cancelled")):
+            k = f"{m.split()[0].removeprefix('wait_cue_')}:{field_str(m, 'reason')}"
+            reasons[k] = reasons.get(k, 0) + 1
+    if reasons:
+        res.add("SPEC-020 cues skipped/cancelled", "INFO", ", ".join(f"{k} x{v}" for k, v in sorted(reasons.items())))
+
+
 def report(title: str, res: Result) -> str:
     out = [title, "-" * len(title)]
     width = max((len(c) for c, _, _ in res.rows), default=10)
@@ -444,6 +474,8 @@ def selftest() -> int:
         ("11:00:58.000", "state=SPEAKING err=-"),
         ("11:00:58.500", "state=THINKING err=-"),
         ("11:00:59.000", "transcript=你: 讲个冷知识"),
+        ("11:00:59.100", "wait_cue code=ack_chat after_ms=1810"),
+        ("11:00:59.150", "wait_cue_cancelled reason=reply_queued"),
         ("11:00:59.200", "azure_tts_first_audio ms=2400 chars=8 style=none"),
         ("11:00:59.600", "state=SPEAKING err=-"),
         ("11:01:00.000", "error=GEMINI_LIVE_CONNECTION_FAILED x"),
@@ -465,6 +497,7 @@ def selftest() -> int:
         "scene AB-1": "FAIL",            # dropped as a claim, 20 s correction: both flagged
         "scene WARM-1": "FAIL",          # 2400 ms cold first clause
         "P45 no stalled turn (VAD)": "PASS",
+        "SPEC-020 wait cues on time": "PASS",
     }
     problems = [f"{k}: {rows.get(k, ('missing',))[0]} != {v}" for k, v in expect.items() if rows.get(k, ("missing",))[0] != v]
     # B chat 1500 (B1) and 2000 (S-chat1) -> p50 1750; A 1000 and 1200 -> p50 1100; extra 650 ms.
@@ -482,6 +515,12 @@ def selftest() -> int:
     stall = check("B", run_b.replace("10-02 11:00:51.000  100  100 D NovaVoice: TURN_RELEASE", "10-02 11:01:15.000  100  100 D NovaVoice: TURN_RELEASE"))
     if dict((c, v) for c, v, _ in stall.rows).get("P45 no stalled turn (VAD)") != "FAIL":
         problems.append("a 25 s hold was not flagged as a stall")
+    late_cue = check("B", run_b.replace("wait_cue code=ack_chat after_ms=1810", "wait_cue code=ack_chat after_ms=3100"))
+    if dict((c, v) for c, v, _ in late_cue.rows).get("SPEC-020 wait cues on time") != "FAIL":
+        problems.append("a late wait cue was not flagged")
+    failed_cue = check("B", run_b.replace("wait_cue_cancelled reason=reply_queued", "wait_cue_failed"))
+    if dict((c, v) for c, v, _ in failed_cue.rows).get("SPEC-020 wait cue synthesis") != "FAIL":
+        problems.append("a failed wait cue was not flagged")
     if parse("garbage\n"):
         problems.append("parsed a non-log line")
     print(report("selftest run B", res))
