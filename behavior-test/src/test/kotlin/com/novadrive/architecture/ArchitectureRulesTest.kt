@@ -19,6 +19,12 @@ class ArchitectureRulesTest {
     private fun kotlinFiles(path: String): List<File> =
         File(root, path).walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
 
+    /** Every OpenAI-Realtime wire dialect (SPEC-021), so a rule covers dialects added later. */
+    private fun realtimeDialects(): String =
+        File(root, "app/src/main/kotlin/com/novadrive/app/voice").listFiles { f -> f.name.endsWith("Dialect.kt") }!!
+            .sortedBy { it.name }.also { check(it.isNotEmpty()) { "no *Dialect.kt found" } }
+            .joinToString("\n") { it.readText() }
+
     private fun text(path: String): String = File(root, path).also {
         assertTrue(it.isFile, "missing file: $path")
     }.readText()
@@ -93,10 +99,13 @@ class ArchitectureRulesTest {
 
     @Test
     fun executionProofOwnsActionClaims() {
-        // Owner of the per-turn gate: DriverTurnPipeline (ADR-010); the provider client is read too,
-        // so the loose per-turn flags below cannot come back in either file.
+        // Owner of the per-turn gate: DriverTurnPipeline (ADR-010). The OpenAI-Realtime client, its
+        // Baidu subclass and every wire dialect (SPEC-021) are read too, so the loose per-turn flags
+        // below cannot come back in any of them.
         val client = text("app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt") +
-            text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt")
+            text("app/src/main/kotlin/com/novadrive/app/voice/OpenAiRealtimeClient.kt") +
+            text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt") +
+            realtimeDialects()
         // Proof enters the system at exactly one place: the tool result.
         assertTrue(client.contains("onExecutionResult(callId, output)")) {
             "INVARIANT I-1: the tool result (DriverTurnPipeline.onToolResult) is the only source of execution evidence"
@@ -200,8 +209,11 @@ class ArchitectureRulesTest {
         // Raising one is allowed — with a reason in the commit
         // message. See docs/AGENT_MAINTENANCE.md step 4 and docs/TECH_DEBT.md D-1.
         val budgets = mapOf(
-            // D-8 closed 2026-09-29: the per-turn gate moved to DriverTurnPipeline (939 -> 725).
-            "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt" to 800,
+            // SPEC-021 step 1 (2026-10-08): only the Baidu constructor and voice members are left (51
+            // lines); turn handling must not regrow here.
+            "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt" to 80,
+            // SPEC-021 step 1 (2026-10-08): the turn handling moved out of BaiduFlexClient, recorded at 675.
+            "app/src/main/kotlin/com/novadrive/app/voice/OpenAiRealtimeClient.kt" to 675,
             "app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt" to 400,
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapNaviViewHost.kt" to 900,
             "app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt" to 470,
