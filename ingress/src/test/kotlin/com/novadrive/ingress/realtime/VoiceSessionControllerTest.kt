@@ -38,7 +38,23 @@ class VoiceSessionControllerTest {
         assertFalse(VoiceCatalog.capabilities(VoiceProviderId.FAKE).requiresCredentials)
         assertFalse(VoiceCatalog.capabilities(VoiceProviderId.GPT_LIVE).clientResponseCancel)
         assertEquals("gpt-live-1", VoiceCatalog.defaultModel(VoiceProviderId.GPT_LIVE))
-        assertEquals("qwen-audio-3.0-realtime-flash", VoiceCatalog.defaultModel(VoiceProviderId.QWEN))
+        assertEquals("qwen3.8-omni-flash-realtime", VoiceCatalog.defaultModel(VoiceProviderId.QWEN))
+    }
+
+    @Test
+    fun qwenCapabilitiesFollowSpec021() {
+        val c = VoiceCatalog.capabilities(VoiceProviderId.QWEN)
+        assertTrue(c.customTools)
+        assertTrue(c.serverVadInterrupt)
+        assertTrue(c.clientResponseCancel)
+        assertTrue(c.optionalInputCommit)
+        assertTrue(c.workResultInjection)
+        assertTrue(c.unknownEventTolerance)
+        assertTrue(c.requiresCredentials)
+        assertTrue(c.serverSpeechActivityEvents)
+        assertFalse(c.toolCallCancellation)
+        assertFalse(c.verbatimPromptSpeech)
+        assertEquals(VoiceProviderId.QWEN, VoiceCatalog.providerForModel(VoiceCatalog.QWEN_OMNI_FLASH))
     }
 
     @Test
@@ -576,7 +592,7 @@ class VoiceSessionControllerTest {
     fun providerSpecificTypesStayOutOfUiStateMachine() {
         val machine = VoiceSessionStateMachine()
         machine.userStartSession()
-        machine.apply(DomainVoiceEvent.SessionReady(VoiceCatalog.QWEN_FLASH, true))
+        machine.apply(DomainVoiceEvent.SessionReady(VoiceCatalog.QWEN_OMNI_FLASH, true))
         machine.apply(DomainVoiceEvent.SpeechStarted)
         assertEquals(VoiceUiState.USER_SPEAKING, machine.state)
         machine.apply(DomainVoiceEvent.Reconnecting)
