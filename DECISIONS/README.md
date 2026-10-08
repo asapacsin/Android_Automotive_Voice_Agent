@@ -29,7 +29,8 @@ If you are about to argue for a different provider, a different navigation strat
 | [ADR-013](ADR-013-gemini-default-provider.md) | Gemini Live is the default provider; no cross-provider fallback; Baidu retired after device gates | **Accepted** |
 | [ADR-014](ADR-014-guidance-spoken-by-assistant.md) | Navigation guidance spoken by the assistant voice; Amap voice only when the model cannot speak | **Accepted** |
 | [ADR-015](ADR-015-car-domain-servers.md) | Car functions as MCP-shaped in-process domain servers; Gemini stays the single agent | **Accepted** |
-| [ADR-016](ADR-016-chinese-voice-for-gemini.md) | Gemini stays the agent; one Chinese TTS voice speaks (vendor and voice picked by ear) | **Accepted — direction** |
+| [ADR-016](ADR-016-chinese-voice-for-gemini.md) | Gemini stays the agent; one Chinese TTS voice speaks (vendor and voice picked by ear) | **Accepted — direction**; to be superseded by ADR-017 after its gates |
+| [ADR-017](ADR-017-qwen-omni-realtime-end-to-end.md) | Qwen-Omni Realtime with the Maia voice: one end-to-end model, no separate TTS | **Accepted — direction** (gates Q-1…Q-5) |
 
 ## Relationship to `docs/DECISIONS.md`
 

@@ -758,7 +758,8 @@ The app still speaks with Gemini's voice until the owner enters an Azure Speech 
   - Alibaba's description: "A blend of intellect and gentleness".
   - Models: Qwen3.8-Omni-Flash-Realtime, Qwen3.5-Omni-Realtime and qwen3-omni-flash-realtime-2025-12-01.
   - The source is the [Omni voice list](https://www.alibabacloud.com/help/en/model-studio/omni-voice-list).
-- **Status:** a candidate to evaluate, not a decision. Xiaoyi through Azure stays the voice (ADR-016). A switch of provider would need its own ADR that supersedes ADR-013 and ADR-016. ADR-008 removed an earlier Qwen integration, so read its reasons first.
+- **Update 2026-10-09:** the owner adopted this architecture ("ok save this and we would use this architecutre"). See [ADR-017](DECISIONS/ADR-017-qwen-omni-realtime-end-to-end.md), gates Q-1 to Q-5. The owner has set the DashScope key on the PC as `DASHSCOPE_API_KEY`.
+- **Status as first recorded (2026-10-08):** a candidate to evaluate, not a decision. Xiaoyi through Azure stays the voice (ADR-016). A switch of provider would need its own ADR that supersedes ADR-013 and ADR-016. ADR-008 removed an earlier Qwen integration, so read its reasons first.
 - **Next:**
   1. The owner opens Alibaba Model Studio (international, with the free quota and "free quota only" on) and enters the key themselves.
   2. The agents run a PC-side test script that does not touch the app. Maia says fixed lines, and the run measures the time to the first audio, a tool turn and a barge-in, side by side with Gemini + Xiaoyi.
