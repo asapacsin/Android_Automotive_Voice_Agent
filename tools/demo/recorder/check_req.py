@@ -6,7 +6,7 @@ import json, os, re, statistics, sys, wave
 import numpy as np
 
 CLIPS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "clips")
-ACTION_KEYS = {"stuffy", "hot", "mosq", "mosq_out", "seat_high"}
+ACTION_KEYS = {"weather", "nav", "music", "stuffy", "hot", "mosq", "mosq_out", "seat_high"}
 
 
 def audible_end(key):
@@ -26,6 +26,11 @@ def grade(run):
     offset = statistics.median(d - p for d, p in pairs) if pairs else 0.0
     vt = lambda l: stamp(l) - offset - tl["t0"]
     firsts = [vt(l) for l in lines if "assistant_voice_first_audio" in l]
+    cues = [(vt(l), re.search(r"code=(\w+)", l).group(1)) for l in lines if "wait_cue code=" in l]
+    w0 = wave.open(os.path.join(run, "reply.wav"))
+    xr = np.frombuffer(w0.readframes(w0.getnframes()), "<i2").astype(float)
+    fr = w0.getframerate() // 100
+    heard_on = np.sqrt((xr[: len(xr) // fr * fr].reshape(-1, fr) ** 2).mean(1)) > 200
     fails = []
     print(f"== {run}")
     clips = tl["clips"]
@@ -39,8 +44,12 @@ def grade(run):
             fails.append(key)
             continue
         d = nxt[0] - end
-        ok = d <= limit
-        print(f"  {key:10s} start {d:4.1f} s  {'PASS' if ok else 'FAIL'} (max {limit})")
+        on = np.nonzero(heard_on[int(end * 100):int(min(nxt_clip, end + 40) * 100)])[0]
+        h = on[0] / 100 if len(on) else None
+        cue = [f"{c}@{ct - end:.1f}" for ct, c in cues if end - 1.5 < ct < nxt_clip]
+        ok = (h if h is not None else d) <= limit
+        hs = f"{h:4.1f}" if h is not None else " -- "
+        print(f"  {key:10s} hears her {hs} s, real reply {d:4.1f} s  cues {cue or '-'}  {'PASS' if ok else 'FAIL'} (max {limit})")
         if not ok:
             fails.append(key)
     gaps = [int(m.group(1)) for l in lines for m in [re.search(r"assistant_voice_gap_ms ms=(\d+)", l)] if m]

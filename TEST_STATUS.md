@@ -236,7 +236,7 @@ Updated 2026-09-21 · 149 tests
 | VOICE-AB-002 | speech | No Gemini-side lever makes the voice younger in conversation; the transcript can feed a TTS | AUTONOMOUS | PASS | no | 2026-10-02 cloud: read-aloud young line Leda 222->258-276 Hz, Erinome ->242-258 Hz; app… |
 | VOICE-EAR-001 | speech | The owner picks the 符玄-like Gemini voice by ear | HUMAN_PHYSICAL | HUMAN_FAIL | no | 2026-10-02 owner, emulator at 34d629d: 10 voices recorded through the app (Erinome 250 … |
 | VOICE-STYLE-001 | speech | Prefer a younger cute female voice (符玄-like) | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | Owner chose option B id 4196 on 2026-09-21 |
-| WAIT-CUE-EMU-001 | speech | Wait cues on the emulator with live Gemini and the Azure voice (SPEC-020 A6) | AUTONOMOUS | NOT_RUN | no | — |
+| WAIT-CUE-EMU-001 | speech | Wait cues on the emulator with live Gemini and the Azure voice (SPEC-020 A6) | AUTONOMOUS | NOT_RUN | no | 2026-10-08 f8e29b6 partial (demo recorder, not this procedure): 12 turns, every one cue… |
 | WAIT-CUE-UNIT-001 | speech | Wait cues fire on time from the last word, truthfully, once, and never block a tool result | AUTONOMOUS | PASS | no | 2026-10-08 cloud, claude/10-8 (merge 92a36ec): AssistantVoiceRevoicerWaitCueTest 25/0, … |
 | DUP-EXEC-001 | truthfulness | The same adjustment does not run twice in one turn | AUTONOMOUS | PASS | yes | 2026-09-20: FalseCapabilityClaimTest asserts a repeated adjust_temperature in one turn … |
 | FAILED-ACTION-REPORTED-001 | truthfulness | A failed action is reported after its false success claim is dropped | AUTONOMOUS | PASS | yes | 2026-09-24: 20/20 each; failed every run before the fix (also on 0ea4885) |

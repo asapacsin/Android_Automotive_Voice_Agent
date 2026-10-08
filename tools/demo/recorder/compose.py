@@ -8,21 +8,31 @@ CLIPS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "clips")
 LINES = {
     "what": "你干什么", "what2": "你会干啥", "what3": "你都能帮我干嘛", "stuffy": "有点闷", "sweet": "说话嗲一点", "food": "你喜欢吃什么", "genki": "元气一点",
     "bossy": "说话霸道一点", "normal": "正常一点", "color": "你喜欢什么颜色", "cold": "讲个冷知识",
+    "weather": "今天珠海天气怎么样", "nav": "导航去珠海金湾机场", "music": "放一首轻松的歌", "philo": "你觉得人为什么要开车",
 }
 
 NOTES = {
-    "小诺 · 新功能演示": ("claude/10-3 分支新增和修复的功能。每个场景都是一次连续的实时录制。",
-                    "What claude/10-3 added or fixed. Every scene is one continuous real-time take."),
-    "1  问能力：直接回答，不再被拦": ("以前闲聊里列能力（「能帮你调空调、开车窗…」）会被执行证据门当成「假装执行」拦下，司机要等 13–28 秒再听到「没听清」。现在列能力不算执行声明，直接播出。",
-                           "An ability list used to be blocked as a claim of a done action (13–28 s of silence); now it plays straight away."),
-    "2  一句话 → 多个动作": ("「有点闷」触发一个场景：打开空调、调大风量、前窗开一点。三个动作都由车辆接口确认后才播报。",
-                       "\"It's stuffy\" runs a scenario: air on, fan up, front windows open a little — each confirmed by the car."),
-    "3  更多说话风格": ("新增「嗲」「元气」：变的是 Azure 语音的情感风格，不只是用词，并且会一直保持。没有的风格（霸道）会如实说明，风格不变。",
-                  "New sweet and energetic styles change the voice itself and stick; an unknown style is refused honestly."),
-    "4  休眠后再唤醒": ("静默 30 秒后会话自动休眠，再开口就恢复对话。新版本在司机开口时就预先建立晓伊的语音连接，目标是第一句语音 ≤ 1 秒；今天 4 次实测为 0.36–1.5 秒，还不稳定。",
-                    "After the auto-sleep, speaking resumes the conversation. The Azure voice is pre-connected as the driver starts talking; today's 4 tries gave 0.36–1.5 s to the first audio, not yet consistent."),
-    "4  出错提示 12 秒后自动消失": ("断网（飞行模式）后启动会话：显示连接失败的提示卡片，12 秒后自动消失，不会一直挡在地图上。",
-                           "With no network, the connection error card appears and fades by itself after 12 s instead of staying on the map."),
+    "小诺 · 新功能演示": ("claude/10-8 分支：新增「等待提示」，以及之前的修复。每个场景都是一次连续的实时录制，回复前的等待一秒未剪。",
+                    "What claude/10-8 adds (wait cues) on top of the 10-3 fixes. Every scene is one continuous real-time take; no reply wait is cut."),
+    "1  需要等的时候，先应一声": ("查天气、找歌要几秒。以前司机说完后是一段沉默；现在约 1.7 秒先说「收到，正在处理。」，超过 5 秒再说明原因（如「正在查询，稍等一下。」）。提示语是固定文本，从不声称已完成。",
+                          "A slow task: she says she is on it about 1.7 s after the last word, and says why after 5 s. Fixed wording that never claims the task is done."),
+    "2  想一想的问题": ("闲聊问题如果 1.8 秒内还没有回答，她先说「嗯，我想想。」，然后接上真正的回答，不重叠、不打断。",
+                   "A question with no answer yet after 1.8 s gets a short 'let me think', then the real reply follows without overlap."),
+    "3  问能力：马上回答": ("以前列能力（「能帮你调空调、开车窗…」）会被执行证据门当成「假装执行」拦下，要等 13–28 秒。现在列能力直接播出。",
+                      "An ability list used to be blocked as a claim of a done action (13-28 s of silence); now it plays straight away."),
+    "4  一句话 → 多个动作": ("「有点闷」触发一个场景：打开空调、调大风量、前窗开一点。三个动作都由车辆接口确认后才播报。",
+                       "\"It's stuffy\" runs a scenario: air on, fan up, front windows open a little, each confirmed by the car."),
+    "5  更多说话风格": ("「嗲」「元气」改变的是 Azure 语音的情感风格，不只是用词，并且会一直保持。没有的风格（霸道）会如实说明。",
+                  "Sweet and energetic styles change the voice itself and stick; an unknown style is refused honestly."),
+    "6  出错提示 12 秒后自动消失": ("断网（飞行模式）后启动会话：显示连接失败的提示卡片，12 秒后自动消失，不会一直挡在地图上。",
+                           "With no network, the connection error card appears and fades by itself after 12 s."),
+}
+RENAME = {
+    "7  需要等的时候，先应一声": ("1  需要等的时候，先应一声", "A slow task: she says she is on it, and why if it takes longer"),
+    "8  想一想的问题": ("2  想一想的问题", "A question that needs thought gets a short 'let me think'"),
+    "1  问能力：马上回答": ("3  问能力：马上回答", "\"What can you do?\" is answered at once"),
+    "2  一句话 → 多个动作": ("4  一句话 → 多个动作", "One casual phrase runs a whole scenario"),
+    "3  更多说话风格": ("5  更多说话风格", "More speaking styles; an unknown one is refused honestly"),
 }
 
 HEAD = """[Script Info]
@@ -118,6 +128,23 @@ def evidence(run, tl):
         if nxt and nxt[0] - e < 30:
             f = nxt[0]
             if not os.environ.get("NO_LAT"): out.append(f"Dialogue: 3,{ts(f)},{ts(f + 5.0)},Lat,,0,0,0,,{{\\fad(150,300)}}⏱ 说完 → 开口  {f - e:.1f} s")
+    cue_text = {"ack_action": "收到，正在处理。", "ack_chat": "嗯，我想想。", "provider_slow": "网络有点慢，请稍等。",
+                "verifying": "我确认一下，马上回答你。", "still_waiting": "还在处理，网络可能不太稳定，再等我一下。",
+                "tool_running": "（说明正在执行的工具）稍等一下。"}
+    phrase = {"navigate_to": "正在搜索路线，稍等一下。", "choose_navigation_option": "正在搜索路线，稍等一下。",
+              "query_live_info": "正在查询，稍等一下。", "play_music": "正在找歌，稍等一下。", "control_music": "正在找歌，稍等一下。",
+              "describe_camera_view": "正在看画面，稍等一下。"}
+    last_tool = None
+    for l in lines:
+        t = re.search(r"gemini_tool_call id=\S+ tool=(\w+)", l)
+        if t:
+            last_tool = t.group(1)
+        m = re.search(r"wait_cue code=(\w+) after_ms=(\d+)", l)
+        if m and m.group(1) == "tool_running":
+            cue_text["tool_running"] = phrase.get(last_tool, "正在处理，稍等一下。")
+        if m:
+            out.append(f"Dialogue: 3,{ts(vt(l))},{ts(vt(l) + 4.0)},Evid,,0,0,0,,{{\\fad(150,300)}}"
+                       f"💬 等待提示 ({int(m.group(2)) / 1000:.1f} s) · {cue_text.get(m.group(1), m.group(1))}")
     for l in lines:
         m = re.search(r"NovaVoice: error=(\w+)", l)
         if m:
@@ -137,6 +164,9 @@ def main(run, out_mp4):
     end = tl["end"]
     ev = []
     titles = [e for e in tl["events"] if "title" in e]
+    for e in titles:
+        if e["title"] in RENAME:
+            e["title"], e["sub"] = RENAME[e["title"]]
     for i, e in enumerate(titles):
         stop = titles[i + 1]["t"] if i + 1 < len(titles) else end
         a, b = ts(e["t"]), ts(stop)

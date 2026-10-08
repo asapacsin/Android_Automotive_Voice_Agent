@@ -14,14 +14,15 @@ READ = 2.5
 
 # (run, start, end, title times, explicit keeps with jump labels or None)
 SCENES = [
-    ("take1", 0.0, 3.0, [0.13], [(0.0, 3.0, None)]),          # intro card (static title)
-    ("n_ability3", 0.05, None, [0.07], None),
-    ("n_scenario", 0.0, None, [0.05], None),
-    ("n_style2", 0.0, None, [0.05], None),
-    ("n_error", 0.05, None, [0.05], [(0.05, 2.6, None), (12.3, 15.3, "⏩ 断网后启动会话（略去 10 秒）"),
-                                     (24.1, 27.6, "⏩ 12 秒后（中间略去 9 秒）")]),
+    ("u_ability", 0.0, 3.6, [0.09], [(0.0, 3.6, None)]),           # intro card (static title)
+    ("u_cue", 0.0, None, [0.06], None),
+    ("u_think", 0.0, None, [0.06], None),
+    ("u_ability", 4.05, None, [4.09], None),
+    ("u_scenario", 0.0, None, [0.06], None),
+    ("u_style", 0.0, None, [0.08], None),
+    ("u_error", 22.4, None, [22.44], [(22.4, 26.0, None), (33.6, 37.0, "⏩ 断网后启动会话（略去 7.6 秒）"),
+                                      (45.3, 48.8, "⏩ 12 秒后（中间略去 8.3 秒）")]),
 ]
-
 
 def env(path, rate=100):
     w = wave.open(path)
@@ -52,6 +53,10 @@ def keeps(run, a, b, titles):
         for t in titles:
             if t <= s < t + READ or s < t + READ < e:
                 s = max(s, t + READ)
+        # dead air at the end of the take: keep a short pause, drop the rest
+        if last == "reply" and j >= n and e - s > MIN_SIL:
+            out.append((cur, s + PAUSE, None))
+            return [k for k in out if k[1] - k[0] > 0.05]
         # only dead air after her reply (or before anyone spoke in the scene); never the reply wait
         if last != "driver" and e - s > MIN_SIL and j < n:
             ca, cb = s + PAUSE / 2, e - PAUSE / 2
@@ -90,7 +95,7 @@ def main(dst):
               f"afade=t=in:st=0:d=0.02,afade=t=out:st={d - 0.02:.3f}:d=0.02[a{k}];")
     g += "".join(f"[v{k}][a{k}]" for k in range(len(pieces))) + f"concat=n={len(pieces)}:v=1:a=1[vc][ac];"
     ts = lambda s: f"0:{int(s // 60):02d}:{s % 60:05.2f}"
-    head = open("n_error/demo.ass", encoding="utf-8-sig").read().split("[Events]")[0]
+    head = open("u_error/demo.ass", encoding="utf-8-sig").read().split("[Events]")[0]
     ev = "\n".join(f"Dialogue: 5,{ts(s)},{ts(s + 3.0)},Cut,,0,0,0,,{{\\fad(150,300)}}{lab}" for s, lab in labels)
     open("final.ass", "w", encoding="utf-8-sig").write(
         head + "[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n" + ev + "\n")

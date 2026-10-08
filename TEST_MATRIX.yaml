@@ -2955,7 +2955,7 @@ tests:
     prerequisites: ["emulator nova_api34 on the owner's PC with this build", "Azure voice on", "host bridge with headphones"]
     procedure: ["5 slow turns each: 导航去励骏庞都, 放点梶浦由记的歌, a chat question; plus 第一个 in the picker and a cough", "capture NovaVoice; python tools/demo/check_demo_log.py --run B <log>", "listen to the recorder audio for overlap"]
     pass_criteria: ["checker row 'SPEC-020 wait cues on time' PASS: ack_action <= 1500 ms, ack_chat <= 2300 ms from the last word", "no wait_cue_failed", "every tool turn reaches work_delivered and a spoken result", "no cue after the picker's 第一个 or after the cough", "by ear: no cue in the middle of a reply, never two voices"]
-    evidence: []
+    evidence: ["2026-10-08 f8e29b6 partial (demo recorder, not this procedure): 12 turns, every one cued; ack_chat 1808-1900 ms PASS; ack_action 1608-1755 ms FAIL vs 1500 - it fires on the tool call's arrival, which Gemini sent 1.6-1.75 s after the last word; tool turns (query_live_info, play_music) completed and spoken; no wait_cue_failed; cue then reply in order on the player timeline (not checked by ear). Not run: navigation, picker 第一个, cough"]
     related: [SPEC-020, WAIT-CUE-UNIT-001, DEMO-10-3-001, P48]
     last_run: {at: null, result: null}
 
