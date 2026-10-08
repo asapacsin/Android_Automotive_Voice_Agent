@@ -317,4 +317,45 @@ class AssistantVoiceRevoicerWaitCueTest {
         assertEquals(listOf("好的。"), out)
         assertEquals(emptyList<String>(), failures)
     }
+
+    // R7: an utterance the app handled itself gets no cue; other cancels leave the new turn alone.
+
+    @Test
+    fun r7_aClientCancelEndsTheTurnBeforeItsClockStarts() {
+        val out = heard {
+            revoicer.onDriverSpeech(true)
+            send(DomainVoiceEvent.ResponseStarted)
+            revoicer.endWaitCueTurn("client_cancel")
+            revoicer.onDriverSpeech(false, silenceMs = 1_200)
+            after(20_000)
+        }
+        assertEquals(emptyList<String>(), out)
+    }
+
+    @Test
+    fun r7_aPlaybackFlushAfterOnsetLeavesTheNewTurnAlive() {
+        val out = heard {
+            revoicer.onDriverSpeech(true)
+            revoicer.cancelCurrentReply("playback_flushed")
+            revoicer.onDriverSpeech(false, silenceMs = 1_200)
+            after(2_000)
+        }
+        assertEquals(listOf(WaitCues.ACK_CHAT), out)
+    }
+
+    // R8: Gemini answers a tool result in the same response.
+
+    @Test
+    fun r8_aDeliveredToolResultLetsTurnDoneEndTheCues() {
+        val out = heard {
+            revoicer.onDriverSpeech(true)
+            send(DomainVoiceEvent.ResponseStarted, DomainVoiceEvent.ToolCall("c1", "control_climate", emptyMap()))
+            revoicer.onDriverSpeech(false)
+            after(1_100)
+            revoicer.onToolResultDelivered()
+            send(DomainVoiceEvent.ResponseDone("completed"))
+            after(20_000)
+        }
+        assertEquals(listOf(WaitCues.ACK_ACTION), out, "no C4, no C6")
+    }
 }

@@ -59,11 +59,15 @@ class GeminiLiveProvider(
     /** Gemini has no client-side cancel: the turn is only marked, its held output dropped locally. */
     override suspend fun cancelAssistantResponse(): DomainVoiceEvent {
         client.markClientCancelled(); revoicer?.cancelCurrentReply("client_cancel")
+        // Only app-side cancels reach here for Gemini (no clientResponseCancel): the app handled this
+        // utterance itself (a pick, an affordance, the wake word, 闭嘴), so no wait cue for it (SPEC-020).
+        revoicer?.endWaitCueTurn("client_cancel")
         return DomainVoiceEvent.Interrupted("client_local_only")
     }
     override suspend fun cancelActiveResponse(): DomainVoiceEvent = cancelAssistantResponse()
     override suspend fun injectWorkResult(result: WorkInjection): DomainVoiceEvent {
         client.sendToolResult(result.callId, result.output)
+        revoicer?.onToolResultDelivered()  // Gemini answers in the same response, with no new ResponseStarted
         return DomainVoiceEvent.WorkResult(result.callId, result.output)
     }
     override suspend fun sendText(text: String) = client.sendUserText(text)

@@ -11,6 +11,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -111,5 +112,28 @@ class GeminiLiveProviderVoiceTest {
     fun noWaitCueWhenRepliesAreNotSpoken() {
         assertEquals(listOf(WaitCues.ACK_CHAT), cuesSpoken(repliesSpoken = true))
         assertEquals(emptyList<String>(), cuesSpoken(repliesSpoken = false))
+    }
+
+    /** SPEC-020 R7: the provider's client cancel (only app-side for Gemini) ends the turn's cues. */
+    @Test
+    fun aClientCancelEndsTheWaitCueTurn() {
+        val voice = CountingVoice()
+        kotlinx.coroutines.test.runTest {
+            val revoicer = AssistantVoiceRevoicer(voice, style = { SpeakingStyle.DEFAULT }, onFailure = {}, clock = { testScheduler.currentTime })
+            val provider = GeminiLiveProvider(config, GeminiLiveClient(), revoicer)
+            val upstream = Channel<RealtimeEvent>(Channel.UNLIMITED)
+            val job = launch { revoicer.revoice(upstream.consumeAsFlow()).collect {} }
+            testScheduler.runCurrent()
+            provider.onLocalSpeechActivity(true)
+            upstream.send(RealtimeEvent(0L, DomainVoiceEvent.ResponseStarted))
+            testScheduler.runCurrent()
+            provider.cancelAssistantResponse()
+            provider.onLocalSpeechActivity(false)
+            testScheduler.advanceTimeBy(20_000)
+            testScheduler.runCurrent()
+            upstream.close()
+            job.join()
+        }
+        assertEquals(emptyList<String>(), voice.spoken.toList())
     }
 }

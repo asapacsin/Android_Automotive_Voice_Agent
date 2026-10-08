@@ -68,6 +68,7 @@ class WaitCueTurn {
 
     fun onToolCall(name: String) { if (toolName == null) toolName = name; toolOutstanding = true }
     fun onResponseStarted() { responseStarted = true; toolOutstanding = false }
+    fun onToolResultDelivered() { toolOutstanding = false }
 
     /** Something says the driver spoke to her: the model answered, or the audio looked like speech. */
     val hasEvidence: Boolean get() = responseStarted || toolName != null || !suspiciousAudio

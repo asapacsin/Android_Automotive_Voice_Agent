@@ -93,7 +93,7 @@ class AssistantVoiceRevoicer(
         synchronized(cueLock) {
             val turn = cueTurn ?: WaitCueTurn().also { cueTurn = it }
             // The same end of speech reported twice, a turn already over, or her reply already under way.
-            if (turn.clockStarted || turn.stopped || turn.replyUnderway) return
+            if (closing || turn.clockStarted || turn.stopped || turn.replyUnderway) return
             turn.suspiciousAudio = suspiciousAudio
             turn.clockStarted = true
             cueStartMs = clock() - silenceMs
@@ -154,6 +154,21 @@ class AssistantVoiceRevoicer(
         if (timer.isActive) DebugVoiceLog.log("wait_cue_cancelled reason=$reason")
         timer.cancel()
     }
+
+    /** The app handled the driver's utterance itself: no cue for this turn, even if its clock has not started. */
+    fun endWaitCueTurn(reason: String) {
+        val (ended, timer) = synchronized(cueLock) {
+            val turn = cueTurn ?: return
+            val ended = !turn.stopped
+            turn.stopped = true
+            ended to cueTimer.also { cueTimer = null }
+        }
+        timer?.cancel()
+        if (ended) DebugVoiceLog.log("wait_cue_cancelled reason=$reason")
+    }
+
+    /** A tool result went to the model: the tool is no longer outstanding for [WaitCueTurn]'s turn_done rule. */
+    fun onToolResultDelivered() = synchronized(cueLock) { cueTurn?.onToolResultDelivered(); Unit }
 
     private fun onTurnEvent(payload: DomainVoiceEvent) {
         var rearm: WaitCueTurn? = null
