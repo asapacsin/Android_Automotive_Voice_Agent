@@ -33,7 +33,8 @@ The clock stops at any of these:
 - her real reply's words being queued for the voice (`reply_queued`) or becoming audible (`reply_audio`);
 - the driver's next onset;
 - a barge-in or cancel (`cancelCurrentReply`);
-- a `ResponseDone` of this turn's reply when nothing of it was audible and no tool is outstanding (`turn_done`: no answer is coming, so no cue may say one is). A tool is outstanding when a tool call came and no `ResponseStarted` after it.
+- an app-side cancel of the current reply (`client_cancel`), chiefly the app handling the utterance itself: a navigation pick or an on-screen control. 「闭嘴」/sleep and the wake word use the same cancel. This ends the turn's cues for good, even before its clock has started. For Gemini only app-side cancels reach `cancelAssistantResponse` (`clientResponseCancel` is false), so a barge-in never ends a new turn this way;
+- a `ResponseDone` of this turn's reply when nothing of it was audible and no tool is outstanding (`turn_done`: no answer is coming, so no cue may say one is). A tool is outstanding when a tool call came and neither its result has been delivered to the model nor a `ResponseStarted` came after it. Gemini answers a result in the same response, so the delivery is what clears it.
 - the session ending.
 
 Each cue below is spoken at most once per driver turn.
@@ -98,4 +99,13 @@ The core (`VoiceSessionController.playWaitCue`) handles the event as follows:
 - It goes to the same `PlaybackPort`, so `SpeechArbiter` and barge-in apply as for any reply.
 - An interrupted reply stays closed, so its stray audio stays silent.
 
-Status: A1–A5 unit and in-process integration tests pass on the JVM (2026-10-08, cloud, claude/10-8). The independent re-review is recorded in the merge commit. A6 needs the emulator.
+Known limits (accepted 2026-10-08; each fails silent, i.e. a missing cue, never a false one):
+- Words of an interrupted reply that still reach the voice after the driver's next onset mark the new turn's reply as under way, so that turn gets no cue.
+- A filler response that the claim gate drops ends the turn's cues (`turn_done`), so a tool turn that follows it gets none.
+- The end-of-speech backdating always uses `HANGOVER_MS`. A gate closed by a capture interruption (guidance taking the microphone) was not 1.2 s silent, so its cues can come early. Playback is held during guidance anyway.
+- The wake word said over her reply cancels it through the same app-side cancel. So the command that follows the wake word, which still goes to the model, gets no cue.
+- An app-side cancel that lands a few milliseconds after the driver's next onset ends that newer turn's cues.
+- A late tool result from an older turn can clear the current turn's outstanding tool, so `turn_done` may end its cues early.
+- `DebugVoiceLog` is a no-op on the JVM. The `wait_cue_*` log lines are proven by their effects in the tests, and A6 reads them on the emulator.
+
+Status: A1–A5 unit and in-process integration tests pass on the JVM (2026-10-08, cloud, claude/10-8). The independent review is recorded in the merge commit. A6 needs the emulator.
