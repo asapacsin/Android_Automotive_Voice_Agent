@@ -132,7 +132,7 @@ owner. Two copies of that state is the defect [TECH_DEBT.md](TECH_DEBT.md) D-4 a
 The rules are in [SPEC-006](../SPECS/SPEC-006-complex-voice-commands.md); the part that has a real
 oracle is proven by `ContextResolverTest`.
 
-### Realtime provider — `app/voice/BaiduFlexClient.kt`
+### Realtime provider — `app/voice/OpenAiRealtimeClient.kt` (Baidu Flex: `BaiduFlexClient` + `BaiduFlexDialect`)
 SPEC-021: `OpenAiRealtimeClient` owns OpenAI-Realtime turn handling for every dialect; the wire
 differences (endpoint, auth, session.update, error codes, log prefix, voice fallback) sit behind
 `RealtimeDialect`. `BaiduFlexClient` is that client driven by `BaiduFlexDialect`. The client wires the per-turn machinery: `ResponseTurnGate` (one reply at a time),

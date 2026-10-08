@@ -47,7 +47,13 @@ class FullDuplexBargeInTest {
     fun playbackActiveTrackedForBargeInWithoutPlaybackVadThreshold() {
         val flexClient = text("app/src/main/kotlin/com/novadrive/app/voice/OpenAiRealtimeClient.kt")
         val controller = text("app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt")
-        assertFalse(flexClient.contains("vad_threshold_playback"))
+        // SPEC-021: the VAD threshold is now a dialect decision, so the dialects and the Baidu
+        // subclass are checked as well as the client.
+        val voiceDir = File(root, "app/src/main/kotlin/com/novadrive/app/voice")
+        val providerSources = flexClient + text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt") +
+            voiceDir.listFiles { f -> f.name.endsWith("Dialect.kt") }!!.also { check(it.isNotEmpty()) }
+                .joinToString("\n") { it.readText() }
+        assertFalse(providerSources.contains("vad_threshold_playback"))
         assertTrue(flexClient.contains("onPlaybackActiveChanged"))
         assertTrue(controller.contains("setOnPlaybackActiveChanged"))
     }
