@@ -1777,3 +1777,15 @@ The app did capture the speech: `session_diag peak` rose to about 10 900 during 
 - **The stall again, with a clean uplink:** after a sleep and wake, a 1.2 s line got `ACTIVITY_START` 1.5 s after the wake but `ACTIVITY_END` only **12.0 s** later. Nothing followed the line but digital silence, and the host bridge reported no drops in that window. The driver heard the reply about 12 s after he stopped.
 - **The warm Azure connection after a ≥ 60 s sleep (574e0ff) is inconsistent.** Over 4 tries, the first `azure_tts_first_audio` was 1161, 424, 362 and 1512 ms. The demo target is ≤ 1000 ms.
 - **Emulator caveat:** in takes longer than about a minute, the host bridge itself began dropping uplink audio (`dropped_ms` rising by up to 87 s). Turns lost that way are not app evidence, and they are excluded above.
+
+## P48 — The assistant voice lags: slow first reply, gaps between clauses, chat replies held until generation ends
+
+**Status:** OPEN, 2026-10-08. Owner requirement: [docs/DEMO_REQUIREMENTS.md](docs/DEMO_REQUIREMENTS.md) — no laggy AI speech. PC emulator nova_api34, build e0ba94f, Azure voice on.
+
+| Symptom | Measured | Cause | Owner |
+| --- | --- | --- | --- |
+| First reply after app start or sleep: Azure first audio 1.2–1.9 s, and 4–5 s from the end of speech to her voice | 5 takes | `AzureSpeechVoice.warmUp()` sends an anonymous HEAD. That warms TLS at most, never the synthesis path, and nothing logs whether it ran | `AzureSpeechVoice` |
+| Gaps of 0.1–0.36 s mid-reply | 18 joins in 3 takes | `AssistantVoiceRevoicer` starts clause N+1's request only after clause N has fully downloaded (`previous?.join()` before `synthesize`). A short first clause (「好的。」, ~0.6 s of audio) runs out before the next clause's first audio (~0.33–0.45 s after its request) | `AssistantVoiceRevoicer` |
+| Chat replies held 1.0–1.65 s | `TURN_HOLD UNCLASSIFIED_CLAIM` → `TURN_RELEASE no_claim_made` ≈ Gemini `gen_ms` | The UNCLASSIFIED_CLAIM rule is settled only at response end (`DriverTurn.onAssistantText` returns Wait). The safety rule is correct; the speed-up is SPEC-014's clause release, which needs a design decision | `DriverTurn` (SPEC-014) |
+
+The first two are being fixed now. The third is left for the SPEC-014 decision: it is safety-relevant (I-1), so it is not changed inside a latency fix.
