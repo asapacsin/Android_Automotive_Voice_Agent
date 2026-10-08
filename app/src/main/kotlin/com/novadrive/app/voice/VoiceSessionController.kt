@@ -226,7 +226,7 @@ class VoiceSessionController(
         val sharedSessionId = VoiceAudioSession.allocate()
         player.configureAudioSession(sharedSessionId)
         microphone.configureAudioSession(sharedSessionId)
-        val built = RealtimeProviderFactory.build(config, { microphone.measuredSegment() }, ::bargeInQualified)
+        val built = RealtimeProviderFactory.build(config, { microphone.measuredSegment() }, ::bargeInQualified) { lifecycle.speaks }
         player.configureSampleRate(built.outputSampleRateHz)
         provider = built.provider
         active = newCore(built.provider, built.session)

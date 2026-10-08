@@ -72,6 +72,8 @@ class VoiceSessionController(
     private var replyOpen = false
     private var replyEpoch = 0
     private var acceptingReplyAudio = true
+    /** The open reply's stamp was completed (AudioDone / ResponseDone): no more of its audio plays. */
+    private var replyCompleted = false
     private val mutex = Mutex()
     private var eventJob: Job? = null
     private var connectJob: Job? = null
@@ -371,6 +373,7 @@ class VoiceSessionController(
                     val pcm = decodePcm(event.pcm16leBase64)
                     playback.enqueue(pcm, replyEpoch)
                 }
+                is DomainVoiceEvent.WaitCueAudio -> playWaitCue(decodePcm(event.pcm16leBase64))
                 DomainVoiceEvent.SpeechStopped -> diagnostics.markSpeechEnd()
                 is DomainVoiceEvent.Interrupted -> {
                     diagnostics.markInterruptDetected()
@@ -408,7 +411,7 @@ class VoiceSessionController(
                     workCoordinator.fail(event.workId, event.message)
                 }
                 DomainVoiceEvent.AudioDone -> {
-                    if (replyOpen && acceptingReplyAudio) playback.complete(replyEpoch)
+                    if (replyOpen && acceptingReplyAudio) { playback.complete(replyEpoch); replyCompleted = true }
                 }
                 is DomainVoiceEvent.WorkProgress -> {
                     workCoordinator.updateProgress(event.workId, event.message)
@@ -425,6 +428,7 @@ class VoiceSessionController(
             if (event is DomainVoiceEvent.ResponseDone) {
                 if (event.status != "cancelled" && event.status != "failed" && replyOpen && acceptingReplyAudio) {
                     playback.complete(replyEpoch)
+                    replyCompleted = true
                 }
                 generationActive = false
             }
@@ -499,7 +503,25 @@ class VoiceSessionController(
         replyOpen = true
         replyEpoch = playbackEpoch
         acceptingReplyAudio = true
+        replyCompleted = false
         generationActive = true
+    }
+
+    /**
+     * SPEC-020: a wait cue plays in a stamp of its own and completes it. A provider reply still open
+     * gets a fresh stamp for the rest of its audio; a finished or interrupted one stays closed.
+     */
+    private fun playWaitCue(pcm: ByteArray) {
+        val resume = replyOpen && acceptingReplyAudio && !replyCompleted
+        playbackEpoch += 1
+        playback.beginReply(playbackEpoch)
+        playback.enqueue(pcm, playbackEpoch)
+        playback.complete(playbackEpoch)
+        if (resume) {
+            playbackEpoch += 1
+            playback.beginReply(playbackEpoch)
+            replyEpoch = playbackEpoch
+        }
     }
 
     private fun ensureReplyStamp(): Boolean {
