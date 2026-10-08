@@ -174,7 +174,11 @@ class AssistantVoiceRevoicer(
                 }
                 when (val event = item.event.payload) {
                     is DomainVoiceEvent.SpeechText -> {
-                        if (item.epoch == epoch.get()) segmenter.append(event.text).forEach { speak(it, item.epoch) }
+                        if (item.epoch == epoch.get()) {
+                            val clauses = segmenter.append(event.text)
+                            DebugVoiceLog.log("assistant_voice_text chars=${event.text.length} clauses=${clauses.size}")
+                            clauses.forEach { speak(it, item.epoch) }
+                        }
                         continue
                     }
                     DomainVoiceEvent.ResponseStarted -> { drain(); newReply() }
@@ -184,7 +188,12 @@ class AssistantVoiceRevoicer(
                         Phase.VOIDED -> { segmenter.reset(); drain() }
                     }
                     DomainVoiceEvent.AudioDone, is DomainVoiceEvent.ResponseDone -> {
-                        segmenter.flush()?.let { speak(it, item.epoch) }
+                        val rest = segmenter.flush()
+                        DebugVoiceLog.log(
+                            "assistant_voice_flush at=${if (event == DomainVoiceEvent.AudioDone) "audio_done" else "response_done"} " +
+                                "chars=${rest?.length ?: 0}",
+                        )
+                        rest?.let { speak(it, item.epoch) }
                         drain()
                     }
                     is DomainVoiceEvent.Interrupted, is DomainVoiceEvent.Error, DomainVoiceEvent.Closed -> {
