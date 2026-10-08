@@ -488,6 +488,7 @@ change_impact:
       - BaiduDirectRealtimeProvider
       - ConversationResetPolicy
       - GeminiLiveClient
+      - QwenSettings
       - GeminiTurnTiming
       - GeminiCorrectionGrace
       - WaitCues

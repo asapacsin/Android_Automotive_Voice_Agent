@@ -137,7 +137,7 @@ class StructuredVoiceLogTest {
             "connect",
             mapOf(
                 "api_key" to "sk-live-secret",
-                "model" to VoiceCatalog.QWEN_FLASH,
+                "model" to VoiceCatalog.QWEN_OMNI_FLASH,
             ),
         )
         assertTrue(log.lines.single().contains("api_key=configured:yes"))
