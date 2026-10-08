@@ -99,6 +99,35 @@ class SecretScanTest {
     }
 
     @Test
+    fun scannedSourcesDoNotContainHardCodedGoogleApiKeys() {
+        val hits = mutableListOf<SecretScanHit>()
+        scannedRepoFiles().forEach { file ->
+            hits += findHardCodedGoogleApiKeys(repoRelative(file), file.readText())
+        }
+        assertTrue(hits.isEmpty()) { hits.joinToString("\n") { it.location() } }
+    }
+
+    @Test
+    fun googleMatcherFailsOnPlantedKey(@TempDir dir: Path) {
+        val secret = "AI" + "za" + "x".repeat(35)
+        val relative = "Config.kt"
+        val file = dir.resolve(relative)
+        file.writeText("package x\n\nconst val GEMINI_KEY = \"$secret\"\n")
+        val hits = findHardCodedGoogleApiKeys(relative, file.readText())
+        assertMatcherFiredWithLocationOnly(hits, relative, secret)
+        assertTrue(hits.single().line == 3)
+    }
+
+    @Test
+    fun googleMatcherAllowsPlaceholder(@TempDir dir: Path) {
+        val relative = "Config.kt"
+        val file = dir.resolve(relative)
+        file.writeText("package x\n\nconst val CRED_API_KEY = \"gemini_api_key\"\nval k = \"<GEMINI_API_KEY>\"\n")
+        val hits = findHardCodedGoogleApiKeys(relative, file.readText())
+        assertTrue(hits.isEmpty()) { hits.joinToString("\n") { it.location() } }
+    }
+
+    @Test
     fun wakeWordCredentialConstantNamesAreNotFlagged() {
         val file = File(root, "app/src/main/kotlin/com/novadrive/app/wake/WakeWordCredentials.kt")
         assertTrue(file.isFile)
@@ -281,6 +310,14 @@ private val APIKEY_NEAR_VALUE = Regex(
     """com\.amap\.api\.v2\.apikey["']\s*[,)\]]*\s*(?::\s*)?["']([^"']*)["']""",
     RegexOption.IGNORE_CASE,
 )
+
+private val GOOGLE_API_KEY = Regex("AIza[0-9A-Za-z_\\-]{35}")
+
+internal fun findHardCodedGoogleApiKeys(file: String, content: String): List<SecretScanHit> =
+    GOOGLE_API_KEY.findAll(content)
+        .map { SecretScanHit(file, lineNumberOf(content, it.range.first)) }
+        .distinctBy { it.location() }
+        .toList()
 
 internal data class SecretScanHit(val file: String, val line: Int) {
     fun location(): String = "$file:$line"

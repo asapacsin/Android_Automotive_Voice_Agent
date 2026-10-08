@@ -26,6 +26,37 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
     /** True while native Amap HUD owns the top of the screen. */
     private var drivingChrome = false
 
+    /** Which error card, if any, is in the bubble (P44: a fixed CONFIG problem must leave). */
+    private val shownError = ShownErrorCard()
+
+    /** B-035: the last exchange clears itself once the conversation has been quiet for a while. */
+    private val transcriptFade = TranscriptBubbleFade()
+
+    /**
+     * B-035: true while the exchange must stay although the turn state is idle: 小诺's words are
+     * still playing out, or a question waits on screen. Set by the activity; read on the main thread.
+     */
+    var transcriptHeld: () -> Boolean = { false }
+
+    /** When the newest line was written; for the fade log line only. */
+    private var lineShownAtMs = 0L
+
+    private val transcriptFadeTick = object : Runnable {
+        override fun run() {
+            val held = runCatching { transcriptHeld() }.getOrDefault(true)
+            val now = android.os.SystemClock.uptimeMillis()
+            if (transcriptFade.tick(now, lastVoiceState, held)) {
+                // Timing only, never the words (I-8).
+                com.novadrive.app.DebugVoiceLog.log(
+                    "transcript_bubble_faded since_line_ms=${now - lineShownAtMs} quiet_ms=${transcriptFade.lastQuietMs}",
+                )
+                restoreIdleBubble()
+                return
+            }
+            if (transcriptFade.showing) postDelayed(this, TRANSCRIPT_FADE_POLL_MS)
+        }
+    }
+
     private val avatar: TextView
     private val stateDot: TextView
     private val stateLabel: TextView
@@ -271,8 +302,12 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
                 else -> Color.parseColor("#B0BEC5")
             },
         )
-        if (ui == AssistantUiState.ERROR && !error.isNullOrBlank()) {
+        // B-033: a session error (e.g. GEMINI_LIVE_CONNECTION_FAILED) is a card like showError's and
+        // fades the same way; the same error re-bound does not restart its timer.
+        if (ui == AssistantUiState.ERROR && !error.isNullOrBlank() && shownError.code != error) {
+            scheduleCardFade(error, shownError.show(error))
             bubble.text = error
+            transcriptFade.replaced()
         }
         actionCard.visibility = GONE
     }
@@ -281,12 +316,62 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
         val current = bubble.text?.toString().orEmpty()
         val previous = if (current == context.getString(R.string.assistant_speech_placeholder)) "" else current
         bubble.text = recentTranscript(previous, line)
+        shownError.overwritten()
+        transcriptFade.lineShown()
+        lineShownAtMs = android.os.SystemClock.uptimeMillis()
+        com.novadrive.app.DebugVoiceLog.log("transcript_bubble_shown")
+        scheduleTranscriptFade()
+    }
+
+    private fun scheduleTranscriptFade() {
+        removeCallbacks(transcriptFadeTick)
+        if (transcriptFade.showing) postDelayed(transcriptFadeTick, TRANSCRIPT_FADE_POLL_MS)
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        scheduleTranscriptFade()
+    }
+
+    override fun onDetachedFromWindow() {
+        removeCallbacks(transcriptFadeTick)
+        super.onDetachedFromWindow()
     }
 
     fun showError(code: String, message: String) {
+        scheduleCardFade(code, shownError.show(code))
         bubble.text = "$code\n$message"
+        transcriptFade.replaced()
         stateLabel.text = context.getString(R.string.assistant_state_error)
         stateDot.setTextColor(Color.parseColor("#FFEF5350"))
+    }
+
+    /** B-033: a transient card fades; a newer card is never cleared by this timer. */
+    private fun scheduleCardFade(code: String, token: Long) {
+        if (ShownErrorCard.staysUntilFixed(code)) return
+        postDelayed({
+            if (shownError.expire(token)) {
+                com.novadrive.app.DebugVoiceLog.log("error_card_faded code=$code after_ms=$ERROR_CARD_FADE_MS")
+                restoreIdleBubble()
+            }
+        }, ERROR_CARD_FADE_MS)
+    }
+
+    /**
+     * Removes the error card for [code] once its cause is gone. Only that code: a different error
+     * on screen (or none) is left alone, so fixing the settings never hides an unrelated failure.
+     */
+    fun clearError(code: String) {
+        if (!shownError.clear(code)) return
+        com.novadrive.app.DebugVoiceLog.log("error_card_cleared code=$code")
+        restoreIdleBubble()
+    }
+
+    /** The card is gone; the state line shows the real state again (e.g. 休眠中（已断开）). */
+    private fun restoreIdleBubble() {
+        bubble.text = context.getString(R.string.assistant_speech_placeholder)
+        transcriptFade.replaced()
+        bindState(lastVoiceState, null)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean = false
@@ -298,6 +383,53 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
 internal const val DRIVING_STRIP_DP = 44
 private const val COMPACT_AVATAR_DP = 32
 private const val FULL_AVATAR_DP = 64
+
+/**
+ * Which error code the bubble currently shows. [clear] answers true only when exactly that code is
+ * on screen; anything that overwrites the bubble (a transcript line) forgets it.
+ */
+internal class ShownErrorCard {
+    var code: String? = null
+        private set
+
+    private var generation = 0L
+
+    /** Shows [code]; the returned token identifies this card for [expire]. */
+    fun show(code: String): Long {
+        this.code = code
+        return ++generation
+    }
+
+    fun overwritten() {
+        code = null
+        generation++
+    }
+
+    /**
+     * B-033: the fade timer of the card shown with [token]. True only when that same card is still
+     * on screen and it is not one the driver must act on ([staysUntilFixed]).
+     */
+    fun expire(token: Long): Boolean {
+        val shown = code ?: return false
+        if (token != generation || staysUntilFixed(shown)) return false
+        code = null
+        return true
+    }
+
+    companion object {
+        /** Cards the driver must act on stay until the cause is fixed (P44), never fade. */
+        fun staysUntilFixed(code: String): Boolean = code == "CONFIG"
+    }
+
+    fun clear(code: String): Boolean {
+        if (this.code != code) return false
+        this.code = null
+        return true
+    }
+}
+
+/** B-033: how long a transient error card stays before it fades (the log keeps the detail). */
+internal const val ERROR_CARD_FADE_MS = 12_000L
 
 /** Number of transcript lines the bubble keeps: the latest exchange only (driver + 小诺). */
 internal const val TRANSCRIPT_MAX_LINES = 2

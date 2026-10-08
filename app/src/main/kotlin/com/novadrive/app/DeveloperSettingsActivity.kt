@@ -13,6 +13,7 @@ import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.RadioButton
@@ -21,6 +22,7 @@ import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import com.novadrive.app.voice.AzureSpeechConfig
 import com.novadrive.app.voice.BaiduRealtimeClient
 import com.novadrive.app.voice.BaiduFlexClient
 import com.novadrive.app.voice.PcmAudioCapture
@@ -314,6 +316,9 @@ class DeveloperSettingsActivity : Activity() {
             })
             addView(amapKey)
             addView(openAccessibility)
+            addView(geminiSection())
+            addView(azureVoiceSection())
+            addView(guidanceRelayToggle())
             addView(voiceToggle)
             addView("讯飞 APPID（唤醒词 你好小诺；MSC 只需要 APPID，不需要 API Key/Secret）".label())
             addView(iflytekAppId)
@@ -475,6 +480,141 @@ class DeveloperSettingsActivity : Activity() {
             instructions = instructions.text.toString().trim(),
             voice = voice.text.toString().trim().ifBlank { BaiduAppSettings.DEFAULT_VOICE },
             speed = speed.text.toString().trim().toDoubleOrNull() ?: BaiduAppSettings.DEFAULT_SPEED,
+        )
+    }
+
+    /** SPEC-018 (experimental, default off): 小诺 speaks turn-by-turn guidance; read when navigation starts. */
+    private fun guidanceRelayToggle(): CheckBox {
+        val prefs = getSharedPreferences(
+            com.novadrive.app.nav.amap.AmapGuidanceVoice.PREFS, MODE_PRIVATE,
+        )
+        val key = com.novadrive.app.nav.amap.AmapGuidanceVoice.PREF_ASSISTANT_VOICE
+        return CheckBox(this).apply {
+            text = "助手播报导航（实验，默认关）/ Assistant speaks guidance (experimental)"
+            isChecked = prefs.getBoolean(key, false)
+            setOnCheckedChangeListener { _, checked -> prefs.edit().putBoolean(key, checked).apply() }
+        }
+    }
+
+    /** Voice provider choice and Gemini Live settings (ADR-010, ADR-013). The key is never displayed or logged; blank keeps the stored one. */
+    private fun geminiSection(): LinearLayout {
+        val gemini = GeminiSettingsRepository(this)
+        val saved = gemini.loadSettings()
+        val consent = CheckBox(this).apply { text = "我已阅读并同意 / I accept"; isChecked = saved.consentAccepted }
+        val providerButtons = VoiceProviderPreference.entries.associateBy {
+            RadioButton(this).apply {
+                text = if (it == VoiceProviderPreference.GEMINI) "Gemini — 默认 / default" else "Baidu"
+                id = View.generateViewId()
+            }
+        }
+        val providerGroup = RadioGroup(this).apply {
+            providerButtons.forEach { (button, pref) -> addView(button); if (pref == saved.provider) check(button.id) }
+        }
+        val key = secretField(
+            if (gemini.keyPresent()) "Gemini API Key（已配置 / configured；留空保留）" else "Gemini API Key",
+        )
+        val voice = EditText(this).apply { setText(saved.voice); hint = GeminiAppSettings.DEFAULT_VOICE }
+        val levels = GeminiThinkingLevel.entries.associateBy {
+            RadioButton(this).apply { text = it.wireName; id = View.generateViewId() }
+        }
+        val thinking = RadioGroup(this).apply {
+            levels.forEach { (button, level) -> addView(button); if (level == saved.thinkingLevel) check(button.id) }
+        }
+        val thinkingLabel = TextView(this).apply { text = "Thinking level" }
+        val geminiModels = VoiceCatalog.geminiLiveModels.entries.associate { (wire, label) ->
+            RadioButton(this).apply { text = label; id = View.generateViewId() } to wire
+        }
+        fun showThinkingFor(model: String) {
+            val visible = if (VoiceCatalog.geminiAcceptsThinkingLevel(model)) View.VISIBLE else View.GONE
+            thinking.visibility = visible
+            thinkingLabel.visibility = visible
+        }
+        val modelGroup = RadioGroup(this).apply {
+            geminiModels.forEach { (button, wire) -> addView(button); if (wire == saved.model) check(button.id) }
+            setOnCheckedChangeListener { _, id ->
+                geminiModels.entries.firstOrNull { it.key.id == id }?.let { showThinkingFor(it.value) }
+            }
+        }
+        showThinkingFor(saved.model)
+        val silence = EditText(this).apply {
+            setText(saved.silenceDurationMs?.toString().orEmpty())
+            hint = "静音结束 ms（留空 = 服务器默认）/ silence ms, blank = server default"
+            inputType = InputType.TYPE_CLASS_NUMBER
+        }
+        val save = Button(this).apply {
+            text = "保存 Gemini 设置 / Save Gemini"
+            setOnClickListener {
+                val provider = providerButtons.entries.firstOrNull { it.key.id == providerGroup.checkedRadioButtonId }?.value
+                    ?: VoiceProviderPreference.GEMINI
+                val silenceText = silence.text.toString().trim()
+                val settings = saved.copy(
+                    provider = provider,
+                    consentAccepted = consent.isChecked,
+                    model = geminiModels.entries.firstOrNull { it.key.id == modelGroup.checkedRadioButtonId }?.value
+                        ?: saved.model,
+                    voice = voice.text.toString().trim().ifBlank { GeminiAppSettings.DEFAULT_VOICE },
+                    thinkingLevel = levels.entries.firstOrNull { it.key.id == thinking.checkedRadioButtonId }?.value
+                        ?: GeminiThinkingLevel.LOW,
+                    silenceDurationMs = if (silenceText.isEmpty()) null else silenceText.toIntOrNull() ?: -1,
+                )
+                try {
+                    gemini.save(settings, update(key))
+                    key.text.clear()
+                    result.text = "GEMINI_SETTINGS_SAVED\nchoice=${gemini.choice().wireName} keyPresent=${gemini.keyPresent()}"
+                } catch (failure: IllegalArgumentException) {
+                    result.text = failure.message ?: "GEMINI_SETTINGS_INVALID"
+                }
+            }
+        }
+        val clearKey = Button(this).apply {
+            text = "清除 Gemini Key / Clear Gemini key"
+            setOnClickListener { gemini.clearKey(); result.text = "GEMINI_KEY_CLEARED" }
+        }
+        return verticalGroup(
+            TextView(this).apply { text = "语音服务 / Voice provider (ADR-013)"; textSize = 18f },
+            GeminiAppSettings.CONSENT_NOTICE, consent, "Provider", providerGroup, "API Key", key, "Model", modelGroup, "Voice", voice,
+            thinkingLabel, thinking, "Silence ms", silence, save, clearKey,
+            "Takes effect at the next session start.",
+        )
+    }
+
+    /** ADR-016: the owner's assistant voice. Off by default; the key is never displayed or logged; blank keeps it. */
+    private fun azureVoiceSection(): LinearLayout {
+        val azure = AzureSpeechSettingsRepository(this)
+        val saved = azure.loadSettings()
+        val enabled = CheckBox(this).apply { text = "用 Azure 声音说话 / Speak with the Azure voice"; isChecked = saved.enabled }
+        val key = secretField(
+            if (azure.keyPresent()) "Azure Speech Key（已配置 / configured；留空保留）" else "Azure Speech Key",
+        )
+        val region = EditText(this).apply { setText(saved.region); hint = "eastasia / chinaeast2" }
+        val voice = EditText(this).apply { setText(saved.voice); hint = AzureSpeechConfig.DEFAULT_VOICE }
+        val save = Button(this).apply {
+            text = "保存声音设置 / Save voice"
+            setOnClickListener {
+                val settings = AzureSpeechSettings(
+                    enabled = enabled.isChecked,
+                    region = region.text.toString().trim(),
+                    voice = voice.text.toString().trim().ifBlank { AzureSpeechConfig.DEFAULT_VOICE },
+                )
+                val message = try {
+                    azure.save(settings, update(key))
+                    key.text.clear()
+                    "AZURE_VOICE_SAVED enabled=${settings.enabled} keyPresent=${azure.keyPresent()}"
+                } catch (failure: IllegalArgumentException) {
+                    failure.message ?: "AZURE_SETTINGS_INVALID"
+                }
+                result.text = message
+                Toast.makeText(this@DeveloperSettingsActivity, message, Toast.LENGTH_SHORT).show()
+            }
+        }
+        val clearKey = Button(this).apply {
+            text = "清除 Azure Key / Clear Azure key"
+            setOnClickListener { azure.clearKey(); result.text = "AZURE_KEY_CLEARED" }
+        }
+        return verticalGroup(
+            TextView(this).apply { text = "小诺的声音 / Assistant voice (Azure, ADR-016)"; textSize = 18f },
+            enabled, "Azure Key", key, "Region", region, "Voice", voice, save, clearKey,
+            "Takes effect at the next session start.",
         )
     }
 

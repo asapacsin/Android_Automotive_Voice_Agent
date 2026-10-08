@@ -12,10 +12,14 @@ import com.novadrive.app.vision.VisionProvider
 import android.os.Handler
 import android.os.Looper
 import com.novadrive.app.ui.AssistantNavigationScreen
+import com.novadrive.app.voice.AssistantVoiceNotices
 import com.novadrive.app.voice.PcmAudioPlayer
+import com.novadrive.app.voice.SessionProviderConfig
 import com.novadrive.app.voice.SessionServiceControl
+import com.novadrive.app.voice.sessionConfigFor
 import com.novadrive.app.voice.VoiceSessionController
 import com.novadrive.app.voice.VoiceSessionGateway
+import com.novadrive.ingress.realtime.VoiceProviderId
 import com.novadrive.ingress.realtime.VoiceUiState
 
 class MainActivity : Activity() {
@@ -33,6 +37,14 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         DebugVoiceLog.init(this)
+        AssistantVoiceNotices.listener = { code ->
+            DebugVoiceLog.log("assistant_voice_unavailable code=$code")
+            mainHandler.post { showError("VOICE", AzureSpeechSettingsValidator.UNAVAILABLE_MESSAGE) }
+        }
+        // Before any session can start: the driver's chosen tone is sticky across restarts.
+        val speakingStyleStore = SpeakingStyleStore(this)
+        SpeakingStyleState.restore(speakingStyleStore.load())
+        SpeakingStyleState.persist = speakingStyleStore::save
         // The wake detector's process-lifetime owner. It used to be bound inside
         // DebugVoiceLog.init, which is a logging initialiser: one guard added there for a
         // sensible logging reason would have silently taken the wake word with it.
@@ -49,6 +61,8 @@ class MainActivity : Activity() {
             VisionProvider.handler(this),
             phone = PhoneCallTool(com.novadrive.app.phone.PhoneProvider.port(this)),
             liveInfo = LiveInfoTool.live(this),
+            cabin = VehicleControlProvider.port,
+            music = com.novadrive.app.media.AndroidMusicHandoffTool(this),
             places = SavedPlaceTool(
                 read = savedPlaces::get,
                 write = savedPlaces::set,
@@ -137,7 +151,7 @@ class MainActivity : Activity() {
                 override fun stop() = VoiceSessionService.stop(this@MainActivity)
                 override fun hasMicPermission() =
                     checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-                override fun baiduConfig() = settingsRepository.config()
+                override fun sessionConfig() = chooseSessionConfig()
             },
         )
 
@@ -148,6 +162,8 @@ class MainActivity : Activity() {
                 }
                 onCameraPermissionNeeded = { runOnUiThread { requestCameraPermission() } }
                 onListeningToggle = { toggleListening() }
+                // B-035: the exchange stays while 小诺 is still audible or a question waits on screen.
+                transcriptHeld = { player.isPlaying || com.novadrive.app.voice.VoiceContextHints.questionOnScreen() }
             }
         setContentView(screen)
         screen.bindControls(screenControls)
@@ -175,7 +191,31 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         if (::screen.isInitialized) screen.onResume()
+        showConfigBannerIfNeeded()
     }
+
+    /**
+     * Tell the driver before they try: a Gemini start without key/consent/valid settings would fail.
+     * Once the settings are fixed the card goes (P44); only a CONFIG card, never another error.
+     */
+    private fun showConfigBannerIfNeeded() {
+        val geminiSettings = GeminiSettingsRepository(this)
+        val code = geminiSettings.configProblem()
+            ?: if (geminiSettings.choice() == VoiceProviderId.GEMINI_LIVE) {
+                AzureSpeechSettingsRepository(this).configProblem()
+            } else {
+                null
+            }
+        if (code == null) {
+            if (::screen.isInitialized) screen.clearError(CONFIG_ERROR)
+            return
+        }
+        DebugVoiceLog.log("config_banner reason=$code")
+        showError(CONFIG_ERROR, configScreenMessage(code))
+    }
+
+    private fun configScreenMessage(code: String): String =
+        GeminiSettingsValidator.screenMessage(code) ?: AzureSpeechSettingsValidator.screenMessage(code) ?: code
 
     override fun onPause() {
         if (::screen.isInitialized) screen.onPause()
@@ -188,6 +228,7 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        AssistantVoiceNotices.listener = null
         if (::controller.isInitialized) VoiceSessionGateway.detach(controller)
         BundledMusicPlayer.stop()
         VoiceSessionService.stop(this)
@@ -254,7 +295,8 @@ class MainActivity : Activity() {
         when (val result = VoiceSessionGateway.start("ui")) {
             com.novadrive.app.voice.StartResult.MicPermissionMissing ->
                 requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC)
-            is com.novadrive.app.voice.StartResult.ConfigInvalid -> showError("CONFIG", result.message)
+            is com.novadrive.app.voice.StartResult.ConfigInvalid ->
+                showError(CONFIG_ERROR, configScreenMessage(result.message))
             else -> Unit
         }
     }
@@ -283,7 +325,11 @@ class MainActivity : Activity() {
     }
 
     private fun renderState(state: VoiceUiState, error: String?) {
-        if (::screen.isInitialized) screen.bindState(state, error)
+        if (::screen.isInitialized) {
+            // A session that reached LISTENING proves the configuration works (P44).
+            if (state == VoiceUiState.LISTENING) screen.clearError(CONFIG_ERROR)
+            screen.bindState(state, error)
+        }
         if (!controller.sessionActiveNow) VoiceSessionService.stop(this)
     }
 
@@ -295,10 +341,34 @@ class MainActivity : Activity() {
         if (::screen.isInitialized) screen.showError(code, message)
     }
 
+    /** Which provider this session uses (ADR-010); the Gemini path needs no Baidu credentials. */
+    private fun chooseSessionConfig(): SessionProviderConfig {
+        val gemini = GeminiSettingsRepository(this)
+        val choice = gemini.choice()
+        DebugVoiceLog.log("session_provider choice=${choice.wireName}")
+        return try {
+            sessionConfigFor(
+                choice,
+                gemini = {
+                    val voice = AzureSpeechSettingsRepository(this).config()
+                    DebugVoiceLog.log("assistant_voice enabled=${voice != null}")
+                    gemini.config(instructions = settingsRepository.loadSettings().instructions)
+                        .copy(assistantVoice = voice)
+                },
+                baidu = { settingsRepository.config() },
+            )
+        } catch (failure: IllegalArgumentException) {
+            // Codes only (never the key); no fallback to another provider (ADR-013).
+            DebugVoiceLog.log("session_provider_unavailable reason=${failure.message ?: "INVALID_CONFIGURATION"}")
+            throw failure
+        }
+    }
+
     companion object {
         private const val REQ_NOTIF = 23
         private const val REQ_LOCATION = 24
         private const val REQ_CAMERA = 25
         private const val REQ_MIC = 26
+        private const val CONFIG_ERROR = "CONFIG"
     }
 }

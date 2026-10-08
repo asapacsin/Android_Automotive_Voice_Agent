@@ -199,7 +199,7 @@ internal class NavigationTraceListener(
         )
     }
 
-    override fun onGetNavigationText(type: Int, text: String?) = Unit
+    override fun onGetNavigationText(type: Int, text: String?) = AmapGuidanceVoice.onNavigationText(text)
 
     override fun onGetNavigationText(text: String?) = Unit
 

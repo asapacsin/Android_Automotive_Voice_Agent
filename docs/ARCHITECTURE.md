@@ -6,9 +6,11 @@ cannot do is in [CAPABILITIES.md](CAPABILITIES.md); known problems are in [TECH_
 
 ## What this is
 
-An Android voice assistant for driving. Speech goes to Baidu Qianfan Flex as **end-to-end
-speech-to-speech with function calling** — there is no separate ASR or TTS in this product, by
-decision ([ADR-002](../DECISIONS/ADR-002-baidu-flex-default-provider.md)). The map and turn-by-turn
+An Android voice assistant for driving. Speech goes to the realtime model — Gemini Live by default
+since 2026-09-30 ([ADR-013](../DECISIONS/ADR-013-gemini-default-provider.md)), Baidu Qianfan Flex only
+by the owner's explicit choice — as **end-to-end speech-to-speech with function calling**; there is
+no separate ASR or TTS in this product, by decision
+([ADR-002](../DECISIONS/ADR-002-baidu-flex-default-provider.md)). The map and turn-by-turn
 navigation are the Amap Navigation SDK embedded in our own Activity
 ([ADR-007](../DECISIONS/ADR-007-embedded-amap-navigation-sdk.md)).
 
@@ -45,21 +47,31 @@ One behaviour, one owner. If you need to change one of these, change it **here**
 | Spoken capability-help copy | `ProductCapabilities.spokenHelpSummary` — supported catalog groups only | `ActionClaimGuard` keyword lists, the persona prompt |
 | Capability-help turn handling | `DriverTurn.Kind.CAPABILITY_HELP` + `HoldReason.CAPABILITY_HELP` — release when the reply names ≥2 supported groups; else `help_incomplete` with catalog scripted speak | `unverified_claim` / `UNVERIFIED_ACTION_CLAIM` for help utterances |
 | Calling a contact | `PhoneCallTool` via `PhonePort`; `PhoneProvider` selects `AndroidContacts` | NLU, the catalog, the UI |
-| Whether a tool call is well-formed | `FlexFunctionCallAssembler` (schema, bounds, enums) | the model, the dispatcher |
-| Whether an action may execute | `AndroidToolDispatcher` (+ `SafetyPolicy` in `orchestration` for the JVM path) | the model |
+| Which tools are declared, and whether a tool call is well-formed | the owning car domain (`app/tools/*Domain.kt`: names, descriptions, JSON Schema, `validate`, `repeatSensitive`) assembled by `ToolRegistry` (ADR-015); `RealtimeToolCatalog` serves the registry's list to every realtime adapter; `FlexFunctionCallAssembler` only assembles Baidu's streamed calls | the model, the dispatcher, a per-provider copy of the list |
+| Whether an action may execute | `AndroidToolDispatcher` — validation errors, the guard chain, `UNKNOWN_TOOL` — before routing the call to its domain's `ToolServer` (+ `SafetyPolicy` in `orchestration` for the JVM path) | the model, a server (servers execute; they do not decide whether) |
 | Whether an action **did** execute | the `ToolDispatchResult` / `AndroidActionResult` returned by the executor | any sentence the model produced |
-| What may be claimed to the driver | `DriverTurn` — holds reply audio+subtitle until execution proof exists; `PhantomTurnGate` judges phantom turns; `ActionClaimGuard` classifies requests and writes corrections | the persona prompt, the model's wording |
+| What may be claimed to the driver | `DriverTurn`, driven for every provider by `DriverTurnPipeline` (ADR-010) — holds reply audio+subtitle until execution proof exists; `PhantomTurnGate` judges phantom turns; `ActionClaimGuard` classifies requests and writes corrections | the persona prompt, the model's wording |
 | Per-utterance state (phase, kind, proof) | `DriverTurn`, one instance per driver turn, epoch-guarded | loose flags anywhere else |
 | **Cross-turn** context (what was adjusted, what is pending, what is stale) | `DriverContext`, built only from `ok=true` tool results; resolved by `ContextResolver`; carried to the model by `VoiceContextHints` | the model's memory — there is none, the conversation resets after every tool turn |
 | Navigation execution | `EmbeddedNavigationController` → `AmapNaviViewHost` | `NavigationAdapter` (legacy deep link, dormant) |
 | Navigation camera while driving | `AmapDrivingPresentation` (`AMapNaviView` lock-car, traffic line, native HUD) | idle `moveCamera(newLatLngZoom)`, a homemade tilt, `MapView` |
 | Current speed / posted limit while driving | `DrivingSpeedHud` in `AmapNaviViewHost` (Amap location + cameras) | assistant overlay, a second speed source |
 | Which candidate the driver picked | `NavigationChoiceResolver` | the model |
+| Which voice speaks the agent's words (ADR-016; developer setting, off by default) | `AssistantVoiceRevoicer` behind the `AssistantVoice` port — one adapter (`AzureSpeechVoice`), fed only by the `SpeechText` the client emits after the claim gate (driver turns) or for an unvoided GUIDANCE turn; stops when the session flushes playback (`onPlaybackFlushed`, the session decides barge-in); never a fallback to the provider's audio | the persona prompt, the playback path, a second voice anywhere |
 | Turn-taking / interruption | server VAD for turn ends; `ListeningLifecycle` for ACTIVE / SILENT_WAIT / SLEEP / DEEP_IDLE; `VoiceCommandRouter` for 「闭嘴」「休眠」 | ad-hoc checks in the client |
-| Whether 小诺 may speak / whether the mic reaches Baidu | `SpeechArbiter` via `SpeechAuthority` (P1 window, guidance hold, focus, guidance uplink gate, workload hold R6a fed the next-manoeuvre distance by `NavigationTraceListener` → `NavigationState`; `SpeechAuthority.syncPlaybackHold` is the one place the player is paused or resumed for a hold), applied by `AndroidPlaybackPort` (+ lifecycle) + `PhantomTurnGate` (phantom/false-claim holds) | the UI |
+| Whether 小诺 may speak / whether the mic reaches the model | `SpeechArbiter` via `SpeechAuthority` (P1 window, guidance hold, focus, guidance uplink gate, SPEC-018 assistant-guidance rows `guidanceChunk`/`abandon` — guidance chunks exempt from P1/R6a and from the listening-state gate, ordinary replies held while guidance is open, workload hold R6a fed the next-manoeuvre distance by `NavigationTraceListener` → `NavigationState`; `SpeechAuthority.syncPlaybackHold` is the one place the player is paused or resumed for a hold), applied by `AndroidPlaybackPort` (+ lifecycle) + `PhantomTurnGate` (phantom/false-claim holds) | the UI |
+| Simulated windows and seat height, and their limits | `VehicleControlPort` (`cabinState`, `setWindows`/`changeWindows`, `setSeatHeight`/`changeSeatHeight`) implemented by `SimulatedVehicleControl`, selected only in `VehicleControlProvider` | a second port, the UI, the handler |
+| `control_window` / `control_seat` → port, and what may be said about the result | `WindowToolHandler` / `SeatToolHandler` in the `body` domain (`BodyDomain` + `BodyServer`, ADR-015); the spoken clause is `ActionAnnouncement` (pure, from the read-back state), carried as `announce` | the model's wording, the dispatcher |
+| Speaking style (tone only; the voice never changes) and how long it lasts | `SpeakingStyleState` (sticky; persisted by `SpeakingStyleStore`) + `PersonaProfiles.compose`, used by both clients when they build instructions; changed only by `set_speaking_style` | a provider adapter, the voice id, anything mid-turn |
+| Multi-step comfort scenarios (有蚊子, 好闷, 好困) | `ComfortScenarios` (fixed playbook, dependencies) + `ComfortServer` in the `comfort` domain, which routes each step through the dispatcher's own server path (same validation, handlers, context recording); the joined `announce` and `not_done` come from `ActionAnnouncement`; an honest partial report is judged by `ActionClaimGuard` | the model choosing or ordering steps |
+| Playing a described song, and what may be said about it | `play_music` in the `media` domain → `media/` hand-off (`MEDIA_PLAY_FROM_SEARCH` to the driver's music app) → `NowPlayingVerifier` readback (MediaSession); only `now_playing` may be claimed | the model's identification of the song |
+| Who speaks each guidance sentence (assistant or Amap), per prompt | `GuidanceRelay` (SPEC-018; behind the developer toggle, off by default), with `GuidanceClaims` hooks from `AndroidPlaybackPort`; a guidance prompt is correlated to its response by `AppPromptTurn` (provider) and is never a driver turn | the model, `AmapGuidanceVoice` (it is the SDK edge only) |
 | Live information (weather, route traffic, along-route, place details) | `LiveInfoTool` (`query_live_info`) — REST kinds via `AmapPoiClient` / `AmapLiveInfoParser`; SDK kinds via the `RouteLiveInfo` port / `nav/amap/AmapRouteLiveInfo` (SPEC-011) | the model's own knowledge |
 | Conversation lifetime | `ConversationResetPolicy` (reset after tool turns) + `ResponseTurnGate` (one reply at a time) | the model |
-| Credentials | `AndroidKeystoreCredentialStore` | source, Gradle files, logs |
+| Credentials | `AndroidKeystoreCredentialStore` (`baidu_*`, `gemini_*`, `iflytek_*`, `amap_*`) | source, Gradle files, logs |
+| Which realtime provider a session uses | `VoiceProviderChoice` (Gemini Live unless the owner's stored preference is Baidu; a missing key/consent fails the start with its code, never a fallback), applied once in `VoiceSessionController.openSession` (ADR-010, ADR-013) | the adapters, the UI, anything mid-session |
+| Gemini Live wire format | `GeminiLiveProtocol` / `GeminiLiveClient` / `GeminiLiveProvider` | `ingress`, policy code |
+| "Driver speaking" when the provider has no speech events | the local `SpeechUplinkGate` onset/offset, fed to the session core's `onLocalSpeechActivity` and honoured only when `ProviderCapabilities.serverSpeechActivityEvents` is false | the adapter, a provider-name branch |
 
 ## Modules and allowed dependencies
 
@@ -139,9 +151,13 @@ The three reasons a reply is held are one mechanism: `PHANTOM_AUDIO` (the audio 
 `VoiceSessionController` holds the state machine, reconnect policy, work coordinator and the audio
 ports. It knows nothing about any vendor and must stay that way.
 
-### Tool dispatch — `app/AndroidToolDispatcher.kt`
+### Tool dispatch — `app/AndroidToolDispatcher.kt` and `app/tools/` (ADR-015)
 The only bridge from model output to device action. Every call is validated before execution: exact
-field sets, length bounds, enum membership. Unknown tools return `UNKNOWN_TOOL` without executing.
+field sets, length bounds, enum membership (by the owning domain's `validate`). Unknown tools return
+`UNKNOWN_TOOL` without executing. The dispatcher then runs the guard chain and routes the call to the
+`ToolServer` of the domain that declares it (navigation, apps, media, climate, vision, phone,
+live_info, speech, body, comfort); it contains no tool-name branch (`ArchitectureRulesTest.dispatcherDoesNotBranchOnToolNames`).
+A new car function is a new `ToolDomain` + `ToolServer` pair registered in `ToolRegistry.PRODUCT`.
 Failures carry `ToolFailureAdvice` so the model is told what to say without relying on the tool
 description surviving a conversation reset.
 

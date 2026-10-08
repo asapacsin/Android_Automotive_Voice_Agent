@@ -1,6 +1,5 @@
 package com.novadrive.app.voice
 
-import com.novadrive.app.BaiduApiConfig
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -190,6 +189,70 @@ class VoiceSessionGatewayTest {
         assertEquals(1, secondSession.startCalls)
     }
 
+    @Test
+    fun sendPromptWithoutAttachedSessionIsFalse() {
+        assertFalse(VoiceSessionGateway.sendPrompt("前方左转", "p1"))
+    }
+
+    @Test
+    fun sendPromptNeverStartsOrActivatesAndFailsWhenInactiveOrFailed() {
+        val identity = Any().also { identities += it }
+        val session = FakeGatewaySession()
+        val service = FakeServiceControl()
+        VoiceSessionGateway.attachInternal(identity, session, service)
+
+        assertFalse(VoiceSessionGateway.sendPrompt("前方左转", "p1"), "inactive")
+        assertEquals(0, session.startCalls)
+        assertEquals(0, service.startCalls)
+        assertTrue(session.prompts.isEmpty())
+
+        session.isActive = true
+        session.listeningState = ListeningState.SLEEP
+        assertTrue(VoiceSessionGateway.sendPrompt("前方左转", "p2"))
+        assertEquals(listOf("p2"), session.prompts)
+        assertEquals(0, session.startCalls)
+        assertTrue(session.activations.isEmpty(), "a prompt never wakes the session")
+        assertEquals(ListeningState.SLEEP, session.listeningState)
+        assertTrue(session.texts.isEmpty(), "not the queued text path")
+
+        session.promptAccepted = false
+        assertFalse(VoiceSessionGateway.sendPrompt("前方左转", "p3"), "provider refused")
+
+        session.promptAccepted = true
+        session.hasFailed = true
+        assertFalse(VoiceSessionGateway.sendPrompt("前方左转", "p4"), "failed session")
+        assertEquals(0, session.stopCalls)
+        assertEquals(listOf("p2", "p3"), session.prompts)
+    }
+
+    @Test
+    fun guidanceBlockerReportsCodesAndDefersToTheSession() {
+        assertEquals("NOT_ATTACHED", VoiceSessionGateway.guidanceBlocker())
+        val identity = Any().also { identities += it }
+        val session = FakeGatewaySession()
+        VoiceSessionGateway.attachInternal(identity, session, FakeServiceControl())
+        assertEquals("NOT_ACTIVE", VoiceSessionGateway.guidanceBlocker())
+        session.isActive = true
+        assertEquals("NOT_CONNECTED", VoiceSessionGateway.guidanceBlocker())
+        session.hasFailed = true
+        assertEquals("FAILED", VoiceSessionGateway.guidanceBlocker())
+    }
+
+    @Test
+    fun guidanceBlockersFromCoreSignals() {
+        val ui = com.novadrive.ingress.realtime.VoiceUiState.LISTENING
+        assertEquals("NOT_CONNECTED", GuidanceBlockers.of(false, true, ui, false))
+        assertEquals("NO_CAPABILITY", GuidanceBlockers.of(true, false, ui, false))
+        assertEquals("DRIVER_SPEAKING", GuidanceBlockers.of(true, true, com.novadrive.ingress.realtime.VoiceUiState.USER_SPEAKING, false))
+        assertEquals("WORK_PENDING", GuidanceBlockers.of(true, true, ui, true))
+        assertEquals(null, GuidanceBlockers.of(true, true, ui, false))
+        assertEquals("RESPONSE_OPEN", GuidanceBlockers.of(true, true, com.novadrive.ingress.realtime.VoiceUiState.THINKING, false))
+        assertTrue(GuidanceBlockers.keepsSleepConnected(true, true, true))
+        assertFalse(GuidanceBlockers.keepsSleepConnected(true, false, true)) // R7: toggle off
+        assertFalse(GuidanceBlockers.keepsSleepConnected(true, true, false))
+        assertFalse(GuidanceBlockers.keepsSleepConnected(false, true, true))
+    }
+
     private class FakeGatewaySession(
         var hasMic: Boolean = true,
     ) : GatewaySession {
@@ -202,10 +265,16 @@ class VoiceSessionGatewayTest {
         override fun sendText(text: String) {
             texts += text
         }
+        val prompts = mutableListOf<String>()
+        var promptAccepted = true
+        override fun sendPrompt(text: String, promptId: String): Boolean {
+            prompts += promptId
+            return promptAccepted
+        }
         val activations = mutableListOf<String>()
         val sleeps = mutableListOf<String>()
         override var listeningState: ListeningState = ListeningState.DEEP_IDLE
-        override fun startBaidu(reason: String) {
+        override fun startSession(reason: String) {
             startCalls += 1
             isActive = true
             listeningState = ListeningState.ACTIVE
@@ -242,6 +311,6 @@ class VoiceSessionGatewayTest {
             stopCalls += 1
         }
         override fun hasMicPermission(): Boolean = true
-        override fun baiduConfig(): BaiduApiConfig = error("not used")
+        override fun sessionConfig(): SessionProviderConfig = error("not used")
     }
 }

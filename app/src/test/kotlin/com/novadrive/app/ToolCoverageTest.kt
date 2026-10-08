@@ -29,6 +29,7 @@ class ToolCoverageTest {
         "choose_navigation_option" to """{"index":2}""",
         "end_conversation" to """{}""",
         "set_speech_output" to """{"mode":"silent"}""",
+        "set_speaking_style" to """{"style":"default"}""",
         // A save that cannot resolve the address is still dispatched - it just fails with
         // ADDRESS_NOT_FOUND rather than UNKNOWN_TOOL, which is what this test checks.
         "save_place" to """{"slot":"home","address":"珠海站"}""",
@@ -37,6 +38,13 @@ class ToolCoverageTest {
         "place_call" to """{"contact":"张三"}""",
         // SPEC-011: with no web key it is refused with AMAP_WEB_KEY_MISSING - still a dispatch.
         "query_live_info" to """{"kind":"weather","where":"珠海"}""",
+        // SPEC-015: the body domain; with no cabin port it answers VEHICLE_UNAVAILABLE - a dispatch.
+        "control_window" to """{"action":"set","value":50}""",
+        "control_seat" to """{"action":"adjust_height","value":-1}""",
+        // SPEC-017: with no music tool wired it answers MUSIC_HANDOFF_UNAVAILABLE - a dispatch.
+        "play_music" to """{"title":"晴天","artist":"周杰伦"}""",
+        // SPEC-015 FZ-09: with no cabin port its steps answer VEHICLE_UNAVAILABLE - still a dispatch.
+        "run_scenario" to """{"name":"mosquito"}""",
     )
 
     private fun declaredTools(): List<String> {

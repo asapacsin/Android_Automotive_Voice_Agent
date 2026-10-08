@@ -1,15 +1,11 @@
 package com.novadrive.app.voice
 
 import android.content.Context
-import com.novadrive.app.BaiduApiConfig
 import com.novadrive.app.NavigationState
-import com.novadrive.app.BaiduRuntimeProvider
-import com.novadrive.app.resolvedOutputSampleRateHz
 import com.novadrive.evaluation.EventType
 import com.novadrive.evaluation.Telemetry
 import com.novadrive.ingress.realtime.DomainVoiceEvent
 import com.novadrive.ingress.realtime.ProviderCapabilities
-import com.novadrive.ingress.realtime.RealtimeAudioConfig
 import com.novadrive.ingress.realtime.RealtimeSessionConfig
 import com.novadrive.ingress.realtime.RealtimeVoiceProvider
 import com.novadrive.ingress.realtime.ToolDispatchResult
@@ -45,13 +41,11 @@ class VoiceSessionController(
     private val scope = CoroutineScope(job + Dispatchers.Main.immediate)
     private val microphone = AndroidMicrophonePort(onError = { code -> onError(code, "microphone failed") })
     private val audioFocus = AudioFocusController(appContext)
-    // Reply audio is only played while listening is ACTIVE: after 「关闭小诺」 the cancelled reply
-    // must not start talking.
     // Replies are spoken only in ACTIVE: after 「闭嘴」 or 「休眠」 the cancelled reply stays silent.
     private val playback = AndroidPlaybackPort(player, audioFocus) { lifecycle.speaks }
     @Volatile private var lastUiState: VoiceUiState = VoiceUiState.DISCONNECTED
     @Volatile private var playbackSpeaking = false
-    @Volatile private var lastConfig: BaiduApiConfig? = null
+    @Volatile private var lastConfig: SessionProviderConfig? = null
 
     private val callbacks =
         VoiceSessionCallbacks(
@@ -93,6 +87,8 @@ class VoiceSessionController(
                     "sessions_match" to VoiceAudioSession.sessionsMatch(),
                 )
             },
+            onAppPromptTurn = com.novadrive.app.nav.GuidanceTranscripts::onAppPromptTurn,
+            onAppPromptTranscript = com.novadrive.app.nav.GuidanceTranscripts::onAppPromptTranscript,
         )
 
     /**
@@ -104,7 +100,7 @@ class VoiceSessionController(
         scope = scope,
         controls = object : ListeningControls {
             override fun setCloudUpload(enabled: Boolean) = active.setCaptureSuspended(!enabled)
-            override fun cancelAssistantReply() = active.cancelCurrentResponse()
+            override fun cancelAssistantReply() = cancelReplySparingGuidance()
             override fun closeCloudSession() = closeSession()
             override fun openCloudSession(): Boolean {
                 val config = lastConfig ?: return false
@@ -174,12 +170,17 @@ class VoiceSessionController(
         player.setOnPlaybackActiveChanged { active ->
             notifyPlaybackActiveForVad(active)
         }
+        microphone.onUplinkSegmentChanged = { open -> active.onLocalSpeechActivity(open) }
         com.novadrive.app.nav.NavigationGuidanceVoice.addListener(guidanceListener)
+        // SPEC-018 G-2 (R7): SLEEP stays connected only while the relay speaks guidance over it.
+        SpeechAuthority.arbiter.navigatingObserver = { syncGuidanceSleep() }
+        com.novadrive.app.nav.GuidanceRelay.onActiveChanged = { syncGuidanceSleep() }
+        syncGuidanceSleep()
     }
 
     /** Starts a new realtime session and makes listening ACTIVE. */
-    fun startBaidu(apiConfig: BaiduApiConfig, reason: String = "start") {
-        openSession(apiConfig)
+    fun startSession(config: SessionProviderConfig, reason: String = "start") {
+        openSession(config)
         lifecycle.onSessionStarted(reason)
     }
 
@@ -191,9 +192,14 @@ class VoiceSessionController(
         if (reason == "wake_word" && playbackSpeaking) {
             com.novadrive.app.DebugVoiceLog.log("wake_interrupts_reply")
             Telemetry.record(EventType.INTERRUPT_DETECTED, detail = "wake_word")
-            active.cancelCurrentResponse()
+            cancelReplySparingGuidance()
         }
         return lifecycle.activate(reason)
+    }
+
+    /** SPEC-018: an open guidance prompt is spared; ordinary chatter was already discarded at OPENED (B3). */
+    private fun cancelReplySparingGuidance() {
+        if (!playback.guidanceActive) active.cancelCurrentResponse()
     }
 
     /** 「闭嘴」: the reply stops now; the conversation and listening continue (SILENT_WAIT). */
@@ -211,8 +217,8 @@ class VoiceSessionController(
     /** The model ended the conversation: SLEEP once its short goodbye has played. */
     fun sleepAfterReply(reason: String) = lifecycle.sleepAfterReply(reason)
 
-    private fun openSession(apiConfig: BaiduApiConfig) {
-        lastConfig = apiConfig
+    private fun openSession(config: SessionProviderConfig) {
+        lastConfig = config
         active.stop()
         provider?.close()
         VoiceAec.release()
@@ -220,31 +226,17 @@ class VoiceSessionController(
         val sharedSessionId = VoiceAudioSession.allocate()
         player.configureAudioSession(sharedSessionId)
         microphone.configureAudioSession(sharedSessionId)
-        val outputRate = apiConfig.settings.resolvedOutputSampleRateHz()
-        player.configureSampleRate(outputRate)
-        val selected: RealtimeVoiceProvider = when (apiConfig.settings.runtimeProvider) {
-            BaiduRuntimeProvider.FLEX ->
-                BaiduFlexProvider(apiConfig, { microphone.measuredSegment() }, ::bargeInQualified)
-            BaiduRuntimeProvider.LITE -> BaiduDirectRealtimeProvider(apiConfig)
-        }
-        val providerId = if (apiConfig.settings.runtimeProvider == BaiduRuntimeProvider.FLEX) {
-            VoiceProviderId.BAIDU_FLEX
-        } else VoiceProviderId.BAIDU
-        provider = selected
-        active = newCore(
-            selected,
-            RealtimeSessionConfig(
-                provider = providerId,
-                model = apiConfig.settings.model,
-                audio = RealtimeAudioConfig(16_000, outputRate),
-            ),
-        )
+        val built = RealtimeProviderFactory.build(config, { microphone.measuredSegment() }, ::bargeInQualified)
+        player.configureSampleRate(built.outputSampleRateHz)
+        provider = built.provider
+        active = newCore(built.provider, built.session)
         active.start()
+        syncGuidanceSleep()
         startSessionDiagnostics()
     }
 
     private fun notifyPlaybackActiveForVad(active: Boolean) {
-        (provider as? BaiduFlexProvider)?.onPlaybackActiveChanged(active)
+        provider?.onPlaybackActiveChanged(active)
     }
 
     private var diagJob: Job? = null
@@ -268,7 +260,6 @@ class VoiceSessionController(
             }
         }
     }
-
 
     fun stop() {
         NavigationState.reset()
@@ -445,6 +436,17 @@ class VoiceSessionController(
         active.sendText(text)
     }
 
+    /** SPEC-018: an app prompt, sent now or not at all (never queued, never starts anything). */
+    fun sendPrompt(text: String, promptId: String): Boolean = active.sendPrompt(text, promptId)
+
+    /** SPEC-018 B1: why a guidance prompt may not be sent now (codes only), or null. */
+    private fun syncGuidanceSleep() = lifecycle.onNavigating(GuidanceBlockers.keepsSleepConnected(NavigationState.navigating,
+        com.novadrive.app.nav.GuidanceRelay.active != null, provider?.capabilities?.verbatimPromptSpeech == true))
+
+    fun guidanceBlocker(): String? = GuidanceBlockers.of(
+        active.connectedNow, provider?.capabilities?.verbatimPromptSpeech == true, lastUiState, active.hasPendingWork(),
+    )
+
     fun release() {
         lifecycle.onSessionStopped("released")
         NavigationState.reset()
@@ -455,6 +457,8 @@ class VoiceSessionController(
         com.novadrive.app.nav.NavigationGuidanceVoice.removeListener(guidanceListener)
         SpeechAuthority.arbiter.onGuidanceSpeaking(false)
         SpeechAuthority.onSessionEnded()
+        SpeechAuthority.arbiter.navigatingObserver = null
+        com.novadrive.app.nav.GuidanceRelay.onActiveChanged = {}
         scope.cancel()
     }
 

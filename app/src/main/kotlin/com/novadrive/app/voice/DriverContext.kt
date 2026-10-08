@@ -25,10 +25,18 @@ package com.novadrive.app.voice
  */
 class DriverContext(private val clock: () -> Long = { System.currentTimeMillis() }) {
 
-    /** A thing that can be adjusted relatively. Exactly the dimensions `control_climate` exposes. */
-    enum class Dimension(val wire: String) {
-        TEMPERATURE("temperature"),
-        FAN("fan"),
+    /**
+     * A thing that can be adjusted relatively: the dimensions `control_climate` exposes, plus the
+     * window opening and seat height of `control_window` / `control_seat` (SPEC-015 B7).
+     */
+    enum class Dimension(val wire: String, val spoken: String) {
+        TEMPERATURE("temperature", "温度"),
+        FAN("fan", "风量"),
+        WINDOW("window", "车窗"),
+        SEAT_HEIGHT("seat_height", "座椅高度"),
+        ;
+
+        val isClimate: Boolean get() = this == TEMPERATURE || this == FAN
     }
 
     /** A completed, *proven* adjustment. [delta] is signed; 0.0 for an absolute set. */
@@ -41,6 +49,9 @@ class DriverContext(private val clock: () -> Long = { System.currentTimeMillis()
     )
 
     data class Climate(val powerOn: Boolean, val temperatureC: Double, val fanLevel: Int)
+
+    /** Last proven cabin state from a body result: window percents by id, seat height level. */
+    data class Cabin(val windows: Map<String, Int>?, val seatHeight: Int?)
 
     /**
      * A question the **app** decided to ask — not the sentence the model produced.
@@ -56,6 +67,7 @@ class DriverContext(private val clock: () -> Long = { System.currentTimeMillis()
     private var requestEpoch: Long = 0
     private var speechEpoch: Long = 0
     private var climate: Climate? = null
+    private var cabin: Cabin? = null
     private val adjustments = mutableMapOf<Dimension, Adjustment>()
     private var clarification: Clarification? = null
     private val cancelled = mutableSetOf<Long>()
@@ -101,6 +113,34 @@ class DriverContext(private val clock: () -> Long = { System.currentTimeMillis()
     }
 
     /**
+     * A `control_window` / `control_seat` result came back. Same rules as [onClimateResult]: only
+     * `ok=true` is recorded, and the sign of a relative change comes from the call's [value].
+     */
+    fun onBodyResult(tool: String, action: String, value: Double?, output: String, epoch: Long) = synchronized(lock) {
+        if (epoch in cancelled) return@synchronized
+        if (!output.contains("\"ok\":true")) return@synchronized
+        val now = clock()
+        val windows = Regex("\"windows\":\\{([^}]*)\\}").find(output)?.groupValues?.get(1)?.let { body ->
+            Regex("\"([a-z_]+)\":(-?\\d+)").findAll(body).associate { it.groupValues[1] to it.groupValues[2].toInt() }
+        }
+        val seatHeight = number(output, "seat_height")?.toInt()
+        if (windows != null || seatHeight != null) {
+            cabin = Cabin(windows ?: cabin?.windows, seatHeight ?: cabin?.seatHeight)
+        }
+        val (dimension, delta) = when {
+            tool == BodyToolActions.WINDOW_TOOL && action == BodyToolActions.WINDOW_ADJUST ->
+                Dimension.WINDOW to (value ?: BodyToolActions.WINDOW_STEP)
+            tool == BodyToolActions.WINDOW_TOOL && action in BodyToolActions.WINDOW_ABSOLUTE -> Dimension.WINDOW to 0.0
+            tool == BodyToolActions.SEAT_TOOL && action == BodyToolActions.SEAT_ADJUST_HEIGHT ->
+                Dimension.SEAT_HEIGHT to (value ?: return@synchronized)
+            tool == BodyToolActions.SEAT_TOOL && action == BodyToolActions.SEAT_SET_HEIGHT -> Dimension.SEAT_HEIGHT to 0.0
+            else -> return@synchronized
+        }
+        val limitReached = output.contains("\"limit_reached\":true")
+        adjustments[dimension] = Adjustment(dimension, delta, limitReached, now, epoch)
+    }
+
+    /**
      * The app decided to ask which dimension was meant. Recorded so the driver's *answer* can be
      * resolved next turn — a mandatory question nobody can answer is worse than a guess.
      */
@@ -120,6 +160,7 @@ class DriverContext(private val clock: () -> Long = { System.currentTimeMillis()
         adjustments.clear()
         clarification = null
         climate = null
+        cabin = null
         requestText = ""
         dispatched.clear()
         capabilities.clear()
@@ -174,6 +215,8 @@ class DriverContext(private val clock: () -> Long = { System.currentTimeMillis()
 
     fun climateState(): Climate? = synchronized(lock) { climate }
 
+    fun cabinState(): Cabin? = synchronized(lock) { cabin }
+
     /**
      * The adjustments that may still be referred to, newest first. Applies S1 (age), S4 (only the
      * newest per dimension, which the map gives for free), S5 (cancelled) and S6 (unproven results
@@ -190,6 +233,9 @@ class DriverContext(private val clock: () -> Long = { System.currentTimeMillis()
     fun pendingClarification(currentEpoch: Long): Clarification? = synchronized(lock) {
         clarification?.takeIf { currentEpoch - it.askedAtEpoch == 1L }
     }
+
+    /** The question most recently recorded, whatever turn it was asked in; for the refusal's wording. */
+    fun lastClarification(): Clarification? = synchronized(lock) { clarification }
 
     /** Called once the driver's answer has been used, or once it is clear they moved on. */
     fun clearClarification() = synchronized(lock) { clarification = null }
@@ -230,4 +276,16 @@ object ClimateToolActions {
     const val ADJUST_FAN = "adjust_fan"
     const val POWER_ON = "power_on"
     const val POWER_OFF = "power_off"
+}
+
+/** The `control_window` / `control_seat` names context records, so the two cannot drift apart. */
+object BodyToolActions {
+    const val WINDOW_TOOL = "control_window"
+    const val SEAT_TOOL = "control_seat"
+    const val WINDOW_ADJUST = "adjust"
+    val WINDOW_ABSOLUTE = setOf("open", "close", "set")
+    const val SEAT_ADJUST_HEIGHT = "adjust_height"
+    const val SEAT_SET_HEIGHT = "set_height"
+    const val WINDOW_STEP = 20.0
+    const val SEAT_STEP = 1.0
 }

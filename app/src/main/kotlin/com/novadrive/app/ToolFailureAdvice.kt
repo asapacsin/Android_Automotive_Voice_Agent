@@ -28,8 +28,11 @@ object ToolFailureAdvice {
         "PREFERENCE_NOT_FOR_ROUTES" to "这个偏好只能用于地点，不能用于路线。请用户说第几条。",
         "NO_OPTIONS" to "现在没有可选的内容。请如实说明。",
         "AMBIGUOUS_REFERENT" to
-            "用户这句话没有说明要调的是温度还是风量，之前的记录也无法确定，所以没有执行。" +
-            "请只用一句话反问用户是温度还是风量，不要再调用任何工具，也不要说已经调好了。",
+            "用户这句话没有说明要调的是哪一项（options 里是可能的几项），之前的记录也无法确定，所以没有执行。" +
+            "请只用一句话反问用户是 options 里的哪一项（例如「是座椅还是温度？」），不要再调用任何工具，也不要说已经调好了。",
+        com.novadrive.app.tools.ComfortServer.NO_RECENT_MOSQUITO to
+            "最近没有因为蚊子开过车窗，所以没有执行这个场景，车窗没有动。" +
+                "如果用户是想关窗，请用 control_window action=close 正常关窗；不要说已经关好了。",
         "DUPLICATE_IN_TURN" to
             "这个操作在本轮已经执行过一次，没有重复执行。请根据上一次的结果回答，不要说又调了一次。",
         PhoneCallTool.NO_TELEPHONY to
@@ -51,8 +54,14 @@ object ToolFailureAdvice {
             "拨号没有成功，没有接通。" +
             "请用一句话如实告诉用户没打出去，不要谎称已经接通。",
         "MEDIA_LIBRARY_UNSUPPORTED" to
-            "车上只有一首内置曲目，没有音乐库，无法搜索或指定歌曲。" +
-            "请用一句话如实告诉用户放不了他要的那首歌，不要谎称已经播放，也不要改放其它曲子。",
+            "control_music 只能放内置曲目，不能放用户说的那首，所以没有播放。" +
+            "用户说了歌名、歌手、作品或描述，请改用 play_music 按描述去放，不要谎称已经播放，也不要改放内置曲目。",
+        // SPEC-017 play_music.
+        "NOT_PLAYING" to "这首没放成，可能需要会员或者有版权限制。请如实说没放成，不要说正在放。",
+        "NO_MUSIC_APP" to "手机上没有能播放的音乐 app，请如实说。",
+        "HANDOFF_REJECTED" to "音乐 app 没有接受这次请求，没有播放。请用一句话如实说没放成，不要说正在放。",
+        "MUSIC_STILL_PLAYING" to "已经让音乐 app 暂停，但它还在放。请如实说音乐还没停，不要说已经关掉了。",
+        "MUSIC_HANDOFF_UNAVAILABLE" to "现在不能交给音乐 app 播放，没有播放。请用一句话如实说放不了，不要说正在放。",
         // SPEC-011 query_live_info. Each one says what did not happen and forbids the guess.
         LiveInfoTool.AMAP_WEB_KEY_MISSING to
             "高德的查询服务还没有配置，所以没有查。请用一句话如实说这个功能还没有配置好（例如「天气查询还没有配置」），不要编造任何结果。",
@@ -72,6 +81,8 @@ object ToolFailureAdvice {
             "这类实时信息没有数据来源，没有查询。请用一句话如实说无法回答，不要编造。",
         LiveInfoTool.INVALID_ARGUMENT to
             "查询参数不对，没有查询。请用一句话问清楚用户要查什么，不要编造结果。",
+        // SPEC-018 B5: a tool call inside a guidance turn; no speech wanted.
+        com.novadrive.app.voice.GeminiPromptTurn.NOT_A_DRIVER_TURN to "这是导航播报，不需要回应。请不要说任何话。",
         ToolCallGuards.HOME_NOT_SET to
             "用户还没有设置家的地址，所以没有导航。" +
             "请用一句话如实说还不知道他家在哪里，请他直接说出地址，不要猜一个地方。",

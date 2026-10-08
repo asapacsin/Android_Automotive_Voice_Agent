@@ -75,16 +75,28 @@ class UtteranceIntentResolver(
                 "大声" to CapabilityIds.VOLUME_CONTROL,
                 "小声" to CapabilityIds.VOLUME_CONTROL,
                 "声音" to CapabilityIds.VOLUME_CONTROL,
-                "车窗" to CapabilityIds.WINDOWS_SEATS_DOORS_LIGHTS_WIPERS,
-                "窗户" to CapabilityIds.WINDOWS_SEATS_DOORS_LIGHTS_WIPERS,
-                "天窗" to CapabilityIds.WINDOWS_SEATS_DOORS_LIGHTS_WIPERS,
-                "座椅" to CapabilityIds.WINDOWS_SEATS_DOORS_LIGHTS_WIPERS,
-                "后备箱" to CapabilityIds.WINDOWS_SEATS_DOORS_LIGHTS_WIPERS,
-                "车门" to CapabilityIds.WINDOWS_SEATS_DOORS_LIGHTS_WIPERS,
-                "车灯" to CapabilityIds.WINDOWS_SEATS_DOORS_LIGHTS_WIPERS,
-                "雨刷" to CapabilityIds.WINDOWS_SEATS_DOORS_LIGHTS_WIPERS,
+                "车窗" to CapabilityIds.BODY_WINDOW,
+                "窗户" to CapabilityIds.BODY_WINDOW,
+                "开窗" to CapabilityIds.BODY_WINDOW,
+                "关窗" to CapabilityIds.BODY_WINDOW,
+                // SPEC-015 FZ-01/02/09/10: comfort scenarios. Not bare 困 (「困难」「被困」).
+                "蚊子" to CapabilityIds.COMFORT_SCENARIO,
+                "虫子" to CapabilityIds.COMFORT_SCENARIO,
+                "闷" to CapabilityIds.COMFORT_SCENARIO,
+                "空气不好" to CapabilityIds.COMFORT_SCENARIO,
+                "异味" to CapabilityIds.COMFORT_SCENARIO,
+                "好困" to CapabilityIds.COMFORT_SCENARIO,
+                "犯困" to CapabilityIds.COMFORT_SCENARIO,
+                "有点困" to CapabilityIds.COMFORT_SCENARIO,
+                "座椅" to CapabilityIds.BODY_SEAT_HEIGHT,
+                "座位" to CapabilityIds.BODY_SEAT_HEIGHT,
+                "天窗" to CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS,
+                "后备箱" to CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS,
+                "车门" to CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS,
+                "车灯" to CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS,
+                "雨刷" to CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS,
             ).sortedByDescending { it.first.length },
         )
     }
 }
-
+

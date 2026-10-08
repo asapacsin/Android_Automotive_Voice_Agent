@@ -1,5 +1,34 @@
 # Current Milestone
 
+## Active work — handoff 2026-10-08 (PC session → cloud)
+
+**The owner's goal:** a demo with no laggy AI speech and no long silence. The bar is [docs/DEMO_REQUIREMENTS.md](docs/DEMO_REQUIREMENTS.md). The numbers behind it are in [OPEN_PROBLEMS.md](OPEN_PROBLEMS.md) P48.
+
+**Done** on `claude/10-3`. Unit suites pass (app 1639 / 0). The emulator measurements are in P48.
+- `e0ba94f`, `d0c66cf`, `7673d72` (AB-1): an ability list is no longer dropped as a fake action claim. 「帮你开了空调…」 still counts as a claim.
+- `dcc609a` (P48): the Azure voice is warmed with a real synthesis, and the next clause is fetched while one plays. On the emulator, the clause gap is now 0 ms and the first Azure audio 0.26–0.6 s (it was 1.7–1.9 s).
+- `16f31aa`: count-only timing logs (`assistant_voice_text` / `_flush` / `_gap_ms`).
+- `4bd714b`: [SPEC-020](SPECS/SPEC-020-wait-cues.md) wait cues, authorised by the owner. When a reply is slow she says 「收到，正在处理。」 or 「嗯，我想想。」. At 5 s she says a truthful reason; at 12 s she says she is still waiting.
+- `tools/demo/recorder/`: the silent emulator demo recorder and its grader (PC only).
+
+**In progress — continue here:**
+1. **SPEC-020 implementation.** It is unfinished and unverified on branch `claude/spec020-wip` (`f838713`, based on `4bd714b`). It includes the approved one-line hook in `GeminiLiveProvider.onLocalSpeechActivity`, which forwards local end of speech to the revoicer: for Gemini, `SpeechStopped` never reaches the revoicer's stream. Finish it against acceptance A1–A5, run the acceptance commands, and merge into `claude/10-3`. `:behavior-test` has 2 failures that predate this work (GeminiLiveClient line budget, the `end_conversation` literal). `:evaluation` has 1 CRLF snapshot failure, also present at the base commit.
+2. **Re-record the demo on the PC emulator.** This cannot be done in the cloud. Use `tools/demo/recorder/README.md`. A take passes only if `check_req.py` passes.
+   - The scenes are: ability (你会干啥 / 你都能帮我干嘛), 有点闷, styles (嗲 / 吃什么 / 元气 / 霸道 / 正常) and the error card.
+   - The output goes to `android_doc/demo_new_functions_<date>/`. That folder already holds the 2026-10-08 videos from the build before these fixes.
+
+**Still slow:** 2.6–4.2 s from the driver's last word to her voice. The parts:
+- Gemini's end-of-speech detection: 1.0–2.0 s.
+- Gemini's first message: 0–1.5 s.
+- Gemini's second turn after a tool call: 0.7–1.2 s.
+- The claim gate holds chat replies until generation completes: 0.9–1.8 s.
+
+The owner was asked about SPEC-014 clause release, which would remove most of the claim-gate hold, and **has not decided**. Do not build it without the owner. The wait cues are the owner's chosen answer for now.
+
+**Other findings this session:**
+- P47: steady background noise stops Gemini from detecting the start of speech (emulator, synthetic noise; still needs the real-microphone check).
+- P45 addendum 3: a 12 s VAD stall, and the warm-up was inconsistent before `dcc609a`.
+
 **M4 — More voice coverage without depending on the model** — opened 2026-09-24 by the product owner
 
 Date opened: 2026-09-24 · Source: [B-024, B-025, B-026](BACKLOG.md) · Specs:

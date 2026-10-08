@@ -1588,3 +1588,226 @@ UI state.
 
 `VoiceSessionController`: entering SLEEP or DEEP_IDLE reports the driver as not speaking. Test:
 `SpeechArbiterUtteranceProtectTest.anUtteranceEndedBySleepDoesNotProtectTheNextPrompt`.
+
+## P44 — The CONFIG card stays on the map after the setting it asks for is fixed
+
+**Status:** FIXED 2026-10-01 — unit-tested (`ShownErrorCardTest`); emulator check queued as CONFIG-CARD-EMU-001. Seen on the emulator (nova_api34), branch `claude/10-1`
+**Reported:** owner test run. The provider was Gemini. The card first said 「请在开发者设置里填写 Gemini 密钥」.
+After the key was saved it said 「请先在开发者设置里同意语音数据跨境传输提示」 (logged `config_banner
+reason=GEMINI_CONSENT_MISSING` 15:09:50). After consent was saved, `configProblem()` returned null:
+no further `config_banner` line, and a start at 15:11:56 logged `gemini_setup_complete` and
+`state=LISTENING`. The CONFIG card still showed the old consent message, beside `休眠中`. The owner
+read it as a failure.
+
+### Root cause (from the code, not yet confirmed on device)
+
+`MainActivity.showConfigBannerIfNeeded()` (on resume) calls `showError("CONFIG", …)` only when
+`configProblem()` returns a code. When it returns null, the function returns early and nothing
+clears a CONFIG error that is already on screen.
+
+### Fix (proposed)
+
+On resume, when `configProblem()` is null, clear the error only if it is a CONFIG error, so an
+unrelated error is not hidden. Also clear it when a session starts. Test: a resume with a valid
+config removes the CONFIG card. Device check: save the missing setting, come back to the map, and
+see no card.
+
+### Fix (done)
+
+`AssistantOverlayView` remembers which error code the bubble shows (`ShownErrorCard`);
+`clearError(code)` removes the card only when exactly that code is on screen, and a transcript line
+or a session error written into the bubble forgets it. `MainActivity` clears `CONFIG` on resume when
+`configProblem()` is null and when the session reaches `LISTENING`. An unrelated error is never
+cleared by a valid configuration.
+
+Numbered P44 because P42 and P43 are taken on `claude/9-30`, which is not merged into this branch.
+
+
+## P45 — A conversation reply was held for 9.4 s and never spoken; the next question got no reply
+
+**Status:** FIXED at L1 2026-10-02 (F2, and the lifecycle half of F3). F1 is diagnosed only and the primary F3 cause is now logged; emulator re-run `P45-EMU-001`. First seen once on the emulator (nova_api34). Branch `claude/10-2`, local build with 6efa047; Azure assistant voice on (Xiaoyi, `eastasia`). The owner spoke live through the host bridge (laptop microphone array, no echo cancellation on the PC side).
+
+**Reported:** the owner said 「你喜欢吃啥」 and heard nothing, then 「你能干什么」 and heard nothing again: "what the hell no voice".
+
+### Evidence (NovaVoice log, timings only)
+
+| Time | Event |
+| --- | --- |
+| 14:02:41.712 | Driver transcript; `TURN_HOLD epoch=1 reason=UNCLASSIFIED_CLAIM kind=CONVERSATION durationMs=-1`; `gemini_turn_open` |
+| 41.7 → 51.1 | **9.4 s with nothing released.** No transcript and no audio reached the voice |
+| 14:02:51.142 | `gemini_voice_activity type=ACTIVITY_START` (Gemini server VAD); `ACTIVITY_END` at 52.494 |
+| 51.146 | `TURN_RELEASE epoch=1 reason=no_claim_made events=3` |
+| 51.148 | `gemini_turn_done status=cancelled calls=0 spoke=true`; reply transcript only half a sentence |
+| 53.036 → 53.816 | `azure_tts_first_audio ms=1880`, `azure_tts_done bytes=141000`: the words of the cancelled reply were synthesised anyway |
+| — | The host audio tap received **no reply audio** for this turn (bridge log): the audio was discarded with the cancelled reply's playback epoch |
+| 14:02:57.693 | Driver transcript of the second question; **no `gemini_turn_open` followed** |
+| 14:03:04.768 | `listening ACTIVE->SLEEP reason=inactivity_timeout` |
+
+On the PC microphone, the level was about 20 when quiet and 3 000–11 000 in bursts around 51 s.
+
+**Control:** the same question as a clean injected clip (`say:eat`, 14:04) worked normally. The hold was released 2.6 s after the turn opened, the first Azure audio came 0.49 s later, the turn completed, and 5.05 s of audio played on the PC.
+
+### Most likely sequence (not proven)
+
+1. The reply stalled for 9.4 s inside the claim hold; this is the first fault.
+2. The owner, hearing nothing, started the second question at about 51 s.
+3. Gemini's VAD took that as a barge-in and cancelled the unheard reply.
+4. The second question then never opened a turn; this is the second fault.
+
+The owner says he did not speak at 51 s. If that is right, the barge-in was false: room sound on a microphone with no echo cancellation. The log cannot tell the two apart.
+
+### Faults to fix
+
+- **F1. Unknown where the 9.4 s went.** Either Gemini sent the three held events slowly, or the hold waited for a turn-complete that did not come. The hold has no deadline (`durationMs=-1`) for a CONVERSATION turn. **First step:** log, as timings only, each held event's arrival (audio / transcript / turn_complete) and the release time, so the next run shows where the time goes. Then decide whether a conversation hold needs an upper bound.
+- **F2. The words of a cancelled reply still go to the assistant voice.** A cancelled turn's released words cost an Azure request and are then discarded. A turn that ended `cancelled` should drop its words before TTS (SPEC-019 R1/R5).
+- **F3. No reply to the next question after a cancel.** The transcript arrived, but no `gemini_turn_open` followed for 7 s until sleep. Find out whether the client or the session was left waiting, for example on a turn or hold state that the cancel never cleared.
+
+**Owners:** `DriverTurn` / `DriverTurnPipeline` (the hold), `GeminiLiveClient` (turn events, cancel), and `AssistantVoiceRevoicer` (words after a cancel).
+**Test:** the timing logs first; then a JVM test that a cancelled turn's words never reach `AssistantVoice`, and a test that a question after a cancel opens a turn; then an emulator re-run with live speech and with headphones.
+
+### Fix and diagnosis, 2026-10-02 (`claude/10-2`; independent review PASS)
+
+- **F2 fixed.**
+  - When Gemini's `interrupted` arrives while the claim gate still holds the reply (`DriverTurnPipeline.isHolding`, before `generationComplete`), the reply was never heard.
+  - The client now drops it like a client cancel (`gemini_interrupted_unheard`, then `TURN_DROP … client_cancelled`). Its words never reach the assistant voice, so there is no Azure request, no subtitle and no correction.
+  - Before the fix, `closeTurn` settled the gate *after* the `Interrupted` event. The words were released into the re-voicer's new epoch, synthesised (`azure_tts_first_audio ms=1880`) and discarded.
+  - A reply that was already audible keeps today's behaviour.
+- **F3: two faults; the second is fixed.**
+  1. **Gemini closed the second question's turn with no output.** From the code, `UserTranscript` is emitted only by `openTurn` or `closeTurn`. A transcript with no `gemini_turn_open` means a close with no turn open. The new `gemini_turn_empty status=<…>` line logs it. Nothing re-asks Gemini yet; whether to re-prompt after an empty turn is open.
+  2. **The session slept on a stale deadline.**
+     - `ListeningLifecycle` restarted the 30 s window only on a busy→idle edge. With no local speech activity (the x86 emulator skips the uplink gate) and the reply held, nothing ever made the session busy.
+     - The deadline from 14:02:34 then fired 7 s after the question, at exactly 14:03:04.768.
+     - Now a meaningful question in ACTIVE restarts the window when not busy, the same as SILENT_WAIT already did. Noise and listening-control phrases still never extend it.
+- **F1 diagnostics landed, cause not yet known.**
+  - `gemini_turn_done` now carries `dur_ms first_audio_ms first_text_ms gen_ms msgs max_gap_ms` (`GeminiTurnTiming`), timings only.
+  - A stalled stream shows as a large `max_gap_ms`; a missing `generationComplete` shows as `gen_ms=-1` with many messages.
+  - A deadline for conversation holds waits for those numbers. The structural answer is SPEC-014 clause release, still blocked on N-1/N-2.
+- **Tests:**
+  - `GeminiLiveClientTest` 69/0, with 6 new P45 tests:
+    - `aServerInterruptedHeldReplysWordsNeverReachTheVoiceOrTheScreen`
+    - `withoutTheVoiceAServerInterruptedHeldReplysAudioIsDroppedToo`
+    - `anInterruptedHeldClaimDrawsNoCorrection`
+    - `theNextQuestionAfterAnInterruptedHeldReplyIsSpokenWhenGeminiAnswersIt`
+    - `theObservedP45SequenceAnEmptyTurnThenALateAnswerIsSpokenAndJudged`
+    - `aLateAnswerAfterAnEmptyTurnIsStillJudgedForClaims`
+  - `ListeningLifecycleTest.aQuestionHeardWithoutABusyEdgeStillRestartsTheInactivityWindow`.
+  - `GeminiTurnTimingTest` 4/0.
+  - The full suite is green (see `P45-UNIT-001`).
+
+
+### P45 addendum, 2026-10-03: the stall reproduces with a live microphone only
+
+Local PC emulator, build 381e446, Azure voice on. The same injected clips were sent each time; only the bridge's uplink changed.
+
+| Uplink from the PC | Result |
+| --- | --- |
+| Silence file (demo runs A and B, 28 turns) | Every turn completed. Claim hold → verdict p50 1.7 s, p90 2.5 s, max 4.1 s |
+| Live laptop microphone, room level 100–2 800 rms (16:19) | 「你能做什么」: `TURN_HOLD` at 16:20:01.07, then nothing for **31.8 s**. `inactivity_timeout` at 16:20:31.1 stopped the uplink, and `TURN_RELEASE` followed 1.7 s later. Gemini never sent `gemini_turn_done` for the turn |
+| Live laptop microphone (16:21) | 「你叫什么名字」: no driver transcript and no turn within 40 s |
+
+**Reading:** while room sound keeps streaming, Gemini's server-side end-of-turn detection (automatic activity detection) does not finish the turn. The reply is generated (7 held events) but never completed, and the claim gate waits for completion. When the uplink stops (sleep), the turn finishes. That matches the owner's 2026-10-02 run (live microphone, a 9.4 s hold).
+
+**Fix direction, owner of `GeminiLiveClient` setup:** do not rely on the server VAD alone with a noisy uplink. Options:
+- (a) Set `realtimeInputConfig.automaticActivityDetection` to a lower start-of-speech sensitivity and a higher end-of-speech sensitivity.
+- (b) Gate the uplink with the app's own speech evidence, so non-speech is sent as silence.
+- (c) Switch to manual activity signals from the local VAD.
+
+Measure each option against this same A/B, first silence and then the live microphone, before choosing.
+
+### P45 addendum 2, 2026-10-03: short commands can get no turn even with a clean uplink
+
+Demo recording on the PC emulator, build 9696ce5 (VAD start LOW / end HIGH). The uplink was synthetic speech followed by digital silence. In take 2, 2 of 21 driver lines got no turn:
+- 「你傲娇一点」 (1.2 s)
+- 「第一个」 (0.8 s)
+
+For each one, Gemini logged `ACTIVITY_START` and `ACTIVITY_END` (1.6–1.8 s apart), then sent no transcript and no reply. The words came back only inside the **next** utterance's transcript (「你要加一点。你喜欢吃什么」 and 「第一个。开始导航」), about 20 s later. The same clips worked in other takes, and slightly longer phrasings (「就去第一个吧」, 「好，开始导航吧」) worked every time.
+
+This is not the start-sensitivity change: the server did detect the activity. The driver experiences it as a short command that does nothing until the next sentence. The next step is to log `serverContent` for those turns: is there an empty `turnComplete`, or nothing at all? Then decide whether the client should nudge the turn (for example with `audioStreamEnd`, or a text turn carrying the input transcription) when `ACTIVITY_END` is followed by nothing within ~3 s.
+
+## P46 — Assistant-spoken guidance (SPEC-018) gives up on the first prompt and never comes back
+
+**Status:** OPEN, found 2026-10-03 while recording the demo video. PC emulator nova_api34, build 9696ce5 (`claude/10-3`), Azure voice on, 助手播报导航 on. Short drive to 长隆海洋王国 started by voice, emulator speed 60 km/h.
+
+**Seen:** the driver hears no guidance from 小诺. Every prompt goes to Amap's own voice.
+
+### Evidence (NovaVoice log, timings only)
+
+| Time (s after 开始导航) | Event |
+| --- | --- |
+| 0.0 | `nav_navigation_started`; Gemini opens a turn for the confirmation 「导航已为您开始」 (`gemini_turn_open`) |
+| 1.4 | `gemini_prompt_refused id=g1 reason=turn_open`, then `guidance_route prompt=g1 to=amap reason=SEND_FAILED`, then `nav_guidance_fallback_tts accepted=true` |
+| 1.4 → 40 | g2 … g36: every one `to=amap reason=AMAP_SPEAKING waited_ms=0`. No prompt is sent to the assistant again |
+
+### Cause
+
+1. `GuidanceRelay.pump()` treats a `turn_open` refusal as a final failure, and hands the prompt to Amap at once. The relay's deadline would have allowed it to wait about 1 s for the confirmation turn to close.
+2. Once one prompt is with Amap, `amapReason()` returns `AMAP_SPEAKING` while the Amap bracket is open or the backlog is not empty. On the emulator, prompts arrive every ~3 s, so the bracket never closes and the relay never gets the voice back.
+
+### Fix direction (owner: `GuidanceRelay`)
+
+- Treat `turn_open` as "not yet": keep the prompt queued and retry when the turn closes, within `deadlineMs`, as for the other wait reasons.
+- Let a later prompt return to the assistant once Amap finishes the one in progress, instead of following the backlog for the rest of the drive.
+- Add a unit test with a confirmation turn open when g1 arrives. Then re-run the drive on the emulator and check for `guidance_route … to=assistant reason=SENT`.
+
+The toggle is experimental and off by default, so a driver on default settings is not affected. The demo video was recorded with it off.
+
+## P47 — Steady background noise: Gemini never detects the start of speech
+
+**Status:** OPEN, found 2026-10-08 while recording the new-functions demo. PC emulator nova_api34, build e0ba94f (`claude/10-3`), Gemini VAD start LOW / end HIGH (4f857e9), host audio bridge as the microphone.
+
+**Seen:** a fan-like noise bed (brown + pink noise, steady) was mixed into the uplink from 3 s before the driver's line 「你喜欢什么颜色」 (synthetic speech, about −23 dBFS RMS). Gemini logged **no `ACTIVITY_START`** and the driver got no reply.
+
+| Noise RMS (before the app's input gain) | `ACTIVITY_START` | Reply |
+| --- | --- | --- |
+| −32 dBFS | none | none |
+| −40 dBFS | none | none |
+| −46 dBFS | none | none |
+| off (same clip, same session setup) | yes, 1.9 s later `ACTIVITY_END` | yes |
+
+The app did capture the speech: `session_diag peak` rose to about 10 900 during the line, with the noise at about 700, `gated=false`, and no uplink drops in that window. So the audio reached the client; the server VAD did not open a turn.
+
+**Hypothesis:** START_SENSITIVITY_LOW sets its threshold relative to a background that is not silent, so a steady floor raises it above the speech. Before 4f857e9 the start sensitivity was higher. The P45 change fixed turns that never *ended* in room noise; this one never *starts*.
+
+**Next:**
+1. Repeat with a real microphone and a real fan (DEMO_10-3 MIC-1, `HUMAN_REQUIRED`). Synthetic noise on the emulator is software-path evidence only.
+2. If it reproduces, compare start sensitivity HIGH with end HIGH on the same clips. Then decide between server VAD tuning and client-side activity signals (`activityStart`/`activityEnd` with automatic detection off) — that choice is an ADR.
+
+### P45 addendum 3, 2026-10-08: the stall and the warm-up on build e0ba94f
+
+- **The stall again, with a clean uplink:** after a sleep and wake, a 1.2 s line got `ACTIVITY_START` 1.5 s after the wake but `ACTIVITY_END` only **12.0 s** later. Nothing followed the line but digital silence, and the host bridge reported no drops in that window. The driver heard the reply about 12 s after he stopped.
+- **The warm Azure connection after a ≥ 60 s sleep (574e0ff) is inconsistent.** Over 4 tries, the first `azure_tts_first_audio` was 1161, 424, 362 and 1512 ms. The demo target is ≤ 1000 ms.
+- **Emulator caveat:** in takes longer than about a minute, the host bridge itself began dropping uplink audio (`dropped_ms` rising by up to 87 s). Turns lost that way are not app evidence, and they are excluded above.
+
+## P48 — The assistant voice lags: slow first reply, gaps between clauses, chat replies held until generation ends
+
+**Status:** OPEN, 2026-10-08. Owner requirement: [docs/DEMO_REQUIREMENTS.md](docs/DEMO_REQUIREMENTS.md) — no laggy AI speech. PC emulator nova_api34, build e0ba94f, Azure voice on.
+
+| Symptom | Measured | Cause | Owner |
+| --- | --- | --- | --- |
+| First reply after app start or sleep: Azure first audio 1.2–1.9 s, and 4–5 s from the end of speech to her voice | 5 takes | `AzureSpeechVoice.warmUp()` sends an anonymous HEAD. That warms TLS at most, never the synthesis path, and nothing logs whether it ran | `AzureSpeechVoice` |
+| Gaps of 0.1–0.36 s mid-reply | 18 joins in 3 takes | `AssistantVoiceRevoicer` starts clause N+1's request only after clause N has fully downloaded (`previous?.join()` before `synthesize`). A short first clause (「好的。」, ~0.6 s of audio) runs out before the next clause's first audio (~0.33–0.45 s after its request) | `AssistantVoiceRevoicer` |
+| Chat replies held 1.0–1.65 s | `TURN_HOLD UNCLASSIFIED_CLAIM` → `TURN_RELEASE no_claim_made` ≈ Gemini `gen_ms` | The UNCLASSIFIED_CLAIM rule is settled only at response end (`DriverTurn.onAssistantText` returns Wait). The safety rule is correct; the speed-up is SPEC-014's clause release, which needs a design decision | `DriverTurn` (SPEC-014) |
+
+The first two are being fixed now. The third is left for the SPEC-014 decision: it is safety-relevant (I-1), so it is not changed inside a latency fix.
+
+**Fix (rows 1–2), 2026-10-08:** `AzureSpeechVoice.warmUp()` now sends one real one-character synthesis request (same headers, configured voice; audio discarded; at most once per 15 s; logs `azure_warm ms= code=`), and `AssistantVoiceRevoicer` warms the voice when a session opens. Clause N+1 is now requested while clause N is fetched or played (at most two requests in flight per reply), buffered and emitted strictly in order; `assistant_voice_gap_ms` logs the silence before each later clause. Unit-tested only; device measurement pending. Row 3 stays OPEN.
+
+### P48 measurement after dcc609a + d0c66cf + 7673d72 (2026-10-08, emulator)
+
+Measured from the driver's **last audible word**, not the end of the clip; edge-tts pads about 1 s.
+
+- **Fixed:**
+  - The first Azure clause took 1.7–1.9 s and now takes 0.26–0.6 s (`azure_warm` at session start).
+  - `assistant_voice_gap_ms` is 0 at every clause join (25 joins).
+  - 你都能帮我干嘛 is no longer dropped.
+- **Still slow:** 2.6–4.2 s from the last word to her voice. After `ACTIVITY_END`, the time goes to:
+
+  | Part | Time | Owner |
+  | --- | --- | --- |
+  | Gemini end-of-speech detection | 1.0–2.0 s after the last word (`silenceDurationMs` 500 cut 0.45 s, but was reverted: unvalidated cut-off risk) | server VAD |
+  | Gemini's first message | 0–1.5 s | server |
+  | Gemini's second turn after a tool call | 0.7–1.2 s | server |
+  | **Claim-gate hold until generation completes** | 0.9–1.8 s on every chat reply | `DriverTurn` (row 3) |
+  | Azure first audio | 0.26–0.49 s | done |
+
+  Row 3 (SPEC-014 clause release) is now the largest piece the app controls. It needs the owner's decision: ADR-011 Revision 2 deferred it.

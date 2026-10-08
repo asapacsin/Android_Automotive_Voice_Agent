@@ -76,6 +76,16 @@ strings until 2026-09-19. Differences between providers are capabilities, not pr
 *Enforced by:* `ProviderBoundaryTest`, `RealtimeProviderContractTest`,
 [ADR-009](../DECISIONS/ADR-009-provider-neutral-realtime-contract.md).
 
+**I-14. Every executed action is reported to the driver from its result.**
+On screen always (the chip), and in speech through the result's `announce` clause, built from the
+state read back after the action (`ActionAnnouncement`). A reply may omit a step; it may never add one
+that has no `ok=true` result (I-1 restated). An announcement never states more than the read-back
+state shows (review of W3a, 2026-09-30: a group "fully open" claim when one window was clamped).
+*Owner:* the domain server + `ActionAnnouncement`; the claim gate (`DriverTurn`, `ActionClaimGuard`
+body/media pair rules) catches the same sentences spoken without a result.
+*Enforced by:* `ActionAnnouncementTest`, `WindowToolHandlerTest`,
+`FalseCapabilityClaimTest.everyActionAnnouncementIsRecognisedAsAClaim`.
+
 **I-9. Vendor types stay inside their adapter.**
 `com.amap` may be imported by exactly one file. Baidu JSON never escapes the Android voice adapters.
 The `ingress` core is provider-neutral.

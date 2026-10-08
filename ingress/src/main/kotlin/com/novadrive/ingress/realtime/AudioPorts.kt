@@ -50,6 +50,9 @@ interface PlaybackPort {
     /** Signals that no more PCM belongs to [epoch], allowing a final partial device frame to drain. */
     fun complete(epoch: Int) {}
 
+    /** The response to an app prompt changed [phase], in order with audio (SPEC-018). */
+    fun onAppPromptTurn(promptId: String, phase: DomainVoiceEvent.AppPromptTurn.Phase, epoch: Int) {}
+
     fun stop()
 
     /** PCM16 mono samples waiting in the app queue or the platform track buffer. */

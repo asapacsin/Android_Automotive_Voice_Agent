@@ -6,6 +6,7 @@ import com.novadrive.app.voice.ClimateToolActions
 import com.novadrive.app.voice.DriverContext
 import com.novadrive.app.voice.DriverTurn
 import com.novadrive.ingress.realtime.DomainVoiceEvent
+import com.novadrive.ingress.realtime.ResponseOutcome
 import com.novadrive.simulator.SimulatedVehicleControl
 import org.json.JSONObject
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -17,10 +18,9 @@ import org.junit.jupiter.api.Test
  * Two ways the product could tell the driver that something happened when it did not, both of
  * which pass every other guard because a tool really did return `ok=true`.
  *
- * `media` is one bundled track with play/stop — no library, no search, no metadata. So a request
- * that names a song is not a media request this product can serve, and answering it by starting the
- * bundled track makes `ok=true` mean "you got what you asked for"
- * ([I-2](../../../../../../docs/INVARIANTS.md)).
+ * `control_music` is one bundled track with play/stop. A request that names or describes a song is
+ * served by `play_music` (SPEC-017); answering it by starting the bundled track makes `ok=true`
+ * mean "you got what you asked for" ([I-2](../../../../../../docs/INVARIANTS.md)).
  *
  * And a relative adjustment is not idempotent: the same `adjust_temperature{-2}` dispatched twice
  * is −4 °C, a physical change the driver never asked for.
@@ -49,19 +49,82 @@ class FalseCapabilityClaimTest {
         noCamera(),
     ) { context }
 
-    // ---- recognising a request this product cannot serve --------------------
+    // ---- recognising a named / described song (SPEC-017: play_music) -------
 
     @Test
-    fun aRequestNamingASongIsRecognisedAsUnsupported() {
+    fun aRequestNamingASongIsRecognisedAsPlayByDescription() {
         listOf(
             "放一下周杰伦那首我忘了名字的歌，就是讲晴天的那个。",
             "放周杰伦的歌。",
             "我想听点轻音乐的歌曲。",
         ).forEach {
-            assertTrue(ActionClaimGuard.isSpecificMediaRequest(it), "should be unsupported: $it")
-            assertTrue(ActionClaimGuard.isUnsupportedRequest(it), "should classify as unsupported: $it")
-            assertEquals(DriverTurn.Kind.NO_TOOL_ACTION, DriverTurn.classify(it), it)
+            assertTrue(ActionClaimGuard.isSpecificMediaRequest(it), "should be specific: $it")
+            assertFalse(ActionClaimGuard.isUnsupportedRequest(it), "play_music serves it: $it")
+            assertTrue(ActionClaimGuard.isControlRequest(it), it)
+            assertEquals(DriverTurn.Kind.ACTION, DriverTurn.classify(it), it)
         }
+    }
+
+    // ---- a playing claim with no tool behind it ----------------------------
+
+    @Test
+    fun aPlayingClaimWithNoToolCallIsNotReleased() {
+        assertTrue(ActionClaimGuard.carActionClaim("正在放梶浦由记的《xxx》") != null)
+        val guard = ActionClaimGuard()
+        guard.onUserTranscript("放梶浦由记的歌")
+        val followUp = guard.onResponseDone(ResponseOutcome(spoke = true), "正在放梶浦由记的《xxx》")
+        assertTrue(followUp != null, "a claim of what is playing needs play_music's now_playing")
+    }
+
+    @Test
+    fun anHonestMusicFailureIsReleasedAsARefusal() {
+        listOf("《X》播放不了", "这首没放成").forEach { reply ->
+            assertEquals(null, ActionClaimGuard.carActionClaim(reply), reply)
+            val guard = ActionClaimGuard()
+            guard.onUserTranscript("放梶浦由记的歌")
+            guard.onResponseDone(ResponseOutcome(spoke = false, toolCallIds = listOf("c1")), "")
+            assertEquals(null, guard.onResponseDone(ResponseOutcome(spoke = true), reply), reply)
+        }
+        listOf("空调开好了，风量调不了", "没能找到别的，已经为你打开空调", "这首放不了，已经在放另一首歌了").forEach { reply ->
+            assertTrue(ActionClaimGuard.carActionClaim(reply) != null, reply)
+            val mixed = ActionClaimGuard()
+            mixed.onUserTranscript("打开空调")
+            assertTrue(mixed.onResponseDone(ResponseOutcome(spoke = true), reply) != null, reply)
+        }
+        assertTrue(ActionClaimGuard.carActionClaim("正在放《X》") != null)
+        val guard = ActionClaimGuard()
+        guard.onUserTranscript("放梶浦由记的歌")
+        assertTrue(guard.onResponseDone(ResponseOutcome(spoke = true), "正在放《X》") != null)
+    }
+
+    @Test
+    fun mediaWordsInOrdinaryChatAreReleased() {
+        listOf("现在放松一下，听听音乐吧", "《哪吒2》还在放映").forEach {
+            assertEquals(null, ActionClaimGuard.carActionClaim(it), it)
+            val guard = ActionClaimGuard()
+            guard.onUserTranscript("随便聊聊")
+            assertEquals(null, guard.onResponseDone(ResponseOutcome(spoke = true), it), it)
+        }
+    }
+
+    @Test
+    fun aPlayingPromiseOrMixedRefusalWithNoCallIsNotReleased() {
+        listOf("好的，这就给你放周杰伦的《晴天》", "帮你放一首歌", "这首放不了，已经为你播放了另一首歌").forEach {
+            assertTrue(ActionClaimGuard.carActionClaim(it) != null, it)
+            val guard = ActionClaimGuard()
+            guard.onUserTranscript("放周杰伦的晴天")
+            assertTrue(guard.onResponseDone(ResponseOutcome(spoke = true), it) != null, it)
+        }
+    }
+
+    // R2 (an unconfirmed play_music result) is owned by DriverTurn: DriverTurnMusicTest.
+
+    @Test
+    fun chatAboutASongWithoutAPlayingWordIsReleased() {
+        assertEquals(null, ActionClaimGuard.carActionClaim("这首歌的歌词挺好"))
+        val guard = ActionClaimGuard()
+        guard.onUserTranscript("你觉得这首歌怎么样")
+        assertEquals(null, guard.onResponseDone(ResponseOutcome(spoke = true), "这首歌的歌词挺好"))
     }
 
     @Test
@@ -99,7 +162,16 @@ class FalseCapabilityClaimTest {
 
         assertFalse(output.getBoolean("ok"), "a song this product cannot play must not report success")
         assertEquals("MEDIA_LIBRARY_UNSUPPORTED", output.getString("error"))
-        assertTrue(output.getString("next").contains("没有音乐库"), "the model must be told what to say")
+        assertTrue(output.getString("next").contains("play_music"), "the model is sent to play_music")
+    }
+
+    @Test
+    fun aNamedArtistStillNeverStartsTheBundledTrack() {
+        val context = DriverContext()
+        context.onDriverUtterance("放梶浦由记的歌", epoch = 1)
+        val output = JSONObject(dispatcher(context).dispatch(call("control_music", mapOf("action" to "play"))).output!!)
+        assertFalse(output.getBoolean("ok"))
+        assertEquals("MEDIA_LIBRARY_UNSUPPORTED", output.getString("error"))
     }
 
     @Test
@@ -182,6 +254,9 @@ class FalseCapabilityClaimTest {
         )
         // And the question is recorded, so the driver's one-word answer resolves next turn.
         assertEquals(2, context.pendingClarification(3)?.options?.size)
+        // The refusal names both choices, so the model's question matches the record.
+        val options = output.getString("options")
+        assertTrue("温度" in options && "风量" in options, options)
     }
 
     @Test
@@ -278,6 +353,107 @@ class FalseCapabilityClaimTest {
             epoch = 1,
         )
         assertTrue(context.validReferents().isEmpty(), "a cancelled turn may not write context")
+    }
+
+    // ---- SPEC-015: windows and seat are real tools now; a claim still needs the call ----
+
+    @Test
+    fun aWindowClaimWithNoToolCallIsNotReleased() {
+        val turn = DriverTurn(epoch = 1)
+        turn.onUserTranscript("把车窗打开一半") { DriverTurn.classify(it) }
+        assertEquals(DriverTurn.Kind.ACTION, turn.kind)
+        turn.onResponseStarted(goodAudio, false)
+        val reply = "已经把车窗打开一半了"
+        turn.onAssistantText(reply)
+        val verdict = turn.onResponseDone(reply, hadToolCallInResponse = false)
+        assertFalse(verdict is DriverTurn.Verdict.Release, "$verdict")
+    }
+
+    private fun assertNotReleased(request: String, reply: String) {
+        val turn = DriverTurn(epoch = 1)
+        turn.onUserTranscript(request) { DriverTurn.classify(it) }
+        assertEquals(DriverTurn.Kind.ACTION, turn.kind, request)
+        turn.onResponseStarted(goodAudio, false)
+        turn.onAssistantText(reply)
+        val verdict = turn.onResponseDone(reply, hadToolCallInResponse = false)
+        assertFalse(verdict is DriverTurn.Verdict.Release, "$request / $reply: $verdict")
+    }
+
+    @Test
+    fun announceStyleWindowClaimsWithNoToolCallAreNotReleased() {
+        assertNotReleased("把车窗关上", "车窗关好了")
+        assertNotReleased("关窗", "车窗都关好了")
+        assertNotReleased("把车窗打开一半", "车窗都开到了50%")
+        assertNotReleased("开窗", "好的，车窗关上了")
+    }
+
+    @Test
+    fun everyActionAnnouncementIsRecognisedAsAClaim() {
+        val all = com.novadrive.vehicle.WindowId.entries.toSet()
+        val front = setOf(com.novadrive.vehicle.WindowId.FRONT_LEFT, com.novadrive.vehicle.WindowId.FRONT_RIGHT)
+        fun state(fl: Int, fr: Int = fl, rl: Int = fl, rr: Int = fl) = com.novadrive.vehicle.CabinState.DEFAULT.copy(
+            windows = mapOf(
+                com.novadrive.vehicle.WindowId.FRONT_LEFT to fl, com.novadrive.vehicle.WindowId.FRONT_RIGHT to fr,
+                com.novadrive.vehicle.WindowId.REAR_LEFT to rl, com.novadrive.vehicle.WindowId.REAR_RIGHT to rr,
+            ),
+        )
+        val A = com.novadrive.app.vehicle.ActionAnnouncement
+        val driver = com.novadrive.vehicle.SeatId.DRIVER
+        // Every action template (get_state sentences report state; they are not action claims).
+        val sentences = listOf(
+            A.window("set", all, state(50), false),
+            A.window("open", all, state(100), false),
+            A.window("close", all, state(0), false),
+            A.window("set", all, state(30), false),
+            A.window("open", setOf(com.novadrive.vehicle.WindowId.FRONT_LEFT), state(100, 0, 0, 0), false),
+            A.window("close", setOf(com.novadrive.vehicle.WindowId.FRONT_LEFT), state(0), false),
+            A.window("adjust", setOf(com.novadrive.vehicle.WindowId.FRONT_LEFT), state(40, 0, 0, 0), false, 20),
+            A.window("adjust", front, state(40, 20, 0, 0), true, 20),
+            A.window("adjust", all, state(100), true, 20),
+            A.window("adjust", all, state(0), true, -20),
+            A.seat("adjust_height", driver, 4, false, -1),
+            A.seat("adjust_height", driver, 6, false, 1),
+            A.seat("adjust_height", driver, 0, true, -1),
+            A.seat("adjust_height", driver, 10, true, 1),
+            A.seat("set_height", driver, 3, false),
+        )
+        sentences.forEach {
+            assertTrue(ActionClaimGuard.claimsDone(it), "claimsDone: $it")
+            assertTrue(ActionClaimGuard.carActionClaim(it) != null, "carActionClaim: $it")
+        }
+    }
+
+    @Test
+    fun drivingTalkWithoutABodyNounIsNotAClaim() {
+        listOf("开到目的地大概还要二十分钟", "这条路开到头就是了").forEach { reply ->
+            assertEquals(null, ActionClaimGuard.carActionClaim(reply), reply)
+            val turn = DriverTurn(epoch = 1)
+            turn.onUserTranscript("我们聊聊天吧") { DriverTurn.classify(it) }
+            assertEquals(DriverTurn.Kind.CONVERSATION, turn.kind)
+            turn.onResponseStarted(goodAudio, false)
+            turn.onAssistantText(reply)
+            val verdict = turn.onResponseDone(reply, hadToolCallInResponse = false)
+            assertTrue(verdict is DriverTurn.Verdict.Release, "$reply: $verdict")
+        }
+    }
+
+    @Test
+    fun openingTheSunroofDoesNotResolveAsAWindow() {
+        assertTrue(ActionClaimGuard.isUnsupportedRequest("开天窗"))
+        assertEquals(DriverTurn.Kind.NO_TOOL_ACTION, DriverTurn.classify("开天窗"))
+        assertEquals(DriverTurn.Kind.ACTION, DriverTurn.classify("关窗"))
+    }
+
+    @Test
+    fun windowsAndSeatAreActionsButTheSunroofIsStillRefused() {
+        listOf("把车窗打开一半", "座位有点高", "座椅调低一点").forEach {
+            assertFalse(ActionClaimGuard.isUnsupportedRequest(it), it)
+            assertEquals(DriverTurn.Kind.ACTION, DriverTurn.classify(it), it)
+        }
+        listOf("打开天窗", "打开车门", "打开后备箱").forEach {
+            assertTrue(ActionClaimGuard.isUnsupportedRequest(it), it)
+            assertEquals(DriverTurn.Kind.NO_TOOL_ACTION, DriverTurn.classify(it), it)
+        }
     }
 
     // ---- SPEC-011 A3/A4: a live answer needs a live result of the same kind, this turn ----

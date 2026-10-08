@@ -187,8 +187,8 @@ tests:
 
   - id: TRUTH-MEDIA-001
     capability: truthfulness
-    name: A song we cannot play is refused even when misheard
-    purpose: "P22 returned through a mis-transcription: a style request played the bundled track and was called a success"
+    name: A named or styled song never plays the bundled track, even when misheard
+    purpose: "P22 returned through a mis-transcription: a style request played the bundled track and was called a success. SPEC-017: such a request now goes to play_music"
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
@@ -196,8 +196,8 @@ tests:
     release_blocking: true
     prerequisites: ["speech harness"]
     procedure: ["run the Cantonese matrix scenario YUE-MUSIC"]
-    pass_criteria: ["MEDIA_LIBRARY_UNSUPPORTED, and the assistant says it cannot play that song"]
-    evidence: ["2026-09-20: 3/3 then 5/5 after the fix; before it, the bundled track played", "STALE_BIND apk_digest mismatch"]
+    pass_criteria: ["tool=play_music (control_music{play}, if called, is refused MEDIA_LIBRARY_UNSUPPORTED)", "the bundled track never plays", "any 正在放 claim names only the play_music result's now_playing"]
+    evidence: ["2026-09-20: 3/3 then 5/5 after the fix; before it, the bundled track played (old criterion: refusal)", "STALE_BIND apk_digest mismatch", "2026-09-30 SPEC-017 W4b2: criteria changed from 'refused' to 'routed to play_music'; the earlier PASS does not carry over - NOT_RUN"]
     related: [P22, P25]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -919,8 +919,8 @@ tests:
 
   - id: MUSIC-NAMED-001
     capability: media
-    name: A named song is refused, not substituted
-    purpose: "Playing the bundled track for a named song means ok=true says you got what you asked for"
+    name: A named song goes to play_music, never the bundled track
+    purpose: "Playing the bundled track for a named song means ok=true says you got what you asked for; SPEC-017 hands it to the driver's music app instead"
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
@@ -928,10 +928,118 @@ tests:
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S4b"]
-    pass_criteria: ["MEDIA_LIBRARY_UNSUPPORTED"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch"]
-    related: [P22]
+    pass_criteria: ["tool=play_music for the named request", "never control_music{play} succeeding (the bundled track)", "any claim of what is playing comes only from now_playing"]
+    evidence: ["2026-09-20: 20/20 suite (old criterion: MEDIA_LIBRARY_UNSUPPORTED)", "STALE_BIND apk_digest mismatch", "2026-09-30 SPEC-017 W4b2: criteria changed to the play_music truth; the earlier PASS does not carry over - NOT_RUN"]
+    related: [P22, SPEC-017]
     last_run: {at: 2026-09-20, result: PASS}
+
+  - id: MUSIC-UNIT-001
+    capability: media
+    name: play_music validates, hands off and reports only what is playing
+    purpose: "SPEC-017 A1-A4: the result and announce never name a song that is not in now_playing (I-1)"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: true
+    prerequisites: []
+    procedure: ["gradlew :app:testDebugUnitTest --tests *MediaDomainPlayMusicTest* --tests *MediaServerPlayMusicTest* --tests *FalseCapabilityClaimTest* --tests *NowPlayingVerifierTest* --tests *MediaSearchSpecsTest*"]
+    pass_criteria: ["playing+match, playing+mismatch, requested_unverified, NOT_PLAYING, NO_MUSIC_APP, MUSIC_HANDOFF_UNAVAILABLE each produce the specified result", "requested_unverified names no song", "a track already playing before the hand-off is not success", "a 正在放 claim with no tool call is not released"]
+    evidence: ["2026-10-01 cloud, integrated 436d197: MediaServerPlayMusicTest 12/0, MediaDomainPlayMusicTest 4/0, DriverTurnMusicTest 7/0, NowPlayingVerifierTest 7/0; full suite 3378 / 0 failures (planner read the JUnit XML); review PASS after REVISE x2"]
+    related: [SPEC-017]
+    last_run: {at: 2026-10-01, result: PASS}
+
+  - id: MUSIC-TEXT-LIVE-001
+    capability: media
+    name: The model maps music descriptions to play_music fields
+    purpose: "SPEC-017 A5: 「梶浦的、空之境界里很燃的那首 OP」 must become a concrete title/artist/work, not a refusal or control_music"
+    type: scenario
+    scope: INTERMEDIATE_FLOW
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: true
+    prerequisites: ["Gemini Live (default provider, ADR-013) text turns with the owner's key (never logged)", "a set of 10 music descriptions"]
+    procedure: ["send each description as a text turn", "record the play_music arguments per description"]
+    pass_criteria: [">= 8/10 descriptions produce play_music with a plausible title or artist/work", "0/10 produce control_music{play}"]
+    evidence: ["2026-10-01 re-run after the FZ-14 wording fix: GeminiTextLiveMappingTest MUSIC 10/10", "2026-10-01 cloud, gemini-3.8-live, GeminiTextLiveMappingTest (opt-in NOVA_GEMINI_TEXT_LIVE=1; fresh session per phrase, app client + RealtimeToolCatalog + default persona): 9/10 play_music, 0/10 control_music. M-01 梶浦/空之境界 -> play_music{artist,album_or_work,mood,query} (no title); M-02 提神 -> {mood,query}; M-03 晴天 -> {title,artist,query}; M-04 下雨天 -> MISS no call; M-05 十年 -> {title,artist}; M-06 进击的巨人 -> {album_or_work}; M-07 钢琴 -> {mood,query}; M-08 红豆 -> {title,artist}; M-09 千与千寻 -> {album_or_work,query}; M-10 八十年代粤语 -> {query}. Control: 放首歌 -> control_music{play}", "STALE_BIND code_digest mismatch"]
+    related: [SPEC-017]
+    last_run: {at: 2026-10-01, result: PASS}
+
+  - id: MUSIC-VLC-EMU-001
+    capability: media
+    name: VLC plays a local file handed off by play_music and the readback names it
+    purpose: "SPEC-017 A6: the hand-off intent and the MediaSession readback work end to end with a real player"
+    type: device
+    scope: END_TO_END
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: true
+    covers: [media.play_by_description]
+    terminal_success: [requested_track_playing, readback_names_it, map_in_foreground]
+    prerequisites: ["emulator or test phone with this build", "VLC (org.videolan.vlc) APK installed on the emulator, a few tagged local audio files pushed to /sdcard/Music", "notification access granted over adb: cmd notification allow_listener com.novadrive.app/com.novadrive.app.media.NovaMediaListener", "VPN split tunnel: the music app excluded from any VPN, the realtime provider reachable"]
+    procedure: ["say or text 「放<一个本地文件的歌名>」", "wait up to 6 s", "note the play_music result status and now_playing", "repeat with notification access revoked"]
+    pass_criteria: ["status=playing with now_playing naming the local file, matches_request=true", "the map returns to the foreground", "without notification access: status=requested_unverified and the reply names no song"]
+    autonomous_evidence: ["MUSIC-UNIT-001 (JVM) covers the result rules with a fake session source"]
+    remaining_uncertainty: ["whether VLC honours MEDIA_PLAY_FROM_SEARCH extras for a local title", "whether its MediaSession reports the title within 6 s"]
+    returns: ["status and now_playing per attempt", "music_verify log line (code-only)"]
+    evidence: []
+    related: [SPEC-017]
+    last_run: {at: null, result: null}
+
+  - id: MUSIC-APP-DEVICE-001
+    capability: media
+    name: 网易云 / QQ音乐 play a described song or fail honestly
+    purpose: "SPEC-017 A7: the driver's real music app, including VIP-only and region-blocked songs"
+    type: device
+    scope: END_TO_END
+    owner: HUMAN_ACCOUNT
+    status: HUMAN_REQUIRED
+    automation_blocker: credential_permission
+    release_blocking: true
+    covers: [media.play_by_description]
+    terminal_success: [described_track_playing, reply_names_only_now_playing, map_in_foreground]
+    human_reason: "Needs the owner's logged-in 网易云音乐 or QQ音乐 account (credential) and their consent for notification access on their phone"
+    prerequisites: ["test phone with this build", "网易云音乐 or QQ音乐 installed and logged in", "notification access (通知使用权) granted to 小诺", "VPN split tunnel: the music app excluded so its catalogue region is China"]
+    procedure: ["say 「放梶浦由记的、空之境界里很燃的那首 OP」", "say 「不是这首」 once", "ask for one VIP-only song", "note what plays and what 小诺 says each time"]
+    pass_criteria: ["the described song or an honest mismatch question plays and is named only from now_playing", "「不是这首」 excludes the previous title", "a VIP-only song gives NOT_PLAYING and 小诺 says it did not play", "the map returns to the foreground"]
+    autonomous_evidence: ["MUSIC-UNIT-001 (JVM)", "MUSIC-TEXT-LIVE-001 for the model's field mapping"]
+    remaining_uncertainty: ["how each app interprets MEDIA_PLAY_FROM_SEARCH extras", "whether VIP-only tracks start a preview that looks like playing"]
+    returns: ["per request: what played, what was said, status/error code", "whether the split tunnel was needed"]
+    evidence: []
+    related: [SPEC-017]
+    last_run: {at: null, result: null}
+
+  - id: BODY-UNIT-001
+    capability: body
+    name: Windows and seat height act on the vehicle port and announce what was done
+    purpose: "SPEC-015 B1/B4/B5 - 「座位有点高」 lowers the seat, 「把车窗打开一半」 sets 50%, and the reply is built from the state read back"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: []
+    procedure: ["gradlew :app:testDebugUnitTest --tests *BodyDomainTest* --tests *WindowToolHandlerTest* --tests *SeatToolHandlerTest* --tests *ActionAnnouncementTest*"]
+    pass_criteria: ["success results carry the read-back state and an announce sentence; clamping sets limit_reached; invalid and no-port calls are ok=false with no announce"]
+    evidence: ["2026-09-30 cloud, wt/W3a-body 58524f0: BodyDomainTest 6/0, WindowToolHandlerTest 11/0, SeatToolHandlerTest 6/0, ActionAnnouncementTest 4/0; full suite 2996 tests / 0 failures (planner read the JUnit XML); independent review REVISE resolved"]
+    last_run: {at: 2026-09-30, result: PASS}
+    related: [SPEC-015]
+
+  - id: SCENARIO-UNIT-001
+    capability: comfort
+    name: Comfort scenarios run their fixed steps through the direct-call servers and report partial failure honestly
+    purpose: "SPEC-015 FZ-09/FZ-10, B7/B8 - 有蚊子 / 蚊子出去了 / 有点闷 / 好困 run fixed steps; a failed step is named, never 「都弄好了」"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: []
+    procedure: ["gradlew :app:testDebugUnitTest --tests *ComfortScenariosTest*"]
+    pass_criteria: ["steps run in order through AndroidToolDispatcher's server path; a dependent step is skipped when its prerequisite fails; partial is ok=false status=partial with an announce naming done and not done; per-step referents recorded; drowsy never navigates; repeat guard applies to run_scenario, not its sub-steps; 有点闷 no longer an implicit fan request"]
+    evidence: ["2026-10-01 cloud, integrated 436d197: ComfortScenariosTest 15/0; full suite 3378 / 0 failures (planner read the JUnit XML); review PASS after REVISE"]
+    last_run: {at: 2026-10-01, result: PASS}
+    related: [SPEC-015]
 
 # ---- turn taking, lifecycle, recovery --------------------------------------------------------
 
@@ -2514,3 +2622,508 @@ tests:
     returns: ["observed hold durations (for the open 150 m / 8 s decision)", "bucket log lines only"]
     related: [SPEC-012]
     last_run: {at: null, result: null}
+
+  - id: GEMINI-UNIT-001
+    capability: architecture
+    name: Gemini Live adapter, shared gate and opt-in wiring
+    purpose: "SPEC-013 A1-A5: protocol, claim gate under Gemini, provider choice, boundary rules"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: []
+    procedure:
+      - "gradlew :app:testDebugUnitTest --tests *GeminiLive* --tests *RealtimeToolCatalog* --tests *DriverTurnPipeline* --tests *RealtimeProviderFactory* --tests *GeminiSettings* --tests *UplinkTransition*"
+      - "gradlew :ingress:test --tests *LocalSpeechActivity* ; gradlew :behavior-test:test"
+    pass_criteria: ["0 failures in the listed classes", "ProviderBoundaryTest and ArchitectureRulesTest green"]
+    evidence: ["2026-09-29 cloud, claude/9-29: app debug 1230/0, behavior-test 126/0, ingress 104/0"]
+    related: [SPEC-013]
+
+  - id: GEMINI-LIVE-CLOUD-001
+    capability: architecture
+    name: The app's Gemini client against the real API (cloud)
+    purpose: "Setup accepted; spoken commands reach a validated tool call with filler claims held"
+    type: integration
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: ["GEMINI_API_KEY in the environment", "tools/speech-harness/speech clips"]
+    procedure: ["NOVA_GEMINI_LIVE_SMOKE=1 SMOKE_PCM=<clip> LC_ALL=C.UTF-8 gradlew :app:testDebugUnitTest --rerun --tests *GeminiLiveSmokeTest*"]
+    pass_criteria: ["setupComplete", "tool call with valid args", "no completed-action claim released before the call"]
+    evidence: ["2026-09-29: ac_on, fan_up, nav_wanda 3/3 PASS (docs/reports/2026-09-29-gemini-live-probe.md second round)"]
+    related: [SPEC-013]
+
+  - id: GEMINI-DEVICE-REACH-001
+    capability: reliability
+    name: The phone opens a Gemini Live session on its normal network (G-M1)
+    purpose: "SPEC-013 A7: reachability from where the product is used; decides ADR-010's future"
+    type: device
+    scope: COMPONENT
+    owner: HUMAN_CREDENTIAL
+    status: HUMAN_REQUIRED
+    automation_blocker: credential_permission
+    release_blocking: false
+    human_reason: "Needs the owner's Gemini key entered on the phone and the owner's own acceptance of the cross-border notice"
+    prerequisites: ["debug APK from claude/9-29", "Gemini key"]
+    procedure:
+      - "Developer settings > Gemini Live: paste key, tick consent, tick use Gemini, save"
+      - "start a session; say 打开空调 and 导航到万达"
+      - "read logcat NovaVoice for gemini_setup_complete, gemini_tool_call, session_provider choice=gemini_live"
+    pass_criteria: ["gemini_setup_complete within 3 s", "both commands reach a tool call"]
+    returns: "the three logcat lines (or their absence), the time from session start to gemini_setup_complete, and which network the phone was on (VPN on/off)"
+    autonomous_evidence: "cloud container, outside China: setup accepted with the app's full configuration in 0.8-1.1 s; spoken 空调打开 and 导航到万达 reached control_climate and navigate_to through the app's own client (GEMINI-LIVE-CLOUD-001, probe report second round)"
+    remaining_uncertainty: "whether the phone's network (with the owner's VPN) reaches generativelanguage.googleapis.com at all, and the setup and first-audio latency from there"
+    evidence: []
+    related: [SPEC-013, ADR-010]
+
+  - id: GEMINI-DEVICE-DUPLEX-001
+    capability: turn_taking
+    name: Gemini reply through the speaker does not interrupt itself (G-M2)
+    purpose: "SPEC-013 A8: server-owned interruption with AEC3 at 24 kHz render"
+    type: device
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    prerequisites: ["GEMINI-DEVICE-REACH-001 passed", "test phone over ADB"]
+    procedure: ["speech harness: ask for a long answer 10 times, no speech during playback", "count gemini interrupted events with no local onset"]
+    pass_criteria: ["0 self-interruptions in 10 replies", "barge-in 闭嘴 stops playback within 1 s"]
+    evidence: []
+    related: [SPEC-013]
+  - id: GEMINI-DEVICE-LATENCY-001
+    capability: turn_taking
+    name: Gemini (gemini-3.8-live) end of speech to first audio heard, on the phone
+    purpose: "SPEC-014 A8. Cloud (JVM, 2026-09-30): L1 9/10 calls <=2.5 s (median 1.6 s; one earlier run 8/10), L2 gate release ~0 ms after generationComplete, L3 0 claims before result, 0 late frames. Playback, phone network and cabin not measured"
+    type: device
+    scope: COMPONENT
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: physical_world
+    human_reason: "Latency heard in the cabin depends on the phone's network to Google, playback and road noise; the cloud container measured only the wire and the gate"
+    release_blocking: false
+    prerequisites: ["developer settings: Gemini enabled, model gemini-3.8-live selected (a saved extended-thinking choice is kept)", "GEMINI-DEVICE-REACH-001 passed"]
+    procedure: ["say 10 commands (空调, 导航, 音乐) and 5 chat questions", "note seconds from end of speech to the action and to the first word heard", "note any 'done' heard before the action happened"]
+    pass_criteria: ["actions within ~2.5 s in at least 9 of 10", "chat replies start within ~2 s", "no claim heard before its action"]
+    autonomous_evidence: ["docs/reports/2026-09-30-gemini-native-smoke.md: live API through GeminiLiveClient, L1 9/10 (median 1.6 s), L2 ~0 ms gate release, L3 0 claims before result"]
+    remaining_uncertainty: ["seconds heard in the cabin on the phone's network", "whether gemini-3.8-live self-interrupts through the speaker (G-M2)"]
+    returns: ["commands acted within ~2.5 s, out of 10", "seconds to first word for the 5 chat questions", "any claim heard before its action"]
+    evidence: []
+    related: [SPEC-014]
+  - id: GATE-D10-DEVICE-001
+    capability: turn_taking
+    name: Claim gate D-10 orderings hold on real provider traffic
+    purpose: "D-10 is fixed at JVM level (DriverTurnTest); the real order of transcript, call, response end and tool result is unverified"
+    type: device
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    prerequisites: ["test phone over ADB"]
+    procedure: ["Baidu: a command whose acknowledgement precedes function_call, result after response.done", "Gemini: a call that opens the response", "a failed action followed by the model's reply"]
+    pass_criteria: ["no done-claim heard before an ok=true result", "a failed action is reported to the driver", "TURN_DROP/RELEASE reasons match DriverTurnTest"]
+    evidence: []
+    related: [SPEC-014]
+
+  - id: STYLE-UNIT-001
+    capability: speech
+    name: set_speaking_style changes the tone, persists it and composes it
+    purpose: "SPEC-015 FZ-11/FZ-12/B6 - 「嗲一点」 sticks until 「正常一点」; tone only, the voice never changes"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: []
+    procedure: ["gradlew :app:testDebugUnitTest --tests *SpeakingStyleToolTest*"]
+    pass_criteria: ["sweet/default set SpeakingStyleState and call persist", "result is ok=true with style and instruction, persisted=false only when the save failed", "invalid arguments are refused", "PersonaProfiles.compose carries SWEET_TONE after style=sweet"]
+    evidence: ["2026-09-30 cloud, wt/W3b-style-tool 80b9072: SpeakingStyleToolTest 8/0, PersonaProfilesTest 6/0, SpeakingStyleTest 2/0; full suite 3131 / 0 failures (planner read the JUnit XML)"]
+    related: [SPEC-015]
+    last_run: {at: 2026-09-30, result: PASS}
+
+  - id: FUZZY-TEXT-LIVE-001
+    capability: comfort
+    name: The live model maps the fuzzy phrase table FZ-01…FZ-19 to the right calls
+    purpose: "SPEC-015 A8: 有蚊子/座位有点高/好困/嗲一点… reach run_scenario / control_seat / control_window / set_speaking_style, and 打开天窗 is refused"
+    type: text_live
+    scope: INTERMEDIATE_FLOW
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: true
+    covers: [comfort.scenario, body.window, body.seat_height, speech.speaking_style]
+    prerequisites: ["GEMINI_API_KEY in the environment (default provider, ADR-013)", "text turns through the app's own Gemini client"]
+    procedure: ["send each FZ phrase as a text turn in its stated context", "record the first tool call and arguments"]
+    pass_criteria: [">= 17/19 phrases produce the expected call (or the expected refusal/clarification)", "FZ-15…FZ-19 (styles) all correct"]
+    evidence: ["2026-10-01 cloud, gemini-3.8-live, after adding 傲娇/温柔/元气: FUZZY 18/19 — FZ-15 傲娇一点 and FZ-16 說話傲嬌一點 -> tsundere, FZ-17 gentle, FZ-18 lively, FZ-19 霸道 no call; FZ-14 still the only model-layer MISS (held at the dispatcher). MUSIC 10/10, MUSIC_CONTROL 1/1", "2026-10-01 re-run after the FZ-14 wording fix (refusal carries options): GeminiTextLiveMappingTest FUZZY 13/14, same calls as before; FZ-14 still MISS at the model layer (control_climate guess) and held at the dispatcher with AMBIGUOUS_REFERENT + options (ToolCallGuardBodyReferentTest, FalseCapabilityClaimTest)", "2026-10-01 cloud, gemini-3.8-live, GeminiTextLiveMappingTest (opt-in NOVA_GEMINI_TEXT_LIVE=1; fresh session per phrase; context rows send setup turns answered with simulated ok): 13/14. FZ-01 run_scenario{mosquito}; FZ-02 run_scenario{mosquito_done}; FZ-03 control_seat{adjust_height,-1}; FZ-04 {adjust_height,1}; FZ-05 {adjust_height,-1}; FZ-06 control_window{set,50} (window omitted = all); FZ-07 control_window{adjust,driver,20}; FZ-08 control_window{close,all}; FZ-09 run_scenario{stuffy}; FZ-10 run_scenario{drowsy}; FZ-11 set_speaking_style{sweet}; FZ-12 set_speaking_style{default}; FZ-13 no call; FZ-14 MISS - after seat and temperature changes 再低一点 -> control_climate{adjust_temperature,-1} instead of a clarifying question (model-layer result only)", "STALE_BIND apk_digest mismatch"]
+    related: [SPEC-015]
+    last_run: {at: 2026-10-01, result: PASS}
+
+  - id: FUZZY-DEVICE-001
+    capability: comfort
+    name: Fuzzy requests on the emulator - chip on screen, one call per scenario, honest partial report
+    purpose: "SPEC-015 A9: what the driver sees and how long a scenario takes"
+    type: device
+    scope: END_TO_END
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    terminal_success: [scenario_executed_once, chip_visible, reply_matches_result]
+    covers: [comfort.scenario, body.window, body.seat_height]
+    prerequisites: ["KVM-capable host with the emulator (owner's PC; the cloud container has no /dev/kvm)", "this build", "Gemini key"]
+    procedure: ["say/inject 有蚊子, 好了关上吧, 座位有点高, 再低一点, 好困", "screencap the chip after each", "measure speech-end to first audio"]
+    pass_criteria: ["one run_scenario call per scenario phrase", "chip lists the steps", "reply names only what the result shows"]
+    evidence: []
+    related: [SPEC-015]
+    last_run: {at: null, result: null}
+
+  - id: STYLE-EAR-001
+    capability: speech
+    name: 嗲 / 傲娇 / 温柔 / 元气 each sound right and appropriate, with the same voice
+    purpose: "SPEC-015 FZ-11/FZ-12: a subjective listening judgement only a person can make"
+    type: device
+    scope: END_TO_END
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: subjective_perception
+    release_blocking: false
+    terminal_success: [tone_sweeter_and_appropriate, voice_unchanged, style_persists_restart]
+    autonomous_evidence: ["STYLE-UNIT-001: compose swaps the tone paragraph; style persisted and sticky (JVM)"]
+    remaining_uncertainty: ["how the model renders the sweet tone in audio", "whether it ever drifts into inappropriate wording"]
+    covers: [speech.speaking_style]
+    human_reason: "Whether the tone is sweet but not inappropriate, and whether the voice is unchanged, is a listening judgement"
+    prerequisites: ["phone or emulator with this build", "Gemini key"]
+    procedure: ["say 说话能不能嗲一点, chat for three turns", "restart the app, chat again", "say 傲娇一点, then 把车窗打开一半: the window opens and 小诺 does not pretend to refuse", "say 温柔一点 and 元气一点, one turn each", "say 正常一点"]
+    pass_criteria: ["tone audibly sweeter, never sexualised", "same voice throughout", "still sweet after restart", "normal after 正常一点"]
+    returns: ["yes/no per criterion, one sentence of impression"]
+    evidence: []
+    related: [SPEC-015]
+    last_run: {at: null, result: null}
+
+  - id: GUIDANCE-EMU-001
+    capability: navigation
+    name: Step-0 measurements for assistant-spoken guidance on the short route
+    purpose: "SPEC-018 A0 (G-1 … G-1f): latency to played audio, playTTS with the inner voice off, listener behaviour, setTtsPlaying, clientContent interruption, transcription accuracy, onGetNavigationText types"
+    type: device
+    scope: END_TO_END
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: true
+    terminal_success: [g1_measured, playtts_fallback_answered, transcription_accuracy_measured]
+    covers: [navigation.guidance_voice]
+    prerequisites: ["KVM-capable host with an ARM-translation emulator image (the owner's PC)", "this build with the developer toggle 「助手播报导航」 on", "Gemini key", "route 横琴创业谷 → 励骏庞都 only (owner test-run policy)"]
+    procedure: ["simulated drive of the short route", "collect guidance_route / guidance_claim / guidance_fidelity / nav_guidance_fallback_tts lines", "repeat once with the network cut mid-route"]
+    pass_criteria: ["every G-1…G-1f question answered with numbers", "G-1b: if playTTS is silent with the inner voice off, stop and escalate (ADR-014 fallback cannot be met)"]
+    evidence: []
+    related: [SPEC-018, ADR-014]
+    last_run: {at: null, result: null}
+
+  - id: GUIDANCE-DEVICE-001
+    capability: navigation
+    name: One voice on the short route; Amap audible only when the model cannot speak
+    purpose: "SPEC-018 A8: what the driver hears in a real car"
+    type: device
+    scope: END_TO_END
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: physical_world
+    release_blocking: true
+    terminal_success: [each_prompt_heard_once, fallback_only_when_model_cannot, no_reworded_direction]
+    autonomous_evidence: ["GUIDANCE-EMU-001 measurements", "SPEC-018 step 1 JVM suites (GuidanceRelayTest, SpeechArbiterGuidanceTest, GeminiLiveClientTest)"]
+    remaining_uncertainty: ["real-network latency vs the deadline", "Amap SDK behaviour with the inner voice off on a real device"]
+    covers: [navigation.guidance_voice]
+    human_reason: "Needs a person driving or riding the route and listening to which voice speaks each prompt"
+    prerequisites: ["test phone with this build, toggle on", "GUIDANCE-EMU-001 passed", "route 横琴创业谷 → 励骏庞都"]
+    procedure: ["drive the route", "note any prompt spoken twice, missed, or in Amap's voice", "cut mobile data for one prompt"]
+    pass_criteria: ["every prompt heard exactly once", "Amap's voice only when data was cut or the model failed", "no prompt reworded in direction or distance"]
+    returns: ["per prompt: voice heard, correct yes/no"]
+    evidence: []
+    related: [SPEC-018, ADR-014]
+    last_run: {at: null, result: null}
+
+  - id: CONFIG-CARD-UNIT-001
+    capability: permissions
+    name: A fixed configuration problem removes its CONFIG card and nothing else
+    purpose: "OPEN_PROBLEMS P44 - the consent card stayed on the map after consent was saved"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: []
+    procedure: ["gradlew :app:testDebugUnitTest --tests *ShownErrorCardTest*"]
+    pass_criteria: ["clear(CONFIG) succeeds only while CONFIG is the card on screen", "an unrelated error is never cleared by a valid configuration", "a transcript line or a newer error replaces the CONFIG card", "B-033: a transient card fades on its own timer; CONFIG never fades; an older timer never clears a newer card"]
+    evidence: ["2026-10-02 cloud, claude/10-1: ShownErrorCardTest 10/0 with the B-033 fade; full suite 3400 / 0 failures; :app:assembleDebug built (planner read the JUnit XML)", "2026-10-01 cloud, claude/10-1: ShownErrorCardTest 6/0; full suite 3400 / 0 failures, 4 skipped; :app:assembleDebug built (planner read the JUnit XML)"]
+    related: [P44, B-033]
+    last_run: {at: 2026-10-02, result: PASS}
+
+  - id: CONFIG-CARD-EMU-001
+    capability: permissions
+    name: The CONFIG card leaves the map once the missing setting is saved
+    purpose: "OPEN_PROBLEMS P44 device check: the card the owner read as a failure must not survive the fix"
+    type: device
+    scope: END_TO_END
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    terminal_success: [card_gone_after_resume, card_gone_after_session_start, unrelated_error_kept, transient_card_fades]
+    covers: []
+    prerequisites: ["emulator nova_api34 (the owner's PC) with this build", "Gemini selected, consent not yet given"]
+    procedure: ["open the map: the consent CONFIG card shows", "save consent in developer settings and return to the map", "check the card is gone and no config_banner line is logged", "start a session: state=LISTENING, still no card", "B-033: let the session drop while asleep; the GEMINI_LIVE_CONNECTION_FAILED card goes after ~12 s and the state line shows 已断开"]
+    pass_criteria: ["no CONFIG card after the resume with a valid configuration", "no CONFIG card after gemini_setup_complete"]
+    evidence: []
+    related: [P44, CONFIG-CARD-UNIT-001]
+    last_run: {at: null, result: null}
+
+  - id: TRANSCRIPT-FADE-UNIT-001
+    capability: permissions
+    name: The last exchange clears after a quiet period and never while the conversation is live
+    purpose: "BACKLOG B-035 - the 你:/小诺: bubble stayed over the map forever"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: []
+    procedure: ["gradlew :app:testDebugUnitTest --tests *TranscriptBubbleFadeTest* --tests *TranscriptBubbleSessionSimulationTest*"]
+    pass_criteria: ["cleared after 10 s of quiet (polled every 1 s)", "never cleared while USER_SPEAKING, THINKING or SPEAKING", "never cleared while held (playout audible, a question waiting on screen)", "a new line or a busy moment restarts the quiet period, so an older wait never clears a newer exchange", "an error card or the placeholder is never cleared by it", "session simulation (real VoiceSessionController): the exchange leaves 10-12 s after the playout ends, not at ResponseDone; survives barge-in and a waiting route list"]
+    evidence: ["2026-10-02 cloud, claude/10-2: TranscriptBubbleFadeTest 7/0, TranscriptBubbleSessionSimulationTest 4/0 (planner read the JUnit XML)"]
+    related: [B-035, B-033]
+    last_run: {at: 2026-10-02, result: PASS}
+
+  - id: P45-UNIT-001
+    capability: speech
+    name: An interrupted unheard reply is never synthesised; a question restarts the sleep window; turn timings are logged
+    purpose: "OPEN_PROBLEMS P45 - a held reply was never spoken, its words were still sent to Azure, and the session slept 7 s after the next question"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: []
+    procedure: ["gradlew :app:testDebugUnitTest --tests *GeminiLiveClientTest* --tests *ListeningLifecycleTest* --tests *GeminiTurnTimingTest*", "gradlew test --rerun-tasks :app:assembleDebug"]
+    pass_criteria: ["a server interrupt of a still-held reply emits no SpeechText, AudioDelta, subtitle or correction", "a late answer after an empty turn is spoken when clean and held when it claims (I-1)", "a meaningful question with no busy edge restarts the 30 s window", "gemini_turn_done carries dur/first_audio/first_text/gen/msgs/max_gap"]
+    evidence: ["2026-10-02 cloud, claude/10-2: GeminiLiveClientTest 69/0, ListeningLifecycleTest 36/0, GeminiTurnTimingTest 4/0, behavior-test green; independent review PASS (planner read the JUnit XML)"]
+    related: [P45, SPEC-019]
+    last_run: {at: 2026-10-02, result: PASS}
+
+  - id: P45-EMU-001
+    capability: speech
+    name: The P45 conversation on the emulator with live speech, with the Azure voice
+    purpose: "P45 re-run: the device-level confirmation the JVM tests cannot give"
+    type: device
+    scope: END_TO_END
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    terminal_success: [no_tts_after_unheard_interrupt, no_early_sleep, stall_measured]
+    covers: []
+    prerequisites: ["emulator nova_api34 on the owner's PC with this build", "Azure voice on", "host bridge, once with headphones and once with speakers"]
+    procedure: ["ask 你喜欢吃啥, then 你能干什么, as the owner did; repeat 5 times", "capture NovaVoice; run tools/demo/check_demo_log.py --run B"]
+    pass_criteria: ["no azure_tts_* line between gemini_interrupted_unheard and the next gemini_turn_open", "no inactivity_timeout sooner than 30 s after a driver transcript", "gemini_turn_done max_gap_ms / gen_ms recorded for every turn; a stalled stream (max_gap_ms > 3000) or gemini_turn_empty counted"]
+    evidence: []
+    related: [P45, P45-UNIT-001, DEMO-10-2-001]
+    last_run: {at: null, result: null}
+
+  - id: DEMO-10-2-001
+    capability: speech
+    name: One demo run that exercises every claude/10-2 function, graded by the log checker
+    purpose: "Owner request 2026-10-02: a demo case covering all new functions with performance aligned to the recorded budgets (docs/DEMO_10-2.md)"
+    type: device
+    scope: END_TO_END
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: subjective_perception
+    release_blocking: false
+    human_reason: "Whether only Xiaoyi is heard, whether each speaking style sounds different and whether her delay is acceptable are judgements by ear; the owner also speaks the scenes live"
+    prerequisites: ["PC emulator nova_api34 or the phone, with this build", "Gemini key and consent; Azure Speech key and region", "headphones (the host bridge is the microphone)", "short route 横琴创业谷 → 励骏庞都 only"]
+    procedure: ["follow docs/DEMO_10-2.md: act C (cards), run A (assistant voice off), run B (on), optional failure drill", "capture adb logcat -v threadtime -s NovaVoice per run", "python tools/demo/check_demo_log.py --scenes 10-2 --run A demo_runA.log", "python tools/demo/check_demo_log.py --scenes 10-2 --run B demo_runB.log --baseline demo_runA.log", "tick the by-ear list"]
+    terminal_success: [checker_no_fail, by_ear_list_ticked]
+    pass_criteria: ["checker: no FAIL in run A or run B (WARN reviewed)", "chat reply p50 <= 2000 ms; actions <= 2500 ms in >= 90 %; Xiaoyi extra delay p50 <= 1000 ms (ADR-016)", "every by-ear item ticked"]
+    autonomous_evidence: ["tools/demo/check_demo_log.py --selftest OK (2026-10-02 cloud)", "the JVM suites behind each scene (TTS-UNIT-001, TRANSCRIPT-FADE-UNIT-001, CONFIG-CARD-UNIT-001, SPEC-015/017/018 rows)"]
+    remaining_uncertainty: ["real latency through the PC or phone network to Gemini and Azure", "whether 嗲/傲娇/温柔/元气 are distinct by ear", "whether P45's 9.4 s Gemini stall recurs (the new timing lines will show it)"]
+    returns: ["the two checker reports", "the ticked by-ear list", "the commit"]
+    evidence: []
+    related: [P44, B-033, B-034, B-035, P45, SPEC-015, SPEC-017, SPEC-018, SPEC-019, TTS-VOICE-EMU-001, TRANSCRIPT-FADE-EMU-001]
+    last_run: {at: null, result: null}
+  - id: DEMO-10-3-001
+    capability: speech
+    name: One demo run that exercises the essential functions and every claude/10-2 and claude/10-3 function, graded by the log checker
+    purpose: "Owner request 2026-10-03: a demo case covering the essential and new functions of claude/10-3 with performance aligned to the recorded budgets (docs/DEMO_10-3.md)"
+    type: device
+    scope: END_TO_END
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: subjective_perception
+    release_blocking: false
+    human_reason: "Whether only Xiaoyi is heard, whether each speaking style sounds different and whether her delay is acceptable are judgements by ear; the owner also speaks the scenes live"
+    prerequisites: ["PC emulator nova_api34 or the phone, with this build", "Gemini key and consent; Azure Speech key and region", "headphones (the host bridge is the microphone)", "short route 横琴创业谷 → 励骏庞都 only"]
+    procedure: ["follow docs/DEMO_10-3.md: act C (cards), run A (assistant voice off), run B (on), optional failure drill", "capture adb logcat -v threadtime -s NovaVoice per run", "python tools/demo/check_demo_log.py --run A demo_runA.log", "python tools/demo/check_demo_log.py --run B demo_runB.log --baseline demo_runA.log", "tick the by-ear list"]
+    terminal_success: [checker_no_fail, by_ear_list_ticked]
+    pass_criteria: ["checker: no FAIL in run A or run B (WARN reviewed)", "chat reply p50 <= 2000 ms; actions <= 2500 ms in >= 90 %; Xiaoyi extra delay p50 <= 1000 ms (ADR-016)", "AB-1 and MIC-1 replies heard (no TURN_DROP); no claim-gate hold over 20 s; chat correction graceMs <= 1500; WARM-1 first Azure clause <= 1000 ms", "every by-ear item ticked"]
+    autonomous_evidence: ["tools/demo/check_demo_log.py --selftest OK (2026-10-03 cloud, 10-3 checks included)", "the JVM suites behind each scene (TTS-UNIT-001, TRANSCRIPT-FADE-UNIT-001, CONFIG-CARD-UNIT-001, SPEC-015/017/018 rows)"]
+    remaining_uncertainty: ["real latency through the PC or phone network to Gemini and Azure", "whether 嗲/傲娇/温柔/元气 are distinct by ear", "whether P45's 9.4 s Gemini stall recurs (the new timing lines will show it)"]
+    returns: ["the two checker reports", "the ticked by-ear list", "the commit"]
+    evidence: []
+    related: [P44, B-033, B-034, B-035, P45, SPEC-015, SPEC-017, SPEC-018, SPEC-019, TTS-VOICE-EMU-001, TRANSCRIPT-FADE-EMU-001]
+    last_run: {at: null, result: null}
+
+  - id: TRANSCRIPT-FADE-EMU-001
+    capability: permissions
+    name: On the emulator the transcript bubble leaves the map about 10 s after the last line
+    purpose: "BACKLOG B-035 device check: the real overlay, its main-thread poll and restore to the placeholder"
+    type: device
+    scope: END_TO_END
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    terminal_success: [bubble_shows_line, bubble_kept_before_fade, bubble_cleared_after_fade]
+    covers: []
+    prerequisites: ["emulator nova_api34 on the owner's PC (KVM/WHPX) with this debug build; the cloud container cannot run it (docs/CLOUD_BUILD.md, re-measured 2026-10-02)"]
+    procedure: ["probe (the overlay alone): adb shell am start -n com.novadrive.app/.TranscriptFadeProbeActivity --el speaking_ms 5000 --el held_ms 15000; read logcat NovaVoice transcript_bubble_shown / transcript_bubble_faded since_line_ms", "full app: switch device location off so 📍 writes a transcript line (map_recenter_no_service); tap 📍; the bubble shows the line, then the placeholder ~10-11 s later (transcript_bubble_faded)", "with a Gemini key: one spoken exchange; the bubble clears ~10 s after 小诺 stops being audible, not while she speaks"]
+    pass_criteria: ["probe: transcript_bubble_faded since_line_ms between 25000 and 27000 (held 15 s + 10 s quiet)", "full app: the line is shown, still there at ~5 s, replaced by the placeholder by ~12 s", "spoken exchange: never cleared while SPEAKING or audible"]
+    evidence: ["2026-10-02 cloud attempt, not a result: the app installed on nova34 (software-only) but the system starved (ANRs, system_server restarts); the probe could not attach within the process-start timeout. Run on the PC."]
+    related: [B-035, TRANSCRIPT-FADE-UNIT-001]
+    last_run: {at: null, result: null}
+
+  - id: VOICE-AB-001
+    capability: speech
+    name: Gemini prebuilt voices measured for a young, clear voice (B-034 shortlist)
+    purpose: "BACKLOG B-034: Kore sounded old to the owner; shortlist candidates by measured pitch before the owner listens"
+    type: measurement
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: ["GEMINI_API_KEY", "python3 with aiohttp"]
+    procedure: ["python tools/gemini-live-probe/voice_ab.py (model gemini-3.8-live, same Chinese lines for every voice)"]
+    pass_criteria: ["every candidate recorded with a median F0", "the default is the youthful/highest-pitched voice that reads the lines"]
+    evidence: ["2026-10-02 cloud, 3 runs, median F0 Hz: Erinome 235-250, Leda 222-235, Autonoe 211, Aoede 205, Zephyr 200, Despina 200, Callirrhoe 195, Kore 186, Laomedeia 178, Pulcherrima 154-170. Kore is among the lowest; Leda (Google: youthful) and Erinome (Google: clear) are the highest. Default set to Leda; clips not committed (synthetic sentences, regenerate with the tool)"]
+    related: [B-034, VOICE-EAR-001]
+    last_run: {at: 2026-10-02, result: PASS}
+
+  - id: VOICE-EAR-001
+    capability: speech
+    name: The owner picks the 符玄-like Gemini voice by ear
+    purpose: "BACKLOG B-034: whether a voice sounds young, clear and poised is a listening judgement"
+    type: device
+    scope: END_TO_END
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_FAIL
+    automation_blocker: subjective_perception
+    release_blocking: false
+    terminal_success: [voice_picked, default_matches_pick]
+    autonomous_evidence: ["VOICE-AB-001: measured pitch shortlist; default now Leda", "GeminiSettingsTest: a stored prefilled Kore switches once to the new default; a deliberate choice is kept"]
+    remaining_uncertainty: ["which voice the owner hears as 符玄-like", "how the pick sounds with 傲娇 (B-029)"]
+    covers: []
+    human_reason: "Young / clear / not old is a listening judgement"
+    prerequisites: ["PC with GEMINI_API_KEY and python3 + aiohttp", "emulator or phone with this build"]
+    procedure: ["$env:OUT='D:\\桌面\\android_doc\\voice_ab'; python tools/gemini-live-probe/voice_ab.py", "listen to the WAVs (Leda and Erinome first, Kore for comparison)", "in the app: chat once with the new default, then say 傲娇一点", "to try another voice: 开发者设置 → Voice field"]
+    pass_criteria: ["the owner names one voice", "the default is changed to it if it is not Leda"]
+    returns: ["the chosen voice name, one sentence of impression"]
+    evidence: ["2026-10-02 owner, emulator at 34d629d: 10 voices recorded through the app (Erinome 250 Hz ... Pulcherrima 178 Hz); all rejected (\"gemini voice are all old woman\"). Superseded by ADR-016 / TTS-AUDITION-001"]
+    acceptance:
+      - {criterion: voice_picked, required: true, observed: false, evidence: "owner:BACKLOG.md B-034 ear test 2026-10-02, clips D:/桌面/android_doc/voice_pick_2026-10-02/"}
+    ended_by: manual
+    related: [B-034, VOICE-AB-001, STYLE-EAR-001]
+    last_run: {at: 2026-10-02, result: HUMAN_FAIL}
+
+  - id: VOICE-AB-002
+    capability: speech
+    name: No Gemini-side lever makes the voice younger in conversation; the transcript can feed a TTS
+    purpose: "ADR-016 basis: prompt voice direction, TEXT output, and output-transcript timing measured on gemini-3.8-live"
+    type: measurement
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: ["GEMINI_API_KEY", "python3 with aiohttp"]
+    procedure: ["voice_ab.py-style sessions: read-aloud and app-persona conversation (你能做什么 / 有点热), with and without a stronger 语音风格 line, Leda and Erinome, 2 runs each", "setup with responseModalities TEXT", "text turns with outputAudioTranscription, timing first audio vs first clause"]
+    pass_criteria: ["each lever measured with numbers"]
+    evidence: ["2026-10-02 cloud: read-aloud young line Leda 222->258-276 Hz, Erinome ->242-258 Hz; app persona conversation stronger line Leda 216-229 vs 211-242, Erinome 211-242 vs 222-267 (no lift). TEXT modality: close 1007 not supported (all Live models are native audio). Transcript arrives with the audio; first clause 0-740 ms after first audio; generation ~3x real time (6 turns)"]
+    related: [B-034, ADR-016, VOICE-AB-001]
+    last_run: {at: 2026-10-02, result: PASS}
+
+  - id: TTS-AUDITION-001
+    capability: speech
+    name: The owner picks a Chinese TTS voice (and vendor) by ear
+    purpose: "ADR-016 step 0: the vendor and voice are a listening judgement, and the key is the owner's"
+    type: device
+    scope: END_TO_END
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: subjective_perception
+    release_blocking: false
+    terminal_success: [voice_picked, vendor_key_available]
+    autonomous_evidence: ["VOICE-AB-002: Gemini-side levers closed", "tools/tts-audition/audition.py reaches openspeech.bytedance.com and api.minimaxi.com / api.minimax.io and parses their auth errors (2026-10-02 cloud, dummy keys)"]
+    remaining_uncertainty: ["vendor first-packet latency on the owner's network"]
+    covers: []
+    human_reason: "Voice preference is a listening judgement; vendor keys are entered by the owner only"
+    prerequisites: ["PC with python3", "a key for at least one vendor: VOLC_APP_ID + VOLC_ACCESS_TOKEN, MINIMAX_API_KEY, or BAIDU_TTS_AK + BAIDU_TTS_SK"]
+    procedure: ["$env:OUT='D:\\桌面\\android_doc\\tts_audition'; python tools/tts-audition/audition.py volc   (and/or minimax, minimax-design, baidu)", "listen; optional: pass other voice ids from the vendor console after the vendor name", "tell the agent the vendor and voice id"]
+    pass_criteria: ["the owner names one vendor and one voice"]
+    returns: ["vendor, voice id, one sentence of impression"]
+    evidence: ["2026-10-02 owner, by ear on edge_preview clips (D:/桌面/android_doc/tts_audition/edge_preview/): picked zh-CN-XiaoyiNeural (\"this one good use this as default\"). Those clips came from the unofficial Bing read-aloud endpoint (edge-tts), which is not usable in the product; the licensed service for the same voice is Azure AI Speech. vendor_key_available: no Azure Speech key yet"]
+    acceptance:
+      - {criterion: voice_picked, required: true, observed: true, evidence: "owner chat 2026-10-02: zh-CN-XiaoyiNeural (Microsoft / Azure AI Speech)"}
+      - {criterion: vendor_key_available, required: true, observed: false, evidence: "owner to enter an Azure Speech key + region in developer settings"}
+    related: [B-034, ADR-016, VOICE-AB-002]
+    last_run: {at: 2026-10-02, result: PARTIAL}
+
+  - id: TTS-UNIT-001
+    capability: speech
+    name: The assistant voice speaks only gate-released words, in order, and stops on barge-in
+    purpose: "SPEC-019 R1-R9 (ADR-016): Gemini's words spoken by the Azure voice; claim gate, ordering, cancellation, failure, styles, secrets, default off"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: []
+    procedure: ["gradlew :app:testDebugUnitTest --tests *AssistantVoiceRevoicerTest* --tests *ClauseSegmenterTest* --tests *AzureSpeechVoiceTest* --tests *AzureSpeechSettingsTest* --tests *GeminiLiveClientTest*", "gradlew :behavior-test:test"]
+    pass_criteria: ["all listed suites green", "full suite green", ":app:assembleDebug builds"]
+    evidence: ["2026-10-02 cloud, claude/10-2 9305ede (after the independent review REVISE fixes): AssistantVoiceRevoicerTest 11/0 (3 reruns), GeminiLiveProviderVoiceTest 5/0 (3 reruns), ClauseSegmenterTest 5/0, AzureSpeechVoiceTest 10/0, AzureSpeechSettingsTest 6/0, GeminiLiveClientTest 63/0, LocalSpeechActivityTest 6/0; full suite 3504 / 0 failures (4 skipped); :app:assembleDebug built (planner read the JUnit XML)"]
+    related: [SPEC-019, ADR-016, B-034]
+    last_run: {at: 2026-10-02, result: PASS}
+
+  - id: TTS-VOICE-EMU-001
+    capability: speech
+    name: Xiaoyi speaks every reply and guidance prompt on the short route; barge-in stops her
+    purpose: "SPEC-019 step 3: the voice path end to end on the emulator; first-audio latency vs Gemini's own"
+    type: device
+    scope: END_TO_END
+    owner: AUTONOMOUS
+    status: BLOCKED_AUTONOMOUS
+    automation_blocker: "needs the owner's Azure Speech key in developer settings (agents never enter keys)"
+    release_blocking: false
+    terminal_success: [replies_in_xiaoyi, no_gemini_voice_heard, barge_in_stops_voice, guidance_in_xiaoyi, style_changes_delivery]
+    prerequisites: ["emulator nova_api34 with this build", "Gemini key + consent", "Azure key + region entered, 小诺的声音 switched on", "route 横琴创业谷 -> 励骏庞都 only (owner test-run policy)"]
+    procedure: ["start a session; ask 你能做什么 and 有点热", "say 傲娇一点, then 把车窗打开一半", "interrupt a long reply", "navigate the short route with 助手播报导航 on", "collect assistant_voice_first_audio, azure_tts_*, gemini_turn_* lines"]
+    pass_criteria: ["every reply and guidance prompt audible in Xiaoyi only", "barge-in stops the voice within one clause", "assistant_voice_first_audio p50 recorded; extra delay vs Gemini first audio <= 1.0 s (ADR-016 revisit threshold)", "no assistant_voice_failed lines", "every assistant_voice_cancelled reason=driver_onset_unplayed is followed by a driver transcript (no reply lost to noise)", "no AZURE_TTS_TIMEOUT on a long clause"]
+    evidence: []
+    related: [SPEC-019, ADR-016, TTS-VOICE-DEVICE-001]
+    last_run: {at: null, result: null}
+
+  - id: TTS-VOICE-DEVICE-001
+    capability: speech
+    name: In the car, Xiaoyi is the only voice and the styles sound right
+    purpose: "SPEC-019 / ADR-016 step 3: the device gate before Xiaoyi becomes the default"
+    type: device
+    scope: END_TO_END
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: subjective_perception
+    release_blocking: false
+    terminal_success: [one_voice_heard, latency_acceptable, styles_sound_right]
+    autonomous_evidence: ["TTS-UNIT-001", "TTS-VOICE-EMU-001 (once run)"]
+    remaining_uncertainty: ["Azure latency on the owner's network", "how 傲娇 (disgruntled 0.6) sounds"]
+    covers: []
+    human_reason: "Whether the delay is acceptable and the styles sound right is a listening judgement in the car"
+    prerequisites: ["phone with this build", "Azure key entered and 小诺的声音 on"]
+    procedure: ["drive the short route; chat, give commands, interrupt", "try 嗲一点 / 傲娇一点 / 温柔一点 / 元气一点 / 正常一点"]
+    pass_criteria: ["only Xiaoyi is heard", "the delay before she speaks is acceptable", "each style sounds like itself"]
+    returns: ["yes/no per criterion; style degrees to change, if any"]
+    evidence: []
+    related: [SPEC-019, ADR-016, STYLE-EAR-001]
+    last_run: {at: null, result: null}
+

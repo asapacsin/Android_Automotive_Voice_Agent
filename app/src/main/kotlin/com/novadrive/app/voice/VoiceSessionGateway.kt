@@ -1,6 +1,5 @@
 package com.novadrive.app.voice
 
-import com.novadrive.app.BaiduApiConfig
 
 /**
  * Single application-scoped start/stop seam for the voice session.
@@ -52,7 +51,7 @@ object VoiceSessionGateway {
         }
         if (!session.hasMicPermission()) return StartResult.MicPermissionMissing
         return try {
-            session.startBaidu(reason)
+            session.startSession(reason)
             service?.start()
             StartResult.Started
         } catch (failure: IllegalArgumentException) {
@@ -88,6 +87,29 @@ object VoiceSessionGateway {
         if (started !is StartResult.Started && started !is StartResult.AlreadyActive) return started
         session.sendText(prompt)
         return started
+    }
+
+    /**
+     * SPEC-018 B1a: sends an app prompt to the running session now, or returns false. Never starts
+     * or wakes a session and never changes the listening state; false when nothing is attached,
+     * the session is not active, or it failed.
+     */
+    fun sendPrompt(text: String, promptId: String): Boolean {
+        val session = starter ?: return false
+        if (!session.isActive || session.hasFailed) return false
+        return session.sendPrompt(text, promptId)
+    }
+
+    /**
+     * SPEC-018 B1: null when a guidance prompt may be sent now, else why not (a code only).
+     * There is no core signal for "a driver response is open with no audio yet"; pending work and
+     * the driver speaking are covered.
+     */
+    fun guidanceBlocker(): String? {
+        val session = starter ?: return "NOT_ATTACHED"
+        if (!session.isActive) return "NOT_ACTIVE"
+        if (session.hasFailed) return "FAILED"
+        return session.guidanceBlocker()
     }
 
     /** UI / voice: stop listening now (SLEEP); the session and the wake word stay available. */
@@ -135,7 +157,7 @@ interface SessionServiceControl {
     fun start()
     fun stop()
     fun hasMicPermission(): Boolean
-    fun baiduConfig(): BaiduApiConfig
+    fun sessionConfig(): SessionProviderConfig
 }
 
 sealed interface StartResult {
@@ -152,7 +174,7 @@ internal interface GatewaySession {
     /** True when the session ended in a terminal error and can only be recovered by restarting. */
     val hasFailed: Boolean get() = false
     fun hasMicPermission(): Boolean
-    fun startBaidu(reason: String = "start")
+    fun startSession(reason: String = "start")
     fun stop()
     fun activate(reason: String) {}
     fun sleep(reason: String) {}
@@ -160,6 +182,8 @@ internal interface GatewaySession {
     fun shutUp(reason: String) {}
     val listeningState: ListeningState get() = if (isActive) ListeningState.ACTIVE else ListeningState.DEEP_IDLE
     fun sendText(text: String) {}
+    fun sendPrompt(text: String, promptId: String): Boolean = false
+    fun guidanceBlocker(): String? = "NOT_CONNECTED"
     fun injectTestSpeech(pcm16le: ByteArray) {}
     fun setInputGainEnabled(enabled: Boolean) {}
 }
@@ -176,8 +200,8 @@ private class ControllerGatewaySession(
 
     override fun hasMicPermission(): Boolean = service.hasMicPermission()
 
-    override fun startBaidu(reason: String) {
-        controller.startBaidu(service.baiduConfig(), reason)
+    override fun startSession(reason: String) {
+        controller.startSession(service.sessionConfig(), reason)
     }
 
     override fun activate(reason: String) {
@@ -207,6 +231,10 @@ private class ControllerGatewaySession(
         controller.sendText(text)
     }
 
+    override fun sendPrompt(text: String, promptId: String): Boolean = controller.sendPrompt(text, promptId)
+
+    override fun guidanceBlocker(): String? = controller.guidanceBlocker()
+
     override fun injectTestSpeech(pcm16le: ByteArray) {
         controller.injectTestSpeech(pcm16le)
     }
@@ -214,4 +242,23 @@ private class ControllerGatewaySession(
     override fun setInputGainEnabled(enabled: Boolean) {
         controller.setInputGainEnabled(enabled)
     }
+}
+
+/** SPEC-018 B1: the connected session's reasons not to take a guidance prompt now (codes only). */
+internal object GuidanceBlockers {
+    fun of(connected: Boolean, verbatim: Boolean, ui: com.novadrive.ingress.realtime.VoiceUiState, pendingWork: Boolean): String? = when {
+        !connected -> "NOT_CONNECTED"
+        !verbatim -> "NO_CAPABILITY"
+        ui == com.novadrive.ingress.realtime.VoiceUiState.USER_SPEAKING -> "DRIVER_SPEAKING"
+        ui == com.novadrive.ingress.realtime.VoiceUiState.THINKING -> "RESPONSE_OPEN"
+        pendingWork -> "WORK_PENDING"
+        else -> null
+    }
+
+    /**
+     * R7 (G-2 only when used): SLEEP keeps the connection while navigating only if the relay is
+     * active (toggle on) and the provider speaks prompts verbatim; otherwise today's timers apply.
+     */
+    fun keepsSleepConnected(navigating: Boolean, relayActive: Boolean, verbatim: Boolean): Boolean =
+        navigating && relayActive && verbatim
 }

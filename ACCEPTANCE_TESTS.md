@@ -3,6 +3,20 @@
 > A builder may **not** declare a milestone complete because the code compiles.
 > This file defines what each kind of evidence is allowed to claim.
 
+## Test-run policy (product owner, 2026-09-30)
+
+Binding on every agent and every test procedure:
+
+1. **Short routes only.** Never run a device or emulator test on a long route. The standard
+   navigation route is **横琴创业谷 → 励骏庞都** — meaningful (real junctions, guidance prompts)
+   but short. A procedure that needs navigation uses it unless it states why it cannot.
+   *To check on first use:* the route crosses from Hengqin into Macau; if Amap cannot plan it,
+   record that and ask the owner for a replacement rather than picking a long route.
+2. **Do not spend Gemini on things that are not voice.** A test of a function that does not need
+   speech (map, routing, HUD, UI, settings, vehicle simulation, parsers) drives it directly
+   (ADB, unit test, injected text) and does not open a Gemini session. Gemini is used only when
+   the thing under test is the voice path itself.
+
 ## Verification levels
 
 | Level | Name | What it actually proves |
