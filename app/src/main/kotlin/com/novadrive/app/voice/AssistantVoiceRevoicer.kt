@@ -26,6 +26,10 @@ import java.util.concurrent.atomic.AtomicReference
  * for a driver turn, not-voided for a GUIDANCE turn) is cut into clauses and spoken through [voice]
  * as new AudioDelta events. Nothing here judges claims or decides turn-taking.
  *
+ * Pipelining (P48): a clause's request starts as soon as its words are known, at most two per reply in
+ * flight; its audio is buffered and emitted strictly in clause order after the previous clause's
+ * request has returned.
+ *
  * Ordering: one lane keeps the provider's event order. Speech is synthesised on its own chain, so a
  * ToolCall (or any non-boundary event) is forwarded at once and never waits on the voice. Reply
  * boundaries wait for the chain: ResponseStarted / prompt OPENED (the previous reply's speech is
@@ -59,6 +63,8 @@ class AssistantVoiceRevoicer(
     }
 
     fun revoice(upstream: Flow<RealtimeEvent>): Flow<RealtimeEvent> = channelFlow {
+        // A session opened: the first reply after start or wake must not pay the voice's setup (P48).
+        voice.warmUp()
         val lane = Channel<Queued>(Channel.UNLIMITED)
         val worker = launch {
             val workerJob = coroutineContext[Job]
@@ -66,6 +72,9 @@ class AssistantVoiceRevoicer(
             val replyFailed = AtomicBoolean(false)
             var laneEpoch = epoch.get()
             var tail: Job? = null
+            var lastFetch: Job? = null
+            var fetchBeforeLast: Job? = null
+            val playout = Playout()
 
             fun failOnce(code: String) {
                 if (!replyFailed.compareAndSet(false, true)) return
@@ -86,20 +95,51 @@ class AssistantVoiceRevoicer(
             fun speak(raw: String, at: Long) {
                 if (replyFailed.get() || at != epoch.get()) return
                 val clause = speakableText(raw) ?: return
-                val previous = tail
-                tail = launch(speechParent()) {
-                    previous?.join()
-                    if (at != epoch.get() || replyFailed.get()) return@launch
-                    val started = clock()
-                    var first = true
+                val previousEmit = tail
+                // Lookahead of one: clause N waits for clause N-2's request, so at most two are in flight.
+                val gate = fetchBeforeLast
+                val buffer = Channel<ByteArray>(Channel.UNLIMITED)
+                val parent = speechParent()
+                val fetch = launch(parent) {
+                    var failure: Throwable? = null
                     try {
+                        gate?.join()
+                        if (at != epoch.get() || replyFailed.get()) return@launch
+                        val started = clock()
+                        var first = true
                         voice.synthesize(clause, style()) { pcm ->
                             if (at != epoch.get()) return@synthesize
                             if (first) {
                                 first = false
                                 DebugVoiceLog.log("assistant_voice_first_audio ms=${clock() - started} chars=${clause.length}")
                             }
-                            send(RealtimeEvent(clock(), DomainVoiceEvent.AudioDelta(Base64.getEncoder().encodeToString(pcm))))
+                            buffer.send(pcm)
+                        }
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (error: Exception) {
+                        failure = error
+                    } finally {
+                        buffer.close(failure)
+                    }
+                }
+                fetchBeforeLast = lastFetch
+                lastFetch = fetch
+                tail = launch(parent) {
+                    previousEmit?.join()
+                    if (at != epoch.get() || replyFailed.get()) { fetch.cancel(); return@launch }
+                    var first = true
+                    try {
+                        for (pcm in buffer) {
+                            if (at != epoch.get()) { fetch.cancel(); return@launch }
+                            val now = clock()
+                            if (first) {
+                                first = false
+                                if (playout.hasAudio) DebugVoiceLog.log("assistant_voice_gap_ms ms=${playoutGapMs(now, playout.untilMs)}")
+                            }
+                            playout.untilMs = playoutEndMs(now, playout.untilMs, pcm.size)
+                            playout.hasAudio = true
+                            send(RealtimeEvent(now, DomainVoiceEvent.AudioDelta(Base64.getEncoder().encodeToString(pcm))))
                         }
                     } catch (cancelled: CancellationException) {
                         throw cancelled
@@ -115,11 +155,15 @@ class AssistantVoiceRevoicer(
             suspend fun drain() {
                 tail?.join()
                 tail = null
+                lastFetch = null
+                fetchBeforeLast = null
             }
 
             fun newReply() {
                 segmenter.reset()
                 replyFailed.set(false)
+                playout.hasAudio = false
+                playout.untilMs = 0.0
             }
 
             for (item in lane) {
@@ -194,7 +238,23 @@ class AssistantVoiceRevoicer(
     }
 
     private class Queued(val event: RealtimeEvent, val epoch: Long)
+
+    /** Playout end of the current reply's audio on the session clock; emitters run one at a time. */
+    private class Playout {
+        @Volatile var untilMs: Double = 0.0
+        @Volatile var hasAudio: Boolean = false
+    }
 }
+
+/** Bytes per second of the voice's output: 24 kHz, 16-bit, mono. */
+private const val PCM_BYTES_PER_SECOND = 48_000.0
+
+/** Where playout ends after a chunk of [bytes] is queued at [nowMs], given it previously ended at [untilMs]. */
+internal fun playoutEndMs(nowMs: Long, untilMs: Double, bytes: Int): Double =
+    maxOf(nowMs.toDouble(), untilMs) + bytes * 1000.0 / PCM_BYTES_PER_SECOND
+
+/** Silence the driver hears before a clause's first chunk queued at [nowMs]; 0 when it arrived in time. */
+internal fun playoutGapMs(nowMs: Long, untilMs: Double): Long = maxOf(0.0, nowMs - untilMs).toLong()
 
 /**
  * The words the assistant voice may read aloud, or null when nothing is left. Gemini sometimes sends

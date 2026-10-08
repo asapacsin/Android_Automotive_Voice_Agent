@@ -39,22 +39,38 @@ class AzureSpeechVoice(
     private val lastWarmMs = java.util.concurrent.atomic.AtomicLong(0)
 
     /**
-     * Sets up DNS, TCP and TLS to the region host, so the first clause pays only synthesis (measured
-     * on the emulator 2026-10-03: a first clause after idle took 1.8–4.5 s, a warm one ~0.45 s).
-     * The request carries no key and no text; its answer is ignored. At most once per 20 s.
+     * Sends one real, minimal synthesis request (one character, the configured voice) so Azure's
+     * synthesis path is warm before the first clause (P48: an anonymous HEAD left first audio at
+     * 1.2-1.9 s, warm ~0.33-0.45 s). Asynchronous; its audio is read and discarded, never played.
+     * At most once per 15 s. Logs the round trip and code only.
      */
     override fun warmUp() {
         val now = System.currentTimeMillis()
         val last = lastWarmMs.get()
         if (now - last < WARM_INTERVAL_MS || !lastWarmMs.compareAndSet(last, now)) return
+        val start = System.nanoTime()
         runCatching {
-            http.newCall(Request.Builder().url("$baseUrl/cognitiveservices/v1").head().build())
+            http.newCall(synthesisRequest(WARM_TEXT, SpeakingStyle.DEFAULT))
                 .enqueue(object : okhttp3.Callback {
-                    override fun onFailure(call: okhttp3.Call, e: java.io.IOException) = Unit
-                    override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) = response.close()
+                    override fun onFailure(call: okhttp3.Call, e: IOException) {
+                        DebugVoiceLog.log("azure_warm ms=${elapsedMs(start)} code=IO")
+                    }
+                    override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                        val code = response.code
+                        val read = runCatching { response.use { it.body?.source()?.readByteString() } }.isSuccess
+                        DebugVoiceLog.log("azure_warm ms=${elapsedMs(start)} code=${if (read) code.toString() else "IO"}")
+                    }
                 })
         }
     }
+
+    private fun synthesisRequest(text: String, style: SpeakingStyle): Request = Request.Builder()
+        .url("$baseUrl/cognitiveservices/v1")
+        .header("Ocp-Apim-Subscription-Key", config.key)
+        .header("X-Microsoft-OutputFormat", "raw-24khz-16bit-mono-pcm")
+        .header("User-Agent", "NovaDrive")
+        .post(azureSsml(text, config.voice, style).toByteArray(Charsets.UTF_8).toRequestBody(SSML_MEDIA_TYPE))
+        .build()
 
     override suspend fun synthesize(
         text: String,
@@ -62,14 +78,7 @@ class AzureSpeechVoice(
         onPcm: suspend (ByteArray) -> Unit,
     ) {
         if (text.isBlank()) return
-        val request = Request.Builder()
-            .url("$baseUrl/cognitiveservices/v1")
-            .header("Ocp-Apim-Subscription-Key", config.key)
-            .header("X-Microsoft-OutputFormat", "raw-24khz-16bit-mono-pcm")
-            .header("User-Agent", "NovaDrive")
-            .post(azureSsml(text, config.voice, style).toByteArray(Charsets.UTF_8).toRequestBody(SSML_MEDIA_TYPE))
-            .build()
-        val call = http.newCall(request)
+        val call = http.newCall(synthesisRequest(text, style))
         call.timeout().timeout(deadlineMs(text.length), TimeUnit.MILLISECONDS)
         val cancelledByUs = java.util.concurrent.atomic.AtomicBoolean(false)
         // Barge-in must stop a blocked read now, not at the read timeout: a cancelled coroutine
@@ -175,7 +184,8 @@ class AzureSpeechVoice(
 
         /** One client for every session: its connection pool survives a session ending (sleep, wake). */
         private val sharedHttp: OkHttpClient by lazy { defaultHttp() }
-        private const val WARM_INTERVAL_MS = 20_000L
+        private const val WARM_INTERVAL_MS = 15_000L
+        private const val WARM_TEXT = "嗯"
 
         private fun elapsedMs(startNanos: Long) = (System.nanoTime() - startNanos) / 1_000_000
 

@@ -107,7 +107,7 @@ class AssistantVoiceRevoicerTest {
         upstream.send(ev(DomainVoiceEvent.ResponseDone("cancelled")))
         upstream.close()
         val out = withTimeout(5_000) { result.await() }
-        assertEquals(listOf("第一句话很长。"), voice.spoken.map { it.first }, "the queued clause is never synthesised")
+        assertEquals("第一句话很长。", voice.spoken.first().first)
         assertTrue(out.none { it is DomainVoiceEvent.AudioDelta })
         assertTrue(out.indexOf(DomainVoiceEvent.SpeechStarted) < out.indexOf(DomainVoiceEvent.Interrupted("server_vad")))
         assertTrue(out.contains(DomainVoiceEvent.ResponseDone("cancelled")))
@@ -148,7 +148,8 @@ class AssistantVoiceRevoicerTest {
             DomainVoiceEvent.ResponseDone("completed"),
         )
         assertEquals(listOf("AZURE_TTS_AUTH"), failures.toList())
-        assertEquals(listOf("坏的一句。", "下一个回复。"), voice.spoken.map { it.first })
+        assertEquals("坏的一句。", voice.spoken.first().first)
+        assertEquals("下一个回复。", voice.spoken.last().first)
         assertTrue(out.contains(DomainVoiceEvent.AssistantTranscript("坏的一句。后面一句。", final = true)), "the subtitle still shows")
         assertEquals(1, out.count { it.isVoice() })
     }
@@ -236,7 +237,8 @@ class AssistantVoiceRevoicerTest {
             send(DomainVoiceEvent.ResponseDone("completed"))
             waitFor { DomainVoiceEvent.ResponseDone("completed") in it }
         }
-        assertEquals(listOf("慢行，"), voice.started.toList(), "queued and half clauses are never synthesised")
+        assertEquals("慢行，", voice.started.first())
+        assertTrue("半句" !in voice.started, "the half clause is never synthesised")
         assertEquals(listOf("慢行，"), voice.cancelled.toList())
     }
 
@@ -271,7 +273,8 @@ class AssistantVoiceRevoicerTest {
             send(DomainVoiceEvent.AudioDone)
             waitFor(1_000) { list -> list.count { it == DomainVoiceEvent.ResponseStarted } == 2 && list.any { it.isVoice() } }
         }
-        assertEquals(listOf("慢的一句。", "新回复。"), voice.started.toList())
+        assertEquals("慢的一句。", voice.started.first())
+        assertEquals("新回复。", voice.started.last())
         assertEquals(listOf("慢的一句。"), voice.cancelled.toList())
     }
 
@@ -288,6 +291,108 @@ class AssistantVoiceRevoicerTest {
             DomainVoiceEvent.ResponseDone("completed"),
         )
         assertEquals(listOf("新的。"), voice.spoken.map { it.first })
+    }
+
+    /** A voice that records start/end order and in-flight count; per-clause delay before and after its PCM. */
+    private class TimedVoice(private val delayMs: (String) -> Long) : AssistantVoice {
+        val log: MutableList<String> = Collections.synchronizedList(mutableListOf())
+        val inFlight = java.util.concurrent.atomic.AtomicInteger(0)
+        val maxInFlight = java.util.concurrent.atomic.AtomicInteger(0)
+        override suspend fun synthesize(text: String, style: SpeakingStyle, onPcm: suspend (ByteArray) -> Unit) {
+            val n = inFlight.incrementAndGet()
+            maxInFlight.accumulateAndGet(n) { a, b -> maxOf(a, b) }
+            log += "start:$text"
+            try {
+                kotlinx.coroutines.delay(delayMs(text))
+                onPcm(byteArrayOf(text.length.toByte(), 0))
+                log += "end:$text"
+            } finally {
+                inFlight.decrementAndGet()
+            }
+        }
+    }
+
+    private fun voiced(out: List<DomainVoiceEvent>) = out.filterIsInstance<DomainVoiceEvent.AudioDelta>()
+        .map { Base64.getDecoder().decode(it.pcm16leBase64)[0].toInt() }
+
+    @Test
+    fun theNextClauseIsRequestedBeforeThePreviousOneReturns() {
+        val voice = TimedVoice { if (it.startsWith("一")) 300 else 10 }
+        run(voice, DomainVoiceEvent.ResponseStarted, DomainVoiceEvent.SpeechText("一二三。"), DomainVoiceEvent.SpeechText("四五。"),
+            DomainVoiceEvent.AudioDone, DomainVoiceEvent.ResponseDone("completed"))
+        assertTrue(voice.log.indexOf("start:四五。") < voice.log.indexOf("end:一二三。"), voice.log.toString())
+    }
+
+    @Test
+    fun clauseOrderHoldsWhenTheSecondFinishesFirst() {
+        val voice = TimedVoice { if (it.startsWith("一")) 300 else 10 }
+        val out = run(voice, DomainVoiceEvent.ResponseStarted, DomainVoiceEvent.SpeechText("一二三。"), DomainVoiceEvent.SpeechText("四五。"),
+            DomainVoiceEvent.AudioDone, DomainVoiceEvent.ResponseDone("completed"))
+        assertTrue(voice.log.indexOf("end:四五。") < voice.log.indexOf("end:一二三。"))
+        assertEquals(listOf(4, 3), voiced(out))
+    }
+
+    @Test
+    fun aCancelDuringTheFirstClauseEmitsNothingOfEither() {
+        val voice = SlowVoice()
+        live(voice) {
+            send(DomainVoiceEvent.ResponseStarted)
+            send(DomainVoiceEvent.SpeechText("慢的一句。"))
+            send(DomainVoiceEvent.SpeechText("快的一句。"))
+            withTimeout(3_000) { voice.inFlight.await() }
+            waitFor { true }
+            withTimeout(3_000) { while ("快的一句。" !in voice.started) kotlinx.coroutines.delay(5) }
+            revoicer.cancelCurrentReply("barge_in")
+            send(DomainVoiceEvent.AudioDone)
+            send(DomainVoiceEvent.ResponseDone("completed"))
+            waitFor { DomainVoiceEvent.ResponseDone("completed") in it }
+        }
+        assertEquals(listOf("慢的一句。"), voice.cancelled.toList())
+    }
+
+    @Test
+    fun aFailedFirstClauseKeepsTheBufferedSecondSilent() {
+        val voice = object : AssistantVoice {
+            override suspend fun synthesize(text: String, style: SpeakingStyle, onPcm: suspend (ByteArray) -> Unit) {
+                if (text.startsWith("坏")) { kotlinx.coroutines.delay(200); throw AssistantVoiceException("AZURE_TTS_NETWORK") }
+                onPcm(VOICE_PCM)
+            }
+        }
+        val out = run(voice, DomainVoiceEvent.ResponseStarted, DomainVoiceEvent.SpeechText("坏的一句。"), DomainVoiceEvent.SpeechText("好的一句。"),
+            DomainVoiceEvent.AudioDone, DomainVoiceEvent.ResponseDone("completed"))
+        assertEquals(listOf("AZURE_TTS_NETWORK"), failures.toList())
+        assertTrue(out.none { it is DomainVoiceEvent.AudioDelta })
+    }
+
+    @Test
+    fun atMostTwoRequestsAreInFlightPerReply() {
+        val voice = TimedVoice { 100 }
+        val out = run(voice, DomainVoiceEvent.ResponseStarted, DomainVoiceEvent.SpeechText("一。"), DomainVoiceEvent.SpeechText("二二。"),
+            DomainVoiceEvent.SpeechText("三三三。"), DomainVoiceEvent.SpeechText("四四四四。"), DomainVoiceEvent.AudioDone,
+            DomainVoiceEvent.ResponseDone("completed"))
+        assertEquals(2, voice.maxInFlight.get())
+        assertEquals(listOf(2, 3, 4, 5), voiced(out))
+    }
+
+    @Test
+    fun aSessionOpeningWarmsTheVoice() {
+        var warmed = 0
+        val voice = object : AssistantVoice {
+            override suspend fun synthesize(text: String, style: SpeakingStyle, onPcm: suspend (ByteArray) -> Unit) = Unit
+            override fun warmUp() { warmed++ }
+        }
+        run(voice, DomainVoiceEvent.ResponseStarted)
+        assertEquals(1, warmed)
+    }
+
+    @Test
+    fun theGapIsZeroWhenTheNextClauseIsReadyInTime() {
+        // 4800 bytes = 100 ms of 24 kHz PCM16 mono.
+        val until = playoutEndMs(1_000, 0.0, 4_800)
+        assertEquals(1_100.0, until)
+        assertEquals(0L, playoutGapMs(1_050, until))
+        assertEquals(1_150.0, playoutEndMs(1_050, until, 2_400))
+        assertEquals(40L, playoutGapMs(1_140, until))
     }
 
     private companion object {

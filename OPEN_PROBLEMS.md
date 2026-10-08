@@ -1789,3 +1789,5 @@ The app did capture the speech: `session_diag peak` rose to about 10 900 during 
 | Chat replies held 1.0–1.65 s | `TURN_HOLD UNCLASSIFIED_CLAIM` → `TURN_RELEASE no_claim_made` ≈ Gemini `gen_ms` | The UNCLASSIFIED_CLAIM rule is settled only at response end (`DriverTurn.onAssistantText` returns Wait). The safety rule is correct; the speed-up is SPEC-014's clause release, which needs a design decision | `DriverTurn` (SPEC-014) |
 
 The first two are being fixed now. The third is left for the SPEC-014 decision: it is safety-relevant (I-1), so it is not changed inside a latency fix.
+
+**Fix (rows 1–2), 2026-10-08:** `AzureSpeechVoice.warmUp()` now sends one real one-character synthesis request (same headers, configured voice; audio discarded; at most once per 15 s; logs `azure_warm ms= code=`), and `AssistantVoiceRevoicer` warms the voice when a session opens. Clause N+1 is now requested while clause N is fetched or played (at most two requests in flight per reply), buffered and emitted strictly in order; `assistant_voice_gap_ms` logs the silence before each later clause. Unit-tested only; device measurement pending. Row 3 stays OPEN.

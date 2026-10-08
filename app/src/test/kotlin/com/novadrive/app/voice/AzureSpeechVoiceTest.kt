@@ -52,6 +52,20 @@ class AzureSpeechVoiceTest {
     }
 
     @Test
+    fun warmUpSendsOneMinimalSynthesisRequestAndIsRateLimited() {
+        server.enqueue(MockResponse().setBody(Buffer().write(pcm(10))))
+        val v = voice()
+        v.warmUp()
+        val r = server.takeRequest(5, java.util.concurrent.TimeUnit.SECONDS)!!
+        assertEquals("POST", r.method)
+        assertEquals(key, r.getHeader("Ocp-Apim-Subscription-Key"))
+        assertEquals("raw-24khz-16bit-mono-pcm", r.getHeader("X-Microsoft-OutputFormat"))
+        assertEquals(azureSsml("嗯", "zh-CN-XiaoyiNeural", SpeakingStyle.DEFAULT), r.body.readUtf8())
+        v.warmUp()
+        assertNull(server.takeRequest(300, java.util.concurrent.TimeUnit.MILLISECONDS), "a second warm-up within 15 s sends nothing")
+    }
+
+    @Test
     fun ssmlPerStyle() {
         assertFalse(azureSsml("a", "v", SpeakingStyle.DEFAULT).contains("express-as"))
         val expected = mapOf(
@@ -163,18 +177,5 @@ class AzureSpeechVoiceTest {
         assertEquals("AZURE_TTS_TIMEOUT", failure.code)
         assertEquals(4_400L, AzureSpeechVoice.clauseDeadlineMs(1))
         assertEquals(20_000L, AzureSpeechVoice.clauseDeadlineMs(40), "a 40-char clause is ~10 s of speech")
-    }
-
-    @Test
-    fun warmUpOpensTheConnectionWithoutKeyOrTextAndAtMostOncePer20s() {
-        server.enqueue(MockResponse().setResponseCode(405))
-        val v = voice()
-        v.warmUp()
-        v.warmUp()
-        val r = server.takeRequest(5, java.util.concurrent.TimeUnit.SECONDS)!!
-        assertEquals("HEAD", r.method)
-        assertNull(r.getHeader("Ocp-Apim-Subscription-Key"))
-        assertEquals(0L, r.bodySize)
-        assertNull(server.takeRequest(500, java.util.concurrent.TimeUnit.MILLISECONDS))
     }
 }
