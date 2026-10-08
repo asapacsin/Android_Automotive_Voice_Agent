@@ -9,11 +9,14 @@ import com.novadrive.ingress.realtime.SystemSessionClock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.launch
 import java.util.Base64
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
@@ -43,19 +46,83 @@ import java.util.concurrent.atomic.AtomicReference
  * Failure (ADR-016 §6): the subtitle still shows, the rest of that reply is not spoken, the driver is
  * told once per reply through [onFailure]; never a fallback to the provider's voice. Logs codes,
  * counts and timings only — never the text (I-8).
+ *
+ * Wait cues (SPEC-020): from the driver's end of speech until her reply is audible, fixed cues
+ * ([WaitCues]) are spoken through the same voice, on the same chain, so a reply that arrives during
+ * a cue follows it. [quiet] (SILENT_WAIT, sleep) and an open GUIDANCE turn suppress them.
  */
 class AssistantVoiceRevoicer(
     private val voice: AssistantVoice,
     private val style: () -> SpeakingStyle,
     private val onFailure: (String) -> Unit = AssistantVoiceNotices::report,
     private val clock: () -> Long = SystemSessionClock::nowMs,
+    private val quiet: () -> Boolean = { false },
 ) {
     private val epoch = AtomicLong(0)
     private val speech = AtomicReference<Job?>(null)
     private val droppedProviderAudio = AtomicInteger(0)
+    private val cueLock = Any()
+    private var cueTurn: WaitCueTurn? = null
+    private var cueStartMs = 0L
+    private var driverTurnOpen = false
+    private var cueTimer: Job? = null
+    @Volatile private var cueHost: CueHost? = null
+    @Volatile private var promptOpen = false
+    private val cueCache = ConcurrentHashMap<Pair<String, SpeakingStyle>, List<ByteArray>>()
+
+    /** The driver started (true) or stopped (false) speaking: local evidence or the provider's event. */
+    fun onDriverSpeech(active: Boolean) {
+        if (active) { cancelWaitCues("driver_speech", closeTurn = true); return }
+        val host = cueHost ?: return
+        synchronized(cueLock) {
+            if (driverTurnOpen) return  // the same end of speech, reported twice
+            driverTurnOpen = true
+            val turn = WaitCueTurn().also { cueTurn = it }
+            cueStartMs = clock()
+            cueTimer = host.scope.launch { runWaitCues(turn, host) }
+        }
+    }
+
+    private suspend fun runWaitCues(turn: WaitCueTurn, host: CueHost) {
+        while (true) {
+            val elapsed = clock() - cueStartMs
+            val cue = synchronized(cueLock) { if (cueTurn === turn) turn.due(elapsed) else return }
+            if (cue != null) {
+                if (quiet() || promptOpen) {
+                    DebugVoiceLog.log("wait_cue_skipped reason=silent")
+                } else {
+                    DebugVoiceLog.log("wait_cue code=${cue.code} after_ms=$elapsed")
+                    host.lane.trySend(Queued(null, epoch.get(), cue.text))
+                }
+                continue
+            }
+            val next = WaitCues.nextThresholdAfter(elapsed) ?: break
+            delay(next - elapsed)
+        }
+        synchronized(cueLock) { if (cueTurn === turn) cueTurn = null }
+    }
+
+    private fun cancelWaitCues(reason: String, closeTurn: Boolean = false) {
+        val timer = synchronized(cueLock) {
+            if (closeTurn) driverTurnOpen = false
+            cueTurn = null
+            cueTimer.also { cueTimer = null }
+        } ?: return
+        if (timer.isActive) DebugVoiceLog.log("wait_cue_cancelled reason=$reason")
+        timer.cancel()
+    }
+
+    private fun onTurnEvent(payload: DomainVoiceEvent) = synchronized(cueLock) {
+        when (payload) {
+            is DomainVoiceEvent.ToolCall -> cueTurn?.onToolCall(payload.name)
+            DomainVoiceEvent.ResponseStarted -> cueTurn?.onResponseStarted()
+            else -> Unit
+        }
+    }
 
     /** Stops what the voice is saying for the current reply and drops its queued words. Non-blocking. */
     fun cancelCurrentReply(reason: String) {
+        cancelWaitCues(reason)
         epoch.incrementAndGet()
         val job = speech.getAndSet(null) ?: return
         if (job.children.any { it.isActive }) DebugVoiceLog.log("assistant_voice_cancelled reason=$reason")
@@ -66,6 +133,7 @@ class AssistantVoiceRevoicer(
         // A session opened: the first reply after start or wake must not pay the voice's setup (P48).
         voice.warmUp()
         val lane = Channel<Queued>(Channel.UNLIMITED)
+        cueHost = CueHost(this, lane)
         val worker = launch {
             val workerJob = coroutineContext[Job]
             val segmenter = ClauseSegmenter()
@@ -92,7 +160,7 @@ class AssistantVoiceRevoicer(
                 return speechParent()
             }
 
-            fun speak(raw: String, at: Long) {
+            fun speak(raw: String, at: Long, cue: Boolean = false) {
                 if (replyFailed.get() || at != epoch.get()) return
                 val clause = speakableText(raw) ?: return
                 val previousEmit = tail
@@ -105,6 +173,7 @@ class AssistantVoiceRevoicer(
                     try {
                         gate?.join()
                         if (at != epoch.get() || replyFailed.get()) return@launch
+                        if (cue) { synthesizeCue(clause, buffer); return@launch }
                         val started = clock()
                         var first = true
                         voice.synthesize(clause, style()) { pcm ->
@@ -135,6 +204,7 @@ class AssistantVoiceRevoicer(
                             val now = clock()
                             if (first) {
                                 first = false
+                                if (!cue) cancelWaitCues("reply_audio")
                                 if (playout.hasAudio) DebugVoiceLog.log("assistant_voice_gap_ms ms=${playoutGapMs(now, playout.untilMs)}")
                             }
                             playout.untilMs = playoutEndMs(now, playout.untilMs, pcm.size)
@@ -172,7 +242,11 @@ class AssistantVoiceRevoicer(
                     laneEpoch = item.epoch
                     segmenter.reset()
                 }
-                when (val event = item.event.payload) {
+                val queued = item.event ?: run {
+                    if (item.epoch == epoch.get()) item.cue?.let { speak(it, item.epoch, cue = true) }
+                    null
+                } ?: continue
+                when (val event = queued.payload) {
                     is DomainVoiceEvent.SpeechText -> {
                         if (item.epoch == epoch.get()) {
                             val clauses = segmenter.append(event.text)
@@ -202,12 +276,12 @@ class AssistantVoiceRevoicer(
                     }
                     else -> Unit  // ToolCall, transcripts, work state: forwarded at once, never wait on the voice
                 }
-                if (item.event.payload is DomainVoiceEvent.ResponseDone) {
+                if (queued.payload is DomainVoiceEvent.ResponseDone) {
                     droppedProviderAudio.getAndSet(0).takeIf { it > 0 }?.let {
                         DebugVoiceLog.log("assistant_voice_provider_audio_dropped count=$it")
                     }
                 }
-                send(item.event)
+                send(queued)
             }
             // The stream ended: let the last words finish, then release the speech parent (a
             // SupervisorJob never completes by itself and would keep this flow open).
@@ -223,30 +297,46 @@ class AssistantVoiceRevoicer(
                     // The driver is talking: a reply follows in a few seconds, so open the voice's
                     // connection now instead of paying its setup on the first clause.
                     if (payload == DomainVoiceEvent.SpeechStarted) voice.warmUp()
+                    onDriverSpeech(payload == DomainVoiceEvent.SpeechStarted)
                     send(event)
                     return@collect
                 }
                 is DomainVoiceEvent.Interrupted -> cancelCurrentReply("interrupted")
                 is DomainVoiceEvent.Error, DomainVoiceEvent.Closed -> cancelCurrentReply("session")
                 is DomainVoiceEvent.AppPromptTurn -> when (payload.phase) {
-                    Phase.OPENED -> openPrompt = payload.promptId
-                    Phase.COMPLETED -> openPrompt = null
+                    Phase.OPENED -> { openPrompt = payload.promptId; promptOpen = true }
+                    Phase.COMPLETED -> { openPrompt = null; promptOpen = false }
                     // Only the open GUIDANCE turn's words: an armed prompt voided before it opened
                     // has said nothing, and must not cut a reply that is still being spoken.
                     Phase.VOIDED -> if (payload.promptId == openPrompt) {
                         openPrompt = null
+                        promptOpen = false
                         cancelCurrentReply("guidance_voided")
                     }
                 }
-                else -> Unit
+                else -> onTurnEvent(payload)
             }
             lane.send(Queued(event, epoch.get()))
         }
+        cancelWaitCues("session_end")
+        cueHost = null
         lane.close()
         worker.join()
     }
 
-    private class Queued(val event: RealtimeEvent, val epoch: Long)
+    /** A provider event, or (event null) a wait cue's fixed text to speak in order. */
+    private class Queued(val event: RealtimeEvent?, val epoch: Long, val cue: String? = null)
+
+    private class CueHost(val scope: CoroutineScope, val lane: Channel<Queued>)
+
+    /** A cue's audio from the cache, or synthesised once per (text, style) and cached (SPEC-020). */
+    private suspend fun synthesizeCue(text: String, buffer: Channel<ByteArray>) {
+        val key = text to style()
+        cueCache[key]?.let { cached -> cached.forEach { buffer.send(it) }; return }
+        val chunks = mutableListOf<ByteArray>()
+        voice.synthesize(text, key.second) { pcm -> chunks += pcm; buffer.send(pcm) }
+        cueCache[key] = chunks
+    }
 
     /** Playout end of the current reply's audio on the session clock; emitters run one at a time. */
     private class Playout {

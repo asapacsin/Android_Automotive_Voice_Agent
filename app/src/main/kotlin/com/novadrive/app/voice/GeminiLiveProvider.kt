@@ -72,6 +72,7 @@ class GeminiLiveProvider(
         if (active && !playbackActive && revoicer != null && speechEvidence()) {
             revoicer.cancelCurrentReply("driver_onset_unplayed")
         }
+        revoicer?.onDriverSpeech(active)  // SPEC-020: Gemini's end of speech is local only
         client.onLocalSpeechActivity(active)
     }
     override fun interrupt() = runBlocking { cancelAssistantResponse() }
