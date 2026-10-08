@@ -1791,3 +1791,23 @@ The app did capture the speech: `session_diag peak` rose to about 10 900 during 
 The first two are being fixed now. The third is left for the SPEC-014 decision: it is safety-relevant (I-1), so it is not changed inside a latency fix.
 
 **Fix (rows 1–2), 2026-10-08:** `AzureSpeechVoice.warmUp()` now sends one real one-character synthesis request (same headers, configured voice; audio discarded; at most once per 15 s; logs `azure_warm ms= code=`), and `AssistantVoiceRevoicer` warms the voice when a session opens. Clause N+1 is now requested while clause N is fetched or played (at most two requests in flight per reply), buffered and emitted strictly in order; `assistant_voice_gap_ms` logs the silence before each later clause. Unit-tested only; device measurement pending. Row 3 stays OPEN.
+
+### P48 measurement after dcc609a + d0c66cf + 7673d72 (2026-10-08, emulator)
+
+Measured from the driver's **last audible word**, not the end of the clip; edge-tts pads about 1 s.
+
+- **Fixed:**
+  - The first Azure clause took 1.7–1.9 s and now takes 0.26–0.6 s (`azure_warm` at session start).
+  - `assistant_voice_gap_ms` is 0 at every clause join (25 joins).
+  - 你都能帮我干嘛 is no longer dropped.
+- **Still slow:** 2.6–4.2 s from the last word to her voice. After `ACTIVITY_END`, the time goes to:
+
+  | Part | Time | Owner |
+  | --- | --- | --- |
+  | Gemini end-of-speech detection | 1.0–2.0 s after the last word (`silenceDurationMs` 500 cut 0.45 s, but was reverted: unvalidated cut-off risk) | server VAD |
+  | Gemini's first message | 0–1.5 s | server |
+  | Gemini's second turn after a tool call | 0.7–1.2 s | server |
+  | **Claim-gate hold until generation completes** | 0.9–1.8 s on every chat reply | `DriverTurn` (row 3) |
+  | Azure first audio | 0.26–0.49 s | done |
+
+  Row 3 (SPEC-014 clause release) is now the largest piece the app controls. It needs the owner's decision: ADR-011 Revision 2 deferred it.
