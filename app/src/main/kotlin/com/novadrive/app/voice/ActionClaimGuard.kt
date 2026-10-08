@@ -585,9 +585,16 @@ class ActionClaimGuard {
          * 「我能帮你导航、放音乐…」: what she can do, not what she did. Owner emulator run 2026-10-03:
          * 「你干什么?」 (not help grammar on purpose: it can mean "what are you doing") got exactly
          * that answer, dropped as a 播放 claim; the driver heard 28 s of nothing and then 没听清.
+         * Emulator 2026-10-08: a list naming 空调 plus windows/seat was still dropped as a 调 claim
+         * (13.1 s of silence) because 车窗/座椅/天气/路况 were not help nouns; they now are.
          */
         private fun listsAbilities(reply: String): Boolean =
             ABILITY_MODAL.containsMatchIn(reply) && answersCapabilityHelp(reply)
+
+        /** Log-safe diagnostic: only a boolean and a count from our own vocabulary, never text. */
+        fun abilityDiagnostics(reply: String): String =
+            "ability_modal=${ABILITY_MODAL.containsMatchIn(reply)} " +
+                "ability_groups=${capabilityHelpNouns(ProductCapabilities).count { it in reply }}"
 
         private val ABILITY_MODAL = Regex("(能|可以|会)(帮你|帮您|给你|替你)?")
 
@@ -717,6 +724,10 @@ class ActionClaimGuard {
                 nouns += "地图"
                 nouns += "设置"
             }
+            if (catalog.isSupported("body.window")) nouns += "车窗"
+            if (catalog.isSupported("body.seat_height")) nouns += "座椅"
+            if (catalog.isSupported("live_info.weather")) nouns += "天气"
+            if (catalog.isSupported("live_info.route_traffic")) nouns += "路况"
             return nouns
         }
     }

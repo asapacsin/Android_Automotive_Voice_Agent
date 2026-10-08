@@ -326,7 +326,8 @@ class DriverTurnPipeline(
                 val dropped = target.takeHeld().size
                 DebugVoiceLog.log(
                     "TURN_DROP epoch=${target.epoch} reason=${verdict.reason} kind=${target.kind} " +
-                        "proven=${target.proven} events=$dropped replyChars=${assistantText.length}" +
+                        "proven=${target.proven} events=$dropped replyChars=${assistantText.length} " +
+                        ActionClaimGuard.abilityDiagnostics(assistantText.toString()) +
                         (verdict.detail?.let { " $it" } ?: ""),
                 )
                 Telemetry.record(EventType.AUDIO_STOPPED, detail = "turn_dropped_${verdict.reason}")

@@ -431,5 +431,10 @@ class ActionClaimGuardTest {
         assertNull(ActionClaimGuard.carActionClaimMatch("哼，本姑娘能帮你导航、播放音乐、调空调，还能看摄像头和打电话呢。"))
         assertNull(ActionClaimGuard.carActionClaimMatch("我可以帮您导航、播放音乐、调节空调。"))
         assertNotNull(ActionClaimGuard.carActionClaimMatch("已经帮你播放音乐了。"))
+        // Emulator 2026-10-08: a list naming windows/seat/weather was still dropped as a 调 claim.
+        assertNull(ActionClaimGuard.carActionClaimMatch("我可以帮你调空调、开关车窗、调座椅，还能陪你聊天。"))
+        assertNull(ActionClaimGuard.carActionClaimMatch("我能帮你调空调、开车窗、查天气。"))
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("已经帮你把空调和车窗都调好了。"))
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("我帮你把空调打开，车窗也关上。"))
     }
 }
