@@ -489,6 +489,7 @@ change_impact:
       - ConversationResetPolicy
       - GeminiLiveClient
       - GeminiTurnTiming
+      - WaitCues
       - GeminiPromptTurn
       - GuidanceClaims
       - GuidanceBlockers
