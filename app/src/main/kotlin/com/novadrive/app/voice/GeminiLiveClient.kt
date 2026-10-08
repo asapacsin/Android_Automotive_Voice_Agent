@@ -313,10 +313,7 @@ class GeminiLiveClient(
             sendCorrectionNow(text)
             return
         }
-        // No call can follow a chat turn, so its correction waits only a moment, not the 20 s a
-        // spoken command needs (owner emulator run 2026-10-03: 24 s and 28 s of silence after a
-        // dropped chat reply).
-        val graceMs = if (callMayFollow) correctionGraceMs else minOf(correctionGraceMs, CHAT_CORRECTION_GRACE_MS)
+        val graceMs = GeminiCorrectionGrace.graceMs(callMayFollow, correctionGraceMs)
         DebugVoiceLog.log("gemini_correction_deferred graceMs=$graceMs")
         lateinit var job: Job
         job = scope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
@@ -636,9 +633,6 @@ class GeminiLiveClient(
     }
 
     companion object {
-        /** A chat turn's correction: long enough for turnComplete to settle, no call to wait for. */
-        const val CHAT_CORRECTION_GRACE_MS = 1_500L
-
         private fun defaultHttp() = OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS).readTimeout(0, TimeUnit.MILLISECONDS)
             .pingInterval(20, TimeUnit.SECONDS).build()

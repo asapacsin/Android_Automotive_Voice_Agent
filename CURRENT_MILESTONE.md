@@ -28,7 +28,7 @@
 2. **Re-record the demo on the PC emulator.** This cannot be done in the cloud. Use `tools/demo/recorder/README.md`. A take passes only if `check_req.py` passes.
    - The scenes are: ability (你会干啥 / 你都能帮我干嘛), 有点闷, styles (嗲 / 吃什么 / 元气 / 霸道 / 正常) and the error card. Add one slow turn (navigation or music) to hear the wait cue.
    - The output goes to `android_doc/demo_new_functions_<date>/`.
-- `:behavior-test` still has one failure that predates this work: the GeminiLiveClient line budget, 646 lines against 640.
+- `:behavior-test` is green again. The GeminiLiveClient line budget (646 lines against 640, from `9696ce5`) is back to 640: the chat-correction grace moved to `GeminiCorrectionGrace`.
 
 **Still slow:** 2.6–4.2 s from the driver's last word to her voice. The parts:
 - Gemini's end-of-speech detection: 1.0–2.0 s.

@@ -40,7 +40,7 @@ BUDGET = {
     "error_card_ms": (12000, "B-033: ERROR_CARD_FADE_MS"),
     "sleep_after_question_ms": (30000, "P45 F3: SLEEP_AFTER_INACTIVITY_MS from the last question"),
     "hold_max_ms": (20000, "P45 / 4f857e9: a turn the server VAD never ends (31.8 s seen) is a stall"),
-    "chat_correction_ms": (1500, "9696ce5: CHAT_CORRECTION_GRACE_MS"),
+    "chat_correction_ms": (1500, "9696ce5: GeminiCorrectionGrace.CHAT_CORRECTION_GRACE_MS"),
     "azure_cold_ms": (1000, "demo target; 574e0ff measured 426 ms after 60 s idle (was 1.8-4.5 s)"),
     "hold_p90_ms": (5000, "demo target: P45 saw 9.4 s; SPEC-014 clause release is the real fix"),
     "cue_ack_action_ms": (1500, "SPEC-020 A6: C1 at 1.0 s after the last word + 0.5 s"),

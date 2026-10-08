@@ -176,7 +176,7 @@ The checker applies these numbers. A "demo target" has no settled budget in the 
 | Gemini stream gaps (`max_gap_ms`), unheard interrupts, empty turns | recorded (INFO) | P45 F1 |
 | Guidance fidelity mismatches | 0 | SPEC-018 |
 | Any claim-gate hold | ≤ 20 000 ms (FAIL above) | P45 / 4f857e9: a stalled VAD held 31.8 s |
-| Correction wait on a chat turn (`gemini_correction_deferred graceMs`) | ≤ 1500 ms | 9696ce5 `CHAT_CORRECTION_GRACE_MS` |
+| Correction wait on a chat turn (`gemini_correction_deferred graceMs`) | ≤ 1500 ms | 9696ce5 `GeminiCorrectionGrace.CHAT_CORRECTION_GRACE_MS` |
 | Chat replies with `no_drop` (AB-1, MIC-1) dropped by the claim gate | 0 | 9696ce5, 4f857e9 |
 | First Azure clause after ≥ 60 s idle (WARM-1) | ≤ 1000 ms | demo target; 574e0ff measured 426 ms |
 
