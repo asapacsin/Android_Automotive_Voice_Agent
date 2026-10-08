@@ -68,6 +68,8 @@ class AssistantVoiceRevoicer(
     private var cueTimer: Job? = null
     @Volatile private var cueHost: CueHost? = null
     @Volatile private var promptOpen = false
+    /** A provider reply is open in lane order: its ResponseStarted was forwarded, its end not yet. */
+    @Volatile private var providerReplyOpen = false
     private val cueCache = ConcurrentHashMap<Pair<String, SpeakingStyle>, List<ByteArray>>()
 
     /** The driver started (true) or stopped (false) speaking: local evidence or the provider's event. */
@@ -83,13 +85,23 @@ class AssistantVoiceRevoicer(
         }
     }
 
+    /** A tool call can make C1 due before the sleeping timer's next threshold: re-evaluate now. */
+    private fun rearmWaitCues() {
+        val host = cueHost ?: return
+        synchronized(cueLock) {
+            val turn = cueTurn ?: return
+            cueTimer?.cancel()
+            cueTimer = host.scope.launch { runWaitCues(turn, host) }
+        }
+    }
+
     private suspend fun runWaitCues(turn: WaitCueTurn, host: CueHost) {
         while (true) {
             val elapsed = clock() - cueStartMs
             val cue = synchronized(cueLock) { if (cueTurn === turn) turn.due(elapsed) else return }
             if (cue != null) {
                 if (quiet() || promptOpen) {
-                    DebugVoiceLog.log("wait_cue_skipped reason=silent")
+                    DebugVoiceLog.log("wait_cue_skipped reason=${if (promptOpen) "guidance_prompt" else "quiet"}")
                 } else {
                     DebugVoiceLog.log("wait_cue code=${cue.code} after_ms=$elapsed")
                     host.lane.trySend(Queued(null, epoch.get(), cue.text))
@@ -112,17 +124,21 @@ class AssistantVoiceRevoicer(
         timer.cancel()
     }
 
-    private fun onTurnEvent(payload: DomainVoiceEvent) = synchronized(cueLock) {
-        when (payload) {
-            is DomainVoiceEvent.ToolCall -> cueTurn?.onToolCall(payload.name)
-            DomainVoiceEvent.ResponseStarted -> cueTurn?.onResponseStarted()
-            else -> Unit
+    private fun onTurnEvent(payload: DomainVoiceEvent) {
+        val rearm = synchronized(cueLock) {
+            when (payload) {
+                is DomainVoiceEvent.ToolCall -> cueTurn?.let { it.onToolCall(payload.name); true } ?: false
+                DomainVoiceEvent.ResponseStarted -> { cueTurn?.onResponseStarted(); false }
+                else -> false
+            }
         }
+        if (rearm) rearmWaitCues()
     }
 
     /** Stops what the voice is saying for the current reply and drops its queued words. Non-blocking. */
     fun cancelCurrentReply(reason: String) {
         cancelWaitCues(reason)
+        providerReplyOpen = false  // an interrupted reply's stray audio must never be reopened by a cue
         epoch.incrementAndGet()
         val job = speech.getAndSet(null) ?: return
         if (job.children.any { it.isActive }) DebugVoiceLog.log("assistant_voice_cancelled reason=$reason")
@@ -205,11 +221,18 @@ class AssistantVoiceRevoicer(
                             if (first) {
                                 first = false
                                 if (!cue) cancelWaitCues("reply_audio")
+                                // Cue framing: the core plays audio only inside an open, uncompleted reply stamp.
+                                else send(RealtimeEvent(now, DomainVoiceEvent.ResponseStarted))
                                 if (playout.hasAudio) DebugVoiceLog.log("assistant_voice_gap_ms ms=${playoutGapMs(now, playout.untilMs)}")
                             }
                             playout.untilMs = playoutEndMs(now, playout.untilMs, pcm.size)
                             playout.hasAudio = true
                             send(RealtimeEvent(now, DomainVoiceEvent.AudioDelta(Base64.getEncoder().encodeToString(pcm))))
+                        }
+                        if (cue && !first && at == epoch.get()) {
+                            send(RealtimeEvent(clock(), DomainVoiceEvent.AudioDone))
+                            // The cue's AudioDone completed the provider reply's stamp: open a fresh one for the rest.
+                            if (providerReplyOpen) send(RealtimeEvent(clock(), DomainVoiceEvent.ResponseStarted))
                         }
                     } catch (cancelled: CancellationException) {
                         throw cancelled
@@ -275,6 +298,12 @@ class AssistantVoiceRevoicer(
                         drain()
                     }
                     else -> Unit  // ToolCall, transcripts, work state: forwarded at once, never wait on the voice
+                }
+                when (queued.payload) {
+                    DomainVoiceEvent.ResponseStarted -> providerReplyOpen = true
+                    DomainVoiceEvent.AudioDone, is DomainVoiceEvent.ResponseDone, is DomainVoiceEvent.Interrupted,
+                    is DomainVoiceEvent.Error, DomainVoiceEvent.Closed -> providerReplyOpen = false
+                    else -> Unit
                 }
                 if (queued.payload is DomainVoiceEvent.ResponseDone) {
                     droppedProviderAudio.getAndSet(0).takeIf { it > 0 }?.let {

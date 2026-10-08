@@ -1,5 +1,6 @@
 package com.novadrive.app.voice
 
+import com.novadrive.app.DebugVoiceLog
 import com.novadrive.app.GeminiApiConfig
 import com.novadrive.ingress.realtime.DomainVoiceEvent
 import com.novadrive.ingress.realtime.ProviderCapabilities
@@ -28,6 +29,8 @@ class GeminiLiveProvider(
         lastAudioSegment: () -> SpeechUplinkGate.Segment?,
         speechEvidence: () -> Boolean = { true },
         assistantVoice: AssistantVoice? = null,
+        /** SPEC-020: false in SILENT_WAIT or sleep, when no wait cue may be spoken. */
+        repliesSpoken: () -> Boolean = { true },
     ) : this(
         apiConfig,
         GeminiLiveClient(
@@ -35,7 +38,7 @@ class GeminiLiveProvider(
             speechEvidence = speechEvidence,
             speechTextEvents = assistantVoice != null,
         ),
-        assistantVoice?.let { AssistantVoiceRevoicer(it, style = { com.novadrive.app.SpeakingStyleState.current }) },
+        assistantVoice?.let { AssistantVoiceRevoicer(it, style = { com.novadrive.app.SpeakingStyleState.current }, quiet = { !repliesSpoken() }) },
         speechEvidence,
     )
 
@@ -73,6 +76,7 @@ class GeminiLiveProvider(
             revoicer.cancelCurrentReply("driver_onset_unplayed")
         }
         revoicer?.onDriverSpeech(active)  // SPEC-020: Gemini's end of speech is local only
+        if (!active && revoicer == null) DebugVoiceLog.log("wait_cue_skipped reason=no_assistant_voice")
         client.onLocalSpeechActivity(active)
     }
     override fun interrupt() = runBlocking { cancelAssistantResponse() }

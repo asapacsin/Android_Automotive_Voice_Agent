@@ -79,6 +79,24 @@ class AssistantVoiceRevoicerWaitCueTest {
     }
 
     @Test
+    fun a1_toolCallBetweenTheThresholdsFiresTheActionAckOnArrival() {
+        val out = mutableListOf<List<String>>()
+        out += heard {
+            send(DomainVoiceEvent.SpeechStopped)
+            after(1_300)
+            send(DomainVoiceEvent.ToolCall("c1", "control_climate", emptyMap()))
+        }
+        out += heard {
+            send(DomainVoiceEvent.SpeechStopped)
+            after(1_300)
+            send(DomainVoiceEvent.ToolCall("c1", "control_climate", emptyMap()))
+            after(3_000)
+        }
+        assertEquals(listOf(WaitCues.ACK_ACTION), out[0], "C1 at 1.3 s, on the tool call's arrival")
+        assertEquals(listOf(WaitCues.ACK_ACTION), out[1], "and no ACK_CHAT at 1.8 s")
+    }
+
+    @Test
     fun a1_noCueWhenTheReplyIsAudibleFirst() {
         val out = heard {
             send(DomainVoiceEvent.SpeechStopped)

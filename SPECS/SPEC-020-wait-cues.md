@@ -55,11 +55,13 @@ Rules:
 
 | # | Criterion | Proven by | State |
 | --- | --- | --- | --- |
-| A1 | C1/C2 fire at their thresholds when no reply audio exists, and not when reply audio started first | `AssistantVoiceRevoicerTest` with a virtual clock | unit PASS 2026-10-08 |
-| A2 | C3/C4/C5 pick the right reason from the events seen; C6 at 12 s; each at most once per turn | same | unit PASS 2026-10-08 |
-| A3 | A reply arriving during a cue plays after it, in order, with nothing lost; a cancel stops both | same | unit PASS 2026-10-08 |
+| A1 | C1/C2 fire at their thresholds when no reply audio exists, and not when reply audio started first | `AssistantVoiceRevoicerWaitCueTest`, `WaitCueCoreIntegrationTest` | unit + integration PASS 2026-10-08 |
+| A2 | C3/C4/C5 pick the right reason from the events seen; C6 at 12 s; each at most once per turn | same | unit + integration PASS 2026-10-08 |
+| A3 | A reply arriving during a cue plays after it, in order, with nothing lost; a cancel stops both | same | unit + integration PASS 2026-10-08 |
 | A4 | No cue text is a claim | `ActionClaimGuardTest` over every cue string | unit PASS 2026-10-08 |
-| A5 | No cue with the assistant voice off, in SILENT_WAIT, or with a guidance prompt open | unit | unit PASS 2026-10-08 for the GUIDANCE prompt and the `quiet` predicate; the SILENT_WAIT/sleep wiring is still open, see note |
+| A5 | No cue with the assistant voice off, in SILENT_WAIT, or with a guidance prompt open | `AssistantVoiceRevoicerWaitCueTest`, `GeminiLiveProviderVoiceTest` | unit PASS 2026-10-08 |
 | A6 | Emulator: the driver hears 「嗯，我想想。」 or 「收到，正在处理。」 within 1.5 s of his last word on every slow turn, and the reply follows it without overlap | `wait_cue` log lines plus the demo recorder's audio | open (device) |
 
-Note: the revoicer takes a `quiet: () -> Boolean` (SILENT_WAIT, sleep). It is not wired yet: `GeminiLiveProvider` is built in `RealtimeProviderFactory`, which has no access to `ListeningLifecycle`. With the assistant voice off there is no revoicer, so no `wait_cue_skipped reason=no_assistant_voice` line is written.
+Quiet: the app passes `lifecycle.speaks` through `RealtimeProviderFactory.build(repliesSpoken)` to `GeminiLiveProvider`, which builds the revoicer with `quiet = { !repliesSpoken() }`, so SILENT_WAIT and sleep speak no cue (`wait_cue_skipped reason=quiet`; an open GUIDANCE prompt logs `reason=guidance_prompt`). With the assistant voice off there is no revoicer; the provider logs `wait_cue_skipped reason=no_assistant_voice` at each end of speech.
+
+Cue framing: the session core plays reply audio only inside an open reply stamp that has not completed; after a finished or interrupted reply it drops audio until the next `ResponseStarted`. So the revoicer sends `ResponseStarted` before a cue's first chunk and `AudioDone` after its last. If a provider reply is open (its `ResponseStarted` forwarded, no `AudioDone`/`ResponseDone`/`Interrupted`/`Error`/`Closed` or cancel since), it sends `ResponseStarted` once more, so the rest of that reply gets a fresh stamp. An interrupted reply is never reopened, so its stray words stay silent.

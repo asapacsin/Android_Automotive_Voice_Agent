@@ -31,6 +31,7 @@ object RealtimeProviderFactory {
         config: SessionProviderConfig,
         lastAudioSegment: () -> SpeechUplinkGate.Segment?,
         speechEvidence: () -> Boolean,
+        repliesSpoken: () -> Boolean = { true },
     ): Built = when (config) {
         is SessionProviderConfig.Baidu -> {
             val api = config.api
@@ -47,7 +48,7 @@ object RealtimeProviderFactory {
         }
         is SessionProviderConfig.Gemini -> built(
             // ADR-016: the owner's assistant voice, when configured, speaks instead of Gemini's audio.
-            GeminiLiveProvider(config.api, lastAudioSegment, speechEvidence, config.api.assistantVoice?.let(::AzureSpeechVoice)),
+            GeminiLiveProvider(config.api, lastAudioSegment, speechEvidence, config.api.assistantVoice?.let(::AzureSpeechVoice), repliesSpoken),
             VoiceProviderId.GEMINI_LIVE, config.api.settings.model, GEMINI_OUTPUT_SAMPLE_RATE_HZ,
         )
     }
