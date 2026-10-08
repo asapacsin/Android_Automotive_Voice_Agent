@@ -436,5 +436,9 @@ class ActionClaimGuardTest {
         assertNull(ActionClaimGuard.carActionClaimMatch("我能帮你调空调、开车窗、查天气。"))
         assertNotNull(ActionClaimGuard.carActionClaimMatch("已经帮你把空调和车窗都调好了。"))
         assertNotNull(ActionClaimGuard.carActionClaimMatch("我帮你把空调打开，车窗也关上。"))
+        // Emulator 2026-10-08: ability_modal=false ability_groups=5 was dropped as a 调 claim.
+        assertNull(ActionClaimGuard.carActionClaimMatch("我帮你导航、放音乐、调空调，还能看摄像头、打电话。"))
+        assertNull(ActionClaimGuard.carActionClaimMatch("导航、音乐、空调、车窗这些都行。"))
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("已经帮你打开空调、车窗和座椅了。"))
     }
 }

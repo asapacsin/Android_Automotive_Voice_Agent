@@ -587,9 +587,12 @@ class ActionClaimGuard {
          * that answer, dropped as a 播放 claim; the driver heard 28 s of nothing and then 没听清.
          * Emulator 2026-10-08: a list naming 空调 plus windows/seat was still dropped as a 调 claim
          * (13.1 s of silence) because 车窗/座椅/天气/路况 were not help nouns; they now are.
+         * Emulator 2026-10-08 (later): ability_modal=false ability_groups=5 was dropped as a 调 claim
+         * (17 s of silence); three or more groups now make a list even without 能/可以/会.
          */
         private fun listsAbilities(reply: String): Boolean =
-            ABILITY_MODAL.containsMatchIn(reply) && answersCapabilityHelp(reply)
+            (ABILITY_MODAL.containsMatchIn(reply) && answersCapabilityHelp(reply)) ||
+                capabilityHelpNouns(ProductCapabilities).count { it in reply } >= 3
 
         /** Log-safe diagnostic: only a boolean and a count from our own vocabulary, never text. */
         fun abilityDiagnostics(reply: String): String =
