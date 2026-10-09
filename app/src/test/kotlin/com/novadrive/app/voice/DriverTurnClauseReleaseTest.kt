@@ -128,14 +128,42 @@ class DriverTurnClauseReleaseTest {
     }
 
     @Test
-    fun anAbilityAnswerIsReleasedClauseByClause() {
+    fun anAbilityAnswerWaitsForTheResponseEnd() {
+        // Its end rule (answersCapabilityHelp) drops an incomplete list with a nudge: a released
+        // 「我可以帮你导航，」 would be followed by a second, full answer.
         val p = pipeline()
         chatTurn(p, request = "你会干啥")
         repeat(6) { p.filter(audio(300)) }
-        p.appendAssistantText("我是小诺呀，") // 6 checked -> 900 ms
-        assertEquals(900, emittedAudioMs(), "an ability answer starts before its list is complete")
-        p.appendAssistantText("我能帮你导航、放音乐、调空调。")
-        assertEquals(1800, emittedAudioMs())
+        p.appendAssistantText("我可以帮你导航，")
+        assertEquals(0, emittedAudioMs(), "nothing of an ability answer is released before the end")
+        p.appendAssistantText("放音乐，")
+        assertEquals(0, emittedAudioMs())
+    }
+
+    @Test
+    fun aClaimStreamedBeforeTheTranscriptIsNeverReleased() {
+        val p = pipeline()
+        p.beginDriverTurn(playbackOrSpeaking = false, responseInProgress = false)
+        p.onResponseCreated()
+        repeat(6) { p.filter(audio(300)) }
+        p.appendAssistantText("好的，已经开了，")
+        assertEquals(0, emittedAudioMs(), "an unclassified turn releases nothing early")
+        p.onUserTranscript("把车窗打开")
+        p.settleResponse(ResponseOutcome(spoke = true))
+        assertEquals(0, emittedAudioMs(), "the end drops the unproven claim; none of it was heard (I-1)")
+    }
+
+    @Test
+    fun aChatReplyStreamedBeforeTheTranscriptIsReleasedOnceTheTurnIsChat() {
+        val p = pipeline()
+        p.beginDriverTurn(playbackOrSpeaking = false, responseInProgress = false)
+        p.onResponseCreated()
+        repeat(6) { p.filter(audio(300)) }
+        p.appendAssistantText("还不错呀，你呢？")
+        assertEquals(0, emittedAudioMs(), "held until the driver's words classify the turn")
+        p.onUserTranscript("今天过得怎么样")
+        p.appendAssistantText("今天开车累不累。")
+        assertEquals(1800, emittedAudioMs(), "a claim-free chat reply is released clause by clause")
     }
 
     /** A weather question whose lookup failed; the reply response starts after the result. */

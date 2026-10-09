@@ -548,10 +548,16 @@ class DriverTurn(
                 } else {
                     Verdict.Wait
                 }
-            // SPEC-014: chat, and an ability answer (each clause claim-free; whether the list is
-            // complete is still the response end's verdict, which nudges for the rest).
-            HoldReason.UNCLASSIFIED_CLAIM, HoldReason.CAPABILITY_HELP ->
-                if (toolCalled || executionFailed || musicUnconfirmed) Verdict.Wait else clauseVerdict(text, ::chatClausePredicate)
+            // SPEC-014: chat, each clause claim-free. Not before the driver's words have classified
+            // the turn: 「好的，已经开了，」 may yet turn out to answer 「把车窗打开」. An ability answer
+            // waits for the end, which judges whether the list is complete (answersCapabilityHelp).
+            HoldReason.UNCLASSIFIED_CLAIM ->
+                if (toolCalled || executionFailed || musicUnconfirmed || !userSpoke || kind == Kind.UNKNOWN) {
+                    Verdict.Wait
+                } else {
+                    clauseVerdict(text, ::chatClaimPredicate)
+                }
+            HoldReason.CAPABILITY_HELP -> Verdict.Wait
             // A live-info question with no answer from its source: the end drops only invented
             // data (realtimeVerdict), and that is judged clause by clause the same way.
             HoldReason.NO_TOOL_REQUEST ->
@@ -596,11 +602,11 @@ class DriverTurn(
     }
 
     /**
-     * Exactly the [HoldReason.UNCLASSIFIED_CLAIM] end rule's predicates (its done_claim is inside
-     * carActionClaimMatch): a stricter check only closes the gate on replies the end then releases,
-     * and the pause while the rest waits is heard (emulator 2026-10-09: a 0.33 s hole).
+     * The [HoldReason.UNCLASSIFIED_CLAIM] claim and repair check, shared by the end rule and the
+     * clause check so they cannot drift: a stricter clause check only closes the gate on replies
+     * the end then releases, and the pause is heard (emulator 2026-10-09: a 0.33 s hole).
      */
-    private fun chatClausePredicate(checked: String): String? =
+    private fun chatClaimPredicate(checked: String): String? =
         ActionClaimGuard.carActionClaimMatch(checked)?.predicate
             ?: "repair".takeIf { PhantomTurnGate.asksToRepeat(checked) }
 
@@ -698,6 +704,7 @@ class DriverTurn(
             HoldReason.UNCLASSIFIED_CLAIM -> when {
                 toolCalled || hadToolCallInResponse -> Verdict.Release("tool_called")
                 proven -> Verdict.Release("execution_proved")
+                chatClaimPredicate(reply) == null -> Verdict.Release("no_claim_made")
                 else -> ActionClaimGuard.carActionClaimMatch(reply)
                     ?.let { Verdict.Drop("unverified_claim_${it.predicate}", detail = it.describe()) }
                     ?: repairForHeardDriver(reply)
