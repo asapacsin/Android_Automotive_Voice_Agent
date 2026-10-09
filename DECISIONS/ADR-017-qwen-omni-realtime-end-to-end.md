@@ -1,6 +1,6 @@
 # ADR-017 — Qwen-Omni Realtime with the Maia voice: one end-to-end model, no separate TTS
 
-Status: **Accepted — direction** (2026-10-09). The product owner decided: "ok save this and we would use this architecutre". This followed the decision on 2026-10-08 to look for "something that have good chinese voice at the same time has end to end interrruptable agent function and also privde free option that can test with". The owner picked the voice by ear: "Maia save this one".
+Status: **Accepted — direction** (2026-10-09); **default since 2026-10-09** by the owner's decision below. The product owner decided: "ok save this and we would use this architecutre". This followed the decision on 2026-10-08 to look for "something that have good chinese voice at the same time has end to end interrruptable agent function and also privde free option that can test with". The owner picked the voice by ear: "Maia save this one".
 **Amends:**
 - [ADR-013](ADR-013-gemini-default-provider.md): which provider is the default.
 - [ADR-016](ADR-016-chinese-voice-for-gemini.md): the separate TTS voice. Both stand until the gates below pass.
@@ -40,6 +40,20 @@ Qwen-Omni Realtime, from Alibaba Model Studio, is end to end. It hears the drive
    - The SPEC-020 wait cues speak through the provider's voice path only if they can be in Maia's voice. Otherwise they become sounds or screen cues. That is decided in the adapter's SPEC.
 5. **Keys:** the owner creates the DashScope key and stores it. On the PC it is the user environment variable `DASHSCOPE_API_KEY`; in the app it goes in developer settings and the Keystore. Agents never enter, print, log or commit it.
 6. **Stock voices only (B-034).** Qwen offers voice cloning; it is never used to copy a real character's or voice actor's voice.
+
+**Owner decision, 2026-10-09 (amends the gates below): Qwen + Maia is the default now, and every voice is Maia.**
+- I asked whether to make Maia the default before Q-1. I explained that nothing had yet talked to the live server, and that a mismatch would fail every session with no fallback. The owner answered: "you should make it".
+- **Qwen is the default provider from this change on.** Fresh installs use Qwen. An existing stored Gemini preference switches to Qwen once. An explicit Baidu or Gemini choice made after the switch is kept.
+- **The risk is accepted by the owner:** the adapter has JVM evidence only.
+- The gates stay as the record of what is still unproven, but they no longer hold back the default. If Q-1 shows the server does not match, it is a defect to fix, not a reason to switch back silently.
+- **"All voice from Maia":**
+  - replies are Maia's own audio (no Azure layer for Qwen);
+  - the SPEC-020 wait cues use bundled Maia clips recorded with the probe's `say` mode (stock-voice output, not cloning);
+  - navigation guidance is spoken by Maia through a verbatim prompt once Qwen is shown to accept text (Q-1).
+- **Until a Maia clip or verbatim prompt exists, the stop-gaps are:**
+  - for a cue: it is skipped (logged), never spoken in another voice;
+  - for guidance: Amap's voice speaks it (ADR-014's fallback). That is the one remaining second voice, and it is tracked in SPEC-021.
+- Deleting the Gemini + Azure path still waits for Q-5 and the owner's confirmation (ADR-008).
 
 **Correction (2026-10-09, from the official docs, before Q-1):**
 - `qwen3.8-omni-flash-realtime` is served only from the *workspace* endpoint: `wss://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/api-ws/v1/realtime`. `dashscope-intl.aliyuncs.com` does not serve it.
