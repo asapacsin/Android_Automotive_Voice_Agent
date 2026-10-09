@@ -483,6 +483,9 @@ change_impact:
       - OpenAiRealtimeClient
       - RealtimeDialect
       - BaiduFlexDialect
+      - QwenOmniDialect
+      - QwenOmniClient
+      - QwenOmniProvider
       - BaiduRealtimeClient
       - BaiduFlexProvider
       - BaiduFlexProtocol

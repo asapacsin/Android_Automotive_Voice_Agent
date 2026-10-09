@@ -5,7 +5,8 @@ import com.novadrive.ingress.realtime.VoiceCatalog
 
 /**
  * Persisted, non-secret Qwen-Omni realtime settings (SPEC-021). The API key lives in the Keystore
- * only. The workspace id is not secret but is never logged. Not selectable yet (SPEC-021 step 3).
+ * only. The workspace id is not secret but is never logged. Selected only by an explicit QWEN
+ * preference (SPEC-021 step 3).
  */
 data class QwenAppSettings(
     val consentAccepted: Boolean = false,
@@ -74,6 +75,20 @@ object QwenSettingsValidator {
         return null
     }
 
+    /** Builds the Qwen session config or throws [IllegalArgumentException] with the config code. */
+    fun configOrThrow(settings: QwenAppSettings, apiKey: String, instructions: String): QwenApiConfig {
+        validate(settings, apiKey)?.let { throw IllegalArgumentException(it) }
+        return QwenApiConfig(settings, apiKey, instructions)
+    }
+
+    /** The config code a Qwen start would fail with, or null; same order as [validate]. Presence only. */
+    fun configProblem(settings: QwenAppSettings, keyPresent: Boolean): String? {
+        validateSettings(settings)?.let { return it }
+        if (!keyPresent) return "QWEN_API_KEY_MISSING"
+        if (!settings.consentAccepted) return "QWEN_CONSENT_MISSING"
+        return null
+    }
+
     /** The one honest on-screen sentence for a Qwen config code; null for non-Qwen codes. */
     fun message(code: String): String? = when {
         code == "QWEN_API_KEY_MISSING" -> "语音服务未配置：请在开发者设置里填写通义千问密钥。"
@@ -118,6 +133,13 @@ class QwenSettingsRepository(
     fun clearKey() {
         credentials.clear(CRED_API_KEY)
     }
+
+    /** The session config; throws [IllegalArgumentException] with a `QWEN_*` code. Never falls back. */
+    fun config(instructions: String): QwenApiConfig =
+        QwenSettingsValidator.configOrThrow(loadSettings(), credentials.read(CRED_API_KEY).orEmpty(), instructions)
+
+    /** See [QwenSettingsValidator.configProblem]. */
+    fun configProblem(): String? = QwenSettingsValidator.configProblem(loadSettings(), keyPresent())
 
     companion object {
         const val CRED_API_KEY = "qwen_api_key"

@@ -26,6 +26,14 @@ interface RealtimeDialect<C : Any> {
     /** VAD threshold before the first session is opened. */
     val defaultVadThreshold: Double
 
+    /**
+     * True when the VAD threshold depends on navigation: the client then logs navigation changes
+     * as `vad_threshold_deferred`. It never resends session.update mid-session (measured
+     * 2026-09-16: Baidu rejected a threshold change while input audio was in progress and the
+     * session went down); the threshold applies at the next connect.
+     */
+    val tracksNavigationVad: Boolean
+
     /** Validates [config] and builds the WebSocket request (URL and auth); may fetch a token. */
     suspend fun buildRequest(config: C): Request
 
@@ -52,10 +60,18 @@ interface RealtimeDialect<C : Any> {
 
     fun newCallAssembler(): RealtimeCallAssembler
     fun audioAppend(base64Audio: String): String
+
+    /** True when an outbound [message] is microphone audio (dropped from the held queue on sleep). */
+    fun isAudioAppend(message: String): Boolean
     fun responseCancel(): String
     fun responseCreate(): String
     fun functionCallOutput(callId: String, output: String): String
-    fun userTextMessage(text: String): String
+
+    /**
+     * A user text turn, or null when this dialect cannot send one now: the client then logs
+     * `<prefix>_text_unsupported` once per session and sends nothing, not even response.create.
+     */
+    fun userTextMessage(text: String): String?
     fun parseCommonEvent(text: String, speaking: Boolean): List<DomainVoiceEvent>
 
     /** A loggable code for an `error` event; never the message. */

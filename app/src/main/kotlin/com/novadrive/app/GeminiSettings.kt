@@ -24,6 +24,8 @@ enum class GeminiThinkingLevel(val wireName: String) {
 enum class VoiceProviderPreference(val wireName: String) {
     GEMINI("gemini"),
     BAIDU("baidu"),
+    /** SPEC-021: opt-in Qwen-Omni; never the default and never a fallback. */
+    QWEN("qwen"),
     ;
 
     companion object {
@@ -104,11 +106,11 @@ object GeminiSettingsValidator {
     }
 
     /**
-     * The config code a start would fail with, or null. Null for an explicit BAIDU preference
-     * (Gemini is not used); otherwise the same order as [validate]. Takes presence, never the key.
+     * The config code a start would fail with, or null. Null for an explicit BAIDU or QWEN
+     * preference (Gemini is not used); otherwise the same order as [validate]. Takes presence, never the key.
      */
     fun configProblem(settings: GeminiAppSettings, keyPresent: Boolean): String? {
-        if (settings.provider == VoiceProviderPreference.BAIDU) return null
+        if (settings.provider != VoiceProviderPreference.GEMINI) return null
         validateSettings(settings)?.let { return it }
         if (!keyPresent) return "GEMINI_API_KEY_MISSING"
         if (!settings.consentAccepted) return "GEMINI_CONSENT_MISSING"
@@ -127,13 +129,18 @@ object GeminiSettingsValidator {
 /**
  * Decides which realtime provider a session uses. Called once per session at the composition
  * boundary (ADR-010); never re-evaluated mid-session. Gemini is the default (ADR-013): only an
- * explicit BAIDU preference selects Baidu Flex. A missing key, consent or valid setting does NOT
+ * explicit BAIDU preference selects Baidu Flex, and only an explicit QWEN preference selects
+ * Qwen-Omni (SPEC-021). A missing key, consent or valid setting does NOT
  * fall back to Baidu — the Gemini config path fails the start with its code instead.
  */
 object VoiceProviderChoice {
     @Suppress("UNUSED_PARAMETER")
     fun resolve(settings: GeminiAppSettings, keyPresent: Boolean): VoiceProviderId =
-        if (settings.provider == VoiceProviderPreference.BAIDU) VoiceProviderId.BAIDU_FLEX else VoiceProviderId.GEMINI_LIVE
+        when (settings.provider) {
+            VoiceProviderPreference.QWEN -> VoiceProviderId.QWEN
+            VoiceProviderPreference.BAIDU -> VoiceProviderId.BAIDU_FLEX
+            VoiceProviderPreference.GEMINI -> VoiceProviderId.GEMINI_LIVE
+        }
 }
 
 /**

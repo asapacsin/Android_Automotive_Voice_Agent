@@ -17,6 +17,7 @@ class BaiduFlexDialect(
 ) : RealtimeDialect<BaiduApiConfig> {
     override val logPrefix = "flex"
     override val defaultVadThreshold = BaiduFlexProtocol.DEFAULT_VAD_THRESHOLD
+    override val tracksNavigationVad = true
 
     @Volatile private var voice: String = BaiduAppSettings.DEFAULT_VOICE
     @Volatile private var speed: Double = BaiduAppSettings.DEFAULT_SPEED
@@ -85,10 +86,11 @@ class BaiduFlexDialect(
 
     override fun newCallAssembler(): RealtimeCallAssembler = FlexFunctionCallAssembler()
     override fun audioAppend(base64Audio: String) = BaiduFlexProtocol.audioAppend(base64Audio)
+    override fun isAudioAppend(message: String) = message.contains("\"input_audio_buffer.append\"")
     override fun responseCancel() = BaiduFlexProtocol.responseCancel()
     override fun responseCreate() = BaiduFlexProtocol.responseCreate()
     override fun functionCallOutput(callId: String, output: String) = BaiduFlexProtocol.functionCallOutput(callId, output)
-    override fun userTextMessage(text: String) = BaiduFlexProtocol.userTextMessage(text)
+    override fun userTextMessage(text: String): String? = BaiduFlexProtocol.userTextMessage(text)
     override fun parseCommonEvent(text: String, speaking: Boolean): List<DomainVoiceEvent> =
         BaiduFlexProtocol.parseCommonEvent(text, speaking)
     override fun errorCode(text: String) = BaiduFlexProtocol.errorCode(text)

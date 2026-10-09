@@ -46,7 +46,11 @@ class GeminiSettingsTest {
     @Test
     fun resolverTruthTable() {
         for (pref in VoiceProviderPreference.entries) for (consent in listOf(false, true)) for (key in listOf(false, true)) {
-            val expected = if (pref == VoiceProviderPreference.BAIDU) VoiceProviderId.BAIDU_FLEX else VoiceProviderId.GEMINI_LIVE
+            val expected = when (pref) {
+                VoiceProviderPreference.BAIDU -> VoiceProviderId.BAIDU_FLEX
+                VoiceProviderPreference.QWEN -> VoiceProviderId.QWEN
+                VoiceProviderPreference.GEMINI -> VoiceProviderId.GEMINI_LIVE
+            }
             assertEquals(expected, VoiceProviderChoice.resolve(GeminiAppSettings(provider = pref, consentAccepted = consent), key)) {
                 "pref=$pref consent=$consent key=$key"
             }
@@ -59,6 +63,8 @@ class GeminiSettingsTest {
     fun preferenceWireNamesAndStoredDefaultIsGemini() {
         assertEquals("gemini", VoiceProviderPreference.GEMINI.wireName)
         assertEquals("baidu", VoiceProviderPreference.BAIDU.wireName)
+        assertEquals("qwen", VoiceProviderPreference.QWEN.wireName)
+        assertEquals(VoiceProviderPreference.QWEN, VoiceProviderPreference.fromWire("qwen"))
         assertEquals(VoiceProviderPreference.BAIDU, VoiceProviderPreference.fromWire("baidu"))
         assertEquals(VoiceProviderPreference.GEMINI, VoiceProviderPreference.fromWire(null))
         assertEquals(VoiceProviderPreference.GEMINI, VoiceProviderPreference.fromWire("garbage"))
@@ -67,17 +73,20 @@ class GeminiSettingsTest {
     private fun configCode(settings: GeminiAppSettings, key: String): Pair<VoiceProviderId, String?> {
         val choice = VoiceProviderChoice.resolve(settings, key.isNotBlank())
         var baiduTouched = false
+        var qwenTouched = false
         val code = try {
             sessionConfigFor(
                 choice,
                 gemini = { GeminiSettingsValidator.configOrThrow(settings, key, "persona") },
                 baidu = { baiduTouched = true; error("Baidu must not be opened") },
+                qwen = { qwenTouched = true; error("Qwen must not be opened") },
             )
             null
         } catch (failure: IllegalArgumentException) {
             failure.message
         }
         assertFalse(baiduTouched)
+        assertFalse(qwenTouched)
         return choice to code
     }
 
@@ -143,6 +152,7 @@ class GeminiSettingsTest {
     fun configProblemTruthTable() {
         val valid = GeminiAppSettings(consentAccepted = true)
         assertNull(GeminiSettingsValidator.configProblem(GeminiAppSettings(provider = VoiceProviderPreference.BAIDU), keyPresent = false))
+        assertNull(GeminiSettingsValidator.configProblem(GeminiAppSettings(provider = VoiceProviderPreference.QWEN), keyPresent = false))
         assertEquals("GEMINI_API_KEY_MISSING", GeminiSettingsValidator.configProblem(valid, keyPresent = false))
         assertEquals("GEMINI_CONSENT_MISSING", GeminiSettingsValidator.configProblem(GeminiAppSettings(), keyPresent = true))
         assertEquals("GEMINI_VOICE_INVALID", GeminiSettingsValidator.configProblem(valid.copy(voice = "bad voice"), keyPresent = true))
