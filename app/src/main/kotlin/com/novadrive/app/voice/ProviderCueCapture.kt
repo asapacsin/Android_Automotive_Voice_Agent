@@ -20,7 +20,7 @@ internal class ProviderCueCapture {
         /** Held with the captured response. */
         object Buffered : Step
         /** The cue's response started: the client marks a response as running. */
-        object Started : Step
+        class Started(val cancel: Boolean) : Step
         /** The cue request was refused because a response is running; consumed. */
         object Skipped : Step
         /** The capture was discarded by this message: send the cancel once, then process it normally. */
@@ -91,14 +91,15 @@ internal class ProviderCueCapture {
     fun onMessage(signal: Signal, raw: String, responseAlreadyActive: () -> Boolean): Step = when (state) {
         State.IDLE -> Step.Pass
         State.REQUESTED -> onRequested(signal, raw, responseAlreadyActive)
-        State.CAPTURING -> onCapturing(signal, raw)
+        State.CAPTURING -> onCapturing(signal, raw, responseAlreadyActive)
     }
 
     private fun onRequested(signal: Signal, raw: String, responseAlreadyActive: () -> Boolean): Step = when (signal) {
         Signal.Started -> {
             state = State.CAPTURING
             buffered += raw
-            Step.Started
+            // A client cancel came before the response existed: cancel it now that it does.
+            Step.Started(cancel = discarded)
         }
         Signal.Error -> {
             val active = responseAlreadyActive()
@@ -118,7 +119,7 @@ internal class ProviderCueCapture {
         else -> Step.Pass
     }
 
-    private fun onCapturing(signal: Signal, raw: String): Step {
+    private fun onCapturing(signal: Signal, raw: String, responseAlreadyActive: () -> Boolean): Step {
         when (signal) {
             Signal.DriverSpeech -> {
                 speechSinceRequest = true
@@ -128,12 +129,19 @@ internal class ProviderCueCapture {
                 return Step.CancelAndPass
             }
             Signal.Error -> {
-                // Not the cue's to consume: the capture is dropped and the error takes the normal path.
-                if (!discarded) DebugVoiceLog.log("wait_cue_failed reason=error")
-                discarded = true
+                // The cue's response.create was refused: what is being captured is a reply already
+                // running. The refusal is consumed and the reply goes back to the normal path.
+                if (!responseAlreadyActive()) return Step.Pass // anything else: normal path; done decides
+                DebugVoiceLog.log("wait_cue_skipped reason=response_active")
+                return if (discarded) Step.Skipped else demote(log = false)
+            }
+            Signal.Started -> {
+                // The captured response's done was lost: it ends here, and the new one is not a candidate.
+                DebugVoiceLog.log("wait_cue_failed reason=lost")
+                reset()
                 return Step.Pass
             }
-            Signal.Unrelated, Signal.Started -> return Step.Pass
+            Signal.Unrelated -> return Step.Pass
             else -> Unit
         }
         buffered += raw
@@ -175,8 +183,8 @@ internal class ProviderCueCapture {
         return Step.Finish(if (audio.size % 2 == 0) audio else audio + 0)
     }
 
-    private fun demote(): Step {
-        DebugVoiceLog.log("wait_cue_failed reason=not_cue")
+    private fun demote(log: Boolean = true): Step {
+        if (log) DebugVoiceLog.log("wait_cue_failed reason=not_cue")
         val messages = buffered.toList()
         reset()
         return Step.Demote(messages)

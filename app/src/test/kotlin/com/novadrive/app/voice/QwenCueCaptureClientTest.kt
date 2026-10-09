@@ -278,6 +278,77 @@ class QwenCueCaptureClientTest {
         client.disconnect()
     }
 
+    private val busy = """{"type":"error","error":{"code":"invalid_request_error","message":"Conversation already has an active response in progress"}}"""
+    private val call = arrayOf(
+        """{"type":"response.output_item.added","item":{"type":"function_call","call_id":"call_1","name":"control_climate"}}""",
+        """{"type":"response.function_call_arguments.done","call_id":"call_1","name":"control_climate","arguments":"{\"action\":\"power_on\"}"}""",
+    )
+
+    @Test
+    fun aBusyRefusalDuringACaptureDemotesTheReplyAndQueuesNoExtraResponse() = runBlocking {
+        val (client, seen) = connected()
+        requestCue(client)
+        send("""{"type":"response.created","response":{"id":"r1"}}""", busy, *call,
+            """{"type":"response.done","response":{"status":"completed","output":[{"type":"function_call","call_id":"call_1"}]}}""")
+        awaitUntil({ "seen: $seen" }) { seen.any { it is DomainVoiceEvent.ToolCall } && seen.any { it is DomainVoiceEvent.ResponseDone } }
+        Thread.sleep(2_000)
+        assertTrue(seen.none { it is DomainVoiceEvent.WaitCueAudio || it is DomainVoiceEvent.Error }, "seen: $seen")
+        assertEquals(1, sent("response.create").size, "only the cue request: the refusal queued no retry")
+        client.disconnect()
+    }
+
+    @Test
+    fun anOtherErrorDuringACaptureDoesNotLoseTheCall() = runBlocking {
+        val (client, seen) = connected()
+        requestCue(client)
+        send("""{"type":"response.created","response":{"id":"r1"}}""",
+            """{"type":"error","error":{"code":"internal_error","message":"x"}}""", *call,
+            """{"type":"response.done","response":{"status":"failed","output":[{"type":"function_call","call_id":"call_1"}]}}""")
+        awaitUntil({ "seen: $seen" }) { seen.any { it is DomainVoiceEvent.ToolCall } && seen.any { it is DomainVoiceEvent.ResponseDone } }
+        assertTrue(seen.any { it is DomainVoiceEvent.Error })
+        assertTrue(seen.none { it is DomainVoiceEvent.WaitCueAudio })
+        client.disconnect()
+    }
+
+    @Test
+    fun aClientCancelBeforeTheCueResponseExistsCancelsItOnceItDoes() = runBlocking {
+        val (client, seen) = connected()
+        requestCue(client)
+        client.cancelResponse()
+        Thread.sleep(NEGATIVE_WAIT_MS)
+        assertEquals(0, sent("response.cancel").size)
+        send("""{"type":"response.created","response":{"id":"r1"}}""", """{"type":"response.audio.delta","delta":"${b64(pcmA)}"}""")
+        awaitUntil({ "sent: $received" }) { sent("response.cancel").size == 1 }
+        send("""{"type":"response.audio_transcript.done","transcript":"$cueText"}""",
+            """{"type":"response.done","response":{"status":"cancelled","output":[{"type":"message"}]}}""")
+        Thread.sleep(NEGATIVE_WAIT_MS)
+        assertEquals(1, sent("response.cancel").size)
+        assertTrue(seen.none { it is DomainVoiceEvent.WaitCueAudio || it is DomainVoiceEvent.AudioDelta }, "seen: $seen")
+        client.disconnect()
+    }
+
+    @Test
+    fun aLostCueDoneDoesNotPoisonTheNextResponse() = runBlocking {
+        val (client, seen) = connected()
+        send("""{"type":"input_audio_buffer.speech_started"}""", """{"type":"input_audio_buffer.speech_stopped"}""")
+        Thread.sleep(1_800)
+        requestCue(client)
+        send("""{"type":"response.created","response":{"id":"r1"}}""") // its done never comes
+        val chunk = java.util.Base64.getEncoder().encodeToString(ByteArray(300 * 48) { 3 })
+        send(
+            """{"type":"conversation.item.input_audio_transcription.completed","item_id":"i1","transcript":"今天过得怎么样"}""",
+            """{"type":"response.created","response":{"id":"r2"}}""",
+            """{"type":"response.audio.delta","delta":"$chunk"}""",
+            *cueDeltas("还不错呀，", "我们聊聊吧。"),
+            """{"type":"response.done","response":{"status":"completed","output":[{"type":"message"}]}}""",
+        )
+        awaitUntil({ "seen: $seen" }) { seen.any { it is DomainVoiceEvent.ResponseDone } && seen.any { it is DomainVoiceEvent.AudioDelta } }
+        assertTrue(seen.none { it is DomainVoiceEvent.WaitCueAudio })
+        Thread.sleep(1_800)
+        assertTrue(client.speakFixedCue(cueText), "a later cue can be asked for again")
+        client.disconnect()
+    }
+
     // ---- P50 stall watchdog ----
 
     @Test
@@ -297,6 +368,14 @@ class QwenCueCaptureClientTest {
         awaitUntil({ "sent: $received" }) { sent("response.create").size == 1 }
         Thread.sleep(1_000)
         assertEquals(1, sent("response.create").size, "the deferred turn and the stall retry never both go out on one done")
+        // The text turn's reply finishes: a stall retry must not have waited in the queue behind it.
+        send(
+            """{"type":"response.created","response":{"id":"r2"}}""",
+            """{"type":"response.output_item.added","item":{"type":"message"}}""",
+            """{"type":"response.done","response":{"status":"completed","output":[{"type":"message"}]}}""",
+        )
+        Thread.sleep(1_000)
+        assertEquals(1, sent("response.create").size, "no unrequested second reply")
         client.disconnect()
     }
 
