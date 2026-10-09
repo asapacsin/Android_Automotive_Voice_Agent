@@ -96,10 +96,15 @@ object AmapLiveInfoParser {
         }
     }
 
-    /** `v3/geocode/regeo`: only the adcode leaves this function, never the address. */
-    fun regeoAdcode(json: String): LiveInfoFetch<String> = parse(json) { root ->
-        root.optJSONObject("regeocode")?.optJSONObject("addressComponent")?.text("adcode")
-            ?.let { LiveInfoFetch.Ok(it) } ?: LiveInfoFetch.Failed(NO_RESULTS)
+    /**
+     * `v3/geocode/regeo`: only the district adcode and its city name leave this function, never the
+     * address. A municipality has `city: []`, so its province names the city.
+     */
+    fun regeoPlace(json: String): LiveInfoFetch<RegeoPlace> = parse(json) { root ->
+        val component = root.optJSONObject("regeocode")?.optJSONObject("addressComponent")
+        component?.text("adcode")
+            ?.let { LiveInfoFetch.Ok(RegeoPlace(it, component.text("city") ?: component.text("province"))) }
+            ?: LiveInfoFetch.Failed(NO_RESULTS)
     }
 
     fun placeDetail(json: String): LiveInfoFetch<PlaceDetail> = parse(json) { root ->
