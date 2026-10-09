@@ -599,8 +599,11 @@ class ActionClaimGuard {
          */
         private fun listsAbilities(reply: String): Boolean {
             val groups = capabilityHelpNouns(ProductCapabilities).count { it in reply }
-            return (ABILITY_MODAL.containsMatchIn(reply) && answersCapabilityHelp(reply)) ||
-                groups >= 3 ||
+            if (ABILITY_MODAL.containsMatchIn(reply) && answersCapabilityHelp(reply)) return true
+            // Without 能/可以, a list of nouns is only a list if nothing says it is done or promises
+            // to do it: 「空调、车窗我都帮你打开。」 is a claim (review 2026-10-09).
+            if (claimsDone(reply) || promisesToAct(reply)) return false
+            return groups >= 3 ||
                 // Emulator 2026-10-09 (Qwen Maia): 「你干什么」 was answered with two groups in an
                 // enumeration (ability_modal=false ability_groups=2), dropped as a 调 claim. An
                 // enumeration of abilities is a list; [reportsCompletion] still keeps 「空调、车窗都
@@ -614,6 +617,16 @@ class ActionClaimGuard {
                 "ability_groups=${capabilityHelpNouns(ProductCapabilities).count { it in reply }}"
 
         private val ABILITY_MODAL = Regex("(能|可以|会)(帮你|帮您|给你|替你)?")
+
+        /**
+         * 帮你/给你/替你 directly followed by a control verb, in a clause that is not itself the
+         * enumeration: 「都帮你打开。」 promises; 「帮你导航、调空调。」 (emulator 2026-10-09) lists.
+         */
+        private fun promisesToAct(reply: String): Boolean = PROMISE.containsMatchIn(reply)
+
+        private val PROMISE by lazy {
+            Regex("(帮你|帮您|给你|给您|替你|替您)(" + (CONTROL_VERBS + listOf("开", "关", "调", "放")).joinToString("|") + ")[^、，。！？,!?]*(?=[，。！？,!?]|$)")
+        }
 
         /** The reply asks the driver to choose or to say something, rather than reporting. */
         private fun promptsDriver(reply: String): Boolean = PROMPT_WORDS.any { it in reply }

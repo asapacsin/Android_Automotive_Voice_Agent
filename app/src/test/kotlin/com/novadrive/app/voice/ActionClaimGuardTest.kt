@@ -472,4 +472,13 @@ class ActionClaimGuardTest {
             assertFalse(ActionClaimGuard.claimsDone(cue), cue)
         }
     }
+
+    @Test
+    fun anEnumerationThatPromisesOrClaimsToActIsAClaim() {
+        // Review 2026-10-09: the two-group enumeration exemption let these through.
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("空调、车窗我都帮你打开。"))
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("导航、音乐都给你打开吧。"))
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("空调、座椅都给你调到最低。"))
+        assertNull(ActionClaimGuard.carActionClaimMatch("我能帮你导航、放音乐、调空调。"))
+    }
 }
