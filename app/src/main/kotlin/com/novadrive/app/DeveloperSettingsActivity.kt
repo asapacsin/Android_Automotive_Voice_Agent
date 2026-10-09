@@ -505,8 +505,8 @@ class DeveloperSettingsActivity : Activity() {
         val providerButtons = VoiceProviderPreference.entries.associateBy {
             RadioButton(this).apply {
                 text = when (it) {
-                    VoiceProviderPreference.GEMINI -> "Gemini — 默认 / default"
-                    VoiceProviderPreference.BAIDU -> "Baidu"
+                    VoiceProviderPreference.GEMINI -> "Gemini（不用于产品会话 / not the product session）"
+                    VoiceProviderPreference.BAIDU -> "Baidu（不用于产品会话 / not the product session）"
                     VoiceProviderPreference.QWEN -> "Qwen-Omni（Maia，产品会话 / product session）"
                 }
                 id = View.generateViewId()
