@@ -37,8 +37,6 @@ class QwenOmniDialect(
     /** The server refused a user text item in this session; text turns are not sent again. */
     @Volatile private var textRefused = false
 
-    /** A user text item was sent and the server has not yet accepted it (item created / response). */
-
     override suspend fun buildRequest(config: QwenApiConfig): Request {
         QwenSettingsValidator.validate(config.settings, config.apiKey)?.let {
             throw VoiceProviderException(it, QwenSettingsValidator.message(it) ?: it)
