@@ -498,6 +498,8 @@ change_impact:
       - GeminiTurnTiming
       - GeminiCorrectionGrace
       - WaitCues
+      - WaitCueClock
+      - ReplyStreaming
       - GeminiPromptTurn
       - GuidanceClaims
       - GuidanceBlockers

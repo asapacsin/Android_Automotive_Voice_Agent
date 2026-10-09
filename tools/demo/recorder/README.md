@@ -7,7 +7,7 @@ These scripts record a demo on the PC emulator `nova_api34` with nothing played 
 3. **Record one take per scene:** `python record_demo.py RUN scene…`. The scenes are `intro`, `ability2`, `scenario`, `style`, `prep`, `warm`, `noise` and `error`.
    - The script stands in for the host audio bridge: it sends the driver lines up the bridge and captures her reply audio from the app.
    - Keep each take under about 70 s. In longer takes the bridge starts dropping uplink audio, and the extra driver-speech hold also hurts timings.
-4. **Grade the take:** `python check_req.py RUN…`. It measures from the driver's last *audible* word, because edge-tts pads about 1 s of silence. It reports her start time per turn, `assistant_voice_gap_ms` and Azure first audio. A failed take is re-recorded or reported; it is never hidden in the edit.
+4. **Grade the take:** `python check_req.py RUN…`. It measures from the driver's last *audible* word, because edge-tts pads about 1 s of silence. It reports her start time per turn and, for a Qwen Maia session (`session_provider choice=qwen`), `reply_underrun`; for the app-voiced path, `assistant_voice_gap_ms` and Azure first audio. A failed take is re-recorded or reported; it is never hidden in the edit.
 5. **Compose the take:** `NO_LAT=1 python compose.py RUN RUN.mp4`. This puts the phone on the left and the captions and the app's real tool results on the right. Set `OFFSET=-0.48` for a take with no wake broadcast.
 6. **Cut the final video:** `python final_cut.py OUT.mp4`, after editing its `SCENES` list.
    - It shortens dead air after her reply.

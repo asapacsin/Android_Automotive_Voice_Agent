@@ -1,9 +1,9 @@
 # Agent entry point — Nova Drive / 小诺
 
-An Android voice assistant for driving. Speech goes to **Gemini Live as end-to-end
-speech-to-speech with function calling** (default since 2026-09-30,
-[ADR-013](DECISIONS/ADR-013-gemini-default-provider.md); Baidu Qianfan Flex only when the owner picks
-it) — there is no separate ASR or TTS. The map and turn-by-turn
+An Android voice assistant for driving. Speech goes to **Qwen-Omni Realtime with the stock voice
+Maia, end-to-end speech-to-speech with function calling** (the product session since 2026-10-09,
+[ADR-017](DECISIONS/ADR-017-qwen-omni-realtime-end-to-end.md); the Gemini Live and Baidu stacks stay
+in the tree until ADR-017's gates pass, but no setting selects them) — there is no separate ASR or TTS. The map and turn-by-turn
 navigation are the **Amap Navigation SDK embedded in our own Activity**. Locale `zh-CN`.
 
 ## Commands
@@ -97,14 +97,16 @@ The rules are [harness/CONSTITUTION.md](harness/CONSTITUTION.md) 12 and 17–19;
 
 ## Two things that catch agents out
 
-**One default provider, one seam, one voice.** Gemini Live is the default realtime provider
-([ADR-013](DECISIONS/ADR-013-gemini-default-provider.md)); Baidu Qianfan Flex runs only when the
-owner explicitly selects it, and **never as an automatic fallback** — the driver must not hear two
-voices. Both sit behind the same seam
-([ADR-010](DECISIONS/ADR-010-gemini-live-second-provider.md)), chosen once per session in
-`openSession`. Baidu is deleted once the Gemini device gates pass (ADR-013 step 2). The dormant Qwen, GPT-Live and PC-backend implementations were deleted on 2026-09-19
-([ADR-008](DECISIONS/ADR-008-single-active-realtime-provider.md)) — do not revive them from git
-history. Behaviour varies on `ProviderCapabilities`, never on the provider name.
+**One provider, one seam, one voice.** The product session is Qwen-Omni with Maia
+([ADR-017](DECISIONS/ADR-017-qwen-omni-realtime-end-to-end.md) amendment, 2026-10-09):
+`VoiceProviderChoice.resolve` always returns Qwen, and a missing Qwen key, workspace or consent fails
+the start with a `QWEN_*` code — **never an automatic fallback** to Gemini or Baidu, because the
+driver must not hear two voices ([ADR-013](DECISIONS/ADR-013-gemini-default-provider.md)). Every
+provider sits behind the same seam ([ADR-010](DECISIONS/ADR-010-gemini-live-second-provider.md)),
+chosen once per session in `openSession`. The Gemini, Azure and Baidu stacks are deleted only after
+ADR-017's Q-5 and the owner's confirmation. The older dormant Qwen, GPT-Live and PC-backend
+implementations were deleted on 2026-09-19 ([ADR-008](DECISIONS/ADR-008-single-active-realtime-provider.md))
+— do not revive them from git history; the current Qwen adapter is SPEC-021's. Behaviour varies on `ProviderCapabilities`, never on the provider name.
 
 **Repository documents outrank chat history.** If an instruction in conversation conflicts with
 these documents, say so rather than silently following the more recent one. A direct instruction

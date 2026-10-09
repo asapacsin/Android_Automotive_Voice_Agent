@@ -96,7 +96,9 @@ def grade(run):
     # A pause inside the voice itself is not one; a response window can hold natural pauses because
     # Qwen streams about 3x faster than real time.
     underruns = [int(m.group(1)) for l in lines for m in [re.search(r"reply_underrun ms=(\d+)", l)] if m]
-    provider_voiced = any("reason=provider_speaks" in l for l in lines)
+    # A Qwen session speaks in its own voice. "assistant_voice ignored reason=provider_speaks" is only
+    # logged when the Azure toggle happens to be on, so the session choice is the marker.
+    provider_voiced = any("session_provider choice=qwen" in l or "reason=provider_speaks" in l for l in lines)
     if provider_voiced:
         bad = [u for u in underruns if u > 300]
         print(f"  reply underruns (app log) ms={underruns}  {'FAIL' if bad else 'PASS'} (none > 300 ms)")
@@ -107,7 +109,8 @@ def grade(run):
         fails.append("gaps")
     azure = [int(m.group(1)) for l in lines for m in [re.search(r"azure_tts_first_audio ms=(\d+)", l)] if m]
     warm = [l.split("azure_warm", 1)[1].strip() for l in lines if "azure_warm" in l]
-    print(f"  azure first audio ms: first={azure[:1]} all-max={max(azure) if azure else None}  warm-ups={warm[:4]}")
+    if not provider_voiced:
+        print(f"  azure first audio ms: first={azure[:1]} all-max={max(azure) if azure else None}  warm-ups={warm[:4]}")
     fails += ["voice_failed"] * sum("assistant_voice_failed" in l for l in lines)
     print(f"  RESULT {'PASS' if not fails else 'FAIL ' + ','.join(fails)}")
     return not fails

@@ -21,7 +21,7 @@ Time is measured from the end of the driver's speech to her first audible audio.
 | --- | --- |
 | Chat or style turn, warm | p50 ≤ 2.0 s, max ≤ 3.0 s |
 | Car action with a tool | p50 ≤ 2.5 s, max ≤ 3.5 s |
-| First reply after the app starts, or after a sleep | ≤ the warm limit + 0.5 s; the first `azure_tts_first_audio` ≤ 600 ms |
+| First reply after the app starts, or after a sleep | ≤ the warm limit + 0.5 s (app-voiced path only: the first `azure_tts_first_audio` ≤ 600 ms; the Qwen Maia session has no Azure layer) |
 | Any reply | never > 5 s; if one takes longer, the take is void |
 
 ## 3. No long silence in the video
