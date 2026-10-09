@@ -102,12 +102,12 @@ class AmapPoiClient(
     override fun weatherForecast(city: String, key: String): LiveInfoFetch<WeatherForecast> =
         live("weather/weatherInfo", key, mapOf("city" to city, "extensions" to "all"), AmapLiveInfoParser::weatherForecast)
 
-    override fun regeoAdcode(latitude: Double, longitude: Double, key: String): LiveInfoFetch<String> =
+    override fun regeoPlace(latitude: Double, longitude: Double, key: String): LiveInfoFetch<RegeoPlace> =
         live(
             "geocode/regeo",
             key,
             mapOf("location" to String.format(Locale.US, "%.6f,%.6f", longitude, latitude)),
-            AmapLiveInfoParser::regeoAdcode,
+            AmapLiveInfoParser::regeoPlace,
         )
 
     override fun placeDetail(poiId: String, key: String): LiveInfoFetch<PlaceDetail> =

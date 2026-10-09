@@ -21,9 +21,12 @@ import java.util.Locale.US
 interface AmapLiveInfoRest {
     fun weatherNow(city: String, key: String): LiveInfoFetch<WeatherNow>
     fun weatherForecast(city: String, key: String): LiveInfoFetch<WeatherForecast>
-    fun regeoAdcode(latitude: Double, longitude: Double, key: String): LiveInfoFetch<String>
+    fun regeoPlace(latitude: Double, longitude: Double, key: String): LiveInfoFetch<RegeoPlace>
     fun placeDetail(poiId: String, key: String): LiveInfoFetch<PlaceDetail>
 }
+
+/** A fix's district adcode and the city it belongs to (a municipality's province), from regeo. */
+data class RegeoPlace(val adcode: String, val city: String?)
 
 /**
  * `query_live_info` (SPEC-011): weather, traffic on the route, POIs along it, and a place's details,
@@ -121,10 +124,19 @@ class LiveInfoTool(
                 val destination = navigation()?.destination?.value ?: return Precondition(NO_DESTINATION)
                 val adcode = destination.adcode
                 "目的地" to {
-                    if (adcode != null) LiveInfoFetch.Ok(adcode) else rest.regeoAdcode(destination.latitude, destination.longitude, key)
+                    if (adcode != null) {
+                        LiveInfoFetch.Ok(adcode)
+                    } else {
+                        when (val place = rest.regeoPlace(destination.latitude, destination.longitude, key)) {
+                            is LiveInfoFetch.Ok -> LiveInfoFetch.Ok(place.value.adcode)
+                            is LiveInfoFetch.Failed -> place
+                        }
+                    }
                 }
             }
-            else -> where to { LiveInfoFetch.Ok(where) }
+            // The city the car is in resolves to the warm-up's district, so it shares its cache key
+            // (B4, 2026-10-09). Read from the cache only; never a network call to check.
+            else -> where to { LiveInfoFetch.Ok(warmDistrictOf(where) ?: where) }
         }
         return Ready {
             when (val city = resolveCity()) {
@@ -144,14 +156,32 @@ class LiveInfoTool(
         val cell = adcodeCell(fix)
         val now = nowMs()
         synchronized(adcodeCache) {
-            adcodeCache[cell]?.takeIf { now - it.first < ADCODE_TTL_MS }?.let { return LiveInfoFetch.Ok(it.second) }
+            adcodeCache[cell]?.takeIf { now - it.first < ADCODE_TTL_MS }?.let { return LiveInfoFetch.Ok(it.second.adcode) }
         }
-        val fetched = rest.regeoAdcode(fix.first, fix.second, key)
-        if (fetched is LiveInfoFetch.Ok) synchronized(adcodeCache) { adcodeCache[cell] = now to fetched.value }
-        return fetched
+        return when (val fetched = rest.regeoPlace(fix.first, fix.second, key)) {
+            is LiveInfoFetch.Ok -> {
+                synchronized(adcodeCache) { adcodeCache[cell] = now to fetched.value }
+                LiveInfoFetch.Ok(fetched.value.adcode)
+            }
+            is LiveInfoFetch.Failed -> fetched
+        }
     }
 
-    private val adcodeCache = mutableMapOf<String, Pair<Long, String>>()
+    /** The cached district of the current fix, when the driver named its city; else null. Cache only. */
+    private fun warmDistrictOf(where: String): String? {
+        val fix = location() ?: return null
+        val cell = adcodeCell(fix)
+        val now = nowMs()
+        val place = synchronized(adcodeCache) {
+            adcodeCache[cell]?.takeIf { now - it.first < ADCODE_TTL_MS }?.second
+        } ?: return null
+        val city = place.city ?: return null
+        return place.adcode.takeIf { normalizeCity(city) == normalizeCity(where) }
+    }
+
+    private fun normalizeCity(name: String): String = name.trim().removeSuffix("市")
+
+    private val adcodeCache = mutableMapOf<String, Pair<Long, RegeoPlace>>()
 
     private fun adcodeCell(fix: Pair<Double, Double>): String =
         "%.2f,%.2f".format(US, fix.first, fix.second)
@@ -359,7 +389,7 @@ class LiveInfoTool(
             private val nothing = LiveInfoFetch.Failed(AmapLiveInfoParser.UNAVAILABLE)
             override fun weatherNow(city: String, key: String) = nothing
             override fun weatherForecast(city: String, key: String) = nothing
-            override fun regeoAdcode(latitude: Double, longitude: Double, key: String) = nothing
+            override fun regeoPlace(latitude: Double, longitude: Double, key: String) = nothing
             override fun placeDetail(poiId: String, key: String) = nothing
         }
 
