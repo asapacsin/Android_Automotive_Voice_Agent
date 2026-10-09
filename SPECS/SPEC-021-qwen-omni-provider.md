@@ -118,6 +118,7 @@ From the official docs (Alibaba Model Studio: realtime, client-events and server
 - **A server-side internal or unavailable error in-band:** `QWEN_SERVER_UNAVAILABLE`. It is RETRYABLE (the P38 lesson from Baidu). Any other in-band error is `QWEN_PROVIDER_ERROR`, which is terminal.
 - **Server close at the 120 min cap, or any socket loss:** reported as reconnecting. The existing reconnect owner reopens the session, as for Gemini and Baidu.
 - **A refused `response.cancel`** (nothing playing) and **an overlapping-response refusal** are not session-fatal. The same rules as Baidu Flex apply, by error code or phrase, in the dialect.
+- **A refused text item, or a refused `function_call_output`:** never fatal (B7). The first turns text off for the session and logs `qwen_text_unsupported`; the second logs `qwen_call_output_refused code=<code>`.
 - **A malformed or oversize function call:** rejected by the shared assembler and catalogue, as for Baidu Flex.
 - **Logs** hold codes, counts, ids and timings only. Never the key, the workspace ID, a transcript, tool arguments or the instructions (I-8).
 
