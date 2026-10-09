@@ -13,6 +13,7 @@
     <string name="assistant_state_speaking">SPEAKING</string>
     <string name="assistant_state_error">ERROR</string>
     <string name="assistant_listening_active">🎙 聆听中</string>
+    <string name="assistant_working">处理中</string>
     <string name="assistant_listening_silent">🤫 静默中，仍在听</string>
     <string name="assistant_listening_sleep">💤 休眠中</string>
     <string name="assistant_listening_deep_idle">💤 休眠中（已断开）</string>

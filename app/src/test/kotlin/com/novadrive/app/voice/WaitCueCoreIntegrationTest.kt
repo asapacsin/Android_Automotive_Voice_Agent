@@ -76,7 +76,9 @@ class WaitCueCoreIntegrationTest {
         assertEquals(listOf("你好。"), rig.played())
         rig.emit(DomainVoiceEvent.SpeechStopped)
         rig.after(2_000)
-        assertEquals(listOf("你好。", WaitCues.ACK_CHAT), rig.played())
+        assertEquals(listOf("你好。"), rig.played(), "silent through 2 s")
+        rig.after(5_100)
+        assertEquals(listOf("你好。", WaitCues.PROGRESS), rig.played())
         rig.core.stop()
     }
 
@@ -86,23 +88,23 @@ class WaitCueCoreIntegrationTest {
         rig.emit(DomainVoiceEvent.ResponseStarted, DomainVoiceEvent.SpeechText("很长的一句话。"))
         rig.emit(DomainVoiceEvent.Interrupted("turn_detected"), DomainVoiceEvent.ResponseDone("cancelled"))
         rig.emit(DomainVoiceEvent.SpeechStopped)
-        rig.after(1_700)
+        rig.after(6_900)
         assertEquals(emptyList<String>(), rig.played())
         rig.after(200)
-        assertEquals(listOf(WaitCues.ACK_CHAT), rig.played())
+        assertEquals(listOf(WaitCues.PROGRESS), rig.played())
         rig.core.stop()
     }
 
     @Test
-    fun c_replyAfterTheVerifyingCuePlaysAfterIt() = runTest(UnconfinedTestDispatcher()) {
+    fun c_replyAfterTheProgressCuePlaysAfterIt() = runTest(UnconfinedTestDispatcher()) {
         val rig = Rig(this)
         rig.emit(DomainVoiceEvent.SpeechStopped)
         rig.after(500)
         rig.emit(DomainVoiceEvent.ResponseStarted)
-        rig.after(4_600)
-        assertEquals(listOf(WaitCues.ACK_CHAT, WaitCues.VERIFYING), rig.played())
+        rig.after(6_600)
+        assertEquals(listOf(WaitCues.PROGRESS), rig.played())
         rig.emit(DomainVoiceEvent.SpeechText("今天晴。"), DomainVoiceEvent.AudioDone)
-        assertEquals(listOf(WaitCues.ACK_CHAT, WaitCues.VERIFYING, "今天晴。"), rig.played())
+        assertEquals(listOf(WaitCues.PROGRESS, "今天晴。"), rig.played())
         rig.core.stop()
     }
 
@@ -112,11 +114,11 @@ class WaitCueCoreIntegrationTest {
         rig.emit(DomainVoiceEvent.ResponseStarted, DomainVoiceEvent.SpeechText("很长的一句话。"))
         rig.emit(DomainVoiceEvent.Interrupted("turn_detected"))
         rig.emit(DomainVoiceEvent.SpeechStopped)
-        rig.after(2_000)
-        assertEquals(listOf(WaitCues.ACK_CHAT), rig.played())
+        rig.after(7_100)
+        assertEquals(listOf(WaitCues.PROGRESS), rig.played())
         rig.emit(DomainVoiceEvent.SpeechText("迟到的半句。"))
         rig.after(100)
-        assertEquals(listOf(WaitCues.ACK_CHAT), rig.played())
+        assertEquals(listOf(WaitCues.PROGRESS), rig.played())
         rig.core.stop()
     }
 
@@ -126,11 +128,13 @@ class WaitCueCoreIntegrationTest {
         rig.emit(DomainVoiceEvent.SpeechStarted, DomainVoiceEvent.SpeechStopped)
         rig.emit(DomainVoiceEvent.ResponseStarted, DomainVoiceEvent.ToolCall("c1", "control_climate", emptyMap()))
         rig.after(1_100)
-        assertEquals(listOf(WaitCues.ACK_ACTION), rig.played())
+        assertEquals(emptyList<String>(), rig.played(), "a tool call is not a reason to speak at 1 s")
         assertEquals(VoiceUiState.THINKING, rig.core.machine.state)
         rig.toolGate.complete("""{"ok":true}""")
         rig.after(100)
         assertEquals(listOf("c1"), rig.fake.workInjections.map { it.callId }, "the tool result reached the model")
+        rig.after(6_000)
+        assertEquals(listOf(WaitCues.PROGRESS), rig.played())
         rig.core.stop()
     }
 }

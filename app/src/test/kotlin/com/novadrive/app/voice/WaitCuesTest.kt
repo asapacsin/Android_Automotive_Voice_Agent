@@ -1,48 +1,77 @@
 package com.novadrive.app.voice
 
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 
-/** SPEC-020: thresholds, reason choice and the tool phrase table. */
+/** Owner timing 2026-10-09: visual at 3 s, one progress line at 7 s, a different delay line at 12 s. */
 class WaitCuesTest {
     private fun codes(turn: WaitCueTurn, at: Long) = generateSequence { turn.due(at) }.map { it.code }.toList()
 
     @Test
-    fun chatAckThenProviderSlowThenStillWaiting() {
+    fun nothingIsSpokenBeforeSevenSeconds() {
         val turn = WaitCueTurn()
-        assertEquals(emptyList<String>(), codes(turn, 1_799))
-        assertEquals(listOf("ack_chat"), codes(turn, 1_800))
-        assertEquals(listOf("provider_slow"), codes(turn, 5_000))
-        assertEquals(listOf("still_waiting"), codes(turn, 12_000))
+        assertEquals(emptyList<String>(), codes(turn, 2_999))
+        assertEquals(listOf("visual"), codes(WaitCueTurn(), 3_000))
+        assertEquals(listOf("visual"), codes(WaitCueTurn(), 6_999))
+    }
+
+    @Test
+    fun oneProgressLineAtSevenSecondsAndADifferentLineAtTwelve() {
+        val turn = WaitCueTurn()
+        assertEquals(listOf("visual", "progress"), codes(turn, 7_000))
+        val delay = turn.due(12_000)!!
+        assertEquals("delay", delay.code)
+        assertEquals(WaitCues.DELAY, delay.text)
+        org.junit.jupiter.api.Assertions.assertNotEquals(WaitCues.PROGRESS, delay.text)
         assertNull(turn.due(60_000))
     }
 
     @Test
-    fun aToolCallMakesTheAckEarlierAndTheReasonTheTool() {
+    fun aLateWakeUpSaysTheDelayOnce() {
+        assertEquals(listOf("visual", "delay"), codes(WaitCueTurn(), 13_000))
+    }
+
+    @Test
+    fun aToolCallDoesNotAddASecondStatusLine() {
         val turn = WaitCueTurn().apply { onToolCall("query_live_info") }
-        assertEquals(listOf("ack_action"), codes(turn, 1_000))
-        val reason = turn.due(5_000)!!
-        assertEquals("tool_running", reason.code)
-        assertEquals(WaitCues.TOOL_QUERY, reason.text)
+        assertEquals(listOf("visual", "progress", "delay"), codes(turn, 7_000) + codes(turn, 12_000))
     }
 
     @Test
-    fun verifyingWhenAReplyStartedWithoutATool() {
-        val turn = WaitCueTurn().apply { onResponseStarted() }
-        assertEquals(listOf("ack_chat", "verifying"), codes(turn, 1_800) + codes(turn, 5_000))
+    fun usefulSpeechStopsEveryCue() {
+        val turn = WaitCueTurn().apply { replyUnderway = true }
+        assertNull(turn.due(30_000))
     }
 
     @Test
-    fun oneCuePerGroupEvenWhenThresholdsAreMissed() {
-        assertEquals(listOf("still_waiting"), codes(WaitCueTurn(), 13_000))
+    fun suspiciousAudioGivesNoCue() {
+        val turn = WaitCueTurn().apply { suspiciousAudio = true }
+        assertNull(turn.due(30_000))
     }
 
     @Test
-    fun toolPhrases() {
-        assertEquals(WaitCues.TOOL_ROUTE, WaitCues.toolPhrase("choose_navigation_option"))
-        assertEquals(WaitCues.TOOL_MUSIC, WaitCues.toolPhrase("control_music"))
-        assertEquals(WaitCues.TOOL_CAMERA, WaitCues.toolPhrase("describe_camera_view"))
-        assertEquals(WaitCues.TOOL_DEFAULT, WaitCues.toolPhrase("control_climate"))
+    fun clockSpeaksOnTheOwnerScheduleAndStopsWhenSheSpeaks() = runTest {
+        val seen = mutableListOf<String>()
+        val clock = WaitCueClock(this, { testScheduler.currentTime }, onVisual = { seen += if (it) "visual" else "visual_off" }) { cue, _ ->
+            seen += cue.code
+        }
+        clock.onSpeech(false)
+        advanceTimeBy(2_999)
+        runCurrent()
+        assertEquals(emptyList<String>(), seen)
+        advanceTimeBy(1)
+        runCurrent()
+        assertEquals(listOf("visual"), seen)
+        advanceTimeBy(4_000)
+        runCurrent()
+        assertEquals(listOf("visual", "progress"), seen)
+        clock.onUsefulSpeech()
+        advanceTimeBy(20_000)
+        runCurrent()
+        assertEquals(listOf("visual", "progress", "visual_off"), seen)
     }
 }

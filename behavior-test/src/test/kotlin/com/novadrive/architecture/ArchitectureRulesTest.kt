@@ -213,11 +213,13 @@ class ArchitectureRulesTest {
             // lines); turn handling must not regrow here.
             "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt" to 80,
             // SPEC-021 step 1 (2026-10-08): the turn handling moved out of BaiduFlexClient, recorded at 675.
-            "app/src/main/kotlin/com/novadrive/app/voice/OpenAiRealtimeClient.kt" to 675,
+            // SPEC-020 (2026-10-09): the Maia wait cue is captured in this client so it is not judged as the reply.
+            "app/src/main/kotlin/com/novadrive/app/voice/OpenAiRealtimeClient.kt" to 750,
             "app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt" to 400,
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapNaviViewHost.kt" to 900,
             "app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt" to 470,
-            "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt" to 500,
+            // SPEC-020 (2026-10-09): forwards the 3 s working label. Was 500.
+            "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt" to 510,
             "app/src/main/kotlin/com/novadrive/app/nav/EmbeddedNavigationController.kt" to 500,
             // Gemini Live adapter (ADR-010), recorded 2026-09-29 at 465 and 56 lines.
             // SPEC-018 step 1: GUIDANCE-turn hooks at the client's turn points; correlation state already extracted to GeminiPromptTurn.kt

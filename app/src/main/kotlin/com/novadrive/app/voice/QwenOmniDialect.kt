@@ -83,6 +83,18 @@ class QwenOmniDialect(
     override fun responseCancel() = BaiduFlexProtocol.responseCancel()
     override fun responseCreate() = BaiduFlexProtocol.responseCreate()
 
+    /** One Maia sentence. Empty tools so this response cannot start another action. */
+    override fun progressResponse(text: String): String = JSONObject()
+        .put("type", "response.create")
+        .put(
+            "response",
+            JSONObject()
+                .put("modalities", JSONArray(listOf("text", "audio")))
+                .put("instructions", "只说这一句，不要加任何别的话，不要调用工具：$text")
+                .put("tools", JSONArray()),
+        )
+        .toString()
+
     override fun functionCallOutput(callId: String, output: String): String {
         require(BaiduFlexProtocol.validId(callId)) { "QWEN_CALL_ID_INVALID" }
         require(output.length <= BaiduFlexProtocol.MAX_ARGUMENT_BYTES) { "QWEN_TOOL_OUTPUT_TOO_LARGE" }

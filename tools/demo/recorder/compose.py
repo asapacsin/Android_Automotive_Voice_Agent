@@ -14,10 +14,10 @@ LINES = {
 NOTES = {
     "小诺 · 新功能演示": ("claude/10-8 分支：新增「等待提示」，以及之前的修复。每个场景都是一次连续的实时录制，回复前的等待一秒未剪。",
                     "What claude/10-8 adds (wait cues) on top of the 10-3 fixes. Every scene is one continuous real-time take; no reply wait is cut."),
-    "1  需要等的时候，先应一声": ("查天气、找歌要几秒。以前司机说完后是一段沉默；现在约 1.7 秒先说「收到，正在处理。」，超过 5 秒再说明原因（如「正在查询，稍等一下。」）。提示语是固定文本，从不声称已完成。",
-                          "A slow task: she says she is on it about 1.7 s after the last word, and says why after 5 s. Fixed wording that never claims the task is done."),
-    "2  想一想的问题": ("闲聊问题如果 1.8 秒内还没有回答，她先说「嗯，我想想。」，然后接上真正的回答，不重叠、不打断。",
-                   "A question with no answer yet after 1.8 s gets a short 'let me think', then the real reply follows without overlap."),
+    "1  需要等的时候，先应一声": ("查天气、找歌要几秒。前 7 秒不说话，屏幕上从第 3 秒显示「处理中」。满 7 秒还没有有用的话，才说一次「收到，正在处理。」。满 12 秒换一句说明网络可能慢，不把上一句再说一遍。",
+                          "Silent for 7 s, with a 'working' label from 3 s. One progress line at 7 s, and a different delay line at 12 s."),
+    "2  想一想的问题": ("闲聊也一样：7 秒内不插一句「我想想」。只有到了 7 秒还没开口，才说一次「收到，正在处理。」，然后接上真正的回答。",
+                   "A question gets no filler before 7 s. One progress line only if nothing useful has been spoken, then the real reply."),
     "3  问能力：马上回答": ("以前列能力（「能帮你调空调、开车窗…」）会被执行证据门当成「假装执行」拦下，要等 13–28 秒。现在列能力直接播出。",
                       "An ability list used to be blocked as a claim of a done action (13-28 s of silence); now it plays straight away."),
     "4  一句话 → 多个动作": ("「有点闷」触发一个场景：打开空调、调大风量、前窗开一点。三个动作都由车辆接口确认后才播报。",
@@ -128,7 +128,8 @@ def evidence(run, tl):
         if nxt and nxt[0] - e < 30:
             f = nxt[0]
             if not os.environ.get("NO_LAT"): out.append(f"Dialogue: 3,{ts(f)},{ts(f + 5.0)},Lat,,0,0,0,,{{\\fad(150,300)}}⏱ 说完 → 开口  {f - e:.1f} s")
-    cue_text = {"ack_action": "收到，正在处理。", "ack_chat": "嗯，我想想。", "provider_slow": "网络有点慢，请稍等。",
+    cue_text = {"progress": "收到，正在处理。", "delay": "还在处理，网络可能不太稳定，再等我一下。",
+                "ack_action": "收到，正在处理。", "ack_chat": "嗯，我想想。", "provider_slow": "网络有点慢，请稍等。",
                 "verifying": "我确认一下，马上回答你。", "still_waiting": "还在处理，网络可能不太稳定，再等我一下。",
                 "tool_running": "（说明正在执行的工具）稍等一下。"}
     phrase = {"navigate_to": "正在搜索路线，稍等一下。", "choose_navigation_option": "正在搜索路线，稍等一下。",

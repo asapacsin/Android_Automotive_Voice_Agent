@@ -65,6 +65,12 @@ interface RealtimeDialect<C : Any> {
     fun isAudioAppend(message: String): Boolean
     fun responseCancel(): String
     fun responseCreate(): String
+
+    /**
+     * One response whose only job is to speak [text], or null when this provider has no such
+     * request. The client plays the audio as a wait cue and does not judge it as the reply.
+     */
+    fun progressResponse(text: String): String? = null
     fun functionCallOutput(callId: String, output: String): String
 
     /**

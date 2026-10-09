@@ -103,9 +103,7 @@ From the official docs (Alibaba Model Studio: realtime, client-events and server
    - A refusal is never fatal, whenever the item went out. A correction can go out late, held for a conversation reset or deferred behind a running reply, so the refusal is recognised by the error's `param` (`item.*`), not by timing.
    - A refused `function_call_output` (`item.call_id` / `item.output`) is not a text refusal. It is logged as `qwen_call_output_refused code=<code>` and is non-fatal too: the model answers without that result, and the claim gate still holds any claim.
    - Step 4 then decides the replacement (see Open questions).
-8. **Wait cues (SPEC-020).** Not spoken in steps 1–3:
-   - There is no `AssistantVoice`, so there is no revoicer, and `onLocalSpeechActivity` logs `wait_cue_skipped reason=no_assistant_voice`.
-   - ADR-017 §4 allows a spoken cue only in Maia's voice. Step 4 bundles Maia clips of the fixed cue texts, recorded by the probe's `say` mode from stock-voice output, and plays them through the existing `WaitCueAudio` core event. The cue timer moves out of the revoicer into a component both providers use. That is a SPEC-020 amendment, written in step 4.
+8. **Wait cues (SPEC-020, owner timing 2026-10-09).** `WaitCueClock` starts from the server's `speech_stopped` (the live session does not call `onLocalSpeechActivity`). At 7 s and at 12 s, if nothing useful has been spoken, one `response.create` asks Maia to say that fixed sentence; its audio is captured as `WaitCueAudio` and is not judged as the reply. The 3 s mark is `WaitCueVisual` only. Pre-recorded clips are not the product path. Q-1 still has to show whether Qwen accepts an empty `tools` array on that `response.create`.
 9. **Listening commands.** 「闭嘴」, sleep and wake behave as with every provider (`VoiceCommandRouter`, `ListeningLifecycle`).
 10. **The speaking style changes the instructions only.** The voice stays Maia. Whether Maia's delivery changes by style is a Q-2 ear question.
 

@@ -5,22 +5,31 @@ package com.novadrive.app.voice
  * The cues say she is working on it, never that anything is done (I-1, ActionClaimGuardTest).
  */
 object WaitCues {
-    const val ACK_ACTION = "收到，正在处理。"
+    /** One progress line, spoken once, and only when nothing useful has been spoken by [PROGRESS_MS]. */
+    const val PROGRESS = "收到，正在处理。"
+    /** A different sentence at [DELAY_MS]. It does not repeat [PROGRESS]. */
+    const val DELAY = "还在处理，网络可能不太稳定，再等我一下。"
+
+    const val ACK_ACTION = PROGRESS
     const val ACK_CHAT = "嗯，我想想。"
     const val PROVIDER_SLOW = "网络有点慢，请稍等。"
     const val VERIFYING = "我确认一下，马上回答你。"
-    const val STILL_WAITING = "还在处理，网络可能不太稳定，再等我一下。"
+    const val STILL_WAITING = DELAY
     const val TOOL_ROUTE = "正在搜索路线，稍等一下。"
     const val TOOL_QUERY = "正在查询，稍等一下。"
     const val TOOL_MUSIC = "正在找歌，稍等一下。"
     const val TOOL_CAMERA = "正在看画面，稍等一下。"
     const val TOOL_DEFAULT = "正在处理，稍等一下。"
 
-    const val ACK_ACTION_MS = 1_000L
-    const val ACK_CHAT_MS = 1_800L
-    const val REASON_MS = 5_000L
-    const val STILL_WAITING_MS = 12_000L
-    private val THRESHOLDS = longArrayOf(ACK_ACTION_MS, ACK_CHAT_MS, REASON_MS, STILL_WAITING_MS)
+    /** Owner timing 2026-10-09: silent, then a visual, then at most two different spoken lines. */
+    const val VISUAL_MS = 3_000L
+    const val PROGRESS_MS = 7_000L
+    const val DELAY_MS = 12_000L
+    const val ACK_ACTION_MS = PROGRESS_MS
+    const val ACK_CHAT_MS = PROGRESS_MS
+    const val REASON_MS = DELAY_MS
+    const val STILL_WAITING_MS = DELAY_MS
+    private val THRESHOLDS = longArrayOf(VISUAL_MS, PROGRESS_MS, DELAY_MS)
 
     val ALL: List<String> = listOf(
         ACK_ACTION, ACK_CHAT, PROVIDER_SLOW, VERIFYING, STILL_WAITING,
@@ -62,9 +71,12 @@ class WaitCueTurn {
     var clockStarted = false
     var stopped = false
     var noEvidenceLogged = false
-    private var ackDone = false
-    private var reasonDone = false
-    private var stillDone = false
+    /** The 3 s working mark is on screen. Cleared when the turn ends or she speaks for real. */
+    var visualShown = false
+        private set
+    private var visualDone = false
+    private var progressDone = false
+    private var delayDone = false
 
     fun onToolCall(name: String) { if (toolName == null) toolName = name; toolOutstanding = true }
     fun onResponseStarted() { responseStarted = true; toolOutstanding = false }
@@ -78,29 +90,25 @@ class WaitCueTurn {
 
     /** The cue due at [elapsedMs] (marking it used), or null. Call repeatedly until null. */
     fun due(elapsedMs: Long): WaitCue? {
-        if (!hasEvidence) return null  // C2, C3 and C6 never speak without evidence; C1, C4, C5 need it
-        val tool = toolName
-        if (!ackDone && (elapsedMs >= WaitCues.ACK_CHAT_MS || (tool != null && elapsedMs >= WaitCues.ACK_ACTION_MS))) {
-            ackDone = true
-            // Both ack thresholds passed in one wake-up: an ack late by seconds says nothing useful.
-            if (elapsedMs < WaitCues.REASON_MS) {
-                return if (tool != null) WaitCue("ack_action", WaitCues.ACK_ACTION) else WaitCue("ack_chat", WaitCues.ACK_CHAT)
-            }
+        if (!hasEvidence || replyUnderway || stopped) return null
+        if (!visualDone && elapsedMs >= WaitCues.VISUAL_MS) {
+            visualDone = true
+            visualShown = true
+            return WaitCue("visual", "")
         }
-        if (!reasonDone && elapsedMs >= WaitCues.REASON_MS) {
-            reasonDone = true
-            if (elapsedMs < WaitCues.STILL_WAITING_MS) {
-                return when {
-                    tool != null -> WaitCue("tool_running", WaitCues.toolPhrase(tool))
-                    !responseStarted -> WaitCue("provider_slow", WaitCues.PROVIDER_SLOW)
-                    else -> WaitCue("verifying", WaitCues.VERIFYING)
-                }
-            }
+        if (!progressDone && elapsedMs >= WaitCues.PROGRESS_MS) {
+            progressDone = true
+            // A wake-up that already missed 7 s says the delay once, not a progress line and then the delay.
+            if (elapsedMs < WaitCues.DELAY_MS) return WaitCue("progress", WaitCues.PROGRESS)
         }
-        if (!stillDone && elapsedMs >= WaitCues.STILL_WAITING_MS) {
-            stillDone = true
-            return WaitCue("still_waiting", WaitCues.STILL_WAITING)
+        if (!delayDone && elapsedMs >= WaitCues.DELAY_MS) {
+            delayDone = true
+            return WaitCue("delay", WaitCues.DELAY)
         }
         return null
+    }
+
+    fun clearVisual() {
+        visualShown = false
     }
 }

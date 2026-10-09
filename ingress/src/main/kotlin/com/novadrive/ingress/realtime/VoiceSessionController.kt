@@ -34,6 +34,8 @@ data class VoiceSessionCallbacks(
     val onAppPromptTurn: (String, DomainVoiceEvent.AppPromptTurn.Phase) -> Unit = { _, _ -> },
     /** A GUIDANCE turn's transcription chunk (promptId, text), in event order; never logged. */
     val onAppPromptTranscript: (String, String) -> Unit = { _, _ -> },
+    /** The 3 s working mark (SPEC-020). A label only; it does not change the session state. */
+    val onWaitCueVisual: (Boolean) -> Unit = {},
 )
 
 /**
@@ -374,6 +376,7 @@ class VoiceSessionController(
                     playback.enqueue(pcm, replyEpoch)
                 }
                 is DomainVoiceEvent.WaitCueAudio -> playWaitCue(decodePcm(event.pcm16leBase64))
+                is DomainVoiceEvent.WaitCueVisual -> callbacks.onWaitCueVisual(event.showing)
                 DomainVoiceEvent.SpeechStopped -> diagnostics.markSpeechEnd()
                 is DomainVoiceEvent.Interrupted -> {
                     diagnostics.markInterruptDetected()

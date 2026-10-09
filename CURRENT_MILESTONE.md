@@ -4,6 +4,8 @@
 
 **The owner's decision:** one end-to-end model, `qwen3.8-omni-flash-realtime` with the stock voice Maia, no separate TTS ([ADR-017](DECISIONS/ADR-017-qwen-omni-realtime-end-to-end.md)). **2026-10-09:** the product session is Qwen Maia now (`VoiceProviderChoice` + fixed `session.update` voice); Gemini/Baidu/Azure developer fields no longer select the session. Gates Q-1 to Q-5 stay open; stack deletion still waits for Q-5. The adapter is [SPEC-021](SPECS/SPEC-021-qwen-omni-provider.md).
 
+**Wait cues, same day:** she does not say she is doing it on every turn. Silent for 7 s (on-screen 「处理中」 from 3 s). One 「收到，正在处理。」 at 7 s only if nothing useful has been spoken. A different delay line at 12 s. [SPEC-020](SPECS/SPEC-020-wait-cues.md). Not device-verified.
+
 **Correction from the docs:** this model is served only from the workspace endpoint `wss://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/...`. The owner needs the **workspace ID** as well as the key (PC: `setx DASHSCOPE_WORKSPACE_ID <id>`).
 
 **Done (cloud, JVM evidence only):**

@@ -124,6 +124,9 @@ class MainActivity : Activity() {
                     )
                     dispatched
                 },
+                onWaitCueVisual = { showing ->
+                    mainHandler.post { if (::screen.isInitialized) screen.setWorkingCue(showing) }
+                },
                 onListeningState = { state ->
                     com.novadrive.app.wake.WakeWordController.reconcile(this)
                     mainHandler.post { if (::screen.isInitialized) screen.bindListening(state) }
