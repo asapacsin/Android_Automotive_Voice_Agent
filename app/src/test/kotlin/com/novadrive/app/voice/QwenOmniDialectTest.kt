@@ -3,6 +3,9 @@ package com.novadrive.app.voice
 import com.novadrive.app.PersonaProfiles
 import com.novadrive.app.QwenApiConfig
 import com.novadrive.app.QwenAppSettings
+import com.novadrive.app.QwenSettingsValidator
+import com.novadrive.ingress.realtime.ErrorClass
+import com.novadrive.ingress.realtime.classifyVoiceError
 import com.novadrive.ingress.realtime.DomainVoiceEvent
 import com.novadrive.ingress.realtime.VoiceProviderException
 import kotlinx.coroutines.runBlocking
@@ -124,7 +127,7 @@ class QwenOmniDialectTest {
     fun anUnknownHostMapsToEndpointUnreachableWithoutTheHost() {
         val host = "$workspace.ap-southeast-1.maas.aliyuncs.com"
         val failure = QwenOmniDialect.mapFailure(UnknownHostException("Unable to resolve host \"$host\""), null)
-        assertEquals("QWEN_ENDPOINT_UNREACHABLE", failure.code)
+        assertEquals("QWEN_DNS_FAILED", failure.code)
         listOf(failure.safeMessage, failure.message.orEmpty(), failure.toString()).forEach {
             assertFalse(it.contains(workspace), it)
             assertFalse(it.contains(host), it)
@@ -210,7 +213,8 @@ class QwenOmniDialectTest {
         assertEquals("QWEN_QUOTA_EXHAUSTED", code("Throttling", "Requests throttled"))
         assertEquals("QWEN_QUOTA_EXHAUSTED", code("AllocationQuota.FreeTierOnly", "free quota exhausted"))
         assertEquals("QWEN_QUOTA_EXHAUSTED", code("429", "x"))
-        assertEquals("QWEN_PROVIDER_ERROR", code("InternalError", "x"))
+        assertEquals("QWEN_SERVER_UNAVAILABLE", code("InternalError", "x"))
+        assertEquals("QWEN_PROVIDER_ERROR", code("InvalidParameter", "x"))
         val failed = d.parseCommonEvent(
             """{"type":"response.done","response":{"status":"failed","status_details":{"error":{"code":"Throttling","message":"slow down"}}}}""",
             false,
@@ -263,10 +267,126 @@ class QwenOmniDialectTest {
     fun exceptionFactoriesUseQwenCodes() {
         val d = opened()
         assertEquals("QWEN_READY_TIMEOUT", d.readyTimeout().code)
-        assertEquals("QWEN_NOT_CONNECTED", d.notConnected().code)
+        assertEquals("QWEN_CONNECTION_CLOSED", d.notConnected().code)
         assertEquals("QWEN_CONNECTION_CLOSED", d.connectionClosed(1006).code)
         assertEquals("QWEN_SESSION_FAILED", d.sessionFailed().code)
         assertEquals("QWEN_PROTOCOL_ERROR", d.protocolError(IllegalStateException()).code)
+    }
+
+    // ---- correction R1: every code the dialect can produce, as the session core classifies it ----
+
+    @Test
+    fun everyQwenCodeHasTheIntendedErrorClass() {
+        val d = opened()
+        fun inBand(c: String, m: String) =
+            (d.parseCommonEvent("""{"type":"error","error":{"code":"$c","message":"$m"}}""", false).single() as DomainVoiceEvent.Error).code
+        val produced = mapOf(
+            d.readyTimeout().code to ErrorClass.RETRYABLE,
+            d.notConnected().code to ErrorClass.RETRYABLE,
+            d.connectionClosed(1006).code to ErrorClass.RETRYABLE,
+            QwenOmniDialect.mapFailure(UnknownHostException("h"), null).code to ErrorClass.RETRYABLE,
+            QwenOmniDialect.mapFailure(java.io.IOException("reset"), null).code to ErrorClass.RETRYABLE,
+            inBand("InternalError", "Internal server error") to ErrorClass.RETRYABLE,
+            inBand("ServiceUnavailable", "x") to ErrorClass.RETRYABLE,
+            inBand("x", "server busy, try later") to ErrorClass.RETRYABLE,
+            QwenOmniDialect.mapFailure(java.io.IOException("x"), response(401)).code to ErrorClass.AUTH,
+            inBand("InvalidApiKey", "x") to ErrorClass.AUTH,
+            QwenOmniDialect.mapFailure(java.io.IOException("x"), response(429)).code to ErrorClass.RATE_LIMIT,
+            inBand("Throttling", "x") to ErrorClass.RATE_LIMIT,
+            inBand("invalid_value", "bad field") to ErrorClass.TERMINAL,
+            d.sessionFailed().code to ErrorClass.TERMINAL,
+            d.protocolError(IllegalStateException()).code to ErrorClass.TERMINAL,
+        )
+        assertEquals(
+            setOf(
+                "QWEN_READY_TIMEOUT", "QWEN_CONNECTION_CLOSED", "QWEN_DNS_FAILED", "QWEN_CONNECTION_FAILED",
+                "QWEN_SERVER_UNAVAILABLE", "QWEN_AUTH_FAILED", "QWEN_QUOTA_EXHAUSTED", "QWEN_PROVIDER_ERROR",
+                "QWEN_SESSION_FAILED", "QWEN_PROTOCOL_ERROR",
+            ),
+            produced.keys,
+        )
+        produced.forEach { (code, expected) -> assertEquals(expected, classifyVoiceError(code), code) }
+        // Settings codes, as they classify today (config failures are not retried).
+        listOf(
+            "QWEN_API_KEY_MISSING", "QWEN_CONSENT_MISSING", "QWEN_WORKSPACE_MISSING", "QWEN_WORKSPACE_INVALID",
+            "QWEN_MODEL_INVALID", "QWEN_VOICE_INVALID", "QWEN_SILENCE_INVALID", "QWEN_VAD_INVALID", "QWEN_ENDPOINT_INVALID",
+        ).forEach { assertEquals(ErrorClass.TERMINAL, classifyVoiceError(it), it) }
+    }
+
+    // ---- correction R3, R4, R5, R6 ----
+
+    @Test
+    fun aFunctionCallOutputRefusalDoesNotTurnTextOff() {
+        val d = opened()
+        d.functionCallOutput("call_1", "{}")
+        val callIdError = """{"type":"error","error":{"code":"invalid_value","param":"item.call_id","message":"unknown call"}}"""
+        d.parseCommonEvent(callIdError, false)
+        assertTrue(d.userTextMessage("纠正") != null, "no text item was outstanding")
+        d.parseCommonEvent(callIdError, false)
+        assertTrue(d.userTextMessage("纠正") != null, "item.call_id belongs to a function_call_output")
+    }
+
+    @Test
+    fun anItemErrorWithNoTextOutstandingDoesNotTurnTextOff() {
+        val d = opened()
+        d.userTextMessage("纠正")
+        d.parseCommonEvent("""{"type":"conversation.item.created","item":{"type":"message"}}""", false)
+        d.parseCommonEvent("""{"type":"error","error":{"code":"invalid_value","param":"item.type","message":"x"}}""", false)
+        assertTrue(d.userTextMessage("纠正") != null, "the text item was already accepted")
+    }
+
+    @Test
+    fun statusNumbersMatchOnlyAsWholeTokens() {
+        val d = opened()
+        fun code(c: String, m: String) =
+            (d.parseCommonEvent("""{"type":"error","error":{"code":"$c","message":"$m"}}""", false).single() as DomainVoiceEvent.Error).code
+        assertEquals("QWEN_PROVIDER_ERROR", code("invalid_value", "audio 4010 ms too long"))
+        assertEquals("QWEN_PROVIDER_ERROR", code("invalid_value", "14290 bytes"))
+        assertEquals("QWEN_AUTH_FAILED", code("401", "x"))
+        assertEquals("QWEN_AUTH_FAILED", code("x", "HTTP 403 forbidden"))
+        assertEquals("QWEN_QUOTA_EXHAUSTED", code("x", "status 429"))
+    }
+
+    @Test
+    fun aFailedTranscriptionIsNotAnError() {
+        assertTrue(opened().parseCommonEvent("""{"type":"conversation.item.input_audio_transcription.failed","error":{"code":"x"}}""", false).isEmpty())
+    }
+
+    @Test
+    fun anUnparseableWorkspaceNeverReachesAnExceptionMessage() {
+        val d = QwenOmniDialect(requireTls = false, endpoint = { "wss://bad host $workspace/x" })
+        val failure = assertThrows<VoiceProviderException> { runBlocking { d.buildRequest(config) } }
+        assertEquals("QWEN_WORKSPACE_INVALID", failure.code)
+        assertFalse(failure.toString().contains(workspace))
+        assertNull(failure.cause)
+    }
+
+    @Test
+    fun workspaceRedactionIgnoresCase() {
+        val event = opened().parseCommonEvent(
+            """{"type":"error","error":{"code":"x","message":"host ${workspace.uppercase()} failed"}}""", false,
+        ).single() as DomainVoiceEvent.Error
+        assertFalse(event.message.contains(workspace, ignoreCase = true), event.message)
+    }
+
+    @Test
+    fun theProviderSkipsWaitCuesWithoutThrowing() {
+        val provider = QwenOmniProvider(config)
+        val declared = QwenOmniProvider::class.java.getDeclaredMethod("onLocalSpeechActivity", Boolean::class.javaPrimitiveType)
+        assertEquals(QwenOmniProvider::class.java, declared.declaringClass)
+        provider.onLocalSpeechActivity(true)
+        provider.onLocalSpeechActivity(false)
+        provider.close()
+    }
+
+    /** Correction R2: an enabled but incomplete Azure voice never fails or shapes a Qwen start. */
+    @Test
+    fun anEnabledAzureVoiceWithoutAKeyStillYieldsTheQwenConfig() {
+        val built = QwenSettingsValidator.sessionConfig(azureVoiceEnabled = true) {
+            QwenSettingsValidator.configOrThrow(settings, key, "PERSONA")
+        }
+        assertEquals(config, built)
+        assertEquals(config, QwenSettingsValidator.sessionConfig(azureVoiceEnabled = false) { config })
     }
 
     private fun response(code: Int) = Response.Builder()

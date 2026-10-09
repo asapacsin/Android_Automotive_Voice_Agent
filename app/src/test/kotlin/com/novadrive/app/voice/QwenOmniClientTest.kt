@@ -190,10 +190,10 @@ class QwenOmniClientTest {
         client.disconnect()
     }
 
-    // ---- A7: barge-in ----
+    // ---- A7: the client's cancel (the session core's barge-in qualification is not exercised here) ----
 
     @Test
-    fun bargeInSendsOneResponseCancelAndARefusedCancelIsNotFatal() = runBlocking {
+    fun clientCancelSendsOneResponseCancelAndARefusedCancelIsNotFatal() = runBlocking {
         enqueueServer()
         val client = client()
         val seen = collect(client)

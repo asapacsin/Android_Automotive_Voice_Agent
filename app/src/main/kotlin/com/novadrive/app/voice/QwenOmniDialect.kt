@@ -37,6 +37,9 @@ class QwenOmniDialect(
     /** The server refused a user text item in this session; text turns are not sent again. */
     @Volatile private var textRefused = false
 
+    /** A user text item was sent and the server has not yet accepted it (item created / response). */
+    @Volatile private var textOutstanding = false
+
     override suspend fun buildRequest(config: QwenApiConfig): Request {
         QwenSettingsValidator.validate(config.settings, config.apiKey)?.let {
             throw VoiceProviderException(it, QwenSettingsValidator.message(it) ?: it)
@@ -45,12 +48,19 @@ class QwenOmniDialect(
         if (requireTls && !url.startsWith("wss://")) {
             throw VoiceProviderException("QWEN_ENDPOINT_INVALID", "Qwen endpoint must use wss://")
         }
-        return Request.Builder().url(url).header("Authorization", "Bearer ${config.apiKey}").build()
+        // The URL holds the workspace id in its host: its parse error must never carry it.
+        val builder = try {
+            Request.Builder().url(url)
+        } catch (_: IllegalArgumentException) {
+            throw VoiceProviderException("QWEN_WORKSPACE_INVALID", QwenSettingsValidator.message("QWEN_WORKSPACE_INVALID")!!)
+        }
+        return builder.header("Authorization", "Bearer ${config.apiKey}").build()
     }
 
     override fun onSessionOpening(config: QwenApiConfig) {
         settings = config.settings
         textRefused = false
+        textOutstanding = false
     }
 
     override fun instructions(config: QwenApiConfig): String? = config.instructions
@@ -86,6 +96,7 @@ class QwenOmniDialect(
 
     /** The OpenAI `message`/`input_text` item; null once the server has refused one (SPEC-021 B7). */
     override fun userTextMessage(text: String): String? {
+        textOutstanding = false
         if (textRefused) return null
         require(text.length <= BaiduFlexProtocol.MAX_ARGUMENT_BYTES) { "QWEN_TEXT_TOO_LARGE" }
         return JSONObject()
@@ -96,12 +107,14 @@ class QwenOmniDialect(
                     .put("type", "message")
                     .put("role", "user")
                     .put("content", JSONArray().put(JSONObject().put("type", "input_text").put("text", text))),
-            ).toString()
+            ).toString().also { textOutstanding = true }
     }
 
     override fun parseCommonEvent(text: String, speaking: Boolean): List<DomainVoiceEvent> {
         val raw = JSONObject(text)
-        return when (raw.optString("type")) {
+        val type = raw.optString("type")
+        if (type == "conversation.item.created" || type == "response.created") textOutstanding = false
+        return when (type) {
             "response.text.delta" -> listOf(DomainVoiceEvent.AssistantTranscript(raw.optString("delta"), false))
             "response.text.done" -> listOf(DomainVoiceEvent.AssistantTranscript(raw.optString("text"), true))
             "response.function_call_arguments.delta", "response.function_call_arguments.done",
@@ -121,6 +134,7 @@ class QwenOmniDialect(
     private fun parseError(error: JSONObject): List<DomainVoiceEvent> {
         val blob = blob(error)
         if (isTextItemRefusal(error)) {
+            if (!textRefused) DebugVoiceLog.log("qwen_text_unsupported")
             textRefused = true
             return emptyList()
         }
@@ -150,7 +164,7 @@ class QwenOmniDialect(
     }.getOrDefault(false)
 
     override fun readyTimeout() = VoiceProviderException("QWEN_READY_TIMEOUT", "Qwen session readiness timed out")
-    override fun notConnected() = VoiceProviderException("QWEN_NOT_CONNECTED", "Qwen WebSocket is not connected")
+    override fun notConnected() = VoiceProviderException("QWEN_CONNECTION_CLOSED", "Qwen WebSocket is not connected")
     override fun connectionClosed(status: Int) =
         VoiceProviderException("QWEN_CONNECTION_CLOSED", "Qwen WebSocket closed (status=$status)")
     override fun sessionFailed() = VoiceProviderException("QWEN_SESSION_FAILED", "failed to configure the Qwen session")
@@ -161,17 +175,27 @@ class QwenOmniDialect(
     /** The provider message with the workspace id removed; it is part of the host. */
     private fun redact(message: String): String {
         val workspace = settings.workspaceId.trim()
-        return if (workspace.isEmpty()) message else message.replace(workspace, "<workspace>")
+        return if (workspace.isEmpty()) message else message.replace(workspace, "<workspace>", ignoreCase = true)
     }
 
     companion object {
         const val TRANSCRIPTION_MODEL = "qwen3-asr-flash-realtime"
         private const val ACTIVE_RESPONSE_PHRASE = "already has an active response"
         private val CANCEL_REFUSED_PHRASES = listOf("no active response", "cancellation failed", "没有可取消", "无可取消")
-        private val AUTH_MARKERS = listOf("invalidapikey", "invalid_api_key", "401", "403", "accessdenied", "access denied", "unauthorized")
-        private val QUOTA_MARKERS = listOf("throttling", "quota", "allocationquota", "429")
+        private val AUTH_MARKERS = listOf("invalidapikey", "invalid_api_key", "accessdenied", "access denied", "unauthorized")
+        private val QUOTA_MARKERS = listOf("throttling", "quota", "allocationquota")
+        private val AUTH_STATUS = Regex("\\b(401|403)\\b")
+        private val QUOTA_STATUS = Regex("\\b429\\b")
 
-        /** The documented session.update (SPEC-021 B3); key order is part of the golden. */
+        /** A fault of the service, not of this client (the Baidu P38 lesson): reconnect, not fail. */
+        private val SERVER_MARKERS = listOf(
+            "internal", "serviceunavailable", "service unavailable", "server_error", "server error", "server busy", "serverbusy",
+        )
+
+        /** `param` values that belong to a function_call_output item, never to a text item. */
+        private val CALL_OUTPUT_PARAMS = setOf("item.call_id", "item.output")
+
+        /** The documented session.update (SPEC-021 B3). */
         fun sessionUpdate(instructions: String, settings: QwenAppSettings): String {
             val session = JSONObject()
                 .put("modalities", JSONArray(listOf("text", "audio")))
@@ -191,8 +215,9 @@ class QwenOmniDialect(
 
         fun mapFailure(failure: Throwable, response: Response?): VoiceProviderException {
             // No cause: an UnknownHostException's message is the host, which holds the workspace id.
+            // Retryable: offline Android raises it too, and ReconnectPolicy caps the attempts.
             if (failure is UnknownHostException) return VoiceProviderException(
-                "QWEN_ENDPOINT_UNREACHABLE",
+                "QWEN_DNS_FAILED",
                 "Qwen endpoint not found: check the workspace ID and region in developer settings",
             )
             return when (response?.code) {
@@ -205,17 +230,17 @@ class QwenOmniDialect(
         private fun classify(blob: String): String {
             val lower = blob.lowercase()
             return when {
-                AUTH_MARKERS.any { it in lower } -> "QWEN_AUTH_FAILED"
-                QUOTA_MARKERS.any { it in lower } -> "QWEN_QUOTA_EXHAUSTED"
+                AUTH_MARKERS.any { it in lower } || AUTH_STATUS.containsMatchIn(lower) -> "QWEN_AUTH_FAILED"
+                QUOTA_MARKERS.any { it in lower } || QUOTA_STATUS.containsMatchIn(lower) -> "QWEN_QUOTA_EXHAUSTED"
+                SERVER_MARKERS.any { it in lower } -> "QWEN_SERVER_UNAVAILABLE"
                 else -> "QWEN_PROVIDER_ERROR"
             }
         }
 
         private fun blob(error: JSONObject) = "${error.optString("code")} ${error.optString("message")}".lowercase()
 
-        /** The server refused our user text item: `param` names the item, or an invalid item type. */
-        private fun isTextItemRefusal(error: JSONObject): Boolean {
-            if (error.optString("param").startsWith("item")) return true
+        private fun isItemRefusal(error: JSONObject, param: String): Boolean {
+            if (param.startsWith("item")) return true
             val message = error.optString("message").lowercase()
             return error.optString("code").equals("invalid_value", ignoreCase = true) &&
                 ("item.type" in message || "item type" in message)
@@ -229,5 +254,16 @@ class QwenOmniDialect(
                     "function",
                     JSONObject().put("name", spec.name).put("description", spec.description).put("parameters", spec.parameters),
                 )
+    }
+
+    /**
+     * The server refused our user text item: one is outstanding, and `param` names the item (not a
+     * function_call_output field) or the error is an invalid item type.
+     */
+    private fun isTextItemRefusal(error: JSONObject): Boolean {
+        if (!textOutstanding) return false
+        val param = error.optString("param")
+        if (param in CALL_OUTPUT_PARAMS) return false
+        return isItemRefusal(error, param)
     }
 }

@@ -358,11 +358,9 @@ class MainActivity : Activity() {
                 },
                 baidu = { settingsRepository.config() },
                 qwen = {
-                    // SPEC-021: Qwen speaks in its own voice; an Azure assistant voice is not used.
-                    if (AzureSpeechSettingsRepository(this).config() != null) {
-                        DebugVoiceLog.log("assistant_voice ignored reason=provider_speaks")
+                    QwenSettingsValidator.sessionConfig(AzureSpeechSettingsRepository(this).loadSettings().enabled) {
+                        QwenSettingsRepository(this).config(instructions = settingsRepository.loadSettings().instructions)
                     }
-                    QwenSettingsRepository(this).config(instructions = settingsRepository.loadSettings().instructions)
                 },
             )
         } catch (failure: IllegalArgumentException) {

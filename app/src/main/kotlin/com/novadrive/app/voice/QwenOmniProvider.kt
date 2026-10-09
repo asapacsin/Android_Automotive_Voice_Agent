@@ -1,5 +1,6 @@
 package com.novadrive.app.voice
 
+import com.novadrive.app.DebugVoiceLog
 import com.novadrive.app.QwenApiConfig
 import com.novadrive.ingress.realtime.DomainVoiceEvent
 import com.novadrive.ingress.realtime.ProviderCapabilities
@@ -58,4 +59,9 @@ class QwenOmniProvider(
     override fun close() = client.close()
 
     override fun onPlaybackActiveChanged(active: Boolean) = client.onPlaybackActiveChanged(active)
+
+    /** SPEC-021 B8: no AssistantVoice, so no spoken wait cue (the interface default did nothing). */
+    override fun onLocalSpeechActivity(active: Boolean) {
+        if (!active) DebugVoiceLog.log("wait_cue_skipped reason=no_assistant_voice")
+    }
 }
