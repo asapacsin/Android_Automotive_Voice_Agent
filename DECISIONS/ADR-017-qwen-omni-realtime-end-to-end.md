@@ -43,16 +43,14 @@ Qwen-Omni Realtime, from Alibaba Model Studio, is end to end. It hears the drive
 
 **Owner decision, 2026-10-09 (amends the gates below): Qwen + Maia is the default now, and every voice is Maia.**
 - I asked whether to make Maia the default before Q-1. I explained that nothing had yet talked to the live server, and that a mismatch would fail every session with no fallback. The owner answered: "you should make it".
-- **Qwen is the default provider from this change on.** Fresh installs use Qwen. An existing stored Gemini preference switches to Qwen once. An explicit Baidu or Gemini choice made after the switch is kept.
-- **The risk is accepted by the owner:** the adapter has JVM evidence only.
+- **Qwen is the product session from this change on.** As built on `cursor/10-9` (`e3f6faf`), `VoiceProviderChoice.resolve` always returns Qwen; Gemini/Baidu radios no longer select the session (see the amendment at the end). This replaces the one-time-switch design first written here, which was never merged.
+- **The risk is accepted by the owner:** the adapter had JVM evidence only; emulator takes followed the same day (OPEN_PROBLEMS P50).
 - The gates stay as the record of what is still unproven, but they no longer hold back the default. If Q-1 shows the server does not match, it is a defect to fix, not a reason to switch back silently.
 - **"All voice from Maia":**
   - replies are Maia's own audio (no Azure layer for Qwen);
-  - the SPEC-020 wait cues use bundled Maia clips recorded with the probe's `say` mode (stock-voice output, not cloning);
+  - the SPEC-020 wait cue is spoken by Maia herself (`589e9e8`: a prompted line at 7 s, captured as a cue, not judged as the reply) — no bundled clips;
   - navigation guidance is spoken by Maia through a verbatim prompt once Qwen is shown to accept text (Q-1).
-- **Until a Maia clip or verbatim prompt exists, the stop-gaps are:**
-  - for a cue: it is skipped (logged), never spoken in another voice;
-  - for guidance: Amap's voice speaks it (ADR-014's fallback). That is the one remaining second voice, and it is tracked in SPEC-021.
+- **Until the guidance prompt exists**, Amap's voice speaks guidance (ADR-014's fallback). That is the one remaining second voice, and it is tracked in SPEC-021.
 - Deleting the Gemini + Azure path still waits for Q-5 and the owner's confirmation (ADR-008).
 
 **Correction (2026-10-09, from the official docs, before Q-1):**
