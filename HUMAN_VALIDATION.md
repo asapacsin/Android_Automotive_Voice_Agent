@@ -13,7 +13,7 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 > - PLACE-SAVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - PLACE-NAV-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 
-26 item(s) queued.
+27 item(s) queued.
 
 Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEVICE_REQUIRED.md).
 
@@ -439,6 +439,34 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 **Tell me back:** commands acted within ~2.5 s, out of 10; seconds to first word for the 5 chat questions; any claim heard before its action
 
 **Still unknown until you do:** seconds heard in the cabin on the phone's network; whether gemini-3.8-live self-interrupts through the speaker (G-M2)
+
+### LOCAL_DEVICE_REQUIRED — QWEN-VOICE-EAR-001 — ADR-017 gate Q-2: Maia against Xiaoyi, by ear, on the probe's clips
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Which voice sounds right is the owner's listening judgement (B-034)
+
+**Automation blocker:** `subjective_perception`
+
+**Already established without you:**
+
+- tools/qwen-omni-probe say mode writes one 24 kHz WAV per line plus summary.json (selftest OK, 2026-10-09 cloud)
+
+**You will need:** QWEN-PROBE-Q1-001 run, with its say/ clips; the 2026-10-08 Xiaoyi demo clips for comparison
+
+**What to do:**
+
+1. listen to say/*.wav next to the Xiaoyi clips of the same lines
+2. listen to the ten wait-cue clips
+
+**It passes if:**
+
+- Maia preferred to Xiaoyi, or the reason she is not
+- each cue clip clean and natural, or marked unusable
+
+**Tell me back:** yes/no per criterion, one sentence of impression
+
+**Still unknown until you do:** how Maia sounds on our lines; whether a style instruction changes her delivery; whether the cue clips are clean enough to bundle (SPEC-021 step 4)
 
 ### LOCAL_DEVICE_REQUIRED — STYLE-EAR-001 — 嗲 / 傲娇 / 温柔 / 元气 each sound right and appropriate, with the same voice
 

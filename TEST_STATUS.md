@@ -2,16 +2,16 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-21 · 149 tests
+Updated 2026-09-21 · 153 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 58 |
+| autonomous PASS | 59 |
 | autonomous FAIL | 0 |
 | incomplete | 0 |
 | partial pass | 0 |
-| not run | 64 |
-| human required | 25 |
+| not run | 66 |
+| human required | 26 |
 | human pass | 0 |
 | human fail | 1 |
 | blocked external | 0 |
@@ -79,6 +79,8 @@ Updated 2026-09-21 · 149 tests
 - GATE-D10-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - FUZZY-TEXT-LIVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - FUZZY-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- QWEN-PROBE-Q1-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- QWEN-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - GUIDANCE-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - CONFIG-CARD-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - P45-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -114,7 +116,7 @@ Updated 2026-09-21 · 149 tests
 | reliability | 8 | 4 | 1 | 3 |
 | saved_places | 3 | 0 | 0 | 3 |
 | security | 3 | 3 | 0 | 0 |
-| speech | 16 | 6 | 7 | 2 |
+| speech | 20 | 7 | 8 | 4 |
 | truthfulness | 9 | 4 | 0 | 5 |
 | turn_taking | 19 | 7 | 3 | 9 |
 | unsupported | 1 | 0 | 0 | 1 |
@@ -226,6 +228,10 @@ Updated 2026-09-21 · 149 tests
 | DEMO-10-3-001 | speech | One demo run that exercises the essential functions and every claude/10-2 and claude/10-3 function, graded by the log checker | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | tools/demo/check_demo_log.py --selftest OK (2026-10-03 cloud, 10-3 checks included) |
 | P45-EMU-001 | speech | The P45 conversation on the emulator with live speech, with the Azure voice | AUTONOMOUS | NOT_RUN | no | — |
 | P45-UNIT-001 | speech | An interrupted unheard reply is never synthesised; a question restarts the sleep window; turn timings are logged | AUTONOMOUS | PASS | no | 2026-10-02 cloud, claude/10-2: GeminiLiveClientTest 69/0, ListeningLifecycleTest 36/0, … |
+| QWEN-ADAPTER-UNIT-001 | speech | SPEC-021 steps 1-3: the shared OpenAI-Realtime client and the Qwen-Omni dialect keep the truth rules on a mock socket | AUTONOMOUS | PASS | no | 2026-10-09 cloud, claude/10-9 merge 71a8d40: app 3447/0 (debug+release), behavior-test … |
+| QWEN-EMU-001 | speech | ADR-017 gate Q-4: the demo on the emulator with Qwen + Maia selected, under docs/DEMO_REQUIREMENTS.md | AUTONOMOUS | NOT_RUN | no | — |
+| QWEN-PROBE-Q1-001 | speech | ADR-017 gate Q-1: Qwen-Omni Realtime + Maia measured outside the app, side by side with Gemini + Xiaoyi | AUTONOMOUS | NOT_RUN | no | — |
+| QWEN-VOICE-EAR-001 | speech | ADR-017 gate Q-2: Maia against Xiaoyi, by ear, on the probe's clips | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | tools/qwen-omni-probe say mode writes one 24 kHz WAV per line plus summary.json (selfte… |
 | STYLE-EAR-001 | speech | 嗲 / 傲娇 / 温柔 / 元气 each sound right and appropriate, with the same voice | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | STYLE-UNIT-001: compose swaps the tone paragraph; style persisted and sticky (JVM) |
 | STYLE-UNIT-001 | speech | set_speaking_style changes the tone, persists it and composes it | AUTONOMOUS | PASS | no | 2026-09-30 cloud, wt/W3b-style-tool 80b9072: SpeakingStyleToolTest 8/0, PersonaProfiles… |
 | TTS-AUDITION-001 | speech | The owner picks a Chinese TTS voice (and vendor) by ear | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | 2026-10-02 owner, by ear on edge_preview clips (D:/桌面/android_doc/tts_audition/edge_pre… |

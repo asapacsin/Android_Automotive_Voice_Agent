@@ -69,9 +69,10 @@ One behaviour, one owner. If you need to change one of these, change it **here**
 | Who speaks each guidance sentence (assistant or Amap), per prompt | `GuidanceRelay` (SPEC-018; behind the developer toggle, off by default), with `GuidanceClaims` hooks from `AndroidPlaybackPort`; a guidance prompt is correlated to its response by `AppPromptTurn` (provider) and is never a driver turn | the model, `AmapGuidanceVoice` (it is the SDK edge only) |
 | Live information (weather, route traffic, along-route, place details) | `LiveInfoTool` (`query_live_info`) — REST kinds via `AmapPoiClient` / `AmapLiveInfoParser`; SDK kinds via the `RouteLiveInfo` port / `nav/amap/AmapRouteLiveInfo` (SPEC-011) | the model's own knowledge |
 | Conversation lifetime | `ConversationResetPolicy` (reset after tool turns) + `ResponseTurnGate` (one reply at a time) | the model |
-| Credentials | `AndroidKeystoreCredentialStore` (`baidu_*`, `gemini_*`, `iflytek_*`, `amap_*`) | source, Gradle files, logs |
-| Which realtime provider a session uses | `VoiceProviderChoice` (Gemini Live unless the owner's stored preference is Baidu; a missing key/consent fails the start with its code, never a fallback), applied once in `VoiceSessionController.openSession` (ADR-010, ADR-013) | the adapters, the UI, anything mid-session |
+| Credentials | `AndroidKeystoreCredentialStore` (`baidu_*`, `gemini_*`, `qwen_api_key`, `iflytek_*`, `amap_*`) | source, Gradle files, logs |
+| Which realtime provider a session uses | `VoiceProviderChoice` (Gemini Live unless the owner's stored preference is Baidu or Qwen; a missing key/consent/workspace fails the start with its code, never a fallback), applied once in `VoiceSessionController.openSession` (ADR-010, ADR-013) | the adapters, the UI, anything mid-session |
 | Gemini Live wire format | `GeminiLiveProtocol` / `GeminiLiveClient` / `GeminiLiveProvider` | `ingress`, policy code |
+| Qwen-Omni Realtime wire format (ADR-017; opt-in, not the default until gates Q-1…Q-5) | `QwenOmniDialect` on the shared `OpenAiRealtimeClient` (SPEC-021), `QwenOmniProvider`; settings in `QwenSettings` (key in the Keystore, workspace endpoint) | `ingress`, policy code, a copy of the client |
 | "Driver speaking" when the provider has no speech events | the local `SpeechUplinkGate` onset/offset, fed to the session core's `onLocalSpeechActivity` and honoured only when `ProviderCapabilities.serverSpeechActivityEvents` is false | the adapter, a provider-name branch |
 
 ## Modules and allowed dependencies
