@@ -66,6 +66,11 @@ existing refusal still applies. News/stock/price words stay refused unconditiona
 
 B4. **Freshness.** Weather is cached 10 min per adcode; traffic and along-route are never cached.
 Every result says when it was reported.
+   *Amendment 2026-10-09 (P50, Qwen Maia demo):* the district of the current fix is cached per
+   ~1 km cell for 30 min together with its city name from the same regeo answer. A weather question
+   that names that city (「今天珠海天气怎么样」 in Zhuhai; a trailing 「市」 ignored) is answered from
+   the district's cached weather, so it costs no round trip after the session-start warm-up. Any
+   other city is looked up by name as before. The city name stays in memory and is never logged.
 
 B5. **Declarations.** The tool description lists example phrasings per kind, in the same style as
 the existing climate table that fixed CVC selection on 2026-09-19.
