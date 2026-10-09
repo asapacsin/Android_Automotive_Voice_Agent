@@ -1,6 +1,6 @@
 # SPEC-021 — Talk to 小诺 through Qwen-Omni Realtime in the Maia voice, opt-in, with the same truth rules
 
-Status: **Draft 2026-10-09**, for ADR-017 gate Q-3. Steps 1–3 are cloud work. Step 4 waits for Q-1 and Q-2, and step 5 is gate Q-4.
+Status: **Steps 1–3 built 2026-10-09 (JVM)**, for ADR-017 gate Q-3. Steps 1–3 are cloud work. Step 4 waits for Q-1 and Q-2, and step 5 is gate Q-4.
 Raised: 2026-10-09 · Source: [ADR-017](../DECISIONS/ADR-017-qwen-omni-realtime-end-to-end.md), [B-034](../BACKLOG.md)
 Depends on: ADR-009/010 (one seam, one provider per session), ADR-013 (no fallback across providers), ADR-008 (no dormant code), I-1 (the claim gate), I-8 (no words in logs), SPEC-020 (wait cues)
 
@@ -99,7 +99,9 @@ From the official docs (Alibaba Model Studio: realtime, client-events and server
    - The local uplink gate keeps streaming its 1.2 s hangover, which is longer than `silence_duration_ms`, so the server always hears enough silence to end the turn. This is the trap P49 hit with Gemini.
 7. **Text turns.** Claim corrections (`sendCorrection`) and typed text are sent as the OpenAI `message` item with `input_text`, then `response.create`.
    - This works only if Q-1's `text` mode shows the server accepts it.
-   - If the server refuses it, the dialect logs `qwen_text_unsupported` once per session and the correction is dropped. The held claim stays dropped (I-1 holds), and the driver hears nothing false.
+   - If the server refuses it, the dialect logs `qwen_text_unsupported` once per session. Text turns are off for the rest of the session, and the correction is dropped. The held claim stays dropped (I-1 holds), and the driver hears nothing false.
+   - A refusal is never fatal, whenever the item went out. A correction can go out late, held for a conversation reset or deferred behind a running reply, so the refusal is recognised by the error's `param` (`item.*`), not by timing.
+   - A refused `function_call_output` (`item.call_id` / `item.output`) is not a text refusal. It is logged as `qwen_call_output_refused code=<code>` and is non-fatal too: the model answers without that result, and the claim gate still holds any claim.
    - Step 4 then decides the replacement (see Open questions).
 8. **Wait cues (SPEC-020).** Not spoken in steps 1–3:
    - There is no `AssistantVoice`, so there is no revoicer, and `onLocalSpeechActivity` logs `wait_cue_skipped reason=no_assistant_voice`.
@@ -141,16 +143,16 @@ From the official docs (Alibaba Model Studio: realtime, client-events and server
 
 | # | Criterion | Proven by | State |
 | --- | --- | --- | --- |
-| A1 | Step 1 changes no behaviour: every Baidu Flex test and golden (`baidu_session_update.json`) passes unchanged, and `flex_*` log lines are identical | the existing Baidu Flex suites; `git diff` on the goldens is empty | not built |
-| A2 | Qwen session.update matches a golden built from the documented shape (Maia, semantic_vad, transcription model, function tools, no `enable_search`) | `QwenOmniDialectTest` + `golden/qwen_session_update.json` | not built |
-| A3 | The URL is built from the workspace ID; the key appears only in the Authorization header and never in a URL, log or error message; the workspace ID never appears in a log | `QwenOmniDialectTest`, `SecretScanTest` (behavior-test) | not built |
-| A4 | Documented server events map to the neutral events, including a tool call from `function_call_arguments.done` and an error mapped to a `QWEN_*` code | `QwenOmniDialectTest` | not built |
-| A5 | The claim gate holds Qwen *audio* that claims an action until `ok=true`, and drops it on a refusal (I-1) | `QwenOmniClientTest`, in the Baidu Flex claim-gate test shape | not built |
-| A6 | Tool round trip: call → dispatch → `function_call_output` → `response.create`, with no overlapping response | `QwenOmniClientTest` with a mock socket | not built |
-| A7 | Barge-in: a qualified barge-in sends `response.cancel` and flushes; a refused cancel is not fatal | `QwenOmniClientTest` | not built |
-| A8 | Selection: no Qwen code runs without the QWEN preference; with it, a missing key, workspace or consent fails with its code and never falls back | `VoiceProviderChoiceTest`, `RealtimeProviderFactoryTest` | not built |
-| A9 | Capabilities in all three places (VoiceCatalog, `config/capabilities.yaml`, the behaviour), and no branch on the provider name | `CapabilityContractTest`, `ArchitectureRulesTest` | not built |
-| A10 | `:app:assembleDebug` builds; `harness_check.py` has no new findings | build, harness | not built |
+| A1 | Step 1 changes no behaviour: every Baidu Flex test and golden (`baidu_session_update.json`) passes unchanged, and `flex_*` log lines are identical | the existing Baidu Flex suites; `git diff` on the goldens is empty | JVM PASS 2026-10-09: `OpenAiRealtimeClient` + `RealtimeDialect` merged (`d0d9e01`): app tests unmodified, all green; the review accepted it as equivalent for Baidu, and the absence rules now cover every dialect (mutation-checked) |
+| A2 | Qwen session.update matches a golden built from the documented shape (Maia, semantic_vad, transcription model, function tools, no `enable_search`) | `QwenOmniDialectTest` + `golden/qwen_session_update.json` | JVM PASS 2026-10-09: `QwenOmniDialectTest` (golden + an independent shape test) |
+| A3 | The URL is built from the workspace ID; the key appears only in the Authorization header and never in a URL, log or error message; the workspace ID never appears in a log | `QwenOmniDialectTest`, `SecretScanTest` (behavior-test) | JVM PASS 2026-10-09: `QwenOmniDialectTest` (header only, no host in the DNS error, case-insensitive redaction, an unparseable workspace never reaches a message), `SecretScanTest` DashScope pattern |
+| A4 | Documented server events map to the neutral events, including a tool call from `function_call_arguments.done` and an error mapped to a `QWEN_*` code | `QwenOmniDialectTest` | JVM PASS 2026-10-09: `QwenOmniDialectTest`, including `everyQwenCodeHasTheIntendedErrorClass` (transient faults are RETRYABLE) |
+| A5 | The claim gate holds Qwen *audio* that claims an action until `ok=true`, and drops it on a refusal (I-1) | `QwenOmniClientTest`, in the Baidu Flex claim-gate test shape | JVM PASS 2026-10-09: `QwenOmniClientTest` (held until ok=true; dropped on refusal) |
+| A6 | Tool round trip: call → dispatch → `function_call_output` → `response.create`, with no overlapping response | `QwenOmniClientTest` with a mock socket | JVM PASS 2026-10-09: `QwenOmniClientTest` |
+| A7 | Barge-in: a qualified barge-in sends `response.cancel` and flushes; a refused cancel is not fatal | `QwenOmniClientTest` | JVM PASS 2026-10-09: `QwenOmniClientTest` (client cancel once; a refused cancel is non-fatal). The core's barge-in qualification is shared and unchanged |
+| A8 | Selection: no Qwen code runs without the QWEN preference; with it, a missing key, workspace or consent fails with its code and never falls back | `VoiceProviderChoiceTest`, `RealtimeProviderFactoryTest` | JVM PASS 2026-10-09: `RealtimeProviderFactoryTest`, `GeminiSettingsTest`; the Qwen start never reads the Azure key |
+| A9 | Capabilities in all three places (VoiceCatalog, `config/capabilities.yaml`, the behaviour), and no branch on the provider name | `CapabilityContractTest`, `ArchitectureRulesTest` | JVM PASS 2026-10-09: behavior-test (`ArchitectureRulesTest`, `CapabilityContractTest`, `ProviderBoundaryTest`) |
+| A10 | `:app:assembleDebug` builds; `harness_check.py` has no new findings | build, harness | JVM PASS 2026-10-09: `assembleDebug` OK; `harness_check.py` has no new finding |
 | Q-1 | The probe numbers, side by side with Gemini + Xiaoyi | `tools/qwen-omni-probe` on the owner's PC | open (PC, key) |
 | Q-4 | The emulator demo passes `check_req.py` | the PC | open |
 
