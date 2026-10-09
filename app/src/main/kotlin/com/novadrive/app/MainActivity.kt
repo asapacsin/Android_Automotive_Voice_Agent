@@ -201,10 +201,10 @@ class MainActivity : Activity() {
     private fun showConfigBannerIfNeeded() {
         val geminiSettings = GeminiSettingsRepository(this)
         val code = geminiSettings.configProblem()
-            ?: if (geminiSettings.choice() == VoiceProviderId.GEMINI_LIVE) {
-                AzureSpeechSettingsRepository(this).configProblem()
-            } else {
-                null
+            ?: when (geminiSettings.choice()) {
+                VoiceProviderId.GEMINI_LIVE -> AzureSpeechSettingsRepository(this).configProblem()
+                VoiceProviderId.QWEN -> QwenSettingsRepository(this).configProblem()
+                else -> null
             }
         if (code == null) {
             if (::screen.isInitialized) screen.clearError(CONFIG_ERROR)
@@ -215,7 +215,8 @@ class MainActivity : Activity() {
     }
 
     private fun configScreenMessage(code: String): String =
-        GeminiSettingsValidator.screenMessage(code) ?: AzureSpeechSettingsValidator.screenMessage(code) ?: code
+        GeminiSettingsValidator.screenMessage(code) ?: AzureSpeechSettingsValidator.screenMessage(code)
+            ?: QwenSettingsValidator.message(code) ?: code
 
     override fun onPause() {
         if (::screen.isInitialized) screen.onPause()
@@ -356,6 +357,11 @@ class MainActivity : Activity() {
                         .copy(assistantVoice = voice)
                 },
                 baidu = { settingsRepository.config() },
+                qwen = {
+                    QwenSettingsValidator.sessionConfig(AzureSpeechSettingsRepository(this).loadSettings().enabled) {
+                        QwenSettingsRepository(this).config(instructions = settingsRepository.loadSettings().instructions)
+                    }
+                },
             )
         } catch (failure: IllegalArgumentException) {
             // Codes only (never the key); no fallback to another provider (ADR-013).

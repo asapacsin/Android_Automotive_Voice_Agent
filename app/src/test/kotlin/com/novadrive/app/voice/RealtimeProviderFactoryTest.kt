@@ -8,10 +8,16 @@ import com.novadrive.app.BaiduRuntimeProvider
 import com.novadrive.app.GeminiApiConfig
 import com.novadrive.app.GeminiAppSettings
 import com.novadrive.app.OutputSampleRate
+import com.novadrive.app.QwenApiConfig
+import com.novadrive.app.QwenAppSettings
+import com.novadrive.app.QwenSettingsValidator
+import com.novadrive.app.VoiceProviderChoice
+import com.novadrive.app.VoiceProviderPreference
 import com.novadrive.app.resolvedOutputSampleRateHz
 import com.novadrive.ingress.realtime.VoiceCatalog
 import com.novadrive.ingress.realtime.VoiceProviderId
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -64,6 +70,61 @@ class RealtimeProviderFactoryTest {
         } finally {
             built.provider.close()
         }
+    }
+
+    /** SPEC-021 A8: Qwen is built only from a Qwen config, at 24 kHz out, with its own capabilities. */
+    @Test
+    fun qwenConfigBuildsQwenOmniAt24kHzOut16kHzIn() {
+        val api = QwenApiConfig(QwenAppSettings(consentAccepted = true, workspaceId = "ws-test"), "placeholder", "p")
+        val built = build(SessionProviderConfig.Qwen(api))
+        try {
+            assertTrue(built.provider is QwenOmniProvider)
+            assertEquals(VoiceProviderId.QWEN, built.session.provider)
+            assertEquals(VoiceCatalog.QWEN_OMNI_FLASH, built.session.model)
+            assertEquals(24_000, built.outputSampleRateHz)
+            assertEquals(24_000, built.session.audio.outputSampleRateHz)
+            assertEquals(16_000, built.session.audio.inputSampleRateHz)
+            assertEquals(VoiceCatalog.capabilities(VoiceProviderId.QWEN), built.provider.capabilities)
+        } finally {
+            built.provider.close()
+        }
+    }
+
+    /** SPEC-021 A8: no Qwen code runs without the preference; with it, a missing piece fails with its code. */
+    @Test
+    fun qwenIsReadOnlyForTheQwenPreferenceAndNeverFallsBack() {
+        var qwenTouched = false
+        VoiceProviderPreference.entries.filter { it != VoiceProviderPreference.QWEN }.forEach { pref ->
+            val choice = VoiceProviderChoice.resolve(GeminiAppSettings(provider = pref), keyPresent = true)
+            runCatching {
+                sessionConfigFor(choice, gemini = { error("gemini") }, baidu = { error("baidu") }, qwen = { qwenTouched = true; error("qwen") })
+            }
+        }
+        assertFalse(qwenTouched, "no Qwen code runs without the QWEN preference")
+
+        val choice = VoiceProviderChoice.resolve(GeminiAppSettings(provider = VoiceProviderPreference.QWEN), keyPresent = false)
+        assertEquals(VoiceProviderId.QWEN, choice)
+        val ok = QwenAppSettings(consentAccepted = true, workspaceId = "ws-test")
+        listOf(
+            Triple(ok, "", "QWEN_API_KEY_MISSING"),
+            Triple(ok.copy(workspaceId = ""), "k", "QWEN_WORKSPACE_MISSING"),
+            Triple(ok.copy(consentAccepted = false), "k", "QWEN_CONSENT_MISSING"),
+        ).forEach { (settings, key, code) ->
+            var otherTouched = false
+            val failure = runCatching {
+                sessionConfigFor(
+                    choice,
+                    gemini = { otherTouched = true; error("gemini") },
+                    baidu = { otherTouched = true; error("baidu") },
+                    qwen = { QwenSettingsValidator.configOrThrow(settings, key, "persona") },
+                )
+            }.exceptionOrNull()
+            assertTrue(failure is IllegalArgumentException, code)
+            assertEquals(code, failure!!.message)
+            assertFalse(otherTouched, "a Qwen failure never falls back to another provider ($code)")
+        }
+        val config = sessionConfigFor(choice, { error("gemini") }, { error("baidu") }, { QwenSettingsValidator.configOrThrow(ok, "k", "p") })
+        assertTrue(config is SessionProviderConfig.Qwen)
     }
 
     private fun baidu(runtime: BaiduRuntimeProvider, model: String, rate: OutputSampleRate) = BaiduApiConfig(

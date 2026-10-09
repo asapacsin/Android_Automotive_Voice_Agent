@@ -56,6 +56,7 @@ open class OpenAiRealtimeClient<C : Any>(
     @Volatile private var vadThreshold: Double = dialect.defaultVadThreshold
     @Volatile private var playbackActive = false
     @Volatile private var navigatingListener: ((Boolean) -> Unit)? = null
+    @Volatile private var textUnsupportedLogged = false
     private val emptyRetry = EmptyResponseRetryPolicy()
     private val resetPolicy = ConversationResetPolicy()
     private val resetScope = kotlinx.coroutines.CoroutineScope(
@@ -126,23 +127,19 @@ open class OpenAiRealtimeClient<C : Any>(
         resetPolicy.reset()
         rawInstructions = dialect.instructions(config)
         dialect.onSessionOpening(config)
+        textUnsupportedLogged = false
         socket = http.newWebSocket(request, listener(current, pending))
         NetworkFaults.dropConnection = { socket?.cancel() }
         playbackActive = false
-        vadThreshold = resolveVadThreshold()
-        // Deliberately does NOT resend session.update. Measured on device 2026-09-16: the
-        // first provider rejected a turn-detection threshold change while input audio is in progress
-        // ("Cannot update a session's turn detection threshold ..."), which is always the
-        // case mid-conversation, and the rejection took the whole session down right after
-        // navigate_to succeeded. The navigation threshold is applied at the next connect
-        // instead (see the vadThreshold assignment above).
-        val listener: (Boolean) -> Unit = { navigating ->
-            DebugVoiceLog.log("vad_threshold_deferred navigating=$navigating")
+        vadThreshold = dialect.vadThreshold(NavigationState.navigating)
+        if (dialect.tracksNavigationVad) { // never resends session.update mid-session; see the dialect
+            val listener: (Boolean) -> Unit = { navigating ->
+                DebugVoiceLog.log("vad_threshold_deferred navigating=$navigating")
+            }
+            navigatingListener = listener
+            // Never wipe another instance's listener; see releaseNavigatingListenerIfOwned.
+            NavigationState.onNavigatingChanged = listener
         }
-        navigatingListener = listener
-        // Test Connection constructs a throwaway client; disconnect() must not
-        // wipe another instance's listener (same hazard as onFocusChanged). See releaseNavigatingListenerIfOwned.
-        NavigationState.onNavigatingChanged = listener
         try {
             withTimeout(readyTimeoutMs) { pending.await() }
         } catch (_: TimeoutCancellationException) {
@@ -260,7 +257,7 @@ open class OpenAiRealtimeClient<C : Any>(
      */
     fun discardPendingAudio() {
         listeningSuspended = true
-        heldOutbound.removeIf { it.contains("\"input_audio_buffer.append\"") }
+        heldOutbound.removeIf(dialect::isAudioAppend)
         turnGate.clear()
     }
 
@@ -273,9 +270,6 @@ open class OpenAiRealtimeClient<C : Any>(
     fun onPlaybackActiveChanged(active: Boolean) {
         playbackActive = active
     }
-
-    private fun resolveVadThreshold(): Double =
-        dialect.vadThreshold(NavigationState.navigating)
 
     @Volatile private var listeningSuspended = false
 
@@ -290,7 +284,13 @@ open class OpenAiRealtimeClient<C : Any>(
     fun sendUserText(text: String) {
         DebugVoiceLog.log("${dialect.logPrefix}_user_text chars=${text.length}")
         listeningSuspended = false
-        val messages = listOf(dialect.userTextMessage(text), dialect.responseCreate())
+        val item = dialect.userTextMessage(text)
+        if (item == null) {
+            if (!textUnsupportedLogged) DebugVoiceLog.log("${dialect.logPrefix}_text_unsupported")
+            textUnsupportedLogged = true
+            return
+        }
+        val messages = listOf(item, dialect.responseCreate())
         if (resetting || resetPending) {
             heldOutbound += messages
             return

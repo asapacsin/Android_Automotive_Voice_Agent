@@ -5,7 +5,8 @@ import com.novadrive.ingress.realtime.VoiceCatalog
 
 /**
  * Persisted, non-secret Qwen-Omni realtime settings (SPEC-021). The API key lives in the Keystore
- * only. The workspace id is not secret but is never logged. Not selectable yet (SPEC-021 step 3).
+ * only. The workspace id is not secret but is never logged. Selected only by an explicit QWEN
+ * preference (SPEC-021 step 3).
  */
 data class QwenAppSettings(
     val consentAccepted: Boolean = false,
@@ -52,13 +53,15 @@ object QwenSettings {
 
 object QwenSettingsValidator {
     private val VOICE_CHARS = ('0'..'9') + ('A'..'Z') + ('a'..'z') + setOf('_', '-')
+    /** The workspace id is one DNS label of the endpoint host. */
+    const val MAX_WORKSPACE_LENGTH = 63
     private val WORKSPACE_CHARS = ('0'..'9') + ('A'..'Z') + ('a'..'z') + setOf('-')
 
     fun validateSettings(settings: QwenAppSettings): String? {
         if (settings.model !in VoiceCatalog.qwenModels) return "QWEN_MODEL_INVALID"
         val workspace = settings.workspaceId.trim()
         if (workspace.isEmpty()) return "QWEN_WORKSPACE_MISSING"
-        if (workspace.length > 64 || !workspace.all { it in WORKSPACE_CHARS }) return "QWEN_WORKSPACE_INVALID"
+        if (workspace.length > MAX_WORKSPACE_LENGTH || !workspace.all { it in WORKSPACE_CHARS }) return "QWEN_WORKSPACE_INVALID"
         if (settings.voice.length !in 1..32 || !settings.voice.all { it in VOICE_CHARS }) return "QWEN_VOICE_INVALID"
         if (settings.silenceDurationMs !in QwenAppSettings.MIN_SILENCE_MS..QwenAppSettings.MAX_SILENCE_MS) {
             return "QWEN_SILENCE_INVALID"
@@ -70,6 +73,29 @@ object QwenSettingsValidator {
     fun validate(settings: QwenAppSettings, apiKey: String): String? {
         validateSettings(settings)?.let { return it }
         if (apiKey.isBlank()) return "QWEN_API_KEY_MISSING"
+        if (!settings.consentAccepted) return "QWEN_CONSENT_MISSING"
+        return null
+    }
+
+    /** Builds the Qwen session config or throws [IllegalArgumentException] with the config code. */
+    fun configOrThrow(settings: QwenAppSettings, apiKey: String, instructions: String): QwenApiConfig {
+        validate(settings, apiKey)?.let { throw IllegalArgumentException(it) }
+        return QwenApiConfig(settings, apiKey, instructions)
+    }
+
+    /**
+     * The Qwen session config for a start (SPEC-021). Qwen speaks in its own voice, so an enabled
+     * Azure assistant voice is only noted, never read: its key and completeness play no part.
+     */
+    fun sessionConfig(azureVoiceEnabled: Boolean, build: () -> QwenApiConfig): QwenApiConfig {
+        if (azureVoiceEnabled) DebugVoiceLog.log("assistant_voice ignored reason=provider_speaks")
+        return build()
+    }
+
+    /** The config code a Qwen start would fail with, or null; same order as [validate]. Presence only. */
+    fun configProblem(settings: QwenAppSettings, keyPresent: Boolean): String? {
+        validateSettings(settings)?.let { return it }
+        if (!keyPresent) return "QWEN_API_KEY_MISSING"
         if (!settings.consentAccepted) return "QWEN_CONSENT_MISSING"
         return null
     }
@@ -118,6 +144,13 @@ class QwenSettingsRepository(
     fun clearKey() {
         credentials.clear(CRED_API_KEY)
     }
+
+    /** The session config; throws [IllegalArgumentException] with a `QWEN_*` code. Never falls back. */
+    fun config(instructions: String): QwenApiConfig =
+        QwenSettingsValidator.configOrThrow(loadSettings(), credentials.read(CRED_API_KEY).orEmpty(), instructions)
+
+    /** See [QwenSettingsValidator.configProblem]. */
+    fun configProblem(): String? = QwenSettingsValidator.configProblem(loadSettings(), keyPresent())
 
     companion object {
         const val CRED_API_KEY = "qwen_api_key"

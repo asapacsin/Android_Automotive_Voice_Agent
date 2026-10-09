@@ -317,6 +317,7 @@ class DeveloperSettingsActivity : Activity() {
             addView(amapKey)
             addView(openAccessibility)
             addView(geminiSection())
+            addView(qwenSection())
             addView(azureVoiceSection())
             addView(guidanceRelayToggle())
             addView(voiceToggle)
@@ -503,7 +504,11 @@ class DeveloperSettingsActivity : Activity() {
         val consent = CheckBox(this).apply { text = "我已阅读并同意 / I accept"; isChecked = saved.consentAccepted }
         val providerButtons = VoiceProviderPreference.entries.associateBy {
             RadioButton(this).apply {
-                text = if (it == VoiceProviderPreference.GEMINI) "Gemini — 默认 / default" else "Baidu"
+                text = when (it) {
+                    VoiceProviderPreference.GEMINI -> "Gemini — 默认 / default"
+                    VoiceProviderPreference.BAIDU -> "Baidu"
+                    VoiceProviderPreference.QWEN -> "Qwen-Omni（Maia，可选 / opt-in）"
+                }
                 id = View.generateViewId()
             }
         }
@@ -575,6 +580,48 @@ class DeveloperSettingsActivity : Activity() {
             GeminiAppSettings.CONSENT_NOTICE, consent, "Provider", providerGroup, "API Key", key, "Model", modelGroup, "Voice", voice,
             thinkingLabel, thinking, "Silence ms", silence, save, clearKey,
             "Takes effect at the next session start.",
+        )
+    }
+
+    /**
+     * SPEC-021: Qwen-Omni settings, used only when the provider above is Qwen. The DashScope key is
+     * never displayed or logged (blank keeps the stored one); the workspace id is never logged.
+     */
+    private fun qwenSection(): LinearLayout {
+        val qwen = QwenSettingsRepository(this)
+        val saved = qwen.loadSettings()
+        val consent = CheckBox(this).apply { text = "我已阅读并同意 / I accept"; isChecked = saved.consentAccepted }
+        val key = secretField(
+            if (qwen.keyPresent()) "DashScope API Key（已配置 / configured；留空保留）" else "DashScope API Key",
+        )
+        val workspace = EditText(this).apply { setText(saved.workspaceId); hint = "Workspace ID（ap-southeast-1）" }
+        val voice = EditText(this).apply { setText(saved.voice); hint = QwenAppSettings.DEFAULT_VOICE }
+        val save = Button(this).apply {
+            text = "保存 Qwen 设置 / Save Qwen"
+            setOnClickListener {
+                val settings = saved.copy(
+                    consentAccepted = consent.isChecked,
+                    workspaceId = workspace.text.toString().trim(),
+                    voice = voice.text.toString().trim().ifBlank { QwenAppSettings.DEFAULT_VOICE },
+                )
+                result.text = try {
+                    qwen.save(settings, update(key))
+                    key.text.clear()
+                    "QWEN_SETTINGS_SAVED\nkeyPresent=${qwen.keyPresent()}"
+                } catch (failure: IllegalArgumentException) {
+                    val code = failure.message ?: "QWEN_SETTINGS_INVALID"
+                    QwenSettingsValidator.message(code)?.let { "$code\n$it" } ?: code
+                }
+            }
+        }
+        val clearKey = Button(this).apply {
+            text = "清除 Qwen Key / Clear Qwen key"
+            setOnClickListener { qwen.clearKey(); result.text = "QWEN_KEY_CLEARED" }
+        }
+        return verticalGroup(
+            TextView(this).apply { text = "通义千问 Omni / Qwen-Omni (SPEC-021)"; textSize = 18f },
+            QwenAppSettings.CONSENT_NOTICE, consent, "API Key", key, "Workspace ID", workspace, "Voice", voice,
+            save, clearKey, "Takes effect at the next session start, with provider Qwen selected above.",
         )
     }
 

@@ -3,6 +3,7 @@ package com.novadrive.app.voice
 import com.novadrive.app.BaiduApiConfig
 import com.novadrive.app.BaiduRuntimeProvider
 import com.novadrive.app.GeminiApiConfig
+import com.novadrive.app.QwenApiConfig
 import com.novadrive.app.resolvedOutputSampleRateHz
 import com.novadrive.ingress.realtime.RealtimeAudioConfig
 import com.novadrive.ingress.realtime.RealtimeSessionConfig
@@ -13,6 +14,7 @@ import com.novadrive.ingress.realtime.VoiceProviderId
 sealed interface SessionProviderConfig {
     data class Baidu(val api: BaiduApiConfig) : SessionProviderConfig
     data class Gemini(val api: GeminiApiConfig) : SessionProviderConfig
+    data class Qwen(val api: QwenApiConfig) : SessionProviderConfig
 }
 
 /** The composition boundary's one `when` that chooses the realtime implementation (ADR-009 §4, ADR-010). */
@@ -25,6 +27,9 @@ object RealtimeProviderFactory {
 
     /** Gemini Live replies are `audio/pcm;rate=24000` (measured). */
     const val GEMINI_OUTPUT_SAMPLE_RATE_HZ = 24_000
+
+    /** Qwen-Omni replies are 24 kHz s16le (SPEC-021, from the docs). */
+    const val QWEN_OUTPUT_SAMPLE_RATE_HZ = 24_000
     private const val INPUT_SAMPLE_RATE_HZ = 16_000
 
     fun build(
@@ -51,6 +56,11 @@ object RealtimeProviderFactory {
             GeminiLiveProvider(config.api, lastAudioSegment, speechEvidence, config.api.assistantVoice?.let(::AzureSpeechVoice), repliesSpoken),
             VoiceProviderId.GEMINI_LIVE, config.api.settings.model, GEMINI_OUTPUT_SAMPLE_RATE_HZ,
         )
+        // SPEC-021: the model speaks in its own voice; no assistant voice, no revoicer.
+        is SessionProviderConfig.Qwen -> built(
+            QwenOmniProvider(config.api, lastAudioSegment, speechEvidence),
+            VoiceProviderId.QWEN, config.api.settings.model, QWEN_OUTPUT_SAMPLE_RATE_HZ,
+        )
     }
 
     private fun built(provider: RealtimeVoiceProvider, id: VoiceProviderId, model: String, rate: Int) =
@@ -61,14 +71,17 @@ object RealtimeProviderFactory {
  * Maps the session's provider choice ([com.novadrive.app.VoiceProviderChoice]) to its typed config.
  * Next to the factory so the choice and the adapter it selects live in one place (ADR-009 §4,
  * ADR-010); only the chosen provider's settings are read, so a Gemini session never needs Baidu
- * credentials and a Baidu session never touches the Gemini key.
+ * credentials and a Baidu session never touches the Gemini key. [qwen] is read only for QWEN, and
+ * its failure is never answered with another provider (ADR-013).
  */
 fun sessionConfigFor(
     choice: VoiceProviderId,
     gemini: () -> GeminiApiConfig,
     baidu: () -> BaiduApiConfig,
+    qwen: () -> QwenApiConfig,
 ): SessionProviderConfig =
     when (choice) {
         VoiceProviderId.GEMINI_LIVE -> SessionProviderConfig.Gemini(gemini())
+        VoiceProviderId.QWEN -> SessionProviderConfig.Qwen(qwen())
         else -> SessionProviderConfig.Baidu(baidu())
     }
