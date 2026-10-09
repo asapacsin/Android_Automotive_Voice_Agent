@@ -1,6 +1,27 @@
 # Current Milestone
 
-## Active work — handoff 2026-10-08 (PC session → cloud)
+## Active work — ADR-017: Qwen-Omni Realtime + Maia (cloud, `claude/10-9`, 2026-10-09)
+
+**The owner's decision:** one end-to-end model, `qwen3.8-omni-flash-realtime` with the stock voice Maia, no separate TTS ([ADR-017](DECISIONS/ADR-017-qwen-omni-realtime-end-to-end.md)). Gemini + Xiaoyi stays the default until gates Q-1 to Q-5 pass. The adapter is [SPEC-021](SPECS/SPEC-021-qwen-omni-provider.md).
+
+**Correction from the docs:** this model is served only from the workspace endpoint `wss://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/...`. The owner needs the **workspace ID** as well as the key (PC: `setx DASHSCOPE_WORKSPACE_ID <id>`).
+
+**Done (cloud, JVM evidence only):**
+- **Q-1 probe**, `tools/qwen-omni-probe/`:
+  - It measures latency, a tool turn, barge-in (also a cough or knock), text input, and Maia clips for Q-2.
+  - The offline selftest passes.
+  - The batch is `run_q1.ps1`.
+- **SPEC-021 step 1:** `OpenAiRealtimeClient` + `RealtimeDialect` extracted from `BaiduFlexClient`, with the Baidu tests unmodified and green.
+- **Steps 2–3:** `QwenOmniDialect` / `QwenOmniClient` / `QwenOmniProvider`, settings (key in the Keystore, workspace, Maia, consent), opt-in selection in developer settings, no fallback.
+
+**Next — needs the owner's PC:**
+1. **`QWEN-PROBE-Q1-001`:** run `tools\qwen-omni-probe\run_q1.ps1` with `DASHSCOPE_API_KEY` and `DASHSCOPE_WORKSPACE_ID` set.
+   - It answers SPEC-021's open questions: text input, `semantic_vad` timing, and Maia's style range.
+2. **`QWEN-VOICE-EAR-001`** (Q-2): listen to `out\say\*.wav` next to the Xiaoyi clips.
+3. **SPEC-021 step 4** (cloud, after Q-1 and Q-2): tune to the measured facts, plus the Maia wait-cue clips (a SPEC-020 amendment).
+4. **Q-4:** the emulator demo with Qwen selected (开发者设置 → Qwen, key + workspace + consent).
+
+## Previous: handoff 2026-10-08 (PC session → cloud)
 
 **The owner's goal:** a demo with no laggy AI speech and no long silence. The bar is [docs/DEMO_REQUIREMENTS.md](docs/DEMO_REQUIREMENTS.md). The numbers behind it are in [OPEN_PROBLEMS.md](OPEN_PROBLEMS.md) P48.
 
