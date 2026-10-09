@@ -38,7 +38,6 @@ class QwenOmniDialect(
     @Volatile private var textRefused = false
 
     /** A user text item was sent and the server has not yet accepted it (item created / response). */
-    @Volatile private var textOutstanding = false
 
     override suspend fun buildRequest(config: QwenApiConfig): Request {
         QwenSettingsValidator.validate(config.settings, config.apiKey)?.let {
@@ -60,7 +59,6 @@ class QwenOmniDialect(
     override fun onSessionOpening(config: QwenApiConfig) {
         settings = config.settings
         textRefused = false
-        textOutstanding = false
     }
 
     override fun instructions(config: QwenApiConfig): String? = config.instructions
@@ -96,7 +94,6 @@ class QwenOmniDialect(
 
     /** The OpenAI `message`/`input_text` item; null once the server has refused one (SPEC-021 B7). */
     override fun userTextMessage(text: String): String? {
-        textOutstanding = false
         if (textRefused) return null
         require(text.length <= BaiduFlexProtocol.MAX_ARGUMENT_BYTES) { "QWEN_TEXT_TOO_LARGE" }
         return JSONObject()
@@ -107,13 +104,12 @@ class QwenOmniDialect(
                     .put("type", "message")
                     .put("role", "user")
                     .put("content", JSONArray().put(JSONObject().put("type", "input_text").put("text", text))),
-            ).toString().also { textOutstanding = true }
+            ).toString()
     }
 
     override fun parseCommonEvent(text: String, speaking: Boolean): List<DomainVoiceEvent> {
         val raw = JSONObject(text)
         val type = raw.optString("type")
-        if (type == "conversation.item.created" || type == "response.created") textOutstanding = false
         return when (type) {
             "response.text.delta" -> listOf(DomainVoiceEvent.AssistantTranscript(raw.optString("delta"), false))
             "response.text.done" -> listOf(DomainVoiceEvent.AssistantTranscript(raw.optString("text"), true))
@@ -138,6 +134,12 @@ class QwenOmniDialect(
             textRefused = true
             return emptyList()
         }
+        // A refused function_call_output: the model answers without that result, and the claim gate
+        // still holds any claim it makes (I-1). Ending the session would be worse (review 2026-10-09).
+        if (error.optString("param") in CALL_OUTPUT_PARAMS) {
+            DebugVoiceLog.log("qwen_call_output_refused code=${errorCodeOf(error)}")
+            return emptyList()
+        }
         // A refused cancel (nothing playing) and an overlapping reply are not session-fatal.
         if (CANCEL_REFUSED_PHRASES.any { it in blob } || ACTIVE_RESPONSE_PHRASE in blob) return emptyList()
         val code = classify(blob)
@@ -147,10 +149,11 @@ class QwenOmniDialect(
     override fun errorCode(text: String): String = runCatching {
         val raw = JSONObject(text)
         val error = raw.optJSONObject("error") ?: raw
-        val code = error.optString("code").filter { it.isLetterOrDigit() || it == '_' || it == '.' || it == '-' }.take(64)
+        val code = errorCodeOf(error)
         val blob = blob(error)
         val kind = when {
             isTextItemRefusal(error) -> "text_refused"
+            error.optString("param") in CALL_OUTPUT_PARAMS -> "call_output_refused"
             CANCEL_REFUSED_PHRASES.any { it in blob } -> "cancel_refused"
             ACTIVE_RESPONSE_PHRASE in blob -> "response_busy"
             else -> classify(blob).removePrefix("QWEN_").lowercase()
@@ -186,10 +189,12 @@ class QwenOmniDialect(
         private val QUOTA_MARKERS = listOf("throttling", "quota", "allocationquota")
         private val AUTH_STATUS = Regex("\\b(401|403)\\b")
         private val QUOTA_STATUS = Regex("\\b429\\b")
+        /** "internal" as a word start (InternalError, internal error), never inside "international". */
+        private val INTERNAL = Regex("\\binternal")
 
         /** A fault of the service, not of this client (the Baidu P38 lesson): reconnect, not fail. */
         private val SERVER_MARKERS = listOf(
-            "internal", "serviceunavailable", "service unavailable", "server_error", "server error", "server busy", "serverbusy",
+            "serviceunavailable", "service unavailable", "server_error", "server error", "server busy", "serverbusy",
         )
 
         /** `param` values that belong to a function_call_output item, never to a text item. */
@@ -232,10 +237,14 @@ class QwenOmniDialect(
             return when {
                 AUTH_MARKERS.any { it in lower } || AUTH_STATUS.containsMatchIn(lower) -> "QWEN_AUTH_FAILED"
                 QUOTA_MARKERS.any { it in lower } || QUOTA_STATUS.containsMatchIn(lower) -> "QWEN_QUOTA_EXHAUSTED"
-                SERVER_MARKERS.any { it in lower } -> "QWEN_SERVER_UNAVAILABLE"
+                SERVER_MARKERS.any { it in lower } || INTERNAL.containsMatchIn(lower) -> "QWEN_SERVER_UNAVAILABLE"
                 else -> "QWEN_PROVIDER_ERROR"
             }
         }
+
+        /** The provider's error code, filtered to an identifier; never the message (I-8). */
+        private fun errorCodeOf(error: JSONObject): String =
+            error.optString("code").filter { it.isLetterOrDigit() || it == '_' || it == '.' || it == '-' }.take(64)
 
         private fun blob(error: JSONObject) = "${error.optString("code")} ${error.optString("message")}".lowercase()
 
@@ -257,11 +266,12 @@ class QwenOmniDialect(
     }
 
     /**
-     * The server refused our user text item: one is outstanding, and `param` names the item (not a
-     * function_call_output field) or the error is an invalid item type.
+     * The server refused a user text item: `param` names an item field that is not a
+     * function_call_output field, or the error is an invalid item type. Not scoped to "a text item
+     * was just sent": a correction can go out late (held for a reset, or deferred behind a reply),
+     * and a refusal must never end the session (SPEC-021 B7; review 2026-10-09).
      */
     private fun isTextItemRefusal(error: JSONObject): Boolean {
-        if (!textOutstanding) return false
         val param = error.optString("param")
         if (param in CALL_OUTPUT_PARAMS) return false
         return isItemRefusal(error, param)

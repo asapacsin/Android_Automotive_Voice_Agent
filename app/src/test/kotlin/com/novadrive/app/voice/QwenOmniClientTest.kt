@@ -241,6 +241,36 @@ class QwenOmniClientTest {
     }
 
     @Test
+    fun aCorrectionDeferredBehindARunningReplyAndThenRefusedIsNotFatal() = runBlocking {
+        enqueueServer { ws, json ->
+            if (json.optString("type") == "conversation.item.create" && json.getJSONObject("item").optString("type") == "message") {
+                ws.send("""{"type":"error","error":{"code":"invalid_value","param":"item.type","message":"Invalid value: 'message'"}}""")
+            }
+        }
+        val client = client()
+        val seen = collect(client)
+        client.connect(config())
+        // A reply is running, so the correction is deferred; other events arrive before it goes out.
+        send("""{"type":"response.created","response":{"id":"r1"}}""")
+        awaitUntil({ "seen: $seen" }) { seen.any { it is DomainVoiceEvent.ResponseStarted } }
+        client.sendUserText("纠正")
+        send(
+            """{"type":"conversation.item.created","item":{"type":"message"}}""",
+            """{"type":"response.done","response":{"status":"completed","output":[]}}""",
+        )
+        awaitUntil({ "sent: $received" }) { sent("conversation.item.create").isNotEmpty() }
+        Thread.sleep(NEGATIVE_WAIT_MS)
+        assertTrue(seen.none { it is DomainVoiceEvent.Error }, "a late refusal is not session-fatal: $seen")
+        val itemsBefore = sent("conversation.item.create").size
+        val createsBefore = sent("response.create").size
+        client.sendUserText("再纠正")
+        Thread.sleep(NEGATIVE_WAIT_MS)
+        assertEquals(itemsBefore, sent("conversation.item.create").size, "text is off after the refusal")
+        assertEquals(createsBefore, sent("response.create").size)
+        client.disconnect()
+    }
+
+    @Test
     fun aSessionThatNeverBecomesReadyFailsWithTheQwenCode() = runBlocking {
         server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) = Unit

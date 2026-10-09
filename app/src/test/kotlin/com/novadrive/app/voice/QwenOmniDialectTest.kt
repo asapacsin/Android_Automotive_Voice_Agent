@@ -327,12 +327,32 @@ class QwenOmniDialectTest {
     }
 
     @Test
-    fun anItemErrorWithNoTextOutstandingDoesNotTurnTextOff() {
+    fun aLateTextRefusalIsStillNotFatal() {
+        // The correction went out after a reset or behind a running reply: other events came first.
         val d = opened()
         d.userTextMessage("纠正")
         d.parseCommonEvent("""{"type":"conversation.item.created","item":{"type":"message"}}""", false)
-        d.parseCommonEvent("""{"type":"error","error":{"code":"invalid_value","param":"item.type","message":"x"}}""", false)
-        assertTrue(d.userTextMessage("纠正") != null, "the text item was already accepted")
+        d.parseCommonEvent("""{"type":"response.created","response":{"id":"r1"}}""", false)
+        assertTrue(d.parseCommonEvent("""{"type":"error","error":{"code":"invalid_value","param":"item.type","message":"x"}}""", false).isEmpty())
+        assertNull(d.userTextMessage("纠正"), "text is off for this session")
+    }
+
+    @Test
+    fun aRefusedFunctionCallOutputIsNotFatal() {
+        val d = opened()
+        val refusal = """{"type":"error","error":{"code":"invalid_value","param":"item.call_id","message":"unknown call"}}"""
+        assertTrue(d.parseCommonEvent(refusal, false).isEmpty())
+        assertEquals("invalid_value kind=call_output_refused", d.errorCode(refusal))
+    }
+
+    @Test
+    fun internalMatchesOnlyAsAWordStart() {
+        val d = opened()
+        fun code(c: String, m: String) =
+            (d.parseCommonEvent("""{"type":"error","error":{"code":"$c","message":"$m"}}""", false).single() as DomainVoiceEvent.Error).code
+        assertEquals("QWEN_SERVER_UNAVAILABLE", code("InternalError", "x"))
+        assertEquals("QWEN_SERVER_UNAVAILABLE", code("x", "internal server error"))
+        assertEquals("QWEN_PROVIDER_ERROR", code("invalid_value", "international number format"))
     }
 
     @Test
