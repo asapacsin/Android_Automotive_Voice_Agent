@@ -3,6 +3,7 @@
 These scripts record a demo on the PC emulator `nova_api34` with nothing played on the PC, and grade each take against [docs/DEMO_REQUIREMENTS.md](../../../docs/DEMO_REQUIREMENTS.md). They need adb, ffmpeg, Python with numpy and edge-tts, and the PC proxy at 127.0.0.1:7897. The cloud container cannot run them.
 
 1. **Start the emulator silent:** `emulator -avd nova_api34 -no-snapshot-save -no-audio`. Then run `adb root`, set every media stream's volume to 0, run `settings put global http_proxy 10.0.2.2:7897`, and `adb emu geo fix 113.5767 22.2711`.
+   **Qwen key:** with `DASHSCOPE_API_KEY` and `DASHSCOPE_WORKSPACE_ID` set on the PC, run `python seed_qwen.py --accept-consent` once per install. It stores both in the debug app through a file that is deleted afterwards, records the cross-border consent, and prints only `qwen_setup applied` or an error code.
 2. **Make the driver lines:** `python make_clips.py` writes edge-tts Yunxi clips into `clips/` (16 kHz PCM; test input only).
 3. **Record one take per scene:** `python record_demo.py RUN scene…`. The scenes are `intro`, `ability2`, `scenario`, `style`, `prep`, `warm`, `noise` and `error`.
    - The script stands in for the host audio bridge: it sends the driver lines up the bridge and captures her reply audio from the app.

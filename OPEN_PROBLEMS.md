@@ -1851,7 +1851,7 @@ Measured from the driver's **last audible word**, not the end of the clip; edge-
 **Fix:**
 - SPEC-014 clause release, owner decision 2026-10-09 (`DriverTurn.clauseVerdict`, `DriverTurnPipeline.drainClauses`, `ProviderCapabilities.streamedReplyText`); see SPEC-014's status note.
 - `RealtimeDialect.resetsConversation`: false for Qwen, true for Baidu (SPEC-021 question 4).
-- `OpenAiRealtimeClient` stall watchdog: a response with no progress for 6 s is cancelled and asked for once more (`<prefix>_response_stalled`, `_stall_retry`).
+- `OpenAiRealtimeClient` stall watchdog: a response with no progress for 5 s (`ResponseStallWatchdog.STALL_MS`) is cancelled and asked for once more (`<prefix>_response_stalled`, `_stall_retry`).
 - `ActionClaimGuard.listsAbilities`: two or more groups in a 「、」 enumeration are a list (a completion word still makes it a claim).
 - `ActionClaimGuard.unverifiedClaim`: for a heard sentence (≥ 5 word characters) the correction asks for the request itself (`nudgeFor`), never 「没听清」.
 - `LiveInfoTool`: the district is cached per ~1 km cell for 30 min, and at session start the district and today's weather here are fetched in the background (`live_info_warm`).
