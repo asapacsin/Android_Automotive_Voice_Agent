@@ -6,6 +6,7 @@ import com.novadrive.app.DebugVoiceLog
 import com.novadrive.app.NavigationState
 import com.novadrive.app.PersonaProfiles
 import com.novadrive.app.SpeakingStyleState
+import com.novadrive.app.voice.ProviderCueCapture.Signal
 import com.novadrive.ingress.realtime.DomainVoiceEvent
 import com.novadrive.ingress.realtime.RealtimeEvent
 import com.novadrive.ingress.realtime.ResponseOutcome
@@ -25,7 +26,6 @@ import okhttp3.WebSocketListener
 import org.json.JSONObject
 import java.util.Base64
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
 /**
@@ -91,10 +91,8 @@ open class OpenAiRealtimeClient<C : Any>(
 
     /** A reply is in progress on the server (response.created .. response.done). */
     @Volatile private var responseInProgress = false
-    /** The next response.created belongs to a wait cue, not to the driver's reply. */
-    private val cueRequested = AtomicBoolean(false)
-    private val cueActive = AtomicBoolean(false)
-    private val cuePcm = java.io.ByteArrayOutputStream()
+    /** The provider-spoken wait cue: played only when its response proves to be the cue. */
+    private val cue = ProviderCueCapture()
     @Volatile private var ttsStartedForResponse = false
 
     @Volatile private var responseStartedAtMs = 0L
@@ -120,7 +118,7 @@ open class OpenAiRealtimeClient<C : Any>(
     private val stallWatchdog = ResponseStallWatchdog(
         resetScope, responseStallMs, dialect.logPrefix,
         cancel = { sendCancelOnce("stalled") },
-        retry = { trySend(dialect.responseCreate()) },
+        retry = { submitReply("stall_retry") },
     )
 
     /** Incremented on every conversation reset; a queued turn from an older one may be stale. */
@@ -235,7 +233,7 @@ open class OpenAiRealtimeClient<C : Any>(
     }
 
     fun cancelResponse() {
-        if (assistantSpeaking) sendCancelOnce("barge_in")
+        if (cue.discardForClientCancel()) sendCancelOnce("client_cancel") else if (assistantSpeaking) sendCancelOnce("barge_in")
     }
 
     /**
@@ -243,7 +241,7 @@ open class OpenAiRealtimeClient<C : Any>(
      * arrived yet (cancelResponse only acts once audio plays, to keep barge-in behaviour as is).
      */
     fun cancelActiveResponse() {
-        if (responseInProgress || assistantSpeaking) sendCancelOnce("active")
+        if (cue.discardForClientCancel()) sendCancelOnce("client_cancel") else if (responseInProgress || assistantSpeaking) sendCancelOnce("active")
     }
 
     /**
@@ -309,14 +307,13 @@ open class OpenAiRealtimeClient<C : Any>(
      */
     internal fun speakFixedCue(text: String): Boolean {
         val message = dialect.progressResponse(text) ?: return false
-        if (text.isBlank() || responseInProgress || cueRequested.get() || cueActive.get() || turnGate.isBusy()) {
+        if (text.isBlank() || responseInProgress || !cue.idle || turnGate.isBusy()) {
             DebugVoiceLog.log("wait_cue_skipped reason=response_active")
             return false
         }
-        cueRequested.set(true)
-        synchronized(cuePcm) { cuePcm.reset() }
+        cue.request(text)
         if (!trySend(message)) {
-            cueRequested.set(false)
+            cue.clear()
             DebugVoiceLog.log("wait_cue_failed")
             return false
         }
@@ -365,12 +362,17 @@ open class OpenAiRealtimeClient<C : Any>(
         // The one place execution evidence enters this client (INVARIANT I-1; see DriverTurnPipeline).
         pipeline.onToolResult(callId, output)
         // The call id belongs to this conversation: after a reset there is nothing to answer.
+        submitReply("tool_result", control = true)
+    }
+
+    /** One response.create through [turnGate], the path every app-requested reply takes. */
+    private fun submitReply(kind: String, control: Boolean = false) {
         val reply = ResponseTurnGate.Turn(listOf(dialect.responseCreate()), emptyList(), conversationEpoch)
         if (!turnGate.submit(reply)) {
-            DebugVoiceLog.log("${dialect.logPrefix}_turn_deferred kind=tool_result pending=${turnGate.pending()}")
+            DebugVoiceLog.log("${dialect.logPrefix}_turn_deferred kind=$kind pending=${turnGate.pending()}")
             return
         }
-        sendControl(dialect.responseCreate())
+        if (control) sendControl(dialect.responseCreate()) else trySend(dialect.responseCreate())
     }
 
     /** Sends queued app replies once the provider is free; one at a time, each after the previous reply. */
@@ -405,6 +407,7 @@ open class OpenAiRealtimeClient<C : Any>(
         assistantSpeaking = false
         responseInProgress = false
         cancelSentThisResponse = false
+        cue.clear()
         turnGate.onConnectionReset()
         assembler.clear()
         val owned = navigatingListener
@@ -489,6 +492,27 @@ open class OpenAiRealtimeClient<C : Any>(
         trySend(dialect.responseCreate())
     }
 
+    /** The wire translated for [ProviderCueCapture], which knows no vendor vocabulary (ADR-009). */
+    private fun cueSignal(type: String, text: String): Signal = JSONObject(text).let { json ->
+        val item = json.optJSONObject("item")
+        val outputs = json.optJSONObject("response")?.optJSONArray("output")
+        when {
+            type == "response.created" -> Signal.Started
+            type == "response.done" -> Signal.Finished(json.optJSONObject("response")?.optString("status") == "completed",
+                (0 until (outputs?.length() ?: 0)).any { outputs!!.optJSONObject(it)?.optString("type") == WIRE_FUNCTION_CALL })
+            type == "input_audio_buffer.speech_started" -> Signal.DriverSpeech
+            type == "error" -> Signal.Error
+            type.startsWith("response.function_call_arguments") || item?.optString("type") == WIRE_FUNCTION_CALL -> Signal.Call
+            type == "response.audio_transcript.delta" || type == "response.text.delta" -> Signal.Words(json.optString("delta"))
+            type == "response.audio_transcript.done" || type == "response.text.done" -> Signal.AllWords(json.optString("transcript").ifEmpty { json.optString("text") })
+            type == "response.audio.delta" -> Signal.Audio(json.optString("delta"))
+            // The response's own items; not the driver's input item or its transcription (no item).
+            type.startsWith("response.") || type.startsWith("conversation.item.") && item != null &&
+                item.optString("role") != "user" && !item.optString("type").endsWith("_output") -> Signal.Response
+            else -> Signal.Unrelated
+        }
+    }
+
     private fun listener(current: Long, pending: CompletableDeferred<Unit>) = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) = Unit
 
@@ -498,6 +522,24 @@ open class OpenAiRealtimeClient<C : Any>(
             val type = runCatching { JSONObject(text).optString("type") }.getOrElse {
                 failProtocol(pending, it); return
             }
+            if (cue.idle) return handle(webSocket, text, type)
+            when (val step = cue.onMessage(cueSignal(type, text), text) { dialect.isResponseAlreadyActive(text) }) {
+                ProviderCueCapture.Step.Pass -> handle(webSocket, text, type)
+                ProviderCueCapture.Step.Buffered, ProviderCueCapture.Step.Skipped -> Unit
+                ProviderCueCapture.Step.Started -> { cancelSentThisResponse = false; responseInProgress = true; turnGate.onResponseCreated() }
+                ProviderCueCapture.Step.CancelAndPass -> { sendCancelOnce("driver_speech"); handle(webSocket, text, type) }
+                // The candidate was a reply: everything it sent takes the normal path, in order.
+                is ProviderCueCapture.Step.Demote -> step.messages.forEach { handle(webSocket, it, JSONObject(it).optString("type")) }
+                is ProviderCueCapture.Step.Finish -> {
+                    responseInProgress = false
+                    turnGate.onResponseDone()
+                    step.pcm?.let { emit(DomainVoiceEvent.WaitCueAudio(Base64.getEncoder().encodeToString(it))) }
+                    flushDeferredTurns()
+                }
+            }
+        }
+
+        private fun handle(webSocket: WebSocket, text: String, type: String) {
             if (type == "session.created") {
                 sessionCreated = true
                 if (!webSocket.send(dialect.sessionUpdate(instructionsWithContext(), vadThreshold))) {
@@ -539,38 +581,19 @@ open class OpenAiRealtimeClient<C : Any>(
             if (type == "response.created") {
                 cancelSentThisResponse = false
                 turnGate.onResponseCreated()
-                if (cueRequested.compareAndSet(true, false)) {
-                    cueActive.set(true)
-                    synchronized(cuePcm) { cuePcm.reset() }
-                } else {
-                    streamedWords.reset()
-                    pipeline.onResponseCreated()
-                }
+                streamedWords.reset()
+                pipeline.onResponseCreated()
             }
-            if (streamedReplyText && type == "response.audio_transcript.delta" && !cueActive.get()) {
+            if (streamedReplyText && type == "response.audio_transcript.delta") {
                 streamedWords.onDelta(JSONObject(text).optString("delta"))?.let(pipeline::appendAssistantText)
             }
-            if ((type == "response.audio_transcript.done" || type == "response.text.done") && !cueActive.get()) {
+            if (type == "response.audio_transcript.done" || type == "response.text.done") {
                 val raw = JSONObject(text)
                 streamedWords.onDone(raw.optString("transcript").ifEmpty { raw.optString("text") })?.let(pipeline::appendAssistantText)
             }
             if (type == "conversation.item.input_audio_transcription.completed") {
                 val transcript = JSONObject(text).optString("transcript")
                 pipeline.onUserTranscript(transcript)
-            }
-            if (type == "error" && (cueRequested.get() || cueActive.get())) {
-                val wasActive = cueActive.getAndSet(false)
-                cueRequested.set(false)
-                synchronized(cuePcm) { cuePcm.reset() }
-                val alreadyActive = dialect.isResponseAlreadyActive(text)
-                if (wasActive && !alreadyActive) {
-                    responseInProgress = false
-                    turnGate.onResponseDone()
-                    flushDeferredTurns()
-                }
-                if (alreadyActive) DebugVoiceLog.log("wait_cue_skipped reason=response_active")
-                else DebugVoiceLog.log("wait_cue_failed")
-                return
             }
             if (type == "error" && dialect.isResponseAlreadyActive(text)) {
                 DebugVoiceLog.log("${dialect.logPrefix}_turn_rejected_busy retry=true")
@@ -581,21 +604,6 @@ open class OpenAiRealtimeClient<C : Any>(
             if (type == "conversation.item.input_audio_transcription.completed" && emptyRetry.onUserTranscriptCompleted()) {
                 requestReplyAfterEmptyResponse()
             }
-            if (type == "response.done" && cueActive.getAndSet(false)) {
-                val pcm = synchronized(cuePcm) {
-                    val bytes = cuePcm.toByteArray()
-                    cuePcm.reset()
-                    if (bytes.size % 2 == 0) bytes else bytes + 0
-                }
-                turnGate.onResponseDone()
-                if (pcm.isNotEmpty()) {
-                    emit(DomainVoiceEvent.WaitCueAudio(Base64.getEncoder().encodeToString(pcm)))
-                } else {
-                    DebugVoiceLog.log("wait_cue_failed")
-                }
-                flushDeferredTurns()
-                return
-            }
             if (type == "response.done") {
                 turnGate.onResponseDone()
                 if (onResponseDone(text)) requestReplyAfterEmptyResponse() else flushDeferredTurns()
@@ -605,14 +613,6 @@ open class OpenAiRealtimeClient<C : Any>(
                 pipeline.releaseFallback()
             }
             events.forEach { event ->
-                if (cueActive.get()) {
-                    if (event is DomainVoiceEvent.AudioDelta) {
-                        runCatching { Base64.getMimeDecoder().decode(event.pcm16leBase64) }
-                            .getOrNull()
-                            ?.let { synchronized(cuePcm) { cuePcm.write(it) } }
-                    }
-                    return@forEach
-                }
                 if (dropCallFromCancelledResponse(event)) return@forEach
                 if (dropDuplicateCall(event)) return@forEach
                 // A tool call proves the driver's turn was real; never let one sit behind a hold,
