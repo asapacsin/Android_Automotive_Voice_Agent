@@ -153,6 +153,13 @@ class ActionClaimGuard {
         // The driver was heard; what is missing is the *target*. Telling them we did not catch a
         // sentence we caught perfectly is both false and useless (measured 2026-09-20 on 「再低一点」).
         if (request != null && ContextResolver.needsClarification(request)) return CLARIFY_REFERENT
+        // A whole sentence was transcribed: 「没听清」 would be dropped by DriverTurn's own
+        // repair_for_heard_speech, a second round trip for nothing (emulator 2026-10-09: 「说话霸道
+        // 一点」 took 5.8 s through claim -> 没听清 -> answer). Ask for the request itself instead;
+        // an unsupported one is then refused by its tool, honestly.
+        if (request != null && request.count { it.isLetterOrDigit() } >= DriverTurn.MIN_HEARD_SENTENCE_CHARS) {
+            return nudgeFor(request)
+        }
         return UNVERIFIED_ACTION_CLAIM
     }
 
@@ -590,9 +597,16 @@ class ActionClaimGuard {
          * Emulator 2026-10-08 (later): ability_modal=false ability_groups=5 was dropped as a 调 claim
          * (17 s of silence); three or more groups now make a list even without 能/可以/会.
          */
-        private fun listsAbilities(reply: String): Boolean =
-            (ABILITY_MODAL.containsMatchIn(reply) && answersCapabilityHelp(reply)) ||
-                capabilityHelpNouns(ProductCapabilities).count { it in reply } >= 3
+        private fun listsAbilities(reply: String): Boolean {
+            val groups = capabilityHelpNouns(ProductCapabilities).count { it in reply }
+            return (ABILITY_MODAL.containsMatchIn(reply) && answersCapabilityHelp(reply)) ||
+                groups >= 3 ||
+                // Emulator 2026-10-09 (Qwen Maia): 「你干什么」 was answered with two groups in an
+                // enumeration (ability_modal=false ability_groups=2), dropped as a 调 claim. An
+                // enumeration of abilities is a list; [reportsCompletion] still keeps 「空调、车窗都
+                // 开了」 a claim, because every caller checks it alongside this.
+                (groups >= 2 && '、' in reply)
+        }
 
         /** Log-safe diagnostic: only a boolean and a count from our own vocabulary, never text. */
         fun abilityDiagnostics(reply: String): String =

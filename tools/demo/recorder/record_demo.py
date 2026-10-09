@@ -336,6 +336,20 @@ def sc_style(s):
     turn(s, "normal")
 
 
+# The bridge drops uplink audio in takes over ~70 s: the style scene in two takes.
+def sc_style_a(s):
+    s.title("3  更多说话风格", "More speaking styles; an unknown one is refused honestly")
+    turn(s, "sweet")
+    turn(s, "food")
+    turn(s, "genki")
+
+
+def sc_style_b(s):
+    s.title("3  更多说话风格", "More speaking styles; an unknown one is refused honestly")
+    turn(s, "bossy")
+    turn(s, "normal")
+
+
 def sc_noise(s):
     s.title("4  嘈杂车内也能听完一句话", "A turn still ends with fan noise in the cabin")
     s.noise(True)
@@ -390,7 +404,7 @@ def sc_think(s):
     turn(s, "philo", timeout=40)
 
 
-SCENES = {"intro": sc_intro, "ability": sc_ability, "ability2": sc_ability2, "scenario": sc_scenario, "style": sc_style, "noise": sc_noise,
+SCENES = {"intro": sc_intro, "ability": sc_ability, "ability2": sc_ability2, "scenario": sc_scenario, "style": sc_style, "style_a": sc_style_a, "style_b": sc_style_b, "noise": sc_noise,
           "warm": sc_warm, "error": sc_error, "prep": sc_prep, "cue": sc_cue, "nav": sc_nav, "think": sc_think}
 
 if __name__ == "__main__":

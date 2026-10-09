@@ -214,8 +214,8 @@ class ArchitectureRulesTest {
             "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt" to 80,
             // SPEC-021 step 1 (2026-10-08): the turn handling moved out of BaiduFlexClient, recorded at 675.
             // SPEC-020 (2026-10-09): the Maia wait cue is captured in this client so it is not judged as the reply.
-            "app/src/main/kotlin/com/novadrive/app/voice/OpenAiRealtimeClient.kt" to 750,
-            "app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt" to 400,
+            "app/src/main/kotlin/com/novadrive/app/voice/OpenAiRealtimeClient.kt" to 780, // P50 2026-10-09: streamed words, stall and underrun wiring (logic in ReplyStreaming.kt)
+            "app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt" to 410, // SPEC-014 clause release (budget in ReplyStreaming.kt)
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapNaviViewHost.kt" to 900,
             "app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt" to 470,
             // SPEC-020 (2026-10-09): forwards the 3 s working label. Was 500.

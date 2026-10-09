@@ -62,7 +62,7 @@ class QwenOmniClientTest {
         }))
     }
 
-    private fun client() = QwenOmniClient(
+    private fun client(responseStallMs: Long = ResponseStallWatchdog.STALL_MS) = QwenOmniClient(
         OkHttpClient(),
         READY_TIMEOUT_MS,
         requireTls = false,
@@ -70,6 +70,7 @@ class QwenOmniClientTest {
         contextHint = { null },
         lastAudioSegment = { goodAudio },
         contextAwaitingAnswer = { false },
+        responseStallMs = responseStallMs,
     )
 
     private fun config() = QwenApiConfig(QwenAppSettings(consentAccepted = true, workspaceId = workspace), key, "PERSONA")
@@ -153,6 +154,52 @@ class QwenOmniClientTest {
         Thread.sleep(NEGATIVE_WAIT_MS)
         assertTrue(seen.none { it is DomainVoiceEvent.AudioDelta }, "ok=false is not proof (I-1)")
         assertTrue(seen.none { it is DomainVoiceEvent.AssistantTranscript && it.text.contains("已为您") })
+        client.disconnect()
+    }
+
+    // ---- P50: streamed words, stalls ----
+
+    @Test
+    fun aChatReplyIsHeardBeforeItEndsWhenItsWordsStream() = runBlocking {
+        enqueueServer()
+        val client = client()
+        val seen = collect(client)
+        client.connect(config())
+        val chunk = java.util.Base64.getEncoder().encodeToString(ByteArray(300 * 48))
+        send(
+            """{"type":"input_audio_buffer.speech_started"}""",
+            """{"type":"input_audio_buffer.speech_stopped"}""",
+            """{"type":"conversation.item.input_audio_transcription.completed","item_id":"i1","transcript":"今天过得怎么样"}""",
+            """{"type":"response.created","response":{"id":"r1"}}""",
+            """{"type":"response.audio.delta","delta":"$chunk"}""",
+            """{"type":"response.audio.delta","delta":"$chunk"}""",
+            """{"type":"response.audio_transcript.delta","delta":"还不错呀，"}""",
+            """{"type":"response.audio_transcript.delta","delta":"我们聊聊吧。"}""",
+        )
+        awaitUntil({ "seen: $seen" }) { seen.count { it is DomainVoiceEvent.AudioDelta } == 2 }
+        assertTrue(seen.none { it is DomainVoiceEvent.ResponseDone }, "released clause by clause, before response.done (SPEC-014)")
+        client.disconnect()
+    }
+
+    @Test
+    fun aStalledResponseIsCancelledAndAskedForOnceOnly() = runBlocking {
+        enqueueServer()
+        val client = client(responseStallMs = 300)
+        client.connect(config())
+        send(
+            """{"type":"input_audio_buffer.speech_started"}""",
+            """{"type":"input_audio_buffer.speech_stopped"}""",
+            """{"type":"response.created","response":{"id":"r1"}}""",
+            """{"type":"response.output_item.added","item":{"type":"message"}}""",
+        )
+        awaitUntil({ "sent: $received" }) { sent("response.cancel").size == 1 }
+        val createsBefore = sent("response.create").size
+        send("""{"type":"response.done","response":{"status":"cancelled","status_details":{"reason":"client_cancelled"},"output":[{"type":"message"}]}}""")
+        awaitUntil({ "sent: $received" }) { sent("response.create").size == createsBefore + 1 }
+        // The retry stalls too: it is the turn's last chance, so it is left to finish.
+        send("""{"type":"response.created","response":{"id":"r2"}}""")
+        Thread.sleep(1_000)
+        assertEquals(1, sent("response.cancel").size, "a second stall in the same turn is not cancelled")
         client.disconnect()
     }
 

@@ -12,14 +12,14 @@ LINES = {
 }
 
 NOTES = {
-    "小诺 · 新功能演示": ("cursor/10-9：通义千问 Omni，声音是 Maia。每个场景都是一次连续的实时录制，回复前的等待一秒未剪。",
-                    "cursor/10-9: Qwen-Omni, voice Maia. Every scene is one continuous real-time take; no reply wait is cut."),
-    "1  需要等的时候，先应一声": ("查天气、找歌要几秒。前 7 秒不说话，屏幕上从第 3 秒显示「处理中」。满 7 秒还没有有用的话，才说一次「收到，正在处理。」。满 12 秒换一句说明网络可能慢，不把上一句再说一遍。",
-                          "Silent for 7 s, with a 'working' label from 3 s. One progress line at 7 s, and a different delay line at 12 s."),
-    "2  想一想的问题": ("闲聊也一样：7 秒内不插一句「我想想」。只有到了 7 秒还没开口，才说一次「收到，正在处理。」，然后接上真正的回答。",
-                   "A question gets no filler before 7 s. One progress line only if nothing useful has been spoken, then the real reply."),
-    "3  问能力：马上回答": ("以前列能力（「能帮你调空调、开车窗…」）会被执行证据门当成「假装执行」拦下，要等 13–28 秒。现在列能力直接播出。",
-                      "An ability list used to be blocked as a claim of a done action (13-28 s of silence); now it plays straight away."),
+    "小诺 · 新功能演示": ("cursor/10-9：通义千问 Omni 端到端语音，声音是 Maia，不再经过 Azure。回复逐句检查后边生成边播（SPEC-014）。每个场景都是一次连续的实时录制，回复前的等待一秒未剪。",
+                    "cursor/10-9: Qwen-Omni end to end, voice Maia, no Azure. Replies play clause by clause once checked (SPEC-014). One real-time take per scene; no reply wait is cut."),
+    "1  需要等的时候，先应一声": ("查天气、找歌要几秒。前 7 秒不插话，从第 3 秒起屏幕显示「处理中」。满 7 秒还没有回答才说一次「收到，正在处理。」——这次回答都在 7 秒内到达，所以没有等待语。",
+                          "No filler for 7 s; a 'working' label from 3 s. Here every answer came within 7 s, so no wait line was spoken."),
+    "2  想一想的问题": ("闲聊不插「我想想」。每一句先检查不是在假装执行操作，检查过就边生成边播，不用等整段回答生成完。",
+                   "No filler. Each clause is checked for a false action claim and played while the rest is still being generated."),
+    "3  问能力：马上回答": ("列能力（「能帮你导航、调空调…」）不会被当成「假装执行」拦下，而且逐句播出，不等整段生成完。",
+                      "An ability list is not taken for a claim, and it plays clause by clause as it is generated."),
     "4  一句话 → 多个动作": ("「有点闷」触发一个场景：打开空调、调大风量、前窗开一点。三个动作都由车辆接口确认后才播报。",
                        "\"It's stuffy\" runs a scenario: air on, fan up, front windows open a little, each confirmed by the car."),
     "5  更多说话风格": ("语气可以换，声音还是 Maia。没有的风格（霸道）会如实说明，不会假装换了一个声音。",

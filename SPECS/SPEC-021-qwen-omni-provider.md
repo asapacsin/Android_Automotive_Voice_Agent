@@ -165,3 +165,4 @@ From the official docs (Alibaba Model Studio: realtime, client-events and server
 2. Is `semantic_vad` at 800 ms fast enough? ADR-017's latency table needs the server's end-of-turn time. Q-1 measures it, and step 4 tunes it within 200–800 ms.
 3. Does Maia's delivery change with the speaking-style instruction? This is answered by ear in Q-2.
 4. Does Qwen need `ConversationResetPolicy`? It is shared with Baidu (step 1), and it opens a fresh conversation after a tool turn. That rule was measured on Baidu on 2026-09-17. For Qwen it costs a reconnect per tool command and drops multi-turn context. Q-1's tool runs show whether Qwen degrades without it. Step 4 decides, and the decision belongs to the dialect, not to a branch on the provider name.
+   **Decided 2026-10-09 (emulator):** no. `QwenOmniDialect.resetsConversation = false`. Each reset cost 2.5–2.6 s, and the driver's next line was lost during it twice in two takes (OPEN_PROBLEMS P50). Baidu keeps the reset.

@@ -59,7 +59,7 @@
 - Gemini's second turn after a tool call: 0.7–1.2 s.
 - The claim gate holds chat replies until generation completes: 0.9–1.8 s.
 
-The owner was asked about SPEC-014 clause release, which would remove most of the claim-gate hold, and **has not decided**. Do not build it without the owner. The wait cues are the owner's chosen answer for now.
+~~The owner was asked about SPEC-014 clause release … has not decided.~~ **Decided 2026-10-09:** the owner chose "Build clause release". It is built for Qwen (`streamedReplyText`); see SPEC-014's status note and OPEN_PROBLEMS P50.
 
 **Other findings this session:**
 - P47: steady background noise stops Gemini from detecting the start of speech (emulator, synthetic noise; still needs the real-microphone check).

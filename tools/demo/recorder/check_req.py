@@ -67,7 +67,17 @@ def grade(run):
     f = w.getframerate() // 100
     n = len(x) // f
     on = np.sqrt((x[: n * f].reshape(n, f) ** 2).mean(1)) > 200
-    holes, i = [], 0
+    # A provider that speaks itself (Qwen) sends a reply's audio faster than real time. A silence
+    # played after that reply's audio had all arrived is a pause in the voice itself (between
+    # sentences), not starvation; only a silence while the audio was still arriving is choppy.
+    created = [vt(l) for l in lines if "type=response.created" in l]
+    done = [vt(l) for l in lines if "type=response.audio.done" in l]
+
+    def starved(t):
+        start = max((c for c in created if c < t), default=None)
+        return start is not None and not any(start < d < t for d in done)
+
+    holes, starved_holes, i = [], [], 0
     while i < n:
         if not on[i]:
             j = i
@@ -76,12 +86,24 @@ def grade(run):
             d = (j - i) / 100
             if 0.15 < d <= 0.6 and i > 30 and on[i - 30:i].mean() > 0.6 and j + 30 < n and on[j:j + 30].mean() > 0.6:
                 holes.append(round(d, 2))
+                if starved(i / 100):
+                    starved_holes.append(round(d, 2))
             i = j
         else:
             i += 1
-    print(f"  audio holes 150-600 ms inside replies: {holes}")
-    if not gaps and any(h > 0.30 for h in holes):
-        print("  clause gaps (captured audio) FAIL max hole > 300 ms")
+    print(f"  audio holes 150-600 ms inside replies: {holes}; inside a response window: {starved_holes} (info)")
+    # The provider-voiced path: the app logs when its player would have run dry (reply_underrun).
+    # A pause inside the voice itself is not one; a response window can hold natural pauses because
+    # Qwen streams about 3x faster than real time.
+    underruns = [int(m.group(1)) for l in lines for m in [re.search(r"reply_underrun ms=(\d+)", l)] if m]
+    provider_voiced = any("reason=provider_speaks" in l for l in lines)
+    if provider_voiced:
+        bad = [u for u in underruns if u > 300]
+        print(f"  reply underruns (app log) ms={underruns}  {'FAIL' if bad else 'PASS'} (none > 300 ms)")
+        if bad:
+            fails.append("gaps")
+    elif not gaps and any(h > 0.30 for h in starved_holes):
+        print("  clause gaps (captured audio) FAIL a hole > 300 ms while the reply was still arriving")
         fails.append("gaps")
     azure = [int(m.group(1)) for l in lines for m in [re.search(r"azure_tts_first_audio ms=(\d+)", l)] if m]
     warm = [l.split("azure_warm", 1)[1].strip() for l in lines if "azure_warm" in l]

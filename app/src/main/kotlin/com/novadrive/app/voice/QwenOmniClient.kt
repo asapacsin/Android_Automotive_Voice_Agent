@@ -3,6 +3,8 @@ package com.novadrive.app.voice
 import com.novadrive.app.QwenApiConfig
 import com.novadrive.app.QwenAppSettings
 import com.novadrive.app.QwenSettings
+import com.novadrive.ingress.realtime.VoiceCatalog
+import com.novadrive.ingress.realtime.VoiceProviderId
 import okhttp3.OkHttpClient
 
 /** Qwen-Omni Realtime: [OpenAiRealtimeClient] driven by [QwenOmniDialect] (SPEC-021). */
@@ -19,6 +21,7 @@ class QwenOmniClient(
     contextAwaitingAnswer: () -> Boolean = { VoiceContextHints.awaitingAnswer() },
     /** Time-scoped post-AEC speech evidence for speech over playback (Astra P4). */
     speechEvidence: () -> Boolean = { true },
+    responseStallMs: Long = ResponseStallWatchdog.STALL_MS,
 ) : OpenAiRealtimeClient<QwenApiConfig>(
     QwenOmniDialect(requireTls, endpoint),
     http,
@@ -27,4 +30,6 @@ class QwenOmniClient(
     lastAudioSegment,
     contextAwaitingAnswer,
     speechEvidence,
+    streamedReplyText = VoiceCatalog.capabilities(VoiceProviderId.QWEN).streamedReplyText,
+    responseStallMs = responseStallMs,
 )

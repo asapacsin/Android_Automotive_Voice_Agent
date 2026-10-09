@@ -32,6 +32,13 @@ class QwenOmniDialect(
     /** Mid-session VAD changes are not made, so navigation is not tracked. */
     override val tracksNavigationVad = false
 
+    /**
+     * SPEC-021 open question 4, decided 2026-10-09 on the emulator: Qwen keeps one conversation.
+     * The Baidu reset cost 2.5-2.6 s per tool command, during which the driver's next line was
+     * lost (twice in two takes), and it erased the context a follow-up needs.
+     */
+    override val resetsConversation = false
+
     @Volatile private var settings = QwenAppSettings()
 
     /** The server refused a user text item in this session; text turns are not sent again. */

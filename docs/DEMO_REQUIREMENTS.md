@@ -8,9 +8,10 @@ These limits apply to every demo, whether recorded or live, that goes to a mento
 
 | Check | Limit | Measured by |
 | --- | --- | --- |
-| Gap between two clauses of one reply, after the first clause has started playing | ≤ 150 ms for 95 % of clause joins, none > 300 ms | `assistant_voice_gap_ms` in the NovaVoice log |
+| Gap between two clauses of one reply, after the first clause has started playing (app-voiced path) | ≤ 150 ms for 95 % of clause joins, none > 300 ms | `assistant_voice_gap_ms` in the NovaVoice log |
+| Provider-voiced path (Qwen Maia): the player runs dry inside a reply (starvation, including a clause-release wait) | none > 300 ms | `reply_underrun ms=` in the NovaVoice log, logged by the client when a reply chunk leaves the gate later than the audio before it lasts. A pause inside the voice itself is not counted: Qwen streams about 3x faster than real time, so 0.4–0.6 s sentence pauses fall inside the response window and are not starvation (2026-10-09) |
 | Voice failures (`assistant_voice_failed`) | 0 | log |
-| Only one voice (Xiaoyi), never Gemini's own | always | by ear, plus `assistant_voice_provider_audio_dropped` |
+| Only one voice: the session's provider voice (Maia since ADR-017 / `e3f6faf`), never a second | always | by ear, plus `assistant_voice ignored reason=provider_speaks` |
 
 ## 2. She answers promptly
 

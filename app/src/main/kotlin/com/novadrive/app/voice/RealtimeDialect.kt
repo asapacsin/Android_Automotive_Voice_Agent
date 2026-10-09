@@ -34,6 +34,13 @@ interface RealtimeDialect<C : Any> {
      */
     val tracksNavigationVad: Boolean
 
+    /**
+     * True when this vendor's conversation must be kept short with [ConversationResetPolicy]
+     * (measured on Baidu Flex 2026-09-17: it degrades from about the third tool turn). False: one
+     * conversation for the session, so no reconnect per tool command and the context survives.
+     */
+    val resetsConversation: Boolean get() = true
+
     /** Validates [config] and builds the WebSocket request (URL and auth); may fetch a token. */
     suspend fun buildRequest(config: C): Request
 

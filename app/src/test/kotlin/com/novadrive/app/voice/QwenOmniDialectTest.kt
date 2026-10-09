@@ -90,6 +90,13 @@ class QwenOmniDialectTest {
         assertEquals("qwen", d.logPrefix)
     }
 
+    @Test
+    fun qwenKeepsOneConversationWhileBaiduStillResets() {
+        // SPEC-021 open question 4: the reset is the dialect's decision, never a provider-name branch.
+        assertFalse(opened().resetsConversation)
+        assertTrue(BaiduFlexDialect(BaiduAccessTokenClient(okhttp3.OkHttpClient()), requireTls = true).resetsConversation)
+    }
+
     // ---- A3: endpoint, auth and secrets ----
 
     @Test
