@@ -500,6 +500,7 @@ change_impact:
       - WaitCues
       - WaitCueClock
       - ReplyStreaming
+      - ProviderCueCapture
       - GeminiPromptTurn
       - GuidanceClaims
       - GuidanceBlockers

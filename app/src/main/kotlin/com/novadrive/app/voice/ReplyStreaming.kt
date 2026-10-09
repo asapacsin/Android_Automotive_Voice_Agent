@@ -125,7 +125,8 @@ internal class ResponseStallWatchdog(
 ) {
     private val seq = AtomicLong(0)
     @Volatile private var lastProgressMs = 0L
-    @Volatile private var cancelled = false
+    /** The sequence number of the response this watchdog cancelled; only that response's done retries. */
+    private val cancelledSeq = AtomicLong(NONE)
     @Volatile private var retriedThisTurn = false
 
     /** A new driver turn may be retried once again. */
@@ -142,9 +143,8 @@ internal class ResponseStallWatchdog(
     fun onResponseCreated(alive: () -> Boolean) = watch(alive)
 
     fun onResponseDone(alive: () -> Boolean) {
-        seq.incrementAndGet()
-        if (!cancelled) return
-        cancelled = false
+        val done = seq.getAndIncrement()
+        if (cancelledSeq.getAndSet(NONE) != done) return
         if (retriedThisTurn) return
         retriedThisTurn = true
         DebugVoiceLog.log("${logPrefix}_stall_retry")
@@ -162,8 +162,9 @@ internal class ResponseStallWatchdog(
                 if (seq.get() != current || !alive()) return@launch
                 if (quietMs >= stallMs) {
                     DebugVoiceLog.log("${logPrefix}_response_stalled quiet_ms=$quietMs retried=$retriedThisTurn")
-                    if (!retriedThisTurn) {
-                        cancelled = true
+                    // Tied to this response: a done that already passed must not retry the next one.
+                    if (!retriedThisTurn && cancelledSeq.compareAndSet(NONE, current)) {
+                        if (seq.get() != current) { cancelledSeq.compareAndSet(current, NONE); return@launch }
                         cancel()
                     }
                     return@launch
@@ -180,6 +181,7 @@ internal class ResponseStallWatchdog(
          */
         const val STALL_MS = 5_000L
         private const val CHECK_MS = 500L
+        private const val NONE = -1L
 
     }
 }
