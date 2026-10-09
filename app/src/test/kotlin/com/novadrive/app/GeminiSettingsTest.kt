@@ -13,9 +13,9 @@ class GeminiSettingsTest {
     private val valid = GeminiAppSettings(consentAccepted = true)
 
     @Test
-    fun defaultsPreferGeminiWithoutConsent() {
+    fun defaultsPreferQwenWithoutConsent() {
         val s = GeminiAppSettings()
-        assertEquals(VoiceProviderPreference.GEMINI, s.provider)
+        assertEquals(VoiceProviderPreference.QWEN, s.provider)
         assertFalse(s.consentAccepted)
         assertEquals("Leda", s.voice)
         assertEquals(GeminiThinkingLevel.LOW, s.thinkingLevel)
@@ -44,59 +44,95 @@ class GeminiSettingsTest {
     }
 
     @Test
-    fun resolverTruthTable() {
+    fun resolverAlwaysSelectsQwenRegardlessOfStoredPreference() {
         for (pref in VoiceProviderPreference.entries) for (consent in listOf(false, true)) for (key in listOf(false, true)) {
-            val expected = when (pref) {
-                VoiceProviderPreference.BAIDU -> VoiceProviderId.BAIDU_FLEX
-                VoiceProviderPreference.QWEN -> VoiceProviderId.QWEN
-                VoiceProviderPreference.GEMINI -> VoiceProviderId.GEMINI_LIVE
-            }
-            assertEquals(expected, VoiceProviderChoice.resolve(GeminiAppSettings(provider = pref, consentAccepted = consent), key)) {
-                "pref=$pref consent=$consent key=$key"
-            }
+            assertEquals(
+                VoiceProviderId.QWEN,
+                VoiceProviderChoice.resolve(GeminiAppSettings(provider = pref, consentAccepted = consent), key),
+            ) { "pref=$pref consent=$consent key=$key" }
         }
-        // Invalid settings do not fall back to Baidu either; the config path reports the code.
-        assertEquals(VoiceProviderId.GEMINI_LIVE, VoiceProviderChoice.resolve(valid.copy(endpoint = "ws://x"), true))
+        assertEquals(VoiceProviderId.QWEN, VoiceProviderChoice.resolve(valid.copy(endpoint = "ws://x"), true))
     }
 
     @Test
-    fun preferenceWireNamesAndStoredDefaultIsGemini() {
+    fun preferenceWireNamesAndUnsetFallsBackToQwen() {
         assertEquals("gemini", VoiceProviderPreference.GEMINI.wireName)
         assertEquals("baidu", VoiceProviderPreference.BAIDU.wireName)
         assertEquals("qwen", VoiceProviderPreference.QWEN.wireName)
         assertEquals(VoiceProviderPreference.QWEN, VoiceProviderPreference.fromWire("qwen"))
         assertEquals(VoiceProviderPreference.BAIDU, VoiceProviderPreference.fromWire("baidu"))
-        assertEquals(VoiceProviderPreference.GEMINI, VoiceProviderPreference.fromWire(null))
-        assertEquals(VoiceProviderPreference.GEMINI, VoiceProviderPreference.fromWire("garbage"))
+        assertEquals(VoiceProviderPreference.GEMINI, VoiceProviderPreference.fromWire("gemini"))
+        assertEquals(VoiceProviderPreference.QWEN, VoiceProviderPreference.fromWire(null))
+        assertEquals(VoiceProviderPreference.QWEN, VoiceProviderPreference.fromWire("garbage"))
     }
 
-    private fun configCode(settings: GeminiAppSettings, key: String): Pair<VoiceProviderId, String?> {
-        val choice = VoiceProviderChoice.resolve(settings, key.isNotBlank())
+    private fun qwenStartCode(
+        qwenSettings: QwenAppSettings,
+        qwenKey: String,
+        storedPreference: VoiceProviderPreference = VoiceProviderPreference.GEMINI,
+    ): Pair<VoiceProviderId, String?> {
+        val geminiStored = GeminiAppSettings(provider = storedPreference)
+        val choice = VoiceProviderChoice.resolve(geminiStored, qwenKey.isNotBlank())
         var baiduTouched = false
+        var geminiTouched = false
         var qwenTouched = false
         val code = try {
             sessionConfigFor(
                 choice,
-                gemini = { GeminiSettingsValidator.configOrThrow(settings, key, "persona") },
+                gemini = { geminiTouched = true; GeminiSettingsValidator.configOrThrow(geminiStored, qwenKey, "persona") },
                 baidu = { baiduTouched = true; error("Baidu must not be opened") },
-                qwen = { qwenTouched = true; error("Qwen must not be opened") },
+                qwen = {
+                    qwenTouched = true
+                    QwenSettingsValidator.configOrThrow(qwenSettings, qwenKey, "persona")
+                },
             )
             null
         } catch (failure: IllegalArgumentException) {
             failure.message
         }
         assertFalse(baiduTouched)
-        assertFalse(qwenTouched)
+        assertFalse(geminiTouched)
+        assertTrue(qwenTouched)
         return choice to code
     }
 
     @Test
-    fun geminiPreferenceWithMissingKeyOrConsentFailsWithCodeAndNeverOpensBaidu() {
-        assertEquals(VoiceProviderId.GEMINI_LIVE to "GEMINI_API_KEY_MISSING", configCode(GeminiAppSettings(), ""))
-        assertEquals(VoiceProviderId.GEMINI_LIVE to "GEMINI_API_KEY_MISSING", configCode(valid, " "))
-        assertEquals(VoiceProviderId.GEMINI_LIVE to "GEMINI_CONSENT_MISSING", configCode(GeminiAppSettings(), "k"))
-        assertEquals(VoiceProviderId.GEMINI_LIVE to "GEMINI_ENDPOINT_INVALID", configCode(valid.copy(endpoint = "ws://x"), "k"))
-        assertEquals(VoiceProviderId.GEMINI_LIVE to null, configCode(valid, "k"))
+    fun productSessionInvokesOnlyQwenAndMissingQwenConfigNeverOpensGeminiOrBaidu() {
+        val ready = QwenAppSettings(consentAccepted = true, workspaceId = "ws")
+        assertEquals(VoiceProviderId.QWEN to "QWEN_API_KEY_MISSING", qwenStartCode(ready, ""))
+        assertEquals(VoiceProviderId.QWEN to "QWEN_API_KEY_MISSING", qwenStartCode(ready, " "))
+        assertEquals(VoiceProviderId.QWEN to "QWEN_CONSENT_MISSING", qwenStartCode(QwenAppSettings(workspaceId = "ws"), "k"))
+        assertEquals(VoiceProviderId.QWEN to "QWEN_WORKSPACE_MISSING", qwenStartCode(QwenAppSettings(consentAccepted = true), "k"))
+        assertEquals(
+            VoiceProviderId.QWEN to "QWEN_API_KEY_MISSING",
+            qwenStartCode(ready, "", storedPreference = VoiceProviderPreference.BAIDU),
+        )
+        val qwenOk = QwenAppSettings(consentAccepted = true, workspaceId = "ws")
+        var geminiTouched = false
+        var baiduTouched = false
+        sessionConfigFor(
+            VoiceProviderId.QWEN,
+            gemini = { geminiTouched = true; error("gemini") },
+            baidu = { baiduTouched = true; error("baidu") },
+            qwen = { QwenSettingsValidator.configOrThrow(qwenOk, "k", "persona") },
+        )
+        assertFalse(geminiTouched)
+        assertFalse(baiduTouched)
+    }
+
+    @Test
+    fun startProblemForQwenDoesNotCallGeminiOrAzureEvenWhenTheyWouldFail() {
+        var geminiCalls = 0
+        var azureCalls = 0
+        val code = VoiceProviderChoice.startProblem(
+            VoiceProviderId.QWEN,
+            qwen = { "QWEN_API_KEY_MISSING" },
+            gemini = { geminiCalls++; "GEMINI_API_KEY_MISSING" },
+            azure = { azureCalls++; "AZURE_SPEECH_KEY_MISSING" },
+        )
+        assertEquals("QWEN_API_KEY_MISSING", code)
+        assertEquals(0, geminiCalls)
+        assertEquals(0, azureCalls)
     }
 
     @Test
@@ -124,12 +160,12 @@ class GeminiSettingsTest {
     }
 
     @Test
-    fun bothDeclaredGeminiModelsAreValidAndSelectGemini() {
+    fun bothDeclaredGeminiModelsAreValidAndStillResolveToQwenForTheProductSession() {
         listOf(VoiceCatalog.GEMINI_LIVE_FAST, VoiceCatalog.GEMINI_LIVE_EXTENDED).forEach { model ->
             val s = valid.copy(model = model)
             assertNull(GeminiSettingsValidator.validateSettings(s))
             assertEquals(model, s.copy(voice = "Puck").model)
-            assertEquals(VoiceProviderId.GEMINI_LIVE, VoiceProviderChoice.resolve(s, keyPresent = true))
+            assertEquals(VoiceProviderId.QWEN, VoiceProviderChoice.resolve(s, keyPresent = true))
         }
     }
 
@@ -150,13 +186,13 @@ class GeminiSettingsTest {
 
     @Test
     fun configProblemTruthTable() {
-        val valid = GeminiAppSettings(consentAccepted = true)
+        val validGemini = GeminiAppSettings(provider = VoiceProviderPreference.GEMINI, consentAccepted = true)
         assertNull(GeminiSettingsValidator.configProblem(GeminiAppSettings(provider = VoiceProviderPreference.BAIDU), keyPresent = false))
         assertNull(GeminiSettingsValidator.configProblem(GeminiAppSettings(provider = VoiceProviderPreference.QWEN), keyPresent = false))
-        assertEquals("GEMINI_API_KEY_MISSING", GeminiSettingsValidator.configProblem(valid, keyPresent = false))
-        assertEquals("GEMINI_CONSENT_MISSING", GeminiSettingsValidator.configProblem(GeminiAppSettings(), keyPresent = true))
-        assertEquals("GEMINI_VOICE_INVALID", GeminiSettingsValidator.configProblem(valid.copy(voice = "bad voice"), keyPresent = true))
-        assertNull(GeminiSettingsValidator.configProblem(valid, keyPresent = true))
+        assertEquals("GEMINI_API_KEY_MISSING", GeminiSettingsValidator.configProblem(validGemini, keyPresent = false))
+        assertEquals("GEMINI_CONSENT_MISSING", GeminiSettingsValidator.configProblem(GeminiAppSettings(provider = VoiceProviderPreference.GEMINI), keyPresent = true))
+        assertEquals("GEMINI_VOICE_INVALID", GeminiSettingsValidator.configProblem(validGemini.copy(voice = "bad voice"), keyPresent = true))
+        assertNull(GeminiSettingsValidator.configProblem(validGemini, keyPresent = true))
     }
 
     @Test

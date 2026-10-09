@@ -32,3 +32,16 @@ entries:
       adds source-boundary review and Astra High contract review. This clears architecture selection,
       not numerical tuning or acoustic verification.
     suppresses_required_behavior: false
+  - id: DB-MAIA-UX-001
+    problem_class: product session voice is Qwen Maia only
+    triggers:
+      audio_media: true
+      persistence: true
+    status: PASS
+    selected_basis: repo
+    selected_pattern: >-
+      VoiceProviderChoice.resolve always returns Qwen and QwenOmniDialect sends Maia
+    evidence: >-
+      Owner instruction 2026-10-09: the product session voice is Maia. SPEC-021 seam
+      VoiceProviderChoice plus QwenOmniDialect session.update. Q-1 through Q-5 stay open.
+    suppresses_required_behavior: false

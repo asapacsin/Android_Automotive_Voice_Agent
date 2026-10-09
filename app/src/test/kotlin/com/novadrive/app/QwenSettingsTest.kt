@@ -71,4 +71,13 @@ class QwenSettingsTest {
         assertFalse(valid.toString().contains("ws-abc123"))
         assertTrue(text.contains("<redacted>"))
     }
+
+    @Test
+    fun configOrThrowYieldsMaiaForBlankOrNonMaiaVoice() {
+        val key = "sk-test-key"
+        listOf("", "Cherry", "a b").forEach { voice ->
+            val built = QwenSettingsValidator.configOrThrow(valid.copy(voice = voice), key, "p")
+            assertEquals("Maia", built.settings.voice)
+        }
+    }
 }

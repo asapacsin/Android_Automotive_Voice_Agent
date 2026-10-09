@@ -79,8 +79,9 @@ object QwenSettingsValidator {
 
     /** Builds the Qwen session config or throws [IllegalArgumentException] with the config code. */
     fun configOrThrow(settings: QwenAppSettings, apiKey: String, instructions: String): QwenApiConfig {
-        validate(settings, apiKey)?.let { throw IllegalArgumentException(it) }
-        return QwenApiConfig(settings, apiKey, instructions)
+        val sessionVoice = settings.copy(voice = QwenAppSettings.DEFAULT_VOICE)
+        validate(sessionVoice, apiKey)?.let { throw IllegalArgumentException(it) }
+        return QwenApiConfig(sessionVoice, apiKey, instructions)
     }
 
     /**

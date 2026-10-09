@@ -68,7 +68,9 @@ class QwenOmniDialect(
     override fun recoverSessionError(instructions: () -> String, vadThreshold: Double): String? = null
 
     override fun onSessionUpdated(text: String) {
-        DebugVoiceLog.log("qwen_session voice=${settings.voice} vad=${settings.vadType} model=${settings.model}")
+        DebugVoiceLog.log(
+            "qwen_session voice=${QwenAppSettings.DEFAULT_VOICE} vad=${settings.vadType} model=${settings.model}",
+        )
     }
 
     override fun newCallAssembler(): RealtimeCallAssembler = FlexFunctionCallAssembler(
@@ -200,10 +202,11 @@ class QwenOmniDialect(
 
         /** The documented session.update (SPEC-021 B3). */
         fun sessionUpdate(instructions: String, settings: QwenAppSettings): String {
+            val voice = QwenAppSettings.DEFAULT_VOICE
             val session = JSONObject()
                 .put("modalities", JSONArray(listOf("text", "audio")))
-                .put("voice", settings.voice)
-                .put("audio", JSONObject().put("output", JSONObject().put("voice", settings.voice)))
+                .put("voice", voice)
+                .put("audio", JSONObject().put("output", JSONObject().put("voice", voice)))
                 .put("instructions", instructions.trim() + "\n" + PersonaProfiles.FLEX_TOOL_RULE)
                 .put("input_audio_format", "pcm")
                 .put("output_audio_format", "pcm")

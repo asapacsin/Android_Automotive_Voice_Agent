@@ -6,9 +6,10 @@ cannot do is in [CAPABILITIES.md](CAPABILITIES.md); known problems are in [TECH_
 
 ## What this is
 
-An Android voice assistant for driving. Speech goes to the realtime model — Gemini Live by default
-since 2026-09-30 ([ADR-013](../DECISIONS/ADR-013-gemini-default-provider.md)), Baidu Qianfan Flex only
-by the owner's explicit choice — as **end-to-end speech-to-speech with function calling**; there is
+An Android voice assistant for driving. Speech goes to the realtime model — **Qwen-Omni** with the
+stock voice Maia for the product session since 2026-10-09 ([ADR-017](../DECISIONS/ADR-017-qwen-omni-realtime-end-to-end.md));
+Gemini, Baidu and Azure stacks remain in the tree but are not selected for that session — as
+**end-to-end speech-to-speech with function calling**; there is
 no separate ASR or TTS in this product, by decision
 ([ADR-002](../DECISIONS/ADR-002-baidu-flex-default-provider.md)). The map and turn-by-turn
 navigation are the Amap Navigation SDK embedded in our own Activity
@@ -57,7 +58,7 @@ One behaviour, one owner. If you need to change one of these, change it **here**
 | Navigation camera while driving | `AmapDrivingPresentation` (`AMapNaviView` lock-car, traffic line, native HUD) | idle `moveCamera(newLatLngZoom)`, a homemade tilt, `MapView` |
 | Current speed / posted limit while driving | `DrivingSpeedHud` in `AmapNaviViewHost` (Amap location + cameras) | assistant overlay, a second speed source |
 | Which candidate the driver picked | `NavigationChoiceResolver` | the model |
-| Which voice speaks the agent's words (ADR-016; developer setting, off by default) | `AssistantVoiceRevoicer` behind the `AssistantVoice` port — one adapter (`AzureSpeechVoice`), fed only by the `SpeechText` the client emits after the claim gate (driver turns) or for an unvoided GUIDANCE turn; stops when the session flushes playback (`onPlaybackFlushed`, the session decides barge-in); never a fallback to the provider's audio | the persona prompt, the playback path, a second voice anywhere |
+| Which voice speaks the agent's words (ADR-016; developer setting, off by default) | **Product session:** Maia from `QwenOmniDialect` `session.update` only — no `AssistantVoiceRevoicer` on that path. **Gemini path (factory/tests):** `AssistantVoiceRevoicer` behind the `AssistantVoice` port — one adapter (`AzureSpeechVoice`), fed only by the `SpeechText` the client emits after the claim gate (driver turns) or for an unvoided GUIDANCE turn; stops when the session flushes playback (`onPlaybackFlushed`, the session decides barge-in); never a fallback to the provider's audio | the persona prompt, the playback path, a second voice anywhere |
 | Whether she says a wait cue while the model works (SPEC-020: 「嗯，我想想。」, 「收到，正在处理。」, a truthful reason when slow) | `AssistantVoiceRevoicer` decides from the driver turn's events (onset, end of speech, `ResponseStarted`, tool calls, reply queued/audible); the session core plays the cue as `WaitCueAudio` in a playback stamp of its own, which leaves the session state and tool-result delivery unchanged | the model or the prompt, `DriverTurn` (a cue claims nothing), the UI, a second voice |
 | Turn-taking / interruption | server VAD for turn ends; `ListeningLifecycle` for ACTIVE / SILENT_WAIT / SLEEP / DEEP_IDLE; `VoiceCommandRouter` for 「闭嘴」「休眠」 | ad-hoc checks in the client |
 | Whether 小诺 may speak / whether the mic reaches the model | `SpeechArbiter` via `SpeechAuthority` (P1 window, guidance hold, focus, guidance uplink gate, SPEC-018 assistant-guidance rows `guidanceChunk`/`abandon` — guidance chunks exempt from P1/R6a and from the listening-state gate, ordinary replies held while guidance is open, workload hold R6a fed the next-manoeuvre distance by `NavigationTraceListener` → `NavigationState`; `SpeechAuthority.syncPlaybackHold` is the one place the player is paused or resumed for a hold), applied by `AndroidPlaybackPort` (+ lifecycle) + `PhantomTurnGate` (phantom/false-claim holds) | the UI |
@@ -70,9 +71,9 @@ One behaviour, one owner. If you need to change one of these, change it **here**
 | Live information (weather, route traffic, along-route, place details) | `LiveInfoTool` (`query_live_info`) — REST kinds via `AmapPoiClient` / `AmapLiveInfoParser`; SDK kinds via the `RouteLiveInfo` port / `nav/amap/AmapRouteLiveInfo` (SPEC-011) | the model's own knowledge |
 | Conversation lifetime | `ConversationResetPolicy` (reset after tool turns) + `ResponseTurnGate` (one reply at a time) | the model |
 | Credentials | `AndroidKeystoreCredentialStore` (`baidu_*`, `gemini_*`, `qwen_api_key`, `iflytek_*`, `amap_*`) | source, Gradle files, logs |
-| Which realtime provider a session uses | `VoiceProviderChoice` (Gemini Live unless the owner's stored preference is Baidu or Qwen; a missing key/consent/workspace fails the start with its code, never a fallback), applied once in `VoiceSessionController.openSession` (ADR-010, ADR-013) | the adapters, the UI, anything mid-session |
+| Which realtime provider a session uses | `VoiceProviderChoice.resolve` (always `QWEN` for the product session; stored gemini/baidu preferences do not change it; a missing Qwen key/workspace/consent fails the start with its code, never Gemini or Baidu), applied once in `VoiceSessionController.openSession` (ADR-010, ADR-013, ADR-017) | the adapters, the UI, anything mid-session |
 | Gemini Live wire format | `GeminiLiveProtocol` / `GeminiLiveClient` / `GeminiLiveProvider` | `ingress`, policy code |
-| Qwen-Omni Realtime wire format (ADR-017; opt-in, not the default until gates Q-1…Q-5) | `QwenOmniDialect` on the shared `OpenAiRealtimeClient` (SPEC-021), `QwenOmniProvider`; settings in `QwenSettings` (key in the Keystore, workspace endpoint) | `ingress`, policy code, a copy of the client |
+| Qwen-Omni Realtime wire format (ADR-017; product session voice Maia; gates Q-1…Q-5 still open) | `QwenOmniDialect` on the shared `OpenAiRealtimeClient` (SPEC-021), `QwenOmniProvider`; `session.update` sends `QwenAppSettings.DEFAULT_VOICE` (`Maia`); settings in `QwenSettings` (key in the Keystore, workspace endpoint) | `ingress`, policy code, a copy of the client |
 | "Driver speaking" when the provider has no speech events | the local `SpeechUplinkGate` onset/offset, fed to the session core's `onLocalSpeechActivity` and honoured only when `ProviderCapabilities.serverSpeechActivityEvents` is false | the adapter, a provider-name branch |
 
 ## Modules and allowed dependencies

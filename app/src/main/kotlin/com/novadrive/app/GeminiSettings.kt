@@ -18,25 +18,24 @@ enum class GeminiThinkingLevel(val wireName: String) {
 }
 
 /**
- * Which realtime provider the owner prefers (ADR-013). GEMINI is the default for fresh and existing
- * installs; BAIDU is only ever an explicit choice, never an automatic fallback (one voice per stage).
+ * Which realtime provider the owner stored (ADR-013). The product session always uses Qwen-Omni
+ * (owner 2026-10-09); wire values gemini and baidu still parse but do not select the session.
  */
 enum class VoiceProviderPreference(val wireName: String) {
     GEMINI("gemini"),
     BAIDU("baidu"),
-    /** SPEC-021: opt-in Qwen-Omni; never the default and never a fallback. */
     QWEN("qwen"),
     ;
 
     companion object {
         fun fromWire(raw: String?): VoiceProviderPreference =
-            entries.firstOrNull { it.wireName == raw } ?: GEMINI
+            entries.firstOrNull { it.wireName == raw } ?: QWEN
     }
 }
 
 /** Persisted, non-secret Gemini Live settings (ADR-010). The API key lives in the Keystore only. */
 data class GeminiAppSettings(
-    val provider: VoiceProviderPreference = VoiceProviderPreference.GEMINI,
+    val provider: VoiceProviderPreference = VoiceProviderPreference.QWEN,
     val consentAccepted: Boolean = false,
     val model: String = VoiceCatalog.GEMINI_LIVE_DEFAULT,
     val endpoint: String = DEFAULT_ENDPOINT,
@@ -127,20 +126,29 @@ object GeminiSettingsValidator {
 }
 
 /**
- * Decides which realtime provider a session uses. Called once per session at the composition
- * boundary (ADR-010); never re-evaluated mid-session. Gemini is the default (ADR-013): only an
- * explicit BAIDU preference selects Baidu Flex, and only an explicit QWEN preference selects
- * Qwen-Omni (SPEC-021). A missing key, consent or valid setting does NOT
- * fall back to Baidu — the Gemini config path fails the start with its code instead.
+ * Decides which realtime provider the product session uses. Called once per session at the
+ * composition boundary (ADR-010); never re-evaluated mid-session. The product session is
+ * Qwen-Omni (Maia); stored gemini/baidu preferences do not change [resolve]. Missing Qwen
+ * key, workspace or consent fails the start with its code and never opens Gemini or Baidu.
  */
 object VoiceProviderChoice {
     @Suppress("UNUSED_PARAMETER")
-    fun resolve(settings: GeminiAppSettings, keyPresent: Boolean): VoiceProviderId =
-        when (settings.provider) {
-            VoiceProviderPreference.QWEN -> VoiceProviderId.QWEN
-            VoiceProviderPreference.BAIDU -> VoiceProviderId.BAIDU_FLEX
-            VoiceProviderPreference.GEMINI -> VoiceProviderId.GEMINI_LIVE
-        }
+    fun resolve(settings: GeminiAppSettings, keyPresent: Boolean): VoiceProviderId = VoiceProviderId.QWEN
+
+    /**
+     * Config problem for a start, following [choice] only. QWEN runs [qwen]; GEMINI_LIVE runs
+     * [gemini] then [azure] if Gemini reported no problem; other choices return null.
+     */
+    fun startProblem(
+        choice: VoiceProviderId,
+        qwen: () -> String?,
+        gemini: () -> String?,
+        azure: () -> String?,
+    ): String? = when (choice) {
+        VoiceProviderId.QWEN -> qwen()
+        VoiceProviderId.GEMINI_LIVE -> gemini() ?: azure()
+        else -> null
+    }
 }
 
 /**

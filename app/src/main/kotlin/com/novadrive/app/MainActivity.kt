@@ -200,12 +200,12 @@ class MainActivity : Activity() {
      */
     private fun showConfigBannerIfNeeded() {
         val geminiSettings = GeminiSettingsRepository(this)
-        val code = geminiSettings.configProblem()
-            ?: when (geminiSettings.choice()) {
-                VoiceProviderId.GEMINI_LIVE -> AzureSpeechSettingsRepository(this).configProblem()
-                VoiceProviderId.QWEN -> QwenSettingsRepository(this).configProblem()
-                else -> null
-            }
+        val code = VoiceProviderChoice.startProblem(
+            geminiSettings.choice(),
+            qwen = { QwenSettingsRepository(this).configProblem() },
+            gemini = { geminiSettings.configProblem() },
+            azure = { AzureSpeechSettingsRepository(this).configProblem() },
+        )
         if (code == null) {
             if (::screen.isInitialized) screen.clearError(CONFIG_ERROR)
             return

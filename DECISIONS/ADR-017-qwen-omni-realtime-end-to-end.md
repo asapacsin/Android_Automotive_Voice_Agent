@@ -85,3 +85,11 @@ The switch alone removes about **0.3–0.7 s** per reply, plus the second bill. 
 - **Tool calling:** documented over WebSocket but unproven for our tools. In Qwen3.8-Omni-Flash, web search and tools cannot be on at the same time.
 - **Session length:** a cap applies (30–120 min depending on the source), so it reconnects the way Gemini does.
 - **The work:** a new provider adapter and re-proving barge-in, the claim gate on audio, and the device gates.
+
+## Amendment (2026-10-09) — product session UX
+
+The owner instructed that the **product session is Qwen-Omni with stock voice Maia now**, ahead of
+the Q-1…Q-5 table above. Implementation: `VoiceProviderChoice.resolve` always returns Qwen; other
+developer-settings voices (Gemini, Baidu, Azure, non-Maia Qwen strings) do not select the session.
+**Gates Q-1 through Q-5 remain open** — this amendment does not mark them passed. Deleting the
+Gemini, Azure or Baidu stacks still waits for **Q-5 plus explicit owner confirmation** (ADR-008).

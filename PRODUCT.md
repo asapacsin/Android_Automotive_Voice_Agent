@@ -49,9 +49,7 @@ All credentials are entered on the device and stored as AES/GCM ciphertext under
 
 > **Decided direction, not yet shipped (2026-09-16, `ADR-007`):** navigation moves from handing off to the installed Amap app to the **Amap Navigation SDK embedded in our own Activity**, with the assistant layered above the map. Items 4–5 under *Primary user experience* and the *Navigation* feature line describe the currently installed build and will be rewritten when SPEC-005 Phase 4 ships. Until then, do not add new work to the deep-link path.
 
-Default provider: **Gemini Live** (since 2026-09-30, ADR-013), with function calling; no automatic fallback to another provider.
-Owner-selectable alternative until its removal: **Baidu Flex** (`qianfan-realtime-flex-v1`), with function calling.
-Selectable alternative: **Baidu Pro/Lite** (`audio-mini-realtime-near` and siblings) — conversation only, no function calling.
+Product session provider: **Qwen-Omni** (`qwen3.8-omni-flash-realtime`) with stock voice **Maia** (since 2026-10-09, ADR-017 amendment); no automatic fallback to another provider. Gemini, Baidu and Azure settings remain in developer settings for measurement and factory tests but do not select the product session.
 
 ## Intentionally dormant compatibility code
 
@@ -59,7 +57,7 @@ Present in the tree, compiles, **not reachable from the production UI**, and mus
 
 | Component | State |
 | --- | --- |
-| `QwenSettings.kt`, `QwenDirectRealtimeProvider`, `QwenRealtimeClient`, `QwenProtocol` | DORMANT — no production caller; `VoiceAppSettings` is constructed only inside `QwenSettings.kt` |
+| `QwenDirectRealtimeProvider`, `QwenRealtimeClient`, `QwenProtocol` (ADR-008 deletions) | REMOVED — the product path is `QwenOmniDialect` / `QwenOmniProvider` + `QwenSettings.kt` |
 | `BackendRealtimeProvider`, `BackendVoiceClient`, `LocalConnectivity` | DORMANT — packaged backend URL is empty |
 | `backend/` (Python) | DORMANT — not a Gradle module, not required at runtime |
 | GPT-Live entries in `VoiceCatalog` | DORMANT — catalog metadata only, no Android adapter |

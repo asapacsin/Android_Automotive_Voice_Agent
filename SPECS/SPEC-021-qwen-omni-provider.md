@@ -16,7 +16,7 @@ The owner chose one end-to-end model with a good Chinese voice: `qwen3.8-omni-fl
 - the same rule that nothing is claimed before it happened;
 - the same listening lifecycle and barge-in.
 
-Gemini + Xiaoyi stays the default until gates Q-1 to Q-5 pass.
+The product session is Qwen Maia (owner 2026-10-09); gates Q-1 to Q-5 remain open for measurement and stack removal.
 
 ## Facts this SPEC rests on
 
@@ -50,7 +50,7 @@ From the official docs (Alibaba Model Studio: realtime, client-events and server
    - `BaiduFlexDialect` reproduces today's behaviour byte for byte. The goldens, the log lines (`flex_*`) and every existing test stay unchanged.
    - Copying the client for Qwen would be the parallel mechanism `AGENTS.md` forbids. When Baidu is deleted (ADR-013 step 2), its dialect goes with it, and the client stays.
 2. **`QwenOmniDialect`, `QwenOmniProvider` and their settings** (steps 2–3), behind the existing seam:
-   - selected only by an explicit QWEN preference in developer settings;
+   - selected for every product session via `VoiceProviderChoice.resolve` (2026-10-09);
    - DashScope key in the Keystore; workspace ID, model, voice and consent in preferences;
    - a cross-border notice (Singapore).
 3. **Capabilities** (`VoiceCatalog`, `VoiceProviderId.QWEN`):
@@ -67,7 +67,7 @@ From the official docs (Alibaba Model Studio: realtime, client-events and server
 
 ## Non-goals
 
-- **Making Qwen the default.** That waits for Q-5 (ADR-017).
+- **Treating Q-1…Q-5 as passed.** The product session is Qwen Maia now; gate rows stay open until measured.
 - **Deleting Gemini, Azure or Baidu.** After Q-5, with the owner's confirmation (ADR-017, ADR-013).
 - **Voice cloning and non-stock voices** (B-034).
 - **Web search** (`enable_search`), because it excludes tools.
@@ -77,11 +77,11 @@ From the official docs (Alibaba Model Studio: realtime, client-events and server
 
 ## Behaviour
 
-1. **No Qwen preference.** Without an explicit Qwen preference, every session is exactly as before: Gemini by default, or Baidu Flex when chosen. None of the Qwen code runs.
+1. **Product session.** Every product session uses Qwen (`VoiceProviderChoice.resolve` → `QWEN`). Stored gemini/baidu preferences do not change that.
 2. **Qwen without a key, workspace ID or consent.** The session fails at start with its code (`QWEN_API_KEY_MISSING`, `QWEN_WORKSPACE_MISSING` or `QWEN_CONSENT_MISSING`) and an honest message on the CONFIG card. It never falls back to another provider (ADR-013).
 3. **Opening the session.** The session opens the workspace endpoint for `qwen3.8-omni-flash-realtime`. The key travels only in the Authorization header. The workspace ID is part of the host and is never logged. On `session.created` the client sends `session.update` with:
    - `modalities ["text","audio"]`;
-   - `voice` and `audio.output.voice` = `Maia` (the default; a stock voice the owner picks in settings);
+   - `voice` and `audio.output.voice` = `Maia` (`QwenAppSettings.DEFAULT_VOICE`; not user-selectable on the product path);
    - `instructions`: the persona, the speaking-style paragraph (SPEC-015) and the context hint;
    - `input_audio_format`/`output_audio_format` = `pcm`;
    - `input_audio_transcription {model: "qwen3-asr-flash-realtime"}`;
@@ -151,7 +151,7 @@ From the official docs (Alibaba Model Studio: realtime, client-events and server
 | A5 | The claim gate holds Qwen *audio* that claims an action until `ok=true`, and drops it on a refusal (I-1) | `QwenOmniClientTest`, in the Baidu Flex claim-gate test shape | JVM PASS 2026-10-09: `QwenOmniClientTest` (held until ok=true; dropped on refusal) |
 | A6 | Tool round trip: call → dispatch → `function_call_output` → `response.create`, with no overlapping response | `QwenOmniClientTest` with a mock socket | JVM PASS 2026-10-09: `QwenOmniClientTest` |
 | A7 | Barge-in: a qualified barge-in sends `response.cancel` and flushes; a refused cancel is not fatal | `QwenOmniClientTest` | JVM PASS 2026-10-09: `QwenOmniClientTest` (client cancel once; a refused cancel is non-fatal). The core's barge-in qualification is shared and unchanged |
-| A8 | Selection: no Qwen code runs without the QWEN preference; with it, a missing key, workspace or consent fails with its code and never falls back | `VoiceProviderChoiceTest`, `RealtimeProviderFactoryTest` | JVM PASS 2026-10-09: `RealtimeProviderFactoryTest`, `GeminiSettingsTest`; the Qwen start never reads the Azure key |
+| A8 | Selection (amended 2026-10-09): `resolve` always `QWEN` for the product session; a missing key, workspace or consent fails with its code and never opens Gemini or Baidu; direct `SessionProviderConfig.Gemini` / `.Baidu` factory tests remain | `RealtimeProviderFactoryTest`, `GeminiSettingsTest` | JVM PASS 2026-10-09 (pre-amendment); re-run after Maia-only UX |
 | A9 | Capabilities in all three places (VoiceCatalog, `config/capabilities.yaml`, the behaviour), and no branch on the provider name | `CapabilityContractTest`, `ArchitectureRulesTest` | JVM PASS 2026-10-09: behavior-test (`ArchitectureRulesTest`, `CapabilityContractTest`, `ProviderBoundaryTest`) |
 | A10 | `:app:assembleDebug` builds; `harness_check.py` has no new findings | build, harness | JVM PASS 2026-10-09: `assembleDebug` OK; `harness_check.py` has no new finding |
 | Q-1 | The probe numbers, side by side with Gemini + Xiaoyi | `tools/qwen-omni-probe` on the owner's PC | open (PC, key) |

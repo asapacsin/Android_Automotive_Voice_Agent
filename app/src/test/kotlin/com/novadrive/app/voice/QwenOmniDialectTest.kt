@@ -76,7 +76,8 @@ class QwenOmniDialectTest {
         val d = QwenOmniDialect()
         d.onSessionOpening(config.copy(settings = settings.copy(voice = "Cherry", vadType = "server_vad", silenceDurationMs = 500)))
         val s = JSONObject(d.sessionUpdate("P", 0.0)).getJSONObject("session")
-        assertEquals("Cherry", s.getString("voice"))
+        assertEquals("Maia", s.getString("voice"))
+        assertEquals("Maia", s.getJSONObject("audio").getJSONObject("output").getString("voice"))
         assertEquals("server_vad", s.getJSONObject("turn_detection").getString("type"))
         assertEquals(500, s.getJSONObject("turn_detection").getInt("silence_duration_ms"))
     }
