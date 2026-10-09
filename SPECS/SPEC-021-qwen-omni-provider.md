@@ -111,7 +111,9 @@ From the official docs (Alibaba Model Studio: realtime, client-events and server
 
 - **Handshake 401/403, or an `InvalidApiKey`/`AccessDenied` error:** `QWEN_AUTH_FAILED`. Never retried in a loop.
 - **Quota or throttling** (`Throttling`, `AllocationQuota`, free quota exhausted): `QWEN_QUOTA_EXHAUSTED`, with an honest message. Not retried in a loop. The owner sets Stop-on-Exhaust in the console (ADR-017).
-- **Workspace host not found (DNS):** `QWEN_ENDPOINT_UNREACHABLE`. The message says to check the workspace ID and region.
+- **Workspace host not found (DNS):** `QWEN_DNS_FAILED`. It is RETRYABLE, because on a phone being offline looks the same; `ReconnectPolicy` caps the attempts. The message says to check the workspace ID and region, and never contains the host.
+- **A socket that is gone when audio or a control is sent:** `QWEN_CONNECTION_CLOSED`. It is RETRYABLE, so it joins the reconnect instead of ending the session.
+- **A server-side internal or unavailable error in-band:** `QWEN_SERVER_UNAVAILABLE`. It is RETRYABLE (the P38 lesson from Baidu). Any other in-band error is `QWEN_PROVIDER_ERROR`, which is terminal.
 - **Server close at the 120 min cap, or any socket loss:** reported as reconnecting. The existing reconnect owner reopens the session, as for Gemini and Baidu.
 - **A refused `response.cancel`** (nothing playing) and **an overlapping-response refusal** are not session-fatal. The same rules as Baidu Flex apply, by error code or phrase, in the dialect.
 - **A malformed or oversize function call:** rejected by the shared assembler and catalogue, as for Baidu Flex.
@@ -161,3 +163,4 @@ From the official docs (Alibaba Model Studio: realtime, client-events and server
    This is decided in step 4, with the probe's evidence.
 2. Is `semantic_vad` at 800 ms fast enough? ADR-017's latency table needs the server's end-of-turn time. Q-1 measures it, and step 4 tunes it within 200–800 ms.
 3. Does Maia's delivery change with the speaking-style instruction? This is answered by ear in Q-2.
+4. Does Qwen need `ConversationResetPolicy`? It is shared with Baidu (step 1), and it opens a fresh conversation after a tool turn. That rule was measured on Baidu on 2026-09-17. For Qwen it costs a reconnect per tool command and drops multi-turn context. Q-1's tool runs show whether Qwen degrades without it. Step 4 decides, and the decision belongs to the dialect, not to a branch on the provider name.
