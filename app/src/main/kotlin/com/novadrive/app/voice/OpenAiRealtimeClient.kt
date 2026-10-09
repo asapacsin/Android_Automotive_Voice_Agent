@@ -118,7 +118,8 @@ open class OpenAiRealtimeClient<C : Any>(
     private val stallWatchdog = ResponseStallWatchdog(
         resetScope, responseStallMs, dialect.logPrefix,
         cancel = { sendCancelOnce("stalled") },
-        retry = { submitReply("stall_retry") },
+        retry = { // never queued: once another turn went out or the driver spoke, it is not wanted
+            if (turnGate.isBusy() || turnGate.pending() > 0) DebugVoiceLog.log("${dialect.logPrefix}_stall_retry_dropped") else submitReply("stall_retry") },
     )
 
     /** Incremented on every conversation reset; a queued turn from an older one may be stale. */
@@ -251,6 +252,7 @@ open class OpenAiRealtimeClient<C : Any>(
      */
     @Volatile private var cancelSentThisResponse = false
 
+    @Synchronized
     private fun sendCancelOnce(reason: String) {
         if (cancelSentThisResponse) {
             DebugVoiceLog.log("${dialect.logPrefix}_cancel_skipped reason=$reason already_sent=true")
@@ -526,13 +528,15 @@ open class OpenAiRealtimeClient<C : Any>(
             when (val step = cue.onMessage(cueSignal(type, text), text) { dialect.isResponseAlreadyActive(text) }) {
                 ProviderCueCapture.Step.Pass -> handle(webSocket, text, type)
                 ProviderCueCapture.Step.Buffered, ProviderCueCapture.Step.Skipped -> Unit
-                ProviderCueCapture.Step.Started -> { cancelSentThisResponse = false; responseInProgress = true; turnGate.onResponseCreated() }
+                is ProviderCueCapture.Step.Started -> {
+                    synchronized(this@OpenAiRealtimeClient) { cancelSentThisResponse = false }; responseInProgress = true
+                    turnGate.onResponseCreated(); if (step.cancel) sendCancelOnce("client_cancel") }
                 ProviderCueCapture.Step.CancelAndPass -> { sendCancelOnce("driver_speech"); handle(webSocket, text, type) }
-                // The candidate was a reply: everything it sent takes the normal path, in order.
+                // The candidate was a reply: everything it sent takes the normal path, in order
+                // (its telemetry and reply_timing therefore start at the demotion).
                 is ProviderCueCapture.Step.Demote -> step.messages.forEach { handle(webSocket, it, JSONObject(it).optString("type")) }
                 is ProviderCueCapture.Step.Finish -> {
-                    responseInProgress = false
-                    turnGate.onResponseDone()
+                    responseInProgress = false; turnGate.onResponseDone()
                     step.pcm?.let { emit(DomainVoiceEvent.WaitCueAudio(Base64.getEncoder().encodeToString(it))) }
                     flushDeferredTurns()
                 }
@@ -560,7 +564,6 @@ open class OpenAiRealtimeClient<C : Any>(
             val alive = { generation.get() == current }
             if (type in RESPONSE_PROGRESS_TYPES) stallWatchdog.onProgress()
             if (type == "response.created") stallWatchdog.onResponseCreated(alive)
-            if (type == "response.done") stallWatchdog.onResponseDone(alive)
             if (type !in NOISY_EVENT_TYPES) DebugVoiceLog.log("${dialect.logPrefix}_event type=$type")
             // Code only: a provider message can quote what the driver said.
             if (type == "error") DebugVoiceLog.log("${dialect.logPrefix}_error code=${dialect.errorCode(text)}")
@@ -579,7 +582,7 @@ open class OpenAiRealtimeClient<C : Any>(
                 }
             }
             if (type == "response.created") {
-                cancelSentThisResponse = false
+                synchronized(this@OpenAiRealtimeClient) { cancelSentThisResponse = false }
                 turnGate.onResponseCreated()
                 streamedWords.reset()
                 pipeline.onResponseCreated()
@@ -591,10 +594,7 @@ open class OpenAiRealtimeClient<C : Any>(
                 val raw = JSONObject(text)
                 streamedWords.onDone(raw.optString("transcript").ifEmpty { raw.optString("text") })?.let(pipeline::appendAssistantText)
             }
-            if (type == "conversation.item.input_audio_transcription.completed") {
-                val transcript = JSONObject(text).optString("transcript")
-                pipeline.onUserTranscript(transcript)
-            }
+            if (type == "conversation.item.input_audio_transcription.completed") pipeline.onUserTranscript(JSONObject(text).optString("transcript"))
             if (type == "error" && dialect.isResponseAlreadyActive(text)) {
                 DebugVoiceLog.log("${dialect.logPrefix}_turn_rejected_busy retry=true")
                 turnGate.onBusyRejected(
@@ -607,6 +607,7 @@ open class OpenAiRealtimeClient<C : Any>(
             if (type == "response.done") {
                 turnGate.onResponseDone()
                 if (onResponseDone(text)) requestReplyAfterEmptyResponse() else flushDeferredTurns()
+                stallWatchdog.onResponseDone(alive) // after the flush: a released turn makes a retry unwanted
                 // Fail-safe: finishResponse clears the buffer on either verdict, so this only
                 // fires when the parse above returned early. Better a spoken reply than audio
                 // stranded in a list.
@@ -762,7 +763,6 @@ internal fun releaseNavigatingListenerIfOwned(installed: ((Boolean) -> Unit)?) {
 /** About 10 s of capture frames at the current mic cadence. */
 private val MAX_HELD_OUTBOUND =
     com.novadrive.ingress.realtime.AudioFrameTiming.heldOutboundMessagesForDuration(10_000)
-
 
 /** A response that produces none of these for [ResponseStallWatchdog.STALL_MS] has stalled. */
 private val RESPONSE_PROGRESS_TYPES = setOf(

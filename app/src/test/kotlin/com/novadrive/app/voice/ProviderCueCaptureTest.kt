@@ -45,7 +45,7 @@ class ProviderCueCaptureTest {
     @Test
     fun aFunctionCallDemotesWithEveryBufferedMessageInOrder() {
         capture.request("稍等。")
-        assertSame(ProviderCueCapture.Step.Started, step(created))
+        assertTrue(step(created) is ProviderCueCapture.Step.Started)
         assertSame(ProviderCueCapture.Step.Buffered, step(audio))
         val call = """{"type":"response.output_item.added","item":{"type":"function_call","call_id":"c"}}"""
         val demoted = step(call) as ProviderCueCapture.Step.Demote
@@ -92,5 +92,33 @@ class ProviderCueCaptureTest {
         capture.request("稍等")
         assertSame(ProviderCueCapture.Step.Pass, step("""{"type":"error"}"""))
         assertTrue(capture.idle)
+    }
+
+    @Test
+    fun aBusyRefusalDuringACaptureDemotesWithoutTheErrorAndAnyOtherErrorKeepsCapturing() {
+        capture.request("稍等")
+        step(created); step(audio)
+        val demoted = step("""{"type":"error"}""", active = true) as ProviderCueCapture.Step.Demote
+        assertEquals(listOf(created, audio), demoted.messages)
+
+        capture.request("稍等")
+        step(created)
+        assertSame(ProviderCueCapture.Step.Pass, step("""{"type":"error"}"""))
+        assertTrue(step("""{"type":"response.output_item.added"}""") is ProviderCueCapture.Step.Demote)
+    }
+
+    @Test
+    fun aSecondCreatedEndsALostCaptureAndPassesTheNewResponse() {
+        capture.request("稍等")
+        step(created)
+        assertSame(ProviderCueCapture.Step.Pass, step(created))
+        assertTrue(capture.idle)
+    }
+
+    @Test
+    fun aClientCancelBeforeCreatedAsksForTheCancelAtCreated() {
+        capture.request("稍等")
+        capture.discardForClientCancel()
+        assertTrue((step(created) as ProviderCueCapture.Step.Started).cancel)
     }
 }
