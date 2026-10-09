@@ -550,14 +550,22 @@ class DriverTurn(
                 }
             // SPEC-014: chat, each clause claim-free. Not before the driver's words have classified
             // the turn: 「好的，已经开了，」 may yet turn out to answer 「把车窗打开」. An ability answer
-            // waits for the end, which judges whether the list is complete (answersCapabilityHelp).
+            // is released only once the words so far already pass its end rule (answersCapabilityHelp,
+            // two ability nouns; more words never undo it), so the end can no longer drop it.
             HoldReason.UNCLASSIFIED_CLAIM ->
                 if (toolCalled || executionFailed || musicUnconfirmed || !userSpoke || kind == Kind.UNKNOWN) {
                     Verdict.Wait
                 } else {
                     clauseVerdict(text, ::chatClaimPredicate)
                 }
-            HoldReason.CAPABILITY_HELP -> Verdict.Wait
+            HoldReason.CAPABILITY_HELP ->
+                if (toolCalled || executionFailed || musicUnconfirmed ||
+                    !ActionClaimGuard.answersCapabilityHelp(text.substring(0, text.indexOfLast { it in CLAUSE_ENDS } + 1))
+                ) {
+                    Verdict.Wait
+                } else {
+                    clauseVerdict(text, ::chatClaimPredicate)
+                }
             // A live-info question with no answer from its source: the end drops only invented
             // data (realtimeVerdict), and that is judged clause by clause the same way.
             HoldReason.NO_TOOL_REQUEST ->

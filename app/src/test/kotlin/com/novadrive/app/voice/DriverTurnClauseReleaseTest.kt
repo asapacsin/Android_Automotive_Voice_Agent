@@ -128,16 +128,17 @@ class DriverTurnClauseReleaseTest {
     }
 
     @Test
-    fun anAbilityAnswerWaitsForTheResponseEnd() {
+    fun anAbilityAnswerIsReleasedOnlyOnceItPassesItsEndRule() {
         // Its end rule (answersCapabilityHelp) drops an incomplete list with a nudge: a released
-        // 「我可以帮你导航，」 would be followed by a second, full answer.
+        // 「我可以帮你导航，」 would be followed by a second, full answer. Two ability nouns pass it,
+        // and more words cannot undo that, so from there the clauses go out.
         val p = pipeline()
         chatTurn(p, request = "你会干啥")
         repeat(6) { p.filter(audio(300)) }
         p.appendAssistantText("我可以帮你导航，")
-        assertEquals(0, emittedAudioMs(), "nothing of an ability answer is released before the end")
+        assertEquals(0, emittedAudioMs(), "an incomplete ability answer is not released before the end")
         p.appendAssistantText("放音乐，")
-        assertEquals(0, emittedAudioMs())
+        assertTrue(emittedAudioMs() > 0, "a list that already passes the end rule is released clause by clause")
     }
 
     @Test
