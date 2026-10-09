@@ -17,6 +17,18 @@ Baidu unchanged) in `DriverTurn.clauseVerdict` + `DriverTurnPipeline.drainClause
 - The clause check is exactly the end rule; a stricter one only closes the gate on replies the end
   releases, and the wait is heard (measured: a 0.33 s hole). The first release covers ≥ 6 characters.
 - Tests: `DriverTurnClauseReleaseTest` (A2/A3/A4). Emulator 2026-10-09: chat 2.9 s → 1.8–2.6 s.
+- **Corrected after review, 2026-10-09** (I-1; JVM only, not re-measured on the emulator):
+  - Nothing is released before the driver's transcript has classified the turn (`userSpoke`, kind ≠
+    UNKNOWN). 「好的，已经开了，」 streamed before the transcript 「把车窗打开」 had been heard and then
+    dropped as an unproven claim.
+  - `CAPABILITY_HELP` is released only once the words so far already pass its own end rule
+    (`answersCapabilityHelp`, two ability nouns, which more words cannot undo); before that it waits.
+    The claim check above is not its end rule, so 「我可以帮你导航，」 was heard and then followed by a
+    second, full answer.
+  - The chat clause check and the `UNCLASSIFIED_CLAIM` end rule call one shared predicate
+    (`DriverTurn.chatClaimPredicate`) instead of two copies.
+  - An ability enumeration is no longer exempt from the claim check when it claims or promises the
+    action (「空调、车窗我都帮你打开。」; `ActionClaimGuard.promisesToAct`).
 Raised: 2026-09-29 · Source: [B-028](../BACKLOG.md)
 Depends on: I-1, I-5, I-10, I-13, ADR-009, ADR-010, [SPEC-013](SPEC-013-gemini-live-provider.md)
 Plan: [GEMINI_NATIVE_PLAN.md](../docs/GEMINI_NATIVE_PLAN.md). Behaviour 3–7 and A2/A3 below describe
