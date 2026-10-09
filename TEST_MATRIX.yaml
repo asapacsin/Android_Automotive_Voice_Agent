@@ -2822,11 +2822,11 @@ tests:
     release_blocking: false
     terminal_success: [check_req_pass, one_voice, tool_turns_complete]
     covers: []
-    prerequisites: ["QWEN-PROBE-Q1-001 run and SPEC-021 step 4 applied", "emulator nova_api34 on the owner's PC with this build", "开发者设置: provider Qwen, DashScope key, workspace ID, consent (entered by the owner)"]
-    procedure: ["record the demo scenes with tools/demo/recorder", "python tools/demo/recorder/check_req.py on each take"]
-    pass_criteria: ["check_req.py passes every take", "only Maia is heard", "every tool turn reaches a spoken result; no QWEN_* terminal error", "barge-in stops her within a clause"]
-    evidence: []
-    related: [ADR-017, SPEC-021, QWEN-ADAPTER-UNIT-001, DEMO-10-3-001]
+    prerequisites: ["emulator nova_api34 on the owner's PC with this build (claude/10-9 at or after the P50 review fixes, dd5bc12)", "the product session is always Qwen (ADR-017 amendment); DASHSCOPE_API_KEY and DASHSCOPE_WORKSPACE_ID set on the PC, then python tools/demo/recorder/seed_qwen.py --accept-consent"]
+    procedure: ["record the demo scenes with tools/demo/recorder (one scene per take, < 70 s)", "python tools/demo/recorder/check_req.py on each take", "for the 7 s cue: one slow turn; check logcat for wait_cue_failed reason=not_cue|mismatch and wait_cue_cancelled"]
+    pass_criteria: ["check_req.py passes every take", "only Maia is heard", "every tool turn reaches a spoken result; no QWEN_* terminal error", "barge-in stops her within a clause", "今天珠海天气怎么样 at the Zhuhai fix after warm-up: <= 3.5 s, no Amap call at question time (SPEC-011 B4 amendment)", "an ability answer (你会干啥) <= 3.0 s with clause release gated on answersCapabilityHelp"]
+    evidence: ["2026-10-09 cursor/10-9 c783c9a (owner's PC, OPEN_PROBLEMS P50, not this build): chat 1.9-2.6 s, ability 2.0-2.7 s, thinking 2.4-2.6 s, music 2.3-4.3 s, scenario 3.0-5.1 s, weather 5.4-5.7 s, bossy 3.0-10.2 s (a Qwen stall); no reply_underrun > 300 ms. Not a pass: weather and one bossy take exceed 5 s, music/scenario exceed 3.5 s. The independent review of that build then found I-1 leaks (clause release before classification, a reply capturable as the cue), fixed in claude/10-9 525bc01 and dd5bc12 - so these takes must be re-recorded"]
+    related: [ADR-017, SPEC-021, QWEN-ADAPTER-UNIT-001, DEMO-10-3-001, P50, SPEC-014, SPEC-020, SPEC-011]
     last_run: {at: null, result: null}
 
   - id: QWEN-VOICE-EAR-001
