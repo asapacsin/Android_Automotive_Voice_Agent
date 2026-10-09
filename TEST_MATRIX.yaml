@@ -2811,6 +2811,22 @@ tests:
     related: [ADR-017, SPEC-021, QWEN-PROBE-Q1-001, QWEN-EMU-001]
     last_run: {at: 2026-10-09, result: PASS}
 
+  - id: P50-REVIEW-UNIT-001
+    capability: speech
+    name: "P50 review fixes: clause release and the provider-spoken wait cue never play unchecked model audio (I-1)"
+    purpose: "JVM proof of the fixes to the cursor/10-9 demo build: DriverTurn clause release, ActionClaimGuard enumerations, ProviderCueCapture, the stall watchdog, named-city weather"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: []
+    procedure: ["gradlew test --rerun-tasks :app:assembleDebug", "DriverTurnClauseReleaseTest, ActionClaimGuardTest, ProviderCueCaptureTest, QwenCueCaptureClientTest, LiveInfoToolTest, AmapLiveInfoParserTest; BaiduFlexClientTest and QwenOmniClientTest unmodified"]
+    pass_criteria: ["no clause released before the turn is classified", "an ability answer released only once answersCapabilityHelp passes", "a cue plays only with exactly its words, completed, no call; a reply captured as the cue reaches the normal path with its tool call", "a stall retry yields at most one response.create", "the current city's weather answered from the warm cache"]
+    evidence: ["2026-10-09 cloud, claude/10-9 9bdb135: app 3564/0 (debug 1785 + release 1779), behavior-test 130/0, ingress 119/0, evaluation 27/0, simulator 25/0, contracts 7/0, safety 2/0 (planner read the JUnit XML); independent review REVISE -> REVISE -> PASS"]
+    related: [P50, SPEC-014, SPEC-020, SPEC-011, QWEN-EMU-001, QWEN-ADAPTER-UNIT-001]
+    last_run: {at: 2026-10-09, result: PASS}
+
   - id: QWEN-EMU-001
     capability: speech
     name: "ADR-017 gate Q-4: the demo on the emulator with Qwen + Maia selected, under docs/DEMO_REQUIREMENTS.md"

@@ -1859,6 +1859,15 @@ Measured from the driver's **last audible word**, not the end of the clip; edge-
 
 **Measured after the fixes (final build, takes z_/r1_/r2_ in the session scratchpad):** chat 1.9-2.6 s, ability 2.0-2.7 s, thinking 2.4-2.6 s (one take 4.3 s, Qwen slow), music 2.3-4.3 s, scenario 3.0-5.1 s, weather 5.4-5.7 s (Amap from Macau, one 4 s timeout), bossy 3.0-10.2 s (10.2 s = a Qwen stall the watchdog cancelled and retried). No reply_underrun over 300 ms. **Demo video not yet composed** (owner asked to save and push first, 2026-10-09).
 
+**Independent review of the cursor/10-9 build (cloud, 2026-10-09, `claude/10-9`): REVISE, REVISE, PASS.** It found I-1 leaks that the emulator takes did not show. All are fixed, with JVM and mock-socket evidence only (`P50-REVIEW-UNIT-001`):
+- Clause release played 「好的，已经开了，」 before the transcript 「把车窗打开」 classified the turn. It now waits for classification. `CAPABILITY_HELP` releases only once it passes its own end rule. An enumeration that claims or promises the action counts as a claim (SPEC-014 note).
+- The wait cue Maia speaks was "the next response.created", so a real reply could be played as the cue, unchecked, and its tool call swallowed. `ProviderCueCapture` now plays a cue only when the response completes with exactly the cue's words and no call. Anything else is handed back to the normal path or dropped. Driver speech, errors and cancels are no longer swallowed.
+- The stall retry went around `ResponseTurnGate`. It now goes through the gate, is dropped when another turn is already out, and is never sent for a cue.
+- 「今天珠海天气怎么样」 missed the warm cache (keyed by district, asked by city name). A named city that is the current city now uses it (SPEC-011 B4 amendment).
+- Left as is, both rare:
+  - an empty-response retry whose "already active" refusal arrives during a cue capture is taken as the cue's refusal;
+  - a stall check firing between a response's done and the watchdog's sequence step could retry a finished response. It needs 5 s of quiet just before the done.
+
 **Still open:**
 - A weather question naming a city is looked up at question time: 1.1–4 s from the PC proxy in Macau, and a timeout means an honest "could not check". Not measured on the phone.
 - Qwen's own variance: end-of-speech 0.9–1.5 s after the last word (`semantic_vad` 800 ms), first audio after a tool result 0.3–1.5 s, and occasionally a reply generated close to real time (underruns up to 259 ms).

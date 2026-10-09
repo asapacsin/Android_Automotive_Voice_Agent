@@ -339,7 +339,9 @@ class QwenCueCaptureClientTest {
             """{"type":"conversation.item.input_audio_transcription.completed","item_id":"i1","transcript":"今天过得怎么样"}""",
             """{"type":"response.created","response":{"id":"r2"}}""",
             """{"type":"response.audio.delta","delta":"$chunk"}""",
-            *cueDeltas("还不错呀，", "我们聊聊吧。"),
+            // Words that stay inside the cue text: without the fix, r2 would be buffered into the stale
+            // capture (never demoted) and its done swallowed as the cue's finish.
+            *cueDeltas("稍等，"),
             """{"type":"response.done","response":{"status":"completed","output":[{"type":"message"}]}}""",
         )
         awaitUntil({ "seen: $seen" }) { seen.any { it is DomainVoiceEvent.ResponseDone } && seen.any { it is DomainVoiceEvent.AudioDelta } }
