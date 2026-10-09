@@ -505,15 +505,17 @@ class DeveloperSettingsActivity : Activity() {
         val providerButtons = VoiceProviderPreference.entries.associateBy {
             RadioButton(this).apply {
                 text = when (it) {
-                    VoiceProviderPreference.GEMINI -> "Gemini — 默认 / default"
-                    VoiceProviderPreference.BAIDU -> "Baidu"
-                    VoiceProviderPreference.QWEN -> "Qwen-Omni（Maia，可选 / opt-in）"
+                    VoiceProviderPreference.GEMINI -> "Gemini（不用于产品会话 / not the product session）"
+                    VoiceProviderPreference.BAIDU -> "Baidu（不用于产品会话 / not the product session）"
+                    VoiceProviderPreference.QWEN -> "Qwen-Omni（Maia，产品会话 / product session）"
                 }
                 id = View.generateViewId()
+                isEnabled = it == VoiceProviderPreference.QWEN
             }
         }
         val providerGroup = RadioGroup(this).apply {
-            providerButtons.forEach { (button, pref) -> addView(button); if (pref == saved.provider) check(button.id) }
+            providerButtons.forEach { (button, pref) -> addView(button) }
+            check(providerButtons.entries.first { it.value == VoiceProviderPreference.QWEN }.key.id)
         }
         val key = secretField(
             if (gemini.keyPresent()) "Gemini API Key（已配置 / configured；留空保留）" else "Gemini API Key",
@@ -549,11 +551,9 @@ class DeveloperSettingsActivity : Activity() {
         val save = Button(this).apply {
             text = "保存 Gemini 设置 / Save Gemini"
             setOnClickListener {
-                val provider = providerButtons.entries.firstOrNull { it.key.id == providerGroup.checkedRadioButtonId }?.value
-                    ?: VoiceProviderPreference.GEMINI
                 val silenceText = silence.text.toString().trim()
                 val settings = saved.copy(
-                    provider = provider,
+                    provider = VoiceProviderPreference.QWEN,
                     consentAccepted = consent.isChecked,
                     model = geminiModels.entries.firstOrNull { it.key.id == modelGroup.checkedRadioButtonId }?.value
                         ?: saved.model,
@@ -595,14 +595,13 @@ class DeveloperSettingsActivity : Activity() {
             if (qwen.keyPresent()) "DashScope API Key（已配置 / configured；留空保留）" else "DashScope API Key",
         )
         val workspace = EditText(this).apply { setText(saved.workspaceId); hint = "Workspace ID（ap-southeast-1）" }
-        val voice = EditText(this).apply { setText(saved.voice); hint = QwenAppSettings.DEFAULT_VOICE }
         val save = Button(this).apply {
             text = "保存 Qwen 设置 / Save Qwen"
             setOnClickListener {
                 val settings = saved.copy(
                     consentAccepted = consent.isChecked,
                     workspaceId = workspace.text.toString().trim(),
-                    voice = voice.text.toString().trim().ifBlank { QwenAppSettings.DEFAULT_VOICE },
+                    voice = QwenAppSettings.DEFAULT_VOICE,
                 )
                 result.text = try {
                     qwen.save(settings, update(key))
@@ -620,8 +619,9 @@ class DeveloperSettingsActivity : Activity() {
         }
         return verticalGroup(
             TextView(this).apply { text = "通义千问 Omni / Qwen-Omni (SPEC-021)"; textSize = 18f },
-            QwenAppSettings.CONSENT_NOTICE, consent, "API Key", key, "Workspace ID", workspace, "Voice", voice,
-            save, clearKey, "Takes effect at the next session start, with provider Qwen selected above.",
+            QwenAppSettings.CONSENT_NOTICE, consent, "API Key", key, "Workspace ID", workspace,
+            TextView(this).apply { text = "Voice: ${QwenAppSettings.DEFAULT_VOICE}（产品会话固定 / fixed for product session）" },
+            save, clearKey, "Takes effect at the next session start.",
         )
     }
 
@@ -660,6 +660,9 @@ class DeveloperSettingsActivity : Activity() {
         }
         return verticalGroup(
             TextView(this).apply { text = "小诺的声音 / Assistant voice (Azure, ADR-016)"; textSize = 18f },
+            TextView(this).apply {
+                text = "产品会话不使用此声音 / The product session does not use this voice."
+            },
             enabled, "Azure Key", key, "Region", region, "Voice", voice, save, clearKey,
             "Takes effect at the next session start.",
         )

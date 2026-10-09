@@ -58,7 +58,7 @@ object RealtimeProviderFactory {
         )
         // SPEC-021: the model speaks in its own voice; no assistant voice, no revoicer.
         is SessionProviderConfig.Qwen -> built(
-            QwenOmniProvider(config.api, lastAudioSegment, speechEvidence),
+            QwenOmniProvider(config.api, lastAudioSegment, speechEvidence, repliesSpoken),
             VoiceProviderId.QWEN, config.api.settings.model, QWEN_OUTPUT_SAMPLE_RATE_HZ,
         )
     }

@@ -32,6 +32,13 @@ class QwenOmniDialect(
     /** Mid-session VAD changes are not made, so navigation is not tracked. */
     override val tracksNavigationVad = false
 
+    /**
+     * SPEC-021 open question 4, decided 2026-10-09 on the emulator: Qwen keeps one conversation.
+     * The Baidu reset cost 2.5-2.6 s per tool command, during which the driver's next line was
+     * lost (twice in two takes), and it erased the context a follow-up needs.
+     */
+    override val resetsConversation = false
+
     @Volatile private var settings = QwenAppSettings()
 
     /** The server refused a user text item in this session; text turns are not sent again. */
@@ -68,7 +75,9 @@ class QwenOmniDialect(
     override fun recoverSessionError(instructions: () -> String, vadThreshold: Double): String? = null
 
     override fun onSessionUpdated(text: String) {
-        DebugVoiceLog.log("qwen_session voice=${settings.voice} vad=${settings.vadType} model=${settings.model}")
+        DebugVoiceLog.log(
+            "qwen_session voice=${QwenAppSettings.DEFAULT_VOICE} vad=${settings.vadType} model=${settings.model}",
+        )
     }
 
     override fun newCallAssembler(): RealtimeCallAssembler = FlexFunctionCallAssembler(
@@ -80,6 +89,18 @@ class QwenOmniDialect(
     override fun isAudioAppend(message: String) = message.contains("\"input_audio_buffer.append\"")
     override fun responseCancel() = BaiduFlexProtocol.responseCancel()
     override fun responseCreate() = BaiduFlexProtocol.responseCreate()
+
+    /** One Maia sentence. Empty tools so this response cannot start another action. */
+    override fun progressResponse(text: String): String = JSONObject()
+        .put("type", "response.create")
+        .put(
+            "response",
+            JSONObject()
+                .put("modalities", JSONArray(listOf("text", "audio")))
+                .put("instructions", "只说这一句，不要加任何别的话，不要调用工具：$text")
+                .put("tools", JSONArray()),
+        )
+        .toString()
 
     override fun functionCallOutput(callId: String, output: String): String {
         require(BaiduFlexProtocol.validId(callId)) { "QWEN_CALL_ID_INVALID" }
@@ -200,10 +221,11 @@ class QwenOmniDialect(
 
         /** The documented session.update (SPEC-021 B3). */
         fun sessionUpdate(instructions: String, settings: QwenAppSettings): String {
+            val voice = QwenAppSettings.DEFAULT_VOICE
             val session = JSONObject()
                 .put("modalities", JSONArray(listOf("text", "audio")))
-                .put("voice", settings.voice)
-                .put("audio", JSONObject().put("output", JSONObject().put("voice", settings.voice)))
+                .put("voice", voice)
+                .put("audio", JSONObject().put("output", JSONObject().put("voice", voice)))
                 .put("instructions", instructions.trim() + "\n" + PersonaProfiles.FLEX_TOOL_RULE)
                 .put("input_audio_format", "pcm")
                 .put("output_audio_format", "pcm")

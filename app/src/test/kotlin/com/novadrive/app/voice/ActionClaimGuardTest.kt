@@ -402,9 +402,22 @@ class ActionClaimGuardTest {
     fun chatWithoutACarActionDrawsNoNudge() {
         guard.onUserTranscript("陪你真好，咖啡。")
         assertEquals(null, guard.onResponseDone(message, "好的，那我们开始聊咖啡吧。"))
+        // A fragment too short to be a sentence: the driver is asked to say it again.
         val g2 = ActionClaimGuard()
-        g2.onUserTranscript("有的人帮我舒服的")
+        g2.onUserTranscript("帮我")
         assertEquals(ActionClaimGuard.UNVERIFIED_ACTION_CLAIM, g2.onResponseDone(message, "有点热啊，我帮你调低一点温度"))
+    }
+
+    /** Emulator 2026-10-09: a heard sentence is never answered 「没听清」; the request is asked for. */
+    @Test
+    fun aClaimAboutAHeardSentenceAsksForTheRequestNotARepeat() {
+        guard.onUserTranscript("有的人帮我舒服的")
+        val nudge = guard.onResponseDone(message, "有点热啊，我帮你调低一点温度")
+        assertEquals(ActionClaimGuard.nudgeFor("有的人帮我舒服的"), nudge)
+        assertFalse(nudge!!.contains("没有听清"), "DriverTurn would drop that repair for a heard sentence")
+        val g2 = ActionClaimGuard()
+        g2.onUserTranscript("说话霸道一点")
+        assertEquals(ActionClaimGuard.nudgeFor("说话霸道一点"), g2.onResponseDone(message, "好的，已经调成霸道模式了。"))
     }
 
     /** Owner demo 2026-09-28 (P39): prompts with a list on screen are not claims. */
@@ -442,6 +455,14 @@ class ActionClaimGuardTest {
         assertNotNull(ActionClaimGuard.carActionClaimMatch("已经帮你打开空调、车窗和座椅了。"))
         // Three groups and no 已/好的, but 「开了」 says it happened: still a claim.
         assertNotNull(ActionClaimGuard.carActionClaimMatch("帮你开了空调、车窗、座椅。"))
+        // Emulator 2026-10-09 (Qwen): two groups in an enumeration, no modal, dropped as a 调 claim.
+        assertNull(ActionClaimGuard.carActionClaimMatch("我是小诺呀，帮你导航、调空调。"))
+        assertNull(ActionClaimGuard.carActionClaimMatch("陪你开车，导航、空调都归我管。"))
+        // An enumeration that says it happened is still a claim.
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("空调、车窗都帮你开好了。"))
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("好的，空调、车窗我来调。"))
+        // No enumeration: an action, not a list.
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("我帮你把空调打开，车窗也关上。"))
     }
 
     @Test

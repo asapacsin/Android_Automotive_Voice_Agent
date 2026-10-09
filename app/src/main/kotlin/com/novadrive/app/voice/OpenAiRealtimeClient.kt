@@ -25,6 +25,7 @@ import okhttp3.WebSocketListener
 import org.json.JSONObject
 import java.util.Base64
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
 /**
@@ -44,6 +45,14 @@ open class OpenAiRealtimeClient<C : Any>(
     private val contextAwaitingAnswer: () -> Boolean = { VoiceContextHints.awaitingAnswer() },
     /** Time-scoped post-AEC speech evidence for speech over playback (Astra P4). */
     private val speechEvidence: () -> Boolean = { true },
+    /**
+     * The provider's [com.novadrive.ingress.realtime.ProviderCapabilities.streamedReplyText]: its
+     * reply words are fed to the gate as they stream, and the gate may release clause by clause
+     * (SPEC-014). False: the words are fed once, when the transcript is done (unchanged).
+     */
+    private val streamedReplyText: Boolean = false,
+    /** A response quiet this long has stalled ([ResponseStallWatchdog.STALL_MS]; tests shorten it). */
+    responseStallMs: Long = ResponseStallWatchdog.STALL_MS,
 ) {
     private val eventFlow = MutableSharedFlow<RealtimeEvent>(replay = 0, extraBufferCapacity = 64)
     private val generation = AtomicLong(0)
@@ -82,6 +91,10 @@ open class OpenAiRealtimeClient<C : Any>(
 
     /** A reply is in progress on the server (response.created .. response.done). */
     @Volatile private var responseInProgress = false
+    /** The next response.created belongs to a wait cue, not to the driver's reply. */
+    private val cueRequested = AtomicBoolean(false)
+    private val cueActive = AtomicBoolean(false)
+    private val cuePcm = java.io.ByteArrayOutputStream()
     @Volatile private var ttsStartedForResponse = false
 
     @Volatile private var responseStartedAtMs = 0L
@@ -99,6 +112,15 @@ open class OpenAiRealtimeClient<C : Any>(
             override val responseCancelledByClient: Boolean get() = cancelSentThisResponse
             override val listeningSuspended: Boolean get() = this@OpenAiRealtimeClient.listeningSuspended
         },
+        clauseRelease = streamedReplyText,
+    )
+
+    private val streamedWords = StreamedReplyWords(dialect.logPrefix)
+    private val underruns = ReplyUnderrunMonitor(REPLY_SAMPLE_RATE_HZ)
+    private val stallWatchdog = ResponseStallWatchdog(
+        resetScope, responseStallMs, dialect.logPrefix,
+        cancel = { sendCancelOnce("stalled") },
+        retry = { trySend(dialect.responseCreate()) },
     )
 
     /** Incremented on every conversation reset; a queued turn from an older one may be stale. */
@@ -281,6 +303,26 @@ open class OpenAiRealtimeClient<C : Any>(
     internal val ownWorkInFlight: Int
         get() = turnGate.pending() + heldOutbound.size + (if (resetting || resetPending) 1 else 0)
 
+    /**
+     * Asks the provider to speak [text] as a wait cue. The audio is emitted as [DomainVoiceEvent.WaitCueAudio]
+     * and is not judged as the reply. False when a reply is already running or this dialect cannot.
+     */
+    internal fun speakFixedCue(text: String): Boolean {
+        val message = dialect.progressResponse(text) ?: return false
+        if (text.isBlank() || responseInProgress || cueRequested.get() || cueActive.get() || turnGate.isBusy()) {
+            DebugVoiceLog.log("wait_cue_skipped reason=response_active")
+            return false
+        }
+        cueRequested.set(true)
+        synchronized(cuePcm) { cuePcm.reset() }
+        if (!trySend(message)) {
+            cueRequested.set(false)
+            DebugVoiceLog.log("wait_cue_failed")
+            return false
+        }
+        return true
+    }
+
     fun sendUserText(text: String) {
         DebugVoiceLog.log("${dialect.logPrefix}_user_text chars=${text.length}")
         listeningSuspended = false
@@ -409,7 +451,7 @@ open class OpenAiRealtimeClient<C : Any>(
             // Decided before the verdict: a correction the verdict sends must wait for the new
             // conversation rather than go out on the socket the reset is about to close.
             val superseded = pipeline.takeSuperseded()
-            val resetNow = resetPolicy.onResponseDone(outcome, superseded)
+            val resetNow = dialect.resetsConversation && resetPolicy.onResponseDone(outcome, superseded)
             if (resetNow) resetPending = true
             // A superseded response was already dropped with its turn; judging it now would judge
             // the driver's *new* turn by the old reply.
@@ -473,12 +515,17 @@ open class OpenAiRealtimeClient<C : Any>(
             if (type == "session.updated" && sessionCreated) pending.complete(Unit)
             if (type == "response.audio.delta") assistantSpeaking = true
             if (type == "response.audio.done" || type == "response.done") assistantSpeaking = false
+            val alive = { generation.get() == current }
+            if (type in RESPONSE_PROGRESS_TYPES) stallWatchdog.onProgress()
+            if (type == "response.created") stallWatchdog.onResponseCreated(alive)
+            if (type == "response.done") stallWatchdog.onResponseDone(alive)
             if (type !in NOISY_EVENT_TYPES) DebugVoiceLog.log("${dialect.logPrefix}_event type=$type")
             // Code only: a provider message can quote what the driver said.
             if (type == "error") DebugVoiceLog.log("${dialect.logPrefix}_error code=${dialect.errorCode(text)}")
             if (type == "input_audio_buffer.speech_started") {
                 emptyRetry.onSpeechStarted()
                 turnGate.onSpeechStarted()
+                stallWatchdog.onDriverTurn()
                 pipeline.beginDriverTurn(playbackActive || assistantSpeaking, responseInProgress)
             }
             if (type == "input_audio_buffer.speech_stopped") {
@@ -492,15 +539,38 @@ open class OpenAiRealtimeClient<C : Any>(
             if (type == "response.created") {
                 cancelSentThisResponse = false
                 turnGate.onResponseCreated()
-                pipeline.onResponseCreated()
+                if (cueRequested.compareAndSet(true, false)) {
+                    cueActive.set(true)
+                    synchronized(cuePcm) { cuePcm.reset() }
+                } else {
+                    streamedWords.reset()
+                    pipeline.onResponseCreated()
+                }
             }
-            if (type == "response.audio_transcript.done" || type == "response.text.done") {
+            if (streamedReplyText && type == "response.audio_transcript.delta" && !cueActive.get()) {
+                streamedWords.onDelta(JSONObject(text).optString("delta"))?.let(pipeline::appendAssistantText)
+            }
+            if ((type == "response.audio_transcript.done" || type == "response.text.done") && !cueActive.get()) {
                 val raw = JSONObject(text)
-                pipeline.appendAssistantText(raw.optString("transcript").ifEmpty { raw.optString("text") })
+                streamedWords.onDone(raw.optString("transcript").ifEmpty { raw.optString("text") })?.let(pipeline::appendAssistantText)
             }
             if (type == "conversation.item.input_audio_transcription.completed") {
                 val transcript = JSONObject(text).optString("transcript")
                 pipeline.onUserTranscript(transcript)
+            }
+            if (type == "error" && (cueRequested.get() || cueActive.get())) {
+                val wasActive = cueActive.getAndSet(false)
+                cueRequested.set(false)
+                synchronized(cuePcm) { cuePcm.reset() }
+                val alreadyActive = dialect.isResponseAlreadyActive(text)
+                if (wasActive && !alreadyActive) {
+                    responseInProgress = false
+                    turnGate.onResponseDone()
+                    flushDeferredTurns()
+                }
+                if (alreadyActive) DebugVoiceLog.log("wait_cue_skipped reason=response_active")
+                else DebugVoiceLog.log("wait_cue_failed")
+                return
             }
             if (type == "error" && dialect.isResponseAlreadyActive(text)) {
                 DebugVoiceLog.log("${dialect.logPrefix}_turn_rejected_busy retry=true")
@@ -511,6 +581,21 @@ open class OpenAiRealtimeClient<C : Any>(
             if (type == "conversation.item.input_audio_transcription.completed" && emptyRetry.onUserTranscriptCompleted()) {
                 requestReplyAfterEmptyResponse()
             }
+            if (type == "response.done" && cueActive.getAndSet(false)) {
+                val pcm = synchronized(cuePcm) {
+                    val bytes = cuePcm.toByteArray()
+                    cuePcm.reset()
+                    if (bytes.size % 2 == 0) bytes else bytes + 0
+                }
+                turnGate.onResponseDone()
+                if (pcm.isNotEmpty()) {
+                    emit(DomainVoiceEvent.WaitCueAudio(Base64.getEncoder().encodeToString(pcm)))
+                } else {
+                    DebugVoiceLog.log("wait_cue_failed")
+                }
+                flushDeferredTurns()
+                return
+            }
             if (type == "response.done") {
                 turnGate.onResponseDone()
                 if (onResponseDone(text)) requestReplyAfterEmptyResponse() else flushDeferredTurns()
@@ -520,6 +605,14 @@ open class OpenAiRealtimeClient<C : Any>(
                 pipeline.releaseFallback()
             }
             events.forEach { event ->
+                if (cueActive.get()) {
+                    if (event is DomainVoiceEvent.AudioDelta) {
+                        runCatching { Base64.getMimeDecoder().decode(event.pcm16leBase64) }
+                            .getOrNull()
+                            ?.let { synchronized(cuePcm) { cuePcm.write(it) } }
+                    }
+                    return@forEach
+                }
                 if (dropCallFromCancelledResponse(event)) return@forEach
                 if (dropDuplicateCall(event)) return@forEach
                 // A tool call proves the driver's turn was real; never let one sit behind a hold,
@@ -585,6 +678,7 @@ open class OpenAiRealtimeClient<C : Any>(
                 Telemetry.record(EventType.ASR_RESULT) { JSONObject(text).optString("transcript") }
             "response.created" -> {
                 responseInProgress = true
+                underruns.onResponseCreated()
                 pipeline.clearCallsThisResponse()
                 ttsStartedForResponse = false
                 responseStartedAtMs = System.currentTimeMillis()
@@ -629,9 +723,9 @@ open class OpenAiRealtimeClient<C : Any>(
     }
 
     private fun emit(event: DomainVoiceEvent) {
+        if (event is DomainVoiceEvent.AudioDelta) underruns.onAudio(event)
         eventFlow.tryEmit(RealtimeEvent(SystemSessionClock.nowMs(), event))
     }
-
     companion object {
         /**
          * The OpenAI-Realtime `output[].type` values. The only place in the app these strings may appear:
@@ -641,6 +735,9 @@ open class OpenAiRealtimeClient<C : Any>(
         private const val WIRE_MESSAGE = "message"
 
         private const val SPEECH_STOPPED_FLUSH_MS = 1_600L
+
+        /** 16-bit mono reply audio (Qwen and Baidu Flex both send 24 kHz PCM). */
+        private const val REPLY_SAMPLE_RATE_HZ = 24_000
 
         internal fun defaultHttp() = OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS).readTimeout(0, TimeUnit.MILLISECONDS)
@@ -665,6 +762,14 @@ internal fun releaseNavigatingListenerIfOwned(installed: ((Boolean) -> Unit)?) {
 /** About 10 s of capture frames at the current mic cadence. */
 private val MAX_HELD_OUTBOUND =
     com.novadrive.ingress.realtime.AudioFrameTiming.heldOutboundMessagesForDuration(10_000)
+
+
+/** A response that produces none of these for [ResponseStallWatchdog.STALL_MS] has stalled. */
+private val RESPONSE_PROGRESS_TYPES = setOf(
+    "response.audio.delta", "response.audio_transcript.delta", "response.text.delta",
+    "response.function_call_arguments.delta", "response.output_item.added", "response.output_item.done",
+    "response.content_part.added",
+)
 
 private val NOISY_EVENT_TYPES = setOf(
     "response.audio.delta",

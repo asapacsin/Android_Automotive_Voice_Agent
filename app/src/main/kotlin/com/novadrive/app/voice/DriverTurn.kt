@@ -36,7 +36,16 @@ import com.novadrive.contracts.ProductCapabilities
  *
  * Pure Kotlin; no Android, no clock, no I/O. Externally synchronised by [BaiduFlexClient].
  */
-class DriverTurn(val epoch: Long) {
+class DriverTurn(
+    val epoch: Long,
+    /**
+     * SPEC-014 clause release (owner decision 2026-10-09): the provider streams its reply's words
+     * ahead of their audio ([com.novadrive.ingress.realtime.ProviderCapabilities.streamedReplyText]).
+     * A chat reply ([HoldReason.UNCLASSIFIED_CLAIM]) is then released clause by clause, each only
+     * once the words up to it pass the same check the response end applies. False: unchanged.
+     */
+    private val clauseRelease: Boolean = false,
+) {
 
     enum class Phase {
         /** The driver is speaking, or has stopped and no response has started. */
@@ -113,6 +122,19 @@ class DriverTurn(val epoch: Long) {
 
         /** Keep holding: the turn is not finished. */
         data object Wait : Verdict
+
+        /**
+         * SPEC-014: play what was held up to [checkedChars] characters of checked words, and keep
+         * holding the rest. The pipeline bounds the audio at [CLAUSE_AUDIO_MS_PER_CHAR] per
+         * character, slower than any voice speaks, so audio never runs past the checked words.
+         */
+        data class ReleaseClauses(val checkedChars: Int) : Verdict
+
+        /**
+         * SPEC-014: the words so far would make the response end drop the reply. Nothing more is
+         * released early; the rest waits for the end-of-response verdict. [predicate] is log-safe.
+         */
+        data class CloseClauseGate(val predicate: String) : Verdict
     }
 
     var phase: Phase = Phase.LISTENING
@@ -222,6 +244,8 @@ class DriverTurn(val epoch: Long) {
         replyBeforeResult = null
         midResponseTools.clear()
         wordsBeforeCall = 0
+        clauseGateClosed = false
+        clauseCheckedChars = 0
         holdReason = decideHold(contextAwaitingAnswer)
         return holdReason
     }
@@ -524,16 +548,72 @@ class DriverTurn(val epoch: Long) {
                 } else {
                     Verdict.Wait
                 }
+            // SPEC-014: chat, and an ability answer (each clause claim-free; whether the list is
+            // complete is still the response end's verdict, which nudges for the rest).
+            HoldReason.UNCLASSIFIED_CLAIM, HoldReason.CAPABILITY_HELP ->
+                if (toolCalled || executionFailed || musicUnconfirmed) Verdict.Wait else clauseVerdict(text, ::chatClausePredicate)
+            // A live-info question with no answer from its source: the end drops only invented
+            // data (realtimeVerdict), and that is judged clause by clause the same way.
+            HoldReason.NO_TOOL_REQUEST ->
+                if (kind == Kind.REALTIME_INFO) clauseVerdict(text, ::realtimeClausePredicate) else Verdict.Wait
+            // SPEC-017: the hand-off was proved but nothing read back what is playing. The end
+            // drops only 「正在放《X》」, so the reply is released clause by clause until one says so.
+            HoldReason.AWAITING_EXECUTION_PROOF ->
+                if (musicUnconfirmed && proven && !executionFailed) clauseVerdict(text, ::musicClausePredicate) else Verdict.Wait
             // These can only be settled once the response is complete.
             HoldReason.ECHO_CANDIDATE,
-            HoldReason.NO_TOOL_REQUEST,
-            HoldReason.AWAITING_EXECUTION_PROOF,
-            HoldReason.UNCLASSIFIED_CLAIM,
-            HoldReason.CAPABILITY_HELP,
             HoldReason.AWAITING_TOOL_RESULT,
             -> Verdict.Wait
         }
     }
+
+    /** SPEC-014: the first clause that failed the check closed early release for this response. */
+    private var clauseGateClosed = false
+
+    /** Characters of this response's words already checked clean and released. */
+    private var clauseCheckedChars = 0
+
+    /**
+     * SPEC-014 behaviour 3-4. The words up to the last complete clause are judged by the
+     * [HoldReason.UNCLASSIFIED_CLAIM] end rule (a car-action or done claim, a repair request).
+     * Clean: release up to them. Not clean: close the gate, and the response end decides as
+     * before. Anything a tool, a proof or a failure touched waits for the end.
+     */
+    private fun clauseVerdict(text: String, endRule: (String) -> String?): Verdict {
+        if (!clauseRelease || clauseGateClosed || awaitingToolResult || preCallHold != null) return Verdict.Wait
+        val end = text.indexOfLast { it in CLAUSE_ENDS } + 1
+        if (end <= clauseCheckedChars) return Verdict.Wait
+        // A first release of 「嗯，」 is 450 ms of audio, then the player waits for the next clause
+        // end; emulator 2026-10-09 measured 285-464 ms underruns exactly so. Start with enough.
+        if (clauseCheckedChars == 0 && end < MIN_FIRST_CLAUSE_CHARS) return Verdict.Wait
+        val predicate = endRule(text.substring(0, end))
+        if (predicate != null) {
+            clauseGateClosed = true
+            return Verdict.CloseClauseGate(predicate)
+        }
+        clauseCheckedChars = end
+        return Verdict.ReleaseClauses(end)
+    }
+
+    /**
+     * Exactly the [HoldReason.UNCLASSIFIED_CLAIM] end rule's predicates (its done_claim is inside
+     * carActionClaimMatch): a stricter check only closes the gate on replies the end then releases,
+     * and the pause while the rest waits is heard (emulator 2026-10-09: a 0.33 s hole).
+     */
+    private fun chatClausePredicate(checked: String): String? =
+        ActionClaimGuard.carActionClaimMatch(checked)?.predicate
+            ?: "repair".takeIf { PhantomTurnGate.asksToRepeat(checked) }
+
+    /** The end rule's unconfirmed_music_claim: only the words after the unconfirmed result count. */
+    private fun musicClausePredicate(checked: String): String? =
+        "unconfirmed_music_claim".takeIf {
+            ActionClaimGuard.claimsMediaPlaying(checked.drop(musicResultAt.coerceAtMost(checked.length)))
+        }
+
+    /** The [realtimeVerdict] drop rule: live data stated with no successful lookup behind it. */
+    private fun realtimeClausePredicate(checked: String): String? =
+        if (answeredFromSource()) null
+        else "fabricated_realtime_info".takeIf { ActionClaimGuard.fabricatesRealtimeInfo(checked) }
 
     /** A response finished. Returns what to do with anything held. */
     fun onResponseDone(assistantText: String, hadToolCallInResponse: Boolean): Verdict {
@@ -749,6 +829,13 @@ class DriverTurn(val epoch: Long) {
         return pending
     }
 
+    /** SPEC-014: the held output from the front while [take] allows it, in order; the rest stays held. */
+    fun takeHeldWhile(take: (Any) -> Boolean): List<Any> {
+        val pending = mutableListOf<Any>()
+        while (held.isNotEmpty() && take(held.first())) pending += held.removeAt(0)
+        return pending
+    }
+
     private fun accepts(): Boolean = phase != Phase.CANCELLED
 
     override fun toString(): String =
@@ -780,6 +867,18 @@ class DriverTurn(val epoch: Long) {
 
         /** Share of the heard bigrams that must appear in the reply; recognition is not verbatim. */
         private const val ECHO_BIGRAM_SHARE = 0.6
+
+        /** A clause ends at one of these (SPEC-014). A comma counts: a claim split there is judged by its prefix. */
+        private val CLAUSE_ENDS = setOf('。', '！', '？', '，', '；', '…', '~', '～', '.', '!', '?', ',', ';', '\n')
+
+        /** The first early release covers at least this many checked characters (900 ms of audio). */
+        private const val MIN_FIRST_CLAUSE_CHARS = 6
+
+        /**
+         * SPEC-014 behaviour 3: audio released per checked character. Mandarin TTS runs about
+         * 4-5 characters a second (200-250 ms each), so 150 ms keeps the audio behind the words.
+         */
+        const val CLAUSE_AUDIO_MS_PER_CHAR = 150
 
         /** Classifies a transcript into what its reply's truth depends on. */
         fun classify(

@@ -31,6 +31,7 @@ class VoiceSessionController(
     private val onError: (String, String) -> Unit,
     private val onToolCall: ((DomainVoiceEvent.ToolCall) -> ToolDispatchResult)? = null,
     private val onListeningState: (ListeningState) -> Unit = {},
+    private val onWaitCueVisual: (Boolean) -> Unit = {},
     /** When a picker is on screen and the utterance matches one candidate, dispatch locally. */
     private val onLocalNavigationPick: ((com.novadrive.app.nav.NavigationChoice) -> Unit)? = null,
     /** SPEC-010: true when the utterance named one on-screen control and it was taken locally. */
@@ -89,6 +90,7 @@ class VoiceSessionController(
             },
             onAppPromptTurn = com.novadrive.app.nav.GuidanceTranscripts::onAppPromptTurn,
             onAppPromptTranscript = com.novadrive.app.nav.GuidanceTranscripts::onAppPromptTranscript,
+            onWaitCueVisual = onWaitCueVisual,
         )
 
     /**

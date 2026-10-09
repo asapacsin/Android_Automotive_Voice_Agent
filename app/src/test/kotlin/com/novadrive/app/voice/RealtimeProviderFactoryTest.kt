@@ -90,19 +90,29 @@ class RealtimeProviderFactoryTest {
         }
     }
 
-    /** SPEC-021 A8: no Qwen code runs without the preference; with it, a missing piece fails with its code. */
+    /** SPEC-021 A8 (amended 2026-10-09): the product session is Qwen; stored prefs do not change that. */
     @Test
     fun qwenIsReadOnlyForTheQwenPreferenceAndNeverFallsBack() {
-        var qwenTouched = false
-        VoiceProviderPreference.entries.filter { it != VoiceProviderPreference.QWEN }.forEach { pref ->
+        VoiceProviderPreference.entries.forEach { pref ->
             val choice = VoiceProviderChoice.resolve(GeminiAppSettings(provider = pref), keyPresent = true)
+            assertEquals(VoiceProviderId.QWEN, choice)
+            var geminiTouched = false
+            var baiduTouched = false
+            var qwenTouched = false
             runCatching {
-                sessionConfigFor(choice, gemini = { error("gemini") }, baidu = { error("baidu") }, qwen = { qwenTouched = true; error("qwen") })
+                sessionConfigFor(
+                    choice,
+                    gemini = { geminiTouched = true; error("gemini") },
+                    baidu = { baiduTouched = true; error("baidu") },
+                    qwen = { qwenTouched = true; error("qwen") },
+                )
             }
+            assertFalse(geminiTouched, "Gemini must not run for pref=$pref")
+            assertFalse(baiduTouched, "Baidu must not run for pref=$pref")
+            assertTrue(qwenTouched, "Qwen must run for pref=$pref")
         }
-        assertFalse(qwenTouched, "no Qwen code runs without the QWEN preference")
 
-        val choice = VoiceProviderChoice.resolve(GeminiAppSettings(provider = VoiceProviderPreference.QWEN), keyPresent = false)
+        val choice = VoiceProviderChoice.resolve(GeminiAppSettings(provider = VoiceProviderPreference.GEMINI), keyPresent = false)
         assertEquals(VoiceProviderId.QWEN, choice)
         val ok = QwenAppSettings(consentAccepted = true, workspaceId = "ws-test")
         listOf(

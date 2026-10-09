@@ -2,7 +2,9 @@
 
 ## Active work — ADR-017: Qwen-Omni Realtime + Maia (cloud, `claude/10-9`, 2026-10-09)
 
-**The owner's decision:** one end-to-end model, `qwen3.8-omni-flash-realtime` with the stock voice Maia, no separate TTS ([ADR-017](DECISIONS/ADR-017-qwen-omni-realtime-end-to-end.md)). Gemini + Xiaoyi stays the default until gates Q-1 to Q-5 pass. The adapter is [SPEC-021](SPECS/SPEC-021-qwen-omni-provider.md).
+**The owner's decision:** one end-to-end model, `qwen3.8-omni-flash-realtime` with the stock voice Maia, no separate TTS ([ADR-017](DECISIONS/ADR-017-qwen-omni-realtime-end-to-end.md)). **2026-10-09:** the product session is Qwen Maia now (`VoiceProviderChoice` + fixed `session.update` voice); Gemini/Baidu/Azure developer fields no longer select the session. Gates Q-1 to Q-5 stay open; stack deletion still waits for Q-5. The adapter is [SPEC-021](SPECS/SPEC-021-qwen-omni-provider.md).
+
+**Wait cues, same day:** she does not say she is doing it on every turn. Silent for 7 s (on-screen 「处理中」 from 3 s). One 「收到，正在处理。」 at 7 s only if nothing useful has been spoken. A different delay line at 12 s. [SPEC-020](SPECS/SPEC-020-wait-cues.md). Not device-verified.
 
 **Correction from the docs:** this model is served only from the workspace endpoint `wss://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/...`. The owner needs the **workspace ID** as well as the key (PC: `setx DASHSCOPE_WORKSPACE_ID <id>`).
 
@@ -57,7 +59,7 @@
 - Gemini's second turn after a tool call: 0.7–1.2 s.
 - The claim gate holds chat replies until generation completes: 0.9–1.8 s.
 
-The owner was asked about SPEC-014 clause release, which would remove most of the claim-gate hold, and **has not decided**. Do not build it without the owner. The wait cues are the owner's chosen answer for now.
+~~The owner was asked about SPEC-014 clause release … has not decided.~~ **Decided 2026-10-09:** the owner chose "Build clause release". It is built for Qwen (`streamedReplyText`); see SPEC-014's status note and OPEN_PROBLEMS P50.
 
 **Other findings this session:**
 - P47: steady background noise stops Gemini from detecting the start of speech (emulator, synthetic noise; still needs the real-microphone check).

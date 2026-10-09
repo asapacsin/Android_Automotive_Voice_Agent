@@ -1834,3 +1834,31 @@ Measured from the driver's **last audible word**, not the end of the clip; edge-
 **Risk and next:**
 - The phone has always run the gate, so on Gemini the same stall may be behind P45's 12 s `ACTIVITY_END`. This fix applies there too. Verify on the phone.
 - A mid-sentence pause longer than the 1.2 s hangover now ends the turn at once. Before, the server would also have ended it after its own 1–2 s.
+
+## P50 — Qwen Maia on the emulator: replies held whole, a reset after every tool turn, stalls, and false claims about heard sentences
+
+**Status:** FIXED on the emulator 2026-10-09 (`cursor/10-9`); phone not yet verified. Found while building the Qwen Maia demo (owner: "build a demo, if during the demo anything conflict with our spec, you should fix it").
+
+**Seen (takes `qwen109b`–`e`, `rec109/*`, graded by `check_req.py`):**
+1. **Every chat reply was held until Qwen finished** (`UNCLASSIFIED_CLAIM`, 0.5–1.9 s). Chat was heard at 2.9 s, a thinking question at 3.8 s.
+2. **`ConversationResetPolicy` reconnected after every tool turn** (2.5–2.6 s each). The driver's next line, spoken during the reset, was lost twice in two takes; the multi-turn context went with it. The rule was measured on Baidu (2026-09-17); SPEC-021 left it open for Qwen (question 4).
+3. **Qwen stalled mid-reply** after a music hand-off: 「已经」 and then nothing for 15.7 s and 23.1 s, until the driver's next line cancelled it. The same words said alone never stalled (9/9 on the PC), so the stall is the server's.
+4. **An ability list was dropped as a claim** (「你干什么」, two groups in an enumeration, no 能/可以), then the 「没听清」 correction.
+5. **The claim correction asked for 「没听清」, which `DriverTurn` then dropped** for a heard sentence (`repair_for_heard_speech`): 「说话霸道一点」 took 5.8 s through claim → 没听清 → answer.
+6. **The first weather question made two Amap round trips** (district, then weather; 1.1–1.5 s each from the PC proxy; two of about eight lookups timed out at the 4 s limit).
+7. **`check_req.py` called Maia choppy** for 0.4–0.6 s sentence pauses that are in her own audio: every one came after Qwen had sent the whole reply.
+
+**Fix:**
+- SPEC-014 clause release, owner decision 2026-10-09 (`DriverTurn.clauseVerdict`, `DriverTurnPipeline.drainClauses`, `ProviderCapabilities.streamedReplyText`); see SPEC-014's status note.
+- `RealtimeDialect.resetsConversation`: false for Qwen, true for Baidu (SPEC-021 question 4).
+- `OpenAiRealtimeClient` stall watchdog: a response with no progress for 6 s is cancelled and asked for once more (`<prefix>_response_stalled`, `_stall_retry`).
+- `ActionClaimGuard.listsAbilities`: two or more groups in a 「、」 enumeration are a list (a completion word still makes it a claim).
+- `ActionClaimGuard.unverifiedClaim`: for a heard sentence (≥ 5 word characters) the correction asks for the request itself (`nudgeFor`), never 「没听清」.
+- `LiveInfoTool`: the district is cached per ~1 km cell for 30 min, and at session start the district and today's weather here are fetched in the background (`live_info_warm`).
+- Choppiness is now measured where the driver hears it: `reply_underrun ms=` when reply audio leaves the client later than the audio before it lasts. `check_req.py` grades the provider-voiced path on it (DEMO_REQUIREMENTS §1).
+
+**Measured after the fixes (final build, takes z_/r1_/r2_ in the session scratchpad):** chat 1.9-2.6 s, ability 2.0-2.7 s, thinking 2.4-2.6 s (one take 4.3 s, Qwen slow), music 2.3-4.3 s, scenario 3.0-5.1 s, weather 5.4-5.7 s (Amap from Macau, one 4 s timeout), bossy 3.0-10.2 s (10.2 s = a Qwen stall the watchdog cancelled and retried). No reply_underrun over 300 ms. **Demo video not yet composed** (owner asked to save and push first, 2026-10-09).
+
+**Still open:**
+- A weather question naming a city is looked up at question time: 1.1–4 s from the PC proxy in Macau, and a timeout means an honest "could not check". Not measured on the phone.
+- Qwen's own variance: end-of-speech 0.9–1.5 s after the last word (`semantic_vad` 800 ms), first audio after a tool result 0.3–1.5 s, and occasionally a reply generated close to real time (underruns up to 259 ms).

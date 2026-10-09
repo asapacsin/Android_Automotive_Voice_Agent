@@ -25,6 +25,7 @@ import com.novadrive.ingress.realtime.VoiceUiState
 class MainActivity : Activity() {
     private lateinit var controller: VoiceSessionController
     private lateinit var settingsRepository: BaiduSettingsRepository
+    private lateinit var liveInfo: LiveInfoTool
     private lateinit var screen: AssistantNavigationScreen
     private val mainHandler = Handler(Looper.getMainLooper())
     private val affordanceScope = kotlinx.coroutines.CoroutineScope(
@@ -55,12 +56,13 @@ class MainActivity : Activity() {
         val climateHandler = ClimateToolHandler(VehicleControlProvider.port)
         val savedPlaces = com.novadrive.app.nav.SavedPlaceStore(this)
         val placeLookup = com.novadrive.app.nav.LiveDestinationCandidateSource(this)
+        liveInfo = LiveInfoTool.live(this)
         val toolDispatcher = AndroidToolDispatcher(
             actionExecutor,
             climateHandler,
             VisionProvider.handler(this),
             phone = PhoneCallTool(com.novadrive.app.phone.PhoneProvider.port(this)),
-            liveInfo = LiveInfoTool.live(this),
+            liveInfo = liveInfo,
             cabin = VehicleControlProvider.port,
             music = com.novadrive.app.media.AndroidMusicHandoffTool(this),
             places = SavedPlaceTool(
@@ -123,6 +125,9 @@ class MainActivity : Activity() {
                         dispatched.blockedReason ?: "已执行 ${call.name}",
                     )
                     dispatched
+                },
+                onWaitCueVisual = { showing ->
+                    mainHandler.post { if (::screen.isInitialized) screen.setWorkingCue(showing) }
                 },
                 onListeningState = { state ->
                     com.novadrive.app.wake.WakeWordController.reconcile(this)
@@ -200,12 +205,12 @@ class MainActivity : Activity() {
      */
     private fun showConfigBannerIfNeeded() {
         val geminiSettings = GeminiSettingsRepository(this)
-        val code = geminiSettings.configProblem()
-            ?: when (geminiSettings.choice()) {
-                VoiceProviderId.GEMINI_LIVE -> AzureSpeechSettingsRepository(this).configProblem()
-                VoiceProviderId.QWEN -> QwenSettingsRepository(this).configProblem()
-                else -> null
-            }
+        val code = VoiceProviderChoice.startProblem(
+            geminiSettings.choice(),
+            qwen = { QwenSettingsRepository(this).configProblem() },
+            gemini = { geminiSettings.configProblem() },
+            azure = { AzureSpeechSettingsRepository(this).configProblem() },
+        )
         if (code == null) {
             if (::screen.isInitialized) screen.clearError(CONFIG_ERROR)
             return
@@ -347,6 +352,8 @@ class MainActivity : Activity() {
         val gemini = GeminiSettingsRepository(this)
         val choice = gemini.choice()
         DebugVoiceLog.log("session_provider choice=${choice.wireName}")
+        // The location fix exists by now; the first weather question then needs one round trip.
+        if (::liveInfo.isInitialized) liveInfo.warmHere()
         return try {
             sessionConfigFor(
                 choice,

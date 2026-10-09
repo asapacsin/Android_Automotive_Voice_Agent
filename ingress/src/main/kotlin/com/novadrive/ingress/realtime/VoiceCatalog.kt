@@ -88,6 +88,11 @@ data class ProviderCapabilities(
      * it ([RealtimeVoiceProvider.sendPrompt], [DomainVoiceEvent.AppPromptTurn]; SPEC-018).
      */
     val verbatimPromptSpeech: Boolean = false,
+    /**
+     * The provider streams the words of its spoken reply as they are generated, ahead of their
+     * audio, so the output gate can release a checked reply clause by clause (SPEC-014).
+     */
+    val streamedReplyText: Boolean = false,
 ) {
     val functionCalling: Boolean get() = customTools
 }
@@ -221,6 +226,8 @@ object VoiceCatalog {
                     serverSpeechActivityEvents = true,
                     toolCallCancellation = false,
                     verbatimPromptSpeech = false,
+                    // response.audio_transcript.delta streams the words ahead of the audio (SPEC-014).
+                    streamedReplyText = true,
                 )
             VoiceProviderId.GPT_LIVE ->
                 ProviderCapabilities(

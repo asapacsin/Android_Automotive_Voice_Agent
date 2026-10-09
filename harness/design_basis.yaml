@@ -32,3 +32,30 @@ entries:
       adds source-boundary review and Astra High contract review. This clears architecture selection,
       not numerical tuning or acoustic verification.
     suppresses_required_behavior: false
+  - id: DB-MAIA-UX-001
+    problem_class: product session voice is Qwen Maia only
+    triggers:
+      audio_media: true
+      persistence: true
+    status: PASS
+    selected_basis: repo
+    selected_pattern: >-
+      VoiceProviderChoice.resolve always returns Qwen and QwenOmniDialect sends Maia
+    evidence: >-
+      Owner instruction 2026-10-09: the product session voice is Maia. SPEC-021 seam
+      VoiceProviderChoice plus QwenOmniDialect session.update. Q-1 through Q-5 stay open.
+    suppresses_required_behavior: false
+  - id: DB-WAIT-CUE-001
+    problem_class: when Maia speaks a wait cue
+    triggers:
+      audio_media: true
+      async_lifecycle: true
+    status: PASS
+    selected_basis: repo
+    selected_pattern: >-
+      WaitCueTurn decides the cue. WaitCueAudio plays it outside the claim gate and outside the
+      session state machine. The on-screen working mark is a label only.
+    evidence: >-
+      Owner timing 2026-10-09: silent for 0-7s except a visual from 3s, one progress line at 7-8s
+      only if nothing useful has been spoken, a different delay line at 12s. SPEC-020 WaitCueAudio.
+    suppresses_required_behavior: false
