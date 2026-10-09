@@ -6,6 +6,14 @@
 
 **Wait cues, same day:** she does not say she is doing it on every turn. Silent for 7 s (on-screen 「处理中」 from 3 s). One 「收到，正在处理。」 at 7 s only if nothing useful has been spoken. A different delay line at 12 s. [SPEC-020](SPECS/SPEC-020-wait-cues.md). Not device-verified.
 
+**The Qwen Maia demo (owner, 2026-10-09: "pull the cursor 10-9 and start building up the require demo, fix the problem while building").** `cursor/10-9` (the owner's PC session: always-Qwen, 7 s cues, P50 demo fixes, takes recorded) is merged into `claude/10-9`. An independent review of it found I-1 leaks, now fixed in the cloud (JVM evidence only):
+- clause release no longer plays anything before the transcript classifies the turn; ability answers release only once they pass their own end rule; an enumeration that claims or promises the action is a claim (SPEC-014 note);
+- the wait cue Maia speaks is played only when its transcript is exactly the cue text and it had no tool call; a reply mistaken for the cue is handed back to the normal path (`ProviderCueCapture`); the stall retry goes through the turn gate;
+- 「今天珠海天气怎么样」 at the Zhuhai fix is answered from the session-start warm cache (SPEC-011 B4 amendment) — it was 5.4–5.7 s, over the 5 s limit;
+- `check_req.py` grades `reply_underrun` for every Qwen session; `seed_qwen.py --accept-consent` loads the key on the emulator.
+
+**Next — the owner's PC:** re-record every scene on `claude/10-9` HEAD and grade each take with `check_req.py` (`QWEN-EMU-001`; procedure in `tools/demo/recorder/README.md`), then compose the video (DEMO_REQUIREMENTS §4). The cloud container cannot run the emulator (no KVM; the app ships ARM-only native libraries).
+
 **Correction from the docs:** this model is served only from the workspace endpoint `wss://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/...`. The owner needs the **workspace ID** as well as the key (PC: `setx DASHSCOPE_WORKSPACE_ID <id>`).
 
 **Done (cloud, JVM evidence only):**
