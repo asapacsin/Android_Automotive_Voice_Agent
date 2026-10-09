@@ -7,6 +7,13 @@ import org.junit.jupiter.api.Test
 /** The debug dispatch log carries argument keys and result codes only (I-8). */
 class DebugToolReceiverRedactionTest {
     @Test
+    fun qwenSetupArgumentIsNeverLogged() {
+        val line = DebugToolReceiver.safeDebugArg("qwen_setup", "sk-secret-key-value")
+        assertEquals("<redacted>", line)
+        assertFalse(line.contains("sk-"))
+    }
+
+    @Test
     fun dispatchArgumentValuesAreNotLogged() {
         val line = DebugToolReceiver.redactDispatchArg("play_music:title=晴天,artist=周杰伦,query=放周杰伦的晴天")
         assertEquals("play_music:title,artist,query", line)

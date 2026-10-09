@@ -260,10 +260,22 @@ def run(out, scenes):
     s.serve()
     time.sleep(1)
     tool("voice", "start")
-    for _ in range(60):
-        if "gemini_setup_complete" in adb("logcat", "-d", "-s", "NovaVoice"):
+    ready = False
+    for _ in range(90):
+        log = adb("logcat", "-d", "-s", "NovaVoice")
+        if "qwen_session " in log or "gemini_setup_complete" in log:
+            ready = True
             break
+        if "session_provider_unavailable" in log:
+            reason = "unconfigured"
+            for code in ("QWEN_WORKSPACE_MISSING", "QWEN_API_KEY_MISSING", "QWEN_CONSENT_MISSING"):
+                if code in log:
+                    reason = code
+                    break
+            sys.exit(f"session not ready: {reason}")
         time.sleep(1)
+    if not ready:
+        sys.exit("session never became ready")
     time.sleep(3)
     video = os.path.join(out, "screen.webm")
     before = time.time()
@@ -294,7 +306,7 @@ def turn(s, key, **kw):
 
 
 def sc_intro(s):
-    s.title("小诺 · 新功能演示", "What is new on claude/10-8 — recorded 2026-10-08")
+    s.title("小诺 · 新功能演示", "Qwen Maia on cursor/10-9 — recorded 2026-10-09")
     time.sleep(4)
 
 

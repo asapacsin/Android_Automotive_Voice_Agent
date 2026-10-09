@@ -12,8 +12,8 @@ LINES = {
 }
 
 NOTES = {
-    "小诺 · 新功能演示": ("claude/10-8 分支：新增「等待提示」，以及之前的修复。每个场景都是一次连续的实时录制，回复前的等待一秒未剪。",
-                    "What claude/10-8 adds (wait cues) on top of the 10-3 fixes. Every scene is one continuous real-time take; no reply wait is cut."),
+    "小诺 · 新功能演示": ("cursor/10-9：通义千问 Omni，声音是 Maia。每个场景都是一次连续的实时录制，回复前的等待一秒未剪。",
+                    "cursor/10-9: Qwen-Omni, voice Maia. Every scene is one continuous real-time take; no reply wait is cut."),
     "1  需要等的时候，先应一声": ("查天气、找歌要几秒。前 7 秒不说话，屏幕上从第 3 秒显示「处理中」。满 7 秒还没有有用的话，才说一次「收到，正在处理。」。满 12 秒换一句说明网络可能慢，不把上一句再说一遍。",
                           "Silent for 7 s, with a 'working' label from 3 s. One progress line at 7 s, and a different delay line at 12 s."),
     "2  想一想的问题": ("闲聊也一样：7 秒内不插一句「我想想」。只有到了 7 秒还没开口，才说一次「收到，正在处理。」，然后接上真正的回答。",
@@ -22,8 +22,8 @@ NOTES = {
                       "An ability list used to be blocked as a claim of a done action (13-28 s of silence); now it plays straight away."),
     "4  一句话 → 多个动作": ("「有点闷」触发一个场景：打开空调、调大风量、前窗开一点。三个动作都由车辆接口确认后才播报。",
                        "\"It's stuffy\" runs a scenario: air on, fan up, front windows open a little, each confirmed by the car."),
-    "5  更多说话风格": ("「嗲」「元气」改变的是 Azure 语音的情感风格，不只是用词，并且会一直保持。没有的风格（霸道）会如实说明。",
-                  "Sweet and energetic styles change the voice itself and stick; an unknown style is refused honestly."),
+    "5  更多说话风格": ("语气可以换，声音还是 Maia。没有的风格（霸道）会如实说明，不会假装换了一个声音。",
+                  "The tone can change; the voice stays Maia. An unknown style is refused honestly."),
     "6  出错提示 12 秒后自动消失": ("断网（飞行模式）后启动会话：显示连接失败的提示卡片，12 秒后自动消失，不会一直挡在地图上。",
                            "With no network, the connection error card appears and fades by itself after 12 s."),
 }

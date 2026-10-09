@@ -39,13 +39,14 @@ def grade(run):
         nxt_clip = clips[i + 1][0] if i + 1 < len(clips) else 1e9
         nxt = [f for f in firsts if end < f < nxt_clip]
         limit = 3.5 if key in ACTION_KEYS else 3.0
-        if not nxt:
+        on = np.nonzero(heard_on[int(end * 100):int(min(nxt_clip, end + 40) * 100)])[0]
+        h = on[0] / 100 if len(on) else None
+        # Qwen speaks itself, so there is no assistant_voice_first_audio line. The captured reply is the measurement.
+        if not nxt and h is None:
             print(f"  {key:10s} NO REPLY")
             fails.append(key)
             continue
-        d = nxt[0] - end
-        on = np.nonzero(heard_on[int(end * 100):int(min(nxt_clip, end + 40) * 100)])[0]
-        h = on[0] / 100 if len(on) else None
+        d = (nxt[0] - end) if nxt else h
         cue = [f"{c}@{ct - end:.1f}" for ct, c in cues if end - 1.5 < ct < nxt_clip]
         ok = (h if h is not None else d) <= limit
         hs = f"{h:4.1f}" if h is not None else " -- "
@@ -79,6 +80,9 @@ def grade(run):
         else:
             i += 1
     print(f"  audio holes 150-600 ms inside replies: {holes}")
+    if not gaps and any(h > 0.30 for h in holes):
+        print("  clause gaps (captured audio) FAIL max hole > 300 ms")
+        fails.append("gaps")
     azure = [int(m.group(1)) for l in lines for m in [re.search(r"azure_tts_first_audio ms=(\d+)", l)] if m]
     warm = [l.split("azure_warm", 1)[1].strip() for l in lines if "azure_warm" in l]
     print(f"  azure first audio ms: first={azure[:1]} all-max={max(azure) if azure else None}  warm-ups={warm[:4]}")
