@@ -6,7 +6,10 @@ import json, os, re, statistics, sys, wave
 import numpy as np
 
 CLIPS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "clips")
-ACTION_KEYS = {"weather", "nav", "music", "stuffy", "hot", "mosq", "mosq_out", "seat_high"}
+ACTION_KEYS = {"weather", "nav", "music", "stuffy", "hot", "mosq", "mosq_out", "seat_high",
+               # the commute demo (docs/DEMO_COMMUTE.md): every line that runs a tool
+               "c_seat", "c_seat2", "c_nav", "c_pick", "c_go", "c_mosq", "c_mosq2", "c_music",
+               "c_traffic", "c_weather", "c_close", "c_end"}
 
 
 def audible_end(key):

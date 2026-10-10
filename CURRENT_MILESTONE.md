@@ -14,6 +14,8 @@
 
 **Next — the owner's PC:** re-record every scene on `claude/10-9` HEAD and grade each take with `check_req.py` (`QWEN-EMU-001`; procedure in `tools/demo/recorder/README.md`), then compose the video (DEMO_REQUIREMENTS §4). The cloud container cannot run the emulator (no KVM; the app ships ARM-only native libraries).
 
+**Commute demo (owner, 2026-10-10):** a demo in the order of the Weibo 家越07 / 豆包座舱 video (style, seat + 「再调高一点」, mosquito + 「还没走」, a song from a vague description) on the trip 横琴创业谷 → 横琴镇: [docs/DEMO_COMMUTE.md](docs/DEMO_COMMUTE.md), recorder scenes `commute_*` with `KEEP=1`, test row `DEMO-COMMUTE-001`. Recording needs the owner's PC.
+
 **Correction from the docs:** this model is served only from the workspace endpoint `wss://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/...`. The owner needs the **workspace ID** as well as the key (PC: `setx DASHSCOPE_WORKSPACE_ID <id>`).
 
 **Done (cloud, JVM evidence only):**

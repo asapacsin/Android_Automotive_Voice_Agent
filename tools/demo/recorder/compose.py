@@ -5,11 +5,16 @@
 import json, os, subprocess, sys
 CLIPS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "clips")
 
-LINES = {
-    "what": "你干什么", "what2": "你会干啥", "what3": "你都能帮我干嘛", "stuffy": "有点闷", "sweet": "说话嗲一点", "food": "你喜欢吃什么", "genki": "元气一点",
-    "bossy": "说话霸道一点", "normal": "正常一点", "color": "你喜欢什么颜色", "cold": "讲个冷知识",
-    "weather": "今天珠海天气怎么样", "nav": "导航去珠海金湾机场", "music": "放一首轻松的歌", "philo": "你觉得人为什么要开车",
-}
+
+
+def _driver_lines():
+    """The driver lines, from make_clips.py (one source; it is read, not imported, so edge-tts is not needed)."""
+    import ast, re
+    src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "make_clips.py"), encoding="utf-8").read()
+    return ast.literal_eval(re.search(r"LINES = (\{.*?\n\})", src, re.S).group(1))
+
+
+LINES = _driver_lines()
 
 NOTES = {
     "小诺 · 新功能演示": ("cursor/10-9：通义千问 Omni 端到端语音，声音是 Maia，不再经过 Azure。回复逐句检查后边生成边播（SPEC-014）。每个场景都是一次连续的实时录制，回复前的等待一秒未剪。",
@@ -27,6 +32,21 @@ NOTES = {
     "6  出错提示 12 秒后自动消失": ("断网（飞行模式）后启动会话：显示连接失败的提示卡片，12 秒后自动消失，不会一直挡在地图上。",
                            "With no network, the connection error card appears and fades by itself after 12 s."),
 }
+NOTES.update({
+    # The commute demo (docs/DEMO_COMMUTE.md), in the order of the 豆包座舱 review video.
+    "1  上车：换个说话方式，调座椅": ("上车后先让她说话嗲一点（只换语气，声音还是 Maia），再把主驾座椅调高一点、再高一点——第二句「再调高一点」没说是什么，由上一句的座椅推断。座椅动作由车辆接口确认后才播报。",
+                            "A sweeter tone (the voice stays Maia), then the seat up, and 'higher again' resolved from context. Each action is confirmed by the car before she says it."),
+    "2  出发：导航去横琴镇": ("从横琴创业谷出发。说「导航去横琴镇」，屏幕列出地点，说「第一个」选路线，再说「开始导航」。车是模拟器里模拟行驶的。",
+                        "From 横琴创业谷: pick the place, pick the route, start. The car is driven by the emulator's route simulation."),
+    "3  路上：有蚊子": ("「前风挡那儿有一只蚊子」触发场景：车窗打开一半让它飞出去。「蚊子还没走」时她自己决定下一步，说的只是车辆确认过的动作。",
+                    "A mosquito: the windows open halfway. When it stays, she decides the next step and says only what the car confirmed."),
+    "4  路上：说不全的歌名": ("只说「阿Sa的老公唱的、叫闭目什么的」，她要自己想到是郑中基《闭目入神》，交给音乐 app 去找。没确认在播之前，她不会说「正在播放」。",
+                         "From a vague description she works out the song and hands it to the music app; she never says it is playing unless that is confirmed."),
+    "5  路上：问路况、天气，关窗": ("前面堵不堵、今天天气，都来自高德的实时查询，不是模型编的。最后关窗。",
+                            "Traffic ahead and today's weather come from live Amap lookups, not from the model; then the windows close."),
+    "6  到达横琴镇": ("模拟行驶到达终点，导航自己结束。等待到达的时间在成片里略去，并标出 ⏩。",
+                   "The simulated drive arrives and navigation ends by itself. The wait for arrival is cut in the final video and marked ⏩."),
+})
 RENAME = {
     "7  需要等的时候，先应一声": ("1  需要等的时候，先应一声", "A slow task: she says she is on it, and why if it takes longer"),
     "8  想一想的问题": ("2  想一想的问题", "A question that needs thought gets a short 'let me think'"),
