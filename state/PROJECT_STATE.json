@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-10-10T14:18:01",
+  "generated_at": "2026-10-10T14:52:00",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "74d8ef8",
+    "commit": "5367d68",
     "branch": "claude/10-9",
-    "subject": "Mosquito scenario reports windows already half open; music clip says 阿萨",
+    "subject": "Claim gate: a window phrase is a claim only as a promise or completion (review)",
     "working_tree_clean": false,
-    "uncommitted_files": 4
+    "uncommitted_files": 3
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-10-10T14:16:53",
+    "collected_at": "2026-10-10T14:51:08",
     "total": {
-      "tests": 2104,
+      "tests": 2106,
       "failures": 0,
       "errors": 0,
       "skipped": 3
@@ -25,7 +25,7 @@
         "skipped": 0
       },
       "app": {
-        "tests": 1793,
+        "tests": 1795,
         "failures": 0,
         "errors": 0,
         "skipped": 3
@@ -142,6 +142,11 @@
       "priority": "RESOLVED"
     },
     {
+      "id": "D-12",
+      "title": "「空调」 alone reads as an action claim",
+      "priority": "OPEN"
+    },
+    {
       "id": "D-9",
       "title": "The hold budget releases a reply whose words were never judged",
       "priority": "OPEN"
@@ -163,7 +168,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "A0: | A0 | G-1 … G-1f measured on the short route | measurement (emulator) | `GUIDANCE-EMU-001` | not earned |",
-    "actionable_count": 121,
+    "actionable_count": 122,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 27,
@@ -909,6 +914,13 @@
         "class": "active milestone row",
         "source": "CURRENT_MILESTONE.md",
         "item": "Weather selected from speech ≥ 9/10 with no SPEC-008 regress",
+        "blocked_by": null
+      },
+      {
+        "priority": 8,
+        "class": "recorded technical debt",
+        "source": "docs/TECH_DEBT.md",
+        "item": "D-12",
         "blocked_by": null
       },
       {

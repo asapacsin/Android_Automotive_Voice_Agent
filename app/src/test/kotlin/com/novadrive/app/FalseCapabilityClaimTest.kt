@@ -404,6 +404,8 @@ class FalseCapabilityClaimTest {
             "我摇下车窗。",
             "我把车窗摇下来。",
             "关窗了，放心吧。",
+            "好的，正在为你开窗。",
+            "已为你关窗。",
         ).forEach { assertNotNull(ActionClaimGuard.carActionClaimMatch(it), it) }
     }
 
@@ -427,6 +429,10 @@ class FalseCapabilityClaimTest {
             "我觉得开窗通风比较好。",
             "我开车的时候不喜欢开窗。",
             "最好先开窗散散味。",
+            "关窗好一点，外面太吵了。",
+            "开窗好处是空气新鲜，坏处是噪音大。",
+            "开窗好还是关窗好，主要看外面温度。",
+            "等它飞出去了再关窗。",
         ).forEach { assertNull(ActionClaimGuard.carActionClaimMatch(it), it) }
         assertFalse(ActionClaimGuard.claimsDone("车窗没能开大，已经到顶了。"))
     }
@@ -435,6 +441,7 @@ class FalseCapabilityClaimTest {
     fun windowChatIsReleasedAndTheLiveCaseIsNot() {
         assertReleased("今天风好大啊", "风大的话先别开窗，噪音会很大。")
         assertReleased("车里有点味道", "开窗通风一下会好很多。")
+        assertReleased("外面好吵", "关窗好一点，外面太吵了。")
         assertNotReleased("蚊子还没走", "那再开大点窗，让它赶紧飞出去。")
         // The guard does not ask the model to act on a question back to the driver.
         val guard = ActionClaimGuard()

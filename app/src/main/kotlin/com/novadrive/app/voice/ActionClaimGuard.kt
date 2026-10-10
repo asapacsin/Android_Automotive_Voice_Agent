@@ -267,16 +267,20 @@ class ActionClaimGuard {
         private val WINDOW_VERB_FIRST = Regex("(开|关|摇|降|升)(大|小|上|下|高|低|开)?一?(点儿?|些)?(车窗|窗户|窗)(?!外|帘)")
 
         /** Before the verb, in the same clause: she is doing it. A bare 「我」 counts only right before the verb (「我觉得开窗…」 is an opinion). */
-        private val WINDOW_PROMISE_MARKERS = listOf("帮你", "帮您", "给你", "给您", "替你", "这就", "马上", "立刻", "再", "先")
+        private val WINDOW_PROMISE_MARKERS = listOf(
+            "帮你", "帮您", "给你", "给您", "替你", "为你", "为您", "这就", "马上", "立刻", "正在", "已", "再", "先",
+        )
 
         /** Anywhere in the clause: negated, advisory or hypothetical, so not an action. */
         private val WINDOW_NOT_ACTION_WORDS = listOf(
             "别", "不", "没", "无法", "可以", "建议", "的话", "如果", "要是", "能",
             "觉得", "应该", "最好", "比较", "也许", "或者",
+            // Sequencing, not a promise: 「等它飞出去了再关窗」「到服务区之后再开窗」.
+            "等它", "之后", "以后",
         )
 
-        /** Right after the phrase: it is done. 「开窗了吗」 is a question. */
-        private val WINDOW_DONE_AFTER = Regex("^(了(?!吗)|好|到)")
+        /** Right after the phrase: it is done. 「开窗了吗」 is a question; a bare 好 is chat (「关窗好一点」「开窗好处」). */
+        private val WINDOW_DONE_AFTER = Regex("^(了(?!吗)|好了|到)")
 
         private val CLAUSE_BREAK = Regex("[，。！？；,.!?;、]")
 
