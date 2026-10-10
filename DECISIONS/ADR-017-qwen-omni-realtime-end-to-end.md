@@ -108,3 +108,15 @@ Gemini, Azure or Baidu stacks still waits for **Q-5 plus explicit owner confirma
 
 **Developer screen (owner, 2026-10-10: "rebuild the developer interface… remove irrelevant ones, redundancy").** `DeveloperSettingsActivity` shows only what the product session uses: a status card, Qwen-Omni (with a mic-less Test connection), persona, Amap, wake word, camera, permissions, collapsed diagnostics, and a confirmed clear-all (`CredentialWipe`). The Baidu, Gemini and Azure fields are gone from the screen; their code and stored values stay until Q-5. `ArchitectureRulesTest.developerSettingsNamesNoDormantProvider` keeps them off it.
 
+**Experiment model (owner, 2026-10-10):** the owner wants to spend experiment runs on another model's free quota and keep qwen3.8's for the final demo.
+- The owner first named `qwen3-omni-flash-realtime-2025-09-15`. Alibaba's docs (fetched 2026-10-10) rule it out:
+  - it is not among the realtime models with function calling (only qwen3.8-omni-flash, qwen3.5-omni-plus and qwen3.5-omni-flash realtime are);
+  - its voice list has no Maia;
+  - it keeps 8 dialog turns.
+- `qwen3.5-omni-plus-realtime` has function calling, Maia and semantic_vad, and accepts the same `session.update`. It is now selectable in the developer screen as 实验 (`VoiceCatalog.QWEN_OMNI_PLUS_35`). qwen3.8 stays the default.
+- Switching is a setting, not code. It is one model per session, chosen by the owner; there is never an automatic switch when a quota runs out (ADR-013).
+- **Billing facts from the same docs:**
+  - 3.8 and 3.5 bill input audio at 7 tokens/s and output audio at 12.5 tokens/s.
+  - 3.8 also bills the output text; 3.5 does not.
+  - "Stop-on-Exhaust" should be on for every enabled model.
+

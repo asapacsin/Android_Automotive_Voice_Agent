@@ -80,4 +80,18 @@ class QwenSettingsTest {
             assertEquals("Maia", built.settings.voice)
         }
     }
+
+    @Test
+    fun theExperimentModelIsAcceptedAndReachesTheEndpoint() {
+        val s = QwenAppSettings(consentAccepted = true, model = VoiceCatalog.QWEN_OMNI_PLUS_35, workspaceId = "ws-1")
+        assertEquals(null, QwenSettingsValidator.validateSettings(s))
+        assertTrue(QwenSettings.endpointUrl(s).endsWith("?model=qwen3.5-omni-plus-realtime"))
+        assertEquals(com.novadrive.ingress.realtime.VoiceProviderId.QWEN, VoiceCatalog.providerForModel(VoiceCatalog.QWEN_OMNI_PLUS_35))
+    }
+
+    @Test
+    fun theOldQwen3OmniRealtimeIsNotOfferedItHasNoFunctionCalling() {
+        val s = QwenAppSettings(consentAccepted = true, model = "qwen3-omni-flash-realtime-2025-09-15", workspaceId = "ws-1")
+        assertEquals("QWEN_MODEL_INVALID", QwenSettingsValidator.validateSettings(s))
+    }
 }

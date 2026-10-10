@@ -19,6 +19,8 @@ import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.TextView
 import com.novadrive.app.voice.PcmAudioCapture
 import com.novadrive.app.voice.QwenOmniClient
@@ -108,8 +110,17 @@ class DeveloperSettingsActivity : Activity() {
         val consent = CheckBox(this).apply { text = "我已阅读并同意 / I accept"; isChecked = saved.consentAccepted }
         val key = secretField(if (qwen.keyPresent()) "DashScope API Key（已配置；留空保留）" else "DashScope API Key")
         val workspace = EditText(this).apply { setText(saved.workspaceId); hint = "Workspace ID（ap-southeast-1）" }
+        // Each model has its own free quota: experiment on 3.5 Plus, keep 3.8 for the final demo (owner, 2026-10-10).
+        val modelButtons = com.novadrive.ingress.realtime.VoiceCatalog.qwenModels.entries.associate { (wire, label) ->
+            RadioButton(this).apply { text = label; id = View.generateViewId() } to wire
+        }
+        val modelGroup = RadioGroup(this).apply {
+            modelButtons.forEach { (button, wire) -> addView(button); if (wire == saved.model) check(button.id) }
+        }
         val save = button("保存 / Save") {
             val settings = qwen.loadSettings().copy(
+                model = modelButtons.entries.firstOrNull { it.key.id == modelGroup.checkedRadioButtonId }?.value
+                    ?: com.novadrive.ingress.realtime.VoiceCatalog.QWEN_OMNI_FLASH,
                 consentAccepted = consent.isChecked,
                 workspaceId = workspace.text.toString().trim(),
                 voice = QwenAppSettings.DEFAULT_VOICE,
@@ -129,6 +140,7 @@ class DeveloperSettingsActivity : Activity() {
         return card(
             "语音服务 · Qwen-Omni",
             label(QwenAppSettings.CONSENT_NOTICE), consent, label("API Key"), key, label("Workspace ID"), workspace,
+            label("模型（各有独立免费额度）/ Model (each has its own free quota)"), modelGroup,
             label("声音：Maia（固定）/ Voice: ${QwenAppSettings.DEFAULT_VOICE} (fixed)"),
             save, clearKey, test, label("下次开始会话时生效 / Takes effect at the next session start."),
         )

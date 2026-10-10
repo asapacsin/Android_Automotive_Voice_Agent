@@ -1,5 +1,6 @@
 package com.novadrive.app.livedemo
 
+import com.novadrive.ingress.realtime.VoiceCatalog
 import com.novadrive.app.AndroidToolDispatcher
 import com.novadrive.app.AmapPoiClient
 import com.novadrive.app.CoreActionExecutor
@@ -150,7 +151,13 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
         return when (choice) {
             "qwen" -> SessionProviderConfig.Qwen(
                 QwenSettingsValidator.configOrThrow(
-                    QwenAppSettings(consentAccepted = true, workspaceId = env("DASHSCOPE_WORKSPACE_ID"), voice = QwenAppSettings.DEFAULT_VOICE),
+                    QwenAppSettings(
+                        consentAccepted = true,
+                        // NOVA_QWEN_MODEL=qwen3.5-omni-plus-realtime experiments on that model's own quota.
+                        model = System.getenv("NOVA_QWEN_MODEL")?.takeIf { it.isNotBlank() } ?: VoiceCatalog.QWEN_OMNI_FLASH,
+                        workspaceId = env("DASHSCOPE_WORKSPACE_ID"),
+                        voice = QwenAppSettings.DEFAULT_VOICE,
+                    ),
                     env("DASHSCOPE_API_KEY"), instructions,
                 ),
             )

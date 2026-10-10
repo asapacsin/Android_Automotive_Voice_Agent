@@ -112,6 +112,12 @@ object VoiceCatalog {
     const val DEFAULT_MODEL = "qianfan-realtime-flex-v1"
     /** SPEC-021: Qwen-Omni realtime (Alibaba Cloud, Singapore). Not selectable yet. */
     const val QWEN_OMNI_FLASH = "qwen3.8-omni-flash-realtime"
+    /**
+     * The owner's experiment model (2026-10-10), on its own free quota so qwen3.8's is kept for the final
+     * demo. The docs list it with function calling, Maia and semantic_vad. The older
+     * qwen3-omni-flash-realtime is not offered: it has no function calling and no Maia.
+     */
+    const val QWEN_OMNI_PLUS_35 = "qwen3.5-omni-plus-realtime"
     const val GPT_LIVE_1 = "gpt-live-1"
     const val BAIDU_LITE_NEAR = "audio-mini-realtime-near"
     const val BAIDU_LITE_FAR = "audio-mini-realtime-far"
@@ -127,7 +133,8 @@ object VoiceCatalog {
 
     val qwenModels: Map<String, String> =
         mapOf(
-            QWEN_OMNI_FLASH to "Qwen Omni Flash",
+            QWEN_OMNI_FLASH to "Qwen3.8 Omni Flash（正式 / final）",
+            QWEN_OMNI_PLUS_35 to "Qwen3.5 Omni Plus（实验 / experiments）",
         )
     val gptLiveModels: Map<String, String> =
         mapOf(GPT_LIVE_1 to "GPT Live 1")
