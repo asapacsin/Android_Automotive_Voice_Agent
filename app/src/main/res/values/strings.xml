@@ -57,5 +57,4 @@
     <string name="wake_word_enable">Wake Word: Enable</string>
     <string name="wake_word_disable">Wake Word: Disable</string>
     <string name="mic_test">麦克风测试</string>
-    <string name="structured_demo">结构化演示（人民广场）</string>
 </resources>

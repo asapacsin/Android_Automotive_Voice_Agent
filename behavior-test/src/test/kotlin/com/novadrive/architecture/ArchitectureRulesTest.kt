@@ -413,4 +413,18 @@ class ArchitectureRulesTest {
             "temperature_down", "fan_up", "fan_down",
         )
     }
+
+    // ---- ADR-017: the developer screen shows only what the product session uses ----
+
+    @Test
+    fun developerSettingsNamesNoDormantProvider() {
+        val body = text("app/src/main/kotlin/com/novadrive/app/DeveloperSettingsActivity.kt")
+        val forbidden = listOf(
+            "GeminiSettingsRepository", "AzureSpeechSettingsRepository", "BaiduFlexClient",
+            "BaiduRealtimeClient", "VoiceProviderPreference", "ReplaySpeechToSpeechPort",
+        ).filter { body.contains(it) }
+        assertTrue(forbidden.isEmpty()) {
+            "ADR-017: DeveloperSettingsActivity must not reference dormant providers (CredentialWipe owns the clear): $forbidden"
+        }
+    }
 }
