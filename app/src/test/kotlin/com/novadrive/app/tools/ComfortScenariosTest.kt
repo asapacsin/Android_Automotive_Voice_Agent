@@ -136,7 +136,16 @@ class ComfortScenariosTest {
         assertTrue(port.cabinState.value.windows.values.all { it == 50 })
         assertEquals("车窗都开了一半。", opened.getString("announce"))
 
-        context.onSpeechStarted(3); context.onDriverUtterance("蚊子出去了", 3)
+        // 「蚊子还没走」 runs mosquito again: nothing changes, so it must not be announced as an opening.
+        context.onSpeechStarted(3); context.onDriverUtterance("蚊子还没走", 3)
+        val again = scenario(d, "mosquito")
+        assertTrue(again.getBoolean("ok"))
+        assertEquals("already_open", again.getString("status"))
+        assertEquals(0, steps(again).size)
+        assertEquals("车窗已经开着一半了，这次没有再动。", again.getString("announce"))
+        assertTrue(port.cabinState.value.windows.values.all { it == 50 })
+
+        context.onSpeechStarted(4); context.onDriverUtterance("蚊子出去了", 4)
         val closed = scenario(d, "mosquito_done")
         assertTrue(closed.getBoolean("ok"))
         assertTrue(port.cabinState.value.windows.values.all { it == 0 })

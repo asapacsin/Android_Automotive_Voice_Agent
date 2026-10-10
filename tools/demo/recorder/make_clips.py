@@ -32,7 +32,8 @@ LINES = {
     "c_go": "开始导航",
     "c_mosq": "前风挡那儿有一只蚊子",
     "c_mosq2": "蚊子还没走",
-    "c_music": "帮我放首歌，阿Sa的老公唱的，最近很火那首，叫闭目什么的",
+    # 阿萨, not 阿Sa: edge-tts spells "Sa" out as letters and the model then hears "RSA" (live takes 2026-10-10).
+    "c_music": "帮我放首歌，阿萨的老公唱的，最近很火那首，叫闭目什么的",
     "c_traffic": "前面堵不堵",
     "c_weather": "今天天气怎么样",
     "c_close": "蚊子出去了，关上吧",

@@ -41,7 +41,7 @@ The same order, as a short commute from 横琴·澳门青年创业谷 (WGS-84 22
 | | `c_go` | 开始导航 | the emulated drive starts (`nav_started`), then 40 km/h | — |
 | c3 mosq | `c_mosq` | 前风挡那儿有一只蚊子 | `run_scenario` mosquito: windows open halfway | V5 |
 | | `c_mosq2` | 蚊子还没走 | **model-dependent:** no playbook covers it; a correct answer is a confirmed action (for example `control_climate` fan up, as in the video) or an honest question. Never a claim with no tool result | V6 |
-| c4 music | `c_music` | 帮我放首歌，阿Sa的老公唱的，最近很火那首，叫闭目什么的 | `play_music` with 郑中基 / 闭目入神 worked out by the model (SPEC-017). She names the song only if playback is confirmed; otherwise 「已经让音乐 app 去找了」 | V7 |
+| c4 music | `c_music` | 帮我放首歌，阿萨的老公唱的，最近很火那首，叫闭目什么的 (written 阿萨: the TTS spells 阿Sa out as letters) | `play_music` with 郑中基 / 闭目入神 worked out by the model (SPEC-017). She names the song only if playback is confirmed; otherwise 「已经让音乐 app 去找了」 | V7 |
 | c5 ask | `c_traffic` | 前面堵不堵 | `query_live_info` route_traffic on the active route | — |
 | | `c_weather` | 今天天气怎么样 | weather here from the session-start warm cache (SPEC-011 B4) | — |
 | | `c_close` | 蚊子出去了，关上吧 | `run_scenario` mosquito_done: windows closed | — |
