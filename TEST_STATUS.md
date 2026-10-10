@@ -2,7 +2,7 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-21 · 155 tests
+Updated 2026-09-21 · 156 tests
 
 | | |
 | --- | --- |
@@ -10,7 +10,7 @@ Updated 2026-09-21 · 155 tests
 | autonomous FAIL | 0 |
 | incomplete | 0 |
 | partial pass | 0 |
-| not run | 67 |
+| not run | 68 |
 | human required | 26 |
 | human pass | 0 |
 | human fail | 1 |
@@ -82,6 +82,7 @@ Updated 2026-09-21 · 155 tests
 - QWEN-PROBE-Q1-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - QWEN-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - DEMO-COMMUTE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- DEVUI-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - GUIDANCE-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - CONFIG-CARD-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - P45-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -117,7 +118,7 @@ Updated 2026-09-21 · 155 tests
 | reliability | 8 | 4 | 1 | 3 |
 | saved_places | 3 | 0 | 0 | 3 |
 | security | 3 | 3 | 0 | 0 |
-| speech | 22 | 8 | 8 | 5 |
+| speech | 23 | 8 | 8 | 6 |
 | truthfulness | 9 | 4 | 0 | 5 |
 | turn_taking | 19 | 7 | 3 | 9 |
 | unsupported | 1 | 0 | 0 | 1 |
@@ -228,6 +229,7 @@ Updated 2026-09-21 · 155 tests
 | DEMO-10-2-001 | speech | One demo run that exercises every claude/10-2 function, graded by the log checker | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | tools/demo/check_demo_log.py --selftest OK (2026-10-02 cloud) |
 | DEMO-10-3-001 | speech | One demo run that exercises the essential functions and every claude/10-2 and claude/10-3 function, graded by the log checker | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | tools/demo/check_demo_log.py --selftest OK (2026-10-03 cloud, 10-3 checks included) |
 | DEMO-COMMUTE-001 | speech | The commute demo 横琴创业谷 → 横琴镇, in the order of the 豆包座舱 review video, under docs/DEMO_REQUIREMENTS.md | AUTONOMOUS | NOT_RUN | no | — |
+| DEVUI-EMU-001 | speech | The rebuilt developer screen on the emulator: cards render, each saves itself, Test connection, clear-all confirm | AUTONOMOUS | NOT_RUN | no | 2026-10-10 cloud 2a5c6cd: app 1789/0, behavior-test 131/0 (developerSettingsNamesNoDorm… |
 | P45-EMU-001 | speech | The P45 conversation on the emulator with live speech, with the Azure voice | AUTONOMOUS | NOT_RUN | no | — |
 | P45-UNIT-001 | speech | An interrupted unheard reply is never synthesised; a question restarts the sleep window; turn timings are logged | AUTONOMOUS | PASS | no | 2026-10-02 cloud, claude/10-2: GeminiLiveClientTest 69/0, ListeningLifecycleTest 36/0, … |
 | P50-REVIEW-UNIT-001 | speech | P50 review fixes: clause release and the provider-spoken wait cue never play unchecked model audio (I-1) | AUTONOMOUS | PASS | no | 2026-10-09 cloud, claude/10-9 9bdb135: app 3564/0 (debug 1785 + release 1779), behavior… |

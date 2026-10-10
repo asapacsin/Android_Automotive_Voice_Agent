@@ -2863,6 +2863,23 @@ tests:
     related: [QWEN-EMU-001, SPEC-015, SPEC-017, SPEC-011, SPEC-020, P50]
     last_run: {at: null, result: null}
 
+  - id: DEVUI-EMU-001
+    capability: speech
+    name: "The rebuilt developer screen on the emulator: cards render, each saves itself, Test connection, clear-all confirm"
+    purpose: "Owner request 2026-10-10 (rebuild the developer interface); JVM covers only DeveloperSettingsStatus and the no-dormant-provider rule"
+    type: device
+    scope: INTERMEDIATE_FLOW
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    covers: []
+    prerequisites: ["emulator nova_api34 on the owner's PC with claude/10-9 at or after 500e1fc"]
+    procedure: ["open 开发者设置; screenshot every card", "save the Qwen card with a key: hint shows 已配置, value never shown", "测试连接: QWEN_CONNECTION_OK or a QWEN_* code", "清除所有密钥: dialog, then every status line shows ✗"]
+    pass_criteria: ["no Baidu/Gemini/Azure field on screen", "status card matches the config banner", "no secret value in the screen, a toast or logcat"]
+    evidence: ["2026-10-10 cloud 2a5c6cd: app 1789/0, behavior-test 131/0 (developerSettingsNamesNoDormantProvider), DeveloperSettingsStatusTest 4/0"]
+    related: [ADR-017, SPEC-018, SPEC-021]
+    last_run: {at: null, result: null}
+
   - id: QWEN-VOICE-EAR-001
     capability: speech
     name: "ADR-017 gate Q-2: Maia against Xiaoyi, by ear, on the probe's clips"

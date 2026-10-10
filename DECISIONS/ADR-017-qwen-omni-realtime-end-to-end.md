@@ -105,3 +105,6 @@ the Q-1…Q-5 table above. Implementation: `VoiceProviderChoice.resolve` always 
 developer-settings voices (Gemini, Baidu, Azure, non-Maia Qwen strings) do not select the session.
 **Gates Q-1 through Q-5 remain open** — this amendment does not mark them passed. Deleting the
 Gemini, Azure or Baidu stacks still waits for **Q-5 plus explicit owner confirmation** (ADR-008).
+
+**Developer screen (owner, 2026-10-10: "rebuild the developer interface… remove irrelevant ones, redundancy").** `DeveloperSettingsActivity` shows only what the product session uses: a status card, Qwen-Omni (with a mic-less Test connection), persona, Amap, wake word, camera, permissions, collapsed diagnostics, and a confirmed clear-all (`CredentialWipe`). The Baidu, Gemini and Azure fields are gone from the screen; their code and stored values stay until Q-5. `ArchitectureRulesTest.developerSettingsNamesNoDormantProvider` keeps them off it.
+
