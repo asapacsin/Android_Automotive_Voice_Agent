@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-09T12:01:54",
+  "generated_at": "2026-10-10T13:28:12",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "9bdb135",
+    "commit": "3e0be4b",
     "branch": "claude/10-9",
-    "subject": "Merge P50 cue fix 2: capture survives busy errors, early cancels and lost dones (re-review A-F)",
-    "working_tree_clean": false,
-    "uncommitted_files": 3
+    "subject": "Qwen experiment model: qwen3.5-omni-plus-realtime selectable (owner, 2026-10-10)",
+    "working_tree_clean": true,
+    "uncommitted_files": 0
   },
   "tests": {
     "available": true,
@@ -163,7 +163,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "A0: | A0 | G-1 … G-1f measured on the short route | measurement (emulator) | `GUIDANCE-EMU-001` | not earned |",
-    "actionable_count": 119,
+    "actionable_count": 121,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 27,
@@ -482,6 +482,20 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "CTX-CHAIN-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "DEMO-COMMUTE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "DEVUI-EMU-001",
         "blocked_by": null
       },
       {
