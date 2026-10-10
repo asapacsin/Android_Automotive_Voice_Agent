@@ -108,3 +108,5 @@ It writes the recorder's artifacts, so `check_req.py` grades it unchanged, and `
 - The weather line uses the GPS fix the recorder sets before the app starts. A take started without the
   fix (KEEP=1 on a fresh app) asks a cold Amap lookup and may exceed 3.5 s.
 - 横琴镇 is a town, so the place search may list several candidates; 第一个 takes the top one.
+
+**Quota (AGENTS.md hard rule):** every live Qwen session spends the owner's limited free quota. Prove what you can offline first; run live only with the owner's go for that run, with `NOVA_SPEND_QWEN_QUOTA=yes` set. Without it this tool refuses to open a Qwen session.

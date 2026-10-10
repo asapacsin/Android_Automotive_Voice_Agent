@@ -81,3 +81,5 @@ output 0.54-0.83 s; Azure first audio 0.26-0.74 s).
 
 Synthetic clips and synthetic sentences only. A stock voice only (Maia); no voice cloning. Keep the
 key out of files, URLs and logs.
+
+**Quota (AGENTS.md hard rule):** every live Qwen session spends the owner's limited free quota. Prove what you can offline first; run live only with the owner's go for that run, with `NOVA_SPEND_QWEN_QUOTA=yes` set. Without it this tool refuses to open a Qwen session.

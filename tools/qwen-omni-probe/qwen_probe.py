@@ -478,6 +478,8 @@ def main(argv):
         return 0
     if not env("DASHSCOPE_API_KEY"):
         sys.exit("DASHSCOPE_API_KEY is required")
+    if env("NOVA_SPEND_QWEN_QUOTA") != "yes":
+        sys.exit("live Qwen sessions spend the owner's limited free quota (AGENTS.md hard rule); set NOVA_SPEND_QWEN_QUOTA=yes only when the owner approved this run")
     if cmd == "latency":
         for _ in range(int(rest[1]) if len(rest) > 1 else 1):
             asyncio.run(run_latency(rest[0]))
@@ -612,7 +614,8 @@ def selftest():
 
     def run(args, scen, **extra):
         e = {k: v for k, v in os.environ.items() if not k.startswith(("DASHSCOPE", "QWEN", "HTTP", "HTTPS", "http"))}
-        e |= {"DASHSCOPE_API_KEY": key, "PACE": "0", "SPEECH_DIR": sp, "OUT": out, "TIMEOUT_S": "5",
+        e |= {"NOVA_SPEND_QWEN_QUOTA": "yes",  # a local mock server: no quota is spent
+              "DASHSCOPE_API_KEY": key, "PACE": "0", "SPEECH_DIR": sp, "OUT": out, "TIMEOUT_S": "5",
               "QWEN_WS_URL": f"ws://127.0.0.1:{port}/api-ws/v1/realtime?model=m&scenario={scen}", "NO_PROXY": "*"} | extra
         log.clear()
         r = subprocess.run([sys.executable, os.path.abspath(__file__)] + args, env=e, capture_output=True, text=True, timeout=40)

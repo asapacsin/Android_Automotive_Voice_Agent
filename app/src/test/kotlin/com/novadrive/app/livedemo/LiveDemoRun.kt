@@ -142,6 +142,11 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
     private fun providerConfig(): SessionProviderConfig {
         val instructions = PersonaProfiles.DEFAULT_INSTRUCTIONS
         fun env(name: String) = System.getenv(name)?.takeIf { it.isNotBlank() } ?: error("missing environment variable $name")
+        // AGENTS.md hard rule: live Qwen spends the owner's limited free quota.
+        check(choice != "qwen" || System.getenv("NOVA_SPEND_QWEN_QUOTA") == "yes") {
+            "live Qwen sessions spend the owner's limited free quota (AGENTS.md hard rule); " +
+                "set NOVA_SPEND_QWEN_QUOTA=yes only when the owner approved this run"
+        }
         return when (choice) {
             "qwen" -> SessionProviderConfig.Qwen(
                 QwenSettingsValidator.configOrThrow(

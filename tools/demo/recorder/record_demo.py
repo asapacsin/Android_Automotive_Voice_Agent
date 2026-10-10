@@ -255,6 +255,9 @@ class Session:
 
 
 def run(out, scenes):
+    if os.environ.get("NOVA_SPEND_QWEN_QUOTA") != "yes":
+        # The app's session is always Qwen (ADR-017): every take spends the owner's quota.
+        sys.exit("live Qwen sessions spend the owner's limited free quota (AGENTS.md hard rule); set NOVA_SPEND_QWEN_QUOTA=yes only when the owner approved this run")
     out = os.path.abspath(out)
     os.makedirs(out, exist_ok=True)
     s = Session(out)

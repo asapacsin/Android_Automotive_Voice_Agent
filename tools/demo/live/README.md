@@ -24,3 +24,5 @@ python3 tools/demo/live/render.py /tmp/live /tmp/live.mp4
 
 Outputs (logcat.txt, timeline.json, state.json with transcripts, wavs, mp4) stay outside the
 repository and must never be committed.
+
+**Quota (AGENTS.md hard rule):** every live Qwen session spends the owner's limited free quota. Prove what you can offline first; run live only with the owner's go for that run, with `NOVA_SPEND_QWEN_QUOTA=yes` set. Without it this tool refuses to open a Qwen session.

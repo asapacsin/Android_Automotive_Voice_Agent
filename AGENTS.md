@@ -179,3 +179,11 @@ does not change architecture ownership, invariants, or who may certify work. Age
 - Never commit, print, log or package credentials. No coordinate, address or transcript in a log.
 - Commit each verified unit of work **locally**; never `git push` unless told. No destructive git.
 - An implementation agent may not certify its own work as complete.
+- **Do not spend the live Qwen (DashScope) quota unless a test truly needs it** (owner, 2026-10-10:
+  800K of a 1M free quota went in two days of emulator takes). Prove everything you can first with the
+  JVM suites, the scripted/mock servers (`qwen_probe.py --selftest`, `QwenOmniClientTest`) or the Gemini
+  live harness. A live Qwen run (app session, emulator take, `record_demo.py`, `qwen_probe.py`,
+  `tools/demo/live` with qwen) needs the owner's go for that run: state what it will prove, how many
+  sessions and minutes it opens, then set `NOVA_SPEND_QWEN_QUOTA=yes` for that run only. The tools
+  refuse to open a Qwen session without it. One good take beats five retries: fix with offline
+  evidence, then re-record once.

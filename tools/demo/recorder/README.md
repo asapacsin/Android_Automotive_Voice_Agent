@@ -16,3 +16,5 @@ These scripts record a demo on the PC emulator `nova_api34` with nothing played 
    - The ⏩ jumps are labelled on screen.
 
 The run folders hold `logcat.txt` with `transcript=` lines. Never commit or publish them; `.gitignore` excludes them.
+
+**Quota (AGENTS.md hard rule):** every live Qwen session spends the owner's limited free quota. Prove what you can offline first; run live only with the owner's go for that run, with `NOVA_SPEND_QWEN_QUOTA=yes` set. Without it this tool refuses to open a Qwen session.
