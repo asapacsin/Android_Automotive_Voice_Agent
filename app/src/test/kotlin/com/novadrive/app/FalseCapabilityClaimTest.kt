@@ -406,6 +406,8 @@ class FalseCapabilityClaimTest {
             "关窗了，放心吧。",
             "好的，正在为你开窗。",
             "已为你关窗。",
+            "已经关窗了。",
+            "正在开窗。",
         ).forEach { assertNotNull(ActionClaimGuard.carActionClaimMatch(it), it) }
     }
 
@@ -433,6 +435,8 @@ class FalseCapabilityClaimTest {
             "开窗好处是空气新鲜，坏处是噪音大。",
             "开窗好还是关窗好，主要看外面温度。",
             "等它飞出去了再关窗。",
+            "外面正在下雨关窗吧。",
+            "我已经习惯开窗开车了。",
         ).forEach { assertNull(ActionClaimGuard.carActionClaimMatch(it), it) }
         assertFalse(ActionClaimGuard.claimsDone("车窗没能开大，已经到顶了。"))
     }

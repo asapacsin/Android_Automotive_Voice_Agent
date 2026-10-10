@@ -268,8 +268,10 @@ class ActionClaimGuard {
 
         /** Before the verb, in the same clause: she is doing it. A bare 「我」 counts only right before the verb (「我觉得开窗…」 is an opinion). */
         private val WINDOW_PROMISE_MARKERS = listOf(
-            "帮你", "帮您", "给你", "给您", "替你", "为你", "为您", "这就", "马上", "立刻", "正在", "已", "再", "先",
+            "帮你", "帮您", "给你", "给您", "替你", "为你", "为您", "这就", "马上", "立刻", "再", "先",
         )
+
+        private val ADJACENT_PROMISE_MARKERS = listOf("我", "已", "已经", "正在")
 
         /** Anywhere in the clause: negated, advisory or hypothetical, so not an action. */
         private val WINDOW_NOT_ACTION_WORDS = listOf(
@@ -291,7 +293,8 @@ class ActionClaimGuard {
                 for (m in WINDOW_VERB_FIRST.findAll(clause)) {
                     val before = clause.substring(0, m.range.first)
                     val after = clause.substring(m.range.last + 1)
-                    val promised = before.endsWith("我") || WINDOW_PROMISE_MARKERS.any { it in before }
+                    // 我/已/正在 only right before the verb: 「外面正在下雨关窗吧」「我觉得开窗…」 are chat.
+                    val promised = ADJACENT_PROMISE_MARKERS.any { before.endsWith(it) } || WINDOW_PROMISE_MARKERS.any { it in before }
                     if (promised || WINDOW_DONE_AFTER.containsMatchIn(after)) {
                         return m.groupValues[1]
                     }
