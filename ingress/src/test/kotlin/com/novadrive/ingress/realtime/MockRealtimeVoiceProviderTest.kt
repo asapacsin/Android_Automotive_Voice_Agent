@@ -35,7 +35,7 @@ class MockRealtimeVoiceProviderTest {
         assertEquals("Pro Far", VoiceCatalog.baiduModels[VoiceModels.PRO_FAR])
         assertThrows<IllegalArgumentException> { VoiceModels.requireAllowed("whisper-1") }
         VoiceModels.requireAllowed(VoiceModels.PRO_NEAR)
-        VoiceModels.requireAllowed(VoiceCatalog.QWEN_PLUS)
+        VoiceModels.requireAllowed(VoiceCatalog.QWEN_OMNI_FLASH)
         VoiceModels.requireAllowed(VoiceCatalog.GPT_LIVE_1)
         VoiceModels.requireAllowed(VoiceCatalog.FAKE_MODEL)
         VoiceModels.requireAllowed(VoiceCatalog.BAIDU_FLEX)

@@ -192,12 +192,14 @@ object BaiduFlexProtocol {
 /** Stateful, bounded assembler. It emits nothing until the authoritative done event. */
 class FlexFunctionCallAssembler(
     private val onMalformed: (String) -> Unit = { com.novadrive.app.DebugVoiceLog.log(it) },
-) {
+    /** Take the tool name from the done event when no output_item announced the call (Qwen). */
+    private val nameFromDoneEvent: Boolean = false,
+) : RealtimeCallAssembler {
     private data class Pending(val name: String, val itemId: String, val delta: StringBuilder = StringBuilder())
     private val pending = mutableMapOf<String, Pending>()
     private val completed = mutableSetOf<String>()
 
-    fun consume(text: String): List<DomainVoiceEvent> {
+    override fun consume(text: String): List<DomainVoiceEvent> {
         val raw = JSONObject(text)
         return when (raw.optString("type")) {
             "response.output_item.added", "response.output_item.done" -> {
@@ -228,7 +230,7 @@ class FlexFunctionCallAssembler(
         }
     }
 
-    fun clear() {
+    override fun clear() {
         pending.clear()
         completed.clear()
     }
@@ -237,7 +239,9 @@ class FlexFunctionCallAssembler(
         val callId = raw.optString("call_id")
         if (!BaiduFlexProtocol.validId(callId) || !completed.add(callId)) return emptyList()
         val current = pending.remove(callId)
-        val name = current?.name.orEmpty()
+        val name = current?.name.orEmpty().ifBlank {
+            raw.optString("name").takeIf { nameFromDoneEvent && BaiduFlexProtocol.validId(it) }.orEmpty()
+        }
         if (name.isBlank()) return listOf(rejected(callId, "", "MISSING_TOOL_METADATA"))
         // The done event is authoritative; the streamed deltas are the fallback when it carries none.
         val streamed = current?.delta?.toString().orEmpty()

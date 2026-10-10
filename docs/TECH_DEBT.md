@@ -184,6 +184,25 @@ call that turn never registered can count as its proof and release a held reply
 
 ---
 
+## D-12 — 「空调」 alone reads as an action claim — **OPEN** (found 2026-10-10)
+
+**Problem.** `ActionClaimGuard.describesCarAction` pairs a `DEVICE_NOUNS` word with an `ACTION_WORDS`
+word by substring. 「调」 is an action word and is inside 「空调」, so any reply naming the air
+conditioning (「开窗好还是开空调好，主要看外面温度。」) matches `car_action noun=空调 verb=调` with no
+action in it. Found by the review of the window-promise change (5367d68), JVM only; not seen live.
+
+**Affected.** `ActionClaimGuard.describesCarAction`, `carActionClaimMatch`, so `DriverTurn`'s
+UNCLASSIFIED_CLAIM / AWAITING_EXECUTION_PROOF drops and the guard's nudges.
+
+**Risk.** The P36 class: a chat answer about the air conditioning goes silent and is followed by a
+nudge or 「没听清」.
+
+**Next step.** Match 「调」 only outside 「空调」 (as the window rule does with its own phrase), with
+the chat cases as tests. It is not changed here because it alters an existing, widely used predicate.
+It needs its own pass over the climate tests.
+
+---
+
 ## D-9 — The hold budget releases a reply whose words were never judged — **OPEN** (found 2026-09-29)
 
 **Problem.** `DriverTurnPipeline` releases everything held once a turn holds more than 120 events

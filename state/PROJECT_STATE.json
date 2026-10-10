@@ -1,49 +1,37 @@
 {
-  "generated_at": "2026-10-08T16:57:19",
+  "generated_at": "2026-10-10T15:02:05",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "93a626c",
-    "branch": "claude/10-8",
-    "subject": "demo recorder: wait-cue scenes and grading; WAIT-CUE-EMU-001 partial evidence",
-    "working_tree_clean": true,
-    "uncommitted_files": 0
+    "commit": "9c6bbb1",
+    "branch": "claude/10-9",
+    "subject": "Claim gate re-review: bare 好 is not completion; 正在/为你/已 are promise markers; sequencing is not a promise",
+    "working_tree_clean": false,
+    "uncommitted_files": 3
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-10-08T16:38:34",
+    "collected_at": "2026-10-10T15:01:53",
     "total": {
-      "tests": 1990,
-      "failures": 2,
+      "tests": 2106,
+      "failures": 0,
       "errors": 0,
-      "skipped": 2
+      "skipped": 3
     },
     "by_module": {
-      "app": {
-        "tests": 1683,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 2
-      },
-      "behavior-test": {
-        "tests": 128,
-        "failures": 1,
-        "errors": 0,
-        "skipped": 0
-      },
-      "contracts": {
-        "tests": 7,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
       "evaluation": {
         "tests": 27,
-        "failures": 1,
+        "failures": 0,
         "errors": 0,
         "skipped": 0
       },
-      "ingress": {
-        "tests": 118,
+      "app": {
+        "tests": 1795,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 3
+      },
+      "simulator": {
+        "tests": 25,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -54,19 +42,31 @@
         "errors": 0,
         "skipped": 0
       },
-      "simulator": {
-        "tests": 25,
+      "behavior-test": {
+        "tests": 131,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "contracts": {
+        "tests": 7,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "ingress": {
+        "tests": 119,
         "failures": 0,
         "errors": 0,
         "skipped": 0
       }
     },
-    "passing": false
+    "passing": true
   },
   "apk": {
     "built": true,
-    "bytes": 224816029,
-    "built_at": "2026-10-08T16:35:42"
+    "bytes": 224267575,
+    "built_at": "2026-10-10T14:17:52"
   },
   "capabilities": {
     "available": true,
@@ -142,6 +142,11 @@
       "priority": "RESOLVED"
     },
     {
+      "id": "D-12",
+      "title": "「空调」 alone reads as an action claim",
+      "priority": "OPEN"
+    },
+    {
       "id": "D-9",
       "title": "The hold budget releases a reply whose words were never judged",
       "priority": "OPEN"
@@ -162,27 +167,13 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "com.novadrive.evaluation.ExecutorAndCatalogTest: 1 failing in com.novadrive.evaluation.ExecutorAndCatalogTest",
-    "actionable_count": 119,
+    "NEXT_ACTION": "A0: | A0 | G-1 … G-1f measured on the short route | measurement (emulator) | `GUIDANCE-EMU-001` | not earned |",
+    "actionable_count": 121,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
-    "QUEUED_FOR_HUMAN": 26,
+    "QUEUED_FOR_HUMAN": 27,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "test report",
-        "item": "com.novadrive.evaluation.ExecutorAndCatalogTest",
-        "blocked_by": null
-      },
-      {
-        "priority": 3,
-        "class": "invariant violation",
-        "source": "test report",
-        "item": "com.novadrive.architecture.ArchitectureRulesTest",
-        "blocked_by": null
-      },
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
@@ -502,6 +493,20 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "DEMO-COMMUTE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "DEVUI-EMU-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "ECHO-001",
         "blocked_by": null
       },
@@ -761,6 +766,20 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "QWEN-EMU-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "QWEN-PROBE-Q1-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "SLEEP-001",
         "blocked_by": null
       },
@@ -901,6 +920,13 @@
         "priority": 8,
         "class": "recorded technical debt",
         "source": "docs/TECH_DEBT.md",
+        "item": "D-12",
+        "blocked_by": null
+      },
+      {
+        "priority": 8,
+        "class": "recorded technical debt",
+        "source": "docs/TECH_DEBT.md",
         "item": "D-9",
         "blocked_by": null
       },
@@ -923,13 +949,6 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P48",
-        "blocked_by": null
-      },
-      {
-        "priority": 10,
-        "class": "stale state or harness defect",
-        "source": "state",
-        "item": "PROJECT_STATE.json",
         "blocked_by": null
       },
       {

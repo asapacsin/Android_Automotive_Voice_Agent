@@ -17,6 +17,7 @@ object ComfortScenarios {
     const val STUFFY = "stuffy"
     const val DROWSY = "drowsy"
     val NAMES = listOf(MOSQUITO, MOSQUITO_DONE, STUFFY, DROWSY)
+    const val MOSQUITO_WINDOW_PERCENT = 50
 
     /** Offer only; the scenario never navigates. */
     const val REST_STOP_OFFER = "要不要找个服务区歇一下？"
@@ -26,7 +27,7 @@ object ComfortScenarios {
         Step(ClimateToolHandler.TOOL, mapOf(*args), requires)
 
     fun steps(name: String): List<Step>? = when (name) {
-        MOSQUITO -> listOf(window("action" to "set", "window" to "all", "value" to "50"))
+        MOSQUITO -> listOf(window("action" to "set", "window" to "all", "value" to MOSQUITO_WINDOW_PERCENT.toString()))
         MOSQUITO_DONE -> listOf(window("action" to "close", "window" to "all"))
         STUFFY -> listOf(
             climate("action" to ClimateToolHandler.ACTION_POWER_ON),

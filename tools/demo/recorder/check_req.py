@@ -6,7 +6,10 @@ import json, os, re, statistics, sys, wave
 import numpy as np
 
 CLIPS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "clips")
-ACTION_KEYS = {"weather", "nav", "music", "stuffy", "hot", "mosq", "mosq_out", "seat_high"}
+ACTION_KEYS = {"weather", "nav", "music", "stuffy", "hot", "mosq", "mosq_out", "seat_high",
+               # the commute demo (docs/DEMO_COMMUTE.md): every line that runs a tool
+               "c_seat", "c_seat2", "c_nav", "c_pick", "c_go", "c_mosq", "c_mosq2", "c_music",
+               "c_traffic", "c_weather", "c_close", "c_end"}
 
 
 def audible_end(key):
@@ -39,13 +42,14 @@ def grade(run):
         nxt_clip = clips[i + 1][0] if i + 1 < len(clips) else 1e9
         nxt = [f for f in firsts if end < f < nxt_clip]
         limit = 3.5 if key in ACTION_KEYS else 3.0
-        if not nxt:
+        on = np.nonzero(heard_on[int(end * 100):int(min(nxt_clip, end + 40) * 100)])[0]
+        h = on[0] / 100 if len(on) else None
+        # Qwen speaks itself, so there is no assistant_voice_first_audio line. The captured reply is the measurement.
+        if not nxt and h is None:
             print(f"  {key:10s} NO REPLY")
             fails.append(key)
             continue
-        d = nxt[0] - end
-        on = np.nonzero(heard_on[int(end * 100):int(min(nxt_clip, end + 40) * 100)])[0]
-        h = on[0] / 100 if len(on) else None
+        d = (nxt[0] - end) if nxt else h
         cue = [f"{c}@{ct - end:.1f}" for ct, c in cues if end - 1.5 < ct < nxt_clip]
         ok = (h if h is not None else d) <= limit
         hs = f"{h:4.1f}" if h is not None else " -- "
@@ -66,7 +70,17 @@ def grade(run):
     f = w.getframerate() // 100
     n = len(x) // f
     on = np.sqrt((x[: n * f].reshape(n, f) ** 2).mean(1)) > 200
-    holes, i = [], 0
+    # A provider that speaks itself (Qwen) sends a reply's audio faster than real time. A silence
+    # played after that reply's audio had all arrived is a pause in the voice itself (between
+    # sentences), not starvation; only a silence while the audio was still arriving is choppy.
+    created = [vt(l) for l in lines if "type=response.created" in l]
+    done = [vt(l) for l in lines if "type=response.audio.done" in l]
+
+    def starved(t):
+        start = max((c for c in created if c < t), default=None)
+        return start is not None and not any(start < d < t for d in done)
+
+    holes, starved_holes, i = [], [], 0
     while i < n:
         if not on[i]:
             j = i
@@ -75,13 +89,31 @@ def grade(run):
             d = (j - i) / 100
             if 0.15 < d <= 0.6 and i > 30 and on[i - 30:i].mean() > 0.6 and j + 30 < n and on[j:j + 30].mean() > 0.6:
                 holes.append(round(d, 2))
+                if starved(i / 100):
+                    starved_holes.append(round(d, 2))
             i = j
         else:
             i += 1
-    print(f"  audio holes 150-600 ms inside replies: {holes}")
+    print(f"  audio holes 150-600 ms inside replies: {holes}; inside a response window: {starved_holes} (info)")
+    # The provider-voiced path: the app logs when its player would have run dry (reply_underrun).
+    # A pause inside the voice itself is not one; a response window can hold natural pauses because
+    # Qwen streams about 3x faster than real time.
+    underruns = [int(m.group(1)) for l in lines for m in [re.search(r"reply_underrun ms=(\d+)", l)] if m]
+    # A Qwen session speaks in its own voice. "assistant_voice ignored reason=provider_speaks" is only
+    # logged when the Azure toggle happens to be on, so the session choice is the marker.
+    provider_voiced = any("session_provider choice=qwen" in l or "reason=provider_speaks" in l for l in lines)
+    if provider_voiced:
+        bad = [u for u in underruns if u > 300]
+        print(f"  reply underruns (app log) ms={underruns}  {'FAIL' if bad else 'PASS'} (none > 300 ms)")
+        if bad:
+            fails.append("gaps")
+    elif not gaps and any(h > 0.30 for h in starved_holes):
+        print("  clause gaps (captured audio) FAIL a hole > 300 ms while the reply was still arriving")
+        fails.append("gaps")
     azure = [int(m.group(1)) for l in lines for m in [re.search(r"azure_tts_first_audio ms=(\d+)", l)] if m]
     warm = [l.split("azure_warm", 1)[1].strip() for l in lines if "azure_warm" in l]
-    print(f"  azure first audio ms: first={azure[:1]} all-max={max(azure) if azure else None}  warm-ups={warm[:4]}")
+    if not provider_voiced:
+        print(f"  azure first audio ms: first={azure[:1]} all-max={max(azure) if azure else None}  warm-ups={warm[:4]}")
     fails += ["voice_failed"] * sum("assistant_voice_failed" in l for l in lines)
     print(f"  RESULT {'PASS' if not fails else 'FAIL ' + ','.join(fails)}")
     return not fails

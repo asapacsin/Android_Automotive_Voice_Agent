@@ -223,6 +223,50 @@ class LiveInfoToolTest {
     }
 
     @Test
+    fun theDistrictOfAFixIsLookedUpOncePerCellForThirtyMinutes() {
+        // MockWebServer answers in queue order: the order of requests the cache should make.
+        listOf("regeo", "weather_base", "weather_base", "regeo", "weather_base")
+            .forEach { server.enqueue(MockResponse().setBody(fixture(it))) }
+        val tool = tool()
+        run(tool, "kind" to "weather")
+        clock += 11 * 60_000 // past the weather cache, inside the district cache
+        assertTrue(run(tool, "kind" to "weather").getBoolean("ok"))
+        val paths = List(server.requestCount) { server.takeRequest().requestUrl!!.encodedPath }
+        assertEquals(listOf("/v3/geocode/regeo", "/v3/weather/weatherInfo", "/v3/weather/weatherInfo"), paths)
+        clock += 20 * 60_000
+        run(tool, "kind" to "weather")
+        assertEquals("/v3/geocode/regeo", server.takeRequest().requestUrl!!.encodedPath)
+    }
+
+    @Test
+    fun warmingAnswersTheFirstWeatherQuestionFromTheCache() {
+        server.enqueue(MockResponse().setBody(fixture("regeo")))
+        server.enqueue(MockResponse().setBody(fixture("weather_base")))
+        val tool = tool()
+        tool.warmHere()
+        val deadline = System.currentTimeMillis() + 5_000
+        while (logs.none { it.startsWith("live_info_warm kind=weather") } && System.currentTimeMillis() < deadline) Thread.sleep(10)
+        assertEquals(listOf("live_info_warm kind=district ok=true", "live_info_warm kind=weather ok=true cached=false"), logs.filter { it.startsWith("live_info_warm") })
+        val result = run(tool, "kind" to "weather")
+        assertTrue(result.getBoolean("ok"))
+        assertTrue(result.getBoolean("cached"), "answered from what the warm-up fetched")
+        assertEquals("14:39", result.getString("reported_at"), "with the source's own report time (B4)")
+        assertEquals(2, server.requestCount, "no request at question time")
+        assertFalse(logs.any { it.contains("22.2") || it.contains("113.5") }, "no coordinate in a log")
+    }
+
+    @Test
+    fun warmingWithoutAFixOrKeyDoesNothingAndSaysWhy() {
+        tool(fix = null).warmHere()
+        tool(key = null).warmHere()
+        assertEquals(
+            listOf("live_info_warm kind=district ok=false code=NO_LOCATION", "live_info_warm kind=district ok=false code=AMAP_WEB_KEY_MISSING"),
+            logs,
+        )
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
     fun weatherIsCachedTenMinutesPerCity() {
         server.enqueue(MockResponse().setBody(fixture("weather_base")))
         server.enqueue(MockResponse().setBody(fixture("weather_base")))
@@ -248,6 +292,79 @@ class LiveInfoToolTest {
         val request = server.takeRequest().requestUrl!!
         assertEquals("440402", request.queryParameter("city"), "no reverse-geocode when the POI had an adcode")
         assertEquals("all", request.queryParameter("extensions"))
+    }
+
+    /** Counts calls; regeo at any fix is Zhuhai's Xiangzhou district. */
+    private class ZhuhaiRest : AmapLiveInfoRest by LiveInfoTool.noRest() {
+        val weatherCities = mutableListOf<String>()
+        var regeoCalls = 0
+        override fun regeoPlace(latitude: Double, longitude: Double, key: String): LiveInfoFetch<RegeoPlace> {
+            regeoCalls++
+            return LiveInfoFetch.Ok(RegeoPlace("440402", "珠海市"))
+        }
+        override fun weatherNow(city: String, key: String): LiveInfoFetch<WeatherNow> {
+            weatherCities += city
+            return LiveInfoFetch.Ok(WeatherNow("香洲区", "晴", 28, null, null, null, "15:00"))
+        }
+    }
+
+    private fun warm(tool: LiveInfoTool) {
+        tool.warmHere()
+        val deadline = System.currentTimeMillis() + 5_000
+        while (logs.none { it.startsWith("live_info_warm kind=weather") } && System.currentTimeMillis() < deadline) Thread.sleep(10)
+    }
+
+    @Test
+    fun namingTheCityTheCarIsInIsAnsweredFromTheWarmCache() {
+        val rest = ZhuhaiRest()
+        val tool = tool(rest = rest)
+        warm(tool)
+        assertEquals(listOf("440402"), rest.weatherCities)
+        for (named in listOf("珠海", "珠海市", " 珠海 ")) {
+            val result = run(tool, "kind" to "weather", "where" to named)
+            assertTrue(result.getBoolean("ok"), result.toString())
+            assertTrue(result.getBoolean("cached"), "$named answered from the warm-up")
+            assertEquals(named.trim(), result.getString("where"), "the label is what the driver said")
+        }
+        assertEquals(listOf("440402"), rest.weatherCities, "no weather call at question time")
+        assertEquals(1, rest.regeoCalls)
+        assertFalse(logs.any { it.contains("珠海") || it.contains("440402") || it.contains("22.2") }, "no place in a log")
+    }
+
+    @Test
+    fun anotherCityIsStillLookedUpByName() {
+        val rest = ZhuhaiRest()
+        val tool = tool(rest = rest)
+        warm(tool)
+        assertFalse(run(tool, "kind" to "weather", "where" to "澳门").getBoolean("cached"))
+        assertEquals(listOf("440402", "澳门"), rest.weatherCities)
+    }
+
+    @Test
+    fun withoutAFreshWarmUpTheCityIsLookedUpByName() {
+        val cold = ZhuhaiRest()
+        run(tool(rest = cold), "kind" to "weather", "where" to "珠海")
+        assertEquals(listOf("珠海"), cold.weatherCities)
+        assertEquals(0, cold.regeoCalls, "never a regeo just to check")
+
+        val rest = ZhuhaiRest()
+        val tool = tool(rest = rest)
+        warm(tool)
+        clock += LiveInfoTool.ADCODE_TTL_MS
+        assertFalse(run(tool, "kind" to "weather", "where" to "珠海").getBoolean("cached"))
+        assertEquals(listOf("440402", "珠海"), rest.weatherCities)
+        assertEquals(1, rest.regeoCalls)
+    }
+
+    @Test
+    fun destinationWithoutAnAdcodeUsesTheRegeoDistrict() {
+        startNavigation(candidate("d", "珠海站"))
+        val rest = ZhuhaiRest()
+        val result = run(tool(rest = rest), "kind" to "weather", "where" to "destination")
+        assertTrue(result.getBoolean("ok"), result.toString())
+        assertEquals("目的地", result.getString("where"))
+        assertEquals(listOf("440402"), rest.weatherCities)
+        assertEquals(1, rest.regeoCalls)
     }
 
     @Test

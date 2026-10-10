@@ -111,7 +111,7 @@ class AssistantVoiceRevoicer(
      */
     private fun prefillAcks() {
         val host = cueHost ?: return
-        val missing = listOf(WaitCues.ACK_ACTION, WaitCues.ACK_CHAT).filter { !cueCache.containsKey(it to style()) }
+        val missing = listOf(WaitCues.PROGRESS, WaitCues.DELAY).filter { !cueCache.containsKey(it to style()) }
         if (missing.isEmpty()) return
         host.scope.launch {
             missing.forEach { text ->
@@ -126,7 +126,7 @@ class AssistantVoiceRevoicer(
             var skipNoEvidence = false
             val cue = synchronized(cueLock) {
                 if (cueTurn !== turn || !turn.live) return
-                if (!turn.hasEvidence && !turn.noEvidenceLogged && elapsed >= WaitCues.ACK_CHAT_MS) {
+                if (!turn.hasEvidence && !turn.noEvidenceLogged && elapsed >= WaitCues.PROGRESS_MS) {
                     turn.noEvidenceLogged = true
                     skipNoEvidence = true
                 }
@@ -137,6 +137,11 @@ class AssistantVoiceRevoicer(
                 when {
                     promptOpen -> DebugVoiceLog.log("wait_cue_skipped reason=guidance_prompt")
                     quiet() -> DebugVoiceLog.log("wait_cue_skipped reason=quiet")
+                    cue.code == "visual" -> {
+                        if (host.lane.trySend(Queued(RealtimeEvent(clock(), DomainVoiceEvent.WaitCueVisual(true)), epoch.get())).isSuccess) {
+                            DebugVoiceLog.log("wait_cue code=visual after_ms=$elapsed")
+                        }
+                    }
                     host.lane.trySend(Queued(null, epoch.get(), cue.text, turn)).isSuccess ->
                         DebugVoiceLog.log("wait_cue code=${cue.code} after_ms=$elapsed")
                 }
@@ -163,27 +168,37 @@ class AssistantVoiceRevoicer(
      * reply in flight) only a running clock stops.
      */
     private fun cancelWaitCues(reason: String, turnScoped: Boolean = false) {
-        val timer = synchronized(cueLock) {
+        val (timer, clearVisual) = synchronized(cueLock) {
             val turn = cueTurn ?: return
             if (!turnScoped && !turn.clockStarted) return
             if (reason == "reply_queued" || reason == "reply_audio") turn.replyUnderway = true
+            val clearVisual = turn.visualShown
+            if (clearVisual) turn.clearVisual()
             turn.stopped = true
-            cueTimer.also { cueTimer = null }
-        } ?: return
-        if (timer.isActive) DebugVoiceLog.log("wait_cue_cancelled reason=$reason")
-        timer.cancel()
+            cueTimer.also { cueTimer = null } to clearVisual
+        }
+        if (timer?.isActive == true) DebugVoiceLog.log("wait_cue_cancelled reason=$reason")
+        timer?.cancel()
+        if (clearVisual) hideWorkingMark()
     }
 
     /** The app handled the driver's utterance itself: no cue for this turn, even if its clock has not started. */
     fun endWaitCueTurn(reason: String) {
-        val (ended, timer) = synchronized(cueLock) {
+        val (ended, timer, clearVisual) = synchronized(cueLock) {
             val turn = cueTurn ?: return
             val ended = !turn.stopped
+            val clearVisual = turn.visualShown
+            if (clearVisual) turn.clearVisual()
             turn.stopped = true
-            ended to cueTimer.also { cueTimer = null }
+            Triple(ended, cueTimer.also { cueTimer = null }, clearVisual)
         }
         timer?.cancel()
+        if (clearVisual) hideWorkingMark()
         if (ended) DebugVoiceLog.log("wait_cue_cancelled reason=$reason")
+    }
+
+    private fun hideWorkingMark() {
+        cueHost?.lane?.trySend(Queued(RealtimeEvent(clock(), DomainVoiceEvent.WaitCueVisual(false)), epoch.get()))
     }
 
     /** A tool result went to the model: the tool is no longer outstanding for [WaitCueTurn]'s turn_done rule. */

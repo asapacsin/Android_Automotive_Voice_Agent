@@ -752,6 +752,20 @@ The mapping is in ADR-016 §"Speaking styles with the TTS voice".
 
 The app still speaks with Gemini's voice until the owner enters an Azure Speech key and region and switches on 开发者设置 → 小诺的声音 (`assistant_voice enabled=false` in the 03:39 log). Then `TTS-VOICE-EMU-001`.
 
+**Candidate end-to-end voice, 2026-10-08: Qwen-Omni Realtime `Maia`.**
+- **Why it is being looked at:** the Azure layer adds latency (OPEN_PROBLEMS P48). The owner asked for an end-to-end model that has three things: a good Chinese voice, interruption with tools, and a free tier to test on.
+- **The pick:** from the filtered shortlist (Maia, Serena, Tina, Vivian, Cherry), the owner chose **`Maia`**: "Maia save this one".
+  - Alibaba's description: "A blend of intellect and gentleness".
+  - Models: Qwen3.8-Omni-Flash-Realtime, Qwen3.5-Omni-Realtime and qwen3-omni-flash-realtime-2025-12-01.
+  - The source is the [Omni voice list](https://www.alibabacloud.com/help/en/model-studio/omni-voice-list).
+- **Update 2026-10-09:** the owner adopted this architecture ("ok save this and we would use this architecutre"). See [ADR-017](DECISIONS/ADR-017-qwen-omni-realtime-end-to-end.md), gates Q-1 to Q-5. The owner has set the DashScope key on the PC as `DASHSCOPE_API_KEY`.
+- **Status as first recorded (2026-10-08):** a candidate to evaluate, not a decision. Xiaoyi through Azure stays the voice (ADR-016). A switch of provider would need its own ADR that supersedes ADR-013 and ADR-016. ADR-008 removed an earlier Qwen integration, so read its reasons first.
+- **Next:**
+  1. The owner opens Alibaba Model Studio (international, with the free quota and "free quota only" on) and enters the key themselves.
+  2. The agents run a PC-side test script that does not touch the app. Maia says fixed lines, and the run measures the time to the first audio, a tool turn and a barge-in, side by side with Gemini + Xiaoyi.
+  3. The owner judges Maia by ear against Xiaoyi.
+- **Constraint (B-034):** stock voices only. No voice cloning.
+
 ## B-035 — The transcript bubble fades out over time
 
 **Owner, 2026-10-02**, during the emulator run on `claude/10-2`. The bubble still showed 「你: 你能做什么? / 小诺: 哼，本姑娘能帮你导航…」 long after the exchange: "this one is quite annoying it seems this would not gone overtime".

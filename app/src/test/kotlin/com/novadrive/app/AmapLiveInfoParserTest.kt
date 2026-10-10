@@ -69,8 +69,22 @@ class AmapLiveInfoParserTest {
     }
 
     @Test
-    fun regeoYieldsOnlyTheAdcode() {
-        assertEquals(LiveInfoFetch.Ok("110101"), AmapLiveInfoParser.regeoAdcode(fixture("regeo")))
+    fun regeoYieldsTheAdcodeAndAMunicipalitysProvinceAsItsCity() {
+        // The fixture is Beijing: `city: []`, `province: 北京市`.
+        assertEquals(LiveInfoFetch.Ok(RegeoPlace("110101", "北京市")), AmapLiveInfoParser.regeoPlace(fixture("regeo")))
+    }
+
+    @Test
+    fun regeoYieldsTheCityWhenAmapGivesOne() {
+        val body = """{"status":"1","infocode":"10000","regeocode":{"addressComponent":""" +
+            """{"city":"珠海市","province":"广东省","adcode":"440402"}}}"""
+        assertEquals(LiveInfoFetch.Ok(RegeoPlace("440402", "珠海市")), AmapLiveInfoParser.regeoPlace(body))
+    }
+
+    @Test
+    fun regeoWithoutAnAdcodeIsNoResults() {
+        val body = """{"status":"1","infocode":"10000","regeocode":{"addressComponent":{"city":"珠海市"}}}"""
+        assertEquals(LiveInfoFetch.Failed(AmapLiveInfoParser.NO_RESULTS), AmapLiveInfoParser.regeoPlace(body))
     }
 
     @Test

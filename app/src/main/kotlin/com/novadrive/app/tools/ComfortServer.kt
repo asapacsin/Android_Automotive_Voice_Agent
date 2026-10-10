@@ -57,6 +57,19 @@ class ComfortServer(
                 return env.failed(call, NO_RECENT_MOSQUITO)
             }
         }
+        if (name == ComfortScenarios.MOSQUITO && windowsAlreadyAt(ComfortScenarios.MOSQUITO_WINDOW_PERCENT)) {
+            // A second 「蚊子还没走」 must not be told as a new opening (live take 2026-10-10: 「车窗又开了一半」
+            // with nothing changed). Report the truth and leave the next idea to the model.
+            mosquitoAt = now()
+            DebugVoiceLog.log("fz_scenario name=$name steps=0 ok=0 skipped=0")
+            return ToolDispatchResult(
+                null, null,
+                output = JSONObject().put("ok", true).put("tool", call.name).put("name", name)
+                    .put("status", "already_open").put("steps", JSONArray())
+                    .put("announce", "车窗已经开着一半了，这次没有再动。")
+                    .put("instruction", ALREADY_OPEN_INSTRUCTION).toString(),
+            )
+        }
         val runs = ArrayList<StepRun>()
         steps.forEachIndexed { index, step ->
             val prerequisiteFailed = step.requires?.let { runs[it].skipped || !syncOk(runs[it].result!!) } ?: false
@@ -101,6 +114,9 @@ class ComfortServer(
             "$mark ${s.getString("tool")}·${s.getString("action")}"
         }
     }
+
+    private fun windowsAlreadyAt(percent: Int): Boolean =
+        cabinState()?.windows?.values?.all { it == percent } == true
 
     private fun windowsAlreadyClosed(): Boolean =
         cabinState()?.windows?.values?.all { it == CabinLimits.WINDOW_MIN } == true
@@ -171,5 +187,7 @@ class ComfortServer(
         val STATUS_FAILED: String = "failed"
         const val SKIPPED = "SKIPPED_PREREQUISITE_FAILED"
         private const val INSTRUCTION = "按 announce 说做了什么，没做成的也要说，不要说都弄好了"
+        const val ALREADY_OPEN_INSTRUCTION =
+            "车窗原来就开着一半，这次什么都没改，不要说又开了窗；蚊子还在的话可以换个办法（比如把风量调大），做了就按那个工具的结果说"
     }
 }

@@ -6,9 +6,10 @@ Depends on: ADR-016 / SPEC-019 (one assistant voice), I-1 (no claim before proof
 
 ## Goal
 
-The driver never waits in silence wondering whether she heard:
-- When a reply is slow, she acknowledges at once.
-- When it is very slow, she says why, truthfully.
+The driver is not told "I'm doing it" on every turn:
+- For the first 7 seconds she stays quiet and the work starts at once. From 3 seconds the screen shows 「处理中」.
+- At 7 seconds, if nothing useful has been spoken, she says one progress line.
+- At 12 seconds she says a different line about the delay. She does not repeat the progress line.
 
 ## Owner
 
@@ -37,36 +38,28 @@ The clock stops at any of these:
 - a `ResponseDone` of this turn's reply when nothing of it was audible and no tool is outstanding (`turn_done`: no answer is coming, so no cue may say one is). A tool is outstanding when a tool call came and neither its result has been delivered to the model nor a `ResponseStarted` came after it. Gemini answers a result in the same response, so the delivery is what clears it.
 - the session ending.
 
-Each cue below is spoken at most once per driver turn.
+Owner timing, 2026-10-09. Each row happens at most once per driver turn. A tool call does not add a line.
 
-| # | When nothing of her reply is audible yet | She says (exact text) | Reason code in the log |
-| --- | --- | --- | --- |
-| C1 | 1.0 s, and a tool call has been seen in this turn | 收到，正在处理。 | `ack_action` |
-| C2 | 1.8 s, and no tool call has been seen | 嗯，我想想。 | `ack_chat` |
-| C3 | 5.0 s, and no reply has started (no `ResponseStarted` since the end of speech) | 网络有点慢，请稍等。 | `provider_slow` |
-| C4 | 5.0 s, and a tool call is in this turn | the tool's phrase from the table below | `tool_running` |
-| C5 | 5.0 s, and a reply has started but none of it is audible (held or still being generated) | 我确认一下，马上回答你。 | `verifying` |
-| C6 | 12.0 s | 还在处理，网络可能不太稳定，再等我一下。 | `still_waiting` |
+| When nothing useful has been spoken | What she does | Reason code in the log |
+| --- | --- | --- |
+| 0–3 s | Silent. The work starts immediately. | — |
+| 3 s | Screen label 「处理中」 (`WaitCueVisual`). Not spoken. | `visual` |
+| 7 s, and still before 12 s | 收到，正在处理。 | `progress` |
+| 12 s | 还在处理，网络可能不太稳定，再等我一下。 | `delay` |
 
-Only one of C1 or C2 is spoken per turn, and only one of C3, C4 or C5.
+A wake-up that is already past 12 s says the delay line only, not the progress line and then the delay. The 3 s label still appears.
+
+The 1.0 s / 1.8 s / 5 s lines (`ack_action`, `ack_chat`, `provider_slow`, `tool_running`, `verifying`) are not spoken. Their strings stay in `WaitCues.ALL` so the claim guard still covers them.
 
 **Turn evidence.** A cue is spoken only when something says the driver really spoke to her: a `ResponseStarted` or a tool call in this turn, or an uplink segment that `SpeechUplinkGate.Segment.isSuspicious()` does not flag.
-- Without evidence (a cough, a knock, a passenger's murmur that the model ignores), no cue is spoken. The log records `wait_cue_skipped reason=no_turn_evidence` once.
-- Evidence that arrives later (the model's `ResponseStarted` or tool call) makes a due acknowledgement fire on arrival, while less than 5 s have passed.
+- Without evidence (a cough, a knock, a passenger's murmur that the model ignores), no cue is spoken. The log records `wait_cue_skipped reason=no_turn_evidence` once, at 7 s.
+- Evidence that arrives later makes a due cue fire on arrival.
 
-Tool phrases for C4. Any tool not listed uses the default.
-
-| Tool | Phrase |
-| --- | --- |
-| `navigate_to`, `choose_navigation_option` | 正在搜索路线，稍等一下。 |
-| `query_live_info` | 正在查询，稍等一下。 |
-| `play_music`, `control_music` | 正在找歌，稍等一下。 |
-| `describe_camera_view` | 正在看画面，稍等一下。 |
-| default | 正在处理，稍等一下。 |
+**Maia (product session).** There is no second voice. `WaitCueClock` runs the same decision from the server's `speech_started` / `speech_stopped`. At 7 s and at 12 s `QwenOmniDialect.progressResponse` sends one `response.create` whose instructions are that single sentence and whose `tools` array is empty. `OpenAiRealtimeClient` captures that response's audio and emits `WaitCueAudio`. It does not enter the claim gate. If a reply is already in progress, the spoken cue is skipped (`wait_cue_skipped reason=response_active`) and the label remains. The Azure revoicer path uses the same thresholds and speaks through `AssistantVoice`.
 
 Rules:
 - **Never claims an outcome.** Every cue text passes `ActionClaimGuard.carActionClaimMatch == null` and `claimsDone == false`, and a unit test enforces this. A cue says she is working on it, never that it is done.
-- **Never two voices.** A cue is spoken only through the `AssistantVoice`. With the assistant voice off (Gemini speaks itself), no cue is spoken; the log still records `wait_cue_skipped reason=no_assistant_voice`.
+- **Never two voices.** On the Maia path the cue is Maia's own audio, captured as `WaitCueAudio`. On the Gemini path a cue is spoken only through the `AssistantVoice`. With that voice off, no cue is spoken; the log records `wait_cue_skipped reason=no_assistant_voice`.
 - **Silent modes.** No cue in SILENT_WAIT (「闭嘴」), sleep, or while a GUIDANCE prompt is open. These states already stop the voice or hold playback. A cue must not reopen them.
 - **No overlap.** If the real reply's first clause is ready while a cue is playing, the cue finishes first, then the reply follows without a gap. Cues are short (≤ 1.2 s of audio). A cue never cuts the reply, and no cue is ever spoken between a reply's clauses: once reply words are queued, the turn's cues are over.
 - **A cue failure is not a reply failure.** If a cue cannot be synthesised, `wait_cue_failed` is logged and the reply still plays.
@@ -77,14 +70,14 @@ Rules:
 
 | # | Criterion | Proven by | State |
 | --- | --- | --- | --- |
-| A1 | C1/C2 fire at their thresholds, counted from his last word, when no reply is under way; not when the reply was queued or audible first, including events seen before his end of speech | `AssistantVoiceRevoicerWaitCueTest` (virtual clock), `WaitCueCoreIntegrationTest` | see the Status line |
-| A2 | C3/C4/C5 pick the right reason from the events seen since his onset; C6 at 12 s; each at most once per turn; no cue after a `ResponseDone` with nothing audible, and none without turn evidence | same | see the Status line |
+| A1 | Nothing is spoken before 7 s. The progress line fires at 7 s, counted from his last word, when no reply is under way; not when the reply was queued or audible first, including events seen before his end of speech | `AssistantVoiceRevoicerWaitCueTest` (virtual clock), `WaitCueCoreIntegrationTest`, `WaitCuesTest` | see the Status line |
+| A2 | The delay line at 12 s is a different sentence, once; a late wake-up does not also say the progress line; no cue after a `ResponseDone` with nothing audible, and none without turn evidence | same | see the Status line |
 | A3 | A reply arriving during a cue plays after it, in order, with nothing lost; no cue between a reply's clauses; a cancel stops both; a cue never blocks tool-result delivery | same, plus ingress `WaitCueAudioTest` | see the Status line |
 | A4 | No cue text is a claim | `ActionClaimGuardTest` over every cue string | see the Status line |
 | A5 | No cue with the assistant voice off, in SILENT_WAIT, or with a guidance prompt open | `AssistantVoiceRevoicerWaitCueTest`, `GeminiLiveProviderVoiceTest` | see the Status line |
-| A6 | Emulator: on every slow turn the driver hears 「收到，正在处理。」 about 1.0 s, or 「嗯，我想想。」 about 1.8 s, after his last word (+0.5 s tolerance for cue start), and the reply follows it without overlap. On a tool turn, the tool result is still delivered | `wait_cue` log lines plus the demo recorder's audio | open (device) |
+| A6 | On a slow turn the driver hears nothing before 7 s. If she is still silent, one 「收到，正在处理。」 between 6.5 s and 8 s after his last word, and the reply follows it without overlap. At 12 s the delay line is the other sentence. A tool turn still completes. The retired codes are a failure. | `wait_cue` log lines (`tools/demo/check_demo_log.py`) plus the demo recorder's audio | open (device) |
 
-A6 was first written as "within 1.5 s", which contradicted C2 = 1.8 s. It was reconciled on 2026-10-08 (planner) to the behaviour table, which is the owner-approved timing.
+A6 was first written as "within 1.5 s", then reconciled on 2026-10-08 to 1.0 s / 1.8 s. The owner replaced that schedule on 2026-10-09 with the table above.
 
 Quiet: the app passes `lifecycle.speaks` through `RealtimeProviderFactory.build(repliesSpoken)` to `GeminiLiveProvider`, which builds the revoicer with `quiet = { !repliesSpoken() }`, so SILENT_WAIT and sleep speak no cue (`wait_cue_skipped reason=quiet`; an open GUIDANCE prompt logs `reason=guidance_prompt`). With the assistant voice off there is no revoicer; the provider logs `wait_cue_skipped reason=no_assistant_voice` at each end of speech.
 

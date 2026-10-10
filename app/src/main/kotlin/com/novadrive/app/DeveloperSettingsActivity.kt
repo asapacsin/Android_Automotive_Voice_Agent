@@ -2,359 +2,321 @@ package com.novadrive.app
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.text.InputType
 import android.view.View
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.RadioButton
 import android.widget.RadioGroup
-import android.widget.ScrollView
-import android.widget.Spinner
 import android.widget.TextView
-import android.widget.Toast
-import com.novadrive.app.voice.AzureSpeechConfig
-import com.novadrive.app.voice.BaiduRealtimeClient
-import com.novadrive.app.voice.BaiduFlexClient
 import com.novadrive.app.voice.PcmAudioCapture
+import com.novadrive.app.voice.QwenOmniClient
 import com.novadrive.app.voice.StartResult
 import com.novadrive.app.voice.VoiceSessionGateway
 import com.novadrive.app.vision.QianfanVisionClient
 import com.novadrive.app.vision.VisionSettings
 import com.novadrive.app.wake.WakeWordController
 import com.novadrive.app.wake.WakeWordSettings
-import com.novadrive.contracts.CoordinateSystem
-import com.novadrive.contracts.Destination
-import com.novadrive.contracts.GeoCoordinate
-import com.novadrive.contracts.StructuredCommand
-import com.novadrive.ingress.ReplaySpeechToSpeechPort
-import com.novadrive.ingress.realtime.VoiceCatalog
 import com.novadrive.ingress.realtime.VoiceProviderException
-import com.novadrive.orchestration.VoiceSessionOrchestrator
-import com.novadrive.safety.BootstrapSafetyPolicy
-import com.novadrive.simulator.InMemoryVehicleSimulator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
+/**
+ * Developer settings, grouped as cards (ADR-017: the product session is always Qwen-Omni + Maia).
+ * Each card saves itself. Secrets are never displayed, echoed, logged or toasted; a blank secret
+ * field keeps the stored value.
+ */
 class DeveloperSettingsActivity : Activity() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private lateinit var repository: BaiduSettingsRepository
-    private lateinit var amapRepository: AmapSettingsRepository
     private lateinit var voiceToggle: Button
     private lateinit var wakeToggle: Button
     private lateinit var result: TextView
+    private lateinit var statusLines: TextView
     private val mainHandler = Handler(Looper.getMainLooper())
     private var closeTestClient: (() -> Unit)? = null
-    private var clearCredentials = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        repository = BaiduSettingsRepository(this)
-        amapRepository = AmapSettingsRepository(this)
-        val saved = repository.loadSettings()
-
-        val legacy = RadioButton(this).apply { text = "App ID + API Key + Secret Key"; id = View.generateViewId() }
-        val bearer = RadioButton(this).apply { text = "Bearer API Key"; id = View.generateViewId() }
-        val auth = RadioGroup(this).apply {
-            addView(legacy); addView(bearer)
-            check(if (saved.authMode == BaiduAuthMode.LEGACY_ACCESS_TOKEN) legacy.id else bearer.id)
-        }
-        val appId = secretField("App ID（留空保留已保存值）")
-        val apiKey = secretField("API Key（留空保留已保存值）")
-        val secretKey = secretField("Secret Key（留空保留已保存值）")
-        val amapKey = secretField("高德 Web服务 Key（可选，留空保留已保存值）")
-        val tokenEndpoint = EditText(this).apply { setText(saved.tokenEndpoint); hint = "OAuth token endpoint" }
-        val legacyFields = verticalGroup("App ID", appId, "Secret Key", secretKey, "Token endpoint", tokenEndpoint)
-        auth.setOnCheckedChangeListener { _, _ -> legacyFields.visibility = if (auth.checkedRadioButtonId == legacy.id) View.VISIBLE else View.GONE }
-
-        val modelButtons = linkedMapOf<Int, String>()
-        val modelGroup = RadioGroup(this)
-        (VoiceCatalog.baiduFlexModels + VoiceCatalog.baiduModels).forEach { (wire, label) ->
-            val button = RadioButton(this).apply { text = "$label · $wire"; id = View.generateViewId() }
-            modelButtons[button.id] = wire
-            modelGroup.addView(button)
-            if (wire == saved.model) modelGroup.check(button.id)
-        }
-        val endpoint = EditText(this).apply { setText(saved.endpoint); hint = "wss://..." }
-        val rateAuto = RadioButton(this).apply { text = "自动 (Flex 24 kHz / Lite 16 kHz)"; id = View.generateViewId() }
-        val rate16 = RadioButton(this).apply { text = "16 kHz"; id = View.generateViewId() }
-        val rate24 = RadioButton(this).apply { text = "24 kHz"; id = View.generateViewId() }
-        val outputRate = RadioGroup(this).apply {
-            addView(rateAuto); addView(rate16); addView(rate24)
-            check(
-                when (saved.outputSampleRate) {
-                    OutputSampleRate.AUTO -> rateAuto.id
-                    OutputSampleRate.HZ_16000 -> rate16.id
-                    OutputSampleRate.HZ_24000 -> rate24.id
-                },
-            )
-        }
-        val instructions = EditText(this).apply {
-            setText(saved.instructions)
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
-            minLines = 6
-        }
-        val resetPersona = Button(this).apply {
-            text = "恢复默认人设"
-            setOnClickListener { instructions.setText(PersonaProfiles.DEFAULT_INSTRUCTIONS) }
-        }
-        val voice = EditText(this).apply {
-            setText(saved.voice.ifBlank { BaiduAppSettings.DEFAULT_VOICE })
-            hint = "音色 voice id（产品默认 4196 度清影；失败回退 default）"
-        }
-        val voicePicker = Spinner(this).apply {
-            adapter = ArrayAdapter(
-                this@DeveloperSettingsActivity,
-                android.R.layout.simple_spinner_dropdown_item,
-                BaiduFlexVoices.spinnerLabels(),
-            )
-            setSelection(BaiduFlexVoices.indexOf(voice.text.toString().trim().ifBlank { BaiduAppSettings.DEFAULT_VOICE }))
-            onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-                override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                    voice.setText(BaiduFlexVoices.idAt(position))
-                }
-                override fun onNothingSelected(parent: AdapterView<*>?) = Unit
-            }
-        }
-        val speed = EditText(this).apply {
-            setText(saved.speed.toString())
-            hint = "语速 speed 0.5–1.5（默认 1.1）"
-            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
-        }
-        result = TextView(this).apply { setPadding(0, 20, 0, 12) }
-        voiceToggle = Button(this).apply {
-            text = voiceToggleLabel()
-            setOnClickListener { toggleVoiceSession() }
-        }
-        // P6: the wake word needs an iFlytek APPID, and until this field existed there was
-        // nowhere on the device to put it — `initialize()` failed every time with
-        // `wake_init_failure reason=no_appid`. MSC needs ONLY an appId (no apiKey/apiSecret).
-        // Saved through WakeWordSettings (Keystore), never through the Baidu repository.
-        val iflytekAppId = secretField("讯飞 APPID（唤醒词；留空保留已保存值）")
-        wakeToggle = Button(this).apply {
-            text = wakeToggleLabel()
-            setOnClickListener { toggleWakeWord() }
-        }
-        val saveWakeAppId = Button(this).apply {
-            text = "保存讯飞 APPID"
-            setOnClickListener {
-                val entered = iflytekAppId.text.toString().trim()
-                if (entered.isEmpty()) {
-                    result.text = "IFLYTEK_APPID_UNCHANGED\nLeave blank to keep the stored value."
-                    return@setOnClickListener
-                }
-                val settings = WakeWordSettings.from(this@DeveloperSettingsActivity)
-                val existing = settings.loadCredentials()
-                settings.saveCredentials(existing.copy(appId = entered))
-                iflytekAppId.text.clear()
-                // Never echo the value back to the screen or the log.
-                result.text = "IFLYTEK_APPID_SAVED\nStored in Android Keystore. Toggle Wake Word to re-initialise."
-            }
-        }
-        // Camera → vision model. Optional dedicated Qianfan API key (Keystore); when blank the
-        // Baidu voice credential is tried. The value is never echoed back.
-        val visionSettings = VisionSettings.from(this)
-        val visionKey = secretField(
-            if (visionSettings.hasDedicatedKey()) "视觉 API Key（已保存；留空保留）" else "视觉 API Key（千帆 bce-v3…，可选）",
-        )
-        val visionModel = EditText(this).apply {
-            setText(visionSettings.model())
-            hint = QianfanVisionClient.DEFAULT_MODEL
-        }
-        val saveVision = Button(this).apply {
-            text = "保存看图设置"
-            setOnClickListener {
-                val key = visionKey.text.toString().trim()
-                if (key.isNotEmpty()) visionSettings.saveDedicatedKey(key)
-                visionSettings.saveModel(visionModel.text.toString().ifBlank { QianfanVisionClient.DEFAULT_MODEL })
-                visionKey.text.clear()
-                result.text = "VISION_SETTINGS_SAVED\nmodel=${visionSettings.model()} dedicatedKey=${visionSettings.hasDedicatedKey()}"
-            }
-        }
-        val clearVisionKey = Button(this).apply {
-            text = "清除视觉 API Key"
-            setOnClickListener {
-                visionSettings.clearDedicatedKey()
-                result.text = "VISION_KEY_CLEARED\nThe Baidu voice credential will be tried instead."
-            }
-        }
-        val micTest = Button(this).apply {
-            text = getString(R.string.mic_test)
-            setOnClickListener { runMicTest() }
-        }
-        val demo = Button(this).apply {
-            text = getString(R.string.structured_demo)
-            setOnClickListener { runStructuredDemo() }
-        }
-        val openAccessibility = Button(this).apply {
-            text = "去开启辅助服务"
-            setOnClickListener { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
-        }
-        val testTiananmen = Button(this).apply {
-            text = "测试导航到天安门广场（走真实工具路径）"
-            setOnClickListener {
-                val action = SafeAndroidActionExecutor(this@DeveloperSettingsActivity).navigate("天安门广场")
-                result.text = when (action) {
-                    is AndroidActionResult.Accepted -> "NAVIGATION: Accepted"
-                    is AndroidActionResult.Rejected -> action.code
-                }
-            }
-        }
-        val testMusic = Button(this).apply {
-            text = "测试播放音乐（走真实工具路径）"
-            setOnClickListener {
-                val action = SafeAndroidActionExecutor(this@DeveloperSettingsActivity).playMusic()
-                result.text = when (action) {
-                    is AndroidActionResult.Accepted -> "MUSIC: Accepted(${action.status})"
-                    is AndroidActionResult.Rejected -> "MUSIC: Rejected(${action.code})"
-                }
-            }
-        }
-
-        val clear = Button(this).apply {
-            text = "Clear all stored credentials"
-            setOnClickListener {
-                clearCredentials = true
-                appId.text.clear(); apiKey.text.clear(); secretKey.text.clear(); amapKey.text.clear()
-                result.text = "Credentials will be cleared when Save is pressed."
-            }
-        }
-        val test = Button(this).apply {
-            text = "Test Connection"
-            setOnClickListener {
-                val candidate = candidate(auth, legacy, appId, apiKey, secretKey, modelButtons, modelGroup, endpoint, tokenEndpoint, outputRate, rate16, rate24, instructions, voice, speed)
-                val validation = BaiduSettingsValidator.validate(candidate.settings, candidate.credentials)
-                if (validation != null) { result.text = validation; return@setOnClickListener }
-                isEnabled = false
-                result.text = "Connecting directly to Baidu…"
-                scope.launch {
-                    closeTestClient?.invoke()
-                    try {
-                        if (candidate.settings.runtimeProvider == BaiduRuntimeProvider.FLEX) {
-                            val client = BaiduFlexClient()
-                            closeTestClient = client::disconnect
-                            client.connect(candidate)
-                            val match = if (client.voiceConfirmedAsRequested) "MATCH" else "MISMATCH_OR_FALLBACK"
-                            result.text = "Connection successful\n" +
-                                "Authentication successful\n" +
-                                "Model: ${candidate.settings.model}\n" +
-                                "voice requested=${client.requestedVoice}\n" +
-                                "voice confirmed=${client.confirmedVoice}\n" +
-                                "voice check=$match\n" +
-                                "label=${BaiduFlexVoices.labelFor(client.confirmedVoice ?: "")}\n" +
-                                "Microphone was not started.\n" +
-                                "Start Voice Session to hear whether audio timbre changed."
-                        } else {
-                            val client = BaiduRealtimeClient()
-                            closeTestClient = client::disconnect
-                            client.connect(candidate)
-                            result.text = "Connection successful\nAuthentication successful\nModel: ${candidate.settings.model}\nMicrophone was not started."
-                        }
-                    } catch (failure: VoiceProviderException) {
-                        result.text = "${failure.code}\n${failure.safeMessage}"
-                    } catch (_: Exception) {
-                        result.text = "BAIDU_CONNECTION_FAILED\nUnable to establish the realtime session"
-                    } finally {
-                        closeTestClient?.invoke(); closeTestClient = null; isEnabled = true
-                    }
-                }
-            }
-        }
-        val save = Button(this).apply {
-            text = "Save"
-            setOnClickListener {
-                val settings = formSettings(auth, legacy, modelButtons, modelGroup, endpoint, tokenEndpoint, outputRate, rate16, rate24, instructions, voice, speed)
-                val updates = BaiduCredentialUpdates(
-                    update(appId), update(apiKey), update(secretKey),
-                )
-                try {
-                    if (clearCredentials) {
-                        repository.clearAllCredentials()
-                        if (amapKey.text.toString().trim().isEmpty()) amapRepository.clear()
-                    }
-                    repository.save(settings, if (clearCredentials) updatesFromFields(appId, apiKey, secretKey) else updates)
-                    amapRepository.save(update(amapKey))
-                    clearCredentials = false
-                    Toast.makeText(this@DeveloperSettingsActivity, "Saved", Toast.LENGTH_SHORT).show()
-                    finish()
-                } catch (failure: IllegalArgumentException) {
-                    result.text = failure.message ?: "INVALID_CONFIGURATION"
-                }
-            }
-        }
-
+        result = TextView(this).apply { setPadding(0, 16, 0, 0); setTextIsSelectable(true) }
         val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; setPadding(48, 48, 48, 48)
-            addView(TextView(this@DeveloperSettingsActivity).apply { text = "Baidu Direct Settings"; textSize = 22f })
-            addView(TextView(this@DeveloperSettingsActivity).apply { text = "Authentication" }); addView(auth)
-            addView("API Key".label()); addView(apiKey); addView(legacyFields)
-            addView(TextView(this@DeveloperSettingsActivity).apply { text = "Provider / model (Flex preferred; Lite/Pro fallback)" }); addView(modelGroup)
-            addView("Realtime endpoint".label()); addView(endpoint)
-            addView(TextView(this@DeveloperSettingsActivity).apply { text = "回复音频采样率 (reply audio sample rate)" }); addView(outputRate)
-            addView(TextView(this@DeveloperSettingsActivity).apply { text = "人设 / Persona instructions (sent as session instructions)" })
-            addView(instructions)
-            addView(resetPersona)
-            addView("音色 voice（产品默认 4196 度清影-甜美女声；下拉选择或手填 id；不支持则回退 default）".label())
-            addView(voicePicker)
-            addView(voice)
-            addView("语速 speed 0.5–1.5（默认 1.1）".label())
-            addView(speed)
+            orientation = LinearLayout.VERTICAL; setPadding(32, 32, 32, 32)
             addView(TextView(this@DeveloperSettingsActivity).apply {
-                text = "Amap Web key (optional: enables hands-free navigation; without it Amap shows a destination list)"
+                text = "开发者设置 / Developer settings"; textSize = 22f; setTypeface(typeface, Typeface.BOLD)
             })
-            addView(amapKey)
-            addView(openAccessibility)
-            addView(geminiSection())
-            addView(azureVoiceSection())
-            addView(guidanceRelayToggle())
-            addView(voiceToggle)
-            addView("讯飞 APPID（唤醒词 你好小诺；MSC 只需要 APPID，不需要 API Key/Secret）".label())
-            addView(iflytekAppId)
-            addView(saveWakeAppId)
-            addView(wakeToggle)
-            addView("摄像头看图：打开相机时看一次、之后你问画面问题时再看；图片只在这两种情况下发送到百度千帆视觉模型".label())
-            addView(visionKey)
-            addView("视觉模型".label())
-            addView(visionModel)
-            addView(saveVision)
-            addView(clearVisionKey)
-            addView(micTest)
-            addView(demo)
-            addView(testTiananmen)
-            addView(testMusic)
-            addView(clear); addView(result); addView(test); addView(save)
-            addView(TextView(this@DeveloperSettingsActivity).apply {
-                setPadding(0, 20, 0, 0)
-                text = "Credentials are encrypted with Android Keystore. Test Connection opens Baidu WSS and waits for session.updated without using the microphone."
-            })
+            addView(statusCard())
+            addView(qwenCard())
+            addView(personaCard())
+            addView(amapCard())
+            addView(wakeCard())
+            addView(visionCard())
+            addView(card("权限 · Permissions", button("去开启辅助服务") {
+                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            }))
+            addView(diagnosticsCard())
+            addView(dangerCard())
         }
         setContentView(ScrollView(this).apply { addView(root) })
-        legacyFields.visibility = if (auth.checkedRadioButtonId == legacy.id) View.VISIBLE else View.GONE
     }
 
     override fun onResume() {
         super.onResume()
         if (::voiceToggle.isInitialized) voiceToggle.text = voiceToggleLabel()
         if (::wakeToggle.isInitialized) wakeToggle.text = wakeToggleLabel()
+        refreshStatus()
     }
+
+    override fun onDestroy() { closeTestClient?.invoke(); scope.cancel(); super.onDestroy() }
+
+    // ---- 0. Status ----
+
+    private fun statusCard(): View {
+        statusLines = TextView(this)
+        voiceToggle = button(voiceToggleLabel()) { toggleVoiceSession() }
+        refreshStatus()
+        return card("状态 · Status", statusLines, voiceToggle, result)
+    }
+
+    private fun refreshStatus() {
+        if (!::statusLines.isInitialized) return
+        statusLines.text = DeveloperSettingsStatus.lines(
+            qwenProblem = QwenSettingsRepository(this).configProblem(),
+            amapKey = AmapSettingsRepository(this).isConfigured(),
+            wakeAppId = WakeWordSettings.from(this).loadCredentials().isComplete(),
+            visionKey = VisionSettings.from(this).hasDedicatedKey(),
+        ).joinToString("\n")
+    }
+
+    // ---- 1. Qwen-Omni ----
+
+    private fun qwenCard(): View {
+        val qwen = QwenSettingsRepository(this)
+        val saved = qwen.loadSettings()
+        val consent = CheckBox(this).apply { text = "我已阅读并同意 / I accept"; isChecked = saved.consentAccepted }
+        val key = secretField(if (qwen.keyPresent()) "DashScope API Key（已配置；留空保留）" else "DashScope API Key")
+        val workspace = EditText(this).apply { setText(saved.workspaceId); hint = "Workspace ID（ap-southeast-1）" }
+        // Each model has its own free quota: experiment on 3.5 Plus, keep 3.8 for the final demo (owner, 2026-10-10).
+        val modelButtons = com.novadrive.ingress.realtime.VoiceCatalog.qwenModels.entries.associate { (wire, label) ->
+            RadioButton(this).apply { text = label; id = View.generateViewId() } to wire
+        }
+        val modelGroup = RadioGroup(this).apply {
+            modelButtons.forEach { (button, wire) -> addView(button); if (wire == saved.model) check(button.id) }
+        }
+        val save = button("保存 / Save") {
+            val settings = qwen.loadSettings().copy(
+                model = modelButtons.entries.firstOrNull { it.key.id == modelGroup.checkedRadioButtonId }?.value
+                    ?: com.novadrive.ingress.realtime.VoiceCatalog.QWEN_OMNI_FLASH,
+                consentAccepted = consent.isChecked,
+                workspaceId = workspace.text.toString().trim(),
+                voice = QwenAppSettings.DEFAULT_VOICE,
+            )
+            show(try {
+                qwen.save(settings, update(key))
+                key.text.clear(); key.hint = if (qwen.keyPresent()) "DashScope API Key（已配置；留空保留）" else "DashScope API Key"
+                "QWEN_SETTINGS_SAVED\nkeyPresent=${qwen.keyPresent()}"
+            } catch (failure: IllegalArgumentException) {
+                qwenMessage(failure.message ?: "QWEN_SETTINGS_INVALID")
+            })
+        }
+        val clearKey = button("清除 Key / Clear key") {
+            qwen.clearKey(); key.hint = "DashScope API Key"; show("QWEN_KEY_CLEARED")
+        }
+        val test = button("测试连接 / Test connection") { testQwenConnection(it) }
+        return card(
+            "语音服务 · Qwen-Omni",
+            label(QwenAppSettings.CONSENT_NOTICE), consent, label("API Key"), key, label("Workspace ID"), workspace,
+            label("模型（各有独立免费额度）/ Model (each has its own free quota)"), modelGroup,
+            label("声音：Maia（固定）/ Voice: ${QwenAppSettings.DEFAULT_VOICE} (fixed)"),
+            save, clearKey, test, label("下次开始会话时生效 / Takes effect at the next session start."),
+        )
+    }
+
+    /** Opens the Qwen session without the microphone, reports success or the QWEN_* code, then disconnects. */
+    private fun testQwenConnection(trigger: Button) {
+        val config = try {
+            QwenSettingsRepository(this).config(instructions = BaiduSettingsRepository(this).loadSettings().instructions)
+        } catch (failure: IllegalArgumentException) {
+            show(qwenMessage(failure.message ?: "QWEN_SETTINGS_INVALID")); return
+        }
+        trigger.isEnabled = false
+        show("正在连接通义千问… / Connecting…")
+        scope.launch {
+            closeTestClient?.invoke()
+            try {
+                val client = QwenOmniClient()
+                closeTestClient = client::disconnect
+                client.connect(config)
+                show("QWEN_CONNECTION_OK\n连接成功，未使用麦克风 / Connected; microphone was not started.")
+            } catch (failure: VoiceProviderException) {
+                show("${failure.code}\n${failure.safeMessage}")
+            } catch (_: Exception) {
+                show("QWEN_CONNECTION_FAILED\n无法建立会话 / Unable to establish the realtime session")
+            } finally {
+                closeTestClient?.invoke(); closeTestClient = null; trigger.isEnabled = true
+            }
+        }
+    }
+
+    private fun qwenMessage(code: String) = QwenSettingsValidator.message(code)?.let { "$code\n$it" } ?: code
+
+    // ---- 2. Persona (stored with the Baidu settings; the Qwen session reads it from there) ----
+
+    private fun personaCard(): View {
+        val repository = BaiduSettingsRepository(this)
+        val instructions = EditText(this).apply {
+            setText(repository.loadSettings().instructions)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            minLines = 6
+        }
+        val reset = button("恢复默认 / Reset") { instructions.setText(PersonaProfiles.DEFAULT_INSTRUCTIONS) }
+        val save = button("保存人设 / Save persona") {
+            val current = repository.loadSettings()
+            show(try {
+                // Only the persona changes; every other stored value and credential is kept.
+                repository.save(
+                    current.copy(instructions = instructions.text.toString().trim()),
+                    BaiduCredentialUpdates(CredentialUpdate.Keep, CredentialUpdate.Keep, CredentialUpdate.Keep),
+                )
+                "PERSONA_SAVED"
+            } catch (failure: IllegalArgumentException) {
+                failure.message ?: "PERSONA_INVALID"
+            })
+        }
+        return card("人设 · Persona", instructions, reset, save)
+    }
+
+    // ---- 3. Amap ----
+
+    private fun amapCard(): View {
+        val amap = AmapSettingsRepository(this)
+        fun hint() = if (amap.isConfigured()) "高德 Web服务 Key（已配置；留空保留）" else "高德 Web服务 Key"
+        val key = secretField(hint())
+        val save = button("保存 / Save") {
+            amap.save(update(key)); key.text.clear(); key.hint = hint(); refreshStatus()
+            show("AMAP_KEY_SAVED\nconfigured=${amap.isConfigured()}")
+        }
+        val clear = button("清除 / Clear") {
+            amap.clear(); key.hint = hint(); refreshStatus(); show("AMAP_KEY_CLEARED")
+        }
+        return card(
+            "地图与导航 · Map & navigation",
+            label("用于免手动导航；未配置时高德显示目的地列表 / Enables hands-free navigation"), key, save, clear,
+        )
+    }
+
+    // ---- 4. Wake word ----
+
+    private fun wakeCard(): View {
+        // MSC needs ONLY an appId (no apiKey/apiSecret); stored through WakeWordSettings (Keystore).
+        val appId = secretField("讯飞 APPID（留空保留已保存值）")
+        val save = button("保存 APPID / Save") {
+            val entered = appId.text.toString().trim()
+            if (entered.isEmpty()) {
+                show("IFLYTEK_APPID_UNCHANGED\nLeave blank to keep the stored value."); return@button
+            }
+            val settings = WakeWordSettings.from(this)
+            settings.saveCredentials(settings.loadCredentials().copy(appId = entered))
+            appId.text.clear(); refreshStatus()
+            show("IFLYTEK_APPID_SAVED\nStored in Android Keystore. Toggle Wake Word to re-initialise.")
+        }
+        wakeToggle = button(wakeToggleLabel()) { toggleWakeWord() }
+        return card("唤醒词「你好小诺」· Wake word", label("讯飞 APPID"), appId, save, wakeToggle)
+    }
+
+    // ---- 5. Vision ----
+
+    private fun visionCard(): View {
+        val vision = VisionSettings.from(this)
+        fun hint() = if (vision.hasDedicatedKey()) "视觉 API Key（已配置；留空保留）" else "视觉 API Key（千帆 bce-v3…，可选）"
+        val key = secretField(hint())
+        val model = EditText(this).apply { setText(vision.model()); hint = QianfanVisionClient.DEFAULT_MODEL }
+        val save = button("保存 / Save") {
+            val entered = key.text.toString().trim()
+            if (entered.isNotEmpty()) vision.saveDedicatedKey(entered)
+            vision.saveModel(model.text.toString().ifBlank { QianfanVisionClient.DEFAULT_MODEL })
+            key.text.clear(); key.hint = hint(); refreshStatus()
+            show("VISION_SETTINGS_SAVED\nmodel=${vision.model()} dedicatedKey=${vision.hasDedicatedKey()}")
+        }
+        val clear = button("清除 Key / Clear key") {
+            vision.clearDedicatedKey(); key.hint = hint(); refreshStatus()
+            show("VISION_KEY_CLEARED\nThe Baidu voice credential will be tried instead.")
+        }
+        return card(
+            "摄像头看图 · Camera vision",
+            label("打开相机时看一次、之后你问画面问题时再看；图片只在这两种情况下发送到百度千帆视觉模型。未填专用 Key 时尝试已保存的百度语音凭据。"),
+            key, label("视觉模型 / Model"), model, save, clear,
+        )
+    }
+
+    // ---- 7. Diagnostics (collapsed) ----
+
+    private fun diagnosticsCard(): View {
+        val music = button("测试播放音乐（走真实工具路径）") {
+            show(when (val action = SafeAndroidActionExecutor(this).playMusic()) {
+                is AndroidActionResult.Accepted -> "MUSIC: Accepted(${action.status})"
+                is AndroidActionResult.Rejected -> "MUSIC: Rejected(${action.code})"
+            })
+        }
+        val body = vertical(button(getString(R.string.mic_test)) { runMicTest() }, music, guidanceRelayToggle())
+            .apply { visibility = View.GONE }
+        val toggle = button("显示诊断工具") {
+            val show = body.visibility != View.VISIBLE
+            body.visibility = if (show) View.VISIBLE else View.GONE
+            it.text = if (show) "隐藏诊断工具" else "显示诊断工具"
+        }
+        return card("诊断工具 · Diagnostics", toggle, body)
+    }
+
+    /**
+     * SPEC-018 (experimental, default off). Qwen does not declare verbatimPromptSpeech, so 小诺 never
+     * speaks the guidance; but a stored `true` still mutes Amap's inner voice and installs the relay
+     * (AmapGuidanceVoice.enable), so the stored value stays reachable here.
+     */
+    private fun guidanceRelayToggle(): CheckBox {
+        val prefs = getSharedPreferences(com.novadrive.app.nav.amap.AmapGuidanceVoice.PREFS, MODE_PRIVATE)
+        val key = com.novadrive.app.nav.amap.AmapGuidanceVoice.PREF_ASSISTANT_VOICE
+        return CheckBox(this).apply {
+            text = "助手播报导航（实验）"
+            isChecked = prefs.getBoolean(key, false)
+            setOnCheckedChangeListener { _, checked -> prefs.edit().putBoolean(key, checked).apply() }
+        }
+    }
+
+    // ---- 8. Danger zone ----
+
+    private fun dangerCard(): View = card("危险操作 · Danger zone", button("清除所有密钥 / Clear all keys") {
+        AlertDialog.Builder(this)
+            .setTitle("清除所有密钥？")
+            .setMessage("将删除本机保存的所有密钥（语音、高德、唤醒词、看图等）。此操作不可撤销。")
+            .setPositiveButton("清除") { _, _ ->
+                CredentialWipe.clearAll(this); refreshStatus(); show("ALL_KEYS_CLEARED")
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    })
+
+    // ---- Session, wake word, mic test ----
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (grantResults.isEmpty() || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
             if (requestCode == REQ_MIC_WAKE) DebugVoiceLog.log("wake_permission_failure")
-            result.text = "MIC_PERMISSION_DENIED\nmicrophone permission denied"
+            show("MIC_PERMISSION_DENIED\nmicrophone permission denied")
             return
         }
         if (requestCode == REQ_MIC) toggleVoiceSession()
@@ -373,268 +335,88 @@ class DeveloperSettingsActivity : Activity() {
         }
         when (val outcome = VoiceSessionGateway.start()) {
             StartResult.Started, StartResult.AlreadyActive -> voiceToggle.text = voiceToggleLabel()
-            StartResult.MicPermissionMissing ->
-                requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC)
-            StartResult.NotAttached ->
-                result.text = "NOT_ATTACHED\nOpen the map screen first so the session owner is attached."
-            is StartResult.ConfigInvalid ->
-                result.text = outcome.message
+            StartResult.MicPermissionMissing -> requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC)
+            StartResult.NotAttached -> show("NOT_ATTACHED\nOpen the map screen first so the session owner is attached.")
+            is StartResult.ConfigInvalid -> show(outcome.message)
         }
     }
 
     private fun voiceToggleLabel(): String =
-        if (VoiceSessionGateway.isActive) getString(R.string.voice_session_stop)
-        else getString(R.string.voice_session_start)
+        getString(if (VoiceSessionGateway.isActive) R.string.voice_session_stop else R.string.voice_session_start)
 
     private fun toggleWakeWord() {
-        val settings = WakeWordSettings.from(this)
-        if (settings.isEnabled()) {
+        if (WakeWordSettings.from(this).isEnabled()) {
             WakeWordController.pause(this)
-            wakeToggle.text = wakeToggleLabel()
-            return
-        }
-        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+        } else if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC_WAKE)
             return
+        } else {
+            WakeWordController.setEnabled(this, true)
         }
-        WakeWordController.setEnabled(this, true)
         wakeToggle.text = wakeToggleLabel()
     }
 
     private fun wakeToggleLabel(): String =
-        if (WakeWordSettings.from(this).isEnabled()) getString(R.string.wake_word_disable)
-        else getString(R.string.wake_word_enable)
+        getString(if (WakeWordSettings.from(this).isEnabled()) R.string.wake_word_disable else R.string.wake_word_enable)
 
     private fun runMicTest() {
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC_TEST)
             return
         }
-        result.text = "麦克风测试中…"
-        val capture =
-            PcmAudioCapture(
-                onFrame = { bytes ->
-                    var max = 0
-                    var i = 0
-                    while (i + 1 < bytes.size) {
-                        val sample = (bytes[i].toInt() and 0xff) or (bytes[i + 1].toInt() shl 8)
-                        max = maxOf(max, kotlin.math.abs(sample.toShort().toInt()))
-                        i += 2
-                    }
-                    mainHandler.post { result.text = "麦克风测试峰值: $max（仅本机测试）" }
-                },
-                onError = { code -> mainHandler.post { result.text = "$code\nmic test failed" } },
-            )
+        show("麦克风测试中…")
+        val capture = PcmAudioCapture(
+            onFrame = { bytes ->
+                var max = 0
+                var i = 0
+                while (i + 1 < bytes.size) {
+                    val sample = (bytes[i].toInt() and 0xff) or (bytes[i + 1].toInt() shl 8)
+                    max = maxOf(max, kotlin.math.abs(sample.toShort().toInt()))
+                    i += 2
+                }
+                mainHandler.post { show("麦克风测试峰值: $max（仅本机测试）") }
+            },
+            onError = { code -> mainHandler.post { show("$code\nmic test failed") } },
+        )
         capture.start()
         mainHandler.postDelayed({ capture.stop() }, 600)
     }
 
-    private fun runStructuredDemo() {
-        val demoResult =
-            ReplaySpeechToSpeechPort().startSession(
-                VoiceSessionOrchestrator(BootstrapSafetyPolicy(), InMemoryVehicleSimulator()),
-            ).onStructuredFunctionCall(
-                StructuredCommand.StartNavigation(
-                    correlationId = "app-nav-people-square",
-                    destination = Destination(
-                        label = "人民广场",
-                        poiName = "人民广场",
-                        coordinate = GeoCoordinate(31.2304, 121.4737, CoordinateSystem.GCJ02),
-                    ),
-                ),
-            )
-        result.text = "演示: ${demoResult.feedbackZhCn}"
-    }
+    // ---- View helpers ----
 
-    override fun onDestroy() { closeTestClient?.invoke(); scope.cancel(); super.onDestroy() }
-
-
-    private fun candidate(
-        auth: RadioGroup, legacy: RadioButton, appId: EditText, apiKey: EditText, secretKey: EditText,
-        models: Map<Int, String>, modelGroup: RadioGroup, endpoint: EditText, tokenEndpoint: EditText,
-        outputRate: RadioGroup, rate16: RadioButton, rate24: RadioButton, instructions: EditText,
-        voice: EditText, speed: EditText,
-    ): BaiduApiConfig {
-        val saved = if (clearCredentials) BaiduCredentials("", "", "") else repository.loadCredentials()
-        return BaiduApiConfig(
-            formSettings(auth, legacy, models, modelGroup, endpoint, tokenEndpoint, outputRate, rate16, rate24, instructions, voice, speed),
-            BaiduCredentials(value(appId, saved.appId), value(apiKey, saved.apiKey), value(secretKey, saved.secretKey)),
-        )
-    }
-
-    private fun formSettings(auth: RadioGroup, legacy: RadioButton, models: Map<Int, String>, modelGroup: RadioGroup,
-                             endpoint: EditText, tokenEndpoint: EditText,
-                             outputRate: RadioGroup, rate16: RadioButton, rate24: RadioButton,
-                             instructions: EditText, voice: EditText, speed: EditText): BaiduAppSettings {
-        val model = models[modelGroup.checkedRadioButtonId] ?: VoiceCatalog.BAIDU_FLEX
-        return BaiduAppSettings(
-            authMode = if (auth.checkedRadioButtonId == legacy.id) BaiduAuthMode.LEGACY_ACCESS_TOKEN else BaiduAuthMode.BEARER_API_KEY,
-            runtimeProvider = if (model == VoiceCatalog.BAIDU_FLEX) BaiduRuntimeProvider.FLEX else BaiduRuntimeProvider.LITE,
-            model = model,
-            endpoint = endpoint.text.toString().trim(), tokenEndpoint = tokenEndpoint.text.toString().trim(),
-            outputSampleRate = when (outputRate.checkedRadioButtonId) {
-                rate16.id -> OutputSampleRate.HZ_16000
-                rate24.id -> OutputSampleRate.HZ_24000
-                else -> OutputSampleRate.AUTO
-            },
-            instructions = instructions.text.toString().trim(),
-            voice = voice.text.toString().trim().ifBlank { BaiduAppSettings.DEFAULT_VOICE },
-            speed = speed.text.toString().trim().toDoubleOrNull() ?: BaiduAppSettings.DEFAULT_SPEED,
-        )
-    }
-
-    /** SPEC-018 (experimental, default off): 小诺 speaks turn-by-turn guidance; read when navigation starts. */
-    private fun guidanceRelayToggle(): CheckBox {
-        val prefs = getSharedPreferences(
-            com.novadrive.app.nav.amap.AmapGuidanceVoice.PREFS, MODE_PRIVATE,
-        )
-        val key = com.novadrive.app.nav.amap.AmapGuidanceVoice.PREF_ASSISTANT_VOICE
-        return CheckBox(this).apply {
-            text = "助手播报导航（实验，默认关）/ Assistant speaks guidance (experimental)"
-            isChecked = prefs.getBoolean(key, false)
-            setOnCheckedChangeListener { _, checked -> prefs.edit().putBoolean(key, checked).apply() }
-        }
-    }
-
-    /** Voice provider choice and Gemini Live settings (ADR-010, ADR-013). The key is never displayed or logged; blank keeps the stored one. */
-    private fun geminiSection(): LinearLayout {
-        val gemini = GeminiSettingsRepository(this)
-        val saved = gemini.loadSettings()
-        val consent = CheckBox(this).apply { text = "我已阅读并同意 / I accept"; isChecked = saved.consentAccepted }
-        val providerButtons = VoiceProviderPreference.entries.associateBy {
-            RadioButton(this).apply {
-                text = if (it == VoiceProviderPreference.GEMINI) "Gemini — 默认 / default" else "Baidu"
-                id = View.generateViewId()
-            }
-        }
-        val providerGroup = RadioGroup(this).apply {
-            providerButtons.forEach { (button, pref) -> addView(button); if (pref == saved.provider) check(button.id) }
-        }
-        val key = secretField(
-            if (gemini.keyPresent()) "Gemini API Key（已配置 / configured；留空保留）" else "Gemini API Key",
-        )
-        val voice = EditText(this).apply { setText(saved.voice); hint = GeminiAppSettings.DEFAULT_VOICE }
-        val levels = GeminiThinkingLevel.entries.associateBy {
-            RadioButton(this).apply { text = it.wireName; id = View.generateViewId() }
-        }
-        val thinking = RadioGroup(this).apply {
-            levels.forEach { (button, level) -> addView(button); if (level == saved.thinkingLevel) check(button.id) }
-        }
-        val thinkingLabel = TextView(this).apply { text = "Thinking level" }
-        val geminiModels = VoiceCatalog.geminiLiveModels.entries.associate { (wire, label) ->
-            RadioButton(this).apply { text = label; id = View.generateViewId() } to wire
-        }
-        fun showThinkingFor(model: String) {
-            val visible = if (VoiceCatalog.geminiAcceptsThinkingLevel(model)) View.VISIBLE else View.GONE
-            thinking.visibility = visible
-            thinkingLabel.visibility = visible
-        }
-        val modelGroup = RadioGroup(this).apply {
-            geminiModels.forEach { (button, wire) -> addView(button); if (wire == saved.model) check(button.id) }
-            setOnCheckedChangeListener { _, id ->
-                geminiModels.entries.firstOrNull { it.key.id == id }?.let { showThinkingFor(it.value) }
-            }
-        }
-        showThinkingFor(saved.model)
-        val silence = EditText(this).apply {
-            setText(saved.silenceDurationMs?.toString().orEmpty())
-            hint = "静音结束 ms（留空 = 服务器默认）/ silence ms, blank = server default"
-            inputType = InputType.TYPE_CLASS_NUMBER
-        }
-        val save = Button(this).apply {
-            text = "保存 Gemini 设置 / Save Gemini"
-            setOnClickListener {
-                val provider = providerButtons.entries.firstOrNull { it.key.id == providerGroup.checkedRadioButtonId }?.value
-                    ?: VoiceProviderPreference.GEMINI
-                val silenceText = silence.text.toString().trim()
-                val settings = saved.copy(
-                    provider = provider,
-                    consentAccepted = consent.isChecked,
-                    model = geminiModels.entries.firstOrNull { it.key.id == modelGroup.checkedRadioButtonId }?.value
-                        ?: saved.model,
-                    voice = voice.text.toString().trim().ifBlank { GeminiAppSettings.DEFAULT_VOICE },
-                    thinkingLevel = levels.entries.firstOrNull { it.key.id == thinking.checkedRadioButtonId }?.value
-                        ?: GeminiThinkingLevel.LOW,
-                    silenceDurationMs = if (silenceText.isEmpty()) null else silenceText.toIntOrNull() ?: -1,
-                )
-                try {
-                    gemini.save(settings, update(key))
-                    key.text.clear()
-                    result.text = "GEMINI_SETTINGS_SAVED\nchoice=${gemini.choice().wireName} keyPresent=${gemini.keyPresent()}"
-                } catch (failure: IllegalArgumentException) {
-                    result.text = failure.message ?: "GEMINI_SETTINGS_INVALID"
-                }
-            }
-        }
-        val clearKey = Button(this).apply {
-            text = "清除 Gemini Key / Clear Gemini key"
-            setOnClickListener { gemini.clearKey(); result.text = "GEMINI_KEY_CLEARED" }
-        }
-        return verticalGroup(
-            TextView(this).apply { text = "语音服务 / Voice provider (ADR-013)"; textSize = 18f },
-            GeminiAppSettings.CONSENT_NOTICE, consent, "Provider", providerGroup, "API Key", key, "Model", modelGroup, "Voice", voice,
-            thinkingLabel, thinking, "Silence ms", silence, save, clearKey,
-            "Takes effect at the next session start.",
-        )
-    }
-
-    /** ADR-016: the owner's assistant voice. Off by default; the key is never displayed or logged; blank keeps it. */
-    private fun azureVoiceSection(): LinearLayout {
-        val azure = AzureSpeechSettingsRepository(this)
-        val saved = azure.loadSettings()
-        val enabled = CheckBox(this).apply { text = "用 Azure 声音说话 / Speak with the Azure voice"; isChecked = saved.enabled }
-        val key = secretField(
-            if (azure.keyPresent()) "Azure Speech Key（已配置 / configured；留空保留）" else "Azure Speech Key",
-        )
-        val region = EditText(this).apply { setText(saved.region); hint = "eastasia / chinaeast2" }
-        val voice = EditText(this).apply { setText(saved.voice); hint = AzureSpeechConfig.DEFAULT_VOICE }
-        val save = Button(this).apply {
-            text = "保存声音设置 / Save voice"
-            setOnClickListener {
-                val settings = AzureSpeechSettings(
-                    enabled = enabled.isChecked,
-                    region = region.text.toString().trim(),
-                    voice = voice.text.toString().trim().ifBlank { AzureSpeechConfig.DEFAULT_VOICE },
-                )
-                val message = try {
-                    azure.save(settings, update(key))
-                    key.text.clear()
-                    "AZURE_VOICE_SAVED enabled=${settings.enabled} keyPresent=${azure.keyPresent()}"
-                } catch (failure: IllegalArgumentException) {
-                    failure.message ?: "AZURE_SETTINGS_INVALID"
-                }
-                result.text = message
-                Toast.makeText(this@DeveloperSettingsActivity, message, Toast.LENGTH_SHORT).show()
-            }
-        }
-        val clearKey = Button(this).apply {
-            text = "清除 Azure Key / Clear Azure key"
-            setOnClickListener { azure.clearKey(); result.text = "AZURE_KEY_CLEARED" }
-        }
-        return verticalGroup(
-            TextView(this).apply { text = "小诺的声音 / Assistant voice (Azure, ADR-016)"; textSize = 18f },
-            enabled, "Azure Key", key, "Region", region, "Voice", voice, save, clearKey,
-            "Takes effect at the next session start.",
-        )
-    }
+    private fun show(text: String) { result.text = text }
 
     private fun update(field: EditText): CredentialUpdate =
-        field.text.toString().trim().takeIf { it.isNotEmpty() }?.let(CredentialUpdate::Replace)
-            ?: CredentialUpdate.Keep
-    private fun updatesFromFields(a: EditText, b: EditText, c: EditText) = BaiduCredentialUpdates(
-        a.text.toString().trim().takeIf(String::isNotEmpty)?.let(CredentialUpdate::Replace) ?: CredentialUpdate.Clear,
-        b.text.toString().trim().takeIf(String::isNotEmpty)?.let(CredentialUpdate::Replace) ?: CredentialUpdate.Clear,
-        c.text.toString().trim().takeIf(String::isNotEmpty)?.let(CredentialUpdate::Replace) ?: CredentialUpdate.Clear,
-    )
-    private fun value(field: EditText, old: String) = field.text.toString().trim().ifBlank { old }
+        field.text.toString().trim().takeIf { it.isNotEmpty() }?.let(CredentialUpdate::Replace) ?: CredentialUpdate.Keep
+
     private fun secretField(hintText: String) = EditText(this).apply {
         hint = hintText; inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
         importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
     }
-    private fun String.label() = TextView(this@DeveloperSettingsActivity).apply { text = this@label }
-    private fun verticalGroup(vararg children: Any) = LinearLayout(this).apply {
+
+    private fun label(text: String) = TextView(this).apply { this.text = text; setPadding(0, 8, 0, 4) }
+
+    private fun button(text: String, onClick: (Button) -> Unit) = Button(this).apply {
+        this.text = text; setOnClickListener { onClick(this) }
+    }
+
+    private fun vertical(vararg children: View) = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
-        children.forEach { if (it is String) addView(it.label()) else if (it is View) addView(it) }
+        children.forEach(::addView)
+    }
+
+    /** A card: bold header, then rows, on a light rounded background. */
+    private fun card(title: String, vararg rows: View) = vertical(
+        TextView(this).apply {
+            text = title; textSize = 19f; setTypeface(typeface, Typeface.BOLD); setPadding(0, 0, 0, 12)
+        },
+        *rows,
+    ).apply {
+        setPadding(32, 24, 32, 24)
+        background = GradientDrawable().apply { setColor(Color.argb(18, 0, 0, 0)); cornerRadius = 16f }
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
+        ).apply { topMargin = 24 }
     }
 
     companion object {

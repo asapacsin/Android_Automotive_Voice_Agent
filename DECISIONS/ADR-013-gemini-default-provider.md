@@ -39,3 +39,12 @@ voices. One provider is the only complete fix.
   that does not exist.
 - If Gemini later fails the product (reach, latency, cost), the owner's standing instruction (ADR-010
   G-2) applies: switch to another similar realtime model behind the same seam — still one provider.
+
+## Amendment (2026-10-09)
+
+The owner pulled the product-session UX forward: **`VoiceProviderChoice.resolve` always selects
+Qwen-Omni** for the product session (Maia via `QwenOmniDialect`). Fail-closed across providers and
+consent rules in this ADR still apply to every product start. Stored `gemini` / `baidu` preferences
+and the Gemini-default rule in §Decision 1 are **superseded for the product session only**; Gemini
+and Baidu stacks remain until Q-5 and explicit owner confirmation. Gates Q-1…Q-5 are unchanged and
+not marked passed.

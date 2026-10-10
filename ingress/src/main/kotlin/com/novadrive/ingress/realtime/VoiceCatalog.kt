@@ -88,6 +88,11 @@ data class ProviderCapabilities(
      * it ([RealtimeVoiceProvider.sendPrompt], [DomainVoiceEvent.AppPromptTurn]; SPEC-018).
      */
     val verbatimPromptSpeech: Boolean = false,
+    /**
+     * The provider streams the words of its spoken reply as they are generated, ahead of their
+     * audio, so the output gate can release a checked reply clause by clause (SPEC-014).
+     */
+    val streamedReplyText: Boolean = false,
 ) {
     val functionCalling: Boolean get() = customTools
 }
@@ -105,8 +110,14 @@ object VoiceCatalog {
     const val DEFAULT_PROVIDER_WIRE = "baidu_flex"
     val DEFAULT_PROVIDER: VoiceProviderId = VoiceProviderId.BAIDU_FLEX
     const val DEFAULT_MODEL = "qianfan-realtime-flex-v1"
-    const val QWEN_FLASH = "qwen-audio-3.0-realtime-flash"
-    const val QWEN_PLUS = "qwen-audio-3.0-realtime-plus"
+    /** SPEC-021: Qwen-Omni realtime (Alibaba Cloud, Singapore). Not selectable yet. */
+    const val QWEN_OMNI_FLASH = "qwen3.8-omni-flash-realtime"
+    /**
+     * The owner's experiment model (2026-10-10), on its own free quota so qwen3.8's is kept for the final
+     * demo. The docs list it with function calling, Maia and semantic_vad. The older
+     * qwen3-omni-flash-realtime is not offered: it has no function calling and no Maia.
+     */
+    const val QWEN_OMNI_PLUS_35 = "qwen3.5-omni-plus-realtime"
     const val GPT_LIVE_1 = "gpt-live-1"
     const val BAIDU_LITE_NEAR = "audio-mini-realtime-near"
     const val BAIDU_LITE_FAR = "audio-mini-realtime-far"
@@ -122,8 +133,8 @@ object VoiceCatalog {
 
     val qwenModels: Map<String, String> =
         mapOf(
-            QWEN_FLASH to "Qwen Flash",
-            QWEN_PLUS to "Qwen Plus",
+            QWEN_OMNI_FLASH to "Qwen3.8 Omni Flash（正式 / final）",
+            QWEN_OMNI_PLUS_35 to "Qwen3.5 Omni Plus（实验 / experiments）",
         )
     val gptLiveModels: Map<String, String> =
         mapOf(GPT_LIVE_1 to "GPT Live 1")
@@ -156,7 +167,7 @@ object VoiceCatalog {
 
     fun defaultModel(provider: VoiceProviderId): String =
         when (provider) {
-            VoiceProviderId.QWEN -> QWEN_FLASH
+            VoiceProviderId.QWEN -> QWEN_OMNI_FLASH
             VoiceProviderId.GPT_LIVE -> GPT_LIVE_1
             VoiceProviderId.BAIDU -> BAIDU_LITE_NEAR
             VoiceProviderId.BAIDU_FLEX -> BAIDU_FLEX
@@ -208,6 +219,7 @@ object VoiceCatalog {
 
     fun capabilities(provider: VoiceProviderId): ProviderCapabilities =
         when (provider) {
+            // SPEC-021, from the docs 2026-10-09; measured in Q-1.
             VoiceProviderId.QWEN ->
                 ProviderCapabilities(
                     provider = provider,
@@ -218,6 +230,11 @@ object VoiceCatalog {
                     workResultInjection = true,
                     unknownEventTolerance = true,
                     requiresCredentials = true,
+                    serverSpeechActivityEvents = true,
+                    toolCallCancellation = false,
+                    verbatimPromptSpeech = false,
+                    // response.audio_transcript.delta streams the words ahead of the audio (SPEC-014).
+                    streamedReplyText = true,
                 )
             VoiceProviderId.GPT_LIVE ->
                 ProviderCapabilities(
@@ -290,8 +307,6 @@ object VoiceModels {
     const val LITE_FAR = VoiceCatalog.BAIDU_LITE_FAR
     const val PRO_NEAR = VoiceCatalog.BAIDU_PRO_NEAR
     const val PRO_FAR = VoiceCatalog.BAIDU_PRO_FAR
-    const val QWEN_FLASH = VoiceCatalog.QWEN_FLASH
-    const val QWEN_PLUS = VoiceCatalog.QWEN_PLUS
     const val GPT_LIVE_1 = VoiceCatalog.GPT_LIVE_1
     const val FAKE = VoiceCatalog.FAKE_MODEL
     const val FLEX = VoiceCatalog.BAIDU_FLEX

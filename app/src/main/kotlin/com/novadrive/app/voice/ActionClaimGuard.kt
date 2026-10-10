@@ -153,6 +153,13 @@ class ActionClaimGuard {
         // The driver was heard; what is missing is the *target*. Telling them we did not catch a
         // sentence we caught perfectly is both false and useless (measured 2026-09-20 on 「再低一点」).
         if (request != null && ContextResolver.needsClarification(request)) return CLARIFY_REFERENT
+        // A whole sentence was transcribed: 「没听清」 would be dropped by DriverTurn's own
+        // repair_for_heard_speech, a second round trip for nothing (emulator 2026-10-09: 「说话霸道
+        // 一点」 took 5.8 s through claim -> 没听清 -> answer). Ask for the request itself instead;
+        // an unsupported one is then refused by its tool, honestly.
+        if (request != null && request.count { it.isLetterOrDigit() } >= DriverTurn.MIN_HEARD_SENTENCE_CHARS) {
+            return nudgeFor(request)
+        }
         return UNVERIFIED_ACTION_CLAIM
     }
 
@@ -243,9 +250,70 @@ class ActionClaimGuard {
             "关好", "关上", "开到", "关到", "全开", "最低了", "最高了", "开了", "关了", "升高", "降低", "调到",
         )
 
+        /**
+         * Verbs that promise a window change next to a body noun (「车窗再开大一点」「我把车窗摇下来」). They
+         * are not completion words, so a clause that negates them is an honest report, not a claim
+         * (「车窗没能开大，已经到顶了。」).
+         */
+        private val BODY_PROMISE_VERBS = listOf("开大", "开小", "关小", "摇下", "摇上")
+
+        /**
+         * A window action written verb-first: 「开大点窗」「关窗」「开车窗」「开窗户」「摇下车窗」. Never 窗外 or
+         * 窗帘. Live JVM take 2026-10-10 (qwen3.8-omni-flash-realtime): 「蚊子还没走」 →
+         * 「那再开大点窗，让它赶紧飞出去。」 with no tool call, windows unchanged, released as
+         * no_claim_made. On its own the phrase is ordinary advice (「可以开点窗透透气」「先别开窗」), so it
+         * is a claim only when [windowPromise] finds it framed as a promise or a completion.
+         */
+        private val WINDOW_VERB_FIRST = Regex("(开|关|摇|降|升)(大|小|上|下|高|低|开)?一?(点儿?|些)?(车窗|窗户|窗)(?!外|帘)")
+
+        /** Before the verb, in the same clause: she is doing it. A bare 「我」 counts only right before the verb (「我觉得开窗…」 is an opinion). */
+        private val WINDOW_PROMISE_MARKERS = listOf(
+            "帮你", "帮您", "给你", "给您", "替你", "为你", "为您", "这就", "马上", "立刻", "再", "先",
+        )
+
+        private val ADJACENT_PROMISE_MARKERS = listOf("我", "已", "已经", "正在")
+
+        /** Anywhere in the clause: negated, advisory or hypothetical, so not an action. */
+        private val WINDOW_NOT_ACTION_WORDS = listOf(
+            "别", "不", "没", "无法", "可以", "建议", "的话", "如果", "要是", "能",
+            "觉得", "应该", "最好", "比较", "也许", "或者",
+            // Sequencing, not a promise: 「等它飞出去了再关窗」「到服务区之后再开窗」.
+            "等它", "之后", "以后",
+        )
+
+        /** Right after the phrase: it is done. 「开窗了吗」 is a question; a bare 好 is chat (「关窗好一点」「开窗好处」). */
+        private val WINDOW_DONE_AFTER = Regex("^(了(?!吗)|好了|到)")
+
+        private val CLAUSE_BREAK = Regex("[，。！？；,.!?;、]")
+
+        /** The fixed verb of a window promise or completion in [reply], or null. */
+        private fun windowPromise(reply: String): String? {
+            for (clause in reply.split(CLAUSE_BREAK)) {
+                if (WINDOW_NOT_ACTION_WORDS.any { it in clause }) continue
+                for (m in WINDOW_VERB_FIRST.findAll(clause)) {
+                    val before = clause.substring(0, m.range.first)
+                    val after = clause.substring(m.range.last + 1)
+                    // 我/已/正在 only right before the verb: 「外面正在下雨关窗吧」「我觉得开窗…」 are chat.
+                    val promised = ADJACENT_PROMISE_MARKERS.any { before.endsWith(it) } || WINDOW_PROMISE_MARKERS.any { it in before }
+                    if (promised || WINDOW_DONE_AFTER.containsMatchIn(after)) {
+                        return m.groupValues[1]
+                    }
+                }
+            }
+            return null
+        }
+
+        private fun bodyPromiseVerb(reply: String): String? =
+            reply.split(CLAUSE_BREAK).firstNotNullOfOrNull { clause ->
+                if (BODY_NOUNS.none { it in clause } || WINDOW_NOT_ACTION_WORDS.any { it in clause }) null
+                else BODY_PROMISE_VERBS.firstOrNull { it in clause }
+            }
+
+        /** Only fixed vocabulary is returned, never the reply's own words (ClaimMatch is logged). */
         private fun bodyClaimWords(reply: String): Pair<String, String>? {
+            windowPromise(reply)?.let { return "窗" to it }
             val noun = BODY_NOUNS.firstOrNull { it in reply } ?: return null
-            val verb = BODY_COMPLETION_WORDS.firstOrNull { it in reply } ?: return null
+            val verb = BODY_COMPLETION_WORDS.firstOrNull { it in reply } ?: bodyPromiseVerb(reply) ?: return null
             return noun to verb
         }
 
@@ -590,9 +658,19 @@ class ActionClaimGuard {
          * Emulator 2026-10-08 (later): ability_modal=false ability_groups=5 was dropped as a 调 claim
          * (17 s of silence); three or more groups now make a list even without 能/可以/会.
          */
-        private fun listsAbilities(reply: String): Boolean =
-            (ABILITY_MODAL.containsMatchIn(reply) && answersCapabilityHelp(reply)) ||
-                capabilityHelpNouns(ProductCapabilities).count { it in reply } >= 3
+        private fun listsAbilities(reply: String): Boolean {
+            val groups = capabilityHelpNouns(ProductCapabilities).count { it in reply }
+            if (ABILITY_MODAL.containsMatchIn(reply) && answersCapabilityHelp(reply)) return true
+            // Without 能/可以, a list of nouns is only a list if nothing says it is done or promises
+            // to do it: 「空调、车窗我都帮你打开。」 is a claim (review 2026-10-09).
+            if (claimsDone(reply) || promisesToAct(reply)) return false
+            return groups >= 3 ||
+                // Emulator 2026-10-09 (Qwen Maia): 「你干什么」 was answered with two groups in an
+                // enumeration (ability_modal=false ability_groups=2), dropped as a 调 claim. An
+                // enumeration of abilities is a list; [reportsCompletion] still keeps 「空调、车窗都
+                // 开了」 a claim, because every caller checks it alongside this.
+                (groups >= 2 && '、' in reply)
+        }
 
         /** Log-safe diagnostic: only a boolean and a count from our own vocabulary, never text. */
         fun abilityDiagnostics(reply: String): String =
@@ -600,6 +678,16 @@ class ActionClaimGuard {
                 "ability_groups=${capabilityHelpNouns(ProductCapabilities).count { it in reply }}"
 
         private val ABILITY_MODAL = Regex("(能|可以|会)(帮你|帮您|给你|替你)?")
+
+        /**
+         * 帮你/给你/替你 directly followed by a control verb, in a clause that is not itself the
+         * enumeration: 「都帮你打开。」 promises; 「帮你导航、调空调。」 (emulator 2026-10-09) lists.
+         */
+        private fun promisesToAct(reply: String): Boolean = PROMISE.containsMatchIn(reply)
+
+        private val PROMISE by lazy {
+            Regex("(帮你|帮您|给你|给您|替你|替您)(" + (CONTROL_VERBS + listOf("开", "关", "调", "放")).joinToString("|") + ")[^、，。！？,!?]*(?=[，。！？,!?]|$)")
+        }
 
         /** The reply asks the driver to choose or to say something, rather than reporting. */
         private fun promptsDriver(reply: String): Boolean = PROMPT_WORDS.any { it in reply }

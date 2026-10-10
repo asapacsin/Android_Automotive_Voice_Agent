@@ -81,10 +81,10 @@ class DependencyBoundaryTest {
             .filter { file -> backends.any { file.readText().contains(it) } }
             .map { it.relativeTo(root).invariantSeparatorsPath }
             .toList()
-        // DeveloperSettingsActivity's legacy orchestration demo predates the port and is
-        // navigation-only; it is the single tolerated exception and must not grow.
+        // No exceptions: the legacy orchestration demo in DeveloperSettingsActivity was removed
+        // with the developer-screen rebuild (2026-10-10).
         assertTrue(
-            violations == listOf("app/src/main/kotlin/com/novadrive/app/DeveloperSettingsActivity.kt") || violations.isEmpty(),
+            violations.isEmpty(),
             "concrete vehicle backend referenced outside the provider: $violations",
         )
         val provider = File(root, allowed).readText()
