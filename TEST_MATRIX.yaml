@@ -2857,9 +2857,9 @@ tests:
     terminal_success: [check_req_pass, one_voice, every_announced_action_has_ok_result]
     covers: []
     prerequisites: ["emulator nova_api34 on the owner's PC with claude/10-9", "seed_qwen.py --accept-consent run once; Amap Web key set", "python tools/demo/recorder/make_clips.py for the c_* lines"]
-    procedure: ["record c1_board..c6_arrive as in docs/DEMO_COMMUTE.md (KEEP=1 after the first take)", "python tools/demo/recorder/check_req.py on every take", "compose each take; CUT=commute python final_cut.py"]
+    procedure: ["record c1_board..c6_arrive as in docs/DEMO_COMMUTE.md (KEEP=1 after the first take), or in the cloud with tools/demo/live (JVM, NOVA_LIVE_PROVIDER=qwen)", "python tools/demo/recorder/check_req.py on every take", "compose each take; CUT=commute python final_cut.py"]
     pass_criteria: ["check_req.py passes every take (chat/style <= 3.0 s, tool turns <= 3.5 s, none > 5 s, no reply_underrun > 300 ms)", "only Maia (Amap guidance the known exception)", "every announced action has an ok=true tool result in the log", "蚊子还没走 and the vague song get a confirmed action or an honest answer, never an unproven claim", "no unmarked silence > 1.5 s in the final video"]
-    evidence: []
+    evidence: ["2026-10-10 cloud, harness validation only (Gemini, not the product provider; JVM, simulated car): run 1 every turn 1.8-3.5 s, check_req PASS; run 2 c_mosq2 TURN_DROP unproven_action_claim then 20 s Gemini correction grace, and c_music/c_traffic got no turn until c_weather (14.4 s) - Gemini-only path, logged, not fixed. Qwen not run: DashScope secrets absent"]
     related: [QWEN-EMU-001, SPEC-015, SPEC-017, SPEC-011, SPEC-020, P50]
     last_run: {at: null, result: null}
 

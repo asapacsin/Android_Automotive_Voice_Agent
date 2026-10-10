@@ -79,6 +79,14 @@ $env:CUT="commute"; python final_cut.py commute_demo.mp4
 - Store the result in `android_doc/commute_demo_<date>/` with its README, never the logs (they hold
   `transcript=` lines).
 
+## Recording in the cloud (no emulator)
+
+`tools/demo/live/` runs the same six scenes in one session on the JVM:
+- **Real:** the shipped voice stack (provider client, claim gate, core session, tool dispatch) against the live model, and live Amap weather.
+- **Simulated:** the car, the 横琴 route and the music app.
+
+It writes the recorder's artifacts, so `check_req.py` grades it unchanged, and `render.py` draws a video headed "JVM live run — not the app screen". See its README. A Qwen run needs `DASHSCOPE_API_KEY` and `DASHSCOPE_WORKSPACE_ID` in the environment's secrets.
+
 ## Pass criteria
 
 - `check_req.py` passes every take:
