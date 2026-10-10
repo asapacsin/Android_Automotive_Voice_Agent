@@ -11,6 +11,8 @@ import com.novadrive.simulator.SimulatedVehicleControl
 import org.json.JSONObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -385,6 +387,25 @@ class FalseCapabilityClaimTest {
         assertNotReleased("关窗", "车窗都关好了")
         assertNotReleased("把车窗打开一半", "车窗都开到了50%")
         assertNotReleased("开窗", "好的，车窗关上了")
+    }
+
+    /** Live JVM take 2026-10-10: 「蚊子还没走」 → 「那再开大点窗…」 with no call, windows unchanged. */
+    @Test
+    fun aBareWindowPromiseWithNoToolCallIsAClaim() {
+        listOf(
+            "那再开大点窗，让它赶紧飞出去。",
+            "我再开点窗。",
+            "这就帮你关窗。",
+            "车窗再开大一点，它就出去了。",
+            "我把车窗关小一点。",
+        ).forEach { assertNotNull(ActionClaimGuard.carActionClaimMatch(it), it) }
+        listOf(
+            "窗外的风景真不错。",
+            "开车的时候注意安全哦。",
+            "要不要开点窗透透气？",
+            "开车窗外的风有点大吧。",
+        ).forEach { assertNull(ActionClaimGuard.carActionClaimMatch(it), it) }
+        assertNotReleased("把车窗再开大一点", "那再开大点窗，让它赶紧飞出去。")
     }
 
     @Test

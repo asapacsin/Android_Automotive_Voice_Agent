@@ -87,6 +87,27 @@ $env:CUT="commute"; python final_cut.py commute_demo.mp4
 
 It writes the recorder's artifacts, so `check_req.py` grades it unchanged, and `render.py` draws a video headed "JVM live run — not the app screen". See its README. A Qwen run needs `DASHSCOPE_API_KEY` and `DASHSCOPE_WORKSPACE_ID` in the environment's secrets.
 
+### Cloud takes, 2026-10-10 (Qwen + Maia, JVM harness)
+
+The owner approved two live sessions. Both ran the six scenes in one session each:
+
+| | Take 1: qwen3.5-omni-plus-realtime | Take 2: qwen3.8-omni-flash-realtime |
+| --- | --- | --- |
+| `check_req.py` | PASS, 2.4–3.1 s | FAIL `c_sweet` 3.3 s (limit 3.0); the rest 2.5–3.2 s |
+| 嗲一点 | agreed, no `set_speaking_style` call (style stayed default) | `set_speaking_style` sweet, held for the whole drive |
+| 蚊子还没走 | re-ran mosquito, said 「车窗又开了一半」 with nothing changed | said 「那再开大点窗」 and called **nothing** |
+| vague song | heard 「RSA」 (the clip's TTS spelled 阿Sa out) | wrong artist (陈伟霆); the reply stayed honest |
+
+Fixed after the takes, with offline tests (not re-recorded; that needs another approved session):
+- The mosquito scenario answers `already_open` when the windows are already half open (74d8ef8).
+- The claim gate now treats a verb-first window promise with a bare 「窗」 (「开大点窗」「关窗」) as a claim, so
+  that reply is no longer released when no tool ran.
+- The `c_music` clip is written 阿萨.
+
+Still open: the style turn is a tool call plus a second response, about 0.33 s per network hop from the
+cloud container to DashScope. On the owner's PC in China the hops are shorter; measure it there before
+deciding anything.
+
 ## Pass criteria
 
 - `check_req.py` passes every take:

@@ -1,21 +1,21 @@
 {
-  "generated_at": "2026-10-10T13:28:12",
+  "generated_at": "2026-10-10T14:18:01",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "3e0be4b",
+    "commit": "74d8ef8",
     "branch": "claude/10-9",
-    "subject": "Qwen experiment model: qwen3.5-omni-plus-realtime selectable (owner, 2026-10-10)",
-    "working_tree_clean": true,
-    "uncommitted_files": 0
+    "subject": "Mosquito scenario reports windows already half open; music clip says 阿萨",
+    "working_tree_clean": false,
+    "uncommitted_files": 4
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-10-02T14:56:42",
+    "collected_at": "2026-10-10T14:16:53",
     "total": {
-      "tests": 1930,
+      "tests": 2104,
       "failures": 0,
       "errors": 0,
-      "skipped": 2
+      "skipped": 3
     },
     "by_module": {
       "evaluation": {
@@ -25,10 +25,10 @@
         "skipped": 0
       },
       "app": {
-        "tests": 1627,
+        "tests": 1793,
         "failures": 0,
         "errors": 0,
-        "skipped": 2
+        "skipped": 3
       },
       "simulator": {
         "tests": 25,
@@ -43,7 +43,7 @@
         "skipped": 0
       },
       "behavior-test": {
-        "tests": 128,
+        "tests": 131,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -55,7 +55,7 @@
         "skipped": 0
       },
       "ingress": {
-        "tests": 114,
+        "tests": 119,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 224120139,
-    "built_at": "2026-10-02T14:54:03"
+    "bytes": 224267575,
+    "built_at": "2026-10-10T14:17:52"
   },
   "capabilities": {
     "available": true,

@@ -248,10 +248,24 @@ class ActionClaimGuard {
         private val BODY_NOUNS = listOf("车窗", "窗户", "座椅", "座位")
         private val BODY_COMPLETION_WORDS = listOf(
             "关好", "关上", "开到", "关到", "全开", "最低了", "最高了", "开了", "关了", "升高", "降低", "调到",
+            // Promises: 「车窗再开大一点」 with no call changes nothing either.
+            "开大", "开小", "关小",
         )
 
+        /**
+         * A window promised verb-first with a bare 「窗」: 「那再开大点窗，让它赶紧飞出去。」 (live JVM take
+         * 2026-10-10, qwen3.8-omni-flash-realtime, 「蚊子还没走」): no tool ran, the windows stayed at
+         * 50%, and the reply was released as no_claim_made because 「窗」 alone is not a body noun.
+         * Verb directly before 窗 only, so 「窗外」 chat and 「开车」 never match.
+         */
+        private val WINDOW_VERB_FIRST = Regex("(开|关|摇|降|升)(大|小|上|下|高|低|开)?一?(点儿?|些)?车?窗(?!外)")
+
         private fun bodyClaimWords(reply: String): Pair<String, String>? {
-            val noun = BODY_NOUNS.firstOrNull { it in reply } ?: return null
+            val noun = BODY_NOUNS.firstOrNull { it in reply }
+            if (noun == null) {
+                // Only the fixed verb is returned, never the reply's own words (ClaimMatch is logged).
+                return WINDOW_VERB_FIRST.find(reply)?.let { "窗" to it.groupValues[1] }
+            }
             val verb = BODY_COMPLETION_WORDS.firstOrNull { it in reply } ?: return null
             return noun to verb
         }
