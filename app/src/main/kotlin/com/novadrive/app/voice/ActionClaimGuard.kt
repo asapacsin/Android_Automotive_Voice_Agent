@@ -248,25 +248,65 @@ class ActionClaimGuard {
         private val BODY_NOUNS = listOf("车窗", "窗户", "座椅", "座位")
         private val BODY_COMPLETION_WORDS = listOf(
             "关好", "关上", "开到", "关到", "全开", "最低了", "最高了", "开了", "关了", "升高", "降低", "调到",
-            // Promises: 「车窗再开大一点」 with no call changes nothing either.
-            "开大", "开小", "关小",
         )
 
         /**
-         * A window promised verb-first with a bare 「窗」: 「那再开大点窗，让它赶紧飞出去。」 (live JVM take
-         * 2026-10-10, qwen3.8-omni-flash-realtime, 「蚊子还没走」): no tool ran, the windows stayed at
-         * 50%, and the reply was released as no_claim_made because 「窗」 alone is not a body noun.
-         * Verb directly before 窗 only, so 「窗外」 chat and 「开车」 never match.
+         * Verbs that promise a window change next to a body noun (「车窗再开大一点」「我把车窗摇下来」). They
+         * are not completion words, so a clause that negates them is an honest report, not a claim
+         * (「车窗没能开大，已经到顶了。」).
          */
-        private val WINDOW_VERB_FIRST = Regex("(开|关|摇|降|升)(大|小|上|下|高|低|开)?一?(点儿?|些)?车?窗(?!外)")
+        private val BODY_PROMISE_VERBS = listOf("开大", "开小", "关小", "摇下", "摇上")
 
-        private fun bodyClaimWords(reply: String): Pair<String, String>? {
-            val noun = BODY_NOUNS.firstOrNull { it in reply }
-            if (noun == null) {
-                // Only the fixed verb is returned, never the reply's own words (ClaimMatch is logged).
-                return WINDOW_VERB_FIRST.find(reply)?.let { "窗" to it.groupValues[1] }
+        /**
+         * A window action written verb-first: 「开大点窗」「关窗」「开车窗」「开窗户」「摇下车窗」. Never 窗外 or
+         * 窗帘. Live JVM take 2026-10-10 (qwen3.8-omni-flash-realtime): 「蚊子还没走」 →
+         * 「那再开大点窗，让它赶紧飞出去。」 with no tool call, windows unchanged, released as
+         * no_claim_made. On its own the phrase is ordinary advice (「可以开点窗透透气」「先别开窗」), so it
+         * is a claim only when [windowPromise] finds it framed as a promise or a completion.
+         */
+        private val WINDOW_VERB_FIRST = Regex("(开|关|摇|降|升)(大|小|上|下|高|低|开)?一?(点儿?|些)?(车窗|窗户|窗)(?!外|帘)")
+
+        /** Before the verb, in the same clause: she is doing it. A bare 「我」 counts only right before the verb (「我觉得开窗…」 is an opinion). */
+        private val WINDOW_PROMISE_MARKERS = listOf("帮你", "帮您", "给你", "给您", "替你", "这就", "马上", "立刻", "再", "先")
+
+        /** Anywhere in the clause: negated, advisory or hypothetical, so not an action. */
+        private val WINDOW_NOT_ACTION_WORDS = listOf(
+            "别", "不", "没", "无法", "可以", "建议", "的话", "如果", "要是", "能",
+            "觉得", "应该", "最好", "比较", "也许", "或者",
+        )
+
+        /** Right after the phrase: it is done. 「开窗了吗」 is a question. */
+        private val WINDOW_DONE_AFTER = Regex("^(了(?!吗)|好|到)")
+
+        private val CLAUSE_BREAK = Regex("[，。！？；,.!?;、]")
+
+        /** The fixed verb of a window promise or completion in [reply], or null. */
+        private fun windowPromise(reply: String): String? {
+            for (clause in reply.split(CLAUSE_BREAK)) {
+                if (WINDOW_NOT_ACTION_WORDS.any { it in clause }) continue
+                for (m in WINDOW_VERB_FIRST.findAll(clause)) {
+                    val before = clause.substring(0, m.range.first)
+                    val after = clause.substring(m.range.last + 1)
+                    val promised = before.endsWith("我") || WINDOW_PROMISE_MARKERS.any { it in before }
+                    if (promised || WINDOW_DONE_AFTER.containsMatchIn(after)) {
+                        return m.groupValues[1]
+                    }
+                }
             }
-            val verb = BODY_COMPLETION_WORDS.firstOrNull { it in reply } ?: return null
+            return null
+        }
+
+        private fun bodyPromiseVerb(reply: String): String? =
+            reply.split(CLAUSE_BREAK).firstNotNullOfOrNull { clause ->
+                if (BODY_NOUNS.none { it in clause } || WINDOW_NOT_ACTION_WORDS.any { it in clause }) null
+                else BODY_PROMISE_VERBS.firstOrNull { it in clause }
+            }
+
+        /** Only fixed vocabulary is returned, never the reply's own words (ClaimMatch is logged). */
+        private fun bodyClaimWords(reply: String): Pair<String, String>? {
+            windowPromise(reply)?.let { return "窗" to it }
+            val noun = BODY_NOUNS.firstOrNull { it in reply } ?: return null
+            val verb = BODY_COMPLETION_WORDS.firstOrNull { it in reply } ?: bodyPromiseVerb(reply) ?: return null
             return noun to verb
         }
 
