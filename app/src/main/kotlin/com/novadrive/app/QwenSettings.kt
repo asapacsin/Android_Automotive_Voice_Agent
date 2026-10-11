@@ -12,13 +12,17 @@ data class QwenAppSettings(
     val consentAccepted: Boolean = false,
     val model: String = VoiceCatalog.QWEN_OMNI_FLASH,
     val workspaceId: String = "",
-    val voice: String = DEFAULT_VOICE,
+    /** Model wire name -> cloned voice id; a cloned voice works only with the model it was made for. */
+    val customVoices: Map<String, String> = emptyMap(),
     val vadType: String = DEFAULT_VAD,
     val silenceDurationMs: Int = DEFAULT_SILENCE_MS,
 ) {
     override fun toString(): String =
         "QwenAppSettings(consentAccepted=$consentAccepted, model=$model, workspaceId=<redacted>, " +
-            "voice=$voice, vadType=$vadType, silenceDurationMs=$silenceDurationMs)"
+            "customVoices=$customVoices, vadType=$vadType, silenceDurationMs=$silenceDurationMs)"
+
+    /** The voice this session speaks in: the custom voice bound to [model], else [DEFAULT_VOICE]. */
+    fun sessionVoice(): String = customVoices[model]?.trim()?.takeIf { it.isNotEmpty() } ?: DEFAULT_VOICE
 
     companion object {
         const val REGION_HOST_SUFFIX = "ap-southeast-1.maas.aliyuncs.com"
@@ -57,12 +61,20 @@ object QwenSettingsValidator {
     const val MAX_WORKSPACE_LENGTH = 63
     private val WORKSPACE_CHARS = ('0'..'9') + ('A'..'Z') + ('a'..'z') + setOf('-')
 
+    const val MAX_VOICE_LENGTH = 80
+
+    private fun voiceValid(voice: String) = voice.length in 1..MAX_VOICE_LENGTH && voice.all { it in VOICE_CHARS }
+
     fun validateSettings(settings: QwenAppSettings): String? {
         if (settings.model !in VoiceCatalog.qwenModels) return "QWEN_MODEL_INVALID"
         val workspace = settings.workspaceId.trim()
         if (workspace.isEmpty()) return "QWEN_WORKSPACE_MISSING"
         if (workspace.length > MAX_WORKSPACE_LENGTH || !workspace.all { it in WORKSPACE_CHARS }) return "QWEN_WORKSPACE_INVALID"
-        if (settings.voice.length !in 1..32 || !settings.voice.all { it in VOICE_CHARS }) return "QWEN_VOICE_INVALID"
+        for ((model, voice) in settings.customVoices) {
+            if (voice.isBlank()) continue
+            if (model !in VoiceCatalog.qwenModels || !voiceValid(voice.trim())) return "QWEN_VOICE_INVALID"
+        }
+        if (!voiceValid(settings.sessionVoice())) return "QWEN_VOICE_INVALID"
         if (settings.silenceDurationMs !in QwenAppSettings.MIN_SILENCE_MS..QwenAppSettings.MAX_SILENCE_MS) {
             return "QWEN_SILENCE_INVALID"
         }
@@ -79,9 +91,8 @@ object QwenSettingsValidator {
 
     /** Builds the Qwen session config or throws [IllegalArgumentException] with the config code. */
     fun configOrThrow(settings: QwenAppSettings, apiKey: String, instructions: String): QwenApiConfig {
-        val sessionVoice = settings.copy(voice = QwenAppSettings.DEFAULT_VOICE)
-        validate(sessionVoice, apiKey)?.let { throw IllegalArgumentException(it) }
-        return QwenApiConfig(sessionVoice, apiKey, instructions)
+        validate(settings, apiKey)?.let { throw IllegalArgumentException(it) }
+        return QwenApiConfig(settings, apiKey, instructions)
     }
 
     /**
@@ -122,7 +133,9 @@ class QwenSettingsRepository(
             consentAccepted = prefs.getBoolean(KEY_CONSENT, false),
             model = prefs.getString(KEY_MODEL, null).orEmpty().ifBlank { VoiceCatalog.QWEN_OMNI_FLASH },
             workspaceId = prefs.getString(KEY_WORKSPACE, null).orEmpty(),
-            voice = prefs.getString(KEY_VOICE, null).orEmpty().ifBlank { QwenAppSettings.DEFAULT_VOICE },
+            customVoices = VoiceCatalog.qwenModels.keys.mapNotNull { model ->
+                prefs.getString(KEY_VOICE_PREFIX + model, null)?.trim()?.takeIf { it.isNotEmpty() }?.let { model to it }
+            }.toMap(),
             vadType = prefs.getString(KEY_VAD, null).orEmpty().ifBlank { QwenAppSettings.DEFAULT_VAD },
             silenceDurationMs = prefs.getInt(KEY_SILENCE, QwenAppSettings.DEFAULT_SILENCE_MS),
         )
@@ -130,11 +143,15 @@ class QwenSettingsRepository(
     fun save(settings: QwenAppSettings, key: CredentialUpdate = CredentialUpdate.Keep) {
         QwenSettingsValidator.validateSettings(settings)?.let { throw IllegalArgumentException(it) }
         credentials.applyCredentialUpdate(CRED_API_KEY, key)
-        prefs.edit()
+        val edit = prefs.edit().remove(KEY_LEGACY_VOICE)
+        VoiceCatalog.qwenModels.keys.forEach { model ->
+            val voice = settings.customVoices[model]?.trim().orEmpty()
+            if (voice.isEmpty()) edit.remove(KEY_VOICE_PREFIX + model) else edit.putString(KEY_VOICE_PREFIX + model, voice)
+        }
+        edit
             .putBoolean(KEY_CONSENT, settings.consentAccepted)
             .putString(KEY_MODEL, settings.model.trim())
             .putString(KEY_WORKSPACE, settings.workspaceId.trim())
-            .putString(KEY_VOICE, settings.voice.trim())
             .putString(KEY_VAD, settings.vadType)
             .putInt(KEY_SILENCE, settings.silenceDurationMs)
             .apply()
@@ -159,7 +176,9 @@ class QwenSettingsRepository(
         private const val KEY_CONSENT = "consent_accepted"
         private const val KEY_MODEL = "model"
         private const val KEY_WORKSPACE = "workspace_id"
-        private const val KEY_VOICE = "voice"
+        /** Pre-per-model single voice; never read, removed on save. */
+        private const val KEY_LEGACY_VOICE = "voice"
+        const val KEY_VOICE_PREFIX = "qwen_voice_"
         private const val KEY_VAD = "vad_type"
         private const val KEY_SILENCE = "silence_duration_ms"
     }
