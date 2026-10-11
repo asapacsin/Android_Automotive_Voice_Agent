@@ -40,7 +40,10 @@ class ComfortServer(
 
     private fun runScenario(call: DomainVoiceEvent.ToolCall, env: ToolCallEnv): ToolDispatchResult {
         val name = call.arguments["name"].orEmpty()
-        val steps = ComfortScenarios.steps(name) ?: return env.failed(call, "INVALID_FIELD_VALUE")
+        val playbook = ComfortScenarios.steps(name) ?: return env.failed(call, "INVALID_FIELD_VALUE")
+        val stillThere = name == ComfortScenarios.MOSQUITO && windowsAlreadyAt(ComfortScenarios.MOSQUITO_WINDOW_PERCENT)
+        val steps = if (stillThere) ComfortScenarios.MOSQUITO_STILL_THERE else playbook
+        val prefix = if (stillThere) ComfortScenarios.MOSQUITO_STILL_THERE_PREFIX else ""
         if (name == ComfortScenarios.MOSQUITO_DONE) {
             if (windowsAlreadyClosed()) {
                 DebugVoiceLog.log("fz_scenario name=$name steps=0 ok=0 skipped=0")
@@ -57,19 +60,6 @@ class ComfortServer(
                 return env.failed(call, NO_RECENT_MOSQUITO)
             }
         }
-        if (name == ComfortScenarios.MOSQUITO && windowsAlreadyAt(ComfortScenarios.MOSQUITO_WINDOW_PERCENT)) {
-            // A second 「蚊子还没走」 must not be told as a new opening (live take 2026-10-10: 「车窗又开了一半」
-            // with nothing changed). Report the truth and leave the next idea to the model.
-            mosquitoAt = now()
-            DebugVoiceLog.log("fz_scenario name=$name steps=0 ok=0 skipped=0")
-            return ToolDispatchResult(
-                null, null,
-                output = JSONObject().put("ok", true).put("tool", call.name).put("name", name)
-                    .put("status", "already_open").put("steps", JSONArray())
-                    .put("announce", "车窗已经开着一半了，这次没有再动。")
-                    .put("instruction", ALREADY_OPEN_INSTRUCTION).toString(),
-            )
-        }
         val runs = ArrayList<StepRun>()
         steps.forEachIndexed { index, step ->
             val prerequisiteFailed = step.requires?.let { runs[it].skipped || !syncOk(runs[it].result!!) } ?: false
@@ -80,7 +70,7 @@ class ComfortServer(
             }
         }
         if (runs.none { it.result?.deferredOutput != null }) {
-            val out = build(call, name, runs.map { it to it.result?.output })
+            val out = build(call, name, runs.map { it to it.result?.output }, prefix)
             val failed = out.getString("status") == STATUS_FAILED
             return ToolDispatchResult(
                 null, null,
@@ -92,7 +82,7 @@ class ComfortServer(
         val pending = "场景 " + runs.joinToString(" · ") { "${it.step.tool}·${it.step.action}" }
         return ToolDispatchResult(null, null, successChip = pending, deferredOutput = {
             val outputs = runs.map { run -> run to (run.result?.deferredOutput?.invoke() ?: run.result?.output) }
-            build(call, name, outputs).toString()
+            build(call, name, outputs, prefix).toString()
         })
     }
 
@@ -126,7 +116,12 @@ class ComfortServer(
 
     private fun okOf(output: String): Boolean = runCatching { JSONObject(output).optBoolean("ok") }.getOrDefault(false)
 
-    private fun build(call: DomainVoiceEvent.ToolCall, name: String, outputs: List<Pair<StepRun, String?>>): JSONObject {
+    private fun build(
+        call: DomainVoiceEvent.ToolCall,
+        name: String,
+        outputs: List<Pair<StepRun, String?>>,
+        prefix: String = "",
+    ): JSONObject {
         val steps = JSONArray()
         val clauses = ArrayList<String>()
         val notDone = JSONArray()
@@ -152,7 +147,7 @@ class ComfortServer(
             }
         }
         DebugVoiceLog.log("fz_scenario name=$name steps=${outputs.size} ok=$okCount skipped=$skipped")
-        var announce = clauses.joinToString("，") + "。"
+        var announce = prefix + clauses.joinToString("，") + "。"
         if (name == ComfortScenarios.DROWSY) announce += ComfortScenarios.REST_STOP_OFFER
         val allOk = okCount == outputs.size
         if (allOk && name == ComfortScenarios.MOSQUITO) mosquitoAt = now()
@@ -187,7 +182,5 @@ class ComfortServer(
         val STATUS_FAILED: String = "failed"
         const val SKIPPED = "SKIPPED_PREREQUISITE_FAILED"
         private const val INSTRUCTION = "按 announce 说做了什么，没做成的也要说，不要说都弄好了"
-        const val ALREADY_OPEN_INSTRUCTION =
-            "车窗原来就开着一半，这次什么都没改，不要说又开了窗；蚊子还在的话可以换个办法（比如把风量调大），做了就按那个工具的结果说"
     }
 }

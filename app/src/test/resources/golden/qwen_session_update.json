@@ -297,7 +297,7 @@
       {
         "function": {
           "name": "run_scenario",
-          "description": "执行固定的舒适场景，一次完成几步车内操作。「有蚊子」「有虫子飞进来了」name=mosquito；「蚊子出去了」「好了关上吧」（只在刚执行过 mosquito 之后）name=mosquito_done；「有点闷」「空气不好」「有异味」name=stuffy；「好困」「有点犯困」name=drowsy。用户只描述感受时直接执行，不要反问。按返回的 announce 说做了什么，没做成的也要说。Run a fixed comfort scenario; report exactly the returned announce, including what was not done.",
+          "description": "执行固定的舒适场景，一次完成几步车内操作。「有蚊子」「有虫子飞进来了」name=mosquito；「蚊子还没走」「蚊子还在」也再调用 name=mosquito（车窗已经开着时它会改为调大风量）；「蚊子出去了」「好了关上吧」（只在刚执行过 mosquito 之后）name=mosquito_done；「有点闷」「空气不好」「有异味」name=stuffy；「好困」「有点犯困」name=drowsy。用户只描述感受时直接执行，不要反问。按返回的 announce 说做了什么，没做成的也要说。Run a fixed comfort scenario; report exactly the returned announce, including what was not done.",
           "parameters": {
             "additionalProperties": false,
             "type": "object",

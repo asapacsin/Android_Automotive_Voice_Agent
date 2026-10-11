@@ -54,6 +54,7 @@ The model maps phrases to calls; this table is what the TEXT_LIVE benchmark chec
 | # | Driver says | Expected call | Spoken, from `announce` |
 | --- | --- | --- | --- |
 | FZ-01 | 有蚊子 / 有虫子飞进来了 | `run_scenario{mosquito}` | 「车窗都开了一半，等它飞出去。」 |
+| FZ-01b | 蚊子还没走 / 蚊子还在 (windows already at 50 %; amendment 2026-10-11, owner's one-pass demo) | `run_scenario{mosquito}` again → air conditioning on, fan +1; windows untouched | 「车窗已经开着一半了，空调打开了，风量调到了3档。」 |
 | FZ-02 | 蚊子出去了 / 好了关上吧 (after FZ-01, within TTL) | `run_scenario{mosquito_done}` | 「车窗关好了。」 |
 | FZ-03 | 座位有点高 | `control_seat{adjust_height,-1}` | 「座椅降低了一档。」 |
 | FZ-04 | 座位有点低 | `control_seat{adjust_height,+1}` | 「座椅升高了一档。」 |

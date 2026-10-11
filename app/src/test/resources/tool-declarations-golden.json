@@ -64,7 +64,7 @@
     "parameters": "{\"additionalProperties\":false,\"type\":\"object\",\"properties\":{\"mood\":{\"description\":\"情绪或风格，例如燃、安静、提神\",\"type\":\"string\",\"maxLength\":80},\"artist\":{\"description\":\"歌手或作曲者\",\"type\":\"string\",\"maxLength\":80},\"exclude_title\":{\"description\":\"用户说「不是这首」时，刚才那首的歌名\",\"type\":\"string\",\"maxLength\":80},\"query\":{\"description\":\"用户的原话描述\",\"type\":\"string\",\"maxLength\":80},\"album_or_work\":{\"description\":\"专辑或作品（动画、电影、游戏）\",\"type\":\"string\",\"maxLength\":80},\"title\":{\"description\":\"歌名（你确定的具体歌曲）\",\"type\":\"string\",\"maxLength\":80}}}"
   },
   "run_scenario": {
-    "description": "执行固定的舒适场景，一次完成几步车内操作。「有蚊子」「有虫子飞进来了」name=mosquito；「蚊子出去了」「好了关上吧」（只在刚执行过 mosquito 之后）name=mosquito_done；「有点闷」「空气不好」「有异味」name=stuffy；「好困」「有点犯困」name=drowsy。用户只描述感受时直接执行，不要反问。按返回的 announce 说做了什么，没做成的也要说。Run a fixed comfort scenario; report exactly the returned announce, including what was not done.",
+    "description": "执行固定的舒适场景，一次完成几步车内操作。「有蚊子」「有虫子飞进来了」name=mosquito；「蚊子还没走」「蚊子还在」也再调用 name=mosquito（车窗已经开着时它会改为调大风量）；「蚊子出去了」「好了关上吧」（只在刚执行过 mosquito 之后）name=mosquito_done；「有点闷」「空气不好」「有异味」name=stuffy；「好困」「有点犯困」name=drowsy。用户只描述感受时直接执行，不要反问。按返回的 announce 说做了什么，没做成的也要说。Run a fixed comfort scenario; report exactly the returned announce, including what was not done.",
     "parameters": "{\"additionalProperties\":false,\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"enum\":[\"mosquito\",\"mosquito_done\",\"stuffy\",\"drowsy\"]}},\"required\":[\"name\"]}"
   }
 }

@@ -43,5 +43,17 @@ object ComfortScenarios {
         else -> null
     }
 
+    /**
+     * 「蚊子还没走」: mosquito again while the windows already read [MOSQUITO_WINDOW_PERCENT]. Opening
+     * them again would change nothing, so the fan goes up instead, as the reviewed 豆包 demo does
+     * (docs/DEMO_COMMUTE.md V6). Live takes 2026-10-10/11: three models fumbled this turn when it was
+     * left to the model (a false 「又开了一半」, an action promised with no call, no reply at all).
+     */
+    val MOSQUITO_STILL_THERE: List<Step> = listOf(
+        climate("action" to ClimateToolHandler.ACTION_POWER_ON),
+        climate("action" to ClimateToolHandler.ACTION_ADJUST_FAN, "value" to "1", requires = 0),
+    )
+    const val MOSQUITO_STILL_THERE_PREFIX = "车窗已经开着一半了，"
+
     const val MUSIC_TOOL = "control_music"
 }
