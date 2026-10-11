@@ -1,21 +1,21 @@
 {
-  "generated_at": "2026-10-11T02:42:41",
+  "generated_at": "2026-10-11T04:22:43",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "5d5a355",
+    "commit": "fbe3dd3",
     "branch": "claude/10-9",
-    "subject": "Revert the persona tone-tool line: it crashes qwen3.5-omni-plus-realtime",
+    "subject": "Stall retry waits for its notice and is dropped if the driver speaks; D-12 marked partly resolved",
     "working_tree_clean": false,
     "uncommitted_files": 3
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-10-11T02:39:12",
+    "collected_at": "2026-10-11T04:22:34",
     "total": {
-      "tests": 312,
+      "tests": 2131,
       "failures": 0,
       "errors": 0,
-      "skipped": 0
+      "skipped": 3
     },
     "by_module": {
       "evaluation": {
@@ -25,10 +25,10 @@
         "skipped": 0
       },
       "app": {
-        "tests": 1,
+        "tests": 1820,
         "failures": 0,
         "errors": 0,
-        "skipped": 0
+        "skipped": 3
       },
       "simulator": {
         "tests": 25,
@@ -144,7 +144,7 @@
     {
       "id": "D-12",
       "title": "「空调」 alone reads as an action claim",
-      "priority": "OPEN"
+      "priority": "PARTLY"
     },
     {
       "id": "D-9",

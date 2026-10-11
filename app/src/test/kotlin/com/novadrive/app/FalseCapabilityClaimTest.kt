@@ -406,6 +406,9 @@ class FalseCapabilityClaimTest {
             "关窗了，放心吧。",
             "好的，正在为你开窗。",
             "已为你关窗。",
+            "好的，开窗。", // 2026-10-11: a bare imperative after an acknowledgement
+            "我把窗开大点。", // object-first with a bare 窗
+            "这就帮你把窗关上。",
             "已经关窗了。",
             "正在开窗。",
         ).forEach { assertNotNull(ActionClaimGuard.carActionClaimMatch(it), it) }
@@ -437,6 +440,10 @@ class FalseCapabilityClaimTest {
             "开窗好还是开空调好，主要看外面温度。", // D-12: 调 inside 空调 is not an action
             "等它飞出去了再关窗。",
             "外面正在下雨关窗吧。",
+            "记得把窗关上。",
+            "你可以把窗开大点。",
+            "好的，开窗之前先看看外面。",
+            "好的，开窗吗？",
             "我已经习惯开窗开车了。",
         ).forEach { assertNull(ActionClaimGuard.carActionClaimMatch(it), it) }
         assertFalse(ActionClaimGuard.claimsDone("车窗没能开大，已经到顶了。"))

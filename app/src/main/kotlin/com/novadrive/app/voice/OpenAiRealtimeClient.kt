@@ -287,7 +287,7 @@ open class OpenAiRealtimeClient<C : Any>(
     fun discardPendingAudio() {
         listeningSuspended = true
         heldOutbound.removeIf(dialect::isAudioAppend)
-        turnGate.clear()
+        turnGate.clear(); stallRetryWaiting = false // asleep: a stall retry is not wanted either
     }
 
     /** Listening resumed after a sleep. The conversation (and its context) simply continues. */

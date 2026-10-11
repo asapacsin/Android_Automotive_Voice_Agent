@@ -299,15 +299,34 @@ class ActionClaimGuard {
 
         private val CLAUSE_BREAK = Regex("[，。！？；,.!?;、]")
 
+        /**
+         * Object-first with a bare 窗: 「我把窗开大点」「这就帮你把窗关上」 (2026-10-11). Counted only with a
+         * promise marker before it, so 「记得把窗关上」 stays advice.
+         */
+        private val WINDOW_OBJECT_FIRST = Regex("把(车窗|窗户|窗)(?!外|帘)(开|关|摇|降|升)")
+
+        /** An acknowledgement clause; the clause after it that is only the action is a promise (「好的，开窗。」). */
+        private val ACKNOWLEDGEMENTS = setOf("好的", "好", "好嘞", "行", "没问题", "收到", "嗯")
+
         /** The fixed verb of a window promise or completion in [reply], or null. */
         private fun windowPromise(reply: String): String? {
+            var previous = ""
             for (clause in reply.split(CLAUSE_BREAK)) {
+                val acknowledged = previous.trim() in ACKNOWLEDGEMENTS
+                previous = clause
                 if (WINDOW_NOT_ACTION_WORDS.any { it in clause }) continue
+                WINDOW_OBJECT_FIRST.find(clause)?.let { m ->
+                    val before = clause.substring(0, m.range.first)
+                    if (ADJACENT_PROMISE_MARKERS.any { before.endsWith(it) } || WINDOW_PROMISE_MARKERS.any { it in before }) {
+                        return m.groupValues[2]
+                    }
+                }
                 for (m in WINDOW_VERB_FIRST.findAll(clause)) {
                     val before = clause.substring(0, m.range.first)
                     val after = clause.substring(m.range.last + 1)
                     // 我/已/正在 only right before the verb: 「外面正在下雨关窗吧」「我觉得开窗…」 are chat.
-                    val promised = ADJACENT_PROMISE_MARKERS.any { before.endsWith(it) } || WINDOW_PROMISE_MARKERS.any { it in before }
+                    val bareAfterAck = acknowledged && clause.trim() == m.value
+                    val promised = bareAfterAck || ADJACENT_PROMISE_MARKERS.any { before.endsWith(it) } || WINDOW_PROMISE_MARKERS.any { it in before }
                     if (promised || WINDOW_DONE_AFTER.containsMatchIn(after)) {
                         return m.groupValues[1]
                     }
