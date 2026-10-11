@@ -11,12 +11,7 @@ object PhoneDomain : ToolDomain {
     override fun specs(): List<ToolSpec> {
         val placeCall = spec(
             name = "place_call",
-            description = "给联系人打电话。用户说「打电话给XX」「给XX打个电话」时调用，contact 填人名。" +
-                "第一次调用不要填 confirmed：工具只会找人，不会拨号。" +
-                "按返回的 status 回答：confirm_required=请问用户是否要打；" +
-                "ambiguous=有多个同名，请用户说清楚是哪一位。" +
-                "只有用户明确答应后，才能用 confirmed=true 再调用一次。" +
-                "Finds the contact first and asks; only dials on a second call with confirmed=true.",
+            description = "打电话：「打电话给XX」，contact 填人名。首次不填 confirmed，只找人不拨号。按 status：confirm_required=问是否要打；ambiguous=多个同名，问哪一位。用户明确答应后才用 confirmed=true 再调用。",
             properties = JSONObject()
                 .put(
                     "contact",

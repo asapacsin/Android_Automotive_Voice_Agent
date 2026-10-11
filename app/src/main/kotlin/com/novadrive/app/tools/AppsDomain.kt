@@ -11,7 +11,7 @@ object AppsDomain : ToolDomain {
     override fun specs(): List<ToolSpec> {
         val openApp = spec(
             name = "open_app",
-            description = "打开受支持的应用：maps=地图，settings=设置。音乐请改用 control_music。Open a supported app (maps or settings). Do not use this for music; use control_music.",
+            description = "打开应用：maps=地图，settings=设置。音乐用 control_music。",
             properties = JSONObject().put(
                 "app",
                 JSONObject().put("type", "string").put("enum", JSONArray(listOf("maps", "settings"))),

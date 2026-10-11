@@ -11,13 +11,14 @@ object MediaDomain : ToolDomain {
     override fun specs(): List<ToolSpec> {
         val controlMusic = spec(
             name = "control_music",
-            description = "控制内置音乐播放器。用户说「播放音乐」「放首歌」「来点音乐」时 action=play；用户说「关闭音乐」「关掉音乐」「停止音乐」「别放了」「不要音乐了」时 action=stop。Play or stop the built-in music player.",
+            description = "内置音乐播放器：「播放音乐」「放首歌」→play；「关闭音乐」「别放了」→stop。",
             properties = JSONObject().put(
                 "action",
                 JSONObject()
                     .put("type", "string")
                     .put("enum", JSONArray(listOf("play", "stop")))
-                    .put("description", "play=开始播放音乐；stop=停止播放音乐"),
+                    .put("description", "play=播放；stop=停止")
+                    ,
             ),
             required = listOf("action"),
         )
@@ -39,24 +40,17 @@ object MediaDomain : ToolDomain {
 
     /** Fields of `play_music`; at least one of [DESCRIBING_FIELDS] must be non-blank. */
     private val PLAY_MUSIC_FIELDS = linkedMapOf(
-        "title" to "歌名（你确定的具体歌曲）",
+        "title" to "你确定的歌名",
         "artist" to "歌手或作曲者",
         "album_or_work" to "专辑或作品（动画、电影、游戏）",
-        "mood" to "情绪或风格，例如燃、安静、提神",
-        "query" to "用户的原话描述",
-        "exclude_title" to "用户说「不是这首」时，刚才那首的歌名",
+        "mood" to "情绪，如燃、提神",
+        "query" to "用户原话",
+        "exclude_title" to "「不是这首」时刚才那首歌名",
     )
     private val DESCRIBING_FIELDS = setOf("title", "artist", "album_or_work", "query", "mood")
 
     private const val PLAY_MUSIC_DESCRIPTION =
-        "按描述播放音乐（交给手机上的音乐 app 播放）：用户说出歌名、歌手、作品（动画、电影、游戏）或模糊描述" +
-            "（例如「梶浦由记的、空之境界里很燃的那首片头曲」「来点开车提神的」）时调用。" +
-            "先用你的知识确定具体是哪一首：歌名填 title，歌手填 artist，作品填 album_or_work，情绪填 mood，用户原话填 query；" +
-            "确定不了具体歌曲时只填 query 和 mood。只根据返回的 now_playing 说正在放什么；" +
-            "status=requested_unverified 时只能说「已经让音乐 app 去找了」，不能说正在放哪首；ok=false 时如实说没放成。" +
-            "用户说「不是这首」时再调用一次，把刚才那首填到 exclude_title。" +
-            "只说「放首歌」「播放音乐」而没有任何描述时用 control_music。" +
-            " Play a song the driver named or described through the phone's music app; report only what now_playing says."
+        "按歌名、歌手、作品或模糊描述放歌（用手机音乐 app），如「梶浦由记的、空之境界里很燃的那首片头曲」「来点开车提神的」。先用你的知识确定是哪首，填 title/artist/album_or_work；确定不了只填 query 和 mood。只按返回的 now_playing 说在放什么；status=requested_unverified 只说「已经让音乐 app 去找了」；ok=false 如实说没放成。「不是这首」时再调用并填 exclude_title。无描述的「放首歌」用 control_music。"
 
     override fun validate(name: String, args: JSONObject): String? {
         val json = args
