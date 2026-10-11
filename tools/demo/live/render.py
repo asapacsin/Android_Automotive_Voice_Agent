@@ -78,7 +78,8 @@ def at(items, t, key="t"):
 
 def wrap(draw, text, fnt, width):
     out, cur = [], ""
-    for ch in text:
+    # Transcripts can hold line breaks (Qwen: 「可以\n，那我…」); PIL cannot measure multiline text.
+    for ch in " ".join(text.split("\n")).replace("\r", ""):
         if draw.textlength(cur + ch, font=fnt) > width:
             out.append(cur)
             cur = ch

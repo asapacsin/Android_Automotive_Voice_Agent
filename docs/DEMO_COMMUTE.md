@@ -108,6 +108,14 @@ Still open: the style turn is a tool call plus a second response, about 0.33 s p
 cloud container to DashScope. On the owner's PC in China the hops are shorter; measure it there before
 deciding anything.
 
+### One-pass take, 2026-10-11 (qwen3.5-omni-plus-realtime)
+
+Take 6 at 5d5a355 passed `check_req.py` with every turn at 2.2–3.2 s, every announced action backed by
+an `ok=true` result, and no error or dropped turn. 蚊子还没走 turned the fan up (FZ-01b), and the vague
+song resolved to 郑中基 · 闭目入神. It was preceded by two free Gemini rehearsals and four 3.5 Plus takes
+whose failures were fixed offline (see TEST_MATRIX DEMO-COMMUTE-001). The video is on the branch
+`claude/commute-demo-video` (not in the code branches).
+
 ### qwen3.5-omni-plus-realtime cannot call `set_speaking_style` (2026-10-11)
 
 With the app's tool list, every attempt by 3.5 Plus to call `set_speaking_style` ends in
