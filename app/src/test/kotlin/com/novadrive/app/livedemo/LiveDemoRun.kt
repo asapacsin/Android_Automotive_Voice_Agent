@@ -161,7 +161,8 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
                         consentAccepted = true,
                         model = qwenModel,
                         workspaceId = env("DASHSCOPE_WORKSPACE_ID"),
-                        voice = QwenAppSettings.DEFAULT_VOICE,
+                        customVoices = System.getenv("NOVA_QWEN_VOICE")?.trim()?.takeIf { it.isNotEmpty() }
+                            ?.let { mapOf(qwenModel to it) }.orEmpty(),
                     ),
                     env("DASHSCOPE_API_KEY"), instructions,
                 ),

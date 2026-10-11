@@ -72,9 +72,25 @@ class QwenOmniDialectTest {
     }
 
     @Test
+    fun aCustomVoiceForTheModelReachesBothVoiceFieldsAndIsNeverLogged() {
+        val cloned = "qwen-omni-vc-guanyu-voice-20250812105009984-838b"
+        val d = QwenOmniDialect()
+        d.onSessionOpening(config.copy(settings = settings.copy(customVoices = mapOf(settings.model to cloned))))
+        val s = JSONObject(d.sessionUpdate("P", 0.0)).getJSONObject("session")
+        assertEquals(cloned, s.getString("voice"))
+        assertEquals(cloned, s.getJSONObject("audio").getJSONObject("output").getString("voice"))
+        val lines = mutableListOf<String>()
+        val previous = com.novadrive.app.DebugVoiceLog.sink
+        com.novadrive.app.DebugVoiceLog.sink = { lines += it }
+        try { d.onSessionUpdated("{}") } finally { com.novadrive.app.DebugVoiceLog.sink = previous }
+        assertTrue(lines.any { it.startsWith("qwen_session voice=custom ") }, lines.toString())
+        assertFalse(lines.any { it.contains(cloned) })
+    }
+
+    @Test
     fun voiceVadAndSilenceComeFromTheSettings() {
         val d = QwenOmniDialect()
-        d.onSessionOpening(config.copy(settings = settings.copy(voice = "Cherry", vadType = "server_vad", silenceDurationMs = 500)))
+        d.onSessionOpening(config.copy(settings = settings.copy(customVoices = mapOf("qwen3.5-omni-plus-realtime" to "Cherry"), vadType = "server_vad", silenceDurationMs = 500)))
         val s = JSONObject(d.sessionUpdate("P", 0.0)).getJSONObject("session")
         assertEquals("Maia", s.getString("voice"))
         assertEquals("Maia", s.getJSONObject("audio").getJSONObject("output").getString("voice"))

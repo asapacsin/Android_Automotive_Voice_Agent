@@ -76,7 +76,7 @@ class QwenOmniDialect(
 
     override fun onSessionUpdated(text: String) {
         DebugVoiceLog.log(
-            "qwen_session voice=${QwenAppSettings.DEFAULT_VOICE} vad=${settings.vadType} model=${settings.model}",
+            "qwen_session voice=${if (settings.sessionVoice() == QwenAppSettings.DEFAULT_VOICE) QwenAppSettings.DEFAULT_VOICE else "custom"} vad=${settings.vadType} model=${settings.model}",
         )
     }
 
@@ -221,7 +221,7 @@ class QwenOmniDialect(
 
         /** The documented session.update (SPEC-021 B3). */
         fun sessionUpdate(instructions: String, settings: QwenAppSettings): String {
-            val voice = QwenAppSettings.DEFAULT_VOICE
+            val voice = settings.sessionVoice()
             val session = JSONObject()
                 .put("modalities", JSONArray(listOf("text", "audio")))
                 .put("voice", voice)

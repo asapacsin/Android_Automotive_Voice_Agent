@@ -16,7 +16,7 @@ class QwenSettingsTest {
         assertFalse(s.consentAccepted)
         assertEquals(VoiceCatalog.QWEN_OMNI_FLASH, s.model)
         assertEquals("qwen3.8-omni-flash-realtime", s.model)
-        assertEquals("Maia", s.voice)
+        assertEquals("Maia", s.sessionVoice())
         assertEquals("semantic_vad", s.vadType)
         assertEquals(800, s.silenceDurationMs)
         assertEquals("", s.workspaceId)
@@ -34,8 +34,17 @@ class QwenSettingsTest {
         assertEquals("QWEN_WORKSPACE_INVALID", QwenSettingsValidator.validateSettings(valid.copy(workspaceId = "a".repeat(65))))
         assertNull(QwenSettingsValidator.validateSettings(valid.copy(workspaceId = "a".repeat(63))))
         assertEquals("QWEN_WORKSPACE_INVALID", QwenSettingsValidator.validateSettings(valid.copy(workspaceId = "a".repeat(64))))
-        assertEquals("QWEN_VOICE_INVALID", QwenSettingsValidator.validateSettings(valid.copy(voice = "")))
-        assertEquals("QWEN_VOICE_INVALID", QwenSettingsValidator.validateSettings(valid.copy(voice = "a b")))
+        val m = valid.model
+        assertNull(QwenSettingsValidator.validateSettings(valid.copy(customVoices = mapOf(m to " "))))
+        assertEquals("QWEN_VOICE_INVALID", QwenSettingsValidator.validateSettings(valid.copy(customVoices = mapOf(m to "a b"))))
+        assertEquals("QWEN_VOICE_INVALID", QwenSettingsValidator.validateSettings(valid.copy(customVoices = mapOf(m to "a".repeat(81)))))
+        assertNull(QwenSettingsValidator.validateSettings(valid.copy(customVoices = mapOf(m to "a".repeat(80)))))
+        assertEquals("QWEN_VOICE_INVALID", QwenSettingsValidator.validateSettings(valid.copy(customVoices = mapOf("gpt" to "v1"))))
+        assertEquals(
+            "QWEN_VOICE_INVALID",
+            QwenSettingsValidator.validateSettings(valid.copy(customVoices = mapOf(VoiceCatalog.QWEN_OMNI_PLUS_35 to "bad.voice"))),
+            "a bad voice for the other model is still rejected",
+        )
         assertEquals("QWEN_SILENCE_INVALID", QwenSettingsValidator.validateSettings(valid.copy(silenceDurationMs = 199)))
         assertEquals("QWEN_SILENCE_INVALID", QwenSettingsValidator.validateSettings(valid.copy(silenceDurationMs = 6001)))
         assertNull(QwenSettingsValidator.validateSettings(valid.copy(silenceDurationMs = 200)))
@@ -73,12 +82,25 @@ class QwenSettingsTest {
     }
 
     @Test
-    fun configOrThrowYieldsMaiaForBlankOrNonMaiaVoice() {
-        val key = "sk-test-key"
-        listOf("", "Cherry", "a b").forEach { voice ->
-            val built = QwenSettingsValidator.configOrThrow(valid.copy(voice = voice), key, "p")
-            assertEquals("Maia", built.settings.voice)
-        }
+    fun configOrThrowKeepsTheCustomVoice() {
+        val built = QwenSettingsValidator.configOrThrow(valid.copy(customVoices = mapOf(valid.model to CLONED)), "sk-test-key", "p")
+        assertEquals(CLONED, built.settings.sessionVoice())
+        assertEquals("Maia", QwenSettingsValidator.configOrThrow(valid, "sk-test-key", "p").settings.sessionVoice())
+        val bad = runCatching { QwenSettingsValidator.configOrThrow(valid.copy(customVoices = mapOf(valid.model to "a b")), "k", "p") }
+        assertEquals("QWEN_VOICE_INVALID", bad.exceptionOrNull()?.message)
+    }
+
+    @Test
+    fun sessionVoiceIsBoundToTheSelectedModel() {
+        val plus = valid.copy(model = VoiceCatalog.QWEN_OMNI_PLUS_35, customVoices = mapOf(VoiceCatalog.QWEN_OMNI_PLUS_35 to CLONED))
+        assertEquals(CLONED, plus.sessionVoice())
+        assertEquals("Maia", plus.copy(model = VoiceCatalog.QWEN_OMNI_FLASH).sessionVoice(), "3.5 voice must not reach 3.8")
+        assertEquals("Maia", valid.copy(customVoices = mapOf(valid.model to "  ")).sessionVoice())
+        assertNull(QwenSettingsValidator.validateSettings(plus))
+    }
+
+    private companion object {
+        const val CLONED = "qwen-omni-vc-guanyu-voice-20250812105009984-838b"
     }
 
     @Test
