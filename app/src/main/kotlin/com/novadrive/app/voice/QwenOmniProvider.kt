@@ -61,6 +61,10 @@ class QwenOmniProvider(
         },
     )
 
+    init {
+        client.onStallRetry = { cueClock.onStalled() }
+    }
+
     override fun events(): Flow<RealtimeEvent> = merge(
         client.events().onEach { cueClock.onProviderEvent(it.payload) },
         cueMarks,
@@ -68,6 +72,7 @@ class QwenOmniProvider(
     override suspend fun connect(config: RealtimeSessionConfig) {
         VoiceCatalog.requireAllowed(VoiceProviderId.QWEN, config.model)
         client.connect(apiConfig)
+        cueClock.onConnected()
     }
     override fun connect(model: String) = runBlocking { connect(RealtimeSessionConfig(VoiceProviderId.QWEN, model)) }
     override suspend fun disconnect() = client.disconnect()

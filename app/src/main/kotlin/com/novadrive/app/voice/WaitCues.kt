@@ -9,6 +9,8 @@ object WaitCues {
     const val PROGRESS = "收到，正在处理。"
     /** A different sentence at [DELAY_MS]. It does not repeat [PROGRESS]. */
     const val DELAY = "还在处理，网络可能不太稳定，再等我一下。"
+    /** After a reconnect that lost the driver's unanswered turn: never silence (owner, 2026-10-11). */
+    const val RECONNECTED = "刚才网络断了一下，请再说一遍。"
 
     const val ACK_ACTION = PROGRESS
     const val ACK_CHAT = "嗯，我想想。"

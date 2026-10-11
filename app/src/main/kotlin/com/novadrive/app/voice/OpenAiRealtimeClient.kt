@@ -119,8 +119,9 @@ open class OpenAiRealtimeClient<C : Any>(
         resetScope, responseStallMs, dialect.logPrefix,
         cancel = { sendCancelOnce("stalled") },
         retry = { // never queued: once another turn went out or the driver spoke, it is not wanted
-            if (turnGate.isBusy() || turnGate.pending() > 0) DebugVoiceLog.log("${dialect.logPrefix}_stall_retry_dropped") else submitReply("stall_retry") },
+            if (turnGate.isBusy() || turnGate.pending() > 0) DebugVoiceLog.log("${dialect.logPrefix}_stall_retry_dropped") else { onStallRetry?.invoke(); submitReply("stall_retry") } },
     )
+    @Volatile internal var onStallRetry: (() -> Unit)? = null // the wait-cue owner tells the driver before the retry
 
     /** Incremented on every conversation reset; a queued turn from an older one may be stale. */
     @Volatile private var conversationEpoch = 0

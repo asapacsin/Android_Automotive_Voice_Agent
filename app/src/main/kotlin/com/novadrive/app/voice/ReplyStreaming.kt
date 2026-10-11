@@ -175,11 +175,14 @@ internal class ResponseStallWatchdog(
 
     companion object {
         /**
-         * Longer than any measured quiet stretch inside a healthy Qwen or Baidu response: the first
-         * event (output_item.added) comes with response.created, words follow within 1 s, and audio
-         * has come up to 3.1 s later under load (2026-10-09), with words streaming meanwhile.
+         * Longer than any measured quiet stretch inside a healthy response, with margin: audio has
+         * come up to 3.1 s later under load (2026-10-09), and a valid tool call came 5.35 s after
+         * response.created (qwen3.5-omni-plus-realtime, 2026-10-11) - the old 5 s limit cancelled it
+         * and lost the action. Owner, 2026-10-11: wait longer; the driver hears a cue meanwhile
+         * ([WaitCueClock]) and a stall is announced, never silent. Measured server hangs were
+         * 15.7 s and 23.1 s, so 10 s still recovers them.
          */
-        const val STALL_MS = 5_000L
+        const val STALL_MS = 10_000L
         private const val CHECK_MS = 500L
         private const val NONE = -1L
 
