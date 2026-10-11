@@ -442,7 +442,7 @@
       {
         "function": {
           "name": "set_speaking_style",
-          "description": "切换说话语气（不改声音），一直保持到再次更改。「嗲一点」「甜一点」「撒个娇」→sweet；「傲娇一点」「傲嬌一點」→tsundere；「温柔一点」→gentle；「元气一点」「活泼一点」→lively；「正常一点」「别嗲了」→default。不在其中的语气（如「霸道一点」）不要调用也不要替换，说只有甜、傲娇、温柔、元气和正常。调用后按返回的 instruction 用新语气简短回应。",
+          "description": "切换小诺说话的语气（只改语气，不改声音），一直保持到再次更改。说的是她「说话」怎样（「说话能不能嗲一点」「说话再稍微嗲一点」），就是语气，不是空调、座椅或车窗的调节。「嗲一点」「甜一点」「可爱一点」「撒个娇」→sweet；「傲娇一点」「傲嬌一點」→tsundere；「温柔一点」→gentle；「元气一点」「活泼一点」→lively；「正常一点」「别嗲了」→default。不在其中的语气（如「霸道一点」）不要调用也不要替换，说只有甜、傲娇、温柔、元气和正常。调用后按返回的 instruction 用新语气简短回应。",
           "parameters": {
             "additionalProperties": false,
             "type": "object",
