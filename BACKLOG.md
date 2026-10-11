@@ -764,7 +764,7 @@ The app still speaks with Gemini's voice until the owner enters an Azure Speech 
   1. The owner opens Alibaba Model Studio (international, with the free quota and "free quota only" on) and enters the key themselves.
   2. The agents run a PC-side test script that does not touch the app. Maia says fixed lines, and the run measures the time to the first audio, a tool turn and a barge-in, side by side with Gemini + Xiaoyi.
   3. The owner judges Maia by ear against Xiaoyi.
-- **Constraint (B-034):** stock voices only. No voice cloning.
+- **Constraint (B-034):** stock voices only. No voice cloning. *Amended 2026-10-11 (owner, ADR-017 §6): a custom voice the owner holds the rights to may be cloned, one clone per model.*
 
 ## B-035 — The transcript bubble fades out over time
 

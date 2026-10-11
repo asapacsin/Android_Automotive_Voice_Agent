@@ -40,6 +40,14 @@ Qwen-Omni Realtime, from Alibaba Model Studio, is end to end. It hears the drive
    - The SPEC-020 wait cues speak through the provider's voice path only if they can be in Maia's voice. Otherwise they become sounds or screen cues. That is decided in the adapter's SPEC.
 5. **Keys:** the owner creates the DashScope key and stores it. On the PC it is the user environment variable `DASHSCOPE_API_KEY`; in the app it goes in developer settings and the Keystore. Agents never enter, print, log or commit it.
 6. **Stock voices only (B-034).** Qwen offers voice cloning; it is never used to copy a real character's or voice actor's voice.
+   **Amended by the owner, 2026-10-11:** a *custom* voice is allowed when the owner holds the rights to it — a voice he designed
+   himself (e.g. ElevenLabs Voice Design) or speech from someone who agrees. Never a real person's, singer's, voice actor's or
+   game/anime character's voice without consent, and never from a song (the vendor also rejects singing). Alibaba binds a cloned
+   voice to one omni model (`target_model`), so the same clip is cloned once per model (`tools/qwen-omni-voice/clone_voice.py`)
+   and the app keeps one voice per model (`QwenAppSettings.customVoices`; empty = Maia). Switching model switches to that
+   model's clone of the same voice, so the driver still hears one voice. Maia stays the default until the owner picks a clone.
+   Source: https://www.alibabacloud.com/help/en/model-studio/qwen-omni-voice-cloning (Singapore supported; 10–20 s mono speech,
+   ≥ 24 kHz; 1,000 free creations in 90 days).
 
 **Owner decision, 2026-10-09 (amends the gates below): Qwen + Maia is the default now, and every voice is Maia.**
 - I asked whether to make Maia the default before Q-1. I explained that nothing had yet talked to the live server, and that a mismatch would fail every session with no fallback. The owner answered: "you should make it".

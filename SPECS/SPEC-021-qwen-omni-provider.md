@@ -69,7 +69,7 @@ From the official docs (Alibaba Model Studio: realtime, client-events and server
 
 - **Treating Q-1…Q-5 as passed.** The product session is Qwen Maia now; gate rows stay open until measured.
 - **Deleting Gemini, Azure or Baidu.** After Q-5, with the owner's confirmation (ADR-017, ADR-013).
-- **Voice cloning and non-stock voices** (B-034).
+- **Voice cloning and non-stock voices** (B-034). *Superseded 2026-10-11 by the owner (ADR-017 §6 amendment): a custom voice per model is allowed, set in developer settings; Maia stays the default.*
 - **Web search** (`enable_search`), because it excludes tools.
 - **MCP tools on the server side.** Our tools execute in-process (ADR-015). The model only calls functions.
 - **Spoken guidance prompts** (SPEC-018). `verbatimPromptSpeech=false`, so guidance stays with Amap's voice, which ADR-014 provides for when the model cannot speak a prompt.
