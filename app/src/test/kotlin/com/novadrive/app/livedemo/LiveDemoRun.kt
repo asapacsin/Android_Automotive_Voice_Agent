@@ -148,13 +148,18 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
             "live Qwen sessions spend the owner's limited free quota (AGENTS.md hard rule); " +
                 "set NOVA_SPEND_QWEN_QUOTA=yes only when the owner approved this run"
         }
+        // Owner, 2026-10-11: the product model's quota is for the final demo only. Name the model;
+        // 3.8 needs NOVA_ALLOW_QWEN_38=yes on the owner's explicit say.
+        val qwenModel = if (choice != "qwen") "" else env("NOVA_QWEN_MODEL")
+        check(qwenModel != VoiceCatalog.QWEN_OMNI_FLASH || System.getenv("NOVA_ALLOW_QWEN_38") == "yes") {
+            "${VoiceCatalog.QWEN_OMNI_FLASH} is the owner's final-demo quota; set NOVA_ALLOW_QWEN_38=yes only on the owner's explicit say"
+        }
         return when (choice) {
             "qwen" -> SessionProviderConfig.Qwen(
                 QwenSettingsValidator.configOrThrow(
                     QwenAppSettings(
                         consentAccepted = true,
-                        // NOVA_QWEN_MODEL=qwen3.5-omni-plus-realtime experiments on that model's own quota.
-                        model = System.getenv("NOVA_QWEN_MODEL")?.takeIf { it.isNotBlank() } ?: VoiceCatalog.QWEN_OMNI_FLASH,
+                        model = qwenModel,
                         workspaceId = env("DASHSCOPE_WORKSPACE_ID"),
                         voice = QwenAppSettings.DEFAULT_VOICE,
                     ),

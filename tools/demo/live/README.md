@@ -10,7 +10,7 @@ It is **not** the app: no Android UI, no listening lifecycle or local picker int
 Amap SDK. A pass here is not device evidence (ACCEPTANCE_TESTS.md).
 
 Env: `NOVA_LIVE_DEMO=1` (otherwise the test is skipped), `NOVA_LIVE_OUT=<dir>` (required),
-`NOVA_LIVE_PROVIDER=qwen|gemini` (default qwen), `NOVA_LIVE_SCENES=commute_board,...` (default all
+`NOVA_LIVE_PROVIDER=qwen|gemini` (default qwen), `NOVA_QWEN_MODEL` (required for qwen; use `qwen3.5-omni-plus-realtime` — `qwen3.8-omni-flash-realtime` is refused unless `NOVA_ALLOW_QWEN_38=yes` on the owner's explicit say), `NOVA_LIVE_SCENES=commute_board,...` (default all
 six, one session), `DASHSCOPE_API_KEY` + `DASHSCOPE_WORKSPACE_ID` (qwen) or `GEMINI_API_KEY`
 (gemini), `AMAP_WEB_KEY`. Outbound goes through the environment's proxy (JAVA_TOOL_OPTIONS / HTTPS_PROXY).
 

@@ -187,3 +187,7 @@ does not change architecture ownership, invariants, or who may certify work. Age
   sessions and minutes it opens, then set `NOVA_SPEND_QWEN_QUOTA=yes` for that run only. The tools
   refuse to open a Qwen session without it. One good take beats five retries: fix with offline
   evidence, then re-record once.
+- **Never spend `qwen3.8-omni-flash-realtime` on a test** (owner, 2026-10-11): its quota is for the
+  final demo. Test runs name their model (`NOVA_QWEN_MODEL` / `MODEL`; there is no default) and use
+  `qwen3.5-omni-plus-realtime`; the tools refuse 3.8 unless `NOVA_ALLOW_QWEN_38=yes`, which only the
+  owner's explicit, per-run say allows. A plan that says "take 2 on 3.8" is not that say.

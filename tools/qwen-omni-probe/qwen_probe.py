@@ -52,7 +52,7 @@ def build_url():
     ws = env("DASHSCOPE_WORKSPACE_ID")
     if not ws:
         sys.exit("DASHSCOPE_WORKSPACE_ID (or QWEN_WS_URL) is required")
-    model = env("MODEL", "qwen3.8-omni-flash-realtime")
+    model = test_model()
     print("workspace=set", file=sys.stderr)
     return f"wss://{ws}.ap-southeast-1.maas.aliyuncs.com/api-ws/v1/realtime?model={model}"
 
@@ -237,8 +237,22 @@ async def connect(instructions=None, tools=True):
                     await task
 
 
+FINAL_MODEL = "qwen3.8-omni-flash-realtime"
+
+
+def test_model():
+    """MODEL must be named. The product model's quota is the owner's final-demo budget (owner,
+    2026-10-11): a test run may use it only with NOVA_ALLOW_QWEN_38=yes."""
+    model = env("MODEL")
+    if not model:
+        sys.exit("MODEL is required (e.g. qwen3.5-omni-plus-realtime); no default model is spent")
+    if model == FINAL_MODEL and env("NOVA_ALLOW_QWEN_38") != "yes":
+        sys.exit(FINAL_MODEL + " is the owner's final-demo quota; set NOVA_ALLOW_QWEN_38=yes only on the owner's explicit say")
+    return model
+
+
 def base_row(mode):
-    return {"model": env("MODEL", "qwen3.8-omni-flash-realtime"), "voice": env("VOICE", "Maia"),
+    return {"model": env("MODEL", "-"), "voice": env("VOICE", "Maia"),
             "vad": env("VAD", "semantic"), "silence_ms": int(env("SILENCE_MS", "800")), "mode": mode}
 
 
@@ -672,10 +686,19 @@ def selftest():
     # URL builder
     saved = {k: os.environ.pop(k, None) for k in ("QWEN_WS_URL", "DASHSCOPE_WORKSPACE_ID", "MODEL")}
     os.environ["DASHSCOPE_WORKSPACE_ID"] = "ws-secret-777"
+    os.environ["MODEL"] = "qwen3.5-omni-plus-realtime"
     err = io.StringIO()
     with contextlib.redirect_stderr(err), contextlib.redirect_stdout(err):
         u = build_url()
-    check(u == "wss://ws-secret-777.ap-southeast-1.maas.aliyuncs.com/api-ws/v1/realtime?model=qwen3.8-omni-flash-realtime", "url builder")
+    check(u == "wss://ws-secret-777.ap-southeast-1.maas.aliyuncs.com/api-ws/v1/realtime?model=qwen3.5-omni-plus-realtime", "url builder")
+    os.environ["MODEL"] = FINAL_MODEL
+    try:
+        with contextlib.redirect_stderr(err), contextlib.redirect_stdout(err):
+            build_url()
+        check(False, "3.8 refused without NOVA_ALLOW_QWEN_38")
+    except SystemExit:
+        check(True, "3.8 refused without NOVA_ALLOW_QWEN_38")
+    os.environ.pop("MODEL")
     check("ws-secret-777" not in err.getvalue() and "workspace=set" in err.getvalue(), "workspace id printed")
     os.environ.pop("DASHSCOPE_WORKSPACE_ID")
     for k, v in saved.items():
