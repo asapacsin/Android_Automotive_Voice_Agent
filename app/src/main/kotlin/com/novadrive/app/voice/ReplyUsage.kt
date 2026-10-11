@@ -57,9 +57,10 @@ internal class HistoryBudget(private val capTokens: Int = HISTORY_TOKEN_CAP) {
 
     companion object {
         /**
-         * The fixed part (persona, rules and 17 tool declarations) is about 7K input tokens on
-         * every reply (estimated from the session.update, 2026-10-11); this allows about 5K of
-         * history on top. Revisit with the logged `reply_usage` numbers from a real take.
+         * The fixed part (persona, rules and 17 tool declarations) is about 4.4K input tokens on
+         * every reply (measured: first reply of the shortened-description take on
+         * qwen3.5-omni-plus-realtime, 2026-10-11); the whole 12-scene commute grew to 6.3K, so
+         * this cap leaves room for a long drive and resets only a much longer one.
          */
         const val HISTORY_TOKEN_CAP = 12_000
     }
