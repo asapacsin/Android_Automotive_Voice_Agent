@@ -47,6 +47,20 @@ Owner timing, 2026-10-09. Each row happens at most once per driver turn. A tool 
 | 7 s, and still before 12 s | 收到，正在处理。 | `progress` |
 | 12 s | 还在处理，网络可能不太稳定，再等我一下。 | `delay` |
 
+**Owner amendment, 2026-10-11 ("never leave the driver in silence").** Three lines beyond the table,
+each at most once per turn, all through the same Maia cue path (`WaitCueClock` decides; a cue request
+holds `ResponseTurnGate`, so a reply asked for meanwhile goes out after it, once):
+
+| When | What she says | Code |
+| --- | --- | --- |
+| The turn's response stalled (no progress for `ResponseStallWatchdog.STALL_MS`, 10 s) and is about to be asked for again | 网络有点慢，我再试一下。 | `stalled` |
+| The retry stalled too; it is cancelled and the turn ends | 网络不太好，刚才没办成，请再说一遍。 — or, when an action of the turn already ran, 刚才网络断了一下，结果请看屏幕。 | `stall_failed` |
+| The connection dropped while the driver's turn was unanswered (a cancelled or failed response does not answer it), within 60 s; said after the reconnect | 刚才网络断了一下，请再说一遍。 — or, when an action already ran, 刚才网络断了一下，结果请看屏幕。 (never a repeat of an action that ran, I-14) | `reconnected` |
+
+While a stalled response still holds the line no spoken cue can play (one response at a time), so
+before the stall notice the driver has the 3 s visual cue only. `WaitCueNoticeTest`,
+`QwenCueCaptureClientTest` (stall notice then retry, refused notice, notice then a text turn).
+
 A wake-up that is already past 12 s says the delay line only, not the progress line and then the delay. The 3 s label still appears.
 
 The 1.0 s / 1.8 s / 5 s lines (`ack_action`, `ack_chat`, `provider_slow`, `tool_running`, `verifying`) are not spoken. Their strings stay in `WaitCues.ALL` so the claim guard still covers them.

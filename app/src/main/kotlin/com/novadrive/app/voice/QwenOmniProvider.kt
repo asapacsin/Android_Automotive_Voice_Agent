@@ -62,7 +62,7 @@ class QwenOmniProvider(
     )
 
     init {
-        client.onStallRetry = { cueClock.onStalled() }
+        client.onStallNotice = { final -> cueClock.onStalled(final) }
     }
 
     override fun events(): Flow<RealtimeEvent> = merge(

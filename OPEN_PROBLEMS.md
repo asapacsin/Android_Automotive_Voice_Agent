@@ -1851,7 +1851,7 @@ Measured from the driver's **last audible word**, not the end of the clip; edge-
 **Fix:**
 - SPEC-014 clause release, owner decision 2026-10-09 (`DriverTurn.clauseVerdict`, `DriverTurnPipeline.drainClauses`, `ProviderCapabilities.streamedReplyText`); see SPEC-014's status note.
 - `RealtimeDialect.resetsConversation`: false for Qwen, true for Baidu (SPEC-021 question 4).
-- `OpenAiRealtimeClient` stall watchdog: a response with no progress for 5 s (`ResponseStallWatchdog.STALL_MS`) is cancelled and asked for once more (`<prefix>_response_stalled`, `_stall_retry`).
+- `OpenAiRealtimeClient` stall watchdog: a response with no progress for 10 s (`ResponseStallWatchdog.STALL_MS`; 5 s until 2026-10-11, when it cancelled a valid tool call that came 5.35 s after response.created on qwen3.5-omni-plus-realtime) is cancelled and asked for once more (`<prefix>_response_stalled`, `_stall_retry`); the stall is announced first, and a stalled retry is cancelled and given up with an honest line (`_stall_gave_up`, SPEC-020 owner amendment 2026-10-11).
 - `ActionClaimGuard.listsAbilities`: two or more groups in a 「、」 enumeration are a list (a completion word still makes it a claim).
 - `ActionClaimGuard.unverifiedClaim`: for a heard sentence (≥ 5 word characters) the correction asks for the request itself (`nudgeFor`), never 「没听清」.
 - `LiveInfoTool`: the district is cached per ~1 km cell for 30 min, and at session start the district and today's weather here are fetched in the background (`live_info_warm`).
@@ -1866,7 +1866,7 @@ Measured from the driver's **last audible word**, not the end of the clip; edge-
 - 「今天珠海天气怎么样」 missed the warm cache (keyed by district, asked by city name). A named city that is the current city now uses it (SPEC-011 B4 amendment).
 - Left as is, both rare:
   - an empty-response retry whose "already active" refusal arrives during a cue capture is taken as the cue's refusal;
-  - a stall check firing between a response's done and the watchdog's sequence step could retry a finished response. It needs 5 s of quiet just before the done.
+  - a stall check firing between a response's done and the watchdog's sequence step could retry a finished response. It needs 10 s of quiet just before the done (5 s before 2026-10-11).
 
 **Still open:**
 - A weather question naming a city is looked up at question time: 1.1–4 s from the PC proxy in Macau, and a timeout means an honest "could not check". Not measured on the phone.

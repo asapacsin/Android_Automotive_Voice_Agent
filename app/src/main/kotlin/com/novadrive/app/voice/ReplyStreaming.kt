@@ -122,11 +122,15 @@ internal class ResponseStallWatchdog(
     private val logPrefix: String,
     private val cancel: () -> Unit,
     private val retry: () -> Unit,
+    /** The retry stalled too: it was cancelled and the turn ends here (owner, 2026-10-11: never silent). */
+    private val giveUp: () -> Unit = {},
 ) {
     private val seq = AtomicLong(0)
     @Volatile private var lastProgressMs = 0L
     /** The sequence number of the response this watchdog cancelled; only that response's done retries. */
     private val cancelledSeq = AtomicLong(NONE)
+    /** The sequence number of a stalled retry this watchdog cancelled; its done gives up. */
+    private val gaveUpSeq = AtomicLong(NONE)
     @Volatile private var retriedThisTurn = false
 
     /** A new driver turn may be retried once again. */
@@ -144,6 +148,11 @@ internal class ResponseStallWatchdog(
 
     fun onResponseDone(alive: () -> Boolean) {
         val done = seq.getAndIncrement()
+        if (gaveUpSeq.getAndSet(NONE) == done) {
+            DebugVoiceLog.log("${logPrefix}_stall_gave_up")
+            scope.launch { if (alive()) giveUp() }
+            return
+        }
         if (cancelledSeq.getAndSet(NONE) != done) return
         if (retriedThisTurn) return
         retriedThisTurn = true
@@ -163,8 +172,10 @@ internal class ResponseStallWatchdog(
                 if (quietMs >= stallMs) {
                     DebugVoiceLog.log("${logPrefix}_response_stalled quiet_ms=$quietMs retried=$retriedThisTurn")
                     // Tied to this response: a done that already passed must not retry the next one.
-                    if (!retriedThisTurn && cancelledSeq.compareAndSet(NONE, current)) {
-                        if (seq.get() != current) { cancelledSeq.compareAndSet(current, NONE); return@launch }
+                    // The first stall of a turn is retried; a stalled retry is cancelled and given up.
+                    val target = if (retriedThisTurn) gaveUpSeq else cancelledSeq
+                    if (target.compareAndSet(NONE, current)) {
+                        if (seq.get() != current) { target.compareAndSet(current, NONE); return@launch }
                         cancel()
                     }
                     return@launch
@@ -178,9 +189,11 @@ internal class ResponseStallWatchdog(
          * Longer than any measured quiet stretch inside a healthy response, with margin: audio has
          * come up to 3.1 s later under load (2026-10-09), and a valid tool call came 5.35 s after
          * response.created (qwen3.5-omni-plus-realtime, 2026-10-11) - the old 5 s limit cancelled it
-         * and lost the action. Owner, 2026-10-11: wait longer; the driver hears a cue meanwhile
-         * ([WaitCueClock]) and a stall is announced, never silent. Measured server hangs were
-         * 15.7 s and 23.1 s, so 10 s still recovers them.
+         * and lost the action. Measured server hangs were 15.7 s and 23.1 s, so 10 s still
+         * recovers them. What the driver hears (owner, 2026-10-11: never silent): the 3 s visual
+         * cue; no spoken cue while the stalled response holds the line (one response at a time);
+         * at the stall a spoken notice, then the retry; if the retry stalls too, it is cancelled
+         * and an honest failure line is spoken ([WaitCueClock.onStalled]).
          */
         const val STALL_MS = 10_000L
         private const val CHECK_MS = 500L

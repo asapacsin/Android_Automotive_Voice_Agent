@@ -430,6 +430,89 @@ class QwenCueCaptureClientTest {
         scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
     }
 
+    // ---- Review of 1f4604d, R1: a cue and the reply asked for after it go out one at a time ----
+
+    private fun isCue(create: JSONObject) = create.optJSONObject("response")?.has("instructions") == true
+
+    /** Stall a turn's response, let the stall notice and the retry go out; [refuseCue]: the server refuses the cue. */
+    private fun stallThenNotice(refuseCue: Boolean) = runBlocking {
+        val (client, seen) = connected(stallMs = 300)
+        client.onStallNotice = { client.speakFixedCue(WaitCues.STALLED) }
+        send("""{"type":"input_audio_buffer.speech_started"}""", """{"type":"input_audio_buffer.speech_stopped"}""")
+        Thread.sleep(1_800)
+        send("""{"type":"response.created","response":{"id":"r1"}}""", """{"type":"response.output_item.added","item":{"type":"message"}}""")
+        awaitUntil({ "sent: $received" }) { sent("response.cancel").size == 1 }
+        send("""{"type":"response.done","response":{"status":"cancelled","output":[{"type":"message"}]}}""")
+        awaitUntil({ "sent: $received" }) { sent("response.create").isNotEmpty() }
+        Thread.sleep(400)
+        assertEquals(listOf(true), sent("response.create").map(::isCue), "only the cue goes out first; the retry waits")
+        if (refuseCue) {
+            send(busy)
+        } else {
+            send("""{"type":"response.created","response":{"id":"r2"}}""", *cueDeltas("网络有点慢，", "我再试一下。"),
+                """{"type":"response.audio.delta","delta":"${b64(pcmA)}"}""",
+                """{"type":"response.audio_transcript.done","transcript":"${WaitCues.STALLED}"}""",
+                """{"type":"response.done","response":{"status":"completed","output":[{"type":"message"}]}}""")
+        }
+        awaitUntil({ "sent: $received" }) { sent("response.create").size == 2 }
+        assertEquals(listOf(true, false), sent("response.create").map(::isCue), "then the retry, once")
+        send("""{"type":"response.created","response":{"id":"r3"}}""",
+            """{"type":"response.audio.delta","delta":"${b64(byteArrayOf(5, 6, 7, 8))}"}""",
+            """{"type":"response.audio_transcript.done","transcript":"今天天气不错。"}""",
+            """{"type":"response.done","response":{"status":"completed","output":[{"type":"message"}]}}""")
+        Thread.sleep(600)
+        assertEquals(2, sent("response.create").size, "no further request")
+        assertEquals(if (refuseCue) 0 else 1, seen.count { it is DomainVoiceEvent.WaitCueAudio })
+        assertTrue(seen.none { it is DomainVoiceEvent.Error }, "$seen")
+        assertTrue(seen.filterIsInstance<DomainVoiceEvent.AssistantTranscript>().none { "网络有点慢" in it.text }, "the cue is never judged as the reply")
+        client.disconnect()
+    }
+
+    @Test
+    fun theStallNoticePlaysAsACueAndTheRetryGoesOutOnceAfterIt() = stallThenNotice(refuseCue = false)
+
+    @Test
+    fun aRefusedStallNoticeReleasesTheRetryAtOnce() = stallThenNotice(refuseCue = true)
+
+    @Test
+    fun aTextTurnSentRightAfterAReconnectNoticeWaitsForIt() = runBlocking {
+        val (client, seen) = connected()
+        assertTrue(client.speakFixedCue(WaitCues.RECONNECTED))
+        client.sendUserText("导航去横琴镇")
+        Thread.sleep(400)
+        assertEquals(listOf(true), sent("response.create").map(::isCue), "the text turn's reply waits for the notice")
+        send("""{"type":"response.created","response":{"id":"r1"}}""", *cueDeltas("刚才网络断了一下，", "请再说一遍。"),
+            """{"type":"response.audio.delta","delta":"${b64(pcmA)}"}""",
+            """{"type":"response.audio_transcript.done","transcript":"${WaitCues.RECONNECTED}"}""",
+            """{"type":"response.done","response":{"status":"completed","output":[{"type":"message"}]}}""")
+        awaitUntil({ "sent: $received" }) { sent("response.create").size == 2 }
+        assertEquals(listOf(true, false), sent("response.create").map(::isCue))
+        assertEquals(1, seen.count { it is DomainVoiceEvent.WaitCueAudio })
+        client.disconnect()
+    }
+
+    @Test
+    fun aStalledRetryIsCancelledAndGivenUpNotWaitedForForever() {
+        val scope = kotlinx.coroutines.CoroutineScope(Dispatchers.Default)
+        var retries = 0
+        var gaveUp = 0
+        val cancels = java.util.concurrent.atomic.AtomicInteger()
+        val watchdog = ResponseStallWatchdog(scope, 200, "t", cancel = { cancels.incrementAndGet() }, retry = { retries++ }, giveUp = { gaveUp++ })
+        val alive = { true }
+        watchdog.onResponseCreated(alive)
+        Thread.sleep(500)
+        watchdog.onResponseDone(alive) // the cancelled first response: retried
+        Thread.sleep(200)
+        watchdog.onResponseCreated(alive) // the retry stalls too
+        Thread.sleep(500)
+        assertEquals(2, cancels.get(), "the stalled retry is cancelled as well")
+        watchdog.onResponseDone(alive)
+        Thread.sleep(300)
+        assertEquals(1, retries)
+        assertEquals(1, gaveUp)
+        scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
+    }
+
     private companion object {
         const val READY_TIMEOUT_MS = 30_000L
         const val AWAIT_TIMEOUT_MS = 5_000L

@@ -212,7 +212,7 @@ class QwenOmniClientTest {
     }
 
     @Test
-    fun aStalledResponseIsCancelledAndAskedForOnceOnly() = runBlocking {
+    fun aStalledResponseIsRetriedOnceAndAStalledRetryIsGivenUp() = runBlocking {
         enqueueServer()
         val client = client(responseStallMs = 300)
         client.connect(config())
@@ -226,10 +226,16 @@ class QwenOmniClientTest {
         val createsBefore = sent("response.create").size
         send("""{"type":"response.done","response":{"status":"cancelled","status_details":{"reason":"client_cancelled"},"output":[{"type":"message"}]}}""")
         awaitUntil({ "sent: $received" }) { sent("response.create").size == createsBefore + 1 }
-        // The retry stalls too: it is the turn's last chance, so it is left to finish.
+        // The retry stalls too. Owner, 2026-10-11 (never silent): it is cancelled and given up, with an
+        // honest line from the wait-cue owner - never asked for a third time, never waited for forever.
+        var gaveUp = false
+        client.onStallNotice = { final -> if (final) gaveUp = true }
         send("""{"type":"response.created","response":{"id":"r2"}}""")
-        Thread.sleep(1_000)
-        assertEquals(1, sent("response.cancel").size, "a second stall in the same turn is not cancelled")
+        awaitUntil({ "sent: $received" }) { sent("response.cancel").size == 2 }
+        send("""{"type":"response.done","response":{"status":"cancelled","status_details":{"reason":"client_cancelled"},"output":[]}}""")
+        awaitUntil({ "gave up: $gaveUp" }) { gaveUp }
+        Thread.sleep(500)
+        assertEquals(createsBefore + 1, sent("response.create").size, "no third request")
         client.disconnect()
     }
 

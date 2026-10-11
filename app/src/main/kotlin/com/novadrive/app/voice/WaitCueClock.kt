@@ -21,21 +21,29 @@ class WaitCueClock(
     private var turn: WaitCueTurn? = null
     private var startMs = 0L
     private var timer: Job? = null
-    /** The driver finished a turn and has heard no reply yet. A stall does not clear it; a reply does. */
+    /**
+     * The driver finished a turn and has heard no reply yet. A reply, the app handling the turn or
+     * a completed response answers it; a cancelled or failed response (a stall cancel, a server
+     * failure) does not.
+     */
     private var awaitingReply = false
+    private var awaitingSinceMs = 0L
+    /** A tool call of this turn was issued: a repeat of the request could run it twice (I-14). */
+    private var actionThisTurn = false
     /** The connection dropped while [awaitingReply]: the next connect owes the driver a notice. */
     private var lostTurn = false
 
     fun onSpeech(active: Boolean, silenceMs: Long = 0, suspiciousAudio: Boolean = false) {
         if (active) {
             stop("driver_speech")
-            synchronized(lock) { turn = WaitCueTurn() }
+            synchronized(lock) { turn = WaitCueTurn(); actionThisTurn = false }
             return
         }
         synchronized(lock) {
             val current = turn ?: WaitCueTurn().also { turn = it }
             if (current.clockStarted || current.stopped || current.replyUnderway) return
             awaitingReply = true
+            awaitingSinceMs = clock()
             current.suspiciousAudio = suspiciousAudio
             current.clockStarted = true
             startMs = clock() - silenceMs
@@ -47,7 +55,10 @@ class WaitCueClock(
         when (event) {
             is DomainVoiceEvent.SpeechStarted -> onSpeech(true)
             is DomainVoiceEvent.SpeechStopped -> onSpeech(false)
-            is DomainVoiceEvent.ToolCall -> rearm { it.onToolCall(event.name) }
+            is DomainVoiceEvent.ToolCall -> {
+                synchronized(lock) { actionThisTurn = true }
+                rearm { it.onToolCall(event.name) }
+            }
             DomainVoiceEvent.ResponseStarted -> rearm { it.onResponseStarted() }
             is DomainVoiceEvent.AudioDelta -> onUsefulSpeech()
             is DomainVoiceEvent.ResponseDone -> {
@@ -55,11 +66,12 @@ class WaitCueClock(
                     val current = turn ?: return
                     current.responseStarted && !current.toolOutstanding && !current.replyUnderway
                 }
-                if (done) stop("turn_done", turnScoped = true)
+                // A cancelled or failed response did not answer the driver (owner: never silent).
+                if (done) stop(if (event.status == "completed") "turn_done" else "response_failed", turnScoped = true)
             }
             is DomainVoiceEvent.Interrupted -> stop("interrupted")
             is DomainVoiceEvent.Error, DomainVoiceEvent.Closed -> synchronized(lock) {
-                if (awaitingReply) {
+                if (awaitingReply && clock() - awaitingSinceMs <= LOST_TURN_WINDOW_MS) {
                     awaitingReply = false
                     lostTurn = true
                     DebugVoiceLog.log("wait_cue_turn_lost")
@@ -83,13 +95,24 @@ class WaitCueClock(
         stop("session_end", turnScoped = true)
     }
 
-    /** A stalled response is about to be asked for again: the driver has heard nothing, so tell them. */
-    fun onStalled() = notice(WaitCue("stalled", WaitCues.DELAY))
+    /**
+     * A stalled response is about to be asked for again ([final] false), or its retry stalled too
+     * and was given up ([final] true). The driver has heard nothing, so tell them.
+     */
+    fun onStalled(final: Boolean = false) {
+        if (!final) return notice(WaitCue("stalled", WaitCues.STALLED))
+        val action = synchronized(lock) { awaitingReply = false; actionThisTurn }
+        notice(if (action) WaitCue("stall_failed", WaitCues.RESULT_ON_SCREEN) else WaitCue("stall_failed", WaitCues.STALL_FAILED))
+    }
 
-    /** Called after a (re)connect: if the drop lost an unanswered turn, the driver is told to repeat it. */
+    /**
+     * Called after a (re)connect: if the drop lost an unanswered turn, the driver is told - to
+     * repeat it only when nothing of it ran; otherwise to look at the screen, never to run it twice.
+     */
     fun onConnected() {
-        val owed = synchronized(lock) { lostTurn.also { lostTurn = false } }
-        if (owed) notice(WaitCue("reconnected", WaitCues.RECONNECTED))
+        val (owed, action) = synchronized(lock) { (lostTurn to actionThisTurn).also { lostTurn = false } }
+        if (!owed) return
+        notice(if (action) WaitCue("reconnected", WaitCues.RESULT_ON_SCREEN) else WaitCue("reconnected", WaitCues.RECONNECTED))
     }
 
     private fun notice(cue: WaitCue) {
@@ -114,7 +137,7 @@ class WaitCueClock(
         val (clear, job) = synchronized(lock) {
             // A reply, the app handling the utterance or the end of the session answers the turn;
             // an interruption (a stall cancel included) does not.
-            if (reason != "interrupted") awaitingReply = false
+            if (reason != "interrupted" && reason != "response_failed") awaitingReply = false
             // The driver spoke again or a reply arrived: an older lost turn is no longer owed a notice.
             if (reason == "driver_speech" || reason == "reply_audio") lostTurn = false
             val current = turn ?: return
@@ -157,5 +180,10 @@ class WaitCueClock(
             val next = WaitCues.nextThresholdAfter(elapsed) ?: break
             kotlinx.coroutines.delay(next - elapsed)
         }
+    }
+
+    private companion object {
+        /** A turn older than this is not "lost" by a later drop: the driver has moved on. */
+        const val LOST_TURN_WINDOW_MS = 60_000L
     }
 }

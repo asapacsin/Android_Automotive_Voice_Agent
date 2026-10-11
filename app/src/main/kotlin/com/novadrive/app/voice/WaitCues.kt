@@ -9,7 +9,13 @@ object WaitCues {
     const val PROGRESS = "收到，正在处理。"
     /** A different sentence at [DELAY_MS]. It does not repeat [PROGRESS]. */
     const val DELAY = "还在处理，网络可能不太稳定，再等我一下。"
-    /** After a reconnect that lost the driver's unanswered turn: never silence (owner, 2026-10-11). */
+    /** Owner, 2026-10-11 (never silent): a stall is announced before it is retried. */
+    const val STALLED = "网络有点慢，我再试一下。"
+    /** The retry stalled too and was given up; nothing of the turn ran. */
+    const val STALL_FAILED = "网络不太好，刚才没办成，请再说一遍。"
+    /** The connection dropped (or the retry was given up) after an action of the turn ran: no repeat. */
+    const val RESULT_ON_SCREEN = "刚才网络断了一下，结果请看屏幕。"
+    /** After a reconnect that lost the driver's unanswered turn, when nothing of it ran. */
     const val RECONNECTED = "刚才网络断了一下，请再说一遍。"
 
     const val ACK_ACTION = PROGRESS
@@ -36,6 +42,7 @@ object WaitCues {
     val ALL: List<String> = listOf(
         ACK_ACTION, ACK_CHAT, PROVIDER_SLOW, VERIFYING, STILL_WAITING,
         TOOL_ROUTE, TOOL_QUERY, TOOL_MUSIC, TOOL_CAMERA, TOOL_DEFAULT,
+        STALLED, STALL_FAILED, RESULT_ON_SCREEN, RECONNECTED,
     )
 
     fun toolPhrase(tool: String): String = when (tool) {

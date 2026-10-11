@@ -120,9 +120,12 @@ open class OpenAiRealtimeClient<C : Any>(
         resetScope, responseStallMs, dialect.logPrefix,
         cancel = { sendCancelOnce("stalled") },
         retry = { // never queued: once another turn went out or the driver spoke, it is not wanted
-            if (turnGate.isBusy() || turnGate.pending() > 0) DebugVoiceLog.log("${dialect.logPrefix}_stall_retry_dropped") else { onStallRetry?.invoke(); submitReply("stall_retry") } },
+            if (turnGate.isBusy() || turnGate.pending() > 0) DebugVoiceLog.log("${dialect.logPrefix}_stall_retry_dropped") else { onStallNotice?.invoke(false); submitReply("stall_retry") } },
+        giveUp = { onStallNotice?.invoke(true) },
     )
-    @Volatile internal var onStallRetry: (() -> Unit)? = null // the wait-cue owner tells the driver before the retry
+    @Volatile internal var onStallNotice: ((Boolean) -> Unit)? = null // the wait-cue owner speaks; true: given up
+    /** A cue request holds the turn gate, so a reply asked for meanwhile goes out after it, once. */
+    @Volatile private var cueHoldsGate = false
 
     /** Incremented on every conversation reset; a queued turn from an older one may be stale. */
     @Volatile private var conversationEpoch = 0
@@ -316,8 +319,9 @@ open class OpenAiRealtimeClient<C : Any>(
             return false
         }
         cue.request(text)
+        turnGate.onResponseCreated(); cueHoldsGate = true
         if (!trySend(message)) {
-            cue.clear()
+            cue.clear(); cueHoldsGate = false; turnGate.onResponseDone()
             DebugVoiceLog.log("wait_cue_failed")
             return false
         }
@@ -411,7 +415,7 @@ open class OpenAiRealtimeClient<C : Any>(
         assistantSpeaking = false
         responseInProgress = false
         cancelSentThisResponse = false
-        cue.clear()
+        cue.clear(); cueHoldsGate = false
         turnGate.onConnectionReset()
         assembler.clear()
         val owned = navigatingListener
@@ -533,7 +537,7 @@ open class OpenAiRealtimeClient<C : Any>(
                 ProviderCueCapture.Step.Pass -> handle(webSocket, text, type)
                 ProviderCueCapture.Step.Buffered, ProviderCueCapture.Step.Skipped -> Unit
                 is ProviderCueCapture.Step.Started -> {
-                    synchronized(this@OpenAiRealtimeClient) { cancelSentThisResponse = false }; responseInProgress = true
+                    synchronized(this@OpenAiRealtimeClient) { cancelSentThisResponse = false }; responseInProgress = true; cueHoldsGate = false
                     turnGate.onResponseCreated(); if (step.cancel) sendCancelOnce("client_cancel") }
                 ProviderCueCapture.Step.CancelAndPass -> { sendCancelOnce("driver_speech"); handle(webSocket, text, type) }
                 // The candidate was a reply: everything it sent takes the normal path, in order
@@ -545,6 +549,8 @@ open class OpenAiRealtimeClient<C : Any>(
                     flushDeferredTurns()
                 }
             }
+            // The cue request was refused or failed before its response started: release what it held.
+            if (cueHoldsGate && cue.idle) { cueHoldsGate = false; turnGate.onResponseDone(); flushDeferredTurns() }
         }
 
         private fun handle(webSocket: WebSocket, text: String, type: String) {
