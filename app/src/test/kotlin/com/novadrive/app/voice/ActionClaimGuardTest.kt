@@ -481,4 +481,17 @@ class ActionClaimGuardTest {
         assertNotNull(ActionClaimGuard.carActionClaimMatch("空调、座椅都给你调到最低。"))
         assertNull(ActionClaimGuard.carActionClaimMatch("我能帮你导航、放音乐、调空调。"))
     }
+
+    /** Live take 2026-10-11: the route prompt quoted with curly quotes drew a false 「导航还没开始」. */
+    @Test
+    fun aQuotedStartNavigationIsAPromptWhateverTheQuoteMarks() {
+        listOf(
+            "有3条路线，推荐的约4分钟，说“开始导航”走推荐路线，或说第几条、最快的。",
+            "有3条路线，说「开始导航」走推荐路线。",
+            "有3条路线，说\"开始导航\"走推荐路线。",
+            "说『开始导航』就出发。",
+        ).forEach { assertFalse(ActionClaimGuard.claimsNavigationStarted(it), it) }
+        listOf("导航已开始，前往横琴镇。", "好的，已经开始导航了。", "正在为你导航。")
+            .forEach { assertTrue(ActionClaimGuard.claimsNavigationStarted(it), it) }
+    }
 }

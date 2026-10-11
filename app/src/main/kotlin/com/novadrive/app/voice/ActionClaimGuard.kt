@@ -558,9 +558,14 @@ class ActionClaimGuard {
             val text = reply.trim()
             if (text.isEmpty() || declines(text)) return false
             if ("没有开始" in text || "还没开始" in text || "未开始" in text) return false
-            return Regex("导航(已经|已)?开始|(已经|已|已为你|已为您)?开始导航(了)?[。！!]?|正在(为你|为您)?导航").containsMatchIn(text) &&
-                !text.contains("说「开始导航」") && !text.contains("说开始导航")
+            // A quoted phrase is what the driver may say, not a claim, whatever the quote marks: live take
+            // 2026-10-11 (qwen3.5-omni-plus-realtime) wrote 说“开始导航”走推荐路线 and drew a false correction.
+            val unquoted = text.replace(QUOTED, "")
+            return Regex("导航(已经|已)?开始|(已经|已|已为你|已为您)?开始导航(了)?[。！!]?|正在(为你|为您)?导航").containsMatchIn(unquoted) &&
+                !unquoted.contains("说开始导航")
         }
+
+        private val QUOTED = Regex("「[^」]*」|『[^』]*』|“[^”]*”|‘[^’]*’|\"[^\"]*\"")
 
         /** Navigation did not start this turn; the reply said it did. */
         const val NAVIGATION_NOT_STARTED =
