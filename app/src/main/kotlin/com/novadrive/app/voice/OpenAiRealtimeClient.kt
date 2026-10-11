@@ -120,12 +120,14 @@ open class OpenAiRealtimeClient<C : Any>(
         resetScope, responseStallMs, dialect.logPrefix,
         cancel = { sendCancelOnce("stalled") },
         retry = { // never queued: once another turn went out or the driver spoke, it is not wanted
-            if (turnGate.isBusy() || turnGate.pending() > 0) DebugVoiceLog.log("${dialect.logPrefix}_stall_retry_dropped") else { onStallNotice?.invoke(false); submitReply("stall_retry") } },
+            if (turnGate.isBusy() || turnGate.pending() > 0) DebugVoiceLog.log("${dialect.logPrefix}_stall_retry_dropped") else { onStallNotice?.invoke(false); if (cueHoldsGate) stallRetryWaiting = true else submitReply("stall_retry") } },
         giveUp = { onStallNotice?.invoke(true) },
     )
     @Volatile internal var onStallNotice: ((Boolean) -> Unit)? = null // the wait-cue owner speaks; true: given up
     /** A cue request holds the turn gate, so a reply asked for meanwhile goes out after it, once. */
     @Volatile private var cueHoldsGate = false
+    /** The stall retry waits for the stall notice; it is dropped if the driver speaks or a reply starts first. */
+    @Volatile private var stallRetryWaiting = false
 
     /** Incremented on every conversation reset; a queued turn from an older one may be stale. */
     @Volatile private var conversationEpoch = 0
@@ -383,6 +385,13 @@ open class OpenAiRealtimeClient<C : Any>(
         if (control) sendControl(dialect.responseCreate()) else trySend(dialect.responseCreate())
     }
 
+    /** The stall notice is over: the waiting retry goes out now unless another turn already did. */
+    private fun releaseStallRetry() {
+        if (!stallRetryWaiting || !cue.idle || cueHoldsGate) return
+        stallRetryWaiting = false
+        if (turnGate.isBusy() || turnGate.pending() > 0) DebugVoiceLog.log("${dialect.logPrefix}_stall_retry_dropped") else submitReply("stall_retry")
+    }
+
     /** Sends queued app replies once the provider is free; one at a time, each after the previous reply. */
     private fun flushDeferredTurns() {
         while (true) {
@@ -415,7 +424,7 @@ open class OpenAiRealtimeClient<C : Any>(
         assistantSpeaking = false
         responseInProgress = false
         cancelSentThisResponse = false
-        cue.clear(); cueHoldsGate = false
+        cue.clear(); cueHoldsGate = false; stallRetryWaiting = false
         turnGate.onConnectionReset()
         assembler.clear()
         val owned = navigatingListener
@@ -532,7 +541,9 @@ open class OpenAiRealtimeClient<C : Any>(
             val type = runCatching { JSONObject(text).optString("type") }.getOrElse {
                 failProtocol(pending, it); return
             }
-            if (cue.idle) return handle(webSocket, text, type)
+            if (stallRetryWaiting && (type == "input_audio_buffer.speech_started" || (type == "response.created" && cue.idle))) {
+                stallRetryWaiting = false; DebugVoiceLog.log("${dialect.logPrefix}_stall_retry_dropped") }
+            if (cue.idle) return handle(webSocket, text, type).also { releaseStallRetry() }
             when (val step = cue.onMessage(cueSignal(type, text), text) { dialect.isResponseAlreadyActive(text) }) {
                 ProviderCueCapture.Step.Pass -> handle(webSocket, text, type)
                 ProviderCueCapture.Step.Buffered, ProviderCueCapture.Step.Skipped -> Unit
@@ -551,6 +562,7 @@ open class OpenAiRealtimeClient<C : Any>(
             }
             // The cue request was refused or failed before its response started: release what it held.
             if (cueHoldsGate && cue.idle) { cueHoldsGate = false; turnGate.onResponseDone(); flushDeferredTurns() }
+            releaseStallRetry()
         }
 
         private fun handle(webSocket: WebSocket, text: String, type: String) {

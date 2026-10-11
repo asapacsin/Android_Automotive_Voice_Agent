@@ -513,6 +513,33 @@ class QwenCueCaptureClientTest {
         scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
     }
 
+    /** Re-review of e1e040c, R1a: the driver speaking during the stall notice makes the waiting retry unwanted. */
+    @Test
+    fun aStallRetryWaitingForTheNoticeIsDroppedWhenTheDriverSpeaks() = runBlocking {
+        val (client, _) = connected(stallMs = 300)
+        client.onStallNotice = { final -> if (!final) client.speakFixedCue(WaitCues.STALLED) }
+        send("""{"type":"input_audio_buffer.speech_started"}""", """{"type":"input_audio_buffer.speech_stopped"}""")
+        Thread.sleep(1_800)
+        send("""{"type":"response.created","response":{"id":"r1"}}""", """{"type":"response.output_item.added","item":{"type":"message"}}""")
+        awaitUntil({ "sent: $received" }) { sent("response.cancel").size == 1 }
+        send("""{"type":"response.done","response":{"status":"cancelled","output":[{"type":"message"}]}}""")
+        awaitUntil({ "sent: $received" }) { sent("response.create").isNotEmpty() }
+        Thread.sleep(400)
+        send("""{"type":"response.created","response":{"id":"r2"}}""", *cueDeltas("网络有点慢，"))
+        Thread.sleep(200)
+        send("""{"type":"input_audio_buffer.speech_started"}""")
+        awaitUntil({ "sent: $received" }) { sent("response.cancel").size == 2 }
+        send("""{"type":"response.done","response":{"status":"cancelled","output":[{"type":"message"}]}}""",
+            """{"type":"input_audio_buffer.speech_stopped"}""",
+            """{"type":"response.created","response":{"id":"r3"}}""",
+            """{"type":"response.audio.delta","delta":"${b64(byteArrayOf(5, 6, 7, 8))}"}""",
+            """{"type":"response.audio_transcript.done","transcript":"好的。"}""",
+            """{"type":"response.done","response":{"status":"completed","output":[{"type":"message"}]}}""")
+        Thread.sleep(2_500)
+        assertEquals(listOf(true), sent("response.create").map(::isCue), "only the notice was ever asked for; the stale retry was dropped")
+        client.disconnect()
+    }
+
     private companion object {
         const val READY_TIMEOUT_MS = 30_000L
         const val AWAIT_TIMEOUT_MS = 5_000L

@@ -214,7 +214,7 @@ class ArchitectureRulesTest {
             "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt" to 80,
             // SPEC-021 step 1 (2026-10-08): the turn handling moved out of BaiduFlexClient, recorded at 675.
             // SPEC-020 (2026-10-09): the Maia wait cue is captured in this client so it is not judged as the reply.
-            "app/src/main/kotlin/com/novadrive/app/voice/OpenAiRealtimeClient.kt" to 790, // P50 2026-10-09: streamed words, stall and underrun wiring (logic in ReplyStreaming.kt); +1 2026-10-11: the stall-notice hook (logic in WaitCueClock); +3 2026-10-11: per-reply usage log and history cap (logic in ReplyUsage.kt); +6 2026-10-11: a cue request holds the turn gate (review R1)
+            "app/src/main/kotlin/com/novadrive/app/voice/OpenAiRealtimeClient.kt" to 802, // P50 2026-10-09: streamed words, stall and underrun wiring (logic in ReplyStreaming.kt); +1 2026-10-11: the stall-notice hook (logic in WaitCueClock); +3 2026-10-11: per-reply usage log and history cap (logic in ReplyUsage.kt); +6 2026-10-11: a cue request holds the turn gate (review R1); +12 2026-10-11: a stall retry waits for its notice and is dropped if the driver speaks (re-review R1a)
             "app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt" to 410, // SPEC-014 clause release (budget in ReplyStreaming.kt)
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapNaviViewHost.kt" to 900,
             "app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt" to 470,

@@ -184,7 +184,7 @@ call that turn never registered can count as its proof and release a held reply
 
 ---
 
-## D-12 — 「空调」 alone reads as an action claim — **RESOLVED at JVM level 2026-10-11**
+## D-12 — 「空调」 alone reads as an action claim — **PARTLY RESOLVED at JVM level 2026-10-11**
 
 **Problem.** `ActionClaimGuard.describesCarAction` pairs a `DEVICE_NOUNS` word with an `ACTION_WORDS`
 word by substring. 「调」 is an action word and is inside 「空调」, so any reply naming the air
@@ -214,6 +214,15 @@ verb-first 开/关空调 with a promise marker or 了, negated/advisory/hypothet
 Covered by `FalseCapabilityClaimTest.aClimateClaimWithoutTheActionCharacterIsStillAClaim` and
 `DriverTurnTest.aClimateClaimWithNoToolCallIsDroppedAfterTheCompoundMask`; the advice negatives
 (「要不要开空调？」「开空调会更费油一点。」「空调可以开到24度左右比较舒服。」) stay null.
+
+**Still open (re-review 2026-10-11).** In a turn the app could not classify (UNCLASSIFIED_CLAIM),
+general statements that put a completion verb after 空调 are still dropped as claims, so the driver
+hears nothing: 「夏天空调开着睡觉容易感冒。」「空调一直开着，车里挺凉快的。」「外面很热，记得把空调开大一点。」
+「空调开到24度左右最舒服。」「很多人开空调开到最低。」「空调关了以后车里会慢慢变热。」 Each was dropped before
+D-12 as well, so this is not a regression; catching every real claim (I-1) was put first. Released
+correctly: 「开空调吧，外面太热了。」「我已经习惯开空调开车了。」「空调开着的时候油耗会高一点。」. Next step:
+a generic-statement rule (no first person, no promise marker, a habitual or advisory frame) with these
+six as tests, reviewed against the climate claim tests.
 
 ---
 
