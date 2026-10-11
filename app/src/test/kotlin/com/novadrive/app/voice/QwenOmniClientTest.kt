@@ -104,6 +104,36 @@ class QwenOmniClientTest {
         """{"type":"response.audio_transcript.done","transcript":"已为您打开空调"}""",
     )
 
+    /** A plain chat turn whose response.done reports [inputTokens] of input (owner, 2026-10-11: cap the history). */
+    private fun chatTurnCosting(inputTokens: Int) = send(
+        """{"type":"input_audio_buffer.speech_started"}""",
+        """{"type":"input_audio_buffer.speech_stopped"}""",
+        """{"type":"conversation.item.input_audio_transcription.completed","item_id":"i1","transcript":"今天心情不错"}""",
+        """{"type":"response.created","response":{"id":"r1"}}""",
+        """{"type":"response.audio.delta","delta":"AAE="}""",
+        """{"type":"response.audio_transcript.done","transcript":"那就好呀"}""",
+        """{"type":"response.done","response":{"id":"r1","status":"completed","output":[{"type":"message","role":"assistant",""" +
+            """"content":[{"type":"audio","transcript":"那就好呀"}]}],"usage":{"total_tokens":${inputTokens + 40},""" +
+            """"input_tokens":$inputTokens,"output_tokens":40,"input_tokens_details":{"text_tokens":$inputTokens,"audio_tokens":0},""" +
+            """"output_tokens_details":{"text_tokens":8,"audio_tokens":32}}}}""",
+    )
+
+    @Test
+    fun aConversationOverTheHistoryCapStartsAfreshAndOneUnderItDoesNot() = runBlocking {
+        enqueueServer()
+        enqueueServer()
+        val client = client()
+        collect(client)
+        client.connect(config())
+        chatTurnCosting(HistoryBudget.HISTORY_TOKEN_CAP - 1)
+        Thread.sleep(500)
+        assertEquals(1, sent("session.update").size, "under the cap: one conversation")
+        chatTurnCosting(HistoryBudget.HISTORY_TOKEN_CAP + 500)
+        awaitUntil({ "session.update sent ${sent("session.update").size}" }) { sent("session.update").size == 2 }
+        assertEquals(2, sockets.size, "over the cap: a fresh conversation on a new socket")
+        client.disconnect()
+    }
+
     // ---- A3 ----
 
     @Test

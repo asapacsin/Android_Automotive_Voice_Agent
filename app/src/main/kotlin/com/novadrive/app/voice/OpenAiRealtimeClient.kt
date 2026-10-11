@@ -68,6 +68,7 @@ open class OpenAiRealtimeClient<C : Any>(
     @Volatile private var textUnsupportedLogged = false
     private val emptyRetry = EmptyResponseRetryPolicy()
     private val resetPolicy = ConversationResetPolicy()
+    private val historyBudget = HistoryBudget()
     private val resetScope = kotlinx.coroutines.CoroutineScope(
         kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO,
     )
@@ -457,7 +458,9 @@ open class OpenAiRealtimeClient<C : Any>(
             // Decided before the verdict: a correction the verdict sends must wait for the new
             // conversation rather than go out on the socket the reset is about to close.
             val superseded = pipeline.takeSuperseded()
-            val resetNow = dialect.resetsConversation && resetPolicy.onResponseDone(outcome, superseded)
+            val usage = ReplyUsage.from(text)?.also { DebugVoiceLog.log(it.describe(dialect.logPrefix)) }
+            val resetNow = (dialect.resetsConversation && resetPolicy.onResponseDone(outcome, superseded)) ||
+                historyBudget.full(usage, outcome, superseded, contextAwaitingAnswer())
             if (resetNow) resetPending = true
             // A superseded response was already dropped with its turn; judging it now would judge
             // the driver's *new* turn by the old reply.
