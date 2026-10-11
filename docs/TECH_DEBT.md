@@ -184,7 +184,7 @@ call that turn never registered can count as its proof and release a held reply
 
 ---
 
-## D-12 — 「空调」 alone reads as an action claim — **OPEN** (found 2026-10-10)
+## D-12 — 「空调」 alone reads as an action claim — **RESOLVED at JVM level 2026-10-11**
 
 **Problem.** `ActionClaimGuard.describesCarAction` pairs a `DEVICE_NOUNS` word with an `ACTION_WORDS`
 word by substring. 「调」 is an action word and is inside 「空调」, so any reply naming the air
@@ -197,9 +197,13 @@ UNCLASSIFIED_CLAIM / AWAITING_EXECUTION_PROOF drops and the guard's nudges.
 **Risk.** The P36 class: a chat answer about the air conditioning goes silent and is followed by a
 nudge or 「没听清」.
 
-**Next step.** Match 「调」 only outside 「空调」 (as the window rule does with its own phrase), with
-the chat cases as tests. It is not changed here because it alters an existing, widely used predicate.
-It needs its own pass over the climate tests.
+**Resolution.** Researched first (AGENTS.md rule 6): rule-based Chinese segmentation uses
+dictionary maximum matching (正向/逆向最大匹配; CSDN, Zhihu and NLP course write-ups), where the longest
+dictionary word wins. `ActionClaimGuard` now masks a small dictionary of compound words that only
+contain an action character (空调, 降雨, 降水, 降雪) before matching action words. 「开窗好还是开空调好」
+is chat; 「我帮你调一下空调」「空调已经调到24度了」 are still claims. 「开好」 became a body completion
+word, because 「空调、车窗都帮你开好了」 had been caught only through the 调 in 空调.
+`FalseCapabilityClaimTest.aWordThatOnlyContainsAnActionCharacterIsNotAClaim`; every climate test is green.
 
 ---
 

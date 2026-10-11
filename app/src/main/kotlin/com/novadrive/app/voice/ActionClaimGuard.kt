@@ -234,6 +234,17 @@ class ActionClaimGuard {
 
         private val CAMERA_WORDS = listOf("镜头", "摄像头", "画面", "拍到", "看看前面", "前面有什么", "前面是什么", "前面是谁", "前面有谁")
         private val DONE_WORDS = listOf("已", "了", "好的", "正在", "为你", "为您", "马上", "这就")
+        /**
+         * D-12 (2026-10-11): words that merely contain an action character - 「空调」 holds 「调」,
+         * 「降雨」 holds 「降」. Masked before the action words are matched, as dictionary-based
+         * maximum matching (正向/逆向最大匹配, the standard rule-based Chinese segmentation) reads the
+         * longest dictionary word first. 「开窗好还是开空调好」 was a 调 claim; 「我帮你调一下空调」 still is.
+         */
+        private val COMPOUND_WORDS = listOf("空调", "降雨", "降水", "降雪")
+
+        private fun maskCompounds(text: String): String =
+            COMPOUND_WORDS.fold(text) { acc, word -> acc.replace(word, "□".repeat(word.length)) }
+
         private val ACTION_WORDS = listOf(
             "调", "打开", "开启", "开了", "关闭", "关掉", "关了", "播放", "暂停", "停止", "停了",
             "导航", "出发", "设置", "设为", "退出", "结束", "取消", "升", "降", "提高",
@@ -248,6 +259,8 @@ class ActionClaimGuard {
         private val BODY_NOUNS = listOf("车窗", "窗户", "座椅", "座位")
         private val BODY_COMPLETION_WORDS = listOf(
             "关好", "关上", "开到", "关到", "全开", "最低了", "最高了", "开了", "关了", "升高", "降低", "调到",
+            // 「空调、车窗都帮你开好了」 was caught only through the 调 inside 空调 until D-12.
+            "开好",
         )
 
         /**
@@ -542,7 +555,7 @@ class ActionClaimGuard {
          */
         fun describesCarAction(reply: String): Boolean =
             !refuses(reply) && !isMediaRefusalOnly(reply) && (
-                (DEVICE_NOUNS.any { it in reply } && ACTION_WORDS.any { it in reply }) || pairClaimWords(reply) != null
+                (DEVICE_NOUNS.any { it in reply } && ACTION_WORDS.any { it in maskCompounds(reply) }) || pairClaimWords(reply) != null
             )
 
         private fun isNavigationResult(output: String): Boolean =
@@ -602,7 +615,7 @@ class ActionClaimGuard {
 
         fun claimsDone(reply: String): Boolean =
             !declines(reply) && !isMediaRefusalOnly(reply) && (
-                (DONE_WORDS.any { it in reply } && ACTION_WORDS.any { it in reply }) || pairClaimWords(reply) != null
+                (DONE_WORDS.any { it in reply } && ACTION_WORDS.any { it in maskCompounds(reply) }) || pairClaimWords(reply) != null
             )
 
         /**
@@ -645,11 +658,11 @@ class ActionClaimGuard {
                 return ClaimMatch(
                     "car_action",
                     DEVICE_NOUNS.first { it in reply },
-                    ACTION_WORDS.first { it in reply },
+                    ACTION_WORDS.first { it in maskCompounds(reply) },
                 )
             }
             if (claimsDone(reply)) {
-                CONTROL_VERBS.firstOrNull { it in reply }?.let { return ClaimMatch("done_claim", null, it) }
+                CONTROL_VERBS.firstOrNull { it in maskCompounds(reply) }?.let { return ClaimMatch("done_claim", null, it) }
             }
             return null
         }

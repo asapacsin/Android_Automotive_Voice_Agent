@@ -434,6 +434,7 @@ class FalseCapabilityClaimTest {
             "关窗好一点，外面太吵了。",
             "开窗好处是空气新鲜，坏处是噪音大。",
             "开窗好还是关窗好，主要看外面温度。",
+            "开窗好还是开空调好，主要看外面温度。", // D-12: 调 inside 空调 is not an action
             "等它飞出去了再关窗。",
             "外面正在下雨关窗吧。",
             "我已经习惯开窗开车了。",
@@ -633,5 +634,24 @@ class FalseCapabilityClaimTest {
         val output = JSONObject(dispatcher(DriverContext()).dispatch(call("query_live_info", mapOf("kind" to "news"))).output!!)
         assertFalse(output.getBoolean("ok"))
         assertEquals("INVALID_KIND", output.getString("error"))
+    }
+
+    /** D-12: 「空调」 and weather words hold action characters; masked before matching (maximum matching). */
+    @Test
+    fun aWordThatOnlyContainsAnActionCharacterIsNotAClaim() {
+        listOf(
+            "开窗好还是开空调好，主要看外面温度。",
+            "空调开着的时候油耗会高一点。",
+            "车里的空调是自动的。",
+            "明天有降雨，温度会低一点。",
+            "今天降水概率不高，温度二十八度。",
+        ).forEach { assertNull(ActionClaimGuard.carActionClaimMatch(it), it) }
+        listOf(
+            "空调已经调到24度了。",
+            "我帮你调一下空调。",
+            "好的，已为你打开空调。",
+            "空调温度调低了两度。",
+            "好的，温度已经降到22度。",
+        ).forEach { assertNotNull(ActionClaimGuard.carActionClaimMatch(it), it) }
     }
 }
