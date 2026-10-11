@@ -206,6 +206,13 @@ does not change architecture ownership, invariants, or who may certify work. Age
   model that can do what the test needs, with the smallest input (one clip, a setup-only session,
   no audio when the question is the session); the more expensive model only after the cheap one
   passed, and only for what only it can show. State the expected cost in the plan.
+- **Demo-oriented tests, no API the function does not need** (owner, 2026-10-11). Write test cases
+  from the demo's user scenarios: the driver lines and expected outcomes of `docs/DEMO_COMMUTE.md`
+  and `docs/DEMO_REQUIREMENTS.md` (say this, the car does that, she says this, within this time),
+  not from internal call shapes alone. A test calls an external API (Qwen, Gemini, Amap, edge-tts)
+  only when that API is part of the function under test; otherwise it uses a fake, a scripted
+  server or a recorded fixture. Testing the claim gate, a tool, a scenario or a UI never needs a
+  live voice model.
 - **Live Qwen only when the voice model itself is under test** (owner, 2026-10-11): what she hears,
   says, calls or sounds like, or how fast she answers. Everything else - UI and settings screens,
   claim-gate and turn logic, tool and scenario code, harness or recorder changes, a rehearsal of a
