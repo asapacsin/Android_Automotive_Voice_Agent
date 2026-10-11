@@ -487,6 +487,9 @@ class QwenCueCaptureClientTest {
             """{"type":"response.done","response":{"status":"completed","output":[{"type":"message"}]}}""")
         awaitUntil({ "sent: $received" }) { sent("response.create").size == 2 }
         assertEquals(listOf(true, false), sent("response.create").map(::isCue))
+        // The cue audio reaches the collector asynchronously; the release run once checked it too early.
+        awaitUntil({ "seen: $seen" }) { seen.count { it is DomainVoiceEvent.WaitCueAudio } >= 1 }
+        Thread.sleep(200)
         assertEquals(1, seen.count { it is DomainVoiceEvent.WaitCueAudio })
         client.disconnect()
     }
