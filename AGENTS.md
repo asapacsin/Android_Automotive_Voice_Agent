@@ -191,3 +191,8 @@ does not change architecture ownership, invariants, or who may certify work. Age
   final demo. Test runs name their model (`NOVA_QWEN_MODEL` / `MODEL`; there is no default) and use
   `qwen3.5-omni-plus-realtime`; the tools refuse 3.8 unless `NOVA_ALLOW_QWEN_38=yes`, which only the
   owner's explicit, per-run say allows. A plan that says "take 2 on 3.8" is not that say.
+- **Live Qwen only when the voice model itself is under test** (owner, 2026-10-11): what she hears,
+  says, calls or sounds like, or how fast she answers. Everything else - UI and settings screens,
+  claim-gate and turn logic, tool and scenario code, harness or recorder changes, a rehearsal of a
+  demo script - is proved with the JVM suites, the mock servers or the Gemini live harness, and a
+  demo is rehearsed on Gemini before its one Qwen take.
