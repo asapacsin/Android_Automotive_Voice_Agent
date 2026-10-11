@@ -831,4 +831,18 @@ class DriverTurnTest {
         t.onExecutionResult(true, null, callId = "c1")
         assertEquals(0, t.foreignResults)
     }
+
+    /** Review 2026-10-11 (D-12 follow-up): these were caught only via the 调 in 空调. */
+    @Test
+    fun aClimateClaimWithNoToolCallIsDroppedAfterTheCompoundMask() {
+        listOf("空调开好了。", "好的，已经帮你开空调了。").forEach { reply ->
+            val t = DriverTurn(epoch = 1)
+            t.onUserTranscript("打开空调") { DriverTurn.Kind.ACTION }
+            t.onResponseStarted(goodAudio, false)
+            t.hold("audio")
+            val verdict = t.onResponseDone(reply, hadToolCallInResponse = false)
+            assertTrue(verdict is DriverTurn.Verdict.Drop, reply)
+            assertEquals("unproven_action_claim", (verdict as DriverTurn.Verdict.Drop).reason, reply)
+        }
+    }
 }

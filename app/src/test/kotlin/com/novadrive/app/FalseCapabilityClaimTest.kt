@@ -645,6 +645,9 @@ class FalseCapabilityClaimTest {
             "车里的空调是自动的。",
             "明天有降雨，温度会低一点。",
             "今天降水概率不高，温度二十八度。",
+            "要不要开空调？",
+            "开空调会更费油一点。",
+            "空调可以开到24度左右比较舒服。",
         ).forEach { assertNull(ActionClaimGuard.carActionClaimMatch(it), it) }
         listOf(
             "空调已经调到24度了。",
@@ -653,5 +656,26 @@ class FalseCapabilityClaimTest {
             "空调温度调低了两度。",
             "好的，温度已经降到22度。",
         ).forEach { assertNotNull(ActionClaimGuard.carActionClaimMatch(it), it) }
+    }
+
+    /** Review 2026-10-11: caught before D-12 only through the 调 inside 空调. */
+    @Test
+    fun aClimateClaimWithoutTheActionCharacterIsStillAClaim() {
+        val done = listOf("已", "了", "好的", "正在", "为你", "为您", "马上", "这就")
+        listOf(
+            "空调开好了。",
+            "已经开空调了。",
+            "好的，已经帮你开空调了。",
+            "已经帮你把空调开到24度了。",
+            "空调已经开到最大了。",
+            "空调帮你开起来了。",
+            "好的，空调开上了。",
+            "空调关好了。",
+            "空调风量开大了。",
+            "好的，空调给你开着了。",
+        ).forEach { reply ->
+            assertNotNull(ActionClaimGuard.carActionClaimMatch(reply), reply)
+            if (done.any { it in reply }) assertTrue(ActionClaimGuard.claimsDone(reply), reply)
+        }
     }
 }

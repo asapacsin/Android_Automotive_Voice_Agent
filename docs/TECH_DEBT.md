@@ -205,6 +205,16 @@ is chat; 「我帮你调一下空调」「空调已经调到24度了」 are stil
 word, because 「空调、车窗都帮你开好了」 had been caught only through the 调 in 空调.
 `FalseCapabilityClaimTest.aWordThatOnlyContainsAnActionCharacterIsNotAClaim`; every climate test is green.
 
+**Review finding (2026-10-11).** The mask also hid 10 real climate claims that had been caught only
+through the 调 inside 空调 (「空调开好了」「已经开空调了」「好的，已经帮你开空调了」「已经帮你把空调开到24度了」
+「空调已经开到最大了」「空调帮你开起来了」「好的，空调开上了」「空调关好了」「空调风量开大了」「好的，空调给你开着了」):
+with 「打开空调」 and no tool call they were released as `no_claim_made`, an I-1 regression. 空调 now has a
+pair rule like the body nouns (`climateClaimWords`: a 开/关 completion form after 空调 in the clause, or
+verb-first 开/关空调 with a promise marker or 了, negated/advisory/hypothetical clauses excluded).
+Covered by `FalseCapabilityClaimTest.aClimateClaimWithoutTheActionCharacterIsStillAClaim` and
+`DriverTurnTest.aClimateClaimWithNoToolCallIsDroppedAfterTheCompoundMask`; the advice negatives
+(「要不要开空调？」「开空调会更费油一点。」「空调可以开到24度左右比较舒服。」) stay null.
+
 ---
 
 ## D-9 — The hold budget releases a reply whose words were never judged — **OPEN** (found 2026-09-29)
