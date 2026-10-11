@@ -184,7 +184,9 @@ does not change architecture ownership, invariants, or who may certify work. Age
 ## Hard rules
 
 - Never commit, print, log or package credentials. No coordinate, address or transcript in a log.
-- Commit each verified unit of work **locally**; never `git push` unless told. No destructive git.
+- **Commit and push each implemented function as soon as it is verified** (owner, 2026-10-11; this
+  replaces "commit locally, never push unless told"): one verified unit, one commit, pushed to the
+  working branch right away. Never push unverified or red work; never force-push. No destructive git.
 - An implementation agent may not certify its own work as complete.
 - **Do not spend the live Qwen (DashScope) quota unless a test truly needs it** (owner, 2026-10-10:
   800K of a 1M free quota went in two days of emulator takes). Prove everything you can first with the

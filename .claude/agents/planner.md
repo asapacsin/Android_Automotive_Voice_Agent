@@ -90,7 +90,7 @@ git -C ../nova-wt/<TASK_ID> rev-parse HEAD   # must equal BASE_COMMIT before dis
 - Never reset, force-push, rebase or overwrite another worker's branch; never use a destructive git
   operation to get past a conflict or a permission denial. If integration cannot be done safely,
   stop and report the conflict.
-- Commit locally; `git push` only when the user says so (`AGENTS.md` hard rule).
+- Commit and push each verified, integrated unit to the working branch right away (`AGENTS.md` hard rule, owner 2026-10-11); executors still commit only in their worktree.
 
 ## 6. Task packet (every executor dispatch)
 
