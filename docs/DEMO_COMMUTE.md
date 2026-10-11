@@ -108,6 +108,17 @@ Still open: the style turn is a tool call plus a second response, about 0.33 s p
 cloud container to DashScope. On the owner's PC in China the hops are shorter; measure it there before
 deciding anything.
 
+### qwen3.5-omni-plus-realtime cannot call `set_speaking_style` (2026-10-11)
+
+With the app's tool list, every attempt by 3.5 Plus to call `set_speaking_style` ends in
+`COMMON_ERROR <50002> InternalError.Algo.ModelServingError` and a closed socket. Measured with short
+probe sessions: the call works when it is the only tool and fails with one or more other tools,
+whatever the description, the enum (with or without it, `default` renamed) or the voice (Maia, Tina).
+Seat, window, navigation and the other calls are unaffected. A persona line that pushed the model to
+call the tool (3312c2b) made 3.5 Plus attempt it on every 嗲一点 and was reverted. Without it, 3.5 Plus
+answers the tone request in words, so the tone does not persist on 3.5 Plus. 3.8 Flash calls the tool
+normally (take 2, 2026-10-10). This is an Alibaba-side serving defect; nothing in the app changes it.
+
 ## Pass criteria
 
 - `check_req.py` passes every take:
