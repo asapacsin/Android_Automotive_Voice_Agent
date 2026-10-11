@@ -12,12 +12,7 @@ object ComfortDomain : ToolDomain {
     override fun specs(): List<ToolSpec> {
         val runScenario = spec(
             name = "run_scenario",
-            description = "执行固定的舒适场景，一次完成几步车内操作。「有蚊子」「有虫子飞进来了」name=mosquito；" +
-                "「蚊子还没走」「蚊子还在」也再调用 name=mosquito（车窗已经开着时它会改为调大风量）；" +
-                "「蚊子出去了」「好了关上吧」（只在刚执行过 mosquito 之后）name=mosquito_done；" +
-                "「有点闷」「空气不好」「有异味」name=stuffy；「好困」「有点犯困」name=drowsy。" +
-                "用户只描述感受时直接执行，不要反问。按返回的 announce 说做了什么，没做成的也要说。" +
-                "Run a fixed comfort scenario; report exactly the returned announce, including what was not done.",
+            description = "执行固定舒适场景。「有蚊子」name=mosquito；「蚊子还没走」再调用 mosquito（车窗已开时改为调大风量）；刚执行 mosquito 后「蚊子出去了，关上吧」name=mosquito_done；「有点闷」「有异味」stuffy；「好困」drowsy。描述感受时直接执行，不要反问。按返回的 announce 说做了什么，没做成的也要说。",
             properties = JSONObject()
                 .put("name", JSONObject().put("type", "string").put("enum", JSONArray(ComfortScenarios.NAMES))),
             required = listOf("name"),
