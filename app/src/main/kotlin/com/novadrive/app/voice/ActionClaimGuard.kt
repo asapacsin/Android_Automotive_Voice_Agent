@@ -330,9 +330,39 @@ class ActionClaimGuard {
             return noun to verb
         }
 
-        /** The body and media pair rules together: a (noun, verb) from our own lists, or null. */
+        /**
+         * D-12 follow-up (review 2026-10-11): climate claims that were caught only through the 调
+         * inside 空调 (「空调开好了」「已经帮你开空调了」). 空调 is a climate noun like the body nouns:
+         * next to a completion/promise form of 开/关 in the same clause, or verb-first 开/关空调 with a
+         * promise marker before it or 了 after it. Negated, advisory or hypothetical clauses are not
+         * claims (「空调可以开到24度」「空调开着的时候油耗会高」「要不要开空调」).
+         */
+        private const val CLIMATE_NOUN = "空调"
+        private val CLIMATE_COMPLETION_WORDS = listOf(
+            "开好", "开上", "开着", "开起来", "开到", "开大", "开小", "关好", "关上", "关掉", "关了", "开了",
+        )
+        private val CLIMATE_NOT_ACTION_WORDS = WINDOW_NOT_ACTION_WORDS + listOf("时候", "会")
+        private val CLIMATE_VERB_FIRST = Regex("(开|关)空调")
+
+        private fun climateClaimWords(reply: String): Pair<String, String>? {
+            for (clause in reply.split(CLAUSE_BREAK)) {
+                val at = clause.indexOf(CLIMATE_NOUN)
+                if (at < 0 || CLIMATE_NOT_ACTION_WORDS.any { it in clause }) continue
+                val after = clause.substring(at + CLIMATE_NOUN.length)
+                CLIMATE_COMPLETION_WORDS.firstOrNull { it in after }?.let { return CLIMATE_NOUN to it }
+                for (m in CLIMATE_VERB_FIRST.findAll(clause)) {
+                    val before = clause.substring(0, m.range.first)
+                    val rest = clause.substring(m.range.last + 1)
+                    val promised = ADJACENT_PROMISE_MARKERS.any { before.endsWith(it) } || WINDOW_PROMISE_MARKERS.any { it in before }
+                    if (promised || WINDOW_DONE_AFTER.containsMatchIn(rest)) return CLIMATE_NOUN to m.groupValues[1]
+                }
+            }
+            return null
+        }
+
+        /** The body, climate and media pair rules together: a (noun, verb) from our own lists, or null. */
         private fun pairClaimWords(reply: String): Pair<String, String>? =
-            bodyClaimWords(reply) ?: mediaClaimWords(reply)
+            bodyClaimWords(reply) ?: climateClaimWords(reply) ?: mediaClaimWords(reply)
 
         /**
          * SPEC-017 media pair rule: 「正在放梶浦由记的《…》」 claims something is playing. Only
