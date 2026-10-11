@@ -75,6 +75,9 @@ android {
             // debug unit tests only: the release variant would repeat the same simulation.
             if (it.name.contains("Release")) it.exclude("**/app/sim/**")
             it.systemProperty("nova.repo.root", rootProject.projectDir.absolutePath)
+            // A live demo run (tools/demo/live) depends on the live model and the environment, not on
+            // the sources: never let Gradle report it up to date and skip the take (2026-10-11).
+            if (System.getenv("NOVA_LIVE_DEMO") == "1") it.outputs.upToDateWhen { false }
             it.systemProperty("nova.bench.out", layout.buildDirectory.dir("bench").get().asFile.absolutePath)
             listOf("benchSuite", "benchRepeat", "benchSeed", "benchScenario", "benchUpdateBaseline").forEach { key ->
                 providers.gradleProperty(key).orNull?.let { value -> it.systemProperty("nova.$key", value) }
