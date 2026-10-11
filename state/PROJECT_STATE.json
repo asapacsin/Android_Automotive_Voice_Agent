@@ -1,21 +1,21 @@
 {
-  "generated_at": "2026-10-11T04:22:43",
+  "generated_at": "2026-10-11T11:37:39",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "fbe3dd3",
+    "commit": "58d025e",
     "branch": "claude/10-9",
-    "subject": "Stall retry waits for its notice and is dropped if the driver speaks; D-12 marked partly resolved",
+    "subject": "TECH_DEBT D-12: remaining air-conditioning chat cases accepted by the owner",
     "working_tree_clean": false,
-    "uncommitted_files": 3
+    "uncommitted_files": 7
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-10-11T04:22:34",
+    "collected_at": "2026-10-11T11:36:48",
     "total": {
-      "tests": 2131,
+      "tests": 312,
       "failures": 0,
       "errors": 0,
-      "skipped": 3
+      "skipped": 0
     },
     "by_module": {
       "evaluation": {
@@ -25,10 +25,10 @@
         "skipped": 0
       },
       "app": {
-        "tests": 1820,
+        "tests": 1,
         "failures": 0,
         "errors": 0,
-        "skipped": 3
+        "skipped": 0
       },
       "simulator": {
         "tests": 25,
@@ -144,7 +144,7 @@
     {
       "id": "D-12",
       "title": "「空调」 alone reads as an action claim",
-      "priority": "PARTLY"
+      "priority": "RESOLVED"
     },
     {
       "id": "D-9",
@@ -168,7 +168,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "A0: | A0 | G-1 … G-1f measured on the short route | measurement (emulator) | `GUIDANCE-EMU-001` | not earned |",
-    "actionable_count": 122,
+    "actionable_count": 120,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 27,
@@ -920,13 +920,6 @@
         "priority": 8,
         "class": "recorded technical debt",
         "source": "docs/TECH_DEBT.md",
-        "item": "D-12",
-        "blocked_by": null
-      },
-      {
-        "priority": 8,
-        "class": "recorded technical debt",
-        "source": "docs/TECH_DEBT.md",
         "item": "D-9",
         "blocked_by": null
       },
@@ -949,13 +942,6 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P48",
-        "blocked_by": null
-      },
-      {
-        "priority": 10,
-        "class": "stale state or harness defect",
-        "source": "state",
-        "item": "PROJECT_STATE.json",
         "blocked_by": null
       },
       {

@@ -481,6 +481,7 @@ change_impact:
       - NetworkFaults
       - BaiduFlexClient
       - OpenAiRealtimeClient
+      - ReplyUsage
       - RealtimeDialect
       - BaiduFlexDialect
       - QwenOmniDialect

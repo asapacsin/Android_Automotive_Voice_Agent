@@ -206,6 +206,13 @@ does not change architecture ownership, invariants, or who may certify work. Age
   model that can do what the test needs, with the smallest input (one clip, a setup-only session,
   no audio when the question is the session); the more expensive model only after the cheap one
   passed, and only for what only it can show. State the expected cost in the plan.
+- **Gemini is not free either; lowest model, fewest scenes** (owner, 2026-10-11). A Gemini rehearsal
+  uses the low model (`gemini-3.8-live`, never `-extended-thinking`) and only the scenes the change
+  touches (`NOVA_LIVE_SCENES`), not the whole demo; one rehearsal per change, never repeated runs to
+  chase latency variance (a control run is one more run, so plan it). A test whose question only the
+  Qwen voice can answer (a custom or cloned voice: how she sounds, reading the car lines) skips
+  Gemini, whose voice is not ours, and goes straight to the cheapest Qwen model with the
+  smallest input: text-only turns reading the lines, one short session, no full demo.
 - **Demo-oriented tests, no API the function does not need** (owner, 2026-10-11). Write test cases
   from the demo's user scenarios: the driver lines and expected outcomes of `docs/DEMO_COMMUTE.md`
   and `docs/DEMO_REQUIREMENTS.md` (say this, the car does that, she says this, within this time),
