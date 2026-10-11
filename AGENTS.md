@@ -94,6 +94,13 @@ The rules are [harness/CONSTITUTION.md](harness/CONSTITUTION.md) 12 and 17–19;
 4. **A prompt rule is not enforcement.** Anything safety-relevant must hold when the model ignores
    the persona. Deterministic code owns it; the prompt only shapes tone.
 5. **The model's words are never evidence.** Only an executor's result proves an action ran.
+6. **Research before inventing** (owner, 2026-10-11). Every time you meet a problem - a vendor
+   error, a model quirk, a latency or protocol issue, a design question - first search how others
+   solved it: the vendor's documentation and changelog (Alibaba Model Studio / DashScope, Amap,
+   Android), its GitHub issues and SDK samples, and community write-ups (forums, blogs, Stack
+   Overflow, Zhihu/CSDN for Chinese vendors). Record what you found and its source next to the
+   fix (commit message, OPEN_PROBLEMS or the SPEC), including "searched, nothing found". Only then
+   design your own solution.
 
 ## Two things that catch agents out
 
@@ -191,6 +198,12 @@ does not change architecture ownership, invariants, or who may certify work. Age
   final demo. Test runs name their model (`NOVA_QWEN_MODEL` / `MODEL`; there is no default) and use
   `qwen3.5-omni-plus-realtime`; the tools refuse 3.8 unless `NOVA_ALLOW_QWEN_38=yes`, which only the
   owner's explicit, per-run say allows. A plan that says "take 2 on 3.8" is not that say.
+- **Cheapest test first** (owner, 2026-10-11). Every test that could call a paid API is planned
+  for cost before it runs: no API call when an offline test can prove the point (JVM suites, mock
+  servers, recorded fixtures); then the free tier (the Gemini live harness); then the cheapest
+  model that can do what the test needs, with the smallest input (one clip, a setup-only session,
+  no audio when the question is the session); the more expensive model only after the cheap one
+  passed, and only for what only it can show. State the expected cost in the plan.
 - **Live Qwen only when the voice model itself is under test** (owner, 2026-10-11): what she hears,
   says, calls or sounds like, or how fast she answers. Everything else - UI and settings screens,
   claim-gate and turn logic, tool and scenario code, harness or recorder changes, a rehearsal of a
