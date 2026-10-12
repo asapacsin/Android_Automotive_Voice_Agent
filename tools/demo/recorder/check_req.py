@@ -68,6 +68,12 @@ def grade(run):
             else:
                 extra = f"  after_guidance {h:4.1f} s (no guidance in the wait; judged on hears her)"
         print(f"  {key:10s} hears her {hs} s, real reply {d:4.1f} s  cues {cue or '-'}{extra}  {'PASS' if ok else 'FAIL'} (max {limit})")
+        if key == "c_nav":
+            # P53, information only: the app's place-search time in this turn (not graded).
+            ms = [m.group(1) for l in lines if end - 1.5 < vt(l) < nxt_clip
+                  for m in [re.search(r"nav_resolve_candidates count=\d+ ms=(\d+)", l)] if m]
+            if ms:
+                print(f"  {'':10s} place search ms={ms[0]} (info)")
         if not ok:
             fails.append(key)
     gaps = [int(m.group(1)) for l in lines for m in [re.search(r"assistant_voice_gap_ms ms=(\d+)", l)] if m]

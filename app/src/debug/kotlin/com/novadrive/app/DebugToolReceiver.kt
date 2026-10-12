@@ -161,12 +161,19 @@ class DebugToolReceiver : BroadcastReceiver() {
         val fix = if (runCatching { CoarseLocationProvider(app).lastKnown() }.getOrNull() != null) "set" else "none"
         val host = NavigationHostGateway.current()
         if (query.isNotBlank()) Thread {
-            val found = runCatching {
-                kotlinx.coroutines.runBlocking { com.novadrive.app.nav.LiveDestinationCandidateSource(app).resolve(query) }
-            }.getOrDefault(emptyList())
+            val source = com.novadrive.app.nav.LiveDestinationCandidateSource(app)
+            fun timed(): Pair<List<com.novadrive.app.nav.DestinationCandidate>, Long> {
+                val started = System.nanoTime()
+                val result = runCatching { kotlinx.coroutines.runBlocking { source.resolve(query) } }.getOrDefault(emptyList())
+                return result to (System.nanoTime() - started) / 1_000_000
+            }
+            val (found, ms) = timed()
             val first = found.firstOrNull()
-            Log.d("NovaVoice", "preflight_search count=${found.size} first_m=${first?.distanceMeters ?: -1}")
+            Log.d("NovaVoice", "preflight_search count=${found.size} first_m=${first?.distanceMeters ?: -1} ms=$ms")
             if (first != null && host != null) host.calculateDriveRoute(first.latitude, first.longitude, first.name)
+            // P53: the same search again on the same source, to show the warm (reused-connection) cost.
+            val (_, warmMs) = timed()
+            Log.d("NovaVoice", "preflight_search_warm ms=$warmMs")
         }.start()
         return "qwen=$qwen web_key=$webKey fix=$fix map_host=${if (host != null) "live" else "none"}"
     }

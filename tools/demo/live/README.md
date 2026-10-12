@@ -9,6 +9,11 @@ validate the harness), the core session, the app's uplink gate and the app's too
 It is **not** the app: no Android UI, no listening lifecycle or local picker intercept, no AEC, no
 Amap SDK. A pass here is not device evidence (ACCEPTANCE_TESTS.md).
 
+With `AMAP_WEB_KEY` set, the place search is the app's real one (`LiveDestinationCandidateSource`).
+Its network time is taken out of the take (OPEN_PROBLEMS P53): the real Amap result for 横琴镇 is
+fetched once before the session opens (`livedemo_search prefetched=true count=N`) and answers
+「导航去横琴镇」; the candidates are real. Any other query still searches live.
+
 Env: `NOVA_LIVE_DEMO=1` (otherwise the test is skipped), `NOVA_LIVE_OUT=<dir>` (required),
 `NOVA_LIVE_PROVIDER=qwen|gemini` (default qwen), `NOVA_QWEN_MODEL` (required for qwen; use `qwen3.5-omni-plus-realtime` — `qwen3.8-omni-flash-realtime` is refused unless `NOVA_ALLOW_QWEN_38=yes` on the owner's explicit say), `NOVA_LIVE_SCENES=commute_board,...` (default all
 six, one session), `DASHSCOPE_API_KEY` + `DASHSCOPE_WORKSPACE_ID` (qwen) or `GEMINI_API_KEY`

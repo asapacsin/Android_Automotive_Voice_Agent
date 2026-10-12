@@ -1933,3 +1933,28 @@ DashScope's plain error body is `{code, message, request_id}`, with no `type`.
 A type-less frame with neither field is still a protocol error. All four documented shapes now end as `QWEN_QUOTA_EXHAUSTED` (`ErrorClass.RATE_LIMIT`).
 
 **Still open:** not yet seen live. The next time a model's quota runs out, the log line `state=ERROR err=QWEN_QUOTA_EXHAUSTED` confirms it.
+
+## P53 — c_nav waits for the real place search
+
+**Found 2026-10-12, Gemini rehearsals** (cloud JVM, the app's real Amap place search for the first time). c_nav (「导航去横琴镇」) took 6.0 s and 4.7 s against its 3.5 s budget, because the search took 2.52 s and 2.25 s before any reply. Qwen takes 6 and 8, with an instant (simulated) search, answered c_nav in 2.78 s and 2.89 s, so the search may take about 0.6 s at most.
+
+**Cause:**
+- Every `AmapPoiClient` built its own `OkHttpClient`, so the search never reused the connection the session-start warm-up opened; a cold TLS handshake through a proxy costs about 2.9 s.
+- The proxy path itself (the PC routes Amap through Clash).
+
+**Fix:**
+- `AmapPoiClient`'s default `http` is one process-wide client (`SHARED_HTTP`, same 4 s timeouts); `AmapPoiClientTest` proves two default clients share one connection.
+- `nav_resolve_candidates` logs `ms=` (a duration only, I-8); `check_req.py` prints it beside c_nav for information.
+- Debug `preflight` times the search (`preflight_search ... ms=`) and repeats it warm (`preflight_search_warm ms=`); `record_demo.py --preflight` fails above 0.5 s and names the fix: route `restapi.amap.com` direct (Clash `DOMAIN-SUFFIX,amap.com,DIRECT`).
+- The JVM live demo fetches the real 横琴镇 result before the session opens and answers c_nav from it; the candidates are real, the network time is out of the take.
+
+**Decision:** decided by decider (xhigh) 2026-10-12. Option A (an early spoken line) was rejected because it reverses the owner's SPEC-020 timing (no cue before 7 s).
+
+**Research:** the Gemini Live tools documentation says function calling on 3.1 Flash Live is synchronous only, so the model cannot speak while the tool runs. Vapi and LiveKit speak an acknowledgement for slow tools.
+
+**Contingent owner question** (only if the PC still measures > 0.5 s with Amap direct and warm):
+1. For `navigate_to` only, one fixed line 「好，我找一下。」 about 2 s after the driver stops speaking, through the existing cue path. This changes SPEC-020's table; the decider recommends it.
+2. `check_req.py` times a navigation turn from when the candidates arrive. This changes DEMO_REQUIREMENTS §2.
+3. Record c_nav only on a network where the search fits.
+
+**Still open:** the device and PC measurement with the rebuilt debug app (`preflight_search ms=`), and the next Gemini rehearsal.

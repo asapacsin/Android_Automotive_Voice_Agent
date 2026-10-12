@@ -25,6 +25,7 @@ import com.novadrive.app.nav.EmbeddedNavigationController
 import com.novadrive.app.nav.LocationFix
 import com.novadrive.app.nav.LiveDestinationCandidateSource
 import com.novadrive.app.nav.DestinationCandidateSource
+import com.novadrive.app.nav.DestinationCandidate
 import com.novadrive.app.nav.NavigationPhase
 import com.novadrive.app.sim.FixtureVision
 import com.novadrive.app.sim.SimulatedCamera
@@ -46,6 +47,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.jupiter.api.Assumptions.assumeTrue
@@ -143,6 +145,9 @@ class LiveDemoRun {
     }
 }
 
+/** The commute destination (docs/DEMO_COMMUTE.md); its search is fetched before the session opens (P53). */
+private const val COMMUTE_QUERY = "横琴镇"
+
 /** One live session: the composition, the real-time microphone and the per-turn state log. */
 class LiveDemo(private val out: File, private val choice: String) : AutoCloseable {
     private val repoRoot = File(System.getProperty("nova.repo.root") ?: "..")
@@ -161,7 +166,7 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
      * The app's own place search against the real Amap Web API when a key is present (P51: the simulated
      * list hid that 第一个 chose the origin); the route and the drive stay simulated.
      */
-    private val search: DestinationCandidateSource = System.getenv("AMAP_WEB_KEY")?.takeIf { it.isNotBlank() }?.let { key ->
+    private val liveSearch: DestinationCandidateSource? = System.getenv("AMAP_WEB_KEY")?.takeIf { it.isNotBlank() }?.let { key ->
         LiveDestinationCandidateSource(
             poiClient = AmapPoiClient(),
             platformFix = { LocationFix(HengqinWorld.ORIGIN_LAT, HengqinWorld.ORIGIN_LON) },
@@ -169,6 +174,19 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
             webKey = { key },
             savedPlaces = { null },
         )
+    }
+
+    /**
+     * P53: the commute destination's real Amap result, fetched once before the session opens, so the
+     * take does not wait on the network for 「导航去横琴镇」. The candidates are real; only the time is
+     * taken out. Any other query still searches live.
+     */
+    @Volatile private var prefetched: List<DestinationCandidate>? = null
+    private val search: DestinationCandidateSource = liveSearch?.let { live ->
+        DestinationCandidateSource { query ->
+            val ready = prefetched
+            if (ready != null && query.contains(COMMUTE_QUERY)) ready else live.resolve(query)
+        }
     } ?: world
     private val nav = EmbeddedNavigationController(resolver = search, engine = world)
     private lateinit var core: CoreSession
@@ -197,6 +215,14 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
             if (msg.startsWith("speech_arbiter out=") || msg.startsWith("reply_audio_not_played") || msg.startsWith("livedemo_hold_released")) {
                 synchronized(turnSpeech) { turnSpeech.put(JSONObject().put("t", timeline.now()).put("event", msg)) }
             }
+        }
+    }
+
+    init {
+        liveSearch?.let { live ->
+            val found = runBlocking { live.resolve(COMMUTE_QUERY) }
+            prefetched = found
+            DebugVoiceLog.log("livedemo_search prefetched=true count=${found.size}")
         }
     }
 

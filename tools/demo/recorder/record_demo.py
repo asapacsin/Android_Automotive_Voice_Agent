@@ -523,6 +523,10 @@ def preflight_settled(log, commute=True):
                                   "preflight_search count=0"))
 
 
+# P53: the first place search may take this long before c_nav misses its 3.5 s budget.
+MAX_SEARCH_MS = 500
+
+
 def grade_preflight(log, commute=True):
     """Problems in the app's answers to the preflight broadcast; [] when the take can start."""
     import re
@@ -548,6 +552,15 @@ def grade_preflight(log, commute=True):
         problems.append(f"导航去{DEST_QUERY} finds nothing")
     elif int(s.group(2)) < MIN_DEST_M:
         problems.append(f"第一个 is {s.group(2)} m away (< {MIN_DEST_M}): the drive would end before c3-c5")
+    if s and int(s.group(1)) > 0:
+        # P53: c_nav's 3.5 s budget leaves the place search about 0.5 s.
+        t = re.search(r"preflight_search count=\d+ first_m=-?\d+ ms=(\d+)", log)
+        if not t:
+            problems.append("the place search reported no time (ms=): rebuild the debug app")
+        elif int(t.group(1)) > MAX_SEARCH_MS:
+            problems.append(f"the place search took {t.group(1)} ms (> {MAX_SEARCH_MS}): route restapi.amap.com "
+                            "direct, not through the PC proxy (Clash rule DOMAIN-SUFFIX,amap.com,DIRECT), "
+                            "then preflight again")
     refused = re.search(r"nav_calc_request accepted=false\S*(?: reason=\S+)?", log)
     if refused:
         problems.append("the Navi SDK refused the route request: " + refused.group(0))
@@ -590,7 +603,7 @@ def preflight(scenes):
 def selftest():
     import tempfile
     ok = ("debug_tool tool=preflight arg=横琴镇 result=qwen=ok web_key=set fix=set map_host=live\n"
-          "preflight_search count=5 first_m=2533\nnav_calc_success routes=3\n")
+          "preflight_search count=5 first_m=2533 ms=180\npreflight_search_warm ms=60\nnav_calc_success routes=3\n")
     cases = [
         (ok, []),
         ("", ["did not answer"]),
@@ -598,6 +611,9 @@ def selftest():
         (ok.replace("web_key=set", "web_key=missing"), ["Amap Web key"]),
         (ok.replace("first_m=2533", "first_m=632"), ["632 m away"]),
         (ok.replace("count=5 first_m=2533", "count=0 first_m=-1"), ["finds nothing"]),
+        (ok.replace("ms=180", "ms=500"), []),
+        (ok.replace("ms=180", "ms=2520"), ["took 2520 ms (> 500): route restapi.amap.com direct"]),
+        (ok.replace(" ms=180", ""), ["rebuild the debug app"]),
         (ok.replace("nav_calc_success routes=3", "nav_calc_failure code=3"), ["code=3"]),
         (ok.replace("nav_calc_success routes=3\n", ""), ["never answered the route"]),
         (ok.replace("nav_calc_success routes=3", "nav_calc_request accepted=false reason=no_navi"), ["reason=no_navi"]),
@@ -606,7 +622,8 @@ def selftest():
     started = ok.replace("nav_calc_success routes=3", "nav_calc_using_desk_origin=true\nnav_calc_request accepted=true")
     settled = [(started, False), (started + "nav_calc_success routes=3\n", True),
                (started.replace("accepted=true", "accepted=false reason=no_navi"), True),
-               (ok.replace("count=5 first_m=2533\nnav_calc_success routes=3", "count=0 first_m=-1"), True)]
+               (ok.replace("count=5 first_m=2533 ms=180\npreflight_search_warm ms=60\nnav_calc_success routes=3",
+                           "count=0 first_m=-1 ms=300"), True)]
     for log, want in settled:
         good = preflight_settled(log) == want
         fails += not good
