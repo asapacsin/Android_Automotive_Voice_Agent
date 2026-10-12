@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-10-11T11:37:39",
+  "generated_at": "2026-10-12T08:39:56",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "58d025e",
+    "commit": "4cc9fdc",
     "branch": "claude/10-9",
-    "subject": "TECH_DEBT D-12: remaining air-conditioning chat cases accepted by the owner",
+    "subject": "Report: end-to-end realtime voice models against the product's needs (2026-10-12)",
     "working_tree_clean": false,
-    "uncommitted_files": 7
+    "uncommitted_files": 3
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-10-11T11:36:48",
+    "collected_at": "2026-10-11T11:54:46",
     "total": {
       "tests": 312,
       "failures": 0,
@@ -168,10 +168,10 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "A0: | A0 | G-1 … G-1f measured on the short route | measurement (emulator) | `GUIDANCE-EMU-001` | not earned |",
-    "actionable_count": 120,
+    "actionable_count": 121,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
-    "QUEUED_FOR_HUMAN": 27,
+    "QUEUED_FOR_HUMAN": 28,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
       {
@@ -942,6 +942,13 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P48",
+        "blocked_by": null
+      },
+      {
+        "priority": 10,
+        "class": "stale state or harness defect",
+        "source": "state",
+        "item": "PROJECT_STATE.json",
         "blocked_by": null
       },
       {

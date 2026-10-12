@@ -2,7 +2,7 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-21 · 156 tests
+Updated 2026-09-21 · 157 tests
 
 | | |
 | --- | --- |
@@ -11,7 +11,7 @@ Updated 2026-09-21 · 156 tests
 | incomplete | 0 |
 | partial pass | 0 |
 | not run | 68 |
-| human required | 26 |
+| human required | 27 |
 | human pass | 0 |
 | human fail | 1 |
 | blocked external | 0 |
@@ -118,7 +118,7 @@ Updated 2026-09-21 · 156 tests
 | reliability | 8 | 4 | 1 | 3 |
 | saved_places | 3 | 0 | 0 | 3 |
 | security | 3 | 3 | 0 | 0 |
-| speech | 23 | 8 | 8 | 6 |
+| speech | 24 | 8 | 9 | 6 |
 | truthfulness | 9 | 4 | 0 | 5 |
 | turn_taking | 19 | 7 | 3 | 9 |
 | unsupported | 1 | 0 | 0 | 1 |
@@ -226,6 +226,7 @@ Updated 2026-09-21 · 156 tests
 | EXPORTED-001 | security | The release build exposes no debug surface | AUTONOMOUS | PASS | yes | 2026-09-20, release manifest via aapt2: only MainActivity is exported; DeveloperSetting… |
 | RELEASE-LOG-001 | security | A release build does not log what the driver said | AUTONOMOUS | PASS | yes | 2026-09-20: DebugVoiceLog is the only logger in app/src/main, ingress/src/main and cont… |
 | SECRET-SCAN-001 | security | No secret is tracked by git | AUTONOMOUS | PASS | yes | part of the 737 |
+| CUSTOM-VOICE-EAR-001 | speech | ADR-017 §6 amendment: the owner's custom voice, cloned per model, reads the car lines | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | 2026-10-12 cloud: clip 15.3 s 24 kHz mono speech (offline check ok); clone_voice.py cre… |
 | DEMO-10-2-001 | speech | One demo run that exercises every claude/10-2 function, graded by the log checker | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | tools/demo/check_demo_log.py --selftest OK (2026-10-02 cloud) |
 | DEMO-10-3-001 | speech | One demo run that exercises the essential functions and every claude/10-2 and claude/10-3 function, graded by the log checker | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | tools/demo/check_demo_log.py --selftest OK (2026-10-03 cloud, 10-3 checks included) |
 | DEMO-COMMUTE-001 | speech | The commute demo 横琴创业谷 → 横琴镇, in the order of the 豆包座舱 review video, under docs/DEMO_REQUIREMENTS.md | AUTONOMOUS | NOT_RUN | no | 2026-10-10 cloud, harness validation only (Gemini, not the product provider; JVM, simul… |

@@ -15,7 +15,7 @@ Every case below **requires a physical Android device** (and usually a real cabi
 > - PLACE-SAVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - PLACE-NAV-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 
-**21 LOCAL_DEVICE_REQUIRED item(s).**
+**22 LOCAL_DEVICE_REQUIRED item(s).**
 
 Install tip (from a cloud-built APK, when one exists):
 
@@ -472,6 +472,32 @@ adb logcat -s NovaVoice:D
 **Tell me back:** yes/no per criterion, one sentence of impression
 
 **Still unknown until you do:** how Maia sounds on our lines; whether a style instruction changes her delivery; whether the cue clips are clean enough to bundle (SPEC-021 step 4)
+
+### LOCAL_DEVICE_REQUIRED — CUSTOM-VOICE-EAR-001 — ADR-017 §6 amendment: the owner's custom voice, cloned per model, reads the car lines
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Whether the voice sounds right is the owner's listening judgement (B-034)
+
+**Automation blocker:** `subjective_perception`
+
+**Already established without you:**
+
+- 2026-10-11 cloud: tools/qwen-omni-voice/clone_voice.py selftest 16/16 against a mock (check offline, create per model, list, delete); QwenSettingsTest + QwenOmniDialectTest: a session sends only the selected model's own voice (a 3.5 Plus clone is never sent to 3.8), default Maia, the id never logged
+
+**You will need:** the owner's clip (10-20 s speech he holds the rights to) uploaded; clone_voice.py create for qwen3.5-omni-plus-realtime and qwen3.8-omni-flash-realtime; one owner-approved short text-only 3.5 Plus session: qwen_probe.py say with VOICE=<3.5 clone> (cheapest test, AGENTS.md)
+
+**What to do:**
+
+1. listen to ayano_voice_sample_35plus.wav (branch claude/commute-demo-video)
+
+**It passes if:**
+
+- the clone preferred to Maia, or the reason it is not
+
+**Tell me back:** yes/no, one sentence of impression
+
+**Still unknown until you do:** what the server does with a deleted or mismatched voice id at session.update; how the clone sounds on our lines, and with the speaking styles
 
 ### LOCAL_DEVICE_REQUIRED — STYLE-EAR-001 — 嗲 / 傲娇 / 温柔 / 元气 each sound right and appropriate, with the same voice
 
