@@ -1903,3 +1903,27 @@ Measured from the driver's **last audible word**, not the end of the clip; edge-
 - the GPS fix;
 - the app's own search for 横琴镇 (at least 2 km away);
 - a Navi SDK route to it.
+
+## P52 — A used-up Qwen free tier was reported as QWEN_PROTOCOL_ERROR
+
+**Found 2026-10-12, take 9** (cloud JVM, qwen3.5-omni-plus-realtime, after its free tier ran out). The session failed 57 ms after `session.created` as `QWEN_PROTOCOL_ERROR`, so neither the driver nor we could see that the quota was the reason. The raw event was not logged (I-8), so its exact shape is unknown.
+
+**Research:** Alibaba Model Studio's error-code page (alibabacloud.com/help/en/model-studio/error-code) documents two relevant errors:
+- `403 AllocationQuota.FreeTierOnly`: "The free tier of the model has been exhausted…", seen with "use free tier only" on;
+- `400 Arrearage`: "Access denied, please make sure your account is in good standing".
+
+DashScope's plain error body is `{code, message, request_id}`, with no `type`.
+
+**Root causes, each reproduced in `QwenOmniClientTest.aQuotaRefusalOfTheSessionIsReportedAsQuotaNeverAsAProtocolError` with a mock server:**
+1. A type-less frame reached the shared parser, which throws on a missing type. This gave `QWEN_PROTOCOL_ERROR`, the take 9 symptom.
+2. `Arrearage` contains "access denied", and the key markers were checked first. This gave `QWEN_AUTH_FAILED`, which wrongly blames the API key.
+3. An `error` sent as a bare string was read as empty. This gave `QWEN_PROVIDER_ERROR`.
+
+**Fix (`QwenOmniDialect`):**
+- A type-less frame that carries `code` or `error` is parsed as an error.
+- `freetieronly` and `arrearage` count as quota, and the quota markers are checked before the key markers.
+- `errorOf` reads a string `error` as its message.
+
+A type-less frame with neither field is still a protocol error. All four documented shapes now end as `QWEN_QUOTA_EXHAUSTED` (`ErrorClass.RATE_LIMIT`).
+
+**Still open:** not yet seen live. The next time a model's quota runs out, the log line `state=ERROR err=QWEN_QUOTA_EXHAUSTED` confirms it.

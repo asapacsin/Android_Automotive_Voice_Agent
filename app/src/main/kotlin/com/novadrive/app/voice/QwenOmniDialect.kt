@@ -137,7 +137,10 @@ class QwenOmniDialect(
             // A failed transcription loses one utterance's text, not the session.
             "conversation.item.input_audio_transcription.failed",
             -> emptyList()
-            "error" -> parseError(raw.optJSONObject("error") ?: raw)
+            "error" -> parseError(errorOf(raw))
+            // DashScope's plain error body has no `type` ({code, message, request_id}); the shared parser
+            // throws on a type-less frame, which hid take 9's used-up free tier as QWEN_PROTOCOL_ERROR.
+            "" -> if (raw.has("code") || raw.has("error")) parseError(errorOf(raw)) else BaiduProtocol.parseServerEvent(text, speaking)
             // The remaining documented events are plain OpenAI-Realtime; only an error inside a
             // failed response.done needs the Qwen code instead of the shared parser's.
             else -> BaiduProtocol.parseServerEvent(text, speaking).map {
@@ -167,7 +170,7 @@ class QwenOmniDialect(
 
     override fun errorCode(text: String): String = runCatching {
         val raw = JSONObject(text)
-        val error = raw.optJSONObject("error") ?: raw
+        val error = errorOf(raw)
         val code = errorCodeOf(error)
         val blob = blob(error)
         val kind = when {
@@ -182,7 +185,7 @@ class QwenOmniDialect(
 
     override fun isResponseAlreadyActive(text: String): Boolean = runCatching {
         val raw = JSONObject(text)
-        ACTIVE_RESPONSE_PHRASE in blob(raw.optJSONObject("error") ?: raw)
+        ACTIVE_RESPONSE_PHRASE in blob(errorOf(raw))
     }.getOrDefault(false)
 
     override fun readyTimeout() = VoiceProviderException("QWEN_READY_TIMEOUT", "Qwen session readiness timed out")
@@ -205,7 +208,12 @@ class QwenOmniDialect(
         private const val ACTIVE_RESPONSE_PHRASE = "already has an active response"
         private val CANCEL_REFUSED_PHRASES = listOf("no active response", "cancellation failed", "没有可取消", "无可取消")
         private val AUTH_MARKERS = listOf("invalidapikey", "invalid_api_key", "accessdenied", "access denied", "unauthorized")
-        private val QUOTA_MARKERS = listOf("throttling", "quota", "allocationquota")
+        /**
+         * Quota and billing, checked before the key: Alibaba's 400 Arrearage reads "Access denied, please
+         * make sure your account is in good standing" and is not a bad key (error-code page, 2026-10-12;
+         * 403 AllocationQuota.FreeTierOnly is the used-up free tier).
+         */
+        private val QUOTA_MARKERS = listOf("throttling", "quota", "allocationquota", "freetieronly", "arrearage")
         private val AUTH_STATUS = Regex("\\b(401|403)\\b")
         private val QUOTA_STATUS = Regex("\\b429\\b")
         /** "internal" as a word start (InternalError, internal error), never inside "international". */
@@ -262,12 +270,17 @@ class QwenOmniDialect(
         private fun classify(blob: String): String {
             val lower = blob.lowercase()
             return when {
-                AUTH_MARKERS.any { it in lower } || AUTH_STATUS.containsMatchIn(lower) -> "QWEN_AUTH_FAILED"
                 QUOTA_MARKERS.any { it in lower } || QUOTA_STATUS.containsMatchIn(lower) -> "QWEN_QUOTA_EXHAUSTED"
+                AUTH_MARKERS.any { it in lower } || AUTH_STATUS.containsMatchIn(lower) -> "QWEN_AUTH_FAILED"
                 SERVER_MARKERS.any { it in lower } || INTERNAL.containsMatchIn(lower) -> "QWEN_SERVER_UNAVAILABLE"
                 else -> "QWEN_PROVIDER_ERROR"
             }
         }
+
+        /** The error object; an `error` sent as a bare string becomes its message (take 9's shape is unknown). */
+        private fun errorOf(raw: JSONObject): JSONObject = raw.optJSONObject("error")
+            ?: raw.optString("error").takeIf { it.isNotBlank() }?.let { JSONObject().put("message", it) }
+            ?: raw
 
         /** The provider's error code, filtered to an identifier; never the message (I-8). */
         private fun errorCodeOf(error: JSONObject): String =

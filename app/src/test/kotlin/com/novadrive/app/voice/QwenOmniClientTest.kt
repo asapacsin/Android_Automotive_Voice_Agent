@@ -158,6 +158,48 @@ class QwenOmniClientTest {
         client.disconnect()
     }
 
+    /**
+     * Take 9 (2026-10-12): the 3.5 Plus free tier was used up and the session failed 57 ms after
+     * session.created as QWEN_PROTOCOL_ERROR, hiding the reason. Alibaba's error-code page
+     * (alibabacloud.com/help/en/model-studio/error-code) documents 403 AllocationQuota.FreeTierOnly
+     * ("the free tier of the model has been exhausted") and 400 Arrearage (overdue account).
+     * Whatever shape the refusal of session.update takes, the driver-facing code says quota.
+     */
+    @Test
+    fun aQuotaRefusalOfTheSessionIsReportedAsQuotaNeverAsAProtocolError() = runBlocking {
+        val refusals = listOf(
+            """{"type":"error","event_id":"e1","error":{"type":"invalid_request_error","code":"AllocationQuota.FreeTierOnly","message":"The free tier of the model has been exhausted."}}""",
+            """{"type":"error","error":{"code":"Arrearage","message":"Access denied, please make sure your account is in good standing."}}""",
+            """{"type":"error","error":"AllocationQuota.FreeTierOnly: The free tier of the model has been exhausted."}""",
+            """{"type":"error","code":"AllocationQuota.FreeTierOnly","message":"The free tier of the model has been exhausted."}""",
+            """{"code":"AllocationQuota.FreeTierOnly","message":"The free tier of the model has been exhausted.","request_id":"r1"}""",
+        )
+        for (refusal in refusals) {
+            sockets.clear()
+            server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+                override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
+                    sockets += webSocket
+                    webSocket.send("""{"type":"session.created","session":{"model":"qwen3.5-omni-plus-realtime"}}""")
+                }
+                override fun onMessage(webSocket: WebSocket, text: String) {
+                    if (JSONObject(text).optString("type") == "session.update") webSocket.send(refusal)
+                }
+                override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
+            }))
+            val client = client()
+            val seen = collect(client)
+            val code = try {
+                client.connect(config())
+                awaitUntil({ "seen: $seen" }) { seen.any { it is DomainVoiceEvent.Error } }
+                (seen.first { it is DomainVoiceEvent.Error } as DomainVoiceEvent.Error).code
+            } catch (e: VoiceProviderException) {
+                e.code
+            }
+            assertEquals("QWEN_QUOTA_EXHAUSTED", code, refusal)
+            client.disconnect()
+        }
+    }
+
     @Test
     fun opensWithTheBearerKeyAndTheDocumentedSessionUpdate() = runBlocking {
         enqueueServer()
