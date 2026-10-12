@@ -9,6 +9,12 @@ LINES and voice as make_clips.py (read with ast, never duplicated). Output: reco
 The drive scene's Amap-style guidance prompts (g_*, GUIDANCE below) are spoken in a voice that is
 neither the driver's nor 小诺's (GUIDANCE_VOICE). The manoeuvres they name are SIMULATED (see
 HengqinWorld.MANEUVERS); the keys must match HengqinWorld.promptsFor.
+
+With PIPER_MODEL=<path to a Piper .onnx voice, e.g. zh_CN-huayan-medium> the g_* prompts are made
+offline with Piper (https://github.com/rhasspy/piper; `pip install piper-tts`, voices on
+huggingface.co/rhasspy/piper-voices) instead of edge-tts. 2026-10-12: edge-tts got a 403 from
+speech.platform.bing.com from the cloud container for every voice and every Sec-MS-GEC version tried
+(143-154); searched, no fix found, so the guidance prompts use Piper there.
 """
 import ast, asyncio, os, re, subprocess, sys
 
@@ -50,6 +56,15 @@ async def make(key, text, voice, ffmpeg, proxy):
     os.remove(mp3)
 
 
+def make_piper(key, text, model, ffmpeg):
+    wav = os.path.join(OUT, key + ".wav")
+    subprocess.run([os.path.join(os.path.dirname(sys.executable), "piper"), "-m", model, "-f", wav],
+                   input=(text + "。").encode("utf-8"), check=True, capture_output=True)
+    subprocess.run([ffmpeg, "-y", "-loglevel", "error", "-i", wav, "-ac", "1", "-ar", "16000", "-f", "s16le",
+                    os.path.join(OUT, key + ".pcm")], check=True)
+    os.remove(wav)
+
+
 async def main(keys):
     lines, voice = recorder_constants()
     os.makedirs(OUT, exist_ok=True)
@@ -58,7 +73,9 @@ async def main(keys):
     for k in keys or [k for k in lines if k.startswith("c_")] + list(GUIDANCE):
         if os.path.exists(os.path.join(OUT, k + ".pcm")):
             continue
-        if k in GUIDANCE:
+        if k in GUIDANCE and os.environ.get("PIPER_MODEL"):
+            make_piper(k, GUIDANCE[k], os.environ["PIPER_MODEL"], ffmpeg)
+        elif k in GUIDANCE:
             await make(k, GUIDANCE[k], GUIDANCE_VOICE, ffmpeg, proxy)
         else:
             await make(k, lines[k], voice, ffmpeg, proxy)
