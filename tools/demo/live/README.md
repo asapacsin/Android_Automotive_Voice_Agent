@@ -27,7 +27,7 @@ repository and must never be committed.
 
 **Never skipped:** with `NOVA_LIVE_DEMO=1` the unit-test task is never up to date (app/build.gradle.kts), so a take always runs; before 2026-10-11 Gradle once skipped a take silently. Check that `NOVA_LIVE_OUT` holds a fresh `timeline.json` anyway.
 
-**Rehearse first, cheaply:** run on Gemini (`NOVA_LIVE_PROVIDER=gemini`, no Qwen quota; the harness uses the low model `gemini-3.8-live`) only the scenes the change touches (`NOVA_LIVE_SCENES=...`), once, and grade them; open the one Qwen take only when the rehearsal is clean. Gemini costs too (AGENTS.md): no repeated runs to chase latency variance. A voice test (custom or cloned voice) skips Gemini and reads the lines as text turns in one short Qwen session.
+**Rehearse first, cheaply:** run on Gemini (`NOVA_LIVE_PROVIDER=gemini`, no Qwen quota; the harness uses the oldest working Live model, `gemini-3.1-flash-live-preview`; `NOVA_GEMINI_MODEL=gemini-3.8-live` only when the older one cannot show the point) only the scenes the change touches (`NOVA_LIVE_SCENES=...`), once, and grade them; open the one Qwen take only when the rehearsal is clean. Gemini costs too (AGENTS.md): no repeated runs to chase latency variance. A voice test (custom or cloned voice) skips Gemini and reads the lines as text turns in one short Qwen session.
 
 **Quota (AGENTS.md hard rule):** every live Qwen session spends the owner's limited free quota. Prove what you can offline first; run live only with the owner's go for that run, with `NOVA_SPEND_QWEN_QUOTA=yes` set. Without it this tool refuses to open a Qwen session.
 

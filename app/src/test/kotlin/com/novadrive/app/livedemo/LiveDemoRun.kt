@@ -213,7 +213,12 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
             )
             // Gemini speaks in its own voice: no assistant (Azure) voice.
             "gemini" -> SessionProviderConfig.Gemini(
-                GeminiSettingsValidator.configOrThrow(GeminiAppSettings(consentAccepted = true), env("GEMINI_API_KEY"), instructions)
+                GeminiSettingsValidator.configOrThrow(
+                    // NOVA_GEMINI_MODEL picks the Live model; experiments start with the oldest (AGENTS.md).
+                    GeminiAppSettings(consentAccepted = true, model = System.getenv("NOVA_GEMINI_MODEL")?.trim()?.ifEmpty { null }
+                        ?: VoiceCatalog.geminiExperimentOrder.first()),
+                    env("GEMINI_API_KEY"), instructions,
+                )
                     .copy(assistantVoice = null),
             )
             else -> error("NOVA_LIVE_PROVIDER must be qwen or gemini")

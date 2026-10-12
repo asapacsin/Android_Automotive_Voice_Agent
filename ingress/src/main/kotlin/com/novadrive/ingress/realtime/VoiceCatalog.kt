@@ -126,6 +126,16 @@ object VoiceCatalog {
     const val BAIDU_FLEX = "qianfan-realtime-flex-v1"
     const val GEMINI_LIVE_FAST = "gemini-3.8-live"
     const val GEMINI_LIVE_EXTENDED = "gemini-3.8-live-extended-thinking"
+    /**
+     * The oldest Live model that works, for experiments only (owner 2026-10-12: oldest first; AGENTS.md).
+     * Measured 2026-10-12 on the owner's free key: tools, Mandarin, 2.2-2.3 s. Older
+     * gemini-2.5-flash-native-audio-preview-12-2025 closed our setup with 1007 (malformed setup), so it
+     * is not offered. Never the product default.
+     */
+    const val GEMINI_LIVE_31_PREVIEW = "gemini-3.1-flash-live-preview"
+
+    /** Gemini Live models for experiments, oldest working first (AGENTS.md). */
+    val geminiExperimentOrder: List<String> = listOf(GEMINI_LIVE_31_PREVIEW, GEMINI_LIVE_FAST, GEMINI_LIVE_EXTENDED)
 
     /** Default Gemini model (ADR-011 N-1). Extended thinking stays opt-in and a saved choice is kept. */
     const val GEMINI_LIVE_DEFAULT = GEMINI_LIVE_FAST
@@ -150,6 +160,7 @@ object VoiceCatalog {
         linkedMapOf(
             GEMINI_LIVE_FAST to "Gemini 3.8 Live（推荐）",
             GEMINI_LIVE_EXTENDED to "Gemini 3.8 Live Extended Thinking",
+            GEMINI_LIVE_31_PREVIEW to "Gemini 3.1 Flash Live Preview（实验 / experiments）",
         )
 
     /**
