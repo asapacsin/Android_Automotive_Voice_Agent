@@ -539,7 +539,7 @@ open class OpenAiRealtimeClient<C : Any>(
             if (generation.get() != current) return
             NetworkFaults.inboundDelayMs.takeIf { it > 0 }?.let { Thread.sleep(it) }
             val type = runCatching { JSONObject(text).optString("type") }.getOrElse {
-                failProtocol(pending, it); return
+                failProtocol(pending, it, "unparsed"); return
             }
             if (stallRetryWaiting && (type == "input_audio_buffer.speech_started" || (type == "response.created" && cue.idle))) {
                 stallRetryWaiting = false; DebugVoiceLog.log("${dialect.logPrefix}_stall_retry_dropped") }
@@ -574,7 +574,7 @@ open class OpenAiRealtimeClient<C : Any>(
             }
             val events = runCatching {
                 assembler.consume(text) + dialect.parseCommonEvent(text, assistantSpeaking)
-            }.getOrElse { failProtocol(pending, it); return }
+            }.getOrElse { failProtocol(pending, it, type); return }
             if (type == "session.updated" && sessionCreated && !pending.isCompleted) {
                 Telemetry.record(EventType.SOCKET_CONNECTED)
             }
@@ -667,9 +667,7 @@ open class OpenAiRealtimeClient<C : Any>(
          * without this a server-side close left the session silently dead (found by the simulation
          * benchmark, 2026-09-17): nothing failed, nothing reconnected, audio went nowhere.
          */
-        override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-            webSocket.close(1000, null)
-        }
+        override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(1000, null) }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
             if (generation.get() != current) return
@@ -681,7 +679,9 @@ open class OpenAiRealtimeClient<C : Any>(
             }
         }
 
-        private fun failProtocol(pending: CompletableDeferred<Unit>, failure: Throwable) {
+        private fun failProtocol(pending: CompletableDeferred<Unit>, failure: Throwable, type: String) {
+            val at = failure.stackTrace.firstOrNull { it.className.startsWith("com.novadrive") } // event type + line, never content (I-8)
+            DebugVoiceLog.log("${dialect.logPrefix}_protocol_error type=$type cause=${failure.javaClass.simpleName} at=${at?.let { "${it.fileName}:${it.lineNumber}" } ?: "-"}")
             val mapped = dialect.protocolError(failure)
             if (!pending.completeExceptionally(mapped)) emit(DomainVoiceEvent.Error(mapped.code, mapped.safeMessage))
         }

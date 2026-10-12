@@ -138,6 +138,27 @@ class QwenOmniClientTest {
     // ---- A3 ----
 
     @Test
+    fun aMalformedServerEventIsLoggedByTypeAndCauseNeverByContent() = runBlocking {
+        enqueueServer()
+        val client = client()
+        val seen = collect(client)
+        val lines = java.util.concurrent.CopyOnWriteArrayList<String>()
+        val previous = com.novadrive.app.DebugVoiceLog.sink
+        com.novadrive.app.DebugVoiceLog.sink = { lines += it }
+        try {
+            client.connect(config())
+            send("""{"secret_transcript_text" """) // not JSON: the parse fails
+            awaitUntil({ "seen: $seen" }) { seen.any { it is DomainVoiceEvent.Error && it.code == "QWEN_PROTOCOL_ERROR" } }
+        } finally {
+            com.novadrive.app.DebugVoiceLog.sink = previous
+        }
+        val line = lines.single { it.startsWith("qwen_protocol_error ") }
+        assertTrue(line.startsWith("qwen_protocol_error type=unparsed cause=JSONException at="), line)
+        assertFalse(lines.any { "secret_transcript_text" in it }, "never the event's content (I-8)")
+        client.disconnect()
+    }
+
+    @Test
     fun opensWithTheBearerKeyAndTheDocumentedSessionUpdate() = runBlocking {
         enqueueServer()
         val client = client()
