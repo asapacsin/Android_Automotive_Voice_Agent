@@ -124,6 +124,13 @@ correctly, and one 3.5 Plus take passed `check_req.py` with every turn at 2.4–
 input per reply (`qwen_reply_usage`): 4.46K tokens on the first reply, 6.29K on the last of 23,
 history included. The 12K history cap (`HistoryBudget`) is not reached in one commute.
 
+### Ayano, 2026-10-12 (take 8, qwen3.5-omni-plus-realtime)
+
+The default voice is now Ayano, the owner's cloned synthetic voice (ADR-017 §6). One take: `check_req.py`
+PASS, every turn 2.6–3.5 s, every tool call right, 125K tokens. Turns ran about 0.4 s slower than
+take 7 with Maia (one take each, so not yet a measured difference); `c_pick` sat exactly at its 3.5 s
+limit. Video on `claude/commute-demo-video`.
+
 ### qwen3.5-omni-plus-realtime cannot call `set_speaking_style` (2026-10-11)
 
 With the app's tool list, every attempt by 3.5 Plus to call `set_speaking_style` ends in
