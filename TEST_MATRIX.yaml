@@ -2874,17 +2874,17 @@ tests:
     release_blocking: false
     evidence_bind:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      procedure_digest: sha256:9b7c11ab949c658bdebb8ac383bf0d726641304716288b4ecc7a511dea375ce3
+      procedure_digest: sha256:1ba5ea16295cee8cf04137c83cb3dbbef2a7730be916c0f8e720f95ae2e6642b
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
       harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
       artifact_digests: {}
-      apk_digest: sha256:edc7a9cbc2eeab709ed68cd05fc1355a8f8d4404d917aa205a48b61f58104b60
-      bound_commit: 635dc62
+      apk_digest: sha256:cfc44292e4f2ba9dde42de52da70cd2399f9b54ca303eb172a17bbf4c2476102
+      bound_commit: 9ef5517
     covers: []
     prerequisites: ["AMAP_WEB_KEY in the environment (free Amap Web API; no voice model)"]
     procedure: ["NOVA_LIVE_AMAP=1 ./gradlew :app:testDebugUnitTest --tests '*DemoCommuteAmapLiveTest'"]
     pass_criteria: ["LiveDestinationCandidateSource.resolve(横琴镇) at the origin: first result has 横琴 in its name and is >= 1700 m away (route >= straight line; c3-c5 need ~150 s = 1.7 km at 40 km/h)", "regeo + weatherNow at the origin both Ok"]
-    evidence: ["2026-10-12 cloud: with sortrule=distance FAIL (第一个 = 632 m, the origin 横琴澳门青年创业谷; Amap driving route 26 m); with sortrule=weight PASS 2/2 (横琴镇人民政府 2533 m, route 2855 m = 257 s at 40 km/h)"]
+    evidence: ["2026-10-12 cloud: with sortrule=distance FAIL (第一个 = 632 m, the origin 横琴澳门青年创业谷; Amap driving route 26 m); with sortrule=weight PASS 2/2 (横琴镇人民政府 2533 m from the WGS point)", "2026-10-12 after GCJ-SEARCH (GCJ origin) and the warm-up retry: PASS 2/2 in the full suite, 横琴镇人民政府 2045 m straight line (floor 1.7 km), route 2855 m = 257 s at 40 km/h; real warm-up district + weather ok"]
     related: [P51, DEMO-COMMUTE-001, SPEC-005, SPEC-011]
     last_run: {at: 2026-10-12, result: PASS}
 

@@ -530,6 +530,7 @@ change_impact:
     components:
       - EmbeddedNavigationController
       - AmapNaviViewHost
+      - AmapCoordinates
       - AmapDrivingPresentation
       - NavigationProgressTrace
       - NavigationStateStore

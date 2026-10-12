@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-10-12T15:19:56",
+  "generated_at": "2026-10-12T16:00:30",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "4252e55",
+    "commit": "9ef5517",
     "branch": "claude/10-9",
-    "subject": "Rule: unsure which option to pick -> decider (xhigh effort), then the owner",
+    "subject": "Demo preflight floor 1.7 km (route >= straight line); session-start Amap warm-up retries",
     "working_tree_clean": false,
-    "uncommitted_files": 3
+    "uncommitted_files": 4
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-10-12T15:19:41",
+    "collected_at": "2026-10-12T15:59:16",
     "total": {
-      "tests": 2148,
+      "tests": 2153,
       "failures": 0,
       "errors": 0,
       "skipped": 3
@@ -25,7 +25,7 @@
         "skipped": 0
       },
       "app": {
-        "tests": 1836,
+        "tests": 1841,
         "failures": 0,
         "errors": 0,
         "skipped": 3
@@ -66,7 +66,7 @@
   "apk": {
     "built": true,
     "bytes": 224300343,
-    "built_at": "2026-10-12T15:15:09"
+    "built_at": "2026-10-12T15:54:32"
   },
   "capabilities": {
     "available": true,
@@ -177,20 +177,13 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "DEMO-AMAP-LIVE-001: STALE_BIND: The commute demo's real Amap lookups at the demo origin: 导航去横琴镇 + 第一个 is >= 2 km away, the warm-up weather answers",
-    "actionable_count": 124,
+    "NEXT_ACTION": "A0: | A0 | G-1 … G-1f measured on the short route | measurement (emulator) | `GUIDANCE-EMU-001` | not earned |",
+    "actionable_count": 122,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 28,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "DEMO-AMAP-LIVE-001",
-        "blocked_by": null
-      },
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
@@ -973,13 +966,6 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P52",
-        "blocked_by": null
-      },
-      {
-        "priority": 10,
-        "class": "stale state or harness defect",
-        "source": "state",
-        "item": "PROJECT_STATE.json",
         "blocked_by": null
       },
       {
