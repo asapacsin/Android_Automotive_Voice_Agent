@@ -49,7 +49,7 @@ All credentials are entered on the device and stored as AES/GCM ciphertext under
 
 > **Decided direction, not yet shipped (2026-09-16, `ADR-007`):** navigation moves from handing off to the installed Amap app to the **Amap Navigation SDK embedded in our own Activity**, with the assistant layered above the map. Items 4–5 under *Primary user experience* and the *Navigation* feature line describe the currently installed build and will be rewritten when SPEC-005 Phase 4 ships. Until then, do not add new work to the deep-link path.
 
-Product session provider: **Qwen-Omni** (`qwen3.8-omni-flash-realtime`) with stock voice **Maia** (since 2026-10-09, ADR-017 amendment); no automatic fallback to another provider. Gemini, Baidu and Azure settings remain in developer settings for measurement and factory tests but do not select the product session.
+Product session provider: **Qwen-Omni** (`qwen3.8-omni-flash-realtime`) with the voice **Ayano** (the owner's own synthetic voice cloned per model, 2026-10-12; stock Maia from 2026-10-09; ADR-017 amendments); no automatic fallback to another provider. Gemini, Baidu and Azure settings remain in developer settings for measurement and factory tests but do not select the product session.
 
 ## Intentionally dormant compatibility code
 

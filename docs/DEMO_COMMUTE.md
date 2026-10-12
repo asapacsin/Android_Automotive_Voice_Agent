@@ -33,7 +33,7 @@ The same order, as a short commute from 横琴·澳门青年创业谷 (WGS-84 22
 
 | Take | Clip | Driver | Expected (what makes it honest) | Video |
 | --- | --- | --- | --- | --- |
-| c1 board | `c_sweet` | 能不能说话再稍微嗲一点 | `set_speaking_style` sweet; tone only, the voice stays Maia (SPEC-015 FZ-11) | V2 |
+| c1 board | `c_sweet` | 能不能说话再稍微嗲一点 | `set_speaking_style` sweet; tone only, the voice stays the same (SPEC-015 FZ-11) | V2 |
 | | `c_seat` | 帮我把主驾座椅稍微调高一点 | `control_seat` one step up, said after the car confirms it | V3 |
 | | `c_seat2` | 再调高一点 | one more step, from `DriverContext` (FZ-05) | V4 |
 | c2 depart | `c_nav` | 导航去横琴镇 | candidates on screen; the bubble stays while the list waits | — |
@@ -142,7 +142,7 @@ normally (take 2, 2026-10-10). This is an Alibaba-side serving defect; nothing i
   - every tool turn: ≤ 3.5 s;
   - no reply over 5 s;
   - no `reply_underrun` over 300 ms.
-- Only Maia is heard. Amap's own guidance voice is the one known exception until SPEC-021's guidance
+- Only one assistant voice is heard (Ayano since 2026-10-12; Maia before). Amap's own guidance voice is the one known exception until SPEC-021's guidance
   prompt exists (ADR-017).
 - Every action she announces has a matching `ok=true` tool result in the log.
 - The video has no unmarked silence over 1.5 s (DEMO_REQUIREMENTS §3).

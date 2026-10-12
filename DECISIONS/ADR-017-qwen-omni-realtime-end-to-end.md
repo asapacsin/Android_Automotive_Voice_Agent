@@ -48,6 +48,10 @@ Qwen-Omni Realtime, from Alibaba Model Studio, is end to end. It hears the drive
    model's clone of the same voice, so the driver still hears one voice. Maia stays the default until the owner picks a clone.
    Source: https://www.alibabacloud.com/help/en/model-studio/qwen-omni-voice-cloning (Singapore supported; 10–20 s mono speech,
    ≥ 24 kHz; 1,000 free creations in 90 days).
+   **Owner, 2026-10-12: Ayano is the default voice.** Ayano is the owner's own AI character; her voice is synthetic, created
+   by him (not a recording of a real person). Cloned for both models (`QwenAppSettings.DEFAULT_CUSTOM_VOICES`); an empty
+   developer field means Ayano, typing `Maia` selects the stock voice. Listening check on 3.5 Plus: 8 demo lines, all read
+   word for word, no errors (CUSTOM-VOICE-EAR-001). A 今汐 (鸣潮) game-character clip was declined: a voice actor's voice.
 
 **Owner decision, 2026-10-09 (amends the gates below): Qwen + Maia is the default now, and every voice is Maia.**
 - I asked whether to make Maia the default before Q-1. I explained that nothing had yet talked to the live server, and that a mismatch would fail every session with no fallback. The owner answered: "you should make it".

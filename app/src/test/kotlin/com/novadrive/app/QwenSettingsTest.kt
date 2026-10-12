@@ -16,7 +16,13 @@ class QwenSettingsTest {
         assertFalse(s.consentAccepted)
         assertEquals(VoiceCatalog.QWEN_OMNI_FLASH, s.model)
         assertEquals("qwen3.8-omni-flash-realtime", s.model)
-        assertEquals("Maia", s.sessionVoice())
+        // Owner, 2026-10-12: Ayano (his cloned voice) is the default on both models; each model has its own clone.
+        assertEquals(QwenAppSettings.DEFAULT_CUSTOM_VOICES.getValue(VoiceCatalog.QWEN_OMNI_FLASH), s.sessionVoice())
+        assertTrue(s.sessionVoice().startsWith("qwen-omni-vc-ayano-"))
+        val plus = s.copy(model = VoiceCatalog.QWEN_OMNI_PLUS_35).sessionVoice()
+        assertTrue(plus.startsWith("qwen-omni-vc-ayano-") && plus != s.sessionVoice(), "one clone per model")
+        assertEquals(VoiceCatalog.qwenModels.keys, QwenAppSettings.DEFAULT_CUSTOM_VOICES.keys)
+        assertNull(QwenSettingsValidator.validateSettings(s.copy(workspaceId = "ws-1")))
         assertEquals("semantic_vad", s.vadType)
         assertEquals(800, s.silenceDurationMs)
         assertEquals("", s.workspaceId)
@@ -85,7 +91,8 @@ class QwenSettingsTest {
     fun configOrThrowKeepsTheCustomVoice() {
         val built = QwenSettingsValidator.configOrThrow(valid.copy(customVoices = mapOf(valid.model to CLONED)), "sk-test-key", "p")
         assertEquals(CLONED, built.settings.sessionVoice())
-        assertEquals("Maia", QwenSettingsValidator.configOrThrow(valid, "sk-test-key", "p").settings.sessionVoice())
+        assertEquals(QwenAppSettings.DEFAULT_CUSTOM_VOICES[valid.model], QwenSettingsValidator.configOrThrow(valid, "sk-test-key", "p").settings.sessionVoice())
+        assertEquals("Maia", QwenSettingsValidator.configOrThrow(valid.copy(customVoices = mapOf(valid.model to "Maia")), "k", "p").settings.sessionVoice())
         val bad = runCatching { QwenSettingsValidator.configOrThrow(valid.copy(customVoices = mapOf(valid.model to "a b")), "k", "p") }
         assertEquals("QWEN_VOICE_INVALID", bad.exceptionOrNull()?.message)
     }
@@ -95,7 +102,7 @@ class QwenSettingsTest {
         val plus = valid.copy(model = VoiceCatalog.QWEN_OMNI_PLUS_35, customVoices = mapOf(VoiceCatalog.QWEN_OMNI_PLUS_35 to CLONED))
         assertEquals(CLONED, plus.sessionVoice())
         assertEquals("Maia", plus.copy(model = VoiceCatalog.QWEN_OMNI_FLASH).sessionVoice(), "3.5 voice must not reach 3.8")
-        assertEquals("Maia", valid.copy(customVoices = mapOf(valid.model to "  ")).sessionVoice())
+        assertEquals("Maia", valid.copy(customVoices = mapOf(valid.model to "  ")).sessionVoice(), "an explicit blank map entry is the stock voice")
         assertNull(QwenSettingsValidator.validateSettings(plus))
     }
 

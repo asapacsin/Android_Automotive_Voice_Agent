@@ -1,7 +1,8 @@
 # Agent entry point — Nova Drive / 小诺
 
-An Android voice assistant for driving. Speech goes to **Qwen-Omni Realtime with the stock voice
-Maia, end-to-end speech-to-speech with function calling** (the product session since 2026-10-09,
+An Android voice assistant for driving. Speech goes to **Qwen-Omni Realtime with the voice Ayano
+(the owner's own synthetic voice, cloned per model; stock Maia only as a typed-in fallback, owner
+2026-10-12), end-to-end speech-to-speech with function calling** (the product session since 2026-10-09,
 [ADR-017](DECISIONS/ADR-017-qwen-omni-realtime-end-to-end.md); the Gemini Live and Baidu stacks stay
 in the tree until ADR-017's gates pass, but no setting selects them) — there is no separate ASR or TTS. The map and turn-by-turn
 navigation are the **Amap Navigation SDK embedded in our own Activity**. Locale `zh-CN`.
@@ -104,7 +105,7 @@ The rules are [harness/CONSTITUTION.md](harness/CONSTITUTION.md) 12 and 17–19;
 
 ## Two things that catch agents out
 
-**One provider, one seam, one voice.** The product session is Qwen-Omni with Maia
+**One provider, one seam, one voice.** The product session is Qwen-Omni with Ayano (Maia before 2026-10-12)
 ([ADR-017](DECISIONS/ADR-017-qwen-omni-realtime-end-to-end.md) amendment, 2026-10-09):
 `VoiceProviderChoice.resolve` always returns Qwen, and a missing Qwen key, workspace or consent fails
 the start with a `QWEN_*` code — **never an automatic fallback** to Gemini or Baidu, because the

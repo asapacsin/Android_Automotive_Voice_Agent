@@ -13,7 +13,7 @@ data class QwenAppSettings(
     val model: String = VoiceCatalog.QWEN_OMNI_FLASH,
     val workspaceId: String = "",
     /** Model wire name -> cloned voice id; a cloned voice works only with the model it was made for. */
-    val customVoices: Map<String, String> = emptyMap(),
+    val customVoices: Map<String, String> = DEFAULT_CUSTOM_VOICES,
     val vadType: String = DEFAULT_VAD,
     val silenceDurationMs: Int = DEFAULT_SILENCE_MS,
 ) {
@@ -21,12 +21,24 @@ data class QwenAppSettings(
         "QwenAppSettings(consentAccepted=$consentAccepted, model=$model, workspaceId=<redacted>, " +
             "customVoices=$customVoices, vadType=$vadType, silenceDurationMs=$silenceDurationMs)"
 
-    /** The voice this session speaks in: the custom voice bound to [model], else [DEFAULT_VOICE]. */
+    /** The voice this session speaks in: the custom voice bound to [model], else the stock [DEFAULT_VOICE]. */
     fun sessionVoice(): String = customVoices[model]?.trim()?.takeIf { it.isNotEmpty() } ?: DEFAULT_VOICE
 
     companion object {
         const val REGION_HOST_SUFFIX = "ap-southeast-1.maas.aliyuncs.com"
+        /** The stock voice, for a model without a cloned voice (and when the owner types it in). */
         const val DEFAULT_VOICE = "Maia"
+
+        /**
+         * The product voice, Ayano (owner, 2026-10-12): his own synthetic AI voice, cloned once per
+         * model with tools/qwen-omni-voice/clone_voice.py (ADR-017 §6). Voice names, not secrets;
+         * they work only on the owner's DashScope account, the one the app is configured with.
+         */
+        val DEFAULT_CUSTOM_VOICES: Map<String, String> = mapOf(
+            VoiceCatalog.QWEN_OMNI_FLASH to "qwen-omni-vc-ayano-voice-20261012104331910-313d",
+            VoiceCatalog.QWEN_OMNI_PLUS_35 to "qwen-omni-vc-ayano-voice-20261012104327598-7805",
+        )
+        const val DEFAULT_CUSTOM_VOICE_NAME = "Ayano"
         const val VAD_SEMANTIC = "semantic_vad"
         const val VAD_SERVER = "server_vad"
         const val DEFAULT_VAD = VAD_SEMANTIC
@@ -133,8 +145,10 @@ class QwenSettingsRepository(
             consentAccepted = prefs.getBoolean(KEY_CONSENT, false),
             model = prefs.getString(KEY_MODEL, null).orEmpty().ifBlank { VoiceCatalog.QWEN_OMNI_FLASH },
             workspaceId = prefs.getString(KEY_WORKSPACE, null).orEmpty(),
+            // A field left empty means the default voice (Ayano) for that model.
             customVoices = VoiceCatalog.qwenModels.keys.mapNotNull { model ->
-                prefs.getString(KEY_VOICE_PREFIX + model, null)?.trim()?.takeIf { it.isNotEmpty() }?.let { model to it }
+                (prefs.getString(KEY_VOICE_PREFIX + model, null)?.trim()?.takeIf { it.isNotEmpty() }
+                    ?: QwenAppSettings.DEFAULT_CUSTOM_VOICES[model])?.let { model to it }
             }.toMap(),
             vadType = prefs.getString(KEY_VAD, null).orEmpty().ifBlank { QwenAppSettings.DEFAULT_VAD },
             silenceDurationMs = prefs.getInt(KEY_SILENCE, QwenAppSettings.DEFAULT_SILENCE_MS),
@@ -146,7 +160,8 @@ class QwenSettingsRepository(
         val edit = prefs.edit().remove(KEY_LEGACY_VOICE)
         VoiceCatalog.qwenModels.keys.forEach { model ->
             val voice = settings.customVoices[model]?.trim().orEmpty()
-            if (voice.isEmpty()) edit.remove(KEY_VOICE_PREFIX + model) else edit.putString(KEY_VOICE_PREFIX + model, voice)
+            val isDefault = voice.isEmpty() || voice == QwenAppSettings.DEFAULT_CUSTOM_VOICES[model]
+            if (isDefault) edit.remove(KEY_VOICE_PREFIX + model) else edit.putString(KEY_VOICE_PREFIX + model, voice)
         }
         edit
             .putBoolean(KEY_CONSENT, settings.consentAccepted)

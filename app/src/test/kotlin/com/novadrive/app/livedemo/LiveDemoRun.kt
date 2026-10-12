@@ -162,7 +162,7 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
                         model = qwenModel,
                         workspaceId = env("DASHSCOPE_WORKSPACE_ID"),
                         customVoices = System.getenv("NOVA_QWEN_VOICE")?.trim()?.takeIf { it.isNotEmpty() }
-                            ?.let { mapOf(qwenModel to it) }.orEmpty(),
+                            ?.let { mapOf(qwenModel to it) } ?: QwenAppSettings.DEFAULT_CUSTOM_VOICES,
                     ),
                     env("DASHSCOPE_API_KEY"), instructions,
                 ),

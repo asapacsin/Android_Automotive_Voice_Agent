@@ -118,7 +118,7 @@ class DeveloperSettingsActivity : Activity() {
             modelButtons.forEach { (button, wire) -> addView(button); if (wire == saved.model) check(button.id) }
         }
         val voiceFields = com.novadrive.ingress.realtime.VoiceCatalog.qwenModels.mapValues { (wire, label) ->
-            EditText(this).apply { setText(saved.customVoices[wire].orEmpty()); hint = "声音 · $label（留空 = Maia）/ Voice for $label (empty = Maia)" }
+            EditText(this).apply { setText(saved.customVoices[wire]?.takeIf { it != QwenAppSettings.DEFAULT_CUSTOM_VOICES[wire] }.orEmpty()); hint = "声音 · $label（留空 = 默认 Ayano；填 Maia = 原声）/ Voice for $label (empty = Ayano; Maia = stock)" }
         }
         val save = button("保存 / Save") {
             val settings = qwen.loadSettings().copy(
@@ -146,7 +146,7 @@ class DeveloperSettingsActivity : Activity() {
             label("模型（各有独立免费额度）/ Model (each has its own free quota)"), modelGroup,
             *voiceFields.flatMap { (wire, field) ->
                 val label = com.novadrive.ingress.realtime.VoiceCatalog.qwenModels.getValue(wire)
-                listOf(label("声音 · $label（留空 = Maia）/ Voice for $label (empty = Maia)"), field)
+                listOf(label("声音 · $label（留空 = 默认 Ayano；填 Maia = 原声）/ Voice for $label (empty = Ayano; Maia = stock)"), field)
             }.toTypedArray(),
             save, clearKey, test, label("下次开始会话时生效 / Takes effect at the next session start."),
         )

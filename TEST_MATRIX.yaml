@@ -2904,7 +2904,7 @@ tests:
   - id: CUSTOM-VOICE-EAR-001
     capability: speech
     name: "ADR-017 §6 amendment: the owner's custom voice, cloned per model, reads the car lines"
-    purpose: "Owner 2026-10-11: replace Maia with a young custom voice he designed (符玄 style, not a child, not mature); one clone per model, same voice after a model switch"
+    purpose: "Owner 2026-10-11: replace Maia with a young custom voice he designed (符玄 style, not a child, not mature); one clone per model, same voice after a model switch. 2026-10-12: Ayano, his own AI character's synthetic voice, is the default"
     type: device
     scope: END_TO_END
     owner: HUMAN_PHYSICAL
@@ -2913,14 +2913,14 @@ tests:
     release_blocking: false
     terminal_success: [custom_voice_preferred_or_rejected]
     autonomous_evidence: ["2026-10-11 cloud: tools/qwen-omni-voice/clone_voice.py selftest 16/16 against a mock (check offline, create per model, list, delete); QwenSettingsTest + QwenOmniDialectTest: a session sends only the selected model's own voice (a 3.5 Plus clone is never sent to 3.8), default Maia, the id never logged"]
-    remaining_uncertainty: ["the owner's clip does not exist yet", "the live enrollment response shape (doc only)", "what the server does with a deleted or mismatched voice id at session.update", "how the clone sounds on our lines, and with the speaking styles"]
+    remaining_uncertainty: [ "what the server does with a deleted or mismatched voice id at session.update", "how the clone sounds on our lines, and with the speaking styles"]
     covers: []
     human_reason: "Whether the voice sounds right is the owner's listening judgement (B-034)"
     prerequisites: ["the owner's clip (10-20 s speech he holds the rights to) uploaded", "clone_voice.py create for qwen3.5-omni-plus-realtime and qwen3.8-omni-flash-realtime", "one owner-approved short text-only 3.5 Plus session: qwen_probe.py say with VOICE=<3.5 clone> (cheapest test, AGENTS.md)"]
-    procedure: ["listen to say/*.wav from the 3.5 clone next to the Maia clips of the same lines"]
+    procedure: ["listen to ayano_voice_sample_35plus.wav (branch claude/commute-demo-video)"]
     pass_criteria: ["the clone preferred to Maia, or the reason it is not"]
     returns: ["yes/no, one sentence of impression"]
-    evidence: []
+    evidence: ["2026-10-12 cloud: clip 15.3 s 24 kHz mono speech (offline check ok); clone_voice.py create -> one Ayano voice per model (3.5 Plus, 3.8 Flash; free enrollment quota); owner-approved qwen_probe say on qwen3.5-omni-plus-realtime, 8 one-line text sessions, no tools: 8/8 verbatim, no errors, first audio 1.3-3.7 s; sample pushed for the owner's ear. Default switched to Ayano in QwenAppSettings.DEFAULT_CUSTOM_VOICES"]
     related: [ADR-017, B-034, QWEN-VOICE-EAR-001]
     last_run: {at: null, result: null}
 

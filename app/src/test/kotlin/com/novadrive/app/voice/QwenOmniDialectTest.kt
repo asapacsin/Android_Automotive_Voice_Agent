@@ -52,8 +52,8 @@ class QwenOmniDialectTest {
             s.keySet(),
         )
         assertEquals(JSONArray(listOf("text", "audio")).toString(), s.getJSONArray("modalities").toString())
-        assertEquals("Maia", s.getString("voice"))
-        assertEquals("Maia", s.getJSONObject("audio").getJSONObject("output").getString("voice"))
+        assertEquals(QwenAppSettings.DEFAULT_CUSTOM_VOICES.getValue(settings.model), s.getString("voice"))
+        assertEquals(QwenAppSettings.DEFAULT_CUSTOM_VOICES.getValue(settings.model), s.getJSONObject("audio").getJSONObject("output").getString("voice"))
         assertEquals("PERSONA\n" + PersonaProfiles.FLEX_TOOL_RULE, s.getString("instructions"))
         assertEquals("pcm", s.getString("input_audio_format"))
         assertEquals("pcm", s.getString("output_audio_format"))
@@ -85,6 +85,22 @@ class QwenOmniDialectTest {
         try { d.onSessionUpdated("{}") } finally { com.novadrive.app.DebugVoiceLog.sink = previous }
         assertTrue(lines.any { it.startsWith("qwen_session voice=custom ") }, lines.toString())
         assertFalse(lines.any { it.contains(cloned) })
+    }
+
+    @Test
+    fun theDefaultVoiceIsAyanoAndIsLoggedByName() {
+        val d = QwenOmniDialect()
+        d.onSessionOpening(config.copy(settings = settings.copy(customVoices = QwenAppSettings.DEFAULT_CUSTOM_VOICES)))
+        val s = JSONObject(d.sessionUpdate("P", 0.0)).getJSONObject("session")
+        val ayano = QwenAppSettings.DEFAULT_CUSTOM_VOICES.getValue(settings.model)
+        assertEquals(ayano, s.getString("voice"))
+        assertEquals(ayano, s.getJSONObject("audio").getJSONObject("output").getString("voice"))
+        val lines = mutableListOf<String>()
+        val previous = com.novadrive.app.DebugVoiceLog.sink
+        com.novadrive.app.DebugVoiceLog.sink = { lines += it }
+        try { d.onSessionUpdated("{}") } finally { com.novadrive.app.DebugVoiceLog.sink = previous }
+        assertTrue(lines.any { it.startsWith("qwen_session voice=Ayano ") }, lines.toString())
+        assertFalse(lines.any { it.contains(ayano) })
     }
 
     @Test

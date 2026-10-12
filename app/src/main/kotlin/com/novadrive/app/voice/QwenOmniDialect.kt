@@ -76,7 +76,7 @@ class QwenOmniDialect(
 
     override fun onSessionUpdated(text: String) {
         DebugVoiceLog.log(
-            "qwen_session voice=${if (settings.sessionVoice() == QwenAppSettings.DEFAULT_VOICE) QwenAppSettings.DEFAULT_VOICE else "custom"} vad=${settings.vadType} model=${settings.model}",
+            "qwen_session voice=${voiceLabel(settings)} vad=${settings.vadType} model=${settings.model}",
         )
     }
 
@@ -218,6 +218,13 @@ class QwenOmniDialect(
 
         /** `param` values that belong to a function_call_output item, never to a text item. */
         private val CALL_OUTPUT_PARAMS = setOf("item.call_id", "item.output")
+
+        /** The voice by name for the log: Maia, Ayano or "custom" - never a cloned voice's id. */
+        fun voiceLabel(settings: QwenAppSettings): String = when (settings.sessionVoice()) {
+            QwenAppSettings.DEFAULT_VOICE -> QwenAppSettings.DEFAULT_VOICE
+            QwenAppSettings.DEFAULT_CUSTOM_VOICES[settings.model] -> QwenAppSettings.DEFAULT_CUSTOM_VOICE_NAME
+            else -> "custom"
+        }
 
         /** The documented session.update (SPEC-021 B3). */
         fun sessionUpdate(instructions: String, settings: QwenAppSettings): String {

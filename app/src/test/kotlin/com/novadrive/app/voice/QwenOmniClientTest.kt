@@ -3,6 +3,7 @@ package com.novadrive.app.voice
 import com.novadrive.app.NavigationState
 import com.novadrive.app.QwenApiConfig
 import com.novadrive.app.QwenAppSettings
+import com.novadrive.ingress.realtime.VoiceCatalog
 import com.novadrive.ingress.realtime.DomainVoiceEvent
 import com.novadrive.ingress.realtime.VoiceProviderException
 import kotlinx.coroutines.CoroutineStart
@@ -146,7 +147,7 @@ class QwenOmniClientTest {
         assertEquals("qwen3.8-omni-flash-realtime", request.requestUrl?.queryParameter("model"))
         assertFalse(request.requestUrl.toString().contains(key))
         val update = sent("session.update").single().getJSONObject("session")
-        assertEquals("Maia", update.getString("voice"))
+        assertEquals(QwenAppSettings.DEFAULT_CUSTOM_VOICES.getValue(VoiceCatalog.QWEN_OMNI_FLASH), update.getString("voice"))
         assertEquals("semantic_vad", update.getJSONObject("turn_detection").getString("type"))
         assertNull(NavigationState.onNavigatingChanged, "Qwen does not track navigation for VAD")
         client.disconnect()
