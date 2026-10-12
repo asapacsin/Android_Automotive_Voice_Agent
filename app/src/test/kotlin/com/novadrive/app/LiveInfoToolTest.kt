@@ -74,6 +74,7 @@ class LiveInfoToolTest {
         clockText = { "15:00" },
         log = { logs += it },
         timeoutMs = timeoutMs,
+        warmRetryPauseMs = 0,
     )
 
     private fun dispatcher(tool: LiveInfoTool, context: DriverContext? = null) = AndroidToolDispatcher(
@@ -253,6 +254,38 @@ class LiveInfoToolTest {
         assertEquals("14:39", result.getString("reported_at"), "with the source's own report time (B4)")
         assertEquals(2, server.requestCount, "no request at question time")
         assertFalse(logs.any { it.contains("22.2") || it.contains("113.5") }, "no coordinate in a log")
+    }
+
+    @Test
+    fun aSlowFirstWarmLookupIsRetriedSoTheQuestionStillHitsTheCache() {
+        // One Amap call took 1.4-3.8 s from the cloud and up to 4 s from the PC proxy (P50): the first
+        // weather lookup failing must not leave 今天天气怎么样 to a cold lookup.
+        server.enqueue(MockResponse().setBody(fixture("regeo")))
+        server.enqueue(MockResponse().setResponseCode(504))
+        server.enqueue(MockResponse().setBody(fixture("weather_base")))
+        val tool = tool()
+        warm(tool)
+        assertEquals(
+            listOf("live_info_warm kind=district ok=true", "live_info_warm_retry kind=weather", "live_info_warm kind=weather ok=true cached=false"),
+            logs.filter { it.startsWith("live_info_warm") },
+        )
+        val result = run(tool, "kind" to "weather")
+        assertTrue(result.getBoolean("cached"), "answered from the retried warm-up")
+        assertEquals(3, server.requestCount, "no request at question time")
+    }
+
+    @Test
+    fun aWarmUpThatNeverSucceedsGivesUpAfterThreeTries() {
+        repeat(LiveInfoTool.WARM_ATTEMPTS) { server.enqueue(MockResponse().setResponseCode(504)) }
+        val tool = tool()
+        tool.warmHere()
+        val deadline = System.currentTimeMillis() + 5_000
+        while (logs.none { it.startsWith("live_info_warm kind=district") } && System.currentTimeMillis() < deadline) Thread.sleep(10)
+        assertEquals(
+            listOf("live_info_warm_retry kind=district", "live_info_warm_retry kind=district", "live_info_warm kind=district ok=false"),
+            logs.filter { it.startsWith("live_info_warm") },
+        )
+        assertEquals(LiveInfoTool.WARM_ATTEMPTS, server.requestCount)
     }
 
     @Test

@@ -496,7 +496,7 @@ SCENES = {"intro": sc_intro, "ability": sc_ability, "ability2": sc_ability2, "sc
 # commute destination and routes to the first result with the Navi SDK. Exit 0 means no obvious failure
 # is waiting; it cannot say how she will sound or how fast she answers.
 DEST_QUERY = "横琴镇"          # c_nav, 导航去横琴镇
-MIN_DEST_M = 2000              # c3-c5 (six turns, ~150 s) must be spoken while the 40 km/h drive runs
+MIN_DEST_M = 1700              # c3-c5 (six turns, ~150 s = 1.7 km at 40 km/h) must be spoken while the drive runs; route >= straight line
 
 
 def scene_clips(scene):

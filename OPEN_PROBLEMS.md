@@ -1870,6 +1870,7 @@ Measured from the driver's **last audible word**, not the end of the clip; edge-
 
 **Still open:**
 - A weather question naming a city is looked up at question time: 1.1–4 s from the PC proxy in Macau, and a timeout means an honest "could not check". Not measured on the phone.
+- The session-start warm-up now tries each lookup up to 3 times, 1 s apart (2026-10-12). Before, one slow Amap call left the cache empty and 「今天天气怎么样」 paid a cold lookup. From the cloud, single calls took 1.4–3.8 s and one weather call hit the 4 s limit in a full-suite run. `LiveInfoToolTest` covers both cases (a retried warm-up still answers from the cache; three failures give up). `DemoCommuteAmapLiveTest` runs the real warm-up at the demo origin.
 - Qwen's own variance: end-of-speech 0.9–1.5 s after the last word (`semantic_vad` 800 ms), first audio after a tool result 0.3–1.5 s, and occasionally a reply generated close to real time (underruns up to 259 ms).
 
 ## P51 — 「导航去横琴镇」 + 「第一个」 chose the place the car was already at
@@ -1906,7 +1907,7 @@ Measured from the driver's **last audible word**, not the end of the clip; edge-
 - the Qwen config code;
 - the app's Amap Web key;
 - the GPS fix;
-- the app's own search for 横琴镇 (at least 2 km away);
+- the app's own search for 横琴镇 (at least 1.7 km away);
 - a Navi SDK route to it.
 
 ## P52 — A used-up Qwen free tier was reported as QWEN_PROTOCOL_ERROR

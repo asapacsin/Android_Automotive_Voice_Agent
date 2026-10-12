@@ -1,7 +1,8 @@
 package com.novadrive.app.livedemo
 
 import com.novadrive.app.AmapPoiClient
-import com.novadrive.app.LiveInfoFetch
+import com.novadrive.app.LiveInfoTool
+import com.novadrive.app.nav.RouteLiveInfoSource
 import com.novadrive.app.nav.LiveDestinationCandidateSource
 import com.novadrive.app.nav.LocationFix
 import kotlinx.coroutines.runBlocking
@@ -44,19 +45,31 @@ class DemoCommuteAmapLiveTest {
         println("c_pick -> ${first.name} ${first.distanceMeters} m (of ${candidates.size})")
         assertTrue("横琴" in first.name, "第一个 is not a 横琴 place: ${first.name}")
         // c3-c5 are six driver turns (about 15 s each with the take overheads): about 150 s, 1.7 km at
-        // the emulator's 40 km/h. A destination nearer than 2 km in a straight line ends the drive first.
+        // the emulator's 40 km/h. The route is never shorter than the straight line, so a destination
+        // under 1.7 km away ends the drive first. Measured 2026-10-12 from the GCJ origin: 2045 m in a
+        // straight line, a 2855 m route (257 s).
         val metres = requireNotNull(first.distanceMeters) { "the around search gave no distance" }
-        assertTrue(metres >= 2_000, "第一个 is only $metres m away: the drive ends before 前面堵不堵")
+        assertTrue(metres >= 1_700, "第一个 is only $metres m away: the drive ends before 前面堵不堵")
     }
 
     @Test
     fun theWeatherLineHasItsWarmUpAnswerAtTheOrigin() {
         assumeLive()
-        // LiveInfoTool.warmHere: district first, then the weather it caches for 今天天气怎么样.
-        val client = AmapPoiClient()
-        val place = client.regeoPlace(HengqinWorld.ORIGIN_LAT, HengqinWorld.ORIGIN_LON, key!!)
-        assertTrue(place is LiveInfoFetch.Ok, "no district at the origin: $place")
-        val weather = client.weatherNow((place as LiveInfoFetch.Ok).value.adcode, key)
-        assertTrue(weather is LiveInfoFetch.Ok && weather.value.weather != null, "no weather at the origin: $weather")
+        // The app's own session-start warm-up (district, then today's weather, each retried), as the
+        // emulator runs it at the origin, so 今天天气怎么样 is answered from the cache.
+        val logs = java.util.concurrent.CopyOnWriteArrayList<String>()
+        LiveInfoTool(
+            webKey = { key },
+            rest = AmapPoiClient(),
+            location = { HengqinWorld.ORIGIN_LAT to HengqinWorld.ORIGIN_LON },
+            navigation = { null },
+            route = RouteLiveInfoSource.NONE,
+            log = { logs += it },
+        ).warmHere()
+        val deadline = System.currentTimeMillis() + 30_000
+        while (logs.none { it.startsWith("live_info_warm kind=weather") || it == "live_info_warm kind=district ok=false" } &&
+            System.currentTimeMillis() < deadline) Thread.sleep(50)
+        println("warm: " + logs.filter { it.startsWith("live_info_warm") })
+        assertTrue(logs.any { it.startsWith("live_info_warm kind=weather ok=true") }, "no warm weather at the origin: $logs")
     }
 }

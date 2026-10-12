@@ -61,7 +61,7 @@ The cloud container cannot run the emulator. Prerequisites are the same as `QWEN
 cd tools\demo\recorder
 python make_clips.py                                  # adds the c_* driver lines (edge-tts)
 python record_demo.py --preflight                     # no voice session, no quota: Qwen setup, Amap key, GPS fix,
-                                                      # 导航去横琴镇 finds a place >= 2 km away, the Navi SDK routes there
+                                                      # 导航去横琴镇 finds a place >= 1.7 km away, the Navi SDK routes there
 python record_demo.py c1_board  commute_board         # restarts the app; sets the GPS fix to 创业谷 first
 $env:KEEP=1                                           # the next takes keep the app and the drive running
 python record_demo.py c2_depart commute_depart

@@ -10,7 +10,7 @@ These scripts record a demo on the PC emulator `nova_api34` with nothing played 
    - the emulator and the app;
    - the app's Qwen config code and Amap Web key;
    - the GPS fix;
-   - the app's own search for 横琴镇 (the first result must be at least 2 km away, OPEN_PROBLEMS P51);
+   - the app's own search for 横琴镇 (the first result must be at least 1.7 km away, so the drive outlasts the middle takes; OPEN_PROBLEMS P51);
    - a Navi SDK route to it.
 
    It prints PASS or each problem. `record_demo.py` also refuses to start a take with an unknown scene or a missing clip. `python record_demo.py --selftest` checks the grading offline.

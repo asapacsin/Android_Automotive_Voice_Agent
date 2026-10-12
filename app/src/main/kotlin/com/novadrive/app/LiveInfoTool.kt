@@ -50,6 +50,8 @@ class LiveInfoTool(
     private val log: (String) -> Unit = { DebugVoiceLog.log(it) },
     /** SPEC-011 failure table: 4 s, then LIVE_INFO_UNAVAILABLE. */
     private val timeoutMs: Long = TIMEOUT_MS,
+    /** Pause between warm-up attempts; 0 in tests. */
+    private val warmRetryPauseMs: Long = WARM_RETRY_PAUSE_MS,
 ) {
     private data class Cached(val atMs: Long, val output: JSONObject)
 
@@ -191,18 +193,33 @@ class LiveInfoTool(
      * session start, so 「今天天气怎么样」 is answered from the cache. Measured 2026-10-09 from the
      * PC proxy: the two lookups took 2.4-3.3 s of a 5.3-5.9 s weather turn. Both are answers the
      * source returned within their TTLs (B2/B4); a failure is silent and the question retries.
+     *
+     * Each step is tried [WARM_ATTEMPTS] times: a single Amap call took 1.4-3.8 s from the cloud and
+     * 1.1-4 s from the PC proxy (P50, two of about eight timed out), so one slow call used to leave
+     * the cache empty and the weather question paid a cold lookup. Background only; nothing is heard.
      */
     fun warmHere() {
         val key = webKey()?.takeIf { it.isNotBlank() } ?: return warmSkipped(AMAP_WEB_KEY_MISSING)
         val fix = location() ?: return warmSkipped(NO_LOCATION)
         CoroutineScope(Dispatchers.IO).async {
-            val district = hereAdcode(fix, key)
+            val district = warmStep("district", { it is LiveInfoFetch.Ok }) { hereAdcode(fix, key) }
             log("live_info_warm kind=district ok=${district is LiveInfoFetch.Ok}")
             if (district is LiveInfoFetch.Ok) {
-                val weather = cachedWeather(district.value, tomorrow = false, key = key)
+                val weather = warmStep("weather", { it.optBoolean("ok") }) { cachedWeather(district.value, tomorrow = false, key = key) }
                 log("live_info_warm kind=weather ok=${weather.optBoolean("ok")} cached=${weather.optBoolean("cached")}")
             }
         }
+    }
+
+    private suspend fun <T> warmStep(kind: String, ok: (T) -> Boolean, fetch: () -> T): T {
+        var result = fetch()
+        repeat(WARM_ATTEMPTS - 1) {
+            if (ok(result)) return result
+            log("live_info_warm_retry kind=$kind")
+            kotlinx.coroutines.delay(warmRetryPauseMs)
+            result = fetch()
+        }
+        return result
     }
 
     /** Only the outcome code, never a place (I-8, the SPEC-011 log shape). */
@@ -360,6 +377,8 @@ class LiveInfoTool(
         const val INVALID_ARGUMENT = "INVALID_ARGUMENT"
 
         const val TIMEOUT_MS = 4_000L
+        const val WARM_ATTEMPTS = 3
+        const val WARM_RETRY_PAUSE_MS = 1_000L
         const val WEATHER_TTL_MS = 10 * 60 * 1000L
         const val ADCODE_TTL_MS = 30 * 60 * 1000L
         private const val MAX_CITY = 20
