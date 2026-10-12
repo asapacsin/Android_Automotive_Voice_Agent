@@ -2872,7 +2872,6 @@ tests:
     owner: AUTONOMOUS
     status: PASS
     release_blocking: false
-    terminal_success: [first_candidate_far_enough, weather_warm_ok]
     evidence_bind:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:9b7c11ab949c658bdebb8ac383bf0d726641304716288b4ecc7a511dea375ce3
