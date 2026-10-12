@@ -4,19 +4,24 @@ import android.content.Context
 import com.novadrive.app.AmapPoiClient
 import com.novadrive.app.AmapSettingsRepository
 import com.novadrive.app.CoarseLocationProvider
+import com.novadrive.app.nav.amap.AmapCoordinates
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class LiveDestinationCandidateSource(
     private val poiClient: AmapPoiClient,
-    private val location: () -> Pair<Double, Double>?,
+    /** The platform's WGS-84 fix. */
+    private val platformFix: () -> LocationFix?,
+    /** `place/around` has no coordsys parameter: it takes GCJ-02 (P51, 618 m at the demo origin). */
+    private val toGcj02: (LocationFix) -> LocationFix,
     private val webKey: () -> String?,
     private val savedPlaces: (PlaceSlot) -> SavedPlace?,
 ) : DestinationCandidateSource {
     /** The app's wiring. The primary constructor needs no Context, so the JVM can run the real search. */
     constructor(context: Context) : this(
         poiClient = AmapPoiClient(),
-        location = { CoarseLocationProvider(context).lastKnown() },
+        platformFix = { CoarseLocationProvider(context).lastKnownFix() },
+        toGcj02 = { AmapCoordinates.toGcj02(context, it) },
         webKey = { AmapSettingsRepository(context).loadWebKey() },
         savedPlaces = SavedPlaceStore(context)::get,
     )
@@ -36,12 +41,18 @@ class LiveDestinationCandidateSource(
         // 「附近的麦当劳」 is not a POI name. Measured 2026-09-18: searching the spoken string
         // verbatim returned zero results for a brand with branches minutes away (row T04).
         val keyword = DestinationQuery.searchKeyword(query)
-        val fix = location()
+        // Saved places above are never converted; only the search origin is.
+        val raw = platformFix()
+        val fix = raw?.let(toGcj02)
+        if (raw != null && fix != null) {
+            val converted = fix.latitude != raw.latitude || fix.longitude != raw.longitude
+            com.novadrive.app.DebugVoiceLog.log("nav_search_origin converted=$converted")
+        }
         // A named place ranks by relevance (P51: nearest-first answered 横琴镇 with the origin); a
         // driver who asked for the nearest gets the nearest.
         val sort = if (DestinationQuery.isNearbyRequest(query)) AmapPoiClient.NEAREST_SORT_RULE else AmapPoiClient.NEARBY_SORT_RULE
         val candidates = if (fix != null) {
-            poiClient.resolveNearbyCandidates(keyword, key, fix.first, fix.second, sortRule = sort)
+            poiClient.resolveNearbyCandidates(keyword, key, fix.latitude, fix.longitude, sortRule = sort)
         } else {
             poiClient.resolveCandidates(keyword, key)
         }
@@ -50,7 +61,7 @@ class LiveDestinationCandidateSource(
         // contains one of those words. Try what they actually said before giving up.
         com.novadrive.app.DebugVoiceLog.log("nav_query_retry_verbatim")
         if (fix != null) {
-            poiClient.resolveNearbyCandidates(query, key, fix.first, fix.second, sortRule = sort)
+            poiClient.resolveNearbyCandidates(query, key, fix.latitude, fix.longitude, sortRule = sort)
         } else {
             poiClient.resolveCandidates(query, key)
         }

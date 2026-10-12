@@ -1892,8 +1892,13 @@ Measured from the driver's **last audible word**, not the end of the clip; edge-
 
 `DemoCommuteAmapLiveTest` fails on the old ranking (632 m) and passes on the new one.
 
+**Resolved — GCJ-02 search origin** (decided by decider (xhigh), 2026-10-12: SDK conversion moved to AmapCoordinates and used by the search):
+- The nearby search sent the platform's WGS-84 fix where Amap expects GCJ-02: 618 m off at the demo origin (measured, Amap `assistant/coordinate/convert` coordsys=gps), so near-me ranking and the distances spoken were off by that much.
+- Fix: `nav/amap/AmapCoordinates.toGcj02` is the one SDK `CoordinateConverter` call; `AmapNaviViewHost` and `LiveDestinationCandidateSource` both use it. Saved places are never converted. The log line `nav_search_origin converted=` carries a boolean only.
+- Research: Amap Android 坐标转换, lbs.amap.com/api/android-sdk/guide/computing-equipment/coordinate-transformation; the Web `place/around` API has no coordsys parameter, so it takes GCJ-02.
+- Live (2026-10-12, `NOVA_LIVE_AMAP=1 DemoCommuteAmapLiveTest`, GCJ origin): 2/2 passed; `c_pick -> 横琴镇人民政府 2045 m (of 5)`.
+
 **Still open:**
-- The nearby search still sends the platform's WGS-84 fix where Amap expects GCJ-02 (about 500 m off in Zhuhai). Ranking and the distance shown are only slightly affected, and this is not changed here.
 - A brand named *without* a near-me word (「导航去星巴克」) now ranks by relevance, so a slightly farther branch may come first (星巴克: third result 9.8 km).
 - `NAV-SEARCH-001`'s device evidence was taken under nearest-first ranking. Named-place searches need a device re-check.
 

@@ -47,6 +47,8 @@ class ArchitectureRulesTest {
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapRouteLiveInfo.kt",
             // The SDK's own guidance voice and its play listener (mic gate, host-bridge text).
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapGuidanceVoice.kt",
+            // P51: the one WGS-84 -> GCJ-02 conversion (SDK CoordinateConverter), for map and search.
+            "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapCoordinates.kt",
         )
         val unexpected = importers - allowed
         assertTrue(unexpected.isEmpty()) {

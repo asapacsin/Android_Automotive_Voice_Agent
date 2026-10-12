@@ -21,8 +21,8 @@ class CoarseLocationProvider(context: Context) {
 
     /**
      * The newest platform last-known fix, **WGS-84** — the coordinate system Android reports and
-     * *not* the GCJ-02 the Amap surfaces use. Converting is the caller's job, and only the Amap
-     * host may do it (it owns the SDK import).
+     * *not* the GCJ-02 the Amap surfaces use. Converting is the caller's job, through
+     * `nav/amap/AmapCoordinates` (the one owner of the SDK conversion).
      *
      * Carries the fix's age so a caller can tell "a minute ago" from "last week": without it a
      * cached position from a previous session is indistinguishable from the driver's current one.

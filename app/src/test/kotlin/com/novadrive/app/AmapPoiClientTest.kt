@@ -124,7 +124,8 @@ class AmapPoiClientTest {
             server.enqueue(MockResponse().setBody("""{"status":"1","pois":[]}"""))
             val source = com.novadrive.app.nav.LiveDestinationCandidateSource(
                 poiClient = aroundClient(),
-                location = { 22.13403 to 113.53691 },
+                platformFix = { com.novadrive.app.nav.LocationFix(22.13403, 113.53691) },
+                toGcj02 = { it },
                 webKey = { "test-key" },
                 savedPlaces = { null },
             )
