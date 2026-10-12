@@ -215,8 +215,11 @@ def main(run, mp4):
         if playing:
             d.rounded_rectangle([970, 188, 1900, 236], radius=12, fill=(20, 90, 160))
             d.text((986, 196), "高德导航  " + gtext.get(playing[-1]["key"], playing[-1]["key"]), font=f_small, fill=(255, 255, 255))
-        if any(x["start"] <= t < x["end"] for x in holds):
-            d.text((980, 920), "（等导航播报结束）", font=f_mid, fill=(255, 210, 80))
+        hold = next((x for x in holds if x["start"] <= t < x["end"]), None)
+        if hold is not None:
+            # A hold that overlaps an Amap prompt waits for it; otherwise it is the workload hold near a manoeuvre.
+            by_prompt = any(p["start"] < hold["end"] and hold["start"] < p["end"] for p in prompts)
+            d.text((980, 920), "（等导航播报结束）" if by_prompt else "（临近路口，稍后再说）", font=f_mid, fill=(255, 210, 80))
 
         # ---- right: scene and captions ----
         title = at(titles, t)
@@ -245,8 +248,11 @@ def main(run, mp4):
                     d.text((980, y), line, font=f_mid, fill=(150, 220, 255)); y += 46
             if t >= cur["end"]:
                 lat = cur["first"] - cur["end"] if cur["first"] is not None else None
-                txt = f"首音延迟 {lat:.1f} s" if lat is not None else "等待回复…"
-                d.text((980, 980), txt, font=f_mid, fill=(255, 255, 255) if lat is None or lat <= 3.5 else (255, 120, 120))
+                # Time she was deliberately held (a prompt or a manoeuvre) is shown, and not counted as slowness.
+                held = 0.0 if lat is None else sum(max(0.0, min(x["end"], cur["first"]) - max(x["start"], cur["end"])) for x in holds)
+                txt = "等待回复…" if lat is None else (f"首音延迟 {lat:.1f} s（其中按规则等待 {held:.1f} s）" if held >= 0.2 else f"首音延迟 {lat:.1f} s")
+                slow = lat is not None and lat - held > 3.5
+                d.text((980, 980), txt, font=f_mid, fill=(255, 120, 120) if slow else (255, 255, 255))
         proc.stdin.write(img.tobytes())
     proc.stdin.close()
     proc.wait()
