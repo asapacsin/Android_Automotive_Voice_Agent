@@ -36,7 +36,48 @@ class HengqinWorld : NavigationBackend, RouteLiveInfoSource {
             "横琴口岸" to listOf(Place("横琴口岸", 22.1395, 113.5520, 2_100, "珠海市香洲区横琴口岸（模拟）")),
             "长隆" to listOf(Place("长隆海洋王国", 22.1010, 113.5310, 5_200, "珠海市香洲区横琴（模拟）")),
         )
+
+        /**
+         * The drive's manoeuvres, metres from the start. SIMULATED: the road names and positions are
+         * invented for the demo (no Amap route is computed here); the prompt texts live in
+         * tools/demo/live/make_clips_cloud.py (GUIDANCE), which renders them as g_*.pcm.
+         */
+        val MANEUVERS: List<Maneuver> = listOf(
+            Maneuver(450, "右转进入环岛东路"),
+            Maneuver(1_150, "左转进入港澳大道"),
+            Maneuver(1_900, "直行通过路口"),
+            Maneuver(2_400, "右转进入横琴镇"),
+        )
+
+        /** Amap-style prompts: about 300 m and about 50 m before each manoeuvre. */
+        const val FAR_PROMPT_M = 300
+        const val NEAR_PROMPT_M = 50
+
+        /** Start and arrival are announced by guidance; each manoeuvre gets a far and a near prompt. */
+        fun promptsFor(routeMeters: Int): List<Prompt> {
+            val list = mutableListOf(Prompt("g_start", 0))
+            MANEUVERS.forEachIndexed { i, m ->
+                if (m.atMeters < routeMeters) {
+                    list += Prompt("g_m${i + 1}_300", m.atMeters - FAR_PROMPT_M)
+                    list += Prompt("g_m${i + 1}_50", m.atMeters - NEAR_PROMPT_M)
+                }
+            }
+            list += Prompt("g_arrive", routeMeters)
+            return list
+        }
     }
+
+    data class Maneuver(val atMeters: Int, val label: String)
+    data class Prompt(val key: String, val atMeters: Int)
+
+    /** NavigationTraceListener's `curStepRetainDistance`: metres to the next manoeuvre (null when not navigating). */
+    @Volatile var onManeuverDistance: ((Int?) -> Unit)? = null
+
+    /** A guidance prompt is due now (Amap would start speaking it); the key names its g_*.pcm clip. */
+    @Volatile var onPrompt: ((String) -> Unit)? = null
+
+    private var prompts: List<Prompt> = emptyList()
+    private var nextPrompt = 0
 
     private val lock = Any()
     private val worker = Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "livedemo-navi").apply { isDaemon = true } }
@@ -70,10 +111,21 @@ class HengqinWorld : NavigationBackend, RouteLiveInfoSource {
         worker.scheduleAtFixedRate({ tick() }, tickMs, tickMs, TimeUnit.MILLISECONDS)
     }
 
-    private fun tick() {
+    private fun tick() = advance(speedKmh / 3.6 * tickMs / 1000.0)
+
+    /** Moves the car [meters] along the route (the tick at [speedKmh]; tests call it directly). */
+    internal fun advance(meters: Double) {
         val route = activeRoute ?: return
         if (!navigating) return
-        progress = (progress + speedKmh / 3.6 * tickMs / 1000.0 / route.distanceMeters).coerceAtMost(1.0)
+        progress = (progress + meters / route.distanceMeters).coerceAtMost(1.0)
+        val travelled = travelledMeters
+        val due = synchronized(lock) {
+            val out = mutableListOf<String>()
+            while (nextPrompt < prompts.size && prompts[nextPrompt].atMeters <= travelled) out += prompts[nextPrompt++].key
+            out
+        }
+        if (progress < 1.0) onManeuverDistance?.invoke(metersToNextManeuver(travelled, route.distanceMeters))
+        due.forEach { onPrompt?.invoke(it) }
         if (progress >= 1.0) {
             arrived = true
             DebugVoiceLog.log("nav_arrived")
@@ -81,7 +133,13 @@ class HengqinWorld : NavigationBackend, RouteLiveInfoSource {
         }
     }
 
+    /** After the last manoeuvre Amap's last step runs to the destination. */
+    private fun metersToNextManeuver(travelled: Int, routeMeters: Int): Int =
+        (MANEUVERS.firstOrNull { it.atMeters > travelled && it.atMeters < routeMeters }?.atMeters ?: routeMeters) - travelled
+
     val remainingMeters: Int get() = activeRoute?.let { (it.distanceMeters * (1 - progress)).toInt() } ?: 0
+
+    val travelledMeters: Int get() = activeRoute?.let { (it.distanceMeters * progress).toInt() } ?: 0
 
     override suspend fun resolve(query: String): List<DestinationCandidate> {
         val key = PLACES.map { it.first }.filter { query.contains(it) }.maxByOrNull { it.length } ?: return emptyList()
@@ -133,8 +191,11 @@ class HengqinWorld : NavigationBackend, RouteLiveInfoSource {
             navigating = true
             arrived = false
             progress = 0.0
+            prompts = promptsFor(route.distanceMeters)
+            nextPrompt = 0
         }
         DebugVoiceLog.log("nav_started")
+        advance(0.0) // g_start and the first manoeuvre distance
         return true
     }
 
@@ -147,6 +208,7 @@ class HengqinWorld : NavigationBackend, RouteLiveInfoSource {
             navigating = false
         }
         DebugVoiceLog.log("nav_ended reason=$reason")
+        onManeuverDistance?.invoke(null)
         onEnded?.invoke(reason)
         return true
     }

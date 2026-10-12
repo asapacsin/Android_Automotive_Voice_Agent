@@ -30,3 +30,22 @@ repository and must never be committed.
 **Rehearse first, cheaply:** run on Gemini (`NOVA_LIVE_PROVIDER=gemini`, no Qwen quota; the harness uses the low model `gemini-3.8-live`) only the scenes the change touches (`NOVA_LIVE_SCENES=...`), once, and grade them; open the one Qwen take only when the rehearsal is clean. Gemini costs too (AGENTS.md): no repeated runs to chase latency variance. A voice test (custom or cloned voice) skips Gemini and reads the lines as text turns in one short Qwen session.
 
 **Quota (AGENTS.md hard rule):** every live Qwen session spends the owner's limited free quota. Prove what you can offline first; run live only with the owner's go for that run, with `NOVA_SPEND_QWEN_QUOTA=yes` set. Without it this tool refuses to open a Qwen session.
+
+## The drive scene (`NOVA_LIVE_SCENES=drive`)
+
+One continuous real-time trip 横琴创业谷 → 横琴镇 at 40 km/h with **the app's speech rules on**:
+`DriveSpeechRules` wires the shipped `SpeechAuthority` / `SpeechArbiter` where the app wires them
+(the reply player's DROP/HOLD/PLAY, the Amap guidance listener, the per-frame microphone gate, the
+driver-speaking R0 input, and the real `VoiceCommandRouter` for the driver-request window), and
+`HengqinWorld` feeds the manoeuvre distance to `NavigationState` and speaks Amap-style prompts
+(`g_*.pcm`, edge-tts `zh-CN-XiaoxiaoNeural`, texts in `make_clips_cloud.py` `GUIDANCE`; the
+manoeuvres and road names are simulated). Parked: c_sweet, c_seat, c_seat2; depart: c_nav, c_pick,
+c_go (wait for each reply); then the driver speaks at route positions (`LiveDemoRun.DRIVE_LINES`),
+whether or not she is still talking, and arrival is announced by guidance. It runs alone; the six
+commute scenes stay the default and run without the speech rules, as before.
+
+Extra outputs: `amap.wav`; `timeline.json` `amap_guidance` (key, start, end) and `holds` (reply
+audio withheld, start, end, played); `state.json` per turn `speech` (the arbiter's decisions with
+reasons), `spoke_over_reply`, `mic_frames_gated`. `check_req.py` prints `after_guidance` and judges
+a turn whose wait met a prompt or hold from its end; `render.py` mixes the Amap voice in and shows
+高德导航 / （等导航播报结束）. The wiring is proved offline by `LiveDemoDriveTest` (no network).

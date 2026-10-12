@@ -37,6 +37,10 @@ def grade(run):
     fails = []
     print(f"== {run}")
     clips = tl["clips"]
+    # The JVM drive scene (tools/demo/live): Amap prompts and the reply holds they caused. A reply
+    # may not speak over Amap, so a turn whose wait met one is judged from the end of that window.
+    windows = [(g["start"], g["end"]) for g in tl.get("amap_guidance", [])] + \
+        [(x["start"], x["end"]) for x in tl.get("holds", [])]
     for i, (t, key) in enumerate(clips):
         end = t + audible_end(key)
         nxt_clip = clips[i + 1][0] if i + 1 < len(clips) else 1e9
@@ -53,7 +57,17 @@ def grade(run):
         cue = [f"{c}@{ct - end:.1f}" for ct, c in cues if end - 1.5 < ct < nxt_clip]
         ok = (h if h is not None else d) <= limit
         hs = f"{h:4.1f}" if h is not None else " -- "
-        print(f"  {key:10s} hears her {hs} s, real reply {d:4.1f} s  cues {cue or '-'}  {'PASS' if ok else 'FAIL'} (max {limit})")
+        extra = ""
+        if windows and h is not None:
+            first = end + h
+            met = [w for w in windows if w[0] < first and w[1] > end]
+            if met:
+                after = first - max(end, max(min(b, first) for _, b in met))
+                ok = after <= limit
+                extra = f"  after_guidance {after:4.1f} s (judged on after_guidance)"
+            else:
+                extra = f"  after_guidance {h:4.1f} s (no guidance in the wait; judged on hears her)"
+        print(f"  {key:10s} hears her {hs} s, real reply {d:4.1f} s  cues {cue or '-'}{extra}  {'PASS' if ok else 'FAIL'} (max {limit})")
         if not ok:
             fails.append(key)
     gaps = [int(m.group(1)) for l in lines for m in [re.search(r"assistant_voice_gap_ms ms=(\d+)", l)] if m]

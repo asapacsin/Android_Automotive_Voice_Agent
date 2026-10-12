@@ -32,6 +32,16 @@ class LiveDemoTimeline(private val out: File, private val clips: File) {
         private set
     val events = JSONArray()
     val wakes = mutableListOf<Double>()
+    /** Reply audio withheld by a hold (SpeechAuthority.playbackHold); placed when the hold lifts. */
+    private val held = mutableListOf<Pair<Int, ByteArray>>()
+    /** Hold windows that actually withheld reply audio: start, end, whether it then played. */
+    val holds = JSONArray()
+    /** The simulated Amap voice: (start, key, pcm) on its own track, and its windows for the grader. */
+    private val amap = mutableListOf<Triple<Double, String, ByteArray>>()
+    val guidanceWindows = JSONArray()
+
+    /** Reply audio is waiting behind a hold. */
+    val replyHeld: Boolean get() = synchronized(lock) { held.isNotEmpty() }
 
     fun epochNow(): Double = System.currentTimeMillis() / 1000.0
     fun start() { t0 = epochNow() }
@@ -64,27 +74,107 @@ class LiveDemoTimeline(private val out: File, private val clips: File) {
         t
     }
 
+    // ---- the Amap guidance track ----
+
+    /** An Amap prompt starts now; returns its duration in seconds (the clip's real length). */
+    fun guidanceStart(key: String): Double = synchronized(lock) {
+        val pcm = clipPcm(key)
+        val t = now()
+        amap += Triple(t, key, pcm)
+        guidanceWindows.put(JSONObject().put("key", key).put("start", t).put("end", t + pcm.size / 2.0 / RATE))
+        pcm.size / 2.0 / RATE
+    }
+
+    /** The prompt that started last has ended (its real end, which may trail the clip slightly). */
+    fun guidanceEnd() = synchronized(lock) {
+        if (guidanceWindows.length() > 0) guidanceWindows.getJSONObject(guidanceWindows.length() - 1).put("end", now())
+    }
+
+    val amapCount: Int get() = synchronized(lock) { amap.size }
+
     // ---- downlink ----
 
     /** The playback port: each chunk starts where the previous one ends, or now if the player ran dry. */
     inner class Playback(private val rate: Int) : PlaybackPort {
         @Volatile private var acceptFrom = 0
+        @Volatile var paused = false
+            private set
+        private var pausedAt = 0.0
         override fun start() = Unit
         override fun enqueue(pcm16le: ByteArray, epoch: Int) {
             if (epoch < acceptFrom || t0 == 0.0) return
             val t = now()
             synchronized(lock) {
+                lastArrival = t
+                replyBytes += pcm16le.size
+                if (paused) {
+                    held += rate to pcm16le.copyOf()
+                    return
+                }
                 val start = maxOf(t, cursor)
                 replies += Triple(start, rate, pcm16le.copyOf())
                 cursor = start + pcm16le.size / 2.0 / rate
-                lastArrival = t
-                replyBytes += pcm16le.size
             }
         }
+
+        /**
+         * The player pauses (PcmAudioPlayer.pausePlayback / SpeechAuthority.playbackHold(true)): what
+         * had not been heard yet is withheld, in order, until [resume].
+         */
+        fun pause() {
+            val t = now()
+            synchronized(lock) {
+                if (paused) return
+                paused = true
+                pausedAt = t
+                val kept = mutableListOf<Triple<Double, Int, ByteArray>>()
+                val later = mutableListOf<Pair<Int, ByteArray>>()
+                for ((s, r, pcm) in replies) {
+                    val endT = s + pcm.size / 2.0 / r
+                    when {
+                        endT <= t -> kept += Triple(s, r, pcm)
+                        s >= t -> later += r to pcm
+                        else -> {
+                            val cut = (((t - s) * r).toInt() * 2).coerceIn(0, pcm.size)
+                            kept += Triple(s, r, pcm.copyOf(cut))
+                            later += r to pcm.copyOfRange(cut, pcm.size)
+                        }
+                    }
+                }
+                replies.clear()
+                replies += kept
+                held.addAll(0, later)
+                cursor = minOf(cursor, t)
+            }
+        }
+
+        /** The hold lifted: withheld audio plays from now. */
+        fun resume() {
+            val t = now()
+            synchronized(lock) {
+                if (!paused) return
+                paused = false
+                if (held.isEmpty()) return
+                holds.put(JSONObject().put("start", pausedAt).put("end", t).put("played", true))
+                var start = maxOf(t, cursor)
+                for ((r, pcm) in held) {
+                    replies += Triple(start, r, pcm)
+                    start += pcm.size / 2.0 / r
+                }
+                cursor = start
+                held.clear()
+            }
+            DebugVoiceLog.log("livedemo_hold_released")
+        }
+
         override fun flush(epoch: Int) {
             acceptFrom = epoch
             val t = now()
             synchronized(lock) {
+                if (held.isNotEmpty()) {
+                    holds.put(JSONObject().put("start", pausedAt).put("end", t).put("played", false))
+                    held.clear()
+                }
                 // What had not been played yet is never heard.
                 val kept = replies.filter { it.first < t }.map { (s, r, pcm) ->
                     val maxBytes = (((t - s) * r).toInt() * 2).coerceAtMost(pcm.size)
@@ -109,7 +199,7 @@ class LiveDemoTimeline(private val out: File, private val clips: File) {
             Thread.sleep(200)
             val t = now()
             val got = replyBytes > startBytes
-            if (got && t > cursor + quiet && t - lastArrival > quiet) return true
+            if (got && t > cursor + quiet && t - lastArrival > quiet && !replyHeld) return true
             if (!got && t - begin > firstTimeout) {
                 println("[live]   no reply")
                 return false
@@ -144,6 +234,11 @@ class LiveDemoTimeline(private val out: File, private val clips: File) {
             for ((t, key) in clipEvents) mix(driver, toFloat(clipPcm(key)), RATE, t)
             writeWav(File(out, "reply.wav"), reply)
             writeWav(File(out, "driver.wav"), driver)
+            if (amap.isNotEmpty()) {
+                val track = FloatArray(n)
+                for ((t, _, pcm) in amap) mix(track, toFloat(pcm), RATE, t)
+                writeWav(File(out, "amap.wav"), track)
+            }
             val json = JSONObject()
                 .put("clips", JSONArray(clipEvents.map { JSONArray().put(it.first).put(it.second) }))
                 .put("events", events)
@@ -153,6 +248,8 @@ class LiveDemoTimeline(private val out: File, private val clips: File) {
                 .put("wakes", JSONArray(wakes))
                 .put("reply_segments", replies.size)
                 .put("noise", JSONArray())
+            // The drive scene only: Amap prompts and reply holds, for check_req.py and render.py.
+            if (amap.isNotEmpty() || holds.length() > 0) json.put("amap_guidance", guidanceWindows).put("holds", holds)
             File(out, "timeline.json").writeText(json.toString(1), Charsets.UTF_8)
         }
     }

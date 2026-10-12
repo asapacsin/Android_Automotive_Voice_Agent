@@ -22,6 +22,7 @@ import com.novadrive.app.media.PauseResult
 import com.novadrive.app.media.PlaybackCheck
 import com.novadrive.app.nav.EmbeddedNavigation
 import com.novadrive.app.nav.EmbeddedNavigationController
+import com.novadrive.app.nav.NavigationPhase
 import com.novadrive.app.sim.FixtureVision
 import com.novadrive.app.sim.SimulatedCamera
 import com.novadrive.app.sim.SimulatedMusic
@@ -65,12 +66,30 @@ class LiveDemoRun {
         val out = File(outPath).absoluteFile.apply { mkdirs() }
         val choice = System.getenv("NOVA_LIVE_PROVIDER")?.ifBlank { null } ?: "qwen"
         val scenes = System.getenv("NOVA_LIVE_SCENES")?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }
-            ?: SCENES.keys.toList()
+            ?: SCENES.keys.filter { it != DRIVE }
         scenes.forEach { require(it in SCENES) { "unknown scene $it" } }
+        require(DRIVE !in scenes || scenes.size == 1) { "the $DRIVE scene is a whole trip; run it alone" }
         LiveDemo(out, choice).use { it.run(scenes) }
     }
 
     companion object {
+        /** The realistic drive (NOVA_LIVE_SCENES=drive): the app's speech rules and Amap guidance on. */
+        const val DRIVE = "drive"
+
+        /**
+         * Driver lines at route positions (metres travelled). Prompts (HengqinWorld.promptsFor, 2,600 m):
+         * g_start 0, g_m1_300 150, g_m1_50 400, g_m2_300 850, g_m2_50 1100, g_m3_300 1600,
+         * g_m3_50 1850, g_m4_300 2100, g_m4_50 2350, g_arrive 2600. At 40 km/h 11.1 m is 1 s.
+         */
+        val DRIVE_LINES: List<Pair<Int, String>> = listOf(
+            838 to "c_mosq", // starts ~1.1 s before g_m2_300: her reply meets the prompt
+            1_060 to "c_mosq2", // in the 150 m workload zone of 港澳大道; her reply is due as g_m2_50 plays
+            1_300 to "c_music", // calm stretch
+            1_835 to "c_traffic", // starts ~1.4 s before g_m3_50
+            1_960 to "c_weather", // just past the junction
+            2_450 to "c_close", // after the last turn, before arrival
+        )
+
         val SCENES: LinkedHashMap<String, (LiveDemo) -> Unit> = linkedMapOf(
             "commute_board" to { s ->
                 s.timeline.title("1  上车：换个说话方式，调座椅", "Getting in: a sweeter voice, the seat higher, then higher again")
@@ -105,6 +124,18 @@ class LiveDemoRun {
                 Thread.sleep(6_000)
                 s.snapshot("arrive")
             },
+            DRIVE to { s ->
+                s.timeline.title("1  上车：换个说话方式，调座椅", "Getting in: a sweeter voice, the seat higher, then higher again")
+                s.turn("c_sweet"); s.turn("c_seat"); s.turn("c_seat2")
+                s.timeline.title("2  出发：导航去横琴镇", "Navigate to 横琴镇: choose the place, start; Amap guides from here")
+                s.turn("c_nav", 40.0); s.turn("c_pick", 40.0); s.turn("c_go", 40.0)
+                s.timeline.title("3  路上：40 km/h 实时驾驶，高德播报", "One real-time trip at 40 km/h; Amap speaks, she waits for it")
+                DRIVE_LINES.forEach { (m, key) -> s.turnAt(m, key) }
+                s.timeline.title("4  到达横琴镇", "Arrival, announced by Amap")
+                s.awaitArrival()
+                Thread.sleep(6_000)
+                s.snapshot("arrive")
+            },
         )
     }
 }
@@ -128,6 +159,16 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
     private lateinit var playback: LiveDemoTimeline.Playback
     @Volatile private var running = true
 
+    /** The drive scene's speech rules (null for the six commute scenes, which run as before). */
+    private var rules: DriveSpeechRules? = null
+    private val amapVoice = Executors.newSingleThreadExecutor { r -> Thread(r, "livedemo-amap").apply { isDaemon = true } }
+    /** The arbiter's hold/drop/uplink decisions since the last snapshot, with their reasons. */
+    private val turnSpeech = JSONArray()
+    /** The drive turn whose snapshot is still open, and whether its line was spoken over her reply. */
+    private var openDriveKey: String? = null
+    private var spokeOverReply = false
+    private var micFramesGated = 0L
+
     private val turnTools = JSONArray()
     private val turnTranscripts = mutableListOf<String>()
     private val turns = JSONArray()
@@ -137,6 +178,9 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
         DebugVoiceLog.sink = { msg ->
             val line = String.format(Locale.US, "%.3f D NovaVoice: %s\n", System.currentTimeMillis() / 1000.0, msg)
             synchronized(log) { log.write(line); log.flush() }
+            if (msg.startsWith("speech_arbiter out=") || msg.startsWith("reply_audio_not_played") || msg.startsWith("livedemo_hold_released")) {
+                synchronized(turnSpeech) { turnSpeech.put(JSONObject().put("t", timeline.now()).put("event", msg)) }
+            }
         }
     }
 
@@ -225,17 +269,36 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
         )
         providerRef = built.provider
         playback = timeline.Playback(built.outputSampleRateHz)
+        val drive = scenes == listOf(LiveDemoRun.DRIVE)
+        val rules = if (!drive) null else DriveSpeechRules(
+            playback, scope,
+            pickerOpen = {
+                val phase = nav.state().value
+                phase == NavigationPhase.AWAITING_DESTINATION_SELECTION || phase == NavigationPhase.AWAITING_ROUTE_SELECTION
+            },
+            taskPending = { core.hasPendingWork() },
+        )
+        this.rules = rules
+        if (rules != null) {
+            // NavigationTraceListener.kt: curStepRetainDistance -> NavigationState; Amap's voice -> guidance listener.
+            world.onManeuverDistance = { NavigationState.onManeuverDistance(it) }
+            world.onPrompt = { key -> amapVoice.execute { speakPrompt(rules, key) } }
+        }
         core = CoreSession(
             provider = built.provider,
             microphone = mic,
-            playback = playback,
+            playback = rules?.port ?: playback,
             scope = scope,
             config = built.session,
             callbacks = VoiceSessionCallbacks(
-                onUiState = { state, error -> DebugVoiceLog.log("state=$state err=${error ?: "-"}") },
+                onUiState = { state, error ->
+                    rules?.onUiState(state)
+                    DebugVoiceLog.log("state=$state err=${error ?: "-"}")
+                },
                 onTranscript = { line -> synchronized(turnTranscripts) { turnTranscripts += line } },
                 onError = { code, _ -> DebugVoiceLog.log("error=$code") },
                 onToolCall = { call -> onToolCall(dispatcher, call) },
+                onUserFinalTranscript = { text -> rules?.onUserFinalTranscript(text) },
                 onSessionLog = { line -> DebugVoiceLog.log(line) },
             ),
         )
@@ -273,6 +336,47 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
         snapshot(key)
     }
 
+    /** An Amap prompt: the guidance listener goes true when its audio starts and false when it ends. */
+    private fun speakPrompt(rules: DriveSpeechRules, key: String) {
+        val seconds = timeline.guidanceStart(key)
+        println(String.format(Locale.US, "[live] %7.2f amap %s", timeline.now(), key))
+        rules.guidanceListener(true)
+        Thread.sleep((seconds * 1000).toLong())
+        timeline.guidanceEnd()
+        rules.guidanceListener(false)
+    }
+
+    /**
+     * The drive's turn: the driver speaks when the car reaches [meters], not when her last reply
+     * ended. If she is still talking (or held) there, he speaks anyway, as a driver would; recorded.
+     */
+    fun turnAt(meters: Int, key: String) {
+        while (world.navigating && world.travelledMeters < meters) Thread.sleep(20)
+        if (!world.navigating) println("[live]   $key: the trip ended before $meters m; spoken now")
+        closeDriveTurn()
+        spokeOverReply = playback.playing || timeline.replyHeld
+        DebugVoiceLog.log("debug_tool tool=voice arg=wake")
+        timeline.wakes += timeline.epochNow()
+        val t = timeline.queueClip(key)
+        println(String.format(Locale.US, "[live] %7.2f say %s at %d m%s", t, key, world.travelledMeters, if (spokeOverReply) " (over her reply)" else ""))
+        openDriveKey = key
+        Thread.sleep(timeline.clipPcm(key).size * 1000L / 2 / LiveDemoTimeline.RATE)
+    }
+
+    /** Arrival comes from the route at 40 km/h; the last drive turn closes when the reply has played. */
+    fun awaitArrival() {
+        val begin = System.currentTimeMillis()
+        while (!world.arrived && System.currentTimeMillis() - begin < 600_000) Thread.sleep(200)
+        timeline.waitReply(timeout = 20.0, firstTimeout = 0.5)
+        closeDriveTurn()
+    }
+
+    private fun closeDriveTurn() {
+        val open = openDriveKey ?: return
+        openDriveKey = null
+        snapshot(open)
+    }
+
     fun snapshot(key: String) {
         val cabin = vehicle.cabinState.value
         val climate = vehicle.climateState.value
@@ -283,8 +387,17 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
                 .put("tools", tools)
                 .put("driver_heard", JSONArray(lines.filter { it.startsWith("你: ") }.map { it.removePrefix("你: ") }))
                 .put("reply", JSONArray(lines.filter { it.startsWith("小诺: ") }.map { it.removePrefix("小诺: ") }))
-                .put("car", carState(cabin.seatHeights[SeatId.DRIVER], cabin.windows, climate)),
+                .put("car", carState(cabin.seatHeights[SeatId.DRIVER], cabin.windows, climate))
+                .apply {
+                    if (rules != null) {
+                        put("speech", synchronized(turnSpeech) { JSONArray(turnSpeech.toString()) })
+                        put("spoke_over_reply", spokeOverReply)
+                        put("mic_frames_gated", micFramesGated)
+                    }
+                },
         )
+        synchronized(turnSpeech) { while (turnSpeech.length() > 0) turnSpeech.remove(0) }
+        spokeOverReply = false
         synchronized(turnTools) { while (turnTools.length() > 0) turnTools.remove(0) }
         synchronized(turnTranscripts) { turnTranscripts.clear() }
     }
@@ -329,6 +442,8 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
     @Volatile private var providerRef: com.novadrive.ingress.realtime.RealtimeVoiceProvider? = null
 
     /** 20 ms of audio every 20 ms of wall time, as two 10 ms capture frames through the app's uplink gate. */
+    private var micInterrupted = false
+
     private fun uplink() {
         val half = LiveDemoTimeline.FRAME / 2
         var start = System.nanoTime()
@@ -337,6 +452,18 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
             val frame = timeline.nextFrame()
             for (k in 0..1) {
                 val part = frame.copyOfRange(k * half, (k + 1) * half)
+                // PcmAudioCapture: while guidance speaks (R1-R3, unless R0) the frame never reaches the gate.
+                if (rules?.uplinkClosed() == true) {
+                    micFramesGated++
+                    if (!micInterrupted) {
+                        micInterrupted = true
+                        val wasOpen = gate.isOpen
+                        gate.onCaptureInterrupted()
+                        if (wasOpen != gate.isOpen) core.onLocalSpeechActivity(gate.isOpen)
+                    }
+                    continue
+                }
+                micInterrupted = false
                 val before = gate.isOpen
                 val decision = gate.offer(part)
                 val after = gate.isOpen
@@ -353,6 +480,7 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
 
     private fun writeState() {
         val json = JSONObject().put("provider", choice).put("turns", turns).put("track", synchronized(track) { track })
+        if (rules != null) json.put("amap_guidance", timeline.guidanceWindows).put("holds", timeline.holds)
         File(out, "state.json").writeText(json.toString(1), Charsets.UTF_8)
     }
 
@@ -370,6 +498,8 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
     override fun close() {
         running = false
         runCatching { core.stop() }
+        amapVoice.shutdownNow()
+        runCatching { rules?.close() }
         runCatching { scope.cancel() }
         mainThread.shutdownNow()
         world.close()

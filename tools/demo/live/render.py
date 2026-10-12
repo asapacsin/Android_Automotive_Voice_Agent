@@ -5,7 +5,9 @@
 OUT holds timeline.json, state.json, driver.wav, reply.wav (see README.md). 1920x1080, 30 fps.
 Left: a drawn car screen (route bar, car state, last tool call). Right: the scene title, the driver's
 line, what the model heard, her reply, and the measured latency. The wait for arrival
-(cut_start..cut_end) is cut and marked. Never commit the output.
+(cut_start..cut_end) is cut and marked. The drive scene adds amap.wav (the simulated Amap voice) to the
+mix, a 高德导航 caption while a prompt plays, and （等导航播报结束） while her reply is held. Never
+commit the output.
 """
 import ast, json, os, re, subprocess, sys, tempfile, wave
 
@@ -35,6 +37,11 @@ def font(size):
 def lines_text():
     src = open(os.path.join(RECORDER, "make_clips.py"), encoding="utf-8").read()
     return ast.literal_eval(re.search(r"LINES = (\{.*?\n\})", src, re.S).group(1))
+
+
+def guidance_text():
+    src = open(os.path.join(HERE, "make_clips_cloud.py"), encoding="utf-8").read()
+    return ast.literal_eval(re.search(r"GUIDANCE = (\{.*?\n\})", src, re.S).group(1))
 
 
 def read_wav(path):
@@ -97,10 +104,16 @@ def main(run, mp4):
     end = tl["end"]
     reply = read_wav(os.path.join(run, "reply.wav"))
     driver = read_wav(os.path.join(run, "driver.wav"))
-    n = max(len(reply), len(driver))
+    amap_path = os.path.join(run, "amap.wav")
+    amap = read_wav(amap_path) if os.path.exists(amap_path) else np.zeros(0, np.float32)
+    n = max(len(reply), len(driver), len(amap))
     mix = np.zeros(n, np.float32)
     mix[: len(reply)] += reply
     mix[: len(driver)] += driver
+    mix[: len(amap)] += amap
+    prompts = tl.get("amap_guidance", [])
+    holds = tl.get("holds", [])
+    gtext = guidance_text() if prompts else {}
     fr = SR // 100
     heard = np.sqrt((reply[: len(reply) // fr * fr].reshape(-1, fr) ** 2).mean(1)) > 200
 
@@ -197,6 +210,17 @@ def main(run, mp4):
                 d.line([(100, 982), (64, 1018)], fill=colour, width=7)
             d.text((124, 970), last["name"] + ("" if last.get("pending") or ok else "  失败"), font=f_big, fill=colour)
 
+        # ---- the Amap voice and the holds it causes ----
+        playing = [g for g in prompts if g["start"] <= t < g["end"]]
+        if playing:
+            d.rounded_rectangle([970, 188, 1900, 236], radius=12, fill=(20, 90, 160))
+            d.text((986, 196), "高德导航  " + gtext.get(playing[-1]["key"], playing[-1]["key"]), font=f_small, fill=(255, 255, 255))
+        hold = next((x for x in holds if x["start"] <= t < x["end"]), None)
+        if hold is not None:
+            # A hold that overlaps an Amap prompt waits for it; otherwise it is the workload hold near a manoeuvre.
+            by_prompt = any(p["start"] < hold["end"] and hold["start"] < p["end"] for p in prompts)
+            d.text((980, 920), "（等导航播报结束）" if by_prompt else "（临近路口，稍后再说）", font=f_mid, fill=(255, 210, 80))
+
         # ---- right: scene and captions ----
         title = at(titles, t)
         if title:
@@ -224,8 +248,11 @@ def main(run, mp4):
                     d.text((980, y), line, font=f_mid, fill=(150, 220, 255)); y += 46
             if t >= cur["end"]:
                 lat = cur["first"] - cur["end"] if cur["first"] is not None else None
-                txt = f"首音延迟 {lat:.1f} s" if lat is not None else "等待回复…"
-                d.text((980, 980), txt, font=f_mid, fill=(255, 255, 255) if lat is None or lat <= 3.5 else (255, 120, 120))
+                # Time she was deliberately held (a prompt or a manoeuvre) is shown, and not counted as slowness.
+                held = 0.0 if lat is None else sum(max(0.0, min(x["end"], cur["first"]) - max(x["start"], cur["end"])) for x in holds)
+                txt = "等待回复…" if lat is None else (f"首音延迟 {lat:.1f} s（其中按规则等待 {held:.1f} s）" if held >= 0.2 else f"首音延迟 {lat:.1f} s")
+                slow = lat is not None and lat - held > 3.5
+                d.text((980, 980), txt, font=f_mid, fill=(255, 120, 120) if slow else (255, 255, 255))
         proc.stdin.write(img.tobytes())
     proc.stdin.close()
     proc.wait()
