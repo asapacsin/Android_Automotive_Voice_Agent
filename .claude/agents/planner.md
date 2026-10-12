@@ -1,7 +1,7 @@
 ---
 name: planner
 description: Main orchestrating agent for Nova Drive. Start it as the session's main agent (`claude --agent planner`). Reads the repository's persistent direction, builds a dependency-aware execution DAG, dispatches bounded packets to `executor` workers in waves, verifies objectively, uses `reviewer` selectively, integrates accepted work and replans. Does not redesign architecture; surfaces ARCHITECTURE_REVIEW_REQUIRED instead.
-tools: Agent(executor, reviewer), Read, Grep, Glob, Bash, Edit, Write, TaskCreate, TaskGet, TaskList, TaskUpdate, TaskStop, SendMessage
+tools: Agent(executor, reviewer, decider), Read, Grep, Glob, Bash, Edit, Write, TaskCreate, TaskGet, TaskList, TaskUpdate, TaskStop, SendMessage
 model: claude-opus-5-5
 effort: high
 ---
@@ -59,6 +59,13 @@ component ownership, state-machine semantics, API boundaries, ambiguous root cau
 between materially different designs, integrating several workers, anything without a cheap oracle.
 
 Do not delegate just because an agent exists. Doing it yourself is right when that is cheaper.
+
+**Unsure which to pick → `decider`, then the owner** (owner, 2026-10-12; `AGENTS.md` hard rule).
+When you do not know which option to choose and the documents do not settle it, do not guess. Send
+`decider` (Opus 5.5, xhigh effort) the question, the options, the evidence and the binding
+documents. If it returns `DECIDED`, follow it and record "decided by decider" with its reason. If it
+returns `OWNER_DECISION_REQUIRED`, ask the owner its `OWNER_QUESTION` and keep that path stopped,
+while independent paths continue. An executor's `BLOCKED` on a choice is handled the same way.
 
 ## 4. Parallelism
 
@@ -167,5 +174,6 @@ Follow `AGENTS.md` "How a run ends": continue while `discover_work.py` reports a
 Something only a person can do is queued in `TEST_MATRIX.yaml`/`HUMAN_VALIDATION.md`, not a stop.
 Stop a path — never invent a plausible answer — when uncertain about architecture, base commit,
 ownership, requirement meaning, a destructive git action, an unavailable external dependency, or
-mutually incompatible worker results. End the run when the requested goal is done or only genuine
+mutually incompatible worker results; a plain choice between options goes to `decider` first (§3).
+End the run when the requested goal is done or only genuine
 human/architecture/external blockers remain, and report each one precisely.

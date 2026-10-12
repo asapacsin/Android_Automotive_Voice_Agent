@@ -48,7 +48,7 @@ python scripts/discover_work.py        # what is left, ranked, and whether you m
 
 `AUTONOMOUS_ACTION_AVAILABLE = YES` means the run may not end. Choosing the next authorised task,
 writing a test, wiring something up, fixing stale state and picking between reasonable designs are
-all yours to do.
+all yours to do - and when you do not know which choice to pick, see "Unsure which to pick" below.
 
 **Meeting something only a person can do is not a stop.** Define the test, put it in
 [TEST_MATRIX.yaml](TEST_MATRIX.yaml) with the right `HUMAN_*` owner and `status: HUMAN_REQUIRED`,
@@ -179,10 +179,24 @@ does not change architecture ownership, invariants, or who may certify work. Age
 - At most 4 concurrent executors. Writers get worktrees the planner creates from the exact feature
   commit (`git worktree add -b <branch> ../nova-wt/<task> <BASE_COMMIT>`), not the Agent tool's
   worktree isolation, which has based worktrees on an older commit here.
+- `decider` (Opus 5.5, xhigh effort, read-only) breaks ties: any choice the planner does not know how
+  to make goes there first, and only its `OWNER_DECISION_REQUIRED` goes to the owner (hard rule below).
 - Architecture is upstream of planning: a conflict stops that path with
   `ARCHITECTURE_REVIEW_REQUIRED`; it is decided through `agent/INTAKE.md`, never inside a wave.
 
 ## Hard rules
+
+- **Unsure which to pick: Opus 5.5 at xhigh effort first, then the owner** (owner, 2026-10-12). When you
+  do not know which of two or more options to choose, and the documents do not settle it, do not guess
+  and do not take the first plausible one. Send the question to a reasoning pass on Opus 5.5 at xhigh
+  effort: in Claude Code the `decider` agent
+  ([`.claude/agents/decider.md`](.claude/agents/decider.md)), with the options, the evidence and the
+  binding documents. If it answers `OWNER_DECISION_REQUIRED`, because it still cannot determine the
+  best way, ask the owner: one precise question, each option with its consequences, and a
+  recommendation. Meanwhile carry on with independent work. Record the decision and who made it (the
+  decider, or the owner) where the change is recorded: commit message, SPEC, ADR or OPEN_PROBLEMS.
+  This does not replace `ARCHITECTURE_REVIEW_REQUIRED`: changing an ADR, an invariant or a contract
+  still goes to the owner through `agent/INTAKE.md`.
 
 - Never commit, print, log or package credentials. No coordinate, address or transcript in a log.
 - **Commit and push each implemented function as soon as it is verified** (owner, 2026-10-11; this
