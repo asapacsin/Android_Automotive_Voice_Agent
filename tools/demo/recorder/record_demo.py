@@ -255,6 +255,10 @@ class Session:
 
 
 def run(out, scenes):
+    problems = local_problems(scenes)
+    if problems:
+        # Before anything opens: a missing clip used to surface mid-take, after the session was paid for.
+        sys.exit("not recording: " + "; ".join(problems))
     if os.environ.get("NOVA_SPEND_QWEN_QUOTA") != "yes":
         # The app's session is always Qwen (ADR-017): every take spends the owner's quota.
         sys.exit("live Qwen sessions spend the owner's limited free quota (AGENTS.md hard rule); set NOVA_SPEND_QWEN_QUOTA=yes only when the owner approved this run")
@@ -486,5 +490,155 @@ SCENES = {"intro": sc_intro, "ability": sc_ability, "ability2": sc_ability2, "sc
           "commute_board": sc_commute_board, "commute_depart": sc_commute_depart, "commute_mosq": sc_commute_mosq,
           "commute_music": sc_commute_music, "commute_ask": sc_commute_ask, "commute_arrive": sc_commute_arrive}
 
+# ---- Preflight: what a take needs, checked with no voice session open (no Qwen quota) ----
+# `python record_demo.py --preflight [scene ...]` before the first take. It restarts the app at the
+# commute origin, asks the debug build for its Qwen/Amap setup, runs the app's own place search for the
+# commute destination and routes to the first result with the Navi SDK. Exit 0 means no obvious failure
+# is waiting; it cannot say how she will sound or how fast she answers.
+DEST_QUERY = "横琴镇"          # c_nav, 导航去横琴镇
+MIN_DEST_M = 2000              # c3-c5 (six turns, ~150 s) must be spoken while the 40 km/h drive runs
+
+
+def scene_clips(scene):
+    """The driver lines a scene says, read from its source (every line goes through turn())."""
+    import inspect, re
+    return re.findall(r'turn\(s, "([A-Za-z0-9_]+)"', inspect.getsource(SCENES[scene]))
+
+
+def local_problems(scenes, clips_dir=None):
+    clips_dir = clips_dir or CLIPS
+    unknown = [sc for sc in scenes if sc not in SCENES]
+    if unknown:
+        return ["unknown scene " + ", ".join(unknown)]
+    missing = sorted({k for sc in scenes for k in scene_clips(sc) if not os.path.isfile(os.path.join(clips_dir, k + ".pcm"))})
+    return ["missing clips " + ", ".join(missing) + " (run make_clips.py)"] if missing else []
+
+
+def preflight_settled(log, commute=True):
+    """True once the app has given its last preflight answer. `nav_calc_request accepted=true` and
+    `nav_calc_using_desk_origin` only start the route; its answer comes later, from the Navi SDK."""
+    if not commute:
+        return "debug_tool tool=preflight" in log
+    return any(n in log for n in ("nav_calc_success", "nav_calc_failure", "nav_calc_request accepted=false",
+                                  "preflight_search count=0"))
+
+
+def grade_preflight(log, commute=True):
+    """Problems in the app's answers to the preflight broadcast; [] when the take can start."""
+    import re
+    problems = []
+    m = re.search(r"debug_tool tool=preflight arg=\S* result=(.*)", log)
+    if not m:
+        return ["the app did not answer the preflight broadcast (debug build installed and started?)"]
+    got = dict(kv.split("=", 1) for kv in m.group(1).split() if "=" in kv)
+    if got.get("qwen") != "ok":
+        problems.append(f"Qwen not configured: {got.get('qwen')} (seed_qwen.py --accept-consent)")
+    if got.get("web_key") != "set":
+        problems.append("Amap Web key missing in the app (place search, traffic and weather need it)")
+    if got.get("map_host") != "live":
+        problems.append("no live map on screen (MainActivity not in front)")
+    if not commute:
+        return problems
+    if got.get("fix") != "set":
+        problems.append("no GPS fix in the app (adb emu geo fix)")
+    s = re.search(r"preflight_search count=(\d+) first_m=(-?\d+)", log)
+    if not s:
+        problems.append("the place search never answered")
+    elif int(s.group(1)) == 0:
+        problems.append(f"导航去{DEST_QUERY} finds nothing")
+    elif int(s.group(2)) < MIN_DEST_M:
+        problems.append(f"第一个 is {s.group(2)} m away (< {MIN_DEST_M}): the drive would end before c3-c5")
+    refused = re.search(r"nav_calc_request accepted=false\S*(?: reason=\S+)?", log)
+    if refused:
+        problems.append("the Navi SDK refused the route request: " + refused.group(0))
+    elif "nav_calc_failure" in log:
+        problems.append("the Navi SDK could not route there: " + re.search(r"nav_calc_failure\S* code=\S*", log).group(0))
+    elif "nav_calc_success" not in log:
+        problems.append("the Navi SDK never answered the route request")
+    return problems
+
+
+def preflight(scenes):
+    problems = local_problems(scenes)
+    if not os.path.isfile(ADB):
+        problems.append(f"adb not found at {ADB}")
+    elif adb("get-state").strip() != "device":
+        problems.append("no emulator attached")
+    elif "package:" not in adb("shell", "pm", "path", PKG):
+        problems.append(f"{PKG} is not installed")
+    if problems:
+        return problems
+    commute = any(sc.startswith("commute") for sc in scenes)
+    adb("emu", "geo", "fix", str(ORIGIN[1]), str(ORIGIN[0]))
+    adb("shell", "am", "force-stop", PKG)
+    adb("shell", "am", "start", "-n", f"{PKG}/.MainActivity")
+    time.sleep(14)
+    adb("logcat", "-c")
+    tool("nav_desk_origin", f"{ORIGIN[0]},{ORIGIN[1]}")
+    tool("preflight", DEST_QUERY if commute else "")
+    log = ""
+    for _ in range(30):
+        time.sleep(1)
+        log = adb("logcat", "-d", "-s", "NovaVoice")
+        if preflight_settled(log, commute):
+            break
+    # The route left on screen is not part of any take: the first take restarts the app.
+    adb("shell", "am", "force-stop", PKG)
+    return grade_preflight(log, commute)
+
+
+def selftest():
+    import tempfile
+    ok = ("debug_tool tool=preflight arg=横琴镇 result=qwen=ok web_key=set fix=set map_host=live\n"
+          "preflight_search count=5 first_m=2533\nnav_calc_success routes=3\n")
+    cases = [
+        (ok, []),
+        ("", ["did not answer"]),
+        (ok.replace("qwen=ok", "qwen=QWEN_CONSENT_MISSING"), ["QWEN_CONSENT_MISSING"]),
+        (ok.replace("web_key=set", "web_key=missing"), ["Amap Web key"]),
+        (ok.replace("first_m=2533", "first_m=632"), ["632 m away"]),
+        (ok.replace("count=5 first_m=2533", "count=0 first_m=-1"), ["finds nothing"]),
+        (ok.replace("nav_calc_success routes=3", "nav_calc_failure code=3"), ["code=3"]),
+        (ok.replace("nav_calc_success routes=3\n", ""), ["never answered the route"]),
+        (ok.replace("nav_calc_success routes=3", "nav_calc_request accepted=false reason=no_navi"), ["reason=no_navi"]),
+    ]
+    fails = 0
+    started = ok.replace("nav_calc_success routes=3", "nav_calc_using_desk_origin=true\nnav_calc_request accepted=true")
+    settled = [(started, False), (started + "nav_calc_success routes=3\n", True),
+               (started.replace("accepted=true", "accepted=false reason=no_navi"), True),
+               (ok.replace("count=5 first_m=2533\nnav_calc_success routes=3", "count=0 first_m=-1"), True)]
+    for log, want in settled:
+        good = preflight_settled(log) == want
+        fails += not good
+        print("ok  " if good else "FAIL", "settled" if want else "still waiting", repr(log.splitlines()[-1]))
+    good = grade_preflight(started + "nav_calc_success routes=3\n") == []
+    fails += not good
+    print("ok  " if good else "FAIL", "a route that starts, then succeeds, passes")
+    for log, want in cases:
+        got = grade_preflight(log)
+        good = (not want and not got) or (want and len(got) == 1 and want[0] in got[0])
+        fails += not good
+        print("ok  " if good else "FAIL", want or "pass", got)
+    with tempfile.TemporaryDirectory() as d:
+        for k in scene_clips("commute_board"):
+            open(os.path.join(d, k + ".pcm"), "wb").close()
+        checks = [(local_problems(["commute_board"], d), []),
+                  (local_problems(["commute_depart"], d), ["missing clips c_go, c_nav, c_pick (run make_clips.py)"]),
+                  (local_problems(["nope"], d), ["unknown scene nope"])]
+    for got, want in checks:
+        good = got == want
+        fails += not good
+        print("ok  " if good else "FAIL", want, got)
+    total = len(cases) + len(checks) + len(settled) + 1
+    print(f"selftest {total - fails}/{total}")
+    return fails == 0
+
+
 if __name__ == "__main__":
+    if sys.argv[1:2] == ["--selftest"]:
+        sys.exit(0 if selftest() else 1)
+    if sys.argv[1:2] == ["--preflight"]:
+        found = preflight(sys.argv[2:] or [sc for sc in SCENES if sc.startswith("commute")])
+        print("preflight PASS: no obvious failure waiting" if not found else "preflight FAIL\n- " + "\n- ".join(found))
+        sys.exit(1 if found else 0)
     run(sys.argv[1], sys.argv[2:] or list(SCENES))

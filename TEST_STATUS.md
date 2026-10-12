@@ -2,11 +2,11 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-21 · 157 tests
+Updated 2026-09-21 · 158 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 60 |
+| autonomous PASS | 61 |
 | autonomous FAIL | 0 |
 | incomplete | 0 |
 | partial pass | 0 |
@@ -20,6 +20,7 @@ Updated 2026-09-21 · 157 tests
 
 **HUMAN_VALIDATION_READY = FALSE**
 
+- the registry does not validate: 1 problem(s)
 - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - TRUTH-MISHEARD-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -110,7 +111,7 @@ Updated 2026-09-21 · 157 tests
 | live_info | 4 | 1 | 0 | 3 |
 | media | 6 | 1 | 1 | 4 |
 | microphone | 1 | 0 | 1 | 0 |
-| navigation | 24 | 6 | 4 | 14 |
+| navigation | 25 | 7 | 4 | 14 |
 | performance | 2 | 2 | 0 | 0 |
 | permissions | 7 | 4 | 0 | 3 |
 | regression | 2 | 1 | 0 | 1 |
@@ -172,6 +173,7 @@ Updated 2026-09-21 · 157 tests
 | MUSIC-VLC-EMU-001 | media | VLC plays a local file handed off by play_music and the readback names it | AUTONOMOUS | NOT_RUN | yes | MUSIC-UNIT-001 (JVM) covers the result rules with a fake session source |
 | MIC-CABIN-001 | microphone | Open-mic thresholds in real cabin acoustics | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | NOISE-001 PASS - room noise produces no turn |
 | AUDIO-QUALITY-001 | navigation | Guidance loudness and speech quality in a cabin | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | 21 guidance play start/end pairs observed on an emulator drive; the mic is gated while … |
+| DEMO-AMAP-LIVE-001 | navigation | The commute demo's real Amap lookups at the demo origin: 导航去横琴镇 + 第一个 is >= 2 km away, the warm-up weather answers | AUTONOMOUS | PASS | no | 2026-10-12 cloud: with sortrule=distance FAIL (第一个 = 632 m, the origin 横琴澳门青年创业谷; Amap … |
 | GUIDANCE-DEVICE-001 | navigation | One voice on the short route; Amap audible only when the model cannot speak | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | GUIDANCE-EMU-001 measurements |
 | GUIDANCE-EMU-001 | navigation | Step-0 measurements for assistant-spoken guidance on the short route | AUTONOMOUS | NOT_RUN | yes | — |
 | NAV-CANCEL-001 | navigation | 算了 really cancels | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: nav_flow_cancelled |

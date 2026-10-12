@@ -19,6 +19,7 @@ class DebugToolReceiver : BroadcastReceiver() {
                 "exit_navigation_mode" -> format(SafeAndroidActionExecutor(context).exitNavigationMode())
                 "probe_playback" -> probePlayback(context, arg)
                 "nav_route" -> navRoute(context, arg)
+                "preflight" -> preflight(context, arg)
                 "nav_desk_origin" -> navDeskOrigin(arg)
                 "nav_start" -> navStart(arg)
                 "nav_stop" -> navStop()
@@ -145,6 +146,29 @@ class DebugToolReceiver : BroadcastReceiver() {
             host.calculateDriveRoute(poi.latitude, poi.longitude, poi.name)
         }.start()
         return "resolving $target"
+    }
+
+    /**
+     * Demo preflight (tools/demo/recorder/record_demo.py --preflight): what a take needs, checked before
+     * any voice session opens, so a broken setup costs no Qwen quota. Answers the Qwen config code, the
+     * Amap Web key and the GPS fix; then runs the app's own place search for [query] and routes to the
+     * first result with the Navi SDK (nav_calc_success / nav_calc_failure). Logs counts and metres only.
+     */
+    private fun preflight(context: Context, query: String): String {
+        val app = context.applicationContext
+        val qwen = runCatching { QwenSettingsRepository(app).configProblem() ?: "ok" }.getOrElse { "error" }
+        val webKey = if (AmapSettingsRepository(app).loadWebKey().isNullOrBlank()) "missing" else "set"
+        val fix = if (runCatching { CoarseLocationProvider(app).lastKnown() }.getOrNull() != null) "set" else "none"
+        val host = NavigationHostGateway.current()
+        if (query.isNotBlank()) Thread {
+            val found = runCatching {
+                kotlinx.coroutines.runBlocking { com.novadrive.app.nav.LiveDestinationCandidateSource(app).resolve(query) }
+            }.getOrDefault(emptyList())
+            val first = found.firstOrNull()
+            Log.d("NovaVoice", "preflight_search count=${found.size} first_m=${first?.distanceMeters ?: -1}")
+            if (first != null && host != null) host.calculateDriveRoute(first.latitude, first.longitude, first.name)
+        }.start()
+        return "qwen=$qwen web_key=$webKey fix=$fix map_host=${if (host != null) "live" else "none"}"
     }
 
     /**
@@ -349,6 +373,7 @@ class DebugToolReceiver : BroadcastReceiver() {
         /** Broadcast arguments that must never reach the log. */
         internal fun safeDebugArg(tool: String?, arg: String): String = when {
             tool == "qwen_setup" -> "<redacted>"
+            tool == "preflight" -> "<query>" // a destination is close to an address: never in the log
             tool == "nav_desk_origin" || arg.startsWith("@") -> "<redacted>"
             tool == "dispatch" -> redactDispatchArg(arg)
             else -> arg

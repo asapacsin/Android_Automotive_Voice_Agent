@@ -8,12 +8,19 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class LiveDestinationCandidateSource(
-    context: Context,
-    private val poiClient: AmapPoiClient = AmapPoiClient(),
-    private val location: () -> Pair<Double, Double>? = { CoarseLocationProvider(context).lastKnown() },
-    private val webKey: () -> String? = { AmapSettingsRepository(context).loadWebKey() },
-    private val savedPlaces: (PlaceSlot) -> SavedPlace? = SavedPlaceStore(context)::get,
+    private val poiClient: AmapPoiClient,
+    private val location: () -> Pair<Double, Double>?,
+    private val webKey: () -> String?,
+    private val savedPlaces: (PlaceSlot) -> SavedPlace?,
 ) : DestinationCandidateSource {
+    /** The app's wiring. The primary constructor needs no Context, so the JVM can run the real search. */
+    constructor(context: Context) : this(
+        poiClient = AmapPoiClient(),
+        location = { CoarseLocationProvider(context).lastKnown() },
+        webKey = { AmapSettingsRepository(context).loadWebKey() },
+        savedPlaces = SavedPlaceStore(context)::get,
+    )
+
     override suspend fun resolve(query: String): List<DestinationCandidate> = withContext(Dispatchers.IO) {
         // A saved place is answered from what the driver told us, never searched for. 「回家」 went
         // to the POI search verbatim until 2026-09-19 and returned nothing.
@@ -30,8 +37,11 @@ class LiveDestinationCandidateSource(
         // verbatim returned zero results for a brand with branches minutes away (row T04).
         val keyword = DestinationQuery.searchKeyword(query)
         val fix = location()
+        // A named place ranks by relevance (P51: nearest-first answered 横琴镇 with the origin); a
+        // driver who asked for the nearest gets the nearest.
+        val sort = if (DestinationQuery.isNearbyRequest(query)) AmapPoiClient.NEAREST_SORT_RULE else AmapPoiClient.NEARBY_SORT_RULE
         val candidates = if (fix != null) {
-            poiClient.resolveNearbyCandidates(keyword, key, fix.first, fix.second)
+            poiClient.resolveNearbyCandidates(keyword, key, fix.first, fix.second, sortRule = sort)
         } else {
             poiClient.resolveCandidates(keyword, key)
         }
@@ -40,7 +50,7 @@ class LiveDestinationCandidateSource(
         // contains one of those words. Try what they actually said before giving up.
         com.novadrive.app.DebugVoiceLog.log("nav_query_retry_verbatim")
         if (fix != null) {
-            poiClient.resolveNearbyCandidates(query, key, fix.first, fix.second)
+            poiClient.resolveNearbyCandidates(query, key, fix.first, fix.second, sortRule = sort)
         } else {
             poiClient.resolveCandidates(query, key)
         }

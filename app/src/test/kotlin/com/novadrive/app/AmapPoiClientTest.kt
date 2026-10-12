@@ -44,7 +44,7 @@ class AmapPoiClientTest {
     }
 
     @Test
-    fun resolveNearbySendsLocationRadiusAndDistanceSort() {
+    fun resolveNearbySendsLocationRadiusAndRelevanceSort() {
         server.enqueue(
             MockResponse().setBody(
                 """{"status":"1","pois":[{"name":"天安门广场","location":"116.397500,39.908740"}]}""",
@@ -57,7 +57,7 @@ class AmapPoiClientTest {
         assertEquals("test-key", recorded.requestUrl?.queryParameter("key"))
         assertEquals("116.397500,39.908740", recorded.requestUrl?.queryParameter("location"))
         assertEquals("50000", recorded.requestUrl?.queryParameter("radius"))
-        assertEquals("distance", recorded.requestUrl?.queryParameter("sortrule"))
+        assertEquals("weight", recorded.requestUrl?.queryParameter("sortrule"))
         assertEquals("1", recorded.requestUrl?.queryParameter("offset"))
         assertEquals("1", recorded.requestUrl?.queryParameter("page"))
         assertEquals("base", recorded.requestUrl?.queryParameter("extensions"))
@@ -103,7 +103,7 @@ class AmapPoiClientTest {
         assertEquals(120, result[0].distanceMeters)
         val recorded = server.takeRequest()
         assertEquals("116.397500,39.908740", recorded.requestUrl?.queryParameter("location"))
-        assertEquals("distance", recorded.requestUrl?.queryParameter("sortrule"))
+        assertEquals("weight", recorded.requestUrl?.queryParameter("sortrule"))
         assertEquals("5", recorded.requestUrl?.queryParameter("offset"))
     }
 
@@ -114,6 +114,27 @@ class AmapPoiClientTest {
     }
 
     private fun client() = AmapPoiClient(baseUrl = server.url("/v3/place/text").toString())
+
+    @Test
+    fun aNamedPlaceRanksByRelevanceAndANearMeRequestNearestFirst() {
+        // P51: nearest-first answered 横琴镇 with the origin; 「附近的/最近的」 still wants the nearest.
+        val ranking = mapOf("横琴镇" to "weight", "附近的麦当劳" to "distance", "离我最近的加油站" to "distance", "导航去横琴口岸" to "weight")
+        for ((spoken, expected) in ranking) {
+            server.enqueue(MockResponse().setBody("""{"status":"1","pois":[]}"""))
+            server.enqueue(MockResponse().setBody("""{"status":"1","pois":[]}"""))
+            val source = com.novadrive.app.nav.LiveDestinationCandidateSource(
+                poiClient = aroundClient(),
+                location = { 22.13403 to 113.53691 },
+                webKey = { "test-key" },
+                savedPlaces = { null },
+            )
+            kotlinx.coroutines.runBlocking { source.resolve(spoken) }
+            // The stripped keyword, then (nothing found) the verbatim retry: both ranked the same way.
+            val sent = generateSequence { server.takeRequest(100, java.util.concurrent.TimeUnit.MILLISECONDS) }
+                .map { it.requestUrl?.queryParameter("sortrule") }.toList()
+            assertEquals(true, sent.isNotEmpty() && sent.all { it == expected }, "$spoken sent $sent")
+        }
+    }
 
     private fun aroundClient() = AmapPoiClient(aroundUrl = server.url("/v3/place/around").toString())
 }

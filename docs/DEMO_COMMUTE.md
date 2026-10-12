@@ -60,6 +60,8 @@ The cloud container cannot run the emulator. Prerequisites are the same as `QWEN
 ```powershell
 cd tools\demo\recorder
 python make_clips.py                                  # adds the c_* driver lines (edge-tts)
+python record_demo.py --preflight                     # no voice session, no quota: Qwen setup, Amap key, GPS fix,
+                                                      # 导航去横琴镇 finds a place >= 2 km away, the Navi SDK routes there
 python record_demo.py c1_board  commute_board         # restarts the app; sets the GPS fix to 创业谷 first
 $env:KEEP=1                                           # the next takes keep the app and the drive running
 python record_demo.py c2_depart commute_depart
@@ -162,6 +164,8 @@ normally (take 2, 2026-10-10). This is an Alibaba-side serving defect; nothing i
   handed off, not that it is playing.
 - The weather line uses the GPS fix the recorder sets before the app starts. A take started without the
   fix (KEEP=1 on a fresh app) asks a cold Amap lookup and may exceed 3.5 s.
-- 横琴镇 is a town, so the place search may list several candidates; 第一个 takes the top one.
+- 横琴镇 is a town, so the place search may list several candidates; 第一个 takes the top one. Until
+  2026-10-12 the top one was the origin itself (a 26 m route, OPEN_PROBLEMS P51); with relevance ranking it is
+  横琴镇人民政府, 2.5 km away. `--preflight` checks this on the emulator before every recording day.
 
 **Quota (AGENTS.md hard rule):** every live Qwen session spends the owner's limited free quota. Prove what you can offline first; run live only with the owner's go for that run, with `NOVA_SPEND_QWEN_QUOTA=yes` set. Without it this tool refuses to open a Qwen session.

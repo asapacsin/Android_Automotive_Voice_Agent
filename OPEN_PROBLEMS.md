@@ -1871,3 +1871,35 @@ Measured from the driver's **last audible word**, not the end of the clip; edge-
 **Still open:**
 - A weather question naming a city is looked up at question time: 1.1–4 s from the PC proxy in Macau, and a timeout means an honest "could not check". Not measured on the phone.
 - Qwen's own variance: end-of-speech 0.9–1.5 s after the last word (`semantic_vad` 800 ms), first audio after a tool result 0.3–1.5 s, and occasionally a reply generated close to real time (underruns up to 259 ms).
+
+## P51 — 「导航去横琴镇」 + 「第一个」 chose the place the car was already at
+
+**Found 2026-10-12, before any local take of the commute demo, by running the app's own place search against the real Amap Web API at the demo origin** (`DemoCommuteAmapLiveTest`). The JVM harness simulates the route, so its passing takes never showed it.
+
+**Symptom (measured, real Amap):** at 横琴·澳门青年创业谷 the nearby search for 横琴镇 returned 横琴澳门青年创业谷 itself first, then four more places, all within 650 m. Amap's driving route there is 26 m long. 「第一个」 would end the drive at once, and c3–c5 (蚊子, 歌, 前面堵不堵) would be spoken with no route. The same ranking gave a bus stop for 横琴口岸 and a hotel and a gym for 横琴总部大厦.
+
+**Root cause:** `AmapPoiClient` asked `place/around` with `sortrule=distance`. Amap then ranks the nearest *fuzzy* keyword match first, so nearby places that only share a word come first. Research: Amap's 周边搜索 documentation (lbs.amap.com/api/webservice/guide/api/search) lists `sortrule` as `distance` (the default) or `weight` (综合排序, relevance and distance together). Nothing else was found on this behaviour.
+
+**Fix:** named places use `AmapPoiClient.NEARBY_SORT_RULE = "weight"`. A request for the nearest place (「附近的麦当劳」, 「离我最近的加油站」: `DestinationQuery.isNearbyRequest`, wired into `LiveDestinationCandidateSource` for the first time) still sends `distance` (`NEAREST_SORT_RULE`). This follows the independent review. Measured at the same origin with `weight`:
+
+| Query | First result | Distance |
+| --- | --- | --- |
+| 横琴镇 | 横琴镇人民政府 | 2533 m (route 2855 m, about 257 s at the emulator's 40 km/h) |
+| 横琴口岸 | 珠海横琴口岸 | |
+| 横琴总部大厦 | 横琴总部大厦 | |
+| 麦当劳 | the 896 m branch | |
+| 加油站 | stations at 1.0–1.9 km | |
+
+`DemoCommuteAmapLiveTest` fails on the old ranking (632 m) and passes on the new one.
+
+**Still open:**
+- The nearby search still sends the platform's WGS-84 fix where Amap expects GCJ-02 (about 500 m off in Zhuhai). Ranking and the distance shown are only slightly affected, and this is not changed here.
+- A brand named *without* a near-me word (「导航去星巴克」) now ranks by relevance, so a slightly farther branch may come first (星巴克: third result 9.8 km).
+- `NAV-SEARCH-001`'s device evidence was taken under nearest-first ranking. Named-place searches need a device re-check.
+
+**Before a local take:** `python tools/demo/recorder/record_demo.py --preflight` checks all of this on the emulator with no voice session open:
+- the Qwen config code;
+- the app's Amap Web key;
+- the GPS fix;
+- the app's own search for 横琴镇 (at least 2 km away);
+- a Navi SDK route to it.
