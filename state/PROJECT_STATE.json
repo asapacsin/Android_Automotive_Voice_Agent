@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-12T16:00:30",
+  "generated_at": "2026-10-12T16:01:21",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "9ef5517",
+    "commit": "4799319",
     "branch": "claude/10-9",
-    "subject": "Demo preflight floor 1.7 km (route >= straight line); session-start Amap warm-up retries",
+    "subject": "Register AmapCoordinates in navigation_lifecycle; refresh state",
     "working_tree_clean": false,
-    "uncommitted_files": 4
+    "uncommitted_files": 1
   },
   "tests": {
     "available": true,
