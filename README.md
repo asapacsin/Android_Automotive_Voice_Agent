@@ -13,3 +13,9 @@
   speaking-style tool; the tone does not persist. 3.8 Flash calls it.
 
 Code at `claude/10-9` cc3b588. Logs are not published (they hold transcripts).
+
+## Voice sample: Ayano (owner's own AI voice) — 2026-10-12
+
+`ayano_voice_sample_35plus.wav` (34 s): eight lines from the commute demo, read by
+**qwen3.5-omni-plus-realtime** with the owner's cloned voice Ayano (a synthetic voice he created).
+One text-only session per line, no tools; all 8 read word for word, no errors.
