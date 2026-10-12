@@ -84,16 +84,23 @@ object AmapPoiParser {
 }
 
 class AmapPoiClient(
-    private val http: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(4, TimeUnit.SECONDS)
-        .readTimeout(4, TimeUnit.SECONDS)
-        .build(),
+    /** One process-wide client by default, so a search reuses the warm connection (P53). */
+    private val http: OkHttpClient = SHARED_HTTP,
     private val baseUrl: String = "https://restapi.amap.com/v3/place/text",
     private val aroundUrl: String = "https://restapi.amap.com/v3/place/around",
     /** Root of the web-service endpoints `query_live_info` reads (SPEC-011). */
     private val liveBaseUrl: String = "https://restapi.amap.com/v3",
 ) : AmapLiveInfoRest {
     companion object {
+        /**
+         * P53: every client used to build its own OkHttpClient, so the place search never reused the
+         * connection the session-start warm-up opened and paid a cold TLS handshake (~2.9 s via proxy).
+         */
+        internal val SHARED_HTTP: OkHttpClient = OkHttpClient.Builder()
+            .connectTimeout(4, TimeUnit.SECONDS)
+            .readTimeout(4, TimeUnit.SECONDS)
+            .build()
+
         /**
          * Amap's 综合排序 (relevance with distance), not `distance`. Measured 2026-10-12 at 横琴创业谷:
          * with `distance` the around search answers the nearest *fuzzy* match first - 横琴镇 gave the

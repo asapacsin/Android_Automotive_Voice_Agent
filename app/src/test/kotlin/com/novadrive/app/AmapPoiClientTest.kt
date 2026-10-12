@@ -113,6 +113,25 @@ class AmapPoiClientTest {
         assertEquals(emptyList<com.novadrive.app.nav.DestinationCandidate>(), client().resolveCandidates("珠海", "test-key"))
     }
 
+    @Test
+    fun defaultClientsShareOneConnectionSoTheSearchReusesTheWarmUp() {
+        // P53: the session-start warm-up and the place search are different AmapPoiClient instances.
+        server.enqueue(MockResponse().setBody("""{"status":"1","lives":[]}"""))
+        server.enqueue(MockResponse().setBody("""{"status":"1","pois":[]}"""))
+        val warmUp = AmapPoiClient(liveBaseUrl = server.url("/v3").toString())
+        val search = AmapPoiClient(aroundUrl = server.url("/v3/place/around").toString())
+        warmUp.weatherNow("110101", "k")
+        search.resolveNearbyCandidates("横琴镇", "k", 22.1, 113.5)
+        assertEquals(0, server.takeRequest().sequenceNumber)
+        assertEquals(1, server.takeRequest().sequenceNumber, "the search opened a second connection")
+    }
+
+    @Test
+    fun theSharedClientKeepsTheFourSecondTimeouts() {
+        assertEquals(4_000, AmapPoiClient.SHARED_HTTP.connectTimeoutMillis)
+        assertEquals(4_000, AmapPoiClient.SHARED_HTTP.readTimeoutMillis)
+    }
+
     private fun client() = AmapPoiClient(baseUrl = server.url("/v3/place/text").toString())
 
     @Test

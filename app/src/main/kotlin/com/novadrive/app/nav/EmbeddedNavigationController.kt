@@ -84,10 +84,12 @@ class EmbeddedNavigationController(
             generation
         }
         DebugVoiceLog.log("nav_resolve_start")
+        val resolveStarted = System.nanoTime()
         val resolved = resolve()
+        val resolveMs = (System.nanoTime() - resolveStarted) / 1_000_000
         val autoCalculate = synchronized(lock) {
             if (seq != generation) return
-            DebugVoiceLog.log("nav_resolve_candidates count=${resolved.size}")
+            DebugVoiceLog.log("nav_resolve_candidates count=${resolved.size} ms=$resolveMs")
             when {
                 resolved.isEmpty() -> {
                     failLocked("no_candidates")

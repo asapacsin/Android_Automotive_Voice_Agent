@@ -11,6 +11,7 @@ These scripts record a demo on the PC emulator `nova_api34` with nothing played 
    - the app's Qwen config code and Amap Web key;
    - the GPS fix;
    - the app's own search for 横琴镇 (the first result must be at least 1.7 km away, so the drive outlasts the middle takes; OPEN_PROBLEMS P51);
+   - how long that search took (`preflight_search ... ms=`): at most 0.5 s, or c_nav misses its 3.5 s budget. If slower, route `restapi.amap.com` direct, not through the PC proxy (Clash rule `DOMAIN-SUFFIX,amap.com,DIRECT`), and preflight again. The same search runs a second time and logs `preflight_search_warm ms=` for comparison (OPEN_PROBLEMS P53);
    - a Navi SDK route to it.
 
    It prints PASS or each problem. `record_demo.py` also refuses to start a take with an unknown scene or a missing clip. `python record_demo.py --selftest` checks the grading offline.

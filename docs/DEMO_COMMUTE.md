@@ -86,6 +86,7 @@ $env:CUT="commute"; python final_cut.py commute_demo.mp4
 `tools/demo/live/` runs the same six scenes in one session on the JVM:
 - **Real:** the shipped voice stack (provider client, claim gate, core session, tool dispatch) against the live model, and live Amap weather.
 - **Simulated:** the car, the 横琴 route and the music app.
+- **Real, time taken out:** the place search. The real Amap result for 横琴镇 is fetched before the session opens, so 「导航去横琴镇」 does not wait on the network; the candidates are real (OPEN_PROBLEMS P53).
 
 It writes the recorder's artifacts, so `check_req.py` grades it unchanged, and `render.py` draws a video headed "JVM live run — not the app screen". See its README. A Qwen run needs `DASHSCOPE_API_KEY` and `DASHSCOPE_WORKSPACE_ID` in the environment's secrets.
 
