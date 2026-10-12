@@ -27,6 +27,10 @@ class HengqinWorld : NavigationBackend, RouteLiveInfoSource {
         const val ORIGIN_LAT = 22.1340339
         const val ORIGIN_LON = 113.5369122
 
+        /** The same origin in GCJ-02: Amap assistant/coordinate/convert coordsys=gps, measured 2026-10-12. */
+        const val ORIGIN_GCJ_LAT = 22.13113
+        const val ORIGIN_GCJ_LON = 113.54203
+
         private val PLACES: List<Pair<String, List<Place>>> = listOf(
             "横琴镇" to listOf(
                 Place("横琴镇", 22.1420, 113.5173, 2_600, "珠海市香洲区横琴镇"),

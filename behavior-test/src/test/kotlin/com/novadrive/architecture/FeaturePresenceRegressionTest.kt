@@ -239,9 +239,23 @@ class FeaturePresenceRegressionTest {
         )
         assertContains(host, "addOnMapTouchListener", "a manual pan must end automatic recentring")
         assertContains(
-            host,
+            "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapCoordinates.kt",
             "CoordinateConverter.CoordType.GPS",
             "platform fixes are WGS-84 and the map is GCJ-02",
+        )
+        // P51: the map and the nearby search share the one converter; no second copy.
+        assertContains(host, "AmapCoordinates.toGcj02(", "the map converts through the one owner")
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/nav/LiveDestinationCandidateSource.kt",
+            "AmapCoordinates.toGcj02(",
+            "place/around takes GCJ-02, not the platform's WGS-84 fix",
+        )
+        val converters = File(root, "app/src/main").walkTopDown()
+            .filter { it.isFile && it.readText().contains("CoordinateConverter") }
+            .map { it.relativeTo(root).path.replace('\\', '/') }.toList()
+        assertTrue(
+            converters == listOf("app/src/main/kotlin/com/novadrive/app/nav/amap/AmapCoordinates.kt"),
+            "exactly one file may mention CoordinateConverter, found $converters",
         )
     }
 

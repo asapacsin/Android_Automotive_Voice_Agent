@@ -3,6 +3,7 @@ package com.novadrive.app.livedemo
 import com.novadrive.app.AmapPoiClient
 import com.novadrive.app.LiveInfoFetch
 import com.novadrive.app.nav.LiveDestinationCandidateSource
+import com.novadrive.app.nav.LocationFix
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assumptions.assumeTrue
@@ -32,7 +33,8 @@ class DemoCommuteAmapLiveTest {
         // platform reports it).
         val source = LiveDestinationCandidateSource(
             poiClient = AmapPoiClient(),
-            location = { HengqinWorld.ORIGIN_LAT to HengqinWorld.ORIGIN_LON },
+            platformFix = { LocationFix(HengqinWorld.ORIGIN_LAT, HengqinWorld.ORIGIN_LON) },
+            toGcj02 = { it.copy(latitude = HengqinWorld.ORIGIN_GCJ_LAT, longitude = HengqinWorld.ORIGIN_GCJ_LON) },
             webKey = { key },
             savedPlaces = { null },
         )
