@@ -19,3 +19,10 @@ Code at `claude/10-9` cc3b588. Logs are not published (they hold transcripts).
 `ayano_voice_sample_35plus.wav` (34 s): eight lines from the commute demo, read by
 **qwen3.5-omni-plus-realtime** with the owner's cloned voice Ayano (a synthetic voice he created).
 One text-only session per line, no tools; all 8 read word for word, no errors.
+
+## Commute demo in Ayano's voice — 2026-10-12
+
+`commute_demo_ayano_qwen35plus_2026-10-12.mp4` (158 s): the same commute demo, now in the default
+voice Ayano, on **qwen3.5-omni-plus-realtime** (JVM live harness, simulated car; not device evidence).
+`check_req.py` PASS: every reply 2.6–3.5 s after the driver stops, every tool call right and successful.
+Same 3.5 Plus limit: 「嗲一点」 is answered in words only. Code at `claude/10-9` 22d89f3.
