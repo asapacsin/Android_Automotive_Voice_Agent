@@ -2878,8 +2878,8 @@ tests:
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
       harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
       artifact_digests: {}
-      apk_digest: sha256:cfc44292e4f2ba9dde42de52da70cd2399f9b54ca303eb172a17bbf4c2476102
-      bound_commit: 4799319
+      apk_digest: sha256:bf5d6f6dd7cb3b3a6309672942d792e368983257f1e8e349776978d205cf4461
+      bound_commit: 5f4dd97
     covers: []
     prerequisites: ["AMAP_WEB_KEY in the environment (free Amap Web API; no voice model)"]
     procedure: ["NOVA_LIVE_AMAP=1 ./gradlew :app:testDebugUnitTest --tests '*DemoCommuteAmapLiveTest'"]
