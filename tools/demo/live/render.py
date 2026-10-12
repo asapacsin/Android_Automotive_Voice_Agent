@@ -5,7 +5,9 @@
 OUT holds timeline.json, state.json, driver.wav, reply.wav (see README.md). 1920x1080, 30 fps.
 Left: a drawn car screen (route bar, car state, last tool call). Right: the scene title, the driver's
 line, what the model heard, her reply, and the measured latency. The wait for arrival
-(cut_start..cut_end) is cut and marked. Never commit the output.
+(cut_start..cut_end) is cut and marked. The drive scene adds amap.wav (the simulated Amap voice) to the
+mix, a 高德导航 caption while a prompt plays, and （等导航播报结束） while her reply is held. Never
+commit the output.
 """
 import ast, json, os, re, subprocess, sys, tempfile, wave
 
@@ -35,6 +37,11 @@ def font(size):
 def lines_text():
     src = open(os.path.join(RECORDER, "make_clips.py"), encoding="utf-8").read()
     return ast.literal_eval(re.search(r"LINES = (\{.*?\n\})", src, re.S).group(1))
+
+
+def guidance_text():
+    src = open(os.path.join(HERE, "make_clips_cloud.py"), encoding="utf-8").read()
+    return ast.literal_eval(re.search(r"GUIDANCE = (\{.*?\n\})", src, re.S).group(1))
 
 
 def read_wav(path):
@@ -97,10 +104,16 @@ def main(run, mp4):
     end = tl["end"]
     reply = read_wav(os.path.join(run, "reply.wav"))
     driver = read_wav(os.path.join(run, "driver.wav"))
-    n = max(len(reply), len(driver))
+    amap_path = os.path.join(run, "amap.wav")
+    amap = read_wav(amap_path) if os.path.exists(amap_path) else np.zeros(0, np.float32)
+    n = max(len(reply), len(driver), len(amap))
     mix = np.zeros(n, np.float32)
     mix[: len(reply)] += reply
     mix[: len(driver)] += driver
+    mix[: len(amap)] += amap
+    prompts = tl.get("amap_guidance", [])
+    holds = tl.get("holds", [])
+    gtext = guidance_text() if prompts else {}
     fr = SR // 100
     heard = np.sqrt((reply[: len(reply) // fr * fr].reshape(-1, fr) ** 2).mean(1)) > 200
 
@@ -196,6 +209,14 @@ def main(run, mp4):
                 d.line([(64, 982), (100, 1018)], fill=colour, width=7)
                 d.line([(100, 982), (64, 1018)], fill=colour, width=7)
             d.text((124, 970), last["name"] + ("" if last.get("pending") or ok else "  失败"), font=f_big, fill=colour)
+
+        # ---- the Amap voice and the holds it causes ----
+        playing = [g for g in prompts if g["start"] <= t < g["end"]]
+        if playing:
+            d.rounded_rectangle([970, 188, 1900, 236], radius=12, fill=(20, 90, 160))
+            d.text((986, 196), "高德导航  " + gtext.get(playing[-1]["key"], playing[-1]["key"]), font=f_small, fill=(255, 255, 255))
+        if any(x["start"] <= t < x["end"] for x in holds):
+            d.text((980, 920), "（等导航播报结束）", font=f_mid, fill=(255, 210, 80))
 
         # ---- right: scene and captions ----
         title = at(titles, t)
