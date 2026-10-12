@@ -22,6 +22,9 @@ import com.novadrive.app.media.PauseResult
 import com.novadrive.app.media.PlaybackCheck
 import com.novadrive.app.nav.EmbeddedNavigation
 import com.novadrive.app.nav.EmbeddedNavigationController
+import com.novadrive.app.nav.LocationFix
+import com.novadrive.app.nav.LiveDestinationCandidateSource
+import com.novadrive.app.nav.DestinationCandidateSource
 import com.novadrive.app.nav.NavigationPhase
 import com.novadrive.app.sim.FixtureVision
 import com.novadrive.app.sim.SimulatedCamera
@@ -154,7 +157,20 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
     private val mic = InMemoryMicrophonePort()
     private val gate = SpeechUplinkGate()
     private val gain = MicInputGain()
-    private val nav = EmbeddedNavigationController(resolver = world, engine = world)
+    /**
+     * The app's own place search against the real Amap Web API when a key is present (P51: the simulated
+     * list hid that 第一个 chose the origin); the route and the drive stay simulated.
+     */
+    private val search: DestinationCandidateSource = System.getenv("AMAP_WEB_KEY")?.takeIf { it.isNotBlank() }?.let { key ->
+        LiveDestinationCandidateSource(
+            poiClient = AmapPoiClient(),
+            platformFix = { LocationFix(HengqinWorld.ORIGIN_LAT, HengqinWorld.ORIGIN_LON) },
+            toGcj02 = { it.copy(latitude = HengqinWorld.ORIGIN_GCJ_LAT, longitude = HengqinWorld.ORIGIN_GCJ_LON) },
+            webKey = { key },
+            savedPlaces = { null },
+        )
+    } ?: world
+    private val nav = EmbeddedNavigationController(resolver = search, engine = world)
     private lateinit var core: CoreSession
     private lateinit var playback: LiveDemoTimeline.Playback
     @Volatile private var running = true

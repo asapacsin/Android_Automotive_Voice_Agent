@@ -221,13 +221,16 @@ does not change architecture ownership, invariants, or who may certify work. Age
   model that can do what the test needs, with the smallest input (one clip, a setup-only session,
   no audio when the question is the session); the more expensive model only after the cheap one
   passed, and only for what only it can show. State the expected cost in the plan.
-- **Gemini is not free either; oldest model, fewest scenes** (owner, 2026-10-11; oldest-first 2026-10-12).
-  A Gemini experiment or rehearsal uses the **oldest Live model that works** first
+- **Gemini's free tier resets every day: use it, oldest model first** (owner, 2026-10-11; oldest-first and
+  daily reset 2026-10-12). Every live test or rehearsal whose question is not Ayano's own voice runs on
+  Gemini, and a used-up or low Qwen quota is never a reason to leave it untested: rehearse on Gemini
+  now, keep Qwen for the one take. It uses the **oldest Live model that works** first
   (`VoiceCatalog.geminiExperimentOrder`: `gemini-3.1-flash-live-preview`, the harness default; the older
   `gemini-2.5-flash-native-audio-preview-12-2025` rejects our setup with 1007), and a newer one
   (`gemini-3.8-live`, then `-extended-thinking`) only when the older cannot show what the test needs -
-  record which and why. Only the scenes the change touches (`NOVA_LIVE_SCENES`), not the whole demo; one rehearsal per change, never repeated runs to
-  chase latency variance (a control run is one more run, so plan it). A test whose question only the
+  record which and why. The daily reset allows a full-demo rehearsal after a change; still never
+  repeated runs to chase latency variance (a control run is one more run, so plan it), and stop for
+  the day if the free tier answers with a quota error. A test whose question only the
   Qwen voice can answer (a custom or cloned voice: how she sounds, reading the car lines) skips
   Gemini, whose voice is not ours, and goes straight to the cheapest Qwen model with the
   smallest input: text-only turns reading the lines, one short session, no full demo.
