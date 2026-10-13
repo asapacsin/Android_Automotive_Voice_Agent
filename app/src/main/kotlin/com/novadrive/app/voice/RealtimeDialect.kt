@@ -66,6 +66,12 @@ interface RealtimeDialect<C : Any> {
      */
     fun instructionsUpdate(instructions: String): String? = null
 
+    /** True when [instructionsUpdate] returns a message; checked before any instructions are composed. */
+    val supportsInstructionsUpdate: Boolean get() = false
+
+    /** A held [instructionsUpdate] was dropped unsent (sleep cleared its turn); default no-op. */
+    fun onInstructionsUpdateDropped() {}
+
     /**
      * An error arrived before the session was ready. Returns a replacement session.update to send
      * instead of failing (once), or null to fail. [instructions] is only evaluated when used.

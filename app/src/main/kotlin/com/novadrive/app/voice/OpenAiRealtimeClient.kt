@@ -65,7 +65,8 @@ open class OpenAiRealtimeClient<C : Any>(
     @Volatile private var playbackActive = false
     @Volatile private var navigatingListener: ((Boolean) -> Unit)? = null
     @Volatile private var textUnsupportedLogged = false
-    private val emptyRetry = EmptyResponseRetryPolicy(); private val deliveredStyle = DeliveredStyle() // P55
+    private val emptyRetry = EmptyResponseRetryPolicy()
+    private val deliveredStyle = DeliveredStyle() // P55
     private val resetPolicy = ConversationResetPolicy()
     private val historyBudget = HistoryBudget()
     private val resetScope = kotlinx.coroutines.CoroutineScope(
@@ -286,7 +287,14 @@ open class OpenAiRealtimeClient<C : Any>(
     fun discardPendingAudio() {
         listeningSuspended = true
         heldOutbound.removeIf(dialect::isAudioAppend)
-        turnGate.clear(); stallRetryWaiting = false // asleep: a stall retry is not wanted either
+        val dropped = turnGate.pending() > 0
+        turnGate.clear()
+        stallRetryWaiting = false // asleep: a stall retry is not wanted either
+        if (dropped) {
+            // P55: a held style update was dropped with its turn; the next tool result re-sends it.
+            deliveredStyle.forget()
+            dialect.onInstructionsUpdateDropped()
+        }
     }
 
     /** Listening resumed after a sleep. The conversation (and its context) simply continues. */
@@ -371,7 +379,13 @@ open class OpenAiRealtimeClient<C : Any>(
         // The one place execution evidence enters this client (INVARIANT I-1; see DriverTurnPipeline).
         pipeline.onToolResult(callId, output)
         // The call id belongs to this conversation: after a reset there is nothing to answer. A changed style rides this turn (P55, B10).
-        submitReply("tool_result", control = true, before = deliveredStyle.redelivery(dialect.logPrefix, ::instructionsWithContext, dialect::instructionsUpdate))
+        val style = deliveredStyle.redelivery(
+            dialect.logPrefix,
+            ::instructionsWithContext,
+            dialect::instructionsUpdate,
+            supported = dialect.supportsInstructionsUpdate,
+        )
+        submitReply("tool_result", control = true, before = style)
     }
 
     /** One response.create through [turnGate], the path every app-requested reply takes. */

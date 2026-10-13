@@ -2016,3 +2016,4 @@ style lines now say 音色不变 but the delivery must audibly change (sweet: �
 「嘛」「呀」「啦」); the tool's instruction is derived from `PersonaProfiles.toneLines`. Cause 1: the
 sub-fix above. Sources: DashScope client-events page, LiveKit `update_instructions` (openai and
 google plugins), Google AI forum thread 83359.
+- Review fixes 2026-10-13 (offline-proved); open live questions offline tests cannot answer: DashScope's real refusal shape for a mid-session instructions-only `session.update`; Gemini G-1d for a model-role `turnComplete=false` turn; whether a resumed Gemini session re-reads `systemInstruction`.

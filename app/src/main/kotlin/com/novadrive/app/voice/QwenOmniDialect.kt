@@ -76,6 +76,12 @@ class QwenOmniDialect(
 
     override fun sessionUpdate(instructions: String, vadThreshold: Double): String = sessionUpdate(instructions, settings)
 
+    override val supportsInstructionsUpdate = true
+
+    override fun onInstructionsUpdateDropped() {
+        instructionsUpdatePending = false
+    }
+
     /** P55: instructions only; never voice, audio, tools, modalities or turn detection (SPEC-021 B10). */
     override fun instructionsUpdate(instructions: String): String {
         instructionsUpdatePending = true
@@ -331,15 +337,16 @@ class QwenOmniDialect(
                 )
     }
 
+    /** A session.* error while an instructions-only update (P55) is unconfirmed: refused, not fatal. */
+    private fun isInstructionsUpdateRefusal(error: JSONObject): Boolean =
+        instructionsUpdatePending && error.optString("param").startsWith("session.")
+
     /**
      * The server refused a user text item: `param` names an item field that is not a
      * function_call_output field, or the error is an invalid item type. Not scoped to "a text item
      * was just sent": a correction can go out late (held for a reset, or deferred behind a reply),
      * and a refusal must never end the session (SPEC-021 B7; review 2026-10-09).
      */
-    private fun isInstructionsUpdateRefusal(error: JSONObject): Boolean =
-        instructionsUpdatePending && error.optString("param").startsWith("session.")
-
     private fun isTextItemRefusal(error: JSONObject): Boolean {
         val param = error.optString("param")
         if (param in CALL_OUTPUT_PARAMS) return false
