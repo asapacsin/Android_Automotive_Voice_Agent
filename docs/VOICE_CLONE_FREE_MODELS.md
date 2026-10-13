@@ -14,6 +14,9 @@ How to read it:
 - Alibaba free quota is **per model** ("Free quota is independent per model", [AL-FREE]). The owner's
   account has spent most of the qwen3.8 and qwen3.5-omni-plus quota; any model never called may still
   hold its full quota: **per-model; check the console** (Model usage > Free Quota).
+- The 90 days run from the later of "you activate Alibaba Cloud Model Studio" and "the model is released"
+  ([AL-FREE], checked by the planner 2026-10-13). So an older model can have expired even if it was
+  never called, while a model released recently has a fresh 90 days: the console is the truth.
 - AGENTS.md still binds: tests never use `qwen3.8-omni-flash-realtime`; every live Qwen run needs the
   owner's go and `NOVA_SPEND_QWEN_QUOTA=yes`; creating a clone also needs the owner's go.
 
