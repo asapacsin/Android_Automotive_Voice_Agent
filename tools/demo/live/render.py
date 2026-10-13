@@ -6,8 +6,9 @@ OUT holds timeline.json, state.json, driver.wav, reply.wav (see README.md). 1920
 Left: a drawn car screen (route bar, car state, last tool call). Right: the scene title, the driver's
 line, what the model heard, her reply, and the measured latency. The wait for arrival
 (cut_start..cut_end) is cut and marked. The drive scene adds amap.wav (the simulated Amap voice) to the
-mix, a 高德导航 caption while a prompt plays, and （等导航播报结束） while her reply is held. Never
-commit the output.
+mix, a 高德导航 caption while a prompt plays, and （等导航播报结束） while her reply is held. When OUT
+holds prosody.json (prosody.py / style_check.py), each reply gets 「音高 · 起伏 · 语速」, and the style
+scene's s_* replies their change against s_mood1. Never commit the output.
 """
 import ast, json, os, re, subprocess, sys, tempfile, wave
 
@@ -42,6 +43,24 @@ def lines_text():
 def guidance_text():
     src = open(os.path.join(HERE, "make_clips_cloud.py"), encoding="utf-8").read()
     return ast.literal_eval(re.search(r"GUIDANCE = (\{.*?\n\})", src, re.S).group(1))
+
+
+def style_text():
+    src = open(os.path.join(HERE, "make_clips_cloud.py"), encoding="utf-8").read()
+    return ast.literal_eval(re.search(r"STYLE = (\{.*?\n\})", src, re.S).group(1))
+
+
+def prosody_line(key, pros):
+    """「音高 245 Hz · 起伏 12 st · 语速 5.9 字/秒」, plus the change against s_mood1 in the style scene."""
+    s = pros.get(key)
+    if not s:
+        return None
+    line = f"音高 {s['f0_hz']:.0f} Hz · 起伏 {s['spread_st']:.0f} st · 语速 {s['pace_cps']:.1f} 字/秒"
+    base = pros.get("s_mood1")
+    if key.startswith("s_") and key != "s_mood1" and base:
+        line += (f"   对比之前 {s['f0_hz'] / base['f0_hz'] - 1:+.0%} · {s['spread_st'] - base['spread_st']:+.0f} st"
+                 f" · {s['pace_cps'] / base['pace_cps'] - 1:+.0%}" if base["pace_cps"] else "")
+    return line
 
 
 def read_wav(path):
@@ -101,6 +120,9 @@ def main(run, mp4):
     tl = json.load(open(os.path.join(run, "timeline.json"), encoding="utf-8"))
     st = json.load(open(os.path.join(run, "state.json"), encoding="utf-8"))
     texts = lines_text()
+    texts.update(style_text())
+    pros_path = os.path.join(run, "prosody.json")
+    pros = json.load(open(pros_path, encoding="utf-8")) if os.path.exists(pros_path) else {}
     end = tl["end"]
     reply = read_wav(os.path.join(run, "reply.wav"))
     driver = read_wav(os.path.join(run, "driver.wav"))
@@ -246,6 +268,11 @@ def main(run, mp4):
                 d.text((980, y), "小诺", font=f_small, fill=(140, 150, 170)); y += 40
                 for line in wrap(d, "".join(cur["turn"].get("reply", [])) or "（说话中）", f_mid, 880)[:6]:
                     d.text((980, y), line, font=f_mid, fill=(150, 220, 255)); y += 46
+                pl = prosody_line(cur["key"], pros)
+                if pl:
+                    y += 6
+                    for line in wrap(d, pl, f_small, 880)[:2]:
+                        d.text((980, y), line, font=f_small, fill=(255, 200, 140)); y += 36
             if t >= cur["end"]:
                 lat = cur["first"] - cur["end"] if cur["first"] is not None else None
                 # Time she was deliberately held (a prompt or a manoeuvre) is shown, and not counted as slowness.
