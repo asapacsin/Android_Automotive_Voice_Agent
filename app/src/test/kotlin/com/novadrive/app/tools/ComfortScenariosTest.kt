@@ -157,6 +157,34 @@ class ComfortScenariosTest {
     }
 
     @Test
+    fun aSunroofNamedWithAScenarioNeverOpensAWindow() {
+        // P56: 「有蚊子，把天窗关上」 via run_scenario{mosquito} must not move a window.
+        val port = SimulatedVehicleControl()
+        val before = port.cabinState.value.windows
+        context.onSpeechStarted(2); context.onDriverUtterance("有蚊子，把天窗关上", 2)
+        val out = scenario(dispatcher(port), "mosquito")
+        assertFalse(out.getBoolean("ok"), out.toString())
+        assertEquals(ToolCallGuards.UNSUPPORTED_BODY_PART, steps(out).single().getString("error"))
+        assertEquals(before, port.cabinState.value.windows)
+
+        // Independent steps still run: 「有点闷，天窗打开」 powers the climate and raises the fan.
+        val port2 = SimulatedVehicleControl()
+        val fanBefore = port2.climateState.value.fanLevel
+        context.onSpeechStarted(3); context.onDriverUtterance("有点闷，天窗打开", 3)
+        val stuffy = scenario(dispatcher(port2), "stuffy")
+        val s = steps(stuffy)
+        assertTrue(s[0].getBoolean("ok") && s[1].getBoolean("ok"), stuffy.toString())
+        assertEquals(ToolCallGuards.UNSUPPORTED_BODY_PART, s[2].getString("error"))
+        assertEquals(fanBefore + 1, port2.climateState.value.fanLevel)
+        assertTrue(port2.cabinState.value.windows.values.all { it == 0 })
+
+        // 「有蚊子」 alone still opens the windows.
+        context.onSpeechStarted(4); context.onDriverUtterance("有蚊子", 4)
+        assertTrue(scenario(dispatcher(port), "mosquito").getBoolean("ok"))
+        assertTrue(port.cabinState.value.windows.values.all { it == 50 })
+    }
+
+    @Test
     fun drowsyOffersARestStopAndNeverNavigates() {
         val out = scenario(dispatcher(), "drowsy")
         assertTrue(out.getBoolean("ok"), out.toString())

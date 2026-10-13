@@ -22,6 +22,9 @@ class UtteranceIntentResolver(
         return UtteranceIntent(hit.second)
     }
 
+    /** The words that name [capabilityId], longest first: the vocabulary guards share with this resolver. */
+    fun cuesFor(capabilityId: String): List<String> = cues.filter { it.second == capabilityId }.map { it.first }
+
     companion object {
         /** `speech.speaking_style` (contracts Capability.kt); CapabilityIds has no constant for it yet. */
         const val SPEECH_SPEAKING_STYLE = "speech.speaking_style"
@@ -108,6 +111,7 @@ class UtteranceIntentResolver(
                 "座椅" to CapabilityIds.BODY_SEAT_HEIGHT,
                 "座位" to CapabilityIds.BODY_SEAT_HEIGHT,
                 "天窗" to CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS,
+                "天幕" to CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS,
                 "后备箱" to CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS,
                 "车门" to CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS,
                 "车灯" to CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS,
