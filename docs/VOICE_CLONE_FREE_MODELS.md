@@ -8,7 +8,8 @@ picked later. Machine-readable copy: [config/voice_clone_free_models.yaml](../co
 **Owner plan (2026-10-13): Gemini first, Ayano last.** Build and demo on Gemini (free, no clone)
 until the work is done; then switch to Ayano. For that switch the recommended pick is
 `qwen3.5-omni-flash-realtime` (free clone, its own free quota if the console still shows it, same
-adapter after a re-clone and an allow-list entry), which keeps the qwen3.8 reserve for the final take.
+adapter after a re-clone and an allow-list entry), which keeps the qwen3.8 reserve for the final take. Qwen3.5-Omni documents "adjusting volume, speaking rate, and emotion through
+instructions" (qwen-omni page, 2026-10-13), which the speaking styles rely on; not yet measured with Ayano (OPEN_PROBLEMS P55).
 
 How to read it:
 - Every fact carries a source key (see "Sources", all fetched 2026-10-13 with curl, no account, no key,

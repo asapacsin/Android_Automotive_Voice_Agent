@@ -2029,3 +2029,14 @@ google plugins), Google AI forum thread 83359.
 | final2 | + sweet voice line asks for a higher, softer pitch | gemini-3.8-live | +5 % (+2.8 st, −22 % pace) / +13 % / +13 % (+2.2 st) | **PASS** |
 
 In every run with the fix: the panel switched sweet→default, `style_redelivered` was logged once per switch, no session error. Holding the style is fixed; how strongly her delivery changes varies run to run (one PASS with the current wording, not yet a rate). The sweet voice line now asks for 音调比平时明显高一点、声音更软更轻 (planner, 2026-10-13, after the "final" run). Video: `demo-videos/style_before_after_2026-10-13.mp4` (before, then after). Open: whether Ayano on Qwen changes delivery at all (owner's go for one short session).
+
+**Research 2026-10-13 (rule 6), for the Ayano switch-back test:** Alibaba's Qwen-Omni page
+(alibabacloud.com/help/en/model-studio/qwen-omni, fetched 2026-10-13) documents for the Qwen3.5-Omni
+series: "Audio control: Supports adjusting volume, speaking rate, and emotion through instructions" —
+the mechanism the styles use. Not stated: the same for qwen3.8 realtime, a separate pitch control, or
+that it holds for a cloned voice. The voice-cloning page (qwen-omni-voice-cloning) advises recording the
+sample in the "target emotion (such as friendly or serious)", so a clone may keep the sample's manner,
+and names a "qwen3.5-omni talker system instruct mode". Gemini, for comparison: "affective dialog" is
+"not supported in Gemini 3.1 Flash Live" (ai.google.dev live-guide). The switch-back test (owner says
+when; Gemini first, Ayano last) is the style scene on the Ayano model, graded by style_check.py against
+her measured default (take8: ~220-235 Hz, pace 7-11 chars/s).
