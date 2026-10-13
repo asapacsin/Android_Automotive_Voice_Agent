@@ -205,6 +205,30 @@ class GeminiLiveClientTest {
         assertEquals(1, fake.messages("setup").size, "no reconnect")
     }
 
+    /** P55 review: a tool result after the turn closed sends nothing then; the turn answering it carries it. */
+    @Test
+    fun aStyleChangeAfterAnInterruptedTurnWaitsForTheTurnThatAnswersTheToolResult() = runBlocking {
+        val fake = fake()
+        val client = client()
+        val events = collect(client)
+        client.connect(config())
+        client.onLocalSpeechActivity(true)
+        fake.send(audio())
+        fake.send(toolCall("s1", "set_speaking_style", """{"style":"sweet"}"""))
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ToolCall } }
+        fake.send(content(""""interrupted":true"""))
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ResponseDone } }
+        com.novadrive.app.SpeakingStyleState.restore(com.novadrive.app.SpeakingStyle.SWEET)
+        client.sendToolResult("s1", """{"ok":true,"tool":"set_speaking_style"}""")
+        Thread.sleep(300)
+        assertTrue(instructionTurns(fake).isEmpty(), "not right after the toolResponse")
+        fake.send(audio())
+        fake.send(turnComplete)
+        waitUntil { instructionTurns(fake).isNotEmpty() }
+        Thread.sleep(300)
+        assertFalse(instructionTurns(fake).single().getBoolean("turnComplete"))
+    }
+
     private fun claimTurn(fake: FakeGemini) {
         fake.send(input("打开空调"))
         fake.send(audio())

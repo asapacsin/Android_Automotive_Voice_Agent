@@ -421,6 +421,18 @@ class ActionClaimGuardTest {
         assertEquals(ActionClaimGuard.nudgeFor("说话霸道一点"), g2.onResponseDone(message, "好的，已经调成霸道模式了。"))
     }
 
+    /** P55 review: 「别嗲了」 asks for the normal voice; the nudge must not steer to sweet. */
+    @Test
+    fun aNegatedStyleRequestIsNudgedToDefault() {
+        guard.onUserTranscript("别嗲了")
+        val nudge = guard.onResponseDone(message, "好的，不嗲了。")
+        assertNotNull(nudge)
+        assertTrue(nudge!!.contains("default"), nudge)
+        assertFalse(nudge.contains("sweet"), nudge)
+        val positive = ActionClaimGuard.nudgeFor("说话再嗲一点")
+        assertTrue(positive.contains("嗲、甜、可爱、撒娇→sweet"), positive)
+    }
+
     /** Owner demo 2026-09-28 (P39): prompts with a list on screen are not claims. */
     @Test
     fun aPromptToChooseIsNotAnUnverifiedClaim() {

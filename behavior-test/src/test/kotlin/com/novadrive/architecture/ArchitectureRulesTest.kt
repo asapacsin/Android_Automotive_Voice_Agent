@@ -216,7 +216,7 @@ class ArchitectureRulesTest {
             "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt" to 80,
             // SPEC-021 step 1 (2026-10-08): the turn handling moved out of BaiduFlexClient, recorded at 675.
             // SPEC-020 (2026-10-09): the Maia wait cue is captured in this client so it is not judged as the reply.
-            "app/src/main/kotlin/com/novadrive/app/voice/OpenAiRealtimeClient.kt" to 802, // P50 2026-10-09: streamed words, stall and underrun wiring (logic in ReplyStreaming.kt); +1 2026-10-11: the stall-notice hook (logic in WaitCueClock); +3 2026-10-11: per-reply usage log and history cap (logic in ReplyUsage.kt); +6 2026-10-11: a cue request holds the turn gate (review R1); +12 2026-10-11: a stall retry waits for its notice and is dropped if the driver speaks (re-review R1a)
+            "app/src/main/kotlin/com/novadrive/app/voice/OpenAiRealtimeClient.kt" to 815, // P55 2026-10-13: style re-delivery (+13: one statement per line, sleep forgets a dropped update; logic in DeliveredStyle.kt); P50 2026-10-09: streamed words, stall and underrun wiring (logic in ReplyStreaming.kt); +1 2026-10-11: the stall-notice hook (logic in WaitCueClock); +3 2026-10-11: per-reply usage log and history cap (logic in ReplyUsage.kt); +6 2026-10-11: a cue request holds the turn gate (review R1); +12 2026-10-11: a stall retry waits for its notice and is dropped if the driver speaks (re-review R1a)
             "app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt" to 410, // SPEC-014 clause release (budget in ReplyStreaming.kt)
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapNaviViewHost.kt" to 900,
             "app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt" to 470,
@@ -227,7 +227,7 @@ class ArchitectureRulesTest {
             // SPEC-018 step 1: GUIDANCE-turn hooks at the client's turn points; correlation state already extracted to GeminiPromptTurn.kt
             // ADR-016 / SPEC-019 (2026-10-02): four SpeechText call sites at the transcript points; the logic is in GeminiSpeechText.kt.
             // P45 (2026-10-02): interrupt-before-verdict drop, empty-turn log, timing call sites; the timing logic is in GeminiTurnTiming.kt.
-            "app/src/main/kotlin/com/novadrive/app/voice/GeminiLiveClient.kt" to 640,
+            "app/src/main/kotlin/com/novadrive/app/voice/GeminiLiveClient.kt" to 647, // P55 2026-10-13: style re-delivery (+7: one statement per line; logic in DeliveredStyle.kt)
             "app/src/main/kotlin/com/novadrive/app/voice/RealtimeProviderFactory.kt" to 150,
         )
         val over = budgets.mapNotNull { (path, budget) ->

@@ -412,6 +412,35 @@ class QwenOmniClientTest {
         client.disconnect()
     }
 
+    /** P55 review: an update held behind a response and dropped by sleep goes out once, on a later tool turn. */
+    @Test
+    fun aStyleUpdateDroppedBySleepIsResentOnceOnTheNextToolTurn() = runBlocking {
+        enqueueServer()
+        val client = client()
+        val seen = collect(client)
+        client.connect(config())
+        send(
+            """{"type":"input_audio_buffer.speech_started"}""",
+            """{"type":"input_audio_buffer.speech_stopped"}""",
+            """{"type":"response.created","response":{"id":"r1"}}""",
+            """{"type":"response.function_call_arguments.done","call_id":"s1","name":"set_speaking_style","arguments":"{\"style\":\"sweet\"}"}""",
+        )
+        awaitUntil({ "seen: $seen" }) { seen.any { it is DomainVoiceEvent.ToolCall && it.callId == "s1" } }
+        com.novadrive.app.SpeakingStyleState.restore(com.novadrive.app.SpeakingStyle.SWEET)
+        client.sendFunctionResult("s1", """{"ok":true,"tool":"set_speaking_style"}""")
+        Thread.sleep(NEGATIVE_WAIT_MS)
+        client.discardPendingAudio()
+        send("""{"type":"response.done","response":{"status":"completed","output":[{"type":"function_call","call_id":"s1"}]}}""")
+        Thread.sleep(NEGATIVE_WAIT_MS)
+        assertTrue(instructionsUpdates().isEmpty(), "dropped with its turn")
+        client.resumeListening()
+        toolTurn(client, seen, "c2", "control_climate", null)
+        assertEquals(1, instructionsUpdates().size, "re-sent once on the later tool turn")
+        toolTurn(client, seen, "c3", "control_climate", null)
+        assertEquals(1, instructionsUpdates().size)
+        client.disconnect()
+    }
+
     @Test
     fun aRefusedInstructionsUpdateIsNotSessionFatalAndLaterToolTurnsStillWork() = runBlocking {
         enqueueServer(refuseInstructionsUpdate = true)

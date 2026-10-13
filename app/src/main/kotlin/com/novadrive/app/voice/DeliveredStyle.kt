@@ -19,32 +19,66 @@ internal class DeliveredStyle(
 ) {
     @Volatile private var delivered: SpeakingStyle? = null
 
+    /** The style delivered before the last re-delivery, until that one is known to be sent. */
+    @Volatile private var beforeRedelivery: SpeakingStyle? = null
+    @Volatile private var unconfirmed = false
+
     /** A tool result went out: the next idle point checks the style once. */
     @Volatile var checkPending = false
 
     /** The style to compose instructions with now; it counts as delivered once they are sent. */
-    fun take(): SpeakingStyle = current().also { delivered = it }
+    fun take(): SpeakingStyle {
+        unconfirmed = false
+        return current().also { delivered = it }
+    }
 
     /** True when the current style differs from the one the conversation was last given. */
     fun changed(): Boolean = current() != delivered
 
+    /** The last re-delivery never reached the provider: the next idle point sends it again. */
+    fun forget() {
+        if (!unconfirmed) return
+        delivered = beforeRedelivery
+        unconfirmed = false
+    }
+
     /**
      * The message re-sending [instructions] (the setup text, composed via [take]) when the style
-     * changed, or nothing; [wire] returns null when the provider takes no such message. Logs the
-     * style name and the length only, never the text (I-8).
+     * changed and the provider takes such a message ([supported]; nothing is composed otherwise),
+     * or nothing. Logs the style name and the length only, never the text (I-8).
      */
-    fun redelivery(provider: String, instructions: () -> String, wire: (String) -> String?): List<String> {
-        if (!changed()) return emptyList()
+    fun redelivery(
+        provider: String,
+        instructions: () -> String,
+        wire: (String) -> String?,
+        supported: Boolean = true,
+    ): List<String> {
+        if (!supported || !changed()) return emptyList()
+        val before = delivered
         val text = instructions()
-        val message = wire(text) ?: return emptyList()
+        val message = wire(text)
+        if (message == null) {
+            delivered = before
+            return emptyList()
+        }
+        beforeRedelivery = before
+        unconfirmed = true
         DebugVoiceLog.log("style_redelivered provider=$provider style=${delivered?.wireName} chars=${text.length}")
         return listOf(message)
     }
 
-    /** At an idle point: once per tool result ([checkPending]), the re-delivery if the style changed. */
-    fun atIdle(): List<String> {
-        if (!checkPending) return emptyList()
+    /**
+     * At an idle point: once per tool result ([checkPending]), the re-delivery if the style changed,
+     * handed to [send]; a send the socket did not accept is retried at the next idle point.
+     */
+    fun atIdle(send: (String) -> Boolean) {
+        if (!checkPending) return
         checkPending = false
-        return redelivery(provider, instructions, wire)
+        for (message in redelivery(provider, instructions, wire)) {
+            if (!send(message)) {
+                forget()
+                checkPending = true
+            }
+        }
     }
 }

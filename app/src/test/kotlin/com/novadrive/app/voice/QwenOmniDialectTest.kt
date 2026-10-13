@@ -153,6 +153,28 @@ class QwenOmniDialectTest {
     }
 
     @Test
+    fun afterARefusalAndAConfirmedUpdateASessionErrorIsFatalAgain() {
+        val refusal = """{"type":"error","error":{"code":"InvalidParameter","param":"session.instructions","message":"no"}}"""
+        val dialect = opened()
+        dialect.instructionsUpdate("PERSONA")
+        assertTrue(dialect.parseCommonEvent(refusal, false).isEmpty())
+        dialect.instructionsUpdate("PERSONA")
+        dialect.onSessionUpdated("""{"type":"session.updated","session":{"model":"m"}}""")
+        assertTrue(dialect.parseCommonEvent(refusal, false).single() is DomainVoiceEvent.Error, "fatal again")
+    }
+
+    @Test
+    fun onlyQwenTakesAnInstructionsUpdateAndADroppedOneIsNoLongerPending() {
+        assertTrue(opened().supportsInstructionsUpdate)
+        assertFalse(BaiduFlexDialect(BaiduAccessTokenClient(okhttp3.OkHttpClient()), requireTls = true).supportsInstructionsUpdate)
+        val refusal = """{"type":"error","error":{"code":"InvalidParameter","param":"session.instructions","message":"no"}}"""
+        val dialect = opened()
+        dialect.instructionsUpdate("PERSONA")
+        dialect.onInstructionsUpdateDropped()
+        assertTrue(dialect.parseCommonEvent(refusal, false).single() is DomainVoiceEvent.Error)
+    }
+
+    @Test
     fun requestUsesTheWorkspaceEndpointAndBearerKeyOnlyInTheHeader() = runBlocking {
         val request: Request = QwenOmniDialect().buildRequest(config)
         assertEquals("$workspace.ap-southeast-1.maas.aliyuncs.com", request.url.host)

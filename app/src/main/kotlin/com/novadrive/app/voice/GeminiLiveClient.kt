@@ -72,7 +72,8 @@ class GeminiLiveClient(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     @Volatile private var socket: WebSocket? = null
     @Volatile private var ready: CompletableDeferred<Unit>? = null
-    @Volatile private var model: String = ""; @Volatile private var rawInstructions = "" // P55: re-sent by deliveredStyle
+    @Volatile private var model: String = ""
+    @Volatile private var rawInstructions = "" // P55: re-sent by deliveredStyle
 
     /** Held in memory only; never logged. Sent in the next [connect]'s setup. */
     @Volatile private var resumptionHandle: String? = null
@@ -117,7 +118,11 @@ class GeminiLiveClient(
             override val listeningSuspended: Boolean get() = this@GeminiLiveClient.listeningSuspended
         },
     )
-    private val deliveredStyle = DeliveredStyle(provider = "gemini", instructions = { instructionsWithContext(rawInstructions) }, wire = GeminiLiveProtocol::instructionsTurn) // P55, B10
+    private val deliveredStyle = DeliveredStyle(
+        provider = "gemini",
+        instructions = { instructionsWithContext(rawInstructions) },
+        wire = GeminiLiveProtocol::instructionsTurn,
+    ) // P55, B10
     private val speech = GeminiSpeechText(speechTextEvents, ::emit, pipeline::filter, prompt::suppressed)
     private val timing = GeminiTurnTiming()
 
@@ -138,7 +143,8 @@ class GeminiLiveClient(
         audioErrorReported = false
         playbackActive = false
         callNames.clear()
-        model = settings.model; rawInstructions = config.instructions
+        model = settings.model
+        rawInstructions = config.instructions
         val current = generation.incrementAndGet()
         val pending = CompletableDeferred<Unit>()
         ready = pending
@@ -207,7 +213,7 @@ class GeminiLiveClient(
         DebugVoiceLog.log("gemini_tool_response id=$callId chars=${output.length}")
         // The one place execution evidence enters this client (INVARIANT I-1); not a GUIDANCE call.
         if (!prompt.callIds.remove(callId)) pipeline.onToolResult(callId, output)
-        deliveredStyle.checkPending = true; synchronized(this) { if (!turnOpen) deliveredStyle.atIdle().forEach(::trySend) }
+        deliveredStyle.checkPending = true // P55: delivered at the close of the turn answering this
     }
 
     /**
@@ -588,7 +594,8 @@ class GeminiLiveClient(
         pipeline.releaseFallback()
         clearTurnState()
         onsetSeen = false
-        clientCancelled = false; deliveredStyle.atIdle().forEach(::trySend) // P55: idle, a changed style once
+        clientCancelled = false
+        deliveredStyle.atIdle(::trySend) // P55: idle, a changed style once
     }
 
     private fun onToolCall(raw: GeminiLiveProtocol.RawCall) {
