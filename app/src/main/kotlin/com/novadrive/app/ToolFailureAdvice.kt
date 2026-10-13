@@ -53,6 +53,9 @@ object ToolFailureAdvice {
         PhoneCallTool.CALL_FAILED to
             "拨号没有成功，没有接通。" +
             "请用一句话如实告诉用户没打出去，不要谎称已经接通。",
+        ToolCallGuards.SUNROOF_UNSUPPORTED to
+            "小诺控制不了天窗，所以没有执行，车窗也没有动。" +
+            "请用一句话如实说暂时不支持开关天窗，不要说已经打开，也不要改开车窗。",
         "MEDIA_LIBRARY_UNSUPPORTED" to
             "control_music 只能放内置曲目，不能放用户说的那首，所以没有播放。" +
             "用户说了歌名、歌手、作品或描述，请改用 play_music 按描述去放，不要谎称已经播放，也不要改放内置曲目。",

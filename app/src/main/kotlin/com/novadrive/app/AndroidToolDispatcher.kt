@@ -209,6 +209,7 @@ class AndroidToolDispatcher(
         if (call.arguments.containsKey("_validation_error")) return null
         val context = driverContext()
         val code = ToolCallGuards.unsupportedMedia(call, context)
+            ?: ToolCallGuards.sunroofOnWindowTool(call, context)
             ?: ToolCallGuards.ambiguousReferent(call, context)
             ?: ToolCallGuards.repeatedInTurn(call, context)
         return code?.let { failed(call, it, ToolCallGuards.refusalDetails(it, context)) }

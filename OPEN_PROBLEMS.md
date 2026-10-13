@@ -2040,3 +2040,11 @@ and names a "qwen3.5-omni talker system instruct mode". Gemini, for comparison: 
 "not supported in Gemini 3.1 Flash Live" (ai.google.dev live-guide). The switch-back test (owner says
 when; Gemini first, Ayano last) is the style scene on the Ayano model, graded by style_check.py against
 her measured default (take8: ~220-235 Hz, pace 7-11 chars/s).
+
+## P56 — 「帮我把天窗打开」 opened all four windows
+
+**Found 2026-10-13, third tryout run** (`NOVA_LIVE_SCENES=tryout`, gemini-3.1-flash-live-preview, after the P55 fix; docs/DEMO_TRYOUT.md): the model heard 「帮我把天窗打开」 correctly and called `control_window` {action=open, window=all}; the dispatcher ran it and all four windows went to 100 %. The two earlier tryout runs refused this line, so it is model variance — and a prompt rule (`FLEX_TOOL_RULE` 「没有对应工具的请求（例如调音量、开天窗）要用一句话说明暂时不支持」) is not enforcement (AGENTS.md rule 4). SPEC-006 F-7 already required "refuse; do not execute a *nearby* supported action", but only the music case (`MEDIA_LIBRARY_UNSUPPORTED`) was enforced.
+
+**Fix:** `ToolCallGuards.sunroofOnWindowTool`, in the dispatcher's existing guard chain: a `control_window` call whose driver words name 天窗/天幕 and no other window is refused `SUNROOF_UNSUPPORTED` before anything moves; the advice (`ToolFailureAdvice`) says nothing ran and asks for one honest sentence, not a window instead. It only judges words of the turn being answered (`currentEpoch >= capabilityEpoch`): when the call arrives before this turn's transcript, the text is the previous turn's, and the call is let through rather than guessed at. On Gemini the input transcript is flushed when the turn opens, before the call is dispatched (`GeminiLiveClient.openTurn`). Research: no web search tool in this session; followed the repository's own precedent for the same failure class (SPEC-006 F-7 / SPEC-017 `unsupportedMedia`: decide on the driver's words in `ToolCallGuards`, word the refusal in `ToolFailureAdvice`).
+
+**Evidence:** `ToolCallGuardSunroofTest` 5/0 (through the real dispatcher: ok=false, no window moved; 天幕 refused; 「天窗和车窗都打开」 and ordinary window requests pass; a 天窗 from the previous turn does not block this turn's window call). Live re-run on Gemini: see DEMO-TRYOUT-001.
