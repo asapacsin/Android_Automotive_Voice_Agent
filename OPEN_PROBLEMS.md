@@ -1966,3 +1966,35 @@ A type-less frame with neither field is still a protocol error. All four documen
 **Fix:** the existing nearby search (`navigate_to` → `DestinationQuery.isNearbyRequest`, distance-sorted) is named for this case in three places: `navigate_to`'s description (「附近有加油站吗」 with no route → destination=附近的加油站), `query_live_info`'s along_route line (no route → not along_route), and the `NOT_NAVIGATING` advice (a nearby-place question → call navigate_to instead of saying 没在导航). SPEC-011's failure row is updated. Research: Gemini function-calling best practice is a specific description saying when to use each tool (ai.google.dev/gemini-api/docs/function-calling, "Best practices"); nothing more specific found for overlapping tools.
 
 **Evidence:** second tryout run, u_gas `navigate_to✓` 2.5 s, u_cancel 2.4 s (was 11.3 s); 18/19 lines PASS. Golden tool declarations updated; `:app:testDebugUnitTest` 1843/0, `:behavior-test:test` 131/0.
+
+## P55 — 10-13 bug: 「嗲一点」 changes neither the style on screen nor how she speaks
+
+**Reported by the owner 2026-10-13** after watching the demo video: after 「能不能说话再稍微嗲一点」 the
+simulated car panel's 说话风格 stayed `default` and her replies did not sound different; the demo
+showed no before/after and no switch back. Owner's requirement: solve it, and hand over a demo that
+shows the function changing on screen and her delivery changing, before and after, and back.
+
+**Evidence (recorded runs, c_sweet and the turns after it):**
+
+| Run | `set_speaking_style` called? | After it |
+| --- | --- | --- |
+| Qwen take 3 | no | no reply, then plain 「座椅升高了一档」 |
+| Qwen take 6 | no — said 「可以，那我就稍微甜一点说话」, nothing ran, nothing corrected it | plain |
+| Gemini commute rehearsal 2026-10-12 | yes | 「哼，真是麻烦…」 — tsundere wording, not sweet |
+| Gemini drive rehearsal 2026-10-13 | yes | plain 「座椅已经升高了一档」 |
+
+Measured on the Gemini audio (median F0 / F0 spread / pace): default turns ≈ 205 Hz, 7 st, 7.5 chars/s;
+the two turns right after the switch 245 Hz, 12+ st, 5.9 chars/s; from the third turn back to ≈ 210 Hz.
+
+**Causes:**
+1. A style request with no tool call is not corrected (the claim gate covers car actions, not style).
+2. The style enters the session instructions only when a session connects
+   (`PersonaProfiles.compose` in `OpenAiRealtimeClient` / `GeminiLiveClient` `instructionsWithContext`).
+   Qwen keeps one session for the whole drive, so a mid-drive change lives only in one tool result and
+   fades within a turn or two.
+3. The tool result and the voice-style line say 「声音不变」, telling an end-to-end voice model not to
+   change how it sounds.
+
+**Status:** open. The persistence design is with the decider (AGENTS.md hard rule); a style scene
+(`NOVA_LIVE_SCENES=style`: same question before, after 嗲一点, two turns later, after 正常一点, with
+measured pitch/range/pace on the video and a grader) is being built to prove the fix.
