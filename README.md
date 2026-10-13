@@ -26,3 +26,14 @@ One text-only session per line, no tools; all 8 read word for word, no errors.
 voice Ayano, on **qwen3.5-omni-plus-realtime** (JVM live harness, simulated car; not device evidence).
 `check_req.py` PASS: every reply 2.6–3.5 s after the driver stops, every tool call right and successful.
 Same 3.5 Plus limit: 「嗲一点」 is answered in words only. Code at `claude/10-9` 22d89f3.
+
+## Navigation drive simulation (Gemini rehearsal): 2026-10-13
+
+`drive_simulation_gemini_rehearsal_2026-10-13.mp4` (336 s) shows the whole commute as a drive: 横琴创业谷 → 横琴镇 with turn-by-turn guidance.
+- **The voice is Gemini (`gemini-3.1-flash-live-preview`), not Ayano.** This is the free rehearsal; the Ayano take uses Qwen.
+- **Real:** the app's voice stack, tool calls, claim gate and speech rules. Her replies wait while a guidance prompt plays, and she holds back near a turn. Also real: the Amap place search (the result is fetched before the session) and Amap weather.
+- **Simulated:** the car, the route and the drive, and the music app. The guidance prompts are Amap-style lines in a third voice (Piper), not Amap's own voice.
+- **Not shown:** the Amap SDK map screen, which runs only on the emulator or phone.
+- **Result:** `check_req.py` PASS on all 12 lines, 2.1–3.2 s. The one exception is 开始导航, which waited 4.5 s by rule for the start-of-navigation prompt.
+
+Code at `claude/10-9` 0d2d588. Logs are not published (they hold transcripts).
