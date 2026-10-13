@@ -53,5 +53,13 @@ class UtteranceIntentResolverTest {
             assertNotEquals(UtteranceIntentResolver.SPEECH_SPEAKING_STYLE, resolver.resolve(it)?.capabilityId, it)
         }
     }
+    @Test
+    fun roofShadeNamesTheUnsupportedBodyCapability() {
+        assertEquals(CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS, resolver.resolve("开一下天幕")?.capabilityId)
+        assertEquals(DriverTurn.Kind.NO_TOOL_ACTION, DriverTurn.classify("开一下天幕"))
+        val cues = resolver.cuesFor(CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS)
+        assertEquals(setOf("天窗", "天幕", "后备箱", "车门", "车灯", "雨刷"), cues.toSet())
+        assertEquals(setOf("车窗", "窗户", "开窗", "关窗"), resolver.cuesFor(CapabilityIds.BODY_WINDOW).toSet())
+    }
 }
 

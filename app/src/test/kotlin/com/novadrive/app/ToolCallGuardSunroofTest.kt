@@ -33,20 +33,44 @@ class ToolCallGuardSunroofTest {
         }
         val output = JSONObject(dispatcher.dispatch(openAll).output!!)
         assertFalse(output.getBoolean("ok"))
-        assertEquals(ToolCallGuards.SUNROOF_UNSUPPORTED, output.getString("error"))
-        assertTrue("天窗" in output.getString("next") && "不要改开车窗" in output.getString("next"), output.toString())
+        assertEquals(ToolCallGuards.UNSUPPORTED_BODY_PART, output.getString("error"))
+        assertTrue("没有执行" in output.getString("next") && "不要改开车窗" in output.getString("next"), output.toString())
         assertEquals(before, car.getCabinState().windows, "no window may move")
     }
 
     @Test
     fun `sunroof and roof-shade phrasings are refused`() {
         listOf("把天窗打开", "天窗开一下", "开一下天幕", "天窗关上吧").forEach {
-            assertEquals(ToolCallGuards.SUNROOF_UNSUPPORTED, ToolCallGuards.sunroofOnWindowTool(openAll, context(it)), it)
+            assertEquals(ToolCallGuards.UNSUPPORTED_BODY_PART, ToolCallGuards.sunroofOnWindowTool(openAll, context(it)), it)
+        }
+    }
+
+    @Test
+    fun `the live 3_1 transcript is refused through the dispatcher and directly`() = runBlocking {
+        // Gemini 3.1 heard 「帮 我 把 天 窗 打 开 。」; GeminiLiveClient normalises it before DriverContext.
+        val car = SimulatedVehicleControl()
+        val before = car.getCabinState().windows
+        val dispatcher = AndroidToolDispatcher(WillingExecutor, ClimateToolHandler(car), noCamera(), cabin = car) {
+            context(com.novadrive.app.voice.TranscriptText.normalize("帮 我 把 天 窗 打 开 。"))
+        }
+        assertEquals(ToolCallGuards.UNSUPPORTED_BODY_PART, JSONObject(dispatcher.dispatch(openAll).output!!).getString("error"))
+        assertEquals(before, car.getCabinState().windows, "no window may move")
+        // Should a spaced line ever reach DriverContext raw, the guard reads it through the same helper.
+        assertEquals(ToolCallGuards.UNSUPPORTED_BODY_PART, ToolCallGuards.sunroofOnWindowTool(openAll, context("帮 我 把 天 窗 打 开 。")))
+    }
+
+    @Test
+    fun `other parts this product cannot move are refused on the window tool`() {
+        listOf("把车门打开", "开一下后备箱").forEach {
+            assertEquals(ToolCallGuards.UNSUPPORTED_BODY_PART, ToolCallGuards.sunroofOnWindowTool(openAll, context(it)), it)
         }
     }
 
     @Test
     fun `an ordinary window request goes through`() {
+        listOf("把 我 这 边 的 窗 户 开 一 点 。", "天 窗 和 车 窗 都 打 开").forEach {
+            assertNull(ToolCallGuards.sunroofOnWindowTool(openAll, context(it)), it)
+        }
         listOf("把我这边的窗户开一点", "打开车窗", "天窗和车窗都打开", "车窗开一半，天窗不用").forEach {
             assertNull(ToolCallGuards.sunroofOnWindowTool(openAll, context(it)), it)
         }

@@ -418,6 +418,23 @@ class GeminiLiveClientTest {
     }
 
     @Test
+    fun spacedInputTranscriptReachesTheDriverUnspaced() = runBlocking {
+        // P56: Gemini 3.1 character-spaces its input transcripts since 2026-10-12.
+        val fake = fake()
+        val client = client()
+        val events = collect(client)
+        client.connect(config())
+        fake.send(input("把 我 这 边 的 窗 户 开 一 点 。"))
+        fake.send(audio())
+        fake.send(turnComplete)
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.UserTranscript } }
+        val heard = events.snapshot().filterIsInstance<DomainVoiceEvent.UserTranscript>().single().text
+        assertEquals("把我这边的窗户开一点。", heard)
+        assertEquals(DriverTurn.classify("把我这边的窗户开一点。"), DriverTurn.classify(heard))
+        assertEquals(DriverTurn.Kind.ACTION, DriverTurn.classify(heard))
+    }
+
+    @Test
     fun keyNeverAppearsInFailures() = runBlocking {
         fake(ready = false)
         val slow = GeminiLiveClient(OkHttpClient(), readyTimeoutMs = 300, requireTls = false, contextHint = { null }).also { clients += it }

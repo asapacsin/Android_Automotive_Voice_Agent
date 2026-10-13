@@ -534,7 +534,7 @@ class GeminiLiveClient(
     }
 
     private fun flushInput() {
-        val text = inputText.toString()
+        val text = TranscriptText.normalize(inputText.toString())
         inputText.setLength(0)
         if (text.isBlank()) return
         Telemetry.record(EventType.ASR_RESULT) { text }

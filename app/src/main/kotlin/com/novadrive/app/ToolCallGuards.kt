@@ -8,6 +8,9 @@ import com.novadrive.app.voice.ActionClaimGuard
 import com.novadrive.app.voice.ClimateToolActions
 import com.novadrive.app.voice.ContextResolver
 import com.novadrive.app.voice.DriverContext
+import com.novadrive.app.voice.TranscriptText
+import com.novadrive.app.voice.UtteranceIntentResolver
+import com.novadrive.contracts.CapabilityIds
 import com.novadrive.ingress.realtime.DomainVoiceEvent
 import org.json.JSONObject
 
@@ -41,10 +44,13 @@ object ToolCallGuards {
     const val WORK_NOT_SET = "WORK_NOT_SET"
     const val DUPLICATE_IN_TURN = "DUPLICATE_IN_TURN"
     const val AMBIGUOUS_REFERENT = "AMBIGUOUS_REFERENT"
-    const val SUNROOF_UNSUPPORTED = "SUNROOF_UNSUPPORTED"
+    const val UNSUPPORTED_BODY_PART = "UNSUPPORTED_BODY_PART"
 
-    /** Roof openings this product cannot move (CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS). */
-    private val ROOF_WORDS = listOf("天窗", "天幕")
+    /** Body parts this product cannot move, from their owner, [UtteranceIntentResolver]. */
+    private val unsupportedPartWords: List<String> by lazy {
+        UtteranceIntentResolver.product().cuesFor(CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS)
+    }
+    private val windowWords: List<String> by lazy { UtteranceIntentResolver.product().cuesFor(CapabilityIds.BODY_WINDOW) }
 
     /**
      * The same call, with the same arguments, twice in one driver turn.
@@ -101,15 +107,17 @@ object ToolCallGuards {
      * action. The driver's words decide, and only when they belong to the utterance being answered:
      * a transcript older than the speech onset is the previous turn's, so a 天窗 said then must not
      * block a window asked for now (the guard lets the call through rather than guess). A request
-     * that also names an ordinary window (「天窗和车窗都打开」) is not blocked.
+     * that also names an ordinary window (「天窗和车窗都打开」) is not blocked. The vocabulary is
+     * [UtteranceIntentResolver]'s, so 车门/后备箱/车灯/雨刷 on control_window are refused too. The text
+     * is normalised by the one shared [TranscriptText] in case a spaced transcript reaches here raw.
      */
     fun sunroofOnWindowTool(call: DomainVoiceEvent.ToolCall, context: DriverContext?): String? {
         if (call.name != com.novadrive.app.voice.BodyToolActions.WINDOW_TOOL || context == null) return null
         if (context.currentEpoch() <= 0 || context.currentEpoch() < context.capabilityEpoch()) return null
-        val said = context.currentRequestText()
-        if (ROOF_WORDS.none { it in said }) return null
-        val rest = ROOF_WORDS.fold(said) { text, word -> text.replace(word, "") }
-        return if ("窗" in rest) null else SUNROOF_UNSUPPORTED
+        val said = TranscriptText.normalize(context.currentRequestText())
+        if (unsupportedPartWords.none { it in said }) return null
+        val rest = unsupportedPartWords.fold(said) { text, word -> text.replace(word, "") }
+        return if (windowWords.any { it in rest } || "窗" in rest) null else UNSUPPORTED_BODY_PART
     }
 
     /**
