@@ -33,7 +33,7 @@ audible word to her first audible reply (as `check_req.py` measures them).
 | 16 | u_mumble | 嗯……那个…… | no ✓ tool and no claim; a short reply or none |
 | 17 | u_call | 给我老婆打个电话 | place_call with an honest result, or an honest refusal; never a claim of calling without ✓ |
 | 18 | u_navoff | 不用导航了 | exit_navigation_mode ✓ |
-| 19 | u_bye | 好了，谢谢 | chat reply ≤ 3.0 s |
+| 19 | u_bye | 好了，谢谢 | a reply ≤ 3.0 s; no tool except `end_conversation` (a goodbye may end the conversation, as the persona asks for 没事了-style closings; the JVM harness answers it NO_ACTIVE_SESSION) |
 
 Every line also: some reply within 5.0 s (except u_mumble); no session error (`state=ERROR`,
 `*_PROTOCOL_ERROR`, `error=`, three or more reconnects); a reply the claim gate dropped for an

@@ -35,7 +35,7 @@ EXPECT = {
     "u_dest": "搜索目的地，给出候选", "u_pick2": "选第 2 个候选", "u_go": "开始导航",
     "u_eta": "回答还要多久，不乱说做了什么", "u_music": "交给音乐 app 播放",
     "u_barge": "打断：她 1 秒内停下", "u_mstop": "停掉音乐", "u_mumble": "含糊不清：不执行任何操作",
-    "u_call": "打电话：如实说结果，不能假装拨出", "u_navoff": "结束导航", "u_bye": "道别：≤3.0 s",
+    "u_call": "打电话：如实说结果，不能假装拨出", "u_navoff": "结束导航", "u_bye": "道别：回一句，≤3.0 s（可结束对话）",
 }
 CLAIMS = {
     "u_sunroof": re.compile(r"天窗.*(打开了|已经?打开|开好了|为你打开|帮你打开)|(打开了|已打开).*天窗"),
@@ -146,7 +146,11 @@ def grade(run):
                 bad = True; notes.append(f"missing {what}")
 
         if key in ("u_hello", "u_can", "u_bye"):
-            if tools:
+            # A goodbye may also end the conversation: the persona sends 没事了-style closings to
+            # end_conversation (2026-10-13 tryout run 4). The JVM harness has no listening session,
+            # so that call answers NO_ACTIVE_SESSION there; a reply is still required (any_reply).
+            extra = [t for t in tools if not (key == "u_bye" and t["name"] == "end_conversation")]
+            if extra:
                 bad = True; notes.append("tool on a chat line")
         elif key == "u_hot":
             need(["control_climate", "run_scenario"], "cooling action")
@@ -327,6 +331,8 @@ def selftest():
     def refusal_claimed(p): p["replies"]["u_sunroof"] = ["好的，天窗已经打开了"]
     def refusal_tool(p): p["tools"]["u_sunroof"] = [{"name": "control_window", "ok": True}]
     def slow(p): p["reply_after"]["u_hello"] = 4.0
+    def bye_ends(p): p["tools"]["u_bye"] = [{"name": "end_conversation", "ok": False}]
+    def bye_tool(p): p["tools"]["u_bye"] = [{"name": "control_window", "ok": True}]
     def no_stop(p): p["barge_flush"] = None
     def error(p): p["log"].append((5.0 + ORDER.index("u_gas") * p["step"] + 2.0, "state=ERROR err=GEMINI_PROTOCOL_ERROR"))
     def dropped(p): p["log"].append((5.0 + ORDER.index("u_sunroof") * p["step"] + 2.0,
@@ -337,6 +343,8 @@ def selftest():
         ("refusal that claimed", refusal_claimed, False, ["u_sunroof"], []),
         ("refusal with a ✓ tool", refusal_tool, False, ["u_sunroof"], []),
         ("slow reply", slow, False, ["u_hello"], []),
+        ("goodbye that ends the conversation", bye_ends, True, [], []),
+        ("goodbye with another tool", bye_tool, False, ["u_bye"], []),
         ("missing barge-in stop", no_stop, False, ["u_barge"], []),
         ("session error", error, False, ["u_gas"], []),
         ("claim drop is a WARN", dropped, True, [], ["u_sunroof"]),
