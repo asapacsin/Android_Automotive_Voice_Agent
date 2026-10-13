@@ -1958,3 +1958,11 @@ A type-less frame with neither field is still a protocol error. All four documen
 3. Record c_nav only on a network where the search fits.
 
 **Still open:** the device and PC measurement with the rebuilt debug app (`preflight_search ms=`), and the next Gemini rehearsal.
+
+## P54 — 「附近有加油站吗」 while parked was answered 「没在导航，查不了」
+
+**Found 2026-10-13, first tryout run** (`NOVA_LIVE_SCENES=tryout`, Gemini, docs/DEMO_TRYOUT.md): a first-time driver's 「附近有加油站吗」 with no route. The model called `query_live_info` `along_route` (its description lists 「路上有加油站吗」), got `NOT_NAVIGATING`, whose advice said 「请用一句话如实说现在没有在导航」, and answered 「都说了没在导航，查不了。」 The claim gate dropped a first reply, two corrections followed, and the last one was still running when the driver said 「算了，不去了」, which then took 11.3 s.
+
+**Fix:** the existing nearby search (`navigate_to` → `DestinationQuery.isNearbyRequest`, distance-sorted) is named for this case in three places: `navigate_to`'s description (「附近有加油站吗」 with no route → destination=附近的加油站), `query_live_info`'s along_route line (no route → not along_route), and the `NOT_NAVIGATING` advice (a nearby-place question → call navigate_to instead of saying 没在导航). SPEC-011's failure row is updated. Research: Gemini function-calling best practice is a specific description saying when to use each tool (ai.google.dev/gemini-api/docs/function-calling, "Best practices"); nothing more specific found for overlapping tools.
+
+**Evidence:** second tryout run, u_gas `navigate_to✓` 2.5 s, u_cancel 2.4 s (was 11.3 s); 18/19 lines PASS. Golden tool declarations updated; `:app:testDebugUnitTest` 1843/0, `:behavior-test:test` 131/0.

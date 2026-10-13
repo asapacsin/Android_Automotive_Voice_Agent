@@ -174,7 +174,7 @@ class LiveDemoRun {
 private const val COMMUTE_QUERY = "横琴镇"
 
 /** The tryout's destination searches (docs/DEMO_TRYOUT.md), prefetched like COMMUTE_QUERY; the candidates stay real. */
-private val TRYOUT_QUERIES = listOf("长隆海洋王国", "加油站")
+private val TRYOUT_QUERIES = listOf("长隆海洋王国", "附近的加油站")
 
 /** Tool arguments the tryout records per call (no contact, place or free text): what the grader checks. */
 private val TRYOUT_ARG_KEYS = setOf("index", "preference", "action", "window", "value", "scenario")

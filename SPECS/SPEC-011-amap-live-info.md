@@ -88,7 +88,7 @@ execute once between them.
 | No web-service key | `AMAP_WEB_KEY_MISSING` | 天气查询还没有配置 |
 | No location fix for `here` | `NO_LOCATION` | 还没有定位，查不了这里的天气 |
 | `destination` with no destination | `NO_DESTINATION` | asks where |
-| `route_traffic` / `along_route` without a route | `NOT_NAVIGATING` | 现在没有在导航 |
+| `route_traffic` / `along_route` without a route | `NOT_NAVIGATING` | 现在没有在导航; a 「附近有加油站吗」 asked without a route is a nearby search instead: `navigate_to`「附近的加油站」 (2026-10-13, tryout run: the refusal was what a first-time driver heard) |
 | Timeout (4 s) / HTTP error / `status≠1` | `LIVE_INFO_UNAVAILABLE` | 现在查不到 — never a guess |
 | Amap daily quota (infocode `10003`, `10044`) | `LIVE_INFO_QUOTA` | 今天的查询次数用完了 |
 | Zero results | `NO_RESULTS` | 沿途没有找到加油站 |

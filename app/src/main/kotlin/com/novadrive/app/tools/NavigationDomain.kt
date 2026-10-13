@@ -14,7 +14,7 @@ object NavigationDomain : ToolDomain {
     override fun specs(): List<ToolSpec> {
         val navigate = spec(
             name = "navigate_to",
-            description = "导航到地点：「导航去X」「带我去X」。屏幕会列出候选，不要念列表，按返回的 next 只说一句，选择用 choose_navigation_option；选好路线前导航未开始，不要说已开始。换目的地（「不是这个」「换成X」）时用新目的地再调用。",
+            description = "导航到地点：「导航去X」「带我去X」。屏幕会列出候选，不要念列表，按返回的 next 只说一句，选择用 choose_navigation_option；选好路线前导航未开始，不要说已开始。换目的地（「不是这个」「换成X」）时用新目的地再调用。没有路线时找附近的地点（「附近有加油站吗」「最近的充电站」）也用它：destination=附近的加油站。",
             properties = JSONObject().put(
                 "destination",
                 JSONObject().put("type", "string").put("minLength", 1).put("maxLength", 120),
