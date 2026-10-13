@@ -482,6 +482,7 @@ change_impact:
       - BaiduFlexClient
       - OpenAiRealtimeClient
       - ReplyUsage
+      - DeliveredStyle
       - RealtimeDialect
       - BaiduFlexDialect
       - QwenOmniDialect

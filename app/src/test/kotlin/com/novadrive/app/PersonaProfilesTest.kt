@@ -73,4 +73,17 @@ class PersonaProfilesTest {
         assertTrue(PersonaProfiles.compose(long, SpeakingStyle.SWEET).length <= PersonaProfiles.MAX_INSTRUCTIONS_CHARS)
         assertTrue(PersonaProfiles.compose("你是助手。", SpeakingStyle.SWEET).length <= PersonaProfiles.MAX_INSTRUCTIONS_CHARS)
     }
+
+    @Test fun noStyleSaysTheVoiceStaysTheSameButEverySaysTheTimbreDoes() {
+        for (style in SpeakingStyle.entries) {
+            val out = PersonaProfiles.compose(null, style)
+            assertTrue("声音不变" !in out && "声音本身不变" !in out, style.name)
+        }
+        assertTrue("句尾轻轻上扬" in PersonaProfiles.SWEET_VOICE_STYLE && "语速稍慢" in PersonaProfiles.SWEET_VOICE_STYLE)
+        for (style in SpeakingStyle.entries) {
+            val (_, voice) = PersonaProfiles.toneLines(style) ?: continue
+            assertTrue("音色不变" in voice && "听得出变化" in voice, voice)
+            assertTrue("Ayano" !in voice)
+        }
+    }
 }

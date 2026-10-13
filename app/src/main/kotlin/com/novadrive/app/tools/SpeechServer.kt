@@ -1,6 +1,7 @@
 package com.novadrive.app.tools
 
 import com.novadrive.app.AndroidActionExecutor
+import com.novadrive.app.PersonaProfiles
 import com.novadrive.app.SpeakingStyle
 import com.novadrive.app.SpeakingStyleState
 import com.novadrive.app.voice.RealtimeToolCatalog.END_CONVERSATION
@@ -46,18 +47,14 @@ class SpeechServer(private val executor: AndroidActionExecutor) : ToolServer {
     }
 
     companion object {
-        const val SWEET_INSTRUCTION = "从现在起用更甜、更会撒娇的语气说话，句子仍然简短，声音不变。现在用这种语气简短回应一句。"
-        const val DEFAULT_INSTRUCTION = "从现在起恢复平常的语气说话。现在简短回应一句。"
-        const val TSUNDERE_INSTRUCTION = "从现在起用傲娇的语气说话：嘴上小别扭，但事情照办、结果说真话，句子仍然简短，声音不变。现在用这种语气简短回应一句。"
-        const val GENTLE_INSTRUCTION = "从现在起用温柔体贴的语气说话，句子仍然简短，声音不变。现在用这种语气简短回应一句。"
-        const val LIVELY_INSTRUCTION = "从现在起用元气、有活力的语气说话，句子仍然简短，声音不变。现在用这种语气简短回应一句。"
+        /** Replaces the setup's tone lines; the wording itself is owned by [PersonaProfiles.toneLines]. */
+        const val REPLACES_EARLIER = "这两句取代之前的「性格基调」和「语音风格」。"
+        const val RESPOND_NOW = "现在用这种语气简短回应一句。"
+        const val DEFAULT_INSTRUCTION = "从现在起恢复平常的语气说话，之前换过的语气不再适用。现在简短回应一句。"
 
-        fun instructionFor(style: SpeakingStyle): String = when (style) {
-            SpeakingStyle.DEFAULT -> DEFAULT_INSTRUCTION
-            SpeakingStyle.SWEET -> SWEET_INSTRUCTION
-            SpeakingStyle.TSUNDERE -> TSUNDERE_INSTRUCTION
-            SpeakingStyle.GENTLE -> GENTLE_INSTRUCTION
-            SpeakingStyle.LIVELY -> LIVELY_INSTRUCTION
+        fun instructionFor(style: SpeakingStyle): String {
+            val (tone, voice) = PersonaProfiles.toneLines(style) ?: return DEFAULT_INSTRUCTION
+            return "从现在起：$tone $voice $REPLACES_EARLIER$RESPOND_NOW"
         }
 
         fun styleOutput(style: SpeakingStyle, persisted: Boolean): String {

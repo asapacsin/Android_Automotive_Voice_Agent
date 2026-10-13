@@ -44,6 +44,9 @@ class QwenOmniDialect(
     /** The server refused a user text item in this session; text turns are not sent again. */
     @Volatile private var textRefused = false
 
+    /** An instructions-only session.update (P55) went out and has not been confirmed yet. */
+    @Volatile private var instructionsUpdatePending = false
+
     override suspend fun buildRequest(config: QwenApiConfig): Request {
         QwenSettingsValidator.validate(config.settings, config.apiKey)?.let {
             throw VoiceProviderException(it, QwenSettingsValidator.message(it) ?: it)
@@ -64,6 +67,7 @@ class QwenOmniDialect(
     override fun onSessionOpening(config: QwenApiConfig) {
         settings = config.settings
         textRefused = false
+        instructionsUpdatePending = false
     }
 
     override fun instructions(config: QwenApiConfig): String? = config.instructions
@@ -72,9 +76,16 @@ class QwenOmniDialect(
 
     override fun sessionUpdate(instructions: String, vadThreshold: Double): String = sessionUpdate(instructions, settings)
 
+    /** P55: instructions only; never voice, audio, tools, modalities or turn detection (SPEC-021 B10). */
+    override fun instructionsUpdate(instructions: String): String {
+        instructionsUpdatePending = true
+        return instructionsOnlyUpdate(instructions)
+    }
+
     override fun recoverSessionError(instructions: () -> String, vadThreshold: Double): String? = null
 
     override fun onSessionUpdated(text: String) {
+        instructionsUpdatePending = false
         DebugVoiceLog.log(
             "qwen_session voice=${voiceLabel(settings)} vad=${settings.vadType} model=${settings.model}",
         )
@@ -151,6 +162,12 @@ class QwenOmniDialect(
 
     private fun parseError(error: JSONObject): List<DomainVoiceEvent> {
         val blob = blob(error)
+        // A refused mid-session instructions update keeps the old style, not the session (SPEC-021 B10).
+        if (isInstructionsUpdateRefusal(error)) {
+            instructionsUpdatePending = false
+            DebugVoiceLog.log("qwen_instructions_update_refused code=${errorCodeOf(error).ifEmpty { "none" }}")
+            return emptyList()
+        }
         if (isTextItemRefusal(error)) {
             if (!textRefused) DebugVoiceLog.log("qwen_text_unsupported")
             textRefused = true
@@ -174,6 +191,7 @@ class QwenOmniDialect(
         val code = errorCodeOf(error)
         val blob = blob(error)
         val kind = when {
+            isInstructionsUpdateRefusal(error) -> "instructions_refused"
             isTextItemRefusal(error) -> "text_refused"
             error.optString("param") in CALL_OUTPUT_PARAMS -> "call_output_refused"
             CANCEL_REFUSED_PHRASES.any { it in blob } -> "cancel_refused"
@@ -234,6 +252,14 @@ class QwenOmniDialect(
             else -> "custom"
         }
 
+        /** The instructions the session carries: the composed persona plus the tool rule, as at setup. */
+        private fun sessionInstructions(instructions: String) = instructions.trim() + "\n" + PersonaProfiles.FLEX_TOOL_RULE
+
+        /** A partial session.update carrying only the instructions (SPEC-021 B10). */
+        fun instructionsOnlyUpdate(instructions: String): String =
+            JSONObject().put("type", "session.update")
+                .put("session", JSONObject().put("instructions", sessionInstructions(instructions))).toString()
+
         /** The documented session.update (SPEC-021 B3). */
         fun sessionUpdate(instructions: String, settings: QwenAppSettings): String {
             val voice = settings.sessionVoice()
@@ -241,7 +267,7 @@ class QwenOmniDialect(
                 .put("modalities", JSONArray(listOf("text", "audio")))
                 .put("voice", voice)
                 .put("audio", JSONObject().put("output", JSONObject().put("voice", voice)))
-                .put("instructions", instructions.trim() + "\n" + PersonaProfiles.FLEX_TOOL_RULE)
+                .put("instructions", sessionInstructions(instructions))
                 .put("input_audio_format", "pcm")
                 .put("output_audio_format", "pcm")
                 .put("input_audio_transcription", JSONObject().put("model", TRANSCRIPTION_MODEL))
@@ -311,6 +337,9 @@ class QwenOmniDialect(
      * was just sent": a correction can go out late (held for a reset, or deferred behind a reply),
      * and a refusal must never end the session (SPEC-021 B7; review 2026-10-09).
      */
+    private fun isInstructionsUpdateRefusal(error: JSONObject): Boolean =
+        instructionsUpdatePending && error.optString("param").startsWith("session.")
+
     private fun isTextItemRefusal(error: JSONObject): Boolean {
         val param = error.optString("param")
         if (param in CALL_OUTPUT_PARAMS) return false

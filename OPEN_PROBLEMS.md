@@ -2005,3 +2005,14 @@ measured pitch/range/pace on the video and a grader) is being built to prove the
 when such a request is answered without the call and without an honest refusal (takes 6/7/8 ended in a
 question, which `declines()` alone would have let through). Decided by the decider agent. Known cost: on
 qwen3.5-omni-plus a nudge can provoke the 50002 crash (docs/DEMO_COMMUTE.md:137-146). JVM evidence only.
+
+**Status update 2026-10-13 (causes 2 and 3; decided by the decider):** fixed in code, JVM-proven,
+not yet heard on a live session. Cause 2: after a tool result, when `SpeakingStyleState.current`
+differs from the style last delivered (`DeliveredStyle`), the client re-sends the setup instructions
+once at an idle point - Qwen as an instructions-only `session.update` before the tool reply's
+`response.create` (a `session.*` refusal is logged and non-fatal), Gemini as a model-role
+`clientContent` with `turnComplete=false` (SPEC-021 B10, FUZZY_DRIVING_ARCHITECTURE §7). Cause 3: the
+style lines now say 音色不变 but the delivery must audibly change (sweet: 语速稍慢、句尾轻轻上扬、
+「嘛」「呀」「啦」); the tool's instruction is derived from `PersonaProfiles.toneLines`. Cause 1: the
+sub-fix above. Sources: DashScope client-events page, LiveKit `update_instructions` (openai and
+google plugins), Google AI forum thread 83359.

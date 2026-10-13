@@ -554,6 +554,16 @@ async def mock_handler(request):
         ty = ev["type"]
         log.append(ty)
         if ty == "session.update":
+            # SPEC-021 B10 (P55): after setup, an instructions-only update is accepted as a partial
+            # body (DashScope client-events page); one carrying more than instructions is refused.
+            keys = set(ev.get("session", {}))
+            if st.get("configured") and keys != {"instructions"}:
+                log.append("session.update.rejected")
+                await send({"type": "error", "error": {"code": "InvalidParameter", "param": "session.tools", "message": "x"}})
+                continue
+            if st.get("configured"):
+                log.append("session.update.instructions_only")
+            st["configured"] = True
             await send({"type": "session.updated"})
         elif ty == "input_audio_buffer.append":
             pcm = base64.b64decode(ev["audio"])
@@ -683,6 +693,21 @@ def selftest():
     with contextlib.redirect_stdout(buf):
         compare(os.path.join(out, "runs.jsonl"))
     check("p50=" in buf.getvalue() and "3.4-4.6 s" in buf.getvalue(), "compare output")
+    # SPEC-021 B10: a mid-session instructions-only session.update is accepted, nothing else is.
+    async def midsession():
+        import aiohttp
+        url = f"http://127.0.0.1:{port}/api-ws/v1/realtime?model=m&scenario=chat"
+        got = []
+        async with aiohttp.ClientSession() as http:
+            async with http.ws_connect(url, headers={"Authorization": "Bearer " + key}) as ws:
+                for body in (session_update("PERSONA"), {"type": "session.update", "session": {"instructions": "PERSONA2"}}):
+                    await ws.send_str(json.dumps(body, ensure_ascii=False))
+                    got.append(json.loads((await ws.receive(timeout=5)).data)["type"])
+        return got
+    log.clear()
+    got = asyncio.run(midsession())
+    check(got == ["session.updated", "session.updated"] and "session.update.instructions_only" in log,
+          f"mid-session instructions-only update accepted {got}")
     # URL builder
     saved = {k: os.environ.pop(k, None) for k in ("QWEN_WS_URL", "DASHSCOPE_WORKSPACE_ID", "MODEL")}
     os.environ["DASHSCOPE_WORKSPACE_ID"] = "ws-secret-777"

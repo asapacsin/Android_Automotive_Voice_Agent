@@ -42,6 +42,7 @@ class GeminiLiveClientTest {
         jobs.forEach { it.cancel() }
         NavigationState.onNavigatingChanged = null
         NavigationState.reset()
+        com.novadrive.app.SpeakingStyleState.restore(com.novadrive.app.SpeakingStyle.DEFAULT)
         server.close()
     }
 
@@ -159,6 +160,49 @@ class GeminiLiveClientTest {
         assertEquals("c1", result.getString("id"))
         assertEquals("open_app", result.getString("name"))
         assertTrue(result.getJSONObject("response").getBoolean("ok"))
+    }
+
+    /** P55: model-role clientContent turns, the mid-session instructions re-delivery. */
+    private fun instructionTurns(fake: FakeGemini) = fake.messages("clientContent").map { it.getJSONObject("clientContent") }
+        .filter { it.getJSONArray("turns").getJSONObject(0).optString("role") == "model" }
+
+    @Test
+    fun aStyleChangeIsResentOnceAsAModelTurnThatDoesNotCompleteAtTheNextIdlePoint() = runBlocking {
+        val fake = fake()
+        val client = client()
+        val events = collect(client)
+        client.connect(config())
+        client.onLocalSpeechActivity(true)
+        fake.send(toolCall("c1", "control_climate", """{"action":"power_on"}"""))
+        waitUntil { events.snapshot().any { it is DomainVoiceEvent.ToolCall } }
+        client.sendToolResult("c1", result(ok = true))
+        fake.send(turnComplete)
+        Thread.sleep(300)
+        assertTrue(instructionTurns(fake).isEmpty(), "unchanged style: nothing sent")
+
+        client.onLocalSpeechActivity(true)
+        fake.send(toolCall("s1", "set_speaking_style", """{"style":"sweet"}"""))
+        waitUntil { events.snapshot().filterIsInstance<DomainVoiceEvent.ToolCall>().size == 2 }
+        com.novadrive.app.SpeakingStyleState.restore(com.novadrive.app.SpeakingStyle.SWEET)
+        client.sendToolResult("s1", """{"ok":true,"tool":"set_speaking_style"}""")
+        Thread.sleep(300)
+        assertTrue(instructionTurns(fake).isEmpty(), "never while the turn is open")
+        fake.send(turnComplete)
+        waitUntil { instructionTurns(fake).isNotEmpty() }
+        val sent = instructionTurns(fake).single()
+        assertFalse(sent.getBoolean("turnComplete"))
+        val text = sent.getJSONArray("turns").getJSONObject(0).getJSONArray("parts").getJSONObject(0).getString("text")
+        assertTrue(com.novadrive.app.PersonaProfiles.SWEET_VOICE_STYLE in text)
+        assertTrue(text.startsWith("你是小诺。"), "the setup text")
+
+        client.onLocalSpeechActivity(true)
+        fake.send(toolCall("c2", "control_climate", """{"action":"power_off"}"""))
+        waitUntil { events.snapshot().filterIsInstance<DomainVoiceEvent.ToolCall>().size == 3 }
+        client.sendToolResult("c2", result(ok = true))
+        fake.send(turnComplete)
+        Thread.sleep(300)
+        assertEquals(1, instructionTurns(fake).size, "sent once")
+        assertEquals(1, fake.messages("setup").size, "no reconnect")
     }
 
     private fun claimTurn(fake: FakeGemini) {
