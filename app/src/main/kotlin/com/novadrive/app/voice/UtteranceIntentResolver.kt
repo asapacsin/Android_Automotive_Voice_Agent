@@ -17,11 +17,28 @@ class UtteranceIntentResolver(
         if (matchesCapabilityHelpGrammar(text)) {
             return UtteranceIntent(CapabilityIds.SPEECH_CAPABILITY_HELP)
         }
+        if (matchesSpeakingStyle(text)) return UtteranceIntent(SPEECH_SPEAKING_STYLE)
         val hit = cues.firstOrNull { it.first in text } ?: return null
         return UtteranceIntent(hit.second)
     }
 
     companion object {
+        /** `speech.speaking_style` (contracts Capability.kt); CapabilityIds has no constant for it yet. */
+        const val SPEECH_SPEAKING_STYLE = "speech.speaking_style"
+
+        /**
+         * P55: a request for how 小诺 *speaks*. Bounded: a style adjective counts only next to a
+         * speaking-manner word (说话/语气/口气/腔调), so a bare 「甜一点」 or 「温柔一点开」 is not one.
+         * 嗲 / 撒娇 / 傲娇 name a manner on their own.
+         */
+        private val STYLE_MANNER_GRAMMAR = Regex(
+            "(说话|语气|口气|腔调).{0,4}(嗲|甜|温柔|可爱|元气|活泼|霸道|正常|傲娇|凶|酷)",
+        )
+        private val STYLE_WORDS = listOf("嗲", "撒娇", "撒个娇", "傲娇", "傲嬌")
+
+        fun matchesSpeakingStyle(text: String): Boolean =
+            STYLE_WORDS.any { it in text } || STYLE_MANNER_GRAMMAR.containsMatchIn(text)
+
         private val PUNCTUATION = Regex("[，。！？、,.!?\\s\t　]+")
         private val WAKE_PREFIX = Regex("^(你好小诺|小诺)+")
 

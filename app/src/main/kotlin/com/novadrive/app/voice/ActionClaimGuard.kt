@@ -1,5 +1,6 @@
 package com.novadrive.app.voice
 
+import com.novadrive.app.tools.SpeechDomain
 import com.novadrive.contracts.CapabilityCatalog
 import com.novadrive.contracts.CapabilityIds
 import com.novadrive.contracts.ProductCapabilities
@@ -110,6 +111,10 @@ class ActionClaimGuard {
         if (request == null) return null
         val suspicious = when {
             isCameraQuestion(request) -> !declines(reply)
+            // P55 (2026-10-13): 「能不能说话再稍微嗲一点」 answered 「行，那我就稍微甜一点说。有什么要做的？」
+            // with no set_speaking_style call - the style never changed. Such replies end in a
+            // question, so declines() would let them through; only an honest refusal does.
+            isSpeakingStyleRequest(request) -> !refusesStyle(reply)
             isHelpRequest(request) -> !answersCapabilityHelp(reply)
             isUnsupportedRequest(request) -> claimsDone(reply)
             // A claim needs correcting; an action that simply never happened needs performing.
@@ -562,6 +567,13 @@ class ActionClaimGuard {
             }
         }
 
+        fun isSpeakingStyleRequest(text: String): Boolean =
+            resolvedIntent(text)?.capabilityId == UtteranceIntentResolver.SPEECH_SPEAKING_STYLE
+
+        /** 「霸道的语气我没有，只有甜、傲娇、温柔、元气和正常。」 - the refusal SpeechDomain asks for. */
+        private fun refusesStyle(reply: String): Boolean =
+            refuses(reply) || "没有" in reply || "只有" in reply
+
         fun isCameraQuestion(text: String): Boolean = CAMERA_WORDS.any { it in text }
 
         fun declines(reply: String): Boolean = DECLINE_WORDS.any { it in reply }
@@ -835,6 +847,11 @@ class ActionClaimGuard {
             if (isHelpRequest(request)) {
                 val summary = ProductCapabilities.spokenHelpSummary(catalog)
                 "用户在问你能做什么。不要说没听清或不理解。不要调用任何工具。请原样说出：$summary"
+            } else if (isSpeakingStyleRequest(request)) {
+                "用户刚才说：「$request」，是要切换你说话的语气。你上一句答应了却没有调用任何工具，语气实际上没有变。" +
+                    "现在请调用 ${SpeechDomain.SET_SPEAKING_STYLE}，style 选与请求对应的那个" +
+                    "（嗲、甜、可爱、撒娇→sweet；傲娇→tsundere；温柔→gentle；元气、活泼→lively；正常→default），" +
+                    "不在其中的语气不要调用，如实说只有甜、傲娇、温柔、元气和正常。然后按返回结果用新语气简短回应。"
             } else if (isUnsupportedRequest(request)) {
                 "用户刚才说：「$request」。你没有能完成这个请求的工具，上一句说已经完成是错误的。" +
                     "不要调用任何工具，只用一句话向用户更正：这个操作没有执行，暂时不支持。"
