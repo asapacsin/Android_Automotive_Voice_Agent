@@ -54,3 +54,30 @@ audio withheld, start, end, played); `state.json` per turn `speech` (the arbiter
 reasons), `spoke_over_reply`, `mic_frames_gated`. `check_req.py` prints `after_guidance` and judges
 a turn whose wait met a prompt or hold from its end; `render.py` mixes the Amap voice in and shows
 高德导航 / （等导航播报结束）. The wiring is proved offline by `LiveDemoDriveTest` (no network).
+
+## The tryout scene (`NOVA_LIVE_SCENES=tryout`)
+
+A first-time driver trying the app in their own words, not the polished script
+([docs/DEMO_TRYOUT.md](../../../docs/DEMO_TRYOUT.md)): 19 lines `u_*` in one session (about 5 min),
+parked at the origin until `u_go`, then 40 km/h towards 长隆海洋王国. Chat, an ability question, a
+vague 「车里好热啊」, a refusal the car cannot do (天窗), a change of mind (「算了，不去了」), a barge-in
+(`u_barge` is said 1.0 s into a playing reply after `play_music` was called; `livedemo_barge
+playing=<bool>`), a mumble and a phone call (the harness has no telephony: `place_call` answers
+honestly). It runs alone, without the drive scene's speech rules; the tool records in `state.json`
+also carry the graded, non-personal arguments (`index`, `action`, `window`, ...).
+
+**Prefetch, disclosed:** with `AMAP_WEB_KEY` the real Amap results for 横琴镇, 长隆海洋王国 and 加油站
+are fetched before the session opens (one `livedemo_search prefetched=true` line each) and answer any
+place query containing one of them; the candidates are real, only the cloud's network time is taken
+out. `query_live_info` and any other query still go to Amap live.
+
+```bash
+PIPER_MODEL=/path/zh_CN-huayan-medium.onnx <venv>/bin/python tools/demo/live/make_clips_cloud.py tryout
+NOVA_LIVE_DEMO=1 NOVA_LIVE_PROVIDER=gemini NOVA_LIVE_SCENES=tryout NOVA_LIVE_OUT=/tmp/tryout \
+  ./gradlew --offline :app:testDebugUnitTest --tests '*LiveDemoRun*'
+python3 tools/demo/live/tryout_check.py /tmp/tryout      # one row per line; exit 0 only on PASS
+python3 tools/demo/live/tryout_check.py --selftest        # offline fixtures
+```
+
+The u_* clips are Piper (`zh_CN-huayan-medium`, one speaker) slowed to 0.88 so the driver sounds
+lower than the g_* guidance voice; edge-tts is refused from the cloud (403).

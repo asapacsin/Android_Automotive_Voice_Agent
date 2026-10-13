@@ -15,6 +15,12 @@ offline with Piper (https://github.com/rhasspy/piper; `pip install piper-tts`, v
 huggingface.co/rhasspy/piper-voices) instead of edge-tts. 2026-10-12: edge-tts got a 403 from
 speech.platform.bing.com from the cloud container for every voice and every Sec-MS-GEC version tried
 (143-154); searched, no fix found, so the guidance prompts use Piper there.
+
+The tryout's driver lines (u_*, TRYOUT below, docs/DEMO_TRYOUT.md) are made with Piper only (PIPER_MODEL
+is required for them). The huayan voice has one speaker, so the driver is the same model resampled
+DRIVER_PITCH lower (pitch and tempo together), to differ from the g_* guidance voice.
+
+    PIPER_MODEL=... python3 tools/demo/live/make_clips_cloud.py u_hello u_can ...   # or: tryout
 """
 import ast, asyncio, os, re, subprocess, sys
 
@@ -41,6 +47,32 @@ GUIDANCE = {
 }
 
 
+# docs/DEMO_TRYOUT.md: a first-time driver in their own words. Keys and texts are fixed there.
+TRYOUT = {
+    "u_hello": "你好，你叫什么名字",
+    "u_can": "你能帮我做什么",
+    "u_hot": "车里好热啊",
+    "u_temp": "空调调到二十二度",
+    "u_window": "把我这边的窗户开一点",
+    "u_sunroof": "帮我把天窗打开",
+    "u_gas": "附近有加油站吗",
+    "u_cancel": "算了，不去了",
+    "u_dest": "导航去长隆海洋王国",
+    "u_pick2": "第二个",
+    "u_go": "好，出发吧",
+    "u_eta": "还要开多久",
+    "u_music": "来点轻松的音乐",
+    "u_barge": "等一下",
+    "u_mstop": "音乐先关了吧",
+    "u_mumble": "嗯……那个……",
+    "u_call": "给我老婆打个电话",
+    "u_navoff": "不用导航了",
+    "u_bye": "好了，谢谢",
+}
+# The driver: the guidance voice played this much slower (lower pitch), resampled to 16 kHz.
+DRIVER_PITCH = 0.88
+
+
 def recorder_constants():
     src = open(os.path.join(RECORDER, "make_clips.py"), encoding="utf-8").read()
     lines = ast.literal_eval(re.search(r"LINES = (\{.*?\n\})", src, re.S).group(1))
@@ -56,11 +88,12 @@ async def make(key, text, voice, ffmpeg, proxy):
     os.remove(mp3)
 
 
-def make_piper(key, text, model, ffmpeg):
+def make_piper(key, text, model, ffmpeg, pitch=1.0):
     wav = os.path.join(OUT, key + ".wav")
     subprocess.run([os.path.join(os.path.dirname(sys.executable), "piper"), "-m", model, "-f", wav],
                    input=(text + "。").encode("utf-8"), check=True, capture_output=True)
-    subprocess.run([ffmpeg, "-y", "-loglevel", "error", "-i", wav, "-ac", "1", "-ar", "16000", "-f", "s16le",
+    shift = [] if pitch == 1.0 else ["-af", f"asetrate={int(22050 * pitch)}"]
+    subprocess.run([ffmpeg, "-y", "-loglevel", "error", "-i", wav, *shift, "-ac", "1", "-ar", "16000", "-f", "s16le",
                     os.path.join(OUT, key + ".pcm")], check=True)
     os.remove(wav)
 
@@ -70,10 +103,16 @@ async def main(keys):
     os.makedirs(OUT, exist_ok=True)
     proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy") or None
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
+    if keys == ["tryout"]:
+        keys = list(TRYOUT)
     for k in keys or [k for k in lines if k.startswith("c_")] + list(GUIDANCE):
         if os.path.exists(os.path.join(OUT, k + ".pcm")):
             continue
-        if k in GUIDANCE and os.environ.get("PIPER_MODEL"):
+        if k in TRYOUT:
+            if not os.environ.get("PIPER_MODEL"):
+                sys.exit("the u_* tryout lines need PIPER_MODEL (a Piper .onnx voice)")
+            make_piper(k, TRYOUT[k], os.environ["PIPER_MODEL"], ffmpeg, DRIVER_PITCH)
+        elif k in GUIDANCE and os.environ.get("PIPER_MODEL"):
             make_piper(k, GUIDANCE[k], os.environ["PIPER_MODEL"], ffmpeg)
         elif k in GUIDANCE:
             await make(k, GUIDANCE[k], GUIDANCE_VOICE, ffmpeg, proxy)
