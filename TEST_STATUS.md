@@ -6,8 +6,8 @@ Updated 2026-09-21 · 159 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 62 |
-| autonomous FAIL | 0 |
+| autonomous PASS | 61 |
+| autonomous FAIL | 1 |
 | incomplete | 0 |
 | partial pass | 0 |
 | not run | 68 |
@@ -20,6 +20,7 @@ Updated 2026-09-21 · 159 tests
 
 **HUMAN_VALIDATION_READY = FALSE**
 
+- the registry does not validate: 2 problem(s)
 - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - TRUTH-MISHEARD-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -82,6 +83,7 @@ Updated 2026-09-21 · 159 tests
 - QWEN-PROBE-Q1-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - QWEN-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - DEMO-COMMUTE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- DEMO-TRYOUT-001 is AUTONOMOUS and FAIL - run it or fix it
 - DEVUI-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - GUIDANCE-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - CONFIG-CARD-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -118,7 +120,7 @@ Updated 2026-09-21 · 159 tests
 | reliability | 8 | 4 | 1 | 3 |
 | saved_places | 3 | 0 | 0 | 3 |
 | security | 3 | 3 | 0 | 0 |
-| speech | 25 | 9 | 9 | 6 |
+| speech | 25 | 8 | 9 | 6 |
 | truthfulness | 9 | 4 | 0 | 5 |
 | turn_taking | 19 | 7 | 3 | 9 |
 | unsupported | 1 | 0 | 0 | 1 |
@@ -172,7 +174,7 @@ Updated 2026-09-21 · 159 tests
 | MUSIC-VLC-EMU-001 | media | VLC plays a local file handed off by play_music and the readback names it | AUTONOMOUS | NOT_RUN | yes | MUSIC-UNIT-001 (JVM) covers the result rules with a fake session source |
 | MIC-CABIN-001 | microphone | Open-mic thresholds in real cabin acoustics | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | NOISE-001 PASS - room noise produces no turn |
 | AUDIO-QUALITY-001 | navigation | Guidance loudness and speech quality in a cabin | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | 21 guidance play start/end pairs observed on an emulator drive; the mic is gated while … |
-| DEMO-AMAP-LIVE-001 | navigation | The commute demo's real Amap lookups at the demo origin: 导航去横琴镇 + 第一个 is >= 1.7 km away, the warm-up weather answers | AUTONOMOUS | PASS | no | 2026-10-12 cloud: with sortrule=distance FAIL (第一个 = 632 m, the origin 横琴澳门青年创业谷; Amap … |
+| DEMO-AMAP-LIVE-001 | navigation | The commute demo's real Amap lookups at the demo origin: 导航去横琴镇 + 第一个 is >= 1.7 km away, the warm-up weather answers | AUTONOMOUS | STALE | no | 2026-10-12 cloud: with sortrule=distance FAIL (第一个 = 632 m, the origin 横琴澳门青年创业谷; Amap … |
 | GUIDANCE-DEVICE-001 | navigation | One voice on the short route; Amap audible only when the model cannot speak | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | GUIDANCE-EMU-001 measurements |
 | GUIDANCE-EMU-001 | navigation | Step-0 measurements for assistant-spoken guidance on the short route | AUTONOMOUS | NOT_RUN | yes | — |
 | NAV-CANCEL-001 | navigation | 算了 really cancels | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: nav_flow_cancelled |
@@ -231,7 +233,7 @@ Updated 2026-09-21 · 159 tests
 | DEMO-10-2-001 | speech | One demo run that exercises every claude/10-2 function, graded by the log checker | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | tools/demo/check_demo_log.py --selftest OK (2026-10-02 cloud) |
 | DEMO-10-3-001 | speech | One demo run that exercises the essential functions and every claude/10-2 and claude/10-3 function, graded by the log checker | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | tools/demo/check_demo_log.py --selftest OK (2026-10-03 cloud, 10-3 checks included) |
 | DEMO-COMMUTE-001 | speech | The commute demo 横琴创业谷 → 横琴镇, in the order of the 豆包座舱 review video, under docs/DEMO_REQUIREMENTS.md | AUTONOMOUS | NOT_RUN | no | 2026-10-10 cloud, harness validation only (Gemini, not the product provider; JVM, simul… |
-| DEMO-TRYOUT-001 | speech | A first-time driver in their own words (19 lines: chat, vague asks, a refusal, a change of mind, barge-in, mumble, call), graded per line | AUTONOMOUS | PASS | no | 2026-10-13 cloud JVM harness, gemini-3.1-flash-live-preview (Gemini's own voice, not Ay… |
+| DEMO-TRYOUT-001 | speech | A first-time driver in their own words (19 lines: chat, vague asks, a refusal, a change of mind, barge-in, mumble, call), graded per line | AUTONOMOUS | FAIL | no | 2026-10-13 cloud JVM harness, gemini-3.1-flash-live-preview (Gemini's own voice, not Ay… |
 | DEVUI-EMU-001 | speech | The rebuilt developer screen on the emulator: cards render, each saves itself, Test connection, clear-all confirm | AUTONOMOUS | NOT_RUN | no | 2026-10-10 cloud 2a5c6cd: app 1789/0, behavior-test 131/0 (developerSettingsNamesNoDorm… |
 | P45-EMU-001 | speech | The P45 conversation on the emulator with live speech, with the Azure voice | AUTONOMOUS | NOT_RUN | no | — |
 | P45-UNIT-001 | speech | An interrupted unheard reply is never synthesised; a question restarts the sleep window; turn timings are logged | AUTONOMOUS | PASS | no | 2026-10-02 cloud, claude/10-2: GeminiLiveClientTest 69/0, ListeningLifecycleTest 36/0, … |

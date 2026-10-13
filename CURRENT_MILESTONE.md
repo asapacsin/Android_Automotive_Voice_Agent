@@ -2,7 +2,7 @@
 
 ## Active defect — P57 (from `claude/10-13`, 2026-10-13)
 
-「把我这边的窗户开一点」 opened all four windows on tryout run 4. The dispatcher now rewrites that call to the driver window (`ToolCallGuards.driverSideWindow`). JVM tests cover it. **Next:** one Gemini re-run of `DEMO-TRYOUT-001` (`NOVA_LIVE_SCENES=tryout`). The row stays FAIL until that re-run passes. The cloud container cannot run it.
+「把我这边的窗户开一点」 opened all four windows on tryout run 4. The dispatcher rewrites that call to the driver window. The Gemini re-run on 2026-10-13 passed `u_window` (`control_window` `window=driver`, no other window moved). `DEMO-TRYOUT-001` stays FAIL: `u_dest`, `u_pick2`, `u_go` and `u_eta` had no places because the Amap web key was rejected (`INVALID_USER_KEY`), and `u_bye` was 5.7 s. Video is on PR #12. A valid Amap web key is what a later take needs.
 
 ## Active work — ADR-017: Qwen-Omni Realtime + Maia (cloud, `claude/10-9`, 2026-10-09)
 
