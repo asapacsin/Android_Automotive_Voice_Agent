@@ -1998,3 +1998,10 @@ the two turns right after the switch 245 Hz, 12+ st, 5.9 chars/s; from the third
 **Status:** open. The persistence design is with the decider (AGENTS.md hard rule); a style scene
 (`NOVA_LIVE_SCENES=style`: same question before, after 嗲一点, two turns later, after 正常一点, with
 measured pitch/range/pace on the video and a grader) is being built to prove the fix.
+
+**Sub-fix (no tool call), 2026-10-13:** `UtteranceIntentResolver` now maps a speaking-style request
+(嗲/撒娇/傲娇, or a style adjective next to 说话/语气/口气/腔调; bare 「甜一点」 does not count) to
+`speech.speaking_style`, and `ActionClaimGuard` nudges once per utterance, naming `set_speaking_style`,
+when such a request is answered without the call and without an honest refusal (takes 6/7/8 ended in a
+question, which `declines()` alone would have let through). Decided by the decider agent. Known cost: on
+qwen3.5-omni-plus a nudge can provoke the 50002 crash (docs/DEMO_COMMUTE.md:137-146). JVM evidence only.

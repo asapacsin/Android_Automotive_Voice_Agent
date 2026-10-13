@@ -2,6 +2,7 @@ package com.novadrive.app.voice
 
 import com.novadrive.contracts.CapabilityIds
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 
@@ -40,6 +41,16 @@ class UtteranceIntentResolverTest {
             "今天天气怎么样",
         ).forEach { phrase ->
             assertNull(resolver.resolve(phrase), phrase)
+        }
+    }
+
+    @Test
+    fun speakingStyleCuesNeedAMannerWord() {
+        listOf("能不能说话再稍微嗲一点", "说话撒个娇", "傲娇一点", "说话温柔一点", "说话霸道一点").forEach {
+            assertEquals(UtteranceIntentResolver.SPEECH_SPEAKING_STYLE, resolver.resolve(it)?.capabilityId, it)
+        }
+        listOf("甜一点", "温柔一点开", "空调调低一点", "空调温度甜一点").forEach {
+            assertNotEquals(UtteranceIntentResolver.SPEECH_SPEAKING_STYLE, resolver.resolve(it)?.capabilityId, it)
         }
     }
 }
