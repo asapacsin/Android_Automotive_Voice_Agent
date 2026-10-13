@@ -107,6 +107,8 @@ From the official docs (Alibaba Model Studio: realtime, client-events and server
 9. **Listening commands.** 「闭嘴」, sleep and wake behave as with every provider (`VoiceCommandRouter`, `ListeningLifecycle`).
 10. **The speaking style changes the instructions only.** The voice stays Maia. Whether Maia's delivery changes by style is a Q-2 ear question.
 
+   **B10 — a mid-session style change is re-delivered (P55; decided by the decider 2026-10-13).** The setup instructions are composed with the style current at setup, and `DeliveredStyle` remembers it. When a tool result goes back and `SpeakingStyleState.current` differs from it, the client sends the same composed text as at setup (persona with the new style, context hint, `FLEX_TOOL_RULE`) as an instructions-only `session.update` (`{"type":"session.update","session":{"instructions":...}}`, no voice, audio, tools, modalities or turn detection). It rides the tool reply's turn through the response-turn gate, so it goes out at an idle point and before that reply's `response.create`, never mid-response. It is logged as `style_redelivered provider=qwen style=<name> chars=<n>`, never the text. Baidu's dialect sends none (its per-tool-turn reset re-sends setup); this differs from the VAD-threshold refusal (P7) because only `instructions` change. The voice (音色) never changes; the delivery follows the style. Sources: DashScope client events (help.aliyun.com/zh/model-studio/client-events: session.update takes a partial body, and the fields it restricts once audio has started imply the others stay updatable); LiveKit agents `openai.py` `update_instructions` (an instructions-only session.update mid-session); LiveKit agents google `realtime_api.py` `update_instructions` (a model-role clientContent with turn_complete=False); Google AI developer forum thread 83359 (a Live config cannot be changed on an open connection except through resumption).
+
 ## Failure behaviour
 
 - **Handshake 401/403, or an `InvalidApiKey`/`AccessDenied` error:** `QWEN_AUTH_FAILED`. Never retried in a loop.
@@ -117,6 +119,7 @@ From the official docs (Alibaba Model Studio: realtime, client-events and server
 - **Server close at the 120 min cap, or any socket loss:** reported as reconnecting. The existing reconnect owner reopens the session, as for Gemini and Baidu.
 - **A refused `response.cancel`** (nothing playing) and **an overlapping-response refusal** are not session-fatal. The same rules as Baidu Flex apply, by error code or phrase, in the dialect.
 - **A refused text item, or a refused `function_call_output`:** never fatal (B7). The first turns text off for the session and logs `qwen_text_unsupported`; the second logs `qwen_call_output_refused code=<code>`.
+- **A refused mid-session instructions update (B10):** an `error` whose `param` is `session.*` while that update is unconfirmed is not fatal. It is logged as `qwen_instructions_update_refused code=<code>`; the session continues in the old style (the tool result still carries the style line). The same error during setup still fails the start.
 - **A malformed or oversize function call:** rejected by the shared assembler and catalogue, as for Baidu Flex.
 - **Logs** hold codes, counts, ids and timings only. Never the key, the workspace ID, a transcript, tool arguments or the instructions (I-8).
 

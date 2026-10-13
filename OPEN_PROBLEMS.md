@@ -1998,3 +1998,14 @@ the two turns right after the switch 245 Hz, 12+ st, 5.9 chars/s; from the third
 **Status:** open. The persistence design is with the decider (AGENTS.md hard rule); a style scene
 (`NOVA_LIVE_SCENES=style`: same question before, after 嗲一点, two turns later, after 正常一点, with
 measured pitch/range/pace on the video and a grader) is being built to prove the fix.
+
+**Status update 2026-10-13 (causes 2 and 3; decided by the decider):** fixed in code, JVM-proven,
+not yet heard on a live session. Cause 2: after a tool result, when `SpeakingStyleState.current`
+differs from the style last delivered (`DeliveredStyle`), the client re-sends the setup instructions
+once at an idle point - Qwen as an instructions-only `session.update` before the tool reply's
+`response.create` (a `session.*` refusal is logged and non-fatal), Gemini as a model-role
+`clientContent` with `turnComplete=false` (SPEC-021 B10, FUZZY_DRIVING_ARCHITECTURE §7). Cause 3: the
+style lines now say 音色不变 but the delivery must audibly change (sweet: 语速稍慢、句尾轻轻上扬、
+「嘛」「呀」「啦」); the tool's instruction is derived from `PersonaProfiles.toneLines`. Cause 1 is
+another worker's. Sources: DashScope client-events page, LiveKit `update_instructions` (openai and
+google plugins), Google AI forum thread 83359.
