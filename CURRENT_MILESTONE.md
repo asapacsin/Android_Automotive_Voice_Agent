@@ -1,5 +1,9 @@
 # Current Milestone
 
+## Active defect — P57 (from `claude/10-13`, 2026-10-13)
+
+「把我这边的窗户开一点」 opened all four windows on tryout run 4. The dispatcher now rewrites that call to the driver window (`ToolCallGuards.driverSideWindow`). JVM tests cover it. **Next:** one Gemini re-run of `DEMO-TRYOUT-001` (`NOVA_LIVE_SCENES=tryout`). The row stays FAIL until that re-run passes. The cloud container cannot run it.
+
 ## Active work — ADR-017: Qwen-Omni Realtime + Maia (cloud, `claude/10-9`, 2026-10-09)
 
 **The owner's decision:** one end-to-end model, `qwen3.8-omni-flash-realtime` with the stock voice Maia, no separate TTS ([ADR-017](DECISIONS/ADR-017-qwen-omni-realtime-end-to-end.md)). **2026-10-09:** the product session is Qwen Maia now (`VoiceProviderChoice` + fixed `session.update` voice); Gemini/Baidu/Azure developer fields no longer select the session. Gates Q-1 to Q-5 stay open; stack deletion still waits for Q-5. The adapter is [SPEC-021](SPECS/SPEC-021-qwen-omni-provider.md).

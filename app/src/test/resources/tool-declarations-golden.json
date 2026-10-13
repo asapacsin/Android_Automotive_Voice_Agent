@@ -48,7 +48,7 @@
     "parameters": "{\"additionalProperties\":false,\"type\":\"object\",\"properties\":{\"mode\":{\"type\":\"string\",\"enum\":[\"silent\",\"spoken\"]}},\"required\":[\"mode\"]}"
   },
   "control_window": {
-    "description": "控制车窗（模拟）。「打开车窗」open；「关窗」close；「车窗开一半」set,value=50；「开一点主驾车窗」adjust,window=driver,value=20；「副驾关小一点」adjust,window=passenger,value=-20；「车窗开了多少」get_state。未指明窗时 window=all。只按返回的 windows/announce 确认；ok=false 如实说没成功。",
+    "description": "控制车窗（模拟）。「打开车窗」open；「关窗」close；「车窗开一半」set,value=50；「开一点主驾车窗」「我这边的窗户开一点」adjust,window=driver,value=20；「副驾关小一点」adjust,window=passenger,value=-20；「车窗开了多少」get_state。我这边、我这侧是主驾，不是未指明。未指明窗时 window=all。只按返回的 windows/announce 确认；ok=false 如实说没成功。",
     "parameters": "{\"additionalProperties\":false,\"type\":\"object\",\"properties\":{\"action\":{\"type\":\"string\",\"enum\":[\"open\",\"close\",\"set\",\"adjust\",\"get_state\"]},\"window\":{\"type\":\"string\",\"enum\":[\"all\",\"front\",\"rear\",\"driver\",\"passenger\",\"front_left\",\"front_right\",\"rear_left\",\"rear_right\"]},\"value\":{\"description\":\"set: 0-100 开度百分比；adjust: 变化量（正数开大，负数关小），默认 20\",\"type\":\"number\"}},\"required\":[\"action\"]}"
   },
   "control_seat": {

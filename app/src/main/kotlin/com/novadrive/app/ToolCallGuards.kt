@@ -52,6 +52,14 @@ object ToolCallGuards {
     }
     private val windowWords: List<String> by lazy { UtteranceIntentResolver.product().cuesFor(CapabilityIds.BODY_WINDOW) }
 
+    /** Longer first so 「我这一侧」 is the phrase, not a shorter neighbour. */
+    private val DRIVER_SIDE = listOf("我这一侧", "我这半边", "我这边", "我这侧")
+
+    /** A second window the driver named. 「都」 alone is not one: 「我这边的窗户都开一点」 is still theirs. */
+    private val OTHER_WINDOW = listOf(
+        "副驾驶", "副驾", "乘客", "右前", "左后", "右后", "后排", "后窗", "全部", "所有", "四个", "两边", "两侧",
+    )
+
     /**
      * The same call, with the same arguments, twice in one driver turn.
      *
@@ -118,6 +126,25 @@ object ToolCallGuards {
         if (unsupportedPartWords.none { it in said }) return null
         val rest = unsupportedPartWords.fold(said) { text, word -> text.replace(word, "") }
         return if (windowWords.any { it in rest } || "窗" in rest) null else UNSUPPORTED_BODY_PART
+    }
+
+    /**
+     * 「把我这边的窗户开一点」 answered with `window=all` (P57, tryout run 4: all four windows
+     * opened 20 %). The driver's side is the driver window. Returns `driver` when this turn's
+     * words name only that side and the call would move a different one; null leaves the argument
+     * alone. A transcript older than the speech onset is the previous turn's, so it is not used
+     * (same rule as [sunroofOnWindowTool]). Another named window (副驾, 后排, 全部, …) is left to
+     * the call. The tool description is only a hint.
+     */
+    fun driverSideWindow(call: DomainVoiceEvent.ToolCall, context: DriverContext?): String? {
+        if (call.name != com.novadrive.app.voice.BodyToolActions.WINDOW_TOOL || context == null) return null
+        if (context.currentEpoch() <= 0 || context.currentEpoch() < context.capabilityEpoch()) return null
+        val window = call.arguments["window"]
+        if (window == "driver" || window == "front_left") return null
+        val said = TranscriptText.normalize(context.currentRequestText())
+        if (DRIVER_SIDE.none { it in said }) return null
+        if (OTHER_WINDOW.any { it in said }) return null
+        return "driver"
     }
 
     /**
