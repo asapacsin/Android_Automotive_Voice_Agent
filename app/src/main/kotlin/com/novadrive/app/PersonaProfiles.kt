@@ -34,7 +34,7 @@ object PersonaProfiles {
     const val TONE_PREFIX = "性格基调："
     const val VOICE_STYLE_PREFIX = "语音风格："
     const val SWEET_TONE = "性格基调：甜美、亲昵、会撒娇，像跟很熟的人说话一样软软的，可以用「嘛」「呀」「啦」这类语气词；但依然聪明可靠，事情必须办好、信息必须说清楚。可爱不等于幼稚，绝不低俗、暧昧或带性暗示。"
-    const val SWEET_VOICE_STYLE = "语音风格：年轻女性，音色不变（还是同一个声音），但语气和说法要听得出变化：语气甜，语速稍慢、句尾轻轻上扬，可以用「嘛」「呀」「啦」，吐字清晰。"
+    const val SWEET_VOICE_STYLE = "语音风格：年轻女性，音色不变（还是同一个声音），但语气和说法要听得出变化，一听就和平时不同：音调比平时明显高一点，声音更软更轻，语速稍慢，句尾轻轻上扬并稍微拖长（像「好嘛～」「知道啦～」），可以用「嘛」「呀」「啦」，吐字清晰。"
 
     /**
      * Every non-default tone carries the same guard sentence: a persona is tone, never behaviour

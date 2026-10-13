@@ -2017,3 +2017,15 @@ style lines now say 音色不变 but the delivery must audibly change (sweet: �
 sub-fix above. Sources: DashScope client-events page, LiveKit `update_instructions` (openai and
 google plugins), Google AI forum thread 83359.
 - Review fixes 2026-10-13 (offline-proved); open live questions offline tests cannot answer: DashScope's real refusal shape for a mid-session instructions-only `session.update`; Gemini G-1d for a model-role `turnComplete=false` turn; whether a resumed Gemini session re-reads `systemInstruction`.
+
+**Live evidence 2026-10-13 (style scene, `NOVA_LIVE_SCENES=style`, graded by `tools/demo/live/style_check.py`):**
+
+| Run | Code | Model | s_mood2 / s_seat / s_mood3 vs s_mood1 (F0) | Result |
+| --- | --- | --- | --- | --- |
+| before | before the fix | gemini-3.1-flash-live | +6 % / +13 % / +1 % — faded | FAIL s_mood2, s_mood3 |
+| fix1 | re-delivery | gemini-3.1-flash-live | +1 % / +5 % / +3 %; sweet wording held, pace −25..−34 % | FAIL — 3.1 does not raise pitch on request |
+| fix38 | re-delivery | gemini-3.8-live | +35 % / +4 % / +33 % | PASS (after the F0-alone rule) |
+| final | + review fixes | gemini-3.8-live | −3 % / −2 % / −5 %; sweet wording held | FAIL — delivery not reliable with the first wording |
+| final2 | + sweet voice line asks for a higher, softer pitch | gemini-3.8-live | +5 % (+2.8 st, −22 % pace) / +13 % / +13 % (+2.2 st) | **PASS** |
+
+In every run with the fix: the panel switched sweet→default, `style_redelivered` was logged once per switch, no session error. Holding the style is fixed; how strongly her delivery changes varies run to run (one PASS with the current wording, not yet a rate). The sweet voice line now asks for 音调比平时明显高一点、声音更软更轻 (planner, 2026-10-13, after the "final" run). Video: `demo-videos/style_before_after_2026-10-13.mp4` (before, then after). Open: whether Ayano on Qwen changes delivery at all (owner's go for one short session).
