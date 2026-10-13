@@ -2,6 +2,7 @@ package com.novadrive.app.voice
 
 import com.novadrive.contracts.CapabilityIds
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 
@@ -41,6 +42,24 @@ class UtteranceIntentResolverTest {
         ).forEach { phrase ->
             assertNull(resolver.resolve(phrase), phrase)
         }
+    }
+
+    @Test
+    fun speakingStyleCuesNeedAMannerWord() {
+        listOf("能不能说话再稍微嗲一点", "说话撒个娇", "傲娇一点", "说话温柔一点", "说话霸道一点").forEach {
+            assertEquals(UtteranceIntentResolver.SPEECH_SPEAKING_STYLE, resolver.resolve(it)?.capabilityId, it)
+        }
+        listOf("甜一点", "温柔一点开", "空调调低一点", "空调温度甜一点").forEach {
+            assertNotEquals(UtteranceIntentResolver.SPEECH_SPEAKING_STYLE, resolver.resolve(it)?.capabilityId, it)
+        }
+    }
+    @Test
+    fun roofShadeNamesTheUnsupportedBodyCapability() {
+        assertEquals(CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS, resolver.resolve("开一下天幕")?.capabilityId)
+        assertEquals(DriverTurn.Kind.NO_TOOL_ACTION, DriverTurn.classify("开一下天幕"))
+        val cues = resolver.cuesFor(CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS)
+        assertEquals(setOf("天窗", "天幕", "后备箱", "车门", "车灯", "雨刷"), cues.toSet())
+        assertEquals(setOf("车窗", "窗户", "开窗", "关窗"), resolver.cuesFor(CapabilityIds.BODY_WINDOW).toSet())
     }
 }
 

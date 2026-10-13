@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-10-12T16:56:36",
+  "generated_at": "2026-10-13T08:25:56",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "5f4dd97",
-    "branch": "claude/10-9",
-    "subject": "DEMO-COMMUTE-001: Gemini commute rehearsal PASS 12/12 after NAV-FAST; c_nav at 3.5 s",
+    "commit": "2c64c36",
+    "branch": "claude/10-13",
+    "subject": "DEMO-TRYOUT-001 PASS 19/19 on Gemini with the P56 fix; DEMO-AMAP-LIVE-001 re-run and rebound",
     "working_tree_clean": false,
-    "uncommitted_files": 1
+    "uncommitted_files": 3
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-10-12T16:56:02",
+    "collected_at": "2026-10-13T07:25:46",
     "total": {
-      "tests": 313,
+      "tests": 314,
       "failures": 0,
       "errors": 0,
       "skipped": 0
@@ -25,7 +25,7 @@
         "skipped": 0
       },
       "app": {
-        "tests": 1,
+        "tests": 2,
         "failures": 0,
         "errors": 0,
         "skipped": 0
@@ -65,8 +65,8 @@
   },
   "apk": {
     "built": true,
-    "bytes": 224300343,
-    "built_at": "2026-10-12T16:47:22"
+    "bytes": 224801809,
+    "built_at": "2026-10-13T07:25:16"
   },
   "capabilities": {
     "available": true,
@@ -102,17 +102,27 @@
     {
       "id": "P51",
       "title": "「导航去横琴镇」 + 「第一个」 chose the place the car was already at",
-      "status": "unknown"
+      "status": "open. The persistence design is with the decider (AGENTS.md hard rule); a style scene"
     },
     {
       "id": "P52",
       "title": "A used-up Qwen free tier was reported as QWEN_PROTOCOL_ERROR",
-      "status": "unknown"
+      "status": "open. The persistence design is with the decider (AGENTS.md hard rule); a style scene"
     },
     {
       "id": "P53",
       "title": "c_nav waits for the real place search",
-      "status": "unknown"
+      "status": "open. The persistence design is with the decider (AGENTS.md hard rule); a style scene"
+    },
+    {
+      "id": "P54",
+      "title": "「附近有加油站吗」 while parked was answered 「没在导航，查不了」",
+      "status": "open. The persistence design is with the decider (AGENTS.md hard rule); a style scene"
+    },
+    {
+      "id": "P55",
+      "title": "10-13 bug: 「嗲一点」 changes neither the style on screen nor how she speaks",
+      "status": "open. The persistence design is with the decider (AGENTS.md hard rule); a style scene"
     }
   ],
   "tech_debt": [
@@ -182,13 +192,20 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "A0: | A0 | G-1 … G-1f measured on the short route | measurement (emulator) | `GUIDANCE-EMU-001` | not earned |",
-    "actionable_count": 123,
+    "NEXT_ACTION": "DEMO-TRYOUT-001: FAIL: A first-time driver in their own words (19 lines: chat, vague asks, a refusal, a change of mind, barge-in, mumble, call), graded per line",
+    "actionable_count": 128,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 28,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "DEMO-TRYOUT-001",
+        "blocked_by": null
+      },
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
@@ -978,6 +995,34 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P53",
+        "blocked_by": null
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P54",
+        "blocked_by": null
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P55",
+        "blocked_by": null
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P56",
+        "blocked_by": null
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P57",
         "blocked_by": null
       },
       {

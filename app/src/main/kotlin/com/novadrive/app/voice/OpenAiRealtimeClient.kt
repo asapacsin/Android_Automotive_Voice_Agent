@@ -5,7 +5,6 @@ import com.novadrive.evaluation.Telemetry
 import com.novadrive.app.DebugVoiceLog
 import com.novadrive.app.NavigationState
 import com.novadrive.app.PersonaProfiles
-import com.novadrive.app.SpeakingStyleState
 import com.novadrive.app.voice.ProviderCueCapture.Signal
 import com.novadrive.ingress.realtime.DomainVoiceEvent
 import com.novadrive.ingress.realtime.RealtimeEvent
@@ -67,6 +66,7 @@ open class OpenAiRealtimeClient<C : Any>(
     @Volatile private var navigatingListener: ((Boolean) -> Unit)? = null
     @Volatile private var textUnsupportedLogged = false
     private val emptyRetry = EmptyResponseRetryPolicy()
+    private val deliveredStyle = DeliveredStyle() // P55
     private val resetPolicy = ConversationResetPolicy()
     private val historyBudget = HistoryBudget()
     private val resetScope = kotlinx.coroutines.CoroutineScope(
@@ -287,7 +287,14 @@ open class OpenAiRealtimeClient<C : Any>(
     fun discardPendingAudio() {
         listeningSuspended = true
         heldOutbound.removeIf(dialect::isAudioAppend)
-        turnGate.clear(); stallRetryWaiting = false // asleep: a stall retry is not wanted either
+        val dropped = turnGate.pending() > 0
+        turnGate.clear()
+        stallRetryWaiting = false // asleep: a stall retry is not wanted either
+        if (dropped) {
+            // P55: a held style update was dropped with its turn; the next tool result re-sends it.
+            deliveredStyle.forget()
+            dialect.onInstructionsUpdateDropped()
+        }
     }
 
     /** Listening resumed after a sleep. The conversation (and its context) simply continues. */
@@ -371,18 +378,24 @@ open class OpenAiRealtimeClient<C : Any>(
         resetPolicy.onToolResultSent(callId)
         // The one place execution evidence enters this client (INVARIANT I-1; see DriverTurnPipeline).
         pipeline.onToolResult(callId, output)
-        // The call id belongs to this conversation: after a reset there is nothing to answer.
-        submitReply("tool_result", control = true)
+        // The call id belongs to this conversation: after a reset there is nothing to answer. A changed style rides this turn (P55, B10).
+        val style = deliveredStyle.redelivery(
+            dialect.logPrefix,
+            ::instructionsWithContext,
+            dialect::instructionsUpdate,
+            supported = dialect.supportsInstructionsUpdate,
+        )
+        submitReply("tool_result", control = true, before = style)
     }
 
     /** One response.create through [turnGate], the path every app-requested reply takes. */
-    private fun submitReply(kind: String, control: Boolean = false) {
-        val reply = ResponseTurnGate.Turn(listOf(dialect.responseCreate()), emptyList(), conversationEpoch)
+    private fun submitReply(kind: String, control: Boolean = false, before: List<String> = emptyList()) {
+        val reply = ResponseTurnGate.Turn(before + dialect.responseCreate(), emptyList(), conversationEpoch)
         if (!turnGate.submit(reply)) {
             DebugVoiceLog.log("${dialect.logPrefix}_turn_deferred kind=$kind pending=${turnGate.pending()}")
             return
         }
-        if (control) sendControl(dialect.responseCreate()) else trySend(dialect.responseCreate())
+        reply.messages.forEach { if (control) sendControl(it) else trySend(it) }
     }
 
     /** The stall notice is over: the waiting retry goes out now unless another turn already did. */
@@ -440,7 +453,7 @@ open class OpenAiRealtimeClient<C : Any>(
     private fun instructionsWithContext(): String {
         val hint = contextHint()
         if (hint != null) DebugVoiceLog.log("${dialect.logPrefix}_context_hint chars=${hint.length}")
-        val instructions = PersonaProfiles.compose(rawInstructions, SpeakingStyleState.current)
+        val instructions = PersonaProfiles.compose(rawInstructions, deliveredStyle.take())
         return if (hint == null) instructions else instructions.trim() + "\n" + hint
     }
 

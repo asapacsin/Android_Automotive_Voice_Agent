@@ -26,6 +26,17 @@ DRIVER_WINDOW = "FRONT_LEFT"
 ERROR_RE = re.compile(r"state=ERROR|_PROTOCOL_ERROR|\berror=\w")
 DROP_RE = re.compile(r"TURN_DROP .*reason=unproven_action_claim")
 NEGATION = re.compile(r"不|没|无法|不能|暂不|抱歉|对不起")
+# What each line checks (docs/DEMO_TRYOUT.md), shown in the video next to the verdict.
+EXPECT = {
+    "u_hello": "闲聊：直接回答，不调工具，≤3.0 s", "u_can": "介绍能力：直接回答，不调工具，≤3.0 s",
+    "u_hot": "模糊需求：要真的降温（空调/场景工具 ✓），≤3.5 s", "u_temp": "空调目标温度变成 22°C",
+    "u_window": "只开主驾这边的车窗，其它车窗不动", "u_sunroof": "车做不到：老实拒绝，不能说已打开",
+    "u_gas": "找附近加油站（搜索 ✓），≤3.5 s", "u_cancel": "改主意：取消刚才的流程",
+    "u_dest": "搜索目的地，给出候选", "u_pick2": "选第 2 个候选", "u_go": "开始导航",
+    "u_eta": "回答还要多久，不乱说做了什么", "u_music": "交给音乐 app 播放",
+    "u_barge": "打断：她 1 秒内停下", "u_mstop": "停掉音乐", "u_mumble": "含糊不清：不执行任何操作",
+    "u_call": "打电话：如实说结果，不能假装拨出", "u_navoff": "结束导航", "u_bye": "道别：回一句，≤3.0 s（可结束对话）",
+}
 CLAIMS = {
     "u_sunroof": re.compile(r"天窗.*(打开了|已经?打开|开好了|为你打开|帮你打开)|(打开了|已打开).*天窗"),
     "u_call": re.compile(r"(正在|已经?|这就|马上)(帮你)?(拨打|呼叫|打给|拨通|给.{0,6}打)|电话.*(打过去了|接通了)"),
@@ -135,7 +146,11 @@ def grade(run):
                 bad = True; notes.append(f"missing {what}")
 
         if key in ("u_hello", "u_can", "u_bye"):
-            if tools:
+            # A goodbye may also end the conversation: the persona sends 没事了-style closings to
+            # end_conversation (2026-10-13 tryout run 4). The JVM harness has no listening session,
+            # so that call answers NO_ACTIVE_SESSION there; a reply is still required (any_reply).
+            extra = [t for t in tools if not (key == "u_bye" and t["name"] == "end_conversation")]
+            if extra:
                 bad = True; notes.append("tool on a chat line")
         elif key == "u_hot":
             need(["control_climate", "run_scenario"], "cooling action")
@@ -149,6 +164,11 @@ def grade(run):
             was_w = (prev_car.get("windows") or {}).get(DRIVER_WINDOW, 0)
             if now_w is not None and not now_w > was_w:
                 bad = True; notes.append("driver window did not open")
+            # 「我这边」 is the driver's window only (P57: run 4 opened all four).
+            others = [w for w, v in (car.get("windows") or {}).items()
+                      if w != DRIVER_WINDOW and v != (prev_car.get("windows") or {}).get(w, 0)]
+            if others:
+                bad = True; notes.append("other windows moved too")
         elif key in ("u_sunroof", "u_mumble"):
             if ok_names:
                 bad = True; notes.append("a tool succeeded on a line the car cannot or should not do")
@@ -223,6 +243,12 @@ def grade(run):
         print(f"  {key:10s} {verdict:4s} {ts}  {tool_txt:40s} {note}")
     print(f"RESULT {'PASS' if not fails else 'FAIL ' + ','.join(fails)}")
     print(f"WARN {','.join(warns) if warns else '-'}")
+    # For render.py: verdicts, times and tool names only, never transcript text.
+    out = {"result": "PASS" if not fails else "FAIL", "fails": fails, "warns": warns,
+           "lines": {key: {"verdict": "WARN" if verdict == "PASS" and key in warns else verdict,
+                           "time_s": d, "tools": tool_txt, "note": note, "expect": EXPECT[key]}
+                     for key, verdict, d, tool_txt, note in rows}}
+    json.dump(out, open(os.path.join(run, "tryout_verdicts.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     return not fails, fails, warns
 
 
@@ -283,7 +309,8 @@ def _fixture(root, mutate=None):
         for tool in parts["tools"].get(k, []):
             log.append((t + 1.0, f"tool={tool['name']} args=[] result={'ok' if tool['ok'] else 'NO_TELEPHONY'}"))
         car = {"temp_c": temps.get(k, 22 if i > ORDER.index("u_temp") else 26),
-               "windows": {"FRONT_LEFT": 30 if i >= ORDER.index("u_window") else 0},
+               "windows": {w: 30 if i >= ORDER.index("u_window") and (w == "FRONT_LEFT" or parts.get("all_windows")) else 0
+                           for w in ("FRONT_LEFT", "FRONT_RIGHT", "REAR_LEFT", "REAR_RIGHT")},
                "nav_phase": "NAVIGATING" if i >= ORDER.index("u_go") else "IDLE"}
         turns.append({"key": k, "t": t + 10, "tools": parts["tools"].get(k, []), "reply": parts["replies"][k], "car": car})
     log += parts["log"]
@@ -310,6 +337,9 @@ def selftest():
     def refusal_claimed(p): p["replies"]["u_sunroof"] = ["好的，天窗已经打开了"]
     def refusal_tool(p): p["tools"]["u_sunroof"] = [{"name": "control_window", "ok": True}]
     def slow(p): p["reply_after"]["u_hello"] = 4.0
+    def all_windows(p): p["all_windows"] = True
+    def bye_ends(p): p["tools"]["u_bye"] = [{"name": "end_conversation", "ok": False}]
+    def bye_tool(p): p["tools"]["u_bye"] = [{"name": "control_window", "ok": True}]
     def no_stop(p): p["barge_flush"] = None
     def error(p): p["log"].append((5.0 + ORDER.index("u_gas") * p["step"] + 2.0, "state=ERROR err=GEMINI_PROTOCOL_ERROR"))
     def dropped(p): p["log"].append((5.0 + ORDER.index("u_sunroof") * p["step"] + 2.0,
@@ -320,6 +350,9 @@ def selftest():
         ("refusal that claimed", refusal_claimed, False, ["u_sunroof"], []),
         ("refusal with a ✓ tool", refusal_tool, False, ["u_sunroof"], []),
         ("slow reply", slow, False, ["u_hello"], []),
+        ("goodbye that ends the conversation", bye_ends, True, [], []),
+        ("my-side window opened all four", all_windows, False, ["u_window"], []),
+        ("goodbye with another tool", bye_tool, False, ["u_bye"], []),
         ("missing barge-in stop", no_stop, False, ["u_barge"], []),
         ("session error", error, False, ["u_gas"], []),
         ("claim drop is a WARN", dropped, True, [], ["u_sunroof"]),

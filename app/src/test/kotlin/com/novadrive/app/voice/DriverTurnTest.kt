@@ -845,4 +845,10 @@ class DriverTurnTest {
             assertEquals("unproven_action_claim", (verdict as DriverTurn.Verdict.Drop).reason, reply)
         }
     }
+
+    @Test
+    fun aSpeakingStyleRequestIsAnActionTurn() {
+        assertEquals(DriverTurn.Kind.ACTION, DriverTurn.classify("能不能说话再稍微嗲一点"))
+        assertEquals(DriverTurn.Kind.CONVERSATION, DriverTurn.classify("甜一点"))
+    }
 }

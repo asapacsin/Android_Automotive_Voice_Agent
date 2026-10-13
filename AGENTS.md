@@ -221,6 +221,13 @@ does not change architecture ownership, invariants, or who may certify work. Age
   model that can do what the test needs, with the smallest input (one clip, a setup-only session,
   no audio when the question is the session); the more expensive model only after the cheap one
   passed, and only for what only it can show. State the expected cost in the plan.
+- **Gemini first, Ayano last** (owner, 2026-10-13). Until the feature work is done, every live test,
+  rehearsal and demo video runs on Gemini (free), even when the question is how she sounds - say in
+  the hand-over that the voice is Gemini's, because Gemini cannot use a cloned voice. Ayano on Qwen
+  comes back once, after everything is done: the owner says when, and that is the go for the Ayano
+  takes. Until then open no Qwen session at all (no 3.5, no 3.8, no clone), and do not ask for one.
+  The free models that take a cloned voice, for that later switch, are in
+  [docs/VOICE_CLONE_FREE_MODELS.md](docs/VOICE_CLONE_FREE_MODELS.md).
 - **Gemini's free tier resets every day: use it, oldest model first** (owner, 2026-10-11; oldest-first and
   daily reset 2026-10-12). Every live test or rehearsal whose question is not Ayano's own voice runs on
   Gemini, and a used-up or low Qwen quota is never a reason to leave it untested: rehearse on Gemini
@@ -233,7 +240,7 @@ does not change architecture ownership, invariants, or who may certify work. Age
   the day if the free tier answers with a quota error. A test whose question only the
   Qwen voice can answer (a custom or cloned voice: how she sounds, reading the car lines) skips
   Gemini, whose voice is not ours, and goes straight to the cheapest Qwen model with the
-  smallest input: text-only turns reading the lines, one short session, no full demo.
+  smallest input: text-only turns reading the lines, one short session, no full demo. (Until the owner says the work is done this waits: "Gemini first, Ayano last" above.)
 - **Demo-oriented tests, no API the function does not need** (owner, 2026-10-11). Write test cases
   from the demo's user scenarios: the driver lines and expected outcomes of `docs/DEMO_COMMUTE.md`
   and `docs/DEMO_REQUIREMENTS.md` (say this, the car does that, she says this, within this time),

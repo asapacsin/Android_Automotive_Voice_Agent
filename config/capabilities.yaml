@@ -433,6 +433,12 @@ unsupported:
     verified: unsupported
     recognised_by: UtteranceIntentResolver
     protected_by: [TRUTH-BAIT-001]
+    required_behaviour: >
+      Refuse in one honest sentence (SPEC-006 F-7). A control_window call - direct or as a
+      run_scenario step - whose driver words (this turn's, transcript normalised by TranscriptText)
+      name one of UtteranceIntentResolver's cues for this id (天窗/天幕/后备箱/车门/车灯/雨刷) and no
+      window is refused UNSUPPORTED_BODY_PART before anything moves (ToolCallGuards, OPEN_PROBLEMS
+      P56). JVM: ToolCallGuardSunroofTest, ComfortScenariosTest, UtteranceIntentResolverTest.
   # SPEC-011 split realtime_weather_traffic_news: weather and route traffic moved to live_info.*;
   # what is left has no source at all.
   realtime_news_prices:
@@ -482,6 +488,7 @@ change_impact:
       - BaiduFlexClient
       - OpenAiRealtimeClient
       - ReplyUsage
+      - DeliveredStyle
       - RealtimeDialect
       - BaiduFlexDialect
       - QwenOmniDialect
@@ -495,6 +502,7 @@ change_impact:
       - BaiduDirectRealtimeProvider
       - ConversationResetPolicy
       - GeminiLiveClient
+      - TranscriptText
       - QwenSettings
       - GeminiTurnTiming
       - GeminiCorrectionGrace

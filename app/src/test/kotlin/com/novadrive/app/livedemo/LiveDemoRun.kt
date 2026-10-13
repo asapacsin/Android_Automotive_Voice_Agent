@@ -69,12 +69,14 @@ class LiveDemoRun {
         assumeTrue(System.getenv("NOVA_LIVE_DEMO") == "1", "live demo runs only with NOVA_LIVE_DEMO=1")
         val outPath = requireNotNull(System.getenv("NOVA_LIVE_OUT")?.takeIf { it.isNotBlank() }) { "NOVA_LIVE_OUT is not set" }
         val out = File(outPath).absoluteFile.apply { mkdirs() }
-        val choice = System.getenv("NOVA_LIVE_PROVIDER")?.ifBlank { null } ?: "qwen"
+        // Gemini first, Ayano last (AGENTS.md, owner 2026-10-13): Qwen only when asked for by name.
+        val choice = System.getenv("NOVA_LIVE_PROVIDER")?.ifBlank { null } ?: "gemini"
         val scenes = System.getenv("NOVA_LIVE_SCENES")?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }
-            ?: SCENES.keys.filter { it != DRIVE && it != TRYOUT }
+            ?: SCENES.keys.filter { it != DRIVE && it != TRYOUT && it != STYLE }
         scenes.forEach { require(it in SCENES) { "unknown scene $it" } }
         require(DRIVE !in scenes || scenes.size == 1) { "the $DRIVE scene is a whole trip; run it alone" }
         require(TRYOUT !in scenes || scenes.size == 1) { "the $TRYOUT scene is a whole session; run it alone" }
+        require(STYLE !in scenes || scenes.size == 1) { "the $STYLE scene is a whole session; run it alone" }
         val prefetch = if (TRYOUT in scenes) listOf(COMMUTE_QUERY) + TRYOUT_QUERIES else listOf(COMMUTE_QUERY)
         LiveDemo(out, choice, prefetch).use { it.run(scenes) }
     }
@@ -106,6 +108,12 @@ class LiveDemoRun {
         /** The tryout's lines in order before the music barge-in, and after it. */
         val TRYOUT_PARKED = listOf("u_hello", "u_can", "u_hot", "u_temp", "u_window", "u_sunroof", "u_gas", "u_cancel", "u_dest", "u_pick2", "u_go")
         val TRYOUT_AFTER = listOf("u_mstop", "u_mumble", "u_call", "u_navoff", "u_bye")
+
+        /**
+         * The speaking style before, after 「嗲一点」 and back (NOVA_LIVE_SCENES=style, docs/DEMO_STYLE.md): one
+         * session, parked, the same question four times. tools/demo/live/style_check.py grades it.
+         */
+        const val STYLE = "style"
 
         /** Seconds into a playing reply at which the driver barges in with u_barge. */
         const val BARGE_AFTER_S = 1.0
@@ -166,6 +174,15 @@ class LiveDemoRun {
                 TRYOUT_AFTER.forEach { s.turn(it, 40.0) }
                 s.snapshot("end")
             },
+            STYLE to { s ->
+                s.timeline.title("说话风格：之前", "Speaking style: before (default)")
+                s.turn("s_mood1", 40.0)
+                s.timeline.title("嗲一点之后", "After 「嗲一点」: sweet, through a car action and two turns later")
+                listOf("s_sweet", "s_mood2", "s_seat", "s_mood3").forEach { s.turn(it, 40.0) }
+                s.timeline.title("切回正常", "Back to normal")
+                s.turn("s_normal", 40.0); s.turn("s_mood4", 40.0)
+                s.snapshot("end")
+            },
         )
     }
 }
@@ -176,8 +193,8 @@ private const val COMMUTE_QUERY = "横琴镇"
 /** The tryout's destination searches (docs/DEMO_TRYOUT.md), prefetched like COMMUTE_QUERY; the candidates stay real. */
 private val TRYOUT_QUERIES = listOf("长隆海洋王国", "附近的加油站")
 
-/** Tool arguments the tryout records per call (no contact, place or free text): what the grader checks. */
-private val TRYOUT_ARG_KEYS = setOf("index", "preference", "action", "window", "value", "scenario")
+/** Tool arguments the tryout and style scenes record per call (no contact, place or free text): what the graders check. */
+private val TRYOUT_ARG_KEYS = setOf("index", "preference", "action", "window", "value", "scenario", "style")
 
 /** One live session: the composition, the real-time microphone and the per-turn state log. */
 class LiveDemo(
@@ -239,7 +256,7 @@ class LiveDemo(
     private var spokeOverReply = false
     private var micFramesGated = 0L
 
-    /** The tryout records the graded tool arguments per call (TRYOUT_ARG_KEYS). */
+    /** The tryout and style scenes record the graded tool arguments per call (TRYOUT_ARG_KEYS). */
     @Volatile private var tryout = false
 
     private val turnTools = JSONArray()
@@ -359,7 +376,7 @@ class LiveDemo(
         providerRef = built.provider
         playback = timeline.Playback(built.outputSampleRateHz)
         val drive = scenes == listOf(LiveDemoRun.DRIVE)
-        tryout = scenes == listOf(LiveDemoRun.TRYOUT)
+        tryout = scenes == listOf(LiveDemoRun.TRYOUT) || scenes == listOf(LiveDemoRun.STYLE)
         val rules = if (!drive) null else DriveSpeechRules(
             playback, scope,
             pickerOpen = {

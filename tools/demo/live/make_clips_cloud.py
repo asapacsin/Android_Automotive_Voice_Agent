@@ -21,8 +21,13 @@ is required for them). The huayan voice has one speaker, so the driver is the sa
 DRIVER_PITCH lower (pitch and tempo together), to differ from the g_* guidance voice.
 
     PIPER_MODEL=... python3 tools/demo/live/make_clips_cloud.py u_hello u_can ...   # or: tryout
+
+The style scene's lines (s_*, STYLE below, docs/DEMO_STYLE.md) are made the same way (Piper, DRIVER_PITCH);
+the four identical s_mood* lines are made once and copied.
+
+    PIPER_MODEL=... python3 tools/demo/live/make_clips_cloud.py style
 """
-import ast, asyncio, os, re, subprocess, sys
+import ast, asyncio, os, re, shutil, subprocess, sys
 
 import edge_tts
 import imageio_ffmpeg
@@ -69,6 +74,17 @@ TRYOUT = {
     "u_navoff": "不用导航了",
     "u_bye": "好了，谢谢",
 }
+# docs/DEMO_STYLE.md: the speaking style before, after 「嗲一点」 and back. s_mood1..4 share one text
+# (made once, the pcm copied). All are the same driver voice.
+STYLE = {
+    "s_mood1": "你今天心情怎么样",
+    "s_sweet": "能不能说话再稍微嗲一点",
+    "s_mood2": "你今天心情怎么样",
+    "s_seat": "帮我把主驾座椅稍微调高一点",
+    "s_mood3": "你今天心情怎么样",
+    "s_normal": "正常一点，别嗲了",
+    "s_mood4": "你今天心情怎么样",
+}
 # The driver: the guidance voice played this much slower (lower pitch), resampled to 16 kHz.
 DRIVER_PITCH = 0.88
 
@@ -105,10 +121,21 @@ async def main(keys):
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
     if keys == ["tryout"]:
         keys = list(TRYOUT)
+    if keys == ["style"]:
+        keys = list(STYLE)
     for k in keys or [k for k in lines if k.startswith("c_")] + list(GUIDANCE):
         if os.path.exists(os.path.join(OUT, k + ".pcm")):
             continue
-        if k in TRYOUT:
+        if k in STYLE:
+            twin = next((m for m in STYLE if m != k and STYLE[m] == STYLE[k]
+                                                         and os.path.exists(os.path.join(OUT, m + ".pcm"))), None)
+            if twin and os.path.exists(os.path.join(OUT, twin + ".pcm")):
+                shutil.copyfile(os.path.join(OUT, twin + ".pcm"), os.path.join(OUT, k + ".pcm"))
+            elif not os.environ.get("PIPER_MODEL"):
+                sys.exit("the s_* style lines need PIPER_MODEL (a Piper .onnx voice)")
+            else:
+                make_piper(k, STYLE[k], os.environ["PIPER_MODEL"], ffmpeg, DRIVER_PITCH)
+        elif k in TRYOUT:
             if not os.environ.get("PIPER_MODEL"):
                 sys.exit("the u_* tryout lines need PIPER_MODEL (a Piper .onnx voice)")
             make_piper(k, TRYOUT[k], os.environ["PIPER_MODEL"], ffmpeg, DRIVER_PITCH)

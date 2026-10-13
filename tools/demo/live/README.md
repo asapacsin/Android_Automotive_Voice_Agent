@@ -15,7 +15,7 @@ fetched once before the session opens (`livedemo_search prefetched=true count=N`
 「导航去横琴镇」; the candidates are real. Any other query still searches live.
 
 Env: `NOVA_LIVE_DEMO=1` (otherwise the test is skipped), `NOVA_LIVE_OUT=<dir>` (required),
-`NOVA_LIVE_PROVIDER=qwen|gemini` (default qwen), `NOVA_QWEN_MODEL` (required for qwen; use `qwen3.5-omni-plus-realtime` — `qwen3.8-omni-flash-realtime` is refused unless `NOVA_ALLOW_QWEN_38=yes` on the owner's explicit say), `NOVA_LIVE_SCENES=commute_board,...` (default all
+`NOVA_LIVE_PROVIDER=gemini|qwen` (default gemini: Gemini first, Ayano last, AGENTS.md 2026-10-13), `NOVA_QWEN_MODEL` (required for qwen; use `qwen3.5-omni-plus-realtime` — `qwen3.8-omni-flash-realtime` is refused unless `NOVA_ALLOW_QWEN_38=yes` on the owner's explicit say), `NOVA_LIVE_SCENES=commute_board,...` (default all
 six, one session), `DASHSCOPE_API_KEY` + `DASHSCOPE_WORKSPACE_ID` (qwen) or `GEMINI_API_KEY`
 (gemini), `AMAP_WEB_KEY`. Outbound goes through the environment's proxy (JAVA_TOOL_OPTIONS / HTTPS_PROXY).
 
@@ -32,7 +32,7 @@ repository and must never be committed.
 
 **Never skipped:** with `NOVA_LIVE_DEMO=1` the unit-test task is never up to date (app/build.gradle.kts), so a take always runs; before 2026-10-11 Gradle once skipped a take silently. Check that `NOVA_LIVE_OUT` holds a fresh `timeline.json` anyway.
 
-**Rehearse first, cheaply:** run on Gemini (`NOVA_LIVE_PROVIDER=gemini`, no Qwen quota; the harness uses the oldest working Live model, `gemini-3.1-flash-live-preview`; `NOVA_GEMINI_MODEL=gemini-3.8-live` only when the older one cannot show the point) only the scenes the change touches (`NOVA_LIVE_SCENES=...`), once, and grade them; open the one Qwen take only when the rehearsal is clean. Gemini costs too (AGENTS.md): no repeated runs to chase latency variance. A voice test (custom or cloned voice) skips Gemini and reads the lines as text turns in one short Qwen session.
+**Rehearse first, cheaply:** run on Gemini (`NOVA_LIVE_PROVIDER=gemini`, no Qwen quota; the harness uses the oldest working Live model, `gemini-3.1-flash-live-preview`; `NOVA_GEMINI_MODEL=gemini-3.8-live` only when the older one cannot show the point) only the scenes the change touches (`NOVA_LIVE_SCENES=...`), once, and grade them; open the one Qwen take only when the rehearsal is clean. Gemini costs too (AGENTS.md): no repeated runs to chase latency variance. Until the owner says the work is done, a voice test also runs on Gemini and says so (Gemini first, Ayano last); after that, a cloned-voice test reads the lines as text turns in one short Qwen session.
 
 **Quota (AGENTS.md hard rule):** every live Qwen session spends the owner's limited free quota. Prove what you can offline first; run live only with the owner's go for that run, with `NOVA_SPEND_QWEN_QUOTA=yes` set. Without it this tool refuses to open a Qwen session.
 
@@ -81,3 +81,22 @@ python3 tools/demo/live/tryout_check.py --selftest        # offline fixtures
 
 The u_* clips are Piper (`zh_CN-huayan-medium`, one speaker) slowed to 0.88 so the driver sounds
 lower than the g_* guidance voice; edge-tts is refused from the cloud (403).
+
+## The style scene (`NOVA_LIVE_SCENES=style`)
+
+The speaking style before, after 「嗲一点」 and back ([docs/DEMO_STYLE.md](../../../docs/DEMO_STYLE.md)): one
+session, parked, no drive speech rules, run alone (not in the default scene list). The same question
+(s_mood1..4) is asked before, after the switch, after a seat action, and after 「正常一点」. Tool calls
+record their `style` argument in state.json (with the tryout's argument keys).
+
+```bash
+PIPER_MODEL=.../zh_CN-huayan-medium.onnx python3 tools/demo/live/make_clips_cloud.py style   # s_* clips
+NOVA_LIVE_DEMO=1 NOVA_LIVE_PROVIDER=gemini NOVA_LIVE_SCENES=style NOVA_LIVE_OUT=/tmp/style \
+  ./gradlew --offline :app:testDebugUnitTest --tests '*LiveDemoRun*'
+python3 tools/demo/live/style_check.py /tmp/style     # graded; writes /tmp/style/prosody.json
+python3 tools/demo/live/render.py /tmp/style /tmp/style.mp4
+```
+
+`prosody.py RUN` measures any run (median F0, F0 spread in semitones, CJK characters per voiced second,
+per turn) and writes `prosody.json` (numbers only, never text); `render.py` shows those numbers under
+each reply when the file exists, and in the style scene the change against s_mood1.

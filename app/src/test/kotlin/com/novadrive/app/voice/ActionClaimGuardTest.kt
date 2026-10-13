@@ -1,5 +1,6 @@
 package com.novadrive.app.voice
 
+import com.novadrive.app.tools.SpeechDomain
 import com.novadrive.ingress.realtime.ResponseOutcome
 
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -420,6 +421,18 @@ class ActionClaimGuardTest {
         assertEquals(ActionClaimGuard.nudgeFor("说话霸道一点"), g2.onResponseDone(message, "好的，已经调成霸道模式了。"))
     }
 
+    /** P55 review: 「别嗲了」 asks for the normal voice; the nudge must not steer to sweet. */
+    @Test
+    fun aNegatedStyleRequestIsNudgedToDefault() {
+        guard.onUserTranscript("别嗲了")
+        val nudge = guard.onResponseDone(message, "好的，不嗲了。")
+        assertNotNull(nudge)
+        assertTrue(nudge!!.contains("default"), nudge)
+        assertFalse(nudge.contains("sweet"), nudge)
+        val positive = ActionClaimGuard.nudgeFor("说话再嗲一点")
+        assertTrue(positive.contains("嗲、甜、可爱、撒娇→sweet"), positive)
+    }
+
     /** Owner demo 2026-09-28 (P39): prompts with a list on screen are not claims. */
     @Test
     fun aPromptToChooseIsNotAnUnverifiedClaim() {
@@ -493,5 +506,46 @@ class ActionClaimGuardTest {
         ).forEach { assertFalse(ActionClaimGuard.claimsNavigationStarted(it), it) }
         listOf("导航已开始，前往横琴镇。", "好的，已经开始导航了。", "正在为你导航。")
             .forEach { assertTrue(ActionClaimGuard.claimsNavigationStarted(it), it) }
+    }
+
+    /**
+     * P55 sub-fix: recorded Qwen takes 6/7/8 answered 「能不能说话再稍微嗲一点」 with agreement and no
+     * set_speaking_style call. Known consequence: on qwen3.5-omni-plus a follow-up nudge can provoke
+     * the documented 50002 crash (docs/DEMO_COMMUTE.md:137-146); the nudge is still right.
+     */
+    @Test
+    fun aStyleAgreementWithoutTheToolIsNudgedOnce() {
+        listOf(
+            "可以，那我就稍微甜一点说话。有什么需要我帮忙的？",
+            "好吧，既然你坚持。那我现在说话就稍微甜一点了，这样可以了吗？",
+            "行，那我就稍微甜一点说。有什么要做的？",
+        ).forEach { reply ->
+            val g = ActionClaimGuard()
+            g.onUserTranscript("能不能说话再稍微嗲一点")
+            val nudge = g.onResponseDone(message, reply)
+            assertNotNull(nudge, reply)
+            assertTrue(nudge!!.contains(SpeechDomain.SET_SPEAKING_STYLE), nudge)
+            assertTrue(nudge.contains("能不能说话再稍微嗲一点"))
+            assertNull(g.onResponseDone(message, reply), "at most once per utterance")
+        }
+    }
+
+    @Test
+    fun anHonestStyleRefusalIsLeftAlone() {
+        guard.onUserTranscript("说话霸道一点")
+        assertNull(guard.onResponseDone(message, "霸道的语气我没有，只有甜、傲娇、温柔、元气和正常。"))
+    }
+
+    @Test
+    fun aStyleTurnThatCalledTheToolIsLeftAlone() {
+        guard.onUserTranscript("能不能说话再稍微嗲一点")
+        assertNull(guard.onResponseDone(call, ""))
+        assertNull(guard.onResponseDone(message, "好呀，那我就甜甜地跟你说话啦。"))
+    }
+
+    @Test
+    fun unrelatedChatIsNotAStyleRequest() {
+        guard.onUserTranscript("今天上班有点累")
+        assertNull(guard.onResponseDone(message, "辛苦啦，那我就稍微甜一点陪你聊聊？"))
     }
 }

@@ -138,9 +138,14 @@ class AndroidToolDispatcher(
             ClimateServer(climate),
             BodyServer(cabin),
             // Scenario steps take the same server path as a direct call. Not the repeat or referent guards
-            // (fixed steps are neither driver repeats nor referents), but a named song still is not ours.
+            // (fixed steps are neither driver repeats nor referents), but a named song still is not ours and a
+            // window step never stands in for a 天窗 the driver named (P56).
             ComfortServer(
-                route = { step -> ToolCallGuards.unsupportedMedia(step, driverContext())?.let { failed(step, it) } ?: dispatchUnrecorded(step) },
+                route = { step ->
+                    val context = driverContext()
+                    val code = ToolCallGuards.unsupportedMedia(step, context) ?: ToolCallGuards.sunroofOnWindowTool(step, context)
+                    code?.let { failed(step, it) } ?: dispatchUnrecorded(step)
+                },
                 cabinState = { cabin?.cabinState?.value },
             ),
             VisionServer(camera),
@@ -209,6 +214,7 @@ class AndroidToolDispatcher(
         if (call.arguments.containsKey("_validation_error")) return null
         val context = driverContext()
         val code = ToolCallGuards.unsupportedMedia(call, context)
+            ?: ToolCallGuards.sunroofOnWindowTool(call, context)
             ?: ToolCallGuards.ambiguousReferent(call, context)
             ?: ToolCallGuards.repeatedInTurn(call, context)
         return code?.let { failed(call, it, ToolCallGuards.refusalDetails(it, context)) }

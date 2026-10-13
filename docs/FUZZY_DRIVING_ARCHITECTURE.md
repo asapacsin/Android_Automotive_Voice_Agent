@@ -210,6 +210,16 @@ ADR-011. On Baidu it is the whole reply. Not recommended for the first wave.
      reset after this very tool turn (`ConversationResetPolicy`). On Gemini it happens at the next
      connect. Whether a resumed Gemini session re-reads `systemInstruction` must be measured on
      device; until then, (1) carries it.
+  3. **Mid-session re-delivery (P55; decided by the decider 2026-10-13).** (1) alone faded within one
+     or two turns, and the live prompt kept 「不撒娇」. A shared `DeliveredStyle` compares the style last
+     delivered to the conversation with `SpeakingStyleState.current`; after a tool result, when they
+     differ, the client re-sends the same composed instructions as at setup, once, at an idle point:
+     - **Qwen-Omni:** an instructions-only `session.update` in the tool reply's turn, before its
+       `response.create`, through the response-turn gate. A `session.*` refusal of it is logged
+       (`qwen_instructions_update_refused`) and is not fatal. Baidu sends none (it resets per tool turn).
+     - **Gemini:** a `clientContent` turn with role `model` and `turnComplete=false` once the turn
+       has closed; never role `system`, never no role, no reconnect.
+     Sources: DashScope client events (help.aliyun.com/zh/model-studio/client-events: session.update takes a partial body, and the fields it restricts once audio has started imply the others stay updatable); LiveKit agents `openai.py` `update_instructions` (an instructions-only session.update mid-session); LiveKit agents google `realtime_api.py` `update_instructions` (a model-role clientContent with turn_complete=False); Google AI developer forum thread 83359 (a Live config cannot be changed on an open connection except through resumption).
 - **One voice per stage — decided (O-2, owner 2026-09-30).** The driver must never hear two
   different voices in the same stage (a session, a scenario, a reply). Consequences, all binding:
   - 嗲一点 changes the tone only; `session.voice` stays 4196 度清影 on Baidu and the Gemini prebuilt

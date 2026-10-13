@@ -1966,3 +1966,100 @@ A type-less frame with neither field is still a protocol error. All four documen
 **Fix:** the existing nearby search (`navigate_to` → `DestinationQuery.isNearbyRequest`, distance-sorted) is named for this case in three places: `navigate_to`'s description (「附近有加油站吗」 with no route → destination=附近的加油站), `query_live_info`'s along_route line (no route → not along_route), and the `NOT_NAVIGATING` advice (a nearby-place question → call navigate_to instead of saying 没在导航). SPEC-011's failure row is updated. Research: Gemini function-calling best practice is a specific description saying when to use each tool (ai.google.dev/gemini-api/docs/function-calling, "Best practices"); nothing more specific found for overlapping tools.
 
 **Evidence:** second tryout run, u_gas `navigate_to✓` 2.5 s, u_cancel 2.4 s (was 11.3 s); 18/19 lines PASS. Golden tool declarations updated; `:app:testDebugUnitTest` 1843/0, `:behavior-test:test` 131/0.
+
+## P55 — 10-13 bug: 「嗲一点」 changes neither the style on screen nor how she speaks
+
+**Reported by the owner 2026-10-13** after watching the demo video: after 「能不能说话再稍微嗲一点」 the
+simulated car panel's 说话风格 stayed `default` and her replies did not sound different; the demo
+showed no before/after and no switch back. Owner's requirement: solve it, and hand over a demo that
+shows the function changing on screen and her delivery changing, before and after, and back.
+
+**Evidence (recorded runs, c_sweet and the turns after it):**
+
+| Run | `set_speaking_style` called? | After it |
+| --- | --- | --- |
+| Qwen take 3 | no | no reply, then plain 「座椅升高了一档」 |
+| Qwen take 6 | no — said 「可以，那我就稍微甜一点说话」, nothing ran, nothing corrected it | plain |
+| Gemini commute rehearsal 2026-10-12 | yes | 「哼，真是麻烦…」 — tsundere wording, not sweet |
+| Gemini drive rehearsal 2026-10-13 | yes | plain 「座椅已经升高了一档」 |
+
+Measured on the Gemini audio (median F0 / F0 spread / pace): default turns ≈ 205 Hz, 7 st, 7.5 chars/s;
+the two turns right after the switch 245 Hz, 12+ st, 5.9 chars/s; from the third turn back to ≈ 210 Hz.
+
+**Causes:**
+1. A style request with no tool call is not corrected (the claim gate covers car actions, not style).
+2. The style enters the session instructions only when a session connects
+   (`PersonaProfiles.compose` in `OpenAiRealtimeClient` / `GeminiLiveClient` `instructionsWithContext`).
+   Qwen keeps one session for the whole drive, so a mid-drive change lives only in one tool result and
+   fades within a turn or two.
+3. The tool result and the voice-style line say 「声音不变」, telling an end-to-end voice model not to
+   change how it sounds.
+
+**Status:** open. The persistence design is with the decider (AGENTS.md hard rule); a style scene
+(`NOVA_LIVE_SCENES=style`: same question before, after 嗲一点, two turns later, after 正常一点, with
+measured pitch/range/pace on the video and a grader) is being built to prove the fix.
+
+**Sub-fix (no tool call), 2026-10-13:** `UtteranceIntentResolver` now maps a speaking-style request
+(嗲/撒娇/傲娇, or a style adjective next to 说话/语气/口气/腔调; bare 「甜一点」 does not count) to
+`speech.speaking_style`, and `ActionClaimGuard` nudges once per utterance, naming `set_speaking_style`,
+when such a request is answered without the call and without an honest refusal (takes 6/7/8 ended in a
+question, which `declines()` alone would have let through). Decided by the decider agent. Known cost: on
+qwen3.5-omni-plus a nudge can provoke the 50002 crash (docs/DEMO_COMMUTE.md:137-146). JVM evidence only.
+
+**Status update 2026-10-13 (causes 2 and 3; decided by the decider):** fixed in code, JVM-proven,
+not yet heard on a live session. Cause 2: after a tool result, when `SpeakingStyleState.current`
+differs from the style last delivered (`DeliveredStyle`), the client re-sends the setup instructions
+once at an idle point - Qwen as an instructions-only `session.update` before the tool reply's
+`response.create` (a `session.*` refusal is logged and non-fatal), Gemini as a model-role
+`clientContent` with `turnComplete=false` (SPEC-021 B10, FUZZY_DRIVING_ARCHITECTURE §7). Cause 3: the
+style lines now say 音色不变 but the delivery must audibly change (sweet: 语速稍慢、句尾轻轻上扬、
+「嘛」「呀」「啦」); the tool's instruction is derived from `PersonaProfiles.toneLines`. Cause 1: the
+sub-fix above. Sources: DashScope client-events page, LiveKit `update_instructions` (openai and
+google plugins), Google AI forum thread 83359.
+- Review fixes 2026-10-13 (offline-proved); open live questions offline tests cannot answer: DashScope's real refusal shape for a mid-session instructions-only `session.update`; Gemini G-1d for a model-role `turnComplete=false` turn; whether a resumed Gemini session re-reads `systemInstruction`.
+
+**Live evidence 2026-10-13 (style scene, `NOVA_LIVE_SCENES=style`, graded by `tools/demo/live/style_check.py`):**
+
+| Run | Code | Model | s_mood2 / s_seat / s_mood3 vs s_mood1 (F0) | Result |
+| --- | --- | --- | --- | --- |
+| before | before the fix | gemini-3.1-flash-live | +6 % / +13 % / +1 % — faded | FAIL s_mood2, s_mood3 |
+| fix1 | re-delivery | gemini-3.1-flash-live | +1 % / +5 % / +3 %; sweet wording held, pace −25..−34 % | FAIL — 3.1 does not raise pitch on request |
+| fix38 | re-delivery | gemini-3.8-live | +35 % / +4 % / +33 % | PASS (after the F0-alone rule) |
+| final | + review fixes | gemini-3.8-live | −3 % / −2 % / −5 %; sweet wording held | FAIL — delivery not reliable with the first wording |
+| final2 | + sweet voice line asks for a higher, softer pitch | gemini-3.8-live | +5 % (+2.8 st, −22 % pace) / +13 % / +13 % (+2.2 st) | **PASS** |
+
+In every run with the fix: the panel switched sweet→default, `style_redelivered` was logged once per switch, no session error. Holding the style is fixed; how strongly her delivery changes varies run to run (one PASS with the current wording, not yet a rate). The sweet voice line now asks for 音调比平时明显高一点、声音更软更轻 (planner, 2026-10-13, after the "final" run). Video: `demo-videos/style_before_after_2026-10-13.mp4` (before, then after). Open: whether Ayano on Qwen changes delivery at all (owner's go for one short session).
+
+**Research 2026-10-13 (rule 6), for the Ayano switch-back test:** Alibaba's Qwen-Omni page
+(alibabacloud.com/help/en/model-studio/qwen-omni, fetched 2026-10-13) documents for the Qwen3.5-Omni
+series: "Audio control: Supports adjusting volume, speaking rate, and emotion through instructions" —
+the mechanism the styles use. Not stated: the same for qwen3.8 realtime, a separate pitch control, or
+that it holds for a cloned voice. The voice-cloning page (qwen-omni-voice-cloning) advises recording the
+sample in the "target emotion (such as friendly or serious)", so a clone may keep the sample's manner,
+and names a "qwen3.5-omni talker system instruct mode". Gemini, for comparison: "affective dialog" is
+"not supported in Gemini 3.1 Flash Live" (ai.google.dev live-guide). The switch-back test (owner says
+when; Gemini first, Ayano last) is the style scene on the Ayano model, graded by style_check.py against
+her measured default (take8: ~220-235 Hz, pace 7-11 chars/s).
+
+## P56 — 「帮我把天窗打开」 opened all four windows
+
+**Found 2026-10-13, third tryout run** (`NOVA_LIVE_SCENES=tryout`, gemini-3.1-flash-live-preview, after the P55 fix; docs/DEMO_TRYOUT.md): the model heard 「帮我把天窗打开」 correctly and called `control_window` {action=open, window=all}; the dispatcher ran it and all four windows went to 100 %. The two earlier tryout runs refused this line, so it is model variance — and a prompt rule (`FLEX_TOOL_RULE` 「没有对应工具的请求（例如调音量、开天窗）要用一句话说明暂时不支持」) is not enforcement (AGENTS.md rule 4). SPEC-006 F-7 already required "refuse; do not execute a *nearby* supported action", but only the music case (`MEDIA_LIBRARY_UNSUPPORTED`) was enforced.
+
+**Fix:** `ToolCallGuards.sunroofOnWindowTool`, in the dispatcher's existing guard chain **and** in the `ComfortServer` step route (so 「有蚊子，把天窗关上」 via `run_scenario{mosquito}` cannot open a window either): a `control_window` call whose driver words name one of `UtteranceIntentResolver`'s cues for `sunroof_doors_lights_wipers` (天窗/天幕/后备箱/车门/车灯/雨刷 - the resolver owns the vocabulary; 天幕 was added there) and, after removing those cues, no window cue and no other 窗 is refused `UNSUPPORTED_BODY_PART` before anything moves; the advice (`ToolFailureAdvice`) says it is a part 小诺 cannot control, nothing ran, the windows did not move, and asks for one honest sentence. It only judges words of the turn being answered (`currentEpoch >= capabilityEpoch`): when the call arrives before this turn's transcript, the text is the previous turn's, and the call is let through rather than guessed at. On Gemini the input transcript is flushed when the turn opens, before the call is dispatched (`GeminiLiveClient.openTurn`). Research: no web search tool in this session; followed the repository's own precedent for the same failure class (SPEC-006 F-7 / SPEC-017 `unsupportedMedia`).
+
+**The first version (f0d3a27) would not have matched the observed run.** Gemini 3.1 input transcripts are character-spaced since 2026-10-12 - the run heard 「帮 我 把 天 窗 打 开 。」, so `"天窗" in said` was false. Measured over Gemini 3.1 runs since 10-12: every heard line spaced (tryout 19/19 in each of 3 runs, commute rehearsals 12/12); Gemini 3.8: 0 spaced; Qwen takes 1-8: 0 spaced. The same spacing made `DriverTurn.classify` / `UtteranceIntentResolver` treat action lines as conversation on 3.1 since 10-12 (u_window, u_sunroof logged TURN_HOLD kind=CONVERSATION). Fixed once, at the adapter: `GeminiLiveClient.flushInput` runs the transcript through `TranscriptText.normalize` (whitespace touching CJK or CJK/full-width punctuation removed, spaces between Latin/digit tokens kept) before both the pipeline and `UserTranscript`, so the UI shows unspaced text too. The guard reads its text through the same helper in case a spaced line ever reaches DriverContext raw. The Qwen path is unchanged (its transcripts are not spaced).
+
+**Residual:** 「天窗不用开，开左前的就行」 and 「把车门玻璃降一点」 are refused (no 窗 left after removing 天窗/车门; it fails safe: nothing moves and she says it is not supported) - accepted. Gemini 3.1 keeps numbers whole (「调 到 22 度」 in all three tryout runs), so joining CJK-adjacent spaces cannot split a number. Qwen ordering: when the transcript arrives after the call, the guard lets the call through (fail-open); unverified live.
+
+**Evidence:** JUnit XML on the P56 worktree: `ToolCallGuardSunroofTest` 7/0 (real dispatcher: ok=false, no window moved; the live spaced line refused normalised and raw; 天幕, 车门, 后备箱 refused; spaced 「把 我 这 边 的 窗 户 开 一 点 。」 and 「天窗和车窗都打开」 pass; a 天窗 from the previous turn does not block this turn's window call), `ComfortScenariosTest` 16/0 (mosquito with 天窗 leaves every window shut, step error UNSUPPORTED_BODY_PART; stuffy with 天窗 still powers the climate and raises the fan; 「有蚊子」 alone still opens to 50 %), `GeminiLiveClientTest` 72/0 (a spaced inputTranscription reaches UserTranscript unspaced and classifies ACTION), `UtteranceIntentResolverTest` 4/0, `TranscriptTextTest` 3/0. Mutations: removing the flushInput normalisation fails the client test; removing the scenario-route guard fails the comfort test. Live re-run on Gemini: see DEMO-TRYOUT-001.
+
+**Review:** first version REVISE (spaced transcripts, second vocabulary, scenario path); revision PASS (independent reviewer, 2026-10-13). One run of `aSunroofNamedWithAScenarioNeverOpensAWindow` failed once right after the executor reverted its own mutation of the scenario-route guard (same assertion the mutation breaks); not reproduced in 10 further runs in two separate build directories (planner 5× `--rerun-tasks`, reviewer 4× plus a full run); the code path is synchronous with no shared state (reviewer). Read as stale build output, not a flake in the guard.
+
+**Live (DEMO-TRYOUT-001, run 4, gemini-3.1-flash-live-preview at d160a3e):** 19/19 after the goodbye rule; u_sunroof refused with no tool call (the model did not try a window this time, so the guard was not exercised live - its proof is the JVM tests); none of the 19 heard lines reached the app spaced; u_hot, u_temp and u_window held as `kind=ACTION` (they were `CONVERSATION` while transcripts were spaced), u_can as `CAPABILITY_HELP`.
+
+## P57 — 「把我这边的窗户开一点」 opened all four windows
+
+**Found 2026-10-13, tryout run 4** (gemini-3.1-flash-live-preview, after P56; seen in the rendered video, not by the grader): the model called `control_window` {action=adjust, window=all, value=20} and all four windows opened 20 %. Runs 1-3 called window=driver for the same line. The tool description (`BodyDomain` control_window) gives 「开一点主驾车窗」 → window=driver and 「未指明窗时 window=all」, but not 「我这边」 as naming the driver's window, so the model may read it as unspecified. The tryout grader only checked that the driver's window opened; it now also fails when any other window moves (`tryout_check.py`, selftest case "my-side window opened all four"), and DEMO-TRYOUT-001 is FAIL until a re-run.
+
+**Status:** fix being decided (description only, a refusing guard in `ToolCallGuards`, or deterministic narrowing) by the decider, then implemented, reviewed and re-run once on Gemini.
+

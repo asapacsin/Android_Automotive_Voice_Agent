@@ -28,9 +28,10 @@ interface RealtimeDialect<C : Any> {
 
     /**
      * True when the VAD threshold depends on navigation: the client then logs navigation changes
-     * as `vad_threshold_deferred`. It never resends session.update mid-session (measured
+     * as `vad_threshold_deferred`. It never resends the VAD threshold mid-session (measured
      * 2026-09-16: Baidu rejected a threshold change while input audio was in progress and the
-     * session went down); the threshold applies at the next connect.
+     * session went down); the threshold applies at the next connect. The only mid-session
+     * session.update is [instructionsUpdate], instructions only.
      */
     val tracksNavigationVad: Boolean
 
@@ -55,6 +56,21 @@ interface RealtimeDialect<C : Any> {
 
     /** The session.update sent after session.created. */
     fun sessionUpdate(instructions: String, vadThreshold: Double): String
+
+    /**
+     * An instructions-only session.update sent mid-session when the speaking style changed (P55), or
+     * null when this vendor must not be sent one (Baidu: its per-tool-turn reset re-sends setup).
+     * This is not the VAD-threshold change Baidu refused (P7): that one touched turn detection while
+     * input audio was in progress; this carries `instructions` and nothing else, which DashScope's
+     * client-events page lists as updatable, and a refusal of it is not session-fatal.
+     */
+    fun instructionsUpdate(instructions: String): String? = null
+
+    /** True when [instructionsUpdate] returns a message; checked before any instructions are composed. */
+    val supportsInstructionsUpdate: Boolean get() = false
+
+    /** A held [instructionsUpdate] was dropped unsent (sleep cleared its turn); default no-op. */
+    fun onInstructionsUpdateDropped() {}
 
     /**
      * An error arrived before the session was ready. Returns a replacement session.update to send
