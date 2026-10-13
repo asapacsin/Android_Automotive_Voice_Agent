@@ -8,7 +8,8 @@ line, what the model heard, her reply, and the measured latency. The wait for ar
 (cut_start..cut_end) is cut and marked. The drive scene adds amap.wav (the simulated Amap voice) to the
 mix, a 高德导航 caption while a prompt plays, and （等导航播报结束） while her reply is held. When OUT
 holds prosody.json (prosody.py / style_check.py), each reply gets 「音高 · 起伏 · 语速」, and the style
-scene's s_* replies their change against s_mood1. Never commit the output.
+scene's s_* replies their change against s_mood1. When OUT holds tryout_verdicts.json (tryout_check.py), each
+tryout line shows what it checks and its verdict. Never commit the output.
 """
 import ast, json, os, re, subprocess, sys, tempfile, wave
 
@@ -45,9 +46,10 @@ def guidance_text():
     return ast.literal_eval(re.search(r"GUIDANCE = (\{.*?\n\})", src, re.S).group(1))
 
 
-def style_text():
+def cloud_text(name):
+    """A key -> text dict of make_clips_cloud.py (STYLE, TRYOUT)."""
     src = open(os.path.join(HERE, "make_clips_cloud.py"), encoding="utf-8").read()
-    return ast.literal_eval(re.search(r"STYLE = (\{.*?\n\})", src, re.S).group(1))
+    return ast.literal_eval(re.search(name + r" = (\{.*?\n\})", src, re.S).group(1))
 
 
 def prosody_line(key, pros):
@@ -120,7 +122,11 @@ def main(run, mp4):
     tl = json.load(open(os.path.join(run, "timeline.json"), encoding="utf-8"))
     st = json.load(open(os.path.join(run, "state.json"), encoding="utf-8"))
     texts = lines_text()
-    texts.update(style_text())
+    texts.update(cloud_text("STYLE"))
+    texts.update(cloud_text("TRYOUT"))
+    # tryout_check.py's per-line verdicts, when the run was graded.
+    ver_path = os.path.join(run, "tryout_verdicts.json")
+    verdicts = json.load(open(ver_path, encoding="utf-8"))["lines"] if os.path.exists(ver_path) else {}
     pros_path = os.path.join(run, "prosody.json")
     pros = json.load(open(pros_path, encoding="utf-8")) if os.path.exists(pros_path) else {}
     end = tl["end"]
@@ -185,6 +191,9 @@ def main(run, mp4):
         d.rectangle([0, 0, W, 56], fill=(120, 30, 30))
         d.text((24, 10), HEADER, font=f_head, fill=(255, 255, 255))
         d.text((W - 360, 10), f"provider: {st.get('provider', '?')}   t={t:6.1f}s", font=f_small, fill=(255, 220, 220))
+        if st.get("provider") == "gemini":
+            # Gemini cannot use a cloned voice (AGENTS.md "Gemini first, Ayano last"): say so on screen.
+            d.text((W - 600, 1046), "声音：Gemini 自带音色，不是 Ayano", font=f_small, fill=(255, 210, 80))
         if any(b <= t < b + 2.5 for _, b in cuts):
             d.text((W - 520, 70), ">> 等待到达已剪掉 (cut)", font=f_mid, fill=(255, 210, 80))
 
@@ -195,7 +204,11 @@ def main(run, mp4):
         d.text((60, 100), "模拟车机 · simulated car", font=f_mid, fill=(150, 170, 200))
         prog = float(car.get("progress", 0) or 0)
         d.text((60, 170), "创业谷", font=f_mid, fill=(230, 230, 230))
-        d.text((760, 170), car.get("destination") or "横琴镇", font=f_mid, fill=(230, 230, 230))
+        # The commute and drive scenes go to 横琴镇; the tryout has no destination until 「导航去长隆海洋王国」.
+        dest = car.get("destination") or ("—" if verdicts else "横琴镇")
+        f_dest = f_mid if d.textlength(dest, font=f_mid) <= 520 else f_small
+        dest = wrap(d, dest, f_dest, 600)[0]
+        d.text((900 - d.textlength(dest, font=f_dest), 176), dest, font=f_dest, fill=(230, 230, 230))
         d.rounded_rectangle([60, 230, 900, 262], radius=16, fill=(55, 62, 78))
         d.rounded_rectangle([60, 230, 60 + int(840 * prog), 262], radius=16, fill=(60, 170, 110))
         d.ellipse([60 + int(840 * prog) - 20, 226, 60 + int(840 * prog) + 20, 266], fill=(240, 240, 240))
@@ -280,6 +293,15 @@ def main(run, mp4):
                 txt = "等待回复…" if lat is None else (f"首音延迟 {lat:.1f} s（其中按规则等待 {held:.1f} s）" if held >= 0.2 else f"首音延迟 {lat:.1f} s")
                 slow = lat is not None and lat - held > 3.5
                 d.text((980, 980), txt, font=f_mid, fill=(255, 120, 120) if slow else (255, 255, 255))
+            v = verdicts.get(cur["key"])
+            if v:
+                # Shown from the end of his line: what this line checks, then the grader's verdict.
+                colour = {"PASS": (110, 220, 140), "WARN": (255, 210, 80)}.get(v["verdict"], (240, 110, 110))
+                d.text((980, 880), "检查 " + v["expect"], font=f_small, fill=(170, 180, 200))
+                if t >= cur["end"]:
+                    d.text((980, 920), v["verdict"], font=f_mid, fill=colour)
+                    if v["note"]:
+                        d.text((1100, 928), wrap(d, v["note"], f_small, 780)[0], font=f_small, fill=colour)
         proc.stdin.write(img.tobytes())
     proc.stdin.close()
     proc.wait()

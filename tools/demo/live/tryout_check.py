@@ -26,6 +26,17 @@ DRIVER_WINDOW = "FRONT_LEFT"
 ERROR_RE = re.compile(r"state=ERROR|_PROTOCOL_ERROR|\berror=\w")
 DROP_RE = re.compile(r"TURN_DROP .*reason=unproven_action_claim")
 NEGATION = re.compile(r"不|没|无法|不能|暂不|抱歉|对不起")
+# What each line checks (docs/DEMO_TRYOUT.md), shown in the video next to the verdict.
+EXPECT = {
+    "u_hello": "闲聊：直接回答，不调工具，≤3.0 s", "u_can": "介绍能力：直接回答，不调工具，≤3.0 s",
+    "u_hot": "模糊需求：要真的降温（空调/场景工具 ✓），≤3.5 s", "u_temp": "空调目标温度变成 22°C",
+    "u_window": "只开主驾这边的车窗", "u_sunroof": "车做不到：老实拒绝，不能说已打开",
+    "u_gas": "找附近加油站（搜索 ✓），≤3.5 s", "u_cancel": "改主意：取消刚才的流程",
+    "u_dest": "搜索目的地，给出候选", "u_pick2": "选第 2 个候选", "u_go": "开始导航",
+    "u_eta": "回答还要多久，不乱说做了什么", "u_music": "交给音乐 app 播放",
+    "u_barge": "打断：她 1 秒内停下", "u_mstop": "停掉音乐", "u_mumble": "含糊不清：不执行任何操作",
+    "u_call": "打电话：如实说结果，不能假装拨出", "u_navoff": "结束导航", "u_bye": "道别：≤3.0 s",
+}
 CLAIMS = {
     "u_sunroof": re.compile(r"天窗.*(打开了|已经?打开|开好了|为你打开|帮你打开)|(打开了|已打开).*天窗"),
     "u_call": re.compile(r"(正在|已经?|这就|马上)(帮你)?(拨打|呼叫|打给|拨通|给.{0,6}打)|电话.*(打过去了|接通了)"),
@@ -223,6 +234,12 @@ def grade(run):
         print(f"  {key:10s} {verdict:4s} {ts}  {tool_txt:40s} {note}")
     print(f"RESULT {'PASS' if not fails else 'FAIL ' + ','.join(fails)}")
     print(f"WARN {','.join(warns) if warns else '-'}")
+    # For render.py: verdicts, times and tool names only, never transcript text.
+    out = {"result": "PASS" if not fails else "FAIL", "fails": fails, "warns": warns,
+           "lines": {key: {"verdict": "WARN" if verdict == "PASS" and key in warns else verdict,
+                           "time_s": d, "tools": tool_txt, "note": note, "expect": EXPECT[key]}
+                     for key, verdict, d, tool_txt, note in rows}}
+    json.dump(out, open(os.path.join(run, "tryout_verdicts.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     return not fails, fails, warns
 
 
