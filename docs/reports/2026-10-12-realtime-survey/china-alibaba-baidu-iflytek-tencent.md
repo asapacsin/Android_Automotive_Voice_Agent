@@ -1,5 +1,7 @@
 # SURVEY-B: end-to-end realtime speech-to-speech models (Alibaba, Baidu, iFlytek, Tencent)
 
+See also: [free + cloned-voice pick-list (2026-10-13)](../../VOICE_CLONE_FREE_MODELS.md).
+
 All pages read 2026-10-12 via curl (HTML stripped). No account, key or model API used.
 Source keys:
 - [RT] https://www.alibabacloud.com/help/en/model-studio/realtime (also zh: https://help.aliyun.com/zh/model-studio/realtime)

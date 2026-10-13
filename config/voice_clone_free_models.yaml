@@ -1,0 +1,68 @@
+# Free + cloned-voice + end-to-end realtime models: pick-list (owner request 2026-10-13).
+# Human-readable twin: docs/VOICE_CLONE_FREE_MODELS.md (keep in step). Sources fetched 2026-10-13;
+# "unverified" = no page fetched that day states it. Ordered by readiness in this repo.
+# Alibaba free quota is per model: check the console before picking.
+- id: qwen3.8-omni-flash-realtime
+  vendor: Alibaba Model Studio
+  protocol: Qwen-Omni Realtime WebSocket wss://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/api-ws/v1/realtime?model=<id>
+  clone: {supported: true, api: qwen-voice-enrollment target_model, cost: "1000 free creations / 90 days, then USD 0.01 per voice", source: https://www.alibabacloud.com/help/en/model-studio/qwen-omni-voice-cloning}
+  free_usage: {amount: "1M tokens (intl SG); 100万 Token (China site, Beijing)", region: "Singapore (intl site) / Beijing (China site)", expiry: "90 days from activation or model release, whichever later", source: https://www.alibabacloud.com/help/en/model-studio/model-pricing}
+  function_calling: true
+  mainland: "Beijing region (China site, separate key)"
+  repo_integration: {status: works_today, how: "Ayano already cloned; set model in developer settings. Final demo only: never for tests (AGENTS.md); owner quota nearly used"}
+- id: qwen3.5-omni-plus-realtime
+  vendor: Alibaba Model Studio
+  protocol: Qwen-Omni Realtime WebSocket (same as above)
+  clone: {supported: true, api: qwen-voice-enrollment target_model, cost: "as above", source: https://www.alibabacloud.com/help/en/model-studio/qwen-omni-voice-cloning}
+  free_usage: {amount: "1M tokens (SG); 100万 Token (Beijing)", region: "Singapore / Beijing (China site)", expiry: "90 days", source: https://www.alibabacloud.com/help/en/model-studio/model-pricing}
+  function_calling: true
+  mainland: "Beijing price listed"
+  repo_integration: {status: works_today, how: "Ayano already cloned; owner quota used up. Snapshot -2026-03-15 has its own quota but is not a clone target_model (unverified) and not allowlisted"}
+- id: qwen3.5-omni-flash-realtime
+  vendor: Alibaba Model Studio
+  protocol: Qwen-Omni Realtime WebSocket (same as above)
+  clone: {supported: true, api: qwen-voice-enrollment target_model, cost: "as above", source: https://www.alibabacloud.com/help/en/model-studio/qwen-omni-voice-cloning}
+  free_usage: {amount: "1M tokens (SG); China-site amount unverified", region: Singapore, expiry: "90 days", source: https://www.alibabacloud.com/help/en/model-studio/model-pricing}
+  function_calling: true
+  mainland: "Beijing price listed"
+  repo_integration: {status: reclone_and_allowlist, how: "clone_voice.py create --model qwen3.5-omni-flash-realtime; add id to VoiceCatalog.qwenModels; QwenOmniDialect expected as-is (unproven)"}
+- id: qwen-audio-3.0-realtime-flash
+  vendor: Alibaba Model Studio
+  protocol: Realtime WebSocket, same endpoint; VAD server_vad/smart_turn (no semantic_vad mentioned)
+  clone: {supported: true, api: "voice-enrollment create_voice (CosyVoice/Qwen-Audio-TTS API, public audio URL)", cost: unverified, source: https://www.alibabacloud.com/help/en/model-studio/qwen-audio-realtime-user-guides}
+  free_usage: {amount: "1M tokens (SG); 100万 Token (Beijing)", region: "Singapore / Beijing (China site)", expiry: "90 days", source: https://www.alibabacloud.com/help/en/model-studio/model-pricing}
+  function_calling: true
+  mainland: "Beijing price listed"
+  repo_integration: {status: dialect_variant, how: "allowlist id, map VAD to server_vad/smart_turn, voice only in first session.update, new clone-tool mode for voice-enrollment"}
+- id: qwen-audio-3.1-realtime-plus
+  vendor: Alibaba Model Studio
+  protocol: as qwen-audio-3.0-realtime-flash
+  clone: {supported: true, api: "voice-enrollment create_voice", cost: unverified, source: https://www.alibabacloud.com/help/en/model-studio/qwen-audio-realtime-user-guides}
+  free_usage: {amount: "1M tokens (SG); 100万 Token (Beijing)", region: "Singapore / Beijing (China site)", expiry: "90 days", source: https://www.alibabacloud.com/help/en/model-studio/model-pricing}
+  function_calling: true
+  mainland: "Beijing price listed"
+  repo_integration: {status: dialect_variant, how: "as qwen-audio-3.0-realtime-flash"}
+- id: qwen-audio-3.0-realtime-plus
+  vendor: Alibaba Model Studio
+  protocol: as qwen-audio-3.0-realtime-flash
+  clone: {supported: true, api: "voice-enrollment create_voice", cost: unverified, source: https://www.alibabacloud.com/help/en/model-studio/qwen-audio-realtime-user-guides}
+  free_usage: {amount: "1M tokens (SG); 100万 Token (Beijing)", region: "Singapore / Beijing (China site)", expiry: "90 days", source: https://www.alibabacloud.com/help/en/model-studio/model-pricing}
+  function_calling: true
+  mainland: "Beijing price listed"
+  repo_integration: {status: dialect_variant, how: "as qwen-audio-3.0-realtime-flash"}
+- id: stepaudio-3-realtime-preview
+  vendor: StepFun
+  protocol: OpenAI-style Realtime WebSocket wss://api.stepfun.com/v1/realtime, Bearer key
+  clone: {supported: unverified, api: "POST /v1/audio/voices (5-10 s mp3/wav; models stepaudio-2.5-tts, step-tts-2, step-tts-mini)", cost: "9.9 CNY per voice", source: https://platform.stepfun.com/docs/zh/guides/pricing/details.md}
+  free_usage: {amount: "model free for a limited time (限时免费)", region: mainland, expiry: "not stated; preview to be withdrawn for a paid version", source: https://platform.stepfun.com/docs/zh/guides/models/stepaudio-3-realtime.md}
+  function_calling: true
+  mainland: "yes (api.stepfun.com)"
+  repo_integration: {status: new_dialect, how: "new RealtimeDialect on OpenAiRealtimeClient + StepFun clone tool; second-vendor decision (ADR-013/017) first"}
+- id: doubao-realtime-3.0-seeduplex
+  vendor: ByteDance Volcengine
+  protocol: "JSON-text Realtime events wss://openspeech.bytedance.com/api/v3/duplex/realtime/dialogue, X-Api-Key, model 1.2.6.1"
+  clone: {supported: true, api: "豆包声音复刻模型2.0 (seed-icl-2.0)", cost: "138 CNY per voice slot", source: https://www.volcengine.com/docs/6561/1359370}
+  free_usage: {amount: unverified, region: mainland, expiry: unverified, source: https://www.volcengine.com/docs/6561/1359370}
+  function_calling: true
+  mainland: "yes (mainland only)"
+  repo_integration: {status: new_dialect, how: "new RealtimeDialect (own auth, session.create, mute keep-alive); second-vendor decision first"}
