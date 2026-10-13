@@ -5,6 +5,11 @@ Purpose: the owner asked (2026-10-13) for the end-to-end realtime speech-to-spee
 picked later. Machine-readable copy: [config/voice_clone_free_models.yaml](../config/voice_clone_free_models.yaml)
 (keep the two in step).
 
+**Owner plan (2026-10-13): Gemini first, Ayano last.** Build and demo on Gemini (free, no clone)
+until the work is done; then switch to Ayano. For that switch the recommended pick is
+`qwen3.5-omni-flash-realtime` (free clone, its own free quota if the console still shows it, same
+adapter after a re-clone and an allow-list entry), which keeps the qwen3.8 reserve for the final take.
+
 How to read it:
 - Every fact carries a source key (see "Sources", all fetched 2026-10-13 with curl, no account, no key,
   no model call, no voice created). "unverified" = no page fetched today states it; "not readable" =

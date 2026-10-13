@@ -69,7 +69,8 @@ class LiveDemoRun {
         assumeTrue(System.getenv("NOVA_LIVE_DEMO") == "1", "live demo runs only with NOVA_LIVE_DEMO=1")
         val outPath = requireNotNull(System.getenv("NOVA_LIVE_OUT")?.takeIf { it.isNotBlank() }) { "NOVA_LIVE_OUT is not set" }
         val out = File(outPath).absoluteFile.apply { mkdirs() }
-        val choice = System.getenv("NOVA_LIVE_PROVIDER")?.ifBlank { null } ?: "qwen"
+        // Gemini first, Ayano last (AGENTS.md, owner 2026-10-13): Qwen only when asked for by name.
+        val choice = System.getenv("NOVA_LIVE_PROVIDER")?.ifBlank { null } ?: "gemini"
         val scenes = System.getenv("NOVA_LIVE_SCENES")?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }
             ?: SCENES.keys.filter { it != DRIVE && it != TRYOUT && it != STYLE }
         scenes.forEach { require(it in SCENES) { "unknown scene $it" } }
