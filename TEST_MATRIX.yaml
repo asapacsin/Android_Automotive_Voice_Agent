@@ -2863,6 +2863,31 @@ tests:
     related: [QWEN-EMU-001, SPEC-015, SPEC-017, SPEC-011, SPEC-020, P50]
     last_run: {at: null, result: null}
 
+  - id: DEMO-TRYOUT-001
+    capability: speech
+    name: "A first-time driver in their own words (19 lines: chat, vague asks, a refusal, a change of mind, barge-in, mumble, call), graded per line"
+    purpose: "Owner 2026-10-13: a demo that records a real user experience, so the owner's own first try does not meet a failure (docs/DEMO_TRYOUT.md)"
+    type: integration
+    scope: INTERMEDIATE_FLOW
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:aca48107e3fd216b8a9357f0a47b9ebfb027ed9b130aa22726855a0d1deb2a25
+      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: fe25791
+    covers: []
+    prerequisites: ["GEMINI_API_KEY (free tier) - Gemini first, Ayano last (AGENTS.md 2026-10-13)", "AMAP_WEB_KEY (prefetch of 横琴镇/长隆海洋王国/加油站)", "u_* clips: PIPER_MODEL=... python3 tools/demo/live/make_clips_cloud.py tryout"]
+    procedure: ["NOVA_LIVE_DEMO=1 NOVA_LIVE_PROVIDER=gemini NOVA_LIVE_SCENES=tryout NOVA_LIVE_OUT=RUN ./gradlew --offline :app:testDebugUnitTest --tests '*LiveDemoRun*'", "python3 tools/demo/live/tryout_check.py RUN", "python3 tools/demo/live/render.py RUN RUN.mp4"]
+    pass_criteria: ["tryout_check.py RESULT PASS: every line's expectation in docs/DEMO_TRYOUT.md (tool, honest refusal, no unproven claim, barge-in stop <= 1.0 s, chat <= 3.0 s, tool lines <= 3.5 s, any reply <= 5.0 s, no session error)"]
+    evidence: ["2026-10-13 cloud JVM harness, gemini-3.1-flash-live-preview (Gemini's own voice, not Ayano), real Amap search: run 1 FAIL u_gas (said 没在导航; fixed P54) and u_cancel 11.3 s; run 2 18/19 (u_can 3.4 s); run 3 after P55 18/19 - u_sunroof opened all four windows (P56); run 4 at d160a3e (P56 fix) 19/19 after the goodbye rule (u_bye may call end_conversation, fe25791): every reply 1.5-3.0 s, u_sunroof refused with no tool, 0/19 transcripts spaced reaching the app (TranscriptText), u_window/u_temp/u_hot classified ACTION (were CONVERSATION on spaced 3.1 transcripts). JVM harness, simulated car - not device evidence"]
+    related: [P54, P55, P56, DEMO-COMMUTE-001, SPEC-006, SPEC-015]
+    last_run: {at: 2026-10-13, result: PASS}
+
   - id: DEMO-AMAP-LIVE-001
     capability: navigation
     name: "The commute demo's real Amap lookups at the demo origin: 导航去横琴镇 + 第一个 is >= 1.7 km away, the warm-up weather answers"
@@ -2878,15 +2903,15 @@ tests:
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
       harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
       artifact_digests: {}
-      apk_digest: sha256:bf5d6f6dd7cb3b3a6309672942d792e368983257f1e8e349776978d205cf4461
-      bound_commit: 5f4dd97
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: fe25791
     covers: []
     prerequisites: ["AMAP_WEB_KEY in the environment (free Amap Web API; no voice model)"]
     procedure: ["NOVA_LIVE_AMAP=1 ./gradlew :app:testDebugUnitTest --tests '*DemoCommuteAmapLiveTest'"]
     pass_criteria: ["LiveDestinationCandidateSource.resolve(横琴镇) at the origin: first result has 横琴 in its name and is >= 1700 m away (route >= straight line; c3-c5 need ~150 s = 1.7 km at 40 km/h)", "regeo + weatherNow at the origin both Ok"]
-    evidence: ["2026-10-12 cloud: with sortrule=distance FAIL (第一个 = 632 m, the origin 横琴澳门青年创业谷; Amap driving route 26 m); with sortrule=weight PASS 2/2 (横琴镇人民政府 2533 m from the WGS point)", "2026-10-12 after GCJ-SEARCH (GCJ origin) and the warm-up retry: PASS 2/2 in the full suite, 横琴镇人民政府 2045 m straight line (floor 1.7 km), route 2855 m = 257 s at 40 km/h; real warm-up district + weather ok"]
+    evidence: ["2026-10-12 cloud: with sortrule=distance FAIL (第一个 = 632 m, the origin 横琴澳门青年创业谷; Amap driving route 26 m); with sortrule=weight PASS 2/2 (横琴镇人民政府 2533 m from the WGS point)", "2026-10-12 after GCJ-SEARCH (GCJ origin) and the warm-up retry: PASS 2/2 in the full suite, 横琴镇人民政府 2045 m straight line (floor 1.7 km), route 2855 m = 257 s at 40 km/h; real warm-up district + weather ok", "2026-10-13 cloud at fe25791 (after P55/P56 app changes; rebind): DemoCommuteAmapLiveTest 2/0 (JUnit XML, not skipped)"]
     related: [P51, DEMO-COMMUTE-001, SPEC-005, SPEC-011]
-    last_run: {at: 2026-10-12, result: PASS}
+    last_run: {at: 2026-10-13, result: PASS}
 
   - id: DEVUI-EMU-001
     capability: speech
