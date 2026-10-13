@@ -75,7 +75,7 @@ class SpeakingStyleToolTest {
         assertTrue(json.getBoolean("ok"))
         assertEquals("set_speaking_style", json.getString("tool"))
         assertEquals("sweet", json.getString("style"))
-        assertEquals(SpeechServer.SWEET_INSTRUCTION, json.getString("instruction"))
+        assertEquals(SpeechServer.instructionFor(SpeakingStyle.SWEET), json.getString("instruction"))
         assertFalse(json.has("persisted"))
     }
 
@@ -129,5 +129,21 @@ class SpeakingStyleToolTest {
         assertFalse(PersonaProfiles.compose("PERSONA", SpeakingStyleState.current).contains(PersonaProfiles.SWEET_TONE))
         server.call(call("sweet"), env)
         assertTrue(PersonaProfiles.compose("PERSONA", SpeakingStyleState.current).contains(PersonaProfiles.SWEET_TONE))
+    }
+
+    @Test
+    fun `each style instruction is derived from the tone lines and never says the voice stays the same`() {
+        for (style in SpeakingStyle.entries) {
+            val instruction = SpeechServer.instructionFor(style)
+            assertFalse("声音不变" in instruction || "声音本身不变" in instruction, instruction)
+            val lines = PersonaProfiles.toneLines(style)
+            if (lines == null) {
+                assertTrue("恢复平常" in instruction, instruction)
+            } else {
+                assertTrue(lines.first in instruction && lines.second in instruction, instruction)
+                assertTrue(SpeechServer.REPLACES_EARLIER in instruction)
+                assertTrue(instruction.endsWith("现在用这种语气简短回应一句。"), instruction)
+            }
+        }
     }
 }

@@ -1,6 +1,6 @@
 package com.novadrive.app
 
-/** How 小诺 speaks. Tone only; the voice never changes (SPEC-015 B6). */
+/** How 小诺 speaks. The voice (音色 / session voice) never changes; the delivery follows the style (SPEC-015 B6). */
 enum class SpeakingStyle(val wireName: String, val chipLabel: String) {
     DEFAULT("default", "默认"),
     SWEET("sweet", "甜"),

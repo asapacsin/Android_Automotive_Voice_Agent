@@ -119,6 +119,19 @@ object GeminiLiveProtocol {
         ).toString()
     }
 
+    /**
+     * P55 / SPEC-021 B10 stand-in: the composed instructions re-sent mid-session as a model-role turn
+     * with turnComplete=false, so nothing is answered. Never role "system" (errors) and never no role
+     * (3.1/3.8 close with 1007). Prior art: LiveKit google realtime_api.py update_instructions.
+     */
+    fun instructionsTurn(instructions: String): String {
+        val turn = JSONObject().put("role", "model").put("parts", JSONArray().put(JSONObject().put("text", instructions)))
+        return JSONObject().put(
+            "clientContent",
+            JSONObject().put("turns", JSONArray().put(turn)).put("turnComplete", false),
+        ).toString()
+    }
+
     /** [output] is parsed as a JSON object; anything else is wrapped as `{"output": output}`. */
     fun toolResponse(callId: String, name: String, output: String): String {
         require(RealtimeToolCatalog.validId(callId)) { "GEMINI_LIVE_CALL_ID_INVALID" }

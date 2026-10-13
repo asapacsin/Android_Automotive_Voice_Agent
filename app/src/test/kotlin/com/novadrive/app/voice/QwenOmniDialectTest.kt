@@ -132,6 +132,27 @@ class QwenOmniDialectTest {
     // ---- A3: endpoint, auth and secrets ----
 
     @Test
+    fun theMidSessionInstructionsUpdateCarriesOnlyTheInstructionsAndBaiduSendsNone() {
+        val update = JSONObject(opened().instructionsUpdate("PERSONA"))
+        assertEquals(setOf("type", "session"), update.keySet())
+        assertEquals("session.update", update.getString("type"))
+        assertEquals(setOf("instructions"), update.getJSONObject("session").keySet())
+        val setup = JSONObject(opened().sessionUpdate("PERSONA", 0.9)).getJSONObject("session").getString("instructions")
+        assertEquals(setup, update.getJSONObject("session").getString("instructions"), "the same text as at setup")
+        assertNull(BaiduFlexDialect(BaiduAccessTokenClient(okhttp3.OkHttpClient()), requireTls = true).instructionsUpdate("PERSONA"))
+    }
+
+    @Test
+    fun aSessionErrorIsARefusalOnlyWhileAnInstructionsUpdateIsPending() {
+        val refusal = """{"type":"error","error":{"code":"InvalidParameter","param":"session.instructions","message":"no"}}"""
+        val dialect = opened()
+        assertTrue(dialect.parseCommonEvent(refusal, false).single() is DomainVoiceEvent.Error, "at setup it still fails")
+        dialect.instructionsUpdate("PERSONA")
+        assertEquals("InvalidParameter kind=instructions_refused", dialect.errorCode(refusal))
+        assertTrue(dialect.parseCommonEvent(refusal, false).isEmpty(), "mid-session it is not fatal")
+    }
+
+    @Test
     fun requestUsesTheWorkspaceEndpointAndBearerKeyOnlyInTheHeader() = runBlocking {
         val request: Request = QwenOmniDialect().buildRequest(config)
         assertEquals("$workspace.ap-southeast-1.maas.aliyuncs.com", request.url.host)

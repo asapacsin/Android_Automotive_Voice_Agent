@@ -41,11 +41,15 @@ class QwenOmniClientTest {
         collectorScope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
         NavigationState.onNavigatingChanged = null
         NavigationState.reset()
+        com.novadrive.app.SpeakingStyleState.restore(com.novadrive.app.SpeakingStyle.DEFAULT)
         server.close()
     }
 
     /** A server that answers session.update with session.updated and records what the client sends. */
-    private fun enqueueServer(onClientMessage: (WebSocket, JSONObject) -> Unit = { _, _ -> }) {
+    private fun enqueueServer(
+        refuseInstructionsUpdate: Boolean = false,
+        onClientMessage: (WebSocket, JSONObject) -> Unit = { _, _ -> },
+    ) {
         server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
                 sockets += webSocket
@@ -54,7 +58,10 @@ class QwenOmniClientTest {
             override fun onMessage(webSocket: WebSocket, text: String) {
                 received += text
                 val json = JSONObject(text)
-                if (json.optString("type") == "session.update") {
+                val instructionsOnly = json.optString("type") == "session.update" && !json.getJSONObject("session").has("tools")
+                if (refuseInstructionsUpdate && instructionsOnly) {
+                    webSocket.send("""{"type":"error","error":{"type":"invalid_request_error","code":"InvalidParameter","param":"session.instructions","message":"not allowed"}}""")
+                } else if (json.optString("type") == "session.update") {
                     webSocket.send("""{"type":"session.updated","session":{"model":"qwen3.8-omni-flash-realtime","voice":"Maia"}}""")
                 }
                 onClientMessage(webSocket, json)
@@ -334,6 +341,99 @@ class QwenOmniClientTest {
         awaitUntil({ "sent: $received" }) { sent("response.create").isNotEmpty() }
         Thread.sleep(NEGATIVE_WAIT_MS)
         assertEquals(1, sent("response.create").size)
+        client.disconnect()
+    }
+
+    // ---- B10 / P55: a mid-session style change reaches the live conversation ----
+
+    /** One tool turn: [name]'s call, the app's result after [style] was applied, then the response's end. */
+    private fun toolTurn(client: QwenOmniClient, seen: List<DomainVoiceEvent>, callId: String, name: String, style: com.novadrive.app.SpeakingStyle?) {
+        send(
+            """{"type":"input_audio_buffer.speech_started"}""",
+            """{"type":"input_audio_buffer.speech_stopped"}""",
+            """{"type":"response.created","response":{"id":"r_$callId"}}""",
+            """{"type":"response.function_call_arguments.done","call_id":"$callId","name":"$name","arguments":"{}"}""",
+        )
+        awaitUntil({ "seen: $seen" }) { seen.any { it is DomainVoiceEvent.ToolCall && it.callId == callId } }
+        style?.let { com.novadrive.app.SpeakingStyleState.restore(it) }
+        val createsBefore = sent("response.create").size
+        client.sendFunctionResult(callId, """{"ok":true,"tool":"$name"}""")
+        Thread.sleep(NEGATIVE_WAIT_MS)
+        send("""{"type":"response.done","response":{"status":"completed","output":[{"type":"function_call","call_id":"$callId"}]}}""")
+        awaitUntil({ "sent: $received" }) { sent("response.create").size > createsBefore }
+        // The reply to the tool result ends, so the next turn starts idle.
+        send("""{"type":"response.created","response":{"id":"r2_$callId"}}""", """{"type":"response.done","response":{"status":"completed","output":[]}}""")
+        Thread.sleep(NEGATIVE_WAIT_MS)
+    }
+
+    private fun instructionsUpdates() = sent("session.update").filter { !it.getJSONObject("session").has("tools") }
+
+    @Test
+    fun aStyleChangeIsResentOnceAsAnInstructionsOnlyUpdateAtTheIdlePointBeforeTheReply() = runBlocking {
+        enqueueServer()
+        val client = client()
+        val seen = collect(client)
+        client.connect(config())
+        toolTurn(client, seen, "call_1", "control_climate", null)
+        assertTrue(instructionsUpdates().isEmpty(), "unchanged style, other tool: nothing sent")
+        val createsBefore = sent("response.create").size
+        send(
+            """{"type":"input_audio_buffer.speech_started"}""",
+            """{"type":"input_audio_buffer.speech_stopped"}""",
+            """{"type":"response.created","response":{"id":"r3"}}""",
+            """{"type":"response.function_call_arguments.done","call_id":"call_2","name":"set_speaking_style","arguments":"{\"style\":\"sweet\"}"}""",
+        )
+        awaitUntil({ "seen: $seen" }) { seen.any { it is DomainVoiceEvent.ToolCall && it.callId == "call_2" } }
+        com.novadrive.app.SpeakingStyleState.restore(com.novadrive.app.SpeakingStyle.SWEET)
+        client.sendFunctionResult("call_2", """{"ok":true,"tool":"set_speaking_style"}""")
+        Thread.sleep(NEGATIVE_WAIT_MS)
+        assertTrue(instructionsUpdates().isEmpty(), "never in the middle of a response")
+        send("""{"type":"response.done","response":{"status":"completed","output":[{"type":"function_call","call_id":"call_2"}]}}""")
+        awaitUntil({ "sent: $received" }) { sent("response.create").size > createsBefore }
+        val update = instructionsUpdates().single()
+        assertEquals(setOf("type", "session"), update.keySet())
+        assertEquals(setOf("instructions"), update.getJSONObject("session").keySet())
+        val instructions = update.getJSONObject("session").getString("instructions")
+        assertTrue(com.novadrive.app.PersonaProfiles.SWEET_TONE in instructions)
+        assertTrue(com.novadrive.app.PersonaProfiles.SWEET_VOICE_STYLE in instructions)
+        assertFalse("不撒娇" in instructions)
+        assertTrue(com.novadrive.app.PersonaProfiles.FLEX_TOOL_RULE in instructions, "the same text as at setup")
+        val order = received.map(::JSONObject).map { it.getString("type") }
+        val at = order.lastIndexOf("session.update")
+        assertEquals("response.create", order[at + 1], "the update goes out before the tool reply")
+        send("""{"type":"response.created","response":{"id":"r4"}}""", """{"type":"response.done","response":{"status":"completed","output":[]}}""")
+        Thread.sleep(NEGATIVE_WAIT_MS)
+        toolTurn(client, seen, "call_3", "control_climate", null)
+        assertEquals(1, instructionsUpdates().size, "sent once, not on every later tool turn")
+        toolTurn(client, seen, "call_4", "set_speaking_style", com.novadrive.app.SpeakingStyle.DEFAULT)
+        assertEquals(2, instructionsUpdates().size, "switching back re-sends once")
+        assertFalse(com.novadrive.app.PersonaProfiles.SWEET_TONE in instructionsUpdates().last().getJSONObject("session").getString("instructions"))
+        assertEquals(1, sockets.size, "no reconnect")
+        client.disconnect()
+    }
+
+    @Test
+    fun aRefusedInstructionsUpdateIsNotSessionFatalAndLaterToolTurnsStillWork() = runBlocking {
+        enqueueServer(refuseInstructionsUpdate = true)
+        val client = client()
+        val seen = collect(client)
+        val lines = CopyOnWriteArrayList<String>()
+        val previous = com.novadrive.app.DebugVoiceLog.sink
+        com.novadrive.app.DebugVoiceLog.sink = { lines += it }
+        try {
+            client.connect(config())
+            toolTurn(client, seen, "call_1", "set_speaking_style", com.novadrive.app.SpeakingStyle.SWEET)
+            awaitUntil({ "lines: $lines" }) { lines.any { it.startsWith("qwen_instructions_update_refused code=InvalidParameter") } }
+            val before = sent("conversation.item.create").size
+            toolTurn(client, seen, "call_2", "control_climate", null)
+            assertEquals(before + 1, sent("conversation.item.create").size, "a later tool turn still answers")
+        } finally {
+            com.novadrive.app.DebugVoiceLog.sink = previous
+        }
+        assertTrue(seen.none { it is DomainVoiceEvent.Error }, "the refusal is not session-fatal: $seen")
+        val redelivered = lines.single { it.startsWith("style_redelivered ") }
+        assertTrue(Regex("style_redelivered provider=qwen style=sweet chars=\\d+").matches(redelivered), redelivered)
+        assertFalse(lines.any { com.novadrive.app.PersonaProfiles.SWEET_TONE in it }, "never the instructions text (I-8)")
         client.disconnect()
     }
 
