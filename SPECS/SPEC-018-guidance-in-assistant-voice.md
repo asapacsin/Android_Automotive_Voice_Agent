@@ -240,3 +240,6 @@ would reopen ADR-014 and is escalated, not decided here.
 | --- | --- | --- |
 | Design review | done — REVISE, all 10 changes taken (revision 2) | reviewer report 2026-09-30 |
 | Step 1 | step 1 built (L2), behind the developer toggle (off); review fixes applied; re-review I1 fixed | 68635ac (contract), 5e0d909 (speech owners), 144f3fb (relay, fidelity, Amap edge); code review in progress |
+
+**2026-10-10:** the toggle moved into the developer screen's collapsed 诊断工具 as 「助手播报导航（实验）」. A Qwen session cannot relay guidance (`verbatimPromptSpeech` is false), but a stored `true` still mutes Amap's inner voice and routes prompts through the relay's Amap-TTS fallback (`AmapGuidanceVoice.kt:70,79`), so the switch stays reachable.
+

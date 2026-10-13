@@ -19,6 +19,12 @@ class ArchitectureRulesTest {
     private fun kotlinFiles(path: String): List<File> =
         File(root, path).walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
 
+    /** Every OpenAI-Realtime wire dialect (SPEC-021), so a rule covers dialects added later. */
+    private fun realtimeDialects(): String =
+        File(root, "app/src/main/kotlin/com/novadrive/app/voice").listFiles { f -> f.name.endsWith("Dialect.kt") }!!
+            .sortedBy { it.name }.also { check(it.isNotEmpty()) { "no *Dialect.kt found" } }
+            .joinToString("\n") { it.readText() }
+
     private fun text(path: String): String = File(root, path).also {
         assertTrue(it.isFile, "missing file: $path")
     }.readText()
@@ -41,6 +47,8 @@ class ArchitectureRulesTest {
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapRouteLiveInfo.kt",
             // The SDK's own guidance voice and its play listener (mic gate, host-bridge text).
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapGuidanceVoice.kt",
+            // P51: the one WGS-84 -> GCJ-02 conversion (SDK CoordinateConverter), for map and search.
+            "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapCoordinates.kt",
         )
         val unexpected = importers - allowed
         assertTrue(unexpected.isEmpty()) {
@@ -93,10 +101,13 @@ class ArchitectureRulesTest {
 
     @Test
     fun executionProofOwnsActionClaims() {
-        // Owner of the per-turn gate: DriverTurnPipeline (ADR-010); the provider client is read too,
-        // so the loose per-turn flags below cannot come back in either file.
+        // Owner of the per-turn gate: DriverTurnPipeline (ADR-010). The OpenAI-Realtime client, its
+        // Baidu subclass and every wire dialect (SPEC-021) are read too, so the loose per-turn flags
+        // below cannot come back in any of them.
         val client = text("app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt") +
-            text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt")
+            text("app/src/main/kotlin/com/novadrive/app/voice/OpenAiRealtimeClient.kt") +
+            text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt") +
+            realtimeDialects()
         // Proof enters the system at exactly one place: the tool result.
         assertTrue(client.contains("onExecutionResult(callId, output)")) {
             "INVARIANT I-1: the tool result (DriverTurnPipeline.onToolResult) is the only source of execution evidence"
@@ -200,12 +211,17 @@ class ArchitectureRulesTest {
         // Raising one is allowed — with a reason in the commit
         // message. See docs/AGENT_MAINTENANCE.md step 4 and docs/TECH_DEBT.md D-1.
         val budgets = mapOf(
-            // D-8 closed 2026-09-29: the per-turn gate moved to DriverTurnPipeline (939 -> 725).
-            "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt" to 800,
-            "app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt" to 400,
+            // SPEC-021 step 1 (2026-10-08): only the Baidu constructor and voice members are left (51
+            // lines); turn handling must not regrow here.
+            "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt" to 80,
+            // SPEC-021 step 1 (2026-10-08): the turn handling moved out of BaiduFlexClient, recorded at 675.
+            // SPEC-020 (2026-10-09): the Maia wait cue is captured in this client so it is not judged as the reply.
+            "app/src/main/kotlin/com/novadrive/app/voice/OpenAiRealtimeClient.kt" to 802, // P50 2026-10-09: streamed words, stall and underrun wiring (logic in ReplyStreaming.kt); +1 2026-10-11: the stall-notice hook (logic in WaitCueClock); +3 2026-10-11: per-reply usage log and history cap (logic in ReplyUsage.kt); +6 2026-10-11: a cue request holds the turn gate (review R1); +12 2026-10-11: a stall retry waits for its notice and is dropped if the driver speaks (re-review R1a)
+            "app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt" to 410, // SPEC-014 clause release (budget in ReplyStreaming.kt)
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapNaviViewHost.kt" to 900,
             "app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt" to 470,
-            "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt" to 500,
+            // SPEC-020 (2026-10-09): forwards the 3 s working label. Was 500.
+            "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt" to 510,
             "app/src/main/kotlin/com/novadrive/app/nav/EmbeddedNavigationController.kt" to 500,
             // Gemini Live adapter (ADR-010), recorded 2026-09-29 at 465 and 56 lines.
             // SPEC-018 step 1: GUIDANCE-turn hooks at the client's turn points; correlation state already extracted to GeminiPromptTurn.kt
@@ -398,5 +414,19 @@ class ArchitectureRulesTest {
             "power_on", "power_off", "set_temperature", "set_fan", "temperature_up",
             "temperature_down", "fan_up", "fan_down",
         )
+    }
+
+    // ---- ADR-017: the developer screen shows only what the product session uses ----
+
+    @Test
+    fun developerSettingsNamesNoDormantProvider() {
+        val body = text("app/src/main/kotlin/com/novadrive/app/DeveloperSettingsActivity.kt")
+        val forbidden = listOf(
+            "GeminiSettingsRepository", "AzureSpeechSettingsRepository", "BaiduFlexClient",
+            "BaiduRealtimeClient", "VoiceProviderPreference", "ReplaySpeechToSpeechPort",
+        ).filter { body.contains(it) }
+        assertTrue(forbidden.isEmpty()) {
+            "ADR-017: DeveloperSettingsActivity must not reference dormant providers (CredentialWipe owns the clear): $forbidden"
+        }
     }
 }

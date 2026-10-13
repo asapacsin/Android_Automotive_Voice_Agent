@@ -4,8 +4,9 @@ Dead air after her reply (before the driver's next line) shrinks to PAUSE. The w
 driver's line and her reply is never touched: it is the real latency. Voices are never cut.
 
     python final_cut.py OUT.mp4
+    CUT=commute python final_cut.py OUT.mp4    # the commute demo (docs/DEMO_COMMUTE.md)
 """
-import subprocess, sys, wave
+import os, subprocess, sys, wave
 import numpy as np
 
 PAUSE = 0.8
@@ -23,6 +24,21 @@ SCENES = [
     ("u_error", 22.4, None, [22.44], [(22.4, 26.0, None), (33.6, 37.0, "⏩ 断网后启动会话（略去 7.6 秒）"),
                                       (45.3, 48.8, "⏩ 12 秒后（中间略去 8.3 秒）")]),
 ]
+
+# The commute demo: one take per scene, named as in docs/DEMO_COMMUTE.md. The arrival take waits for the
+# simulated car; give it explicit keeps with a ⏩ label (as u_error above) once its timeline is known.
+COMMUTE = [
+    ("c1_board", 0.0, None, [0.06], None),
+    ("c2_depart", 0.0, None, [0.06], None),
+    ("c3_mosq", 0.0, None, [0.06], None),
+    ("c4_music", 0.0, None, [0.06], None),
+    ("c5_ask", 0.0, None, [0.06], None),
+    ("c6_arrive", 0.0, None, [0.06], None),
+]
+if os.environ.get("CUT") == "commute":
+    SCENES = COMMUTE
+HEAD_RUN = "c1_board" if os.environ.get("CUT") == "commute" else "u_error"
+
 
 def env(path, rate=100):
     w = wave.open(path)
@@ -95,7 +111,7 @@ def main(dst):
               f"afade=t=in:st=0:d=0.02,afade=t=out:st={d - 0.02:.3f}:d=0.02[a{k}];")
     g += "".join(f"[v{k}][a{k}]" for k in range(len(pieces))) + f"concat=n={len(pieces)}:v=1:a=1[vc][ac];"
     ts = lambda s: f"0:{int(s // 60):02d}:{s % 60:05.2f}"
-    head = open("u_error/demo.ass", encoding="utf-8-sig").read().split("[Events]")[0]
+    head = open(f"{HEAD_RUN}/demo.ass", encoding="utf-8-sig").read().split("[Events]")[0]
     ev = "\n".join(f"Dialogue: 5,{ts(s)},{ts(s + 3.0)},Cut,,0,0,0,,{{\\fad(150,300)}}{lab}" for s, lab in labels)
     open("final.ass", "w", encoding="utf-8-sig").write(
         head + "[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n" + ev + "\n")

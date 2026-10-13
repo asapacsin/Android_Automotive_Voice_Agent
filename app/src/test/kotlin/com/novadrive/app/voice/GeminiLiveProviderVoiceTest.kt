@@ -103,14 +103,14 @@ class GeminiLiveProviderVoiceTest {
         val job = async(Dispatchers.Default) { provider.events().collect {} }
         delay(100)
         provider.onLocalSpeechActivity(false)
-        delay(2_100)
+        delay(6_500)
         job.cancel()
         voice.spoken.toList()
     }
 
     @Test
     fun noWaitCueWhenRepliesAreNotSpoken() {
-        assertEquals(listOf(WaitCues.ACK_CHAT), cuesSpoken(repliesSpoken = true))
+        assertEquals(listOf(WaitCues.PROGRESS), cuesSpoken(repliesSpoken = true))
         assertEquals(emptyList<String>(), cuesSpoken(repliesSpoken = false))
     }
 

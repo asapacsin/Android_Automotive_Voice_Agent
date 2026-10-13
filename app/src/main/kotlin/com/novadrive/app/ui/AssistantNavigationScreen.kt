@@ -214,6 +214,11 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
         overlay.bindListening(state)
     }
 
+    /** SPEC-020: the 3 s 「处理中」 label. It does not change the session state. */
+    fun setWorkingCue(showing: Boolean) {
+        overlay.setWorkingCue(showing)
+    }
+
     var onListeningToggle: (() -> Unit)?
         get() = overlay.onListeningToggle
         set(value) {

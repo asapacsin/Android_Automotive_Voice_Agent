@@ -1834,3 +1834,135 @@ Measured from the driver's **last audible word**, not the end of the clip; edge-
 **Risk and next:**
 - The phone has always run the gate, so on Gemini the same stall may be behind P45's 12 s `ACTIVITY_END`. This fix applies there too. Verify on the phone.
 - A mid-sentence pause longer than the 1.2 s hangover now ends the turn at once. Before, the server would also have ended it after its own 1–2 s.
+
+## P50 — Qwen Maia on the emulator: replies held whole, a reset after every tool turn, stalls, and false claims about heard sentences
+
+**Status:** FIXED on the emulator 2026-10-09 (`cursor/10-9`); phone not yet verified. Found while building the Qwen Maia demo (owner: "build a demo, if during the demo anything conflict with our spec, you should fix it").
+
+**Seen (takes `qwen109b`–`e`, `rec109/*`, graded by `check_req.py`):**
+1. **Every chat reply was held until Qwen finished** (`UNCLASSIFIED_CLAIM`, 0.5–1.9 s). Chat was heard at 2.9 s, a thinking question at 3.8 s.
+2. **`ConversationResetPolicy` reconnected after every tool turn** (2.5–2.6 s each). The driver's next line, spoken during the reset, was lost twice in two takes; the multi-turn context went with it. The rule was measured on Baidu (2026-09-17); SPEC-021 left it open for Qwen (question 4).
+3. **Qwen stalled mid-reply** after a music hand-off: 「已经」 and then nothing for 15.7 s and 23.1 s, until the driver's next line cancelled it. The same words said alone never stalled (9/9 on the PC), so the stall is the server's.
+4. **An ability list was dropped as a claim** (「你干什么」, two groups in an enumeration, no 能/可以), then the 「没听清」 correction.
+5. **The claim correction asked for 「没听清」, which `DriverTurn` then dropped** for a heard sentence (`repair_for_heard_speech`): 「说话霸道一点」 took 5.8 s through claim → 没听清 → answer.
+6. **The first weather question made two Amap round trips** (district, then weather; 1.1–1.5 s each from the PC proxy; two of about eight lookups timed out at the 4 s limit).
+7. **`check_req.py` called Maia choppy** for 0.4–0.6 s sentence pauses that are in her own audio: every one came after Qwen had sent the whole reply.
+
+**Fix:**
+- SPEC-014 clause release, owner decision 2026-10-09 (`DriverTurn.clauseVerdict`, `DriverTurnPipeline.drainClauses`, `ProviderCapabilities.streamedReplyText`); see SPEC-014's status note.
+- `RealtimeDialect.resetsConversation`: false for Qwen, true for Baidu (SPEC-021 question 4).
+- `OpenAiRealtimeClient` stall watchdog: a response with no progress for 10 s (`ResponseStallWatchdog.STALL_MS`; 5 s until 2026-10-11, when it cancelled a valid tool call that came 5.35 s after response.created on qwen3.5-omni-plus-realtime) is cancelled and asked for once more (`<prefix>_response_stalled`, `_stall_retry`); the stall is announced first, and a stalled retry is cancelled and given up with an honest line (`_stall_gave_up`, SPEC-020 owner amendment 2026-10-11).
+- `ActionClaimGuard.listsAbilities`: two or more groups in a 「、」 enumeration are a list (a completion word still makes it a claim).
+- `ActionClaimGuard.unverifiedClaim`: for a heard sentence (≥ 5 word characters) the correction asks for the request itself (`nudgeFor`), never 「没听清」.
+- `LiveInfoTool`: the district is cached per ~1 km cell for 30 min, and at session start the district and today's weather here are fetched in the background (`live_info_warm`).
+- Choppiness is now measured where the driver hears it: `reply_underrun ms=` when reply audio leaves the client later than the audio before it lasts. `check_req.py` grades the provider-voiced path on it (DEMO_REQUIREMENTS §1).
+
+**Measured after the fixes (final build, takes z_/r1_/r2_ in the session scratchpad):** chat 1.9-2.6 s, ability 2.0-2.7 s, thinking 2.4-2.6 s (one take 4.3 s, Qwen slow), music 2.3-4.3 s, scenario 3.0-5.1 s, weather 5.4-5.7 s (Amap from Macau, one 4 s timeout), bossy 3.0-10.2 s (10.2 s = a Qwen stall the watchdog cancelled and retried). No reply_underrun over 300 ms. **Demo video not yet composed** (owner asked to save and push first, 2026-10-09).
+
+**Independent review of the cursor/10-9 build (cloud, 2026-10-09, `claude/10-9`): REVISE, REVISE, PASS.** It found I-1 leaks that the emulator takes did not show. All are fixed, with JVM and mock-socket evidence only (`P50-REVIEW-UNIT-001`):
+- Clause release played 「好的，已经开了，」 before the transcript 「把车窗打开」 classified the turn. It now waits for classification. `CAPABILITY_HELP` releases only once it passes its own end rule. An enumeration that claims or promises the action counts as a claim (SPEC-014 note).
+- The wait cue Maia speaks was "the next response.created", so a real reply could be played as the cue, unchecked, and its tool call swallowed. `ProviderCueCapture` now plays a cue only when the response completes with exactly the cue's words and no call. Anything else is handed back to the normal path or dropped. Driver speech, errors and cancels are no longer swallowed.
+- The stall retry went around `ResponseTurnGate`. It now goes through the gate, is dropped when another turn is already out, and is never sent for a cue.
+- 「今天珠海天气怎么样」 missed the warm cache (keyed by district, asked by city name). A named city that is the current city now uses it (SPEC-011 B4 amendment).
+- Left as is, both rare:
+  - an empty-response retry whose "already active" refusal arrives during a cue capture is taken as the cue's refusal;
+  - a stall check firing between a response's done and the watchdog's sequence step could retry a finished response. It needs 10 s of quiet just before the done (5 s before 2026-10-11).
+
+**Still open:**
+- A weather question naming a city is looked up at question time: 1.1–4 s from the PC proxy in Macau, and a timeout means an honest "could not check". Not measured on the phone.
+- The session-start warm-up now tries each lookup up to 3 times, 1 s apart (2026-10-12). Before, one slow Amap call left the cache empty and 「今天天气怎么样」 paid a cold lookup. From the cloud, single calls took 1.4–3.8 s and one weather call hit the 4 s limit in a full-suite run. `LiveInfoToolTest` covers both cases (a retried warm-up still answers from the cache; three failures give up). `DemoCommuteAmapLiveTest` runs the real warm-up at the demo origin.
+- Qwen's own variance: end-of-speech 0.9–1.5 s after the last word (`semantic_vad` 800 ms), first audio after a tool result 0.3–1.5 s, and occasionally a reply generated close to real time (underruns up to 259 ms).
+
+## P51 — 「导航去横琴镇」 + 「第一个」 chose the place the car was already at
+
+**Found 2026-10-12, before any local take of the commute demo, by running the app's own place search against the real Amap Web API at the demo origin** (`DemoCommuteAmapLiveTest`). The JVM harness simulates the route, so its passing takes never showed it.
+
+**Symptom (measured, real Amap):** at 横琴·澳门青年创业谷 the nearby search for 横琴镇 returned 横琴澳门青年创业谷 itself first, then four more places, all within 650 m. Amap's driving route there is 26 m long. 「第一个」 would end the drive at once, and c3–c5 (蚊子, 歌, 前面堵不堵) would be spoken with no route. The same ranking gave a bus stop for 横琴口岸 and a hotel and a gym for 横琴总部大厦.
+
+**Root cause:** `AmapPoiClient` asked `place/around` with `sortrule=distance`. Amap then ranks the nearest *fuzzy* keyword match first, so nearby places that only share a word come first. Research: Amap's 周边搜索 documentation (lbs.amap.com/api/webservice/guide/api/search) lists `sortrule` as `distance` (the default) or `weight` (综合排序, relevance and distance together). Nothing else was found on this behaviour.
+
+**Fix:** named places use `AmapPoiClient.NEARBY_SORT_RULE = "weight"`. A request for the nearest place (「附近的麦当劳」, 「离我最近的加油站」: `DestinationQuery.isNearbyRequest`, wired into `LiveDestinationCandidateSource` for the first time) still sends `distance` (`NEAREST_SORT_RULE`). This follows the independent review. Measured at the same origin with `weight`:
+
+| Query | First result | Distance |
+| --- | --- | --- |
+| 横琴镇 | 横琴镇人民政府 | 2533 m (route 2855 m, about 257 s at the emulator's 40 km/h) |
+| 横琴口岸 | 珠海横琴口岸 | |
+| 横琴总部大厦 | 横琴总部大厦 | |
+| 麦当劳 | the 896 m branch | |
+| 加油站 | stations at 1.0–1.9 km | |
+
+`DemoCommuteAmapLiveTest` fails on the old ranking (632 m) and passes on the new one.
+
+**Resolved — GCJ-02 search origin** (decided by decider (xhigh), 2026-10-12: SDK conversion moved to AmapCoordinates and used by the search):
+- The nearby search sent the platform's WGS-84 fix where Amap expects GCJ-02: 618 m off at the demo origin (measured, Amap `assistant/coordinate/convert` coordsys=gps), so near-me ranking and the distances spoken were off by that much.
+- Fix: `nav/amap/AmapCoordinates.toGcj02` is the one SDK `CoordinateConverter` call; `AmapNaviViewHost` and `LiveDestinationCandidateSource` both use it. Saved places are never converted. The log line `nav_search_origin converted=` carries a boolean only.
+- Research: Amap Android 坐标转换, lbs.amap.com/api/android-sdk/guide/computing-equipment/coordinate-transformation; the Web `place/around` API has no coordsys parameter, so it takes GCJ-02.
+- Live (2026-10-12, `NOVA_LIVE_AMAP=1 DemoCommuteAmapLiveTest`, GCJ origin): 2/2 passed; `c_pick -> 横琴镇人民政府 2045 m (of 5)`.
+
+**Still open:**
+- A brand named *without* a near-me word (「导航去星巴克」) now ranks by relevance, so a slightly farther branch may come first (星巴克: third result 9.8 km).
+- `NAV-SEARCH-001`'s device evidence was taken under nearest-first ranking. Named-place searches need a device re-check.
+
+**Before a local take:** `python tools/demo/recorder/record_demo.py --preflight` checks all of this on the emulator with no voice session open:
+- the Qwen config code;
+- the app's Amap Web key;
+- the GPS fix;
+- the app's own search for 横琴镇 (at least 1.7 km away);
+- a Navi SDK route to it.
+
+## P52 — A used-up Qwen free tier was reported as QWEN_PROTOCOL_ERROR
+
+**Found 2026-10-12, take 9** (cloud JVM, qwen3.5-omni-plus-realtime, after its free tier ran out). The session failed 57 ms after `session.created` as `QWEN_PROTOCOL_ERROR`, so neither the driver nor we could see that the quota was the reason. The raw event was not logged (I-8), so its exact shape is unknown.
+
+**Research:** Alibaba Model Studio's error-code page (alibabacloud.com/help/en/model-studio/error-code) documents two relevant errors:
+- `403 AllocationQuota.FreeTierOnly`: "The free tier of the model has been exhausted…", seen with "use free tier only" on;
+- `400 Arrearage`: "Access denied, please make sure your account is in good standing".
+
+DashScope's plain error body is `{code, message, request_id}`, with no `type`.
+
+**Root causes, each reproduced in `QwenOmniClientTest.aQuotaRefusalOfTheSessionIsReportedAsQuotaNeverAsAProtocolError` with a mock server:**
+1. A type-less frame reached the shared parser, which throws on a missing type. This gave `QWEN_PROTOCOL_ERROR`, the take 9 symptom.
+2. `Arrearage` contains "access denied", and the key markers were checked first. This gave `QWEN_AUTH_FAILED`, which wrongly blames the API key.
+3. An `error` sent as a bare string was read as empty. This gave `QWEN_PROVIDER_ERROR`.
+
+**Fix (`QwenOmniDialect`):**
+- A type-less frame that carries `code` or `error` is parsed as an error.
+- `freetieronly` and `arrearage` count as quota, and the quota markers are checked before the key markers.
+- `errorOf` reads a string `error` as its message.
+
+A type-less frame with neither field is still a protocol error. All four documented shapes now end as `QWEN_QUOTA_EXHAUSTED` (`ErrorClass.RATE_LIMIT`).
+
+**Still open:** not yet seen live. The next time a model's quota runs out, the log line `state=ERROR err=QWEN_QUOTA_EXHAUSTED` confirms it.
+
+## P53 — c_nav waits for the real place search
+
+**Found 2026-10-12, Gemini rehearsals** (cloud JVM, the app's real Amap place search for the first time). c_nav (「导航去横琴镇」) took 6.0 s and 4.7 s against its 3.5 s budget, because the search took 2.52 s and 2.25 s before any reply. Qwen takes 6 and 8, with an instant (simulated) search, answered c_nav in 2.78 s and 2.89 s, so the search may take about 0.6 s at most.
+
+**Cause:**
+- Every `AmapPoiClient` built its own `OkHttpClient`, so the search never reused the connection the session-start warm-up opened; a cold TLS handshake through a proxy costs about 2.9 s.
+- The proxy path itself (the PC routes Amap through Clash).
+
+**Fix:**
+- `AmapPoiClient`'s default `http` is one process-wide client (`SHARED_HTTP`, same 4 s timeouts); `AmapPoiClientTest` proves two default clients share one connection.
+- `nav_resolve_candidates` logs `ms=` (a duration only, I-8); `check_req.py` prints it beside c_nav for information.
+- Debug `preflight` times the search (`preflight_search ... ms=`) and repeats it warm (`preflight_search_warm ms=`); `record_demo.py --preflight` fails above 0.5 s and names the fix: route `restapi.amap.com` direct (Clash `DOMAIN-SUFFIX,amap.com,DIRECT`).
+- The JVM live demo fetches the real 横琴镇 result before the session opens and answers c_nav from it; the candidates are real, the network time is out of the take.
+
+**Decision:** decided by decider (xhigh) 2026-10-12. Option A (an early spoken line) was rejected because it reverses the owner's SPEC-020 timing (no cue before 7 s).
+
+**Research:** the Gemini Live tools documentation says function calling on 3.1 Flash Live is synchronous only, so the model cannot speak while the tool runs. Vapi and LiveKit speak an acknowledgement for slow tools.
+
+**Contingent owner question** (only if the PC still measures > 0.5 s with Amap direct and warm):
+1. For `navigate_to` only, one fixed line 「好，我找一下。」 about 2 s after the driver stops speaking, through the existing cue path. This changes SPEC-020's table; the decider recommends it.
+2. `check_req.py` times a navigation turn from when the candidates arrive. This changes DEMO_REQUIREMENTS §2.
+3. Record c_nav only on a network where the search fits.
+
+**Still open:** the device and PC measurement with the rebuilt debug app (`preflight_search ms=`), and the next Gemini rehearsal.
+
+## P54 — 「附近有加油站吗」 while parked was answered 「没在导航，查不了」
+
+**Found 2026-10-13, first tryout run** (`NOVA_LIVE_SCENES=tryout`, Gemini, docs/DEMO_TRYOUT.md): a first-time driver's 「附近有加油站吗」 with no route. The model called `query_live_info` `along_route` (its description lists 「路上有加油站吗」), got `NOT_NAVIGATING`, whose advice said 「请用一句话如实说现在没有在导航」, and answered 「都说了没在导航，查不了。」 The claim gate dropped a first reply, two corrections followed, and the last one was still running when the driver said 「算了，不去了」, which then took 11.3 s.
+
+**Fix:** the existing nearby search (`navigate_to` → `DestinationQuery.isNearbyRequest`, distance-sorted) is named for this case in three places: `navigate_to`'s description (「附近有加油站吗」 with no route → destination=附近的加油站), `query_live_info`'s along_route line (no route → not along_route), and the `NOT_NAVIGATING` advice (a nearby-place question → call navigate_to instead of saying 没在导航). SPEC-011's failure row is updated. Research: Gemini function-calling best practice is a specific description saying when to use each tool (ai.google.dev/gemini-api/docs/function-calling, "Best practices"); nothing more specific found for overlapping tools.
+
+**Evidence:** second tryout run, u_gas `navigate_to✓` 2.5 s, u_cancel 2.4 s (was 11.3 s); 18/19 lines PASS. Golden tool declarations updated; `:app:testDebugUnitTest` 1843/0, `:behavior-test:test` 131/0.

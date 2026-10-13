@@ -18,6 +18,15 @@ class GeminiModelRegistryTest {
     }
 
     @Test
+    fun experimentsStartWithTheOldestWorkingLiveModelAndNeverChangeTheDefault() {
+        // Owner 2026-10-12: experiments use the oldest Live model first (AGENTS.md).
+        assertEquals(VoiceCatalog.GEMINI_LIVE_31_PREVIEW, VoiceCatalog.geminiExperimentOrder.first())
+        assertTrue(VoiceCatalog.geminiExperimentOrder.all { it in VoiceCatalog.geminiLiveModels })
+        assertEquals(VoiceCatalog.GEMINI_LIVE_FAST, VoiceCatalog.defaultModel(VoiceProviderId.GEMINI_LIVE))
+        assertFalse(VoiceCatalog.geminiAcceptsThinkingLevel(VoiceCatalog.GEMINI_LIVE_31_PREVIEW))
+    }
+
+    @Test
     fun thinkingLevelTraitIsDeclaredPerModel() {
         assertTrue(VoiceCatalog.geminiAcceptsThinkingLevel(VoiceCatalog.GEMINI_LIVE_EXTENDED))
         assertFalse(VoiceCatalog.geminiAcceptsThinkingLevel(VoiceCatalog.GEMINI_LIVE_FAST))

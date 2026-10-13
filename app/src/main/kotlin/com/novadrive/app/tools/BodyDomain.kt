@@ -13,11 +13,7 @@ object BodyDomain : ToolDomain {
     override fun specs(): List<ToolSpec> {
         val controlWindow = spec(
             name = "control_window",
-            description = "控制车窗（当前为模拟车窗）。「打开车窗」action=open；「关窗」「把车窗关上」action=close；" +
-                "「把车窗打开一半」action=set,value=50；「开一点主驾车窗」action=adjust,window=driver,value=20；" +
-                "「副驾车窗关小一点」action=adjust,window=passenger,value=-20；「车窗开了多少」action=get_state。" +
-                "不说哪个窗时 window=all。只根据返回的 windows 和 announce 确认结果；ok=false 时必须如实说没有成功。" +
-                "Control the windows (simulated backend); confirm only from the returned windows and announce.",
+            description = "控制车窗（模拟）。「打开车窗」open；「关窗」close；「车窗开一半」set,value=50；「开一点主驾车窗」adjust,window=driver,value=20；「副驾关小一点」adjust,window=passenger,value=-20；「车窗开了多少」get_state。未指明窗时 window=all。只按返回的 windows/announce 确认；ok=false 如实说没成功。",
             properties = JSONObject()
                 .put("action", JSONObject().put("type", "string").put("enum", JSONArray(WindowToolHandler.ACTIONS)))
                 .put("window", JSONObject().put("type", "string").put("enum", JSONArray(WindowToolHandler.WINDOWS)))
@@ -31,11 +27,7 @@ object BodyDomain : ToolDomain {
         )
         val controlSeat = spec(
             name = "control_seat",
-            description = "调节座椅高度（当前为模拟座椅）。「座位有点高」「座椅太高了」action=adjust_height,value=-1；" +
-                "「座位有点低」「座椅太低了」action=adjust_height,value=1；「座椅调到最低」action=set_height,value=0；" +
-                "「座椅调到最高」value=10；「座椅现在多高」action=get_state。不说哪个座位时 seat=driver。" +
-                "用户只描述感受时直接调节一档，不要反问。只根据返回的 seat_height 和 announce 确认结果；ok=false 时如实说没有成功。" +
-                "Adjust the seat height (simulated backend); confirm only from the returned seat_height and announce.",
+            description = "调座椅高度（模拟）。「座椅调高一点」「再调高一点」「座位有点低」adjust_height,value=1；「座位有点高」value=-1；「调到最低」set_height,value=0；「最高」value=10；「座椅多高」get_state。未指明座位时 seat=driver。描述感受时直接调一档，不要反问。只按返回的 seat_height/announce 确认；ok=false 如实说没成功。",
             properties = JSONObject()
                 .put("action", JSONObject().put("type", "string").put("enum", JSONArray(SeatToolHandler.ACTIONS)))
                 .put("seat", JSONObject().put("type", "string").put("enum", JSONArray(SeatToolHandler.SEATS)))

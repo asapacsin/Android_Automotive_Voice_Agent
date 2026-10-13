@@ -84,15 +84,36 @@ object AmapPoiParser {
 }
 
 class AmapPoiClient(
-    private val http: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(4, TimeUnit.SECONDS)
-        .readTimeout(4, TimeUnit.SECONDS)
-        .build(),
+    /** One process-wide client by default, so a search reuses the warm connection (P53). */
+    private val http: OkHttpClient = SHARED_HTTP,
     private val baseUrl: String = "https://restapi.amap.com/v3/place/text",
     private val aroundUrl: String = "https://restapi.amap.com/v3/place/around",
     /** Root of the web-service endpoints `query_live_info` reads (SPEC-011). */
     private val liveBaseUrl: String = "https://restapi.amap.com/v3",
 ) : AmapLiveInfoRest {
+    companion object {
+        /**
+         * P53: every client used to build its own OkHttpClient, so the place search never reused the
+         * connection the session-start warm-up opened and paid a cold TLS handshake (~2.9 s via proxy).
+         */
+        internal val SHARED_HTTP: OkHttpClient = OkHttpClient.Builder()
+            .connectTimeout(4, TimeUnit.SECONDS)
+            .readTimeout(4, TimeUnit.SECONDS)
+            .build()
+
+        /**
+         * Amap's 综合排序 (relevance with distance), not `distance`. Measured 2026-10-12 at 横琴创业谷:
+         * with `distance` the around search answers the nearest *fuzzy* match first - 横琴镇 gave the
+         * origin itself (a 26 m route), 横琴口岸 a bus stop, 横琴总部大厦 a hotel - while `weight` gives
+         * 横琴镇人民政府, 珠海横琴口岸 and 横琴总部大厦, and still the nearby branches for 麦当劳/加油站.
+         * Source: lbs.amap.com/api/webservice/guide/api/search (周边搜索 sortrule: distance | weight).
+         */
+        const val NEARBY_SORT_RULE = "weight"
+
+        /** For a driver who asked for the nearest (「附近的麦当劳」, 「离我最近的加油站」): nearest first. */
+        const val NEAREST_SORT_RULE = "distance"
+    }
+
     // ---- query_live_info (SPEC-011). No URL here is ever logged: regeo carries `location=`. ----
 
     /** [city] is an adcode or a city name; the weather endpoint accepts both. */
@@ -102,12 +123,12 @@ class AmapPoiClient(
     override fun weatherForecast(city: String, key: String): LiveInfoFetch<WeatherForecast> =
         live("weather/weatherInfo", key, mapOf("city" to city, "extensions" to "all"), AmapLiveInfoParser::weatherForecast)
 
-    override fun regeoAdcode(latitude: Double, longitude: Double, key: String): LiveInfoFetch<String> =
+    override fun regeoPlace(latitude: Double, longitude: Double, key: String): LiveInfoFetch<RegeoPlace> =
         live(
             "geocode/regeo",
             key,
             mapOf("location" to String.format(Locale.US, "%.6f,%.6f", longitude, latitude)),
-            AmapLiveInfoParser::regeoAdcode,
+            AmapLiveInfoParser::regeoPlace,
         )
 
     override fun placeDetail(poiId: String, key: String): LiveInfoFetch<PlaceDetail> =
@@ -170,7 +191,7 @@ class AmapPoiClient(
                 ?.addQueryParameter("key", key)
                 ?.addQueryParameter("location", String.format(Locale.US, "%.6f,%.6f", longitude, latitude))
                 ?.addQueryParameter("radius", radiusMeters.toString())
-                ?.addQueryParameter("sortrule", "distance")
+                ?.addQueryParameter("sortrule", NEARBY_SORT_RULE)
                 ?.addQueryParameter("offset", "1")
                 ?.addQueryParameter("page", "1")
                 ?.addQueryParameter("extensions", "base")
@@ -213,6 +234,7 @@ class AmapPoiClient(
         longitude: Double,
         radiusMeters: Int = 50_000,
         limit: Int = 5,
+        sortRule: String = NEARBY_SORT_RULE,
     ): List<DestinationCandidate> {
         return try {
             val url = aroundUrl.toHttpUrlOrNull()?.newBuilder()
@@ -220,7 +242,7 @@ class AmapPoiClient(
                 ?.addQueryParameter("key", key)
                 ?.addQueryParameter("location", String.format(Locale.US, "%.6f,%.6f", longitude, latitude))
                 ?.addQueryParameter("radius", radiusMeters.toString())
-                ?.addQueryParameter("sortrule", "distance")
+                ?.addQueryParameter("sortrule", sortRule)
                 ?.addQueryParameter("offset", limit.toString())
                 ?.addQueryParameter("page", "1")
                 ?.addQueryParameter("extensions", "base")

@@ -184,6 +184,49 @@ call that turn never registered can count as its proof and release a held reply
 
 ---
 
+## D-12 — 「空调」 alone reads as an action claim — **RESOLVED for claims; remaining chat cases ACCEPTED by the owner 2026-10-11**
+
+**Problem.** `ActionClaimGuard.describesCarAction` pairs a `DEVICE_NOUNS` word with an `ACTION_WORDS`
+word by substring. 「调」 is an action word and is inside 「空调」, so any reply naming the air
+conditioning (「开窗好还是开空调好，主要看外面温度。」) matches `car_action noun=空调 verb=调` with no
+action in it. Found by the review of the window-promise change (5367d68), JVM only; not seen live.
+
+**Affected.** `ActionClaimGuard.describesCarAction`, `carActionClaimMatch`, so `DriverTurn`'s
+UNCLASSIFIED_CLAIM / AWAITING_EXECUTION_PROOF drops and the guard's nudges.
+
+**Risk.** The P36 class: a chat answer about the air conditioning goes silent and is followed by a
+nudge or 「没听清」.
+
+**Resolution.** Researched first (AGENTS.md rule 6): rule-based Chinese segmentation uses
+dictionary maximum matching (正向/逆向最大匹配; CSDN, Zhihu and NLP course write-ups), where the longest
+dictionary word wins. `ActionClaimGuard` now masks a small dictionary of compound words that only
+contain an action character (空调, 降雨, 降水, 降雪) before matching action words. 「开窗好还是开空调好」
+is chat; 「我帮你调一下空调」「空调已经调到24度了」 are still claims. 「开好」 became a body completion
+word, because 「空调、车窗都帮你开好了」 had been caught only through the 调 in 空调.
+`FalseCapabilityClaimTest.aWordThatOnlyContainsAnActionCharacterIsNotAClaim`; every climate test is green.
+
+**Review finding (2026-10-11).** The mask also hid 10 real climate claims that had been caught only
+through the 调 inside 空调 (「空调开好了」「已经开空调了」「好的，已经帮你开空调了」「已经帮你把空调开到24度了」
+「空调已经开到最大了」「空调帮你开起来了」「好的，空调开上了」「空调关好了」「空调风量开大了」「好的，空调给你开着了」):
+with 「打开空调」 and no tool call they were released as `no_claim_made`, an I-1 regression. 空调 now has a
+pair rule like the body nouns (`climateClaimWords`: a 开/关 completion form after 空调 in the clause, or
+verb-first 开/关空调 with a promise marker or 了, negated/advisory/hypothetical clauses excluded).
+Covered by `FalseCapabilityClaimTest.aClimateClaimWithoutTheActionCharacterIsStillAClaim` and
+`DriverTurnTest.aClimateClaimWithNoToolCallIsDroppedAfterTheCompoundMask`; the advice negatives
+(「要不要开空调？」「开空调会更费油一点。」「空调可以开到24度左右比较舒服。」) stay null.
+
+**Still open (re-review 2026-10-11).** In a turn the app could not classify (UNCLASSIFIED_CLAIM),
+general statements that put a completion verb after 空调 are still dropped as claims, so the driver
+hears nothing: 「夏天空调开着睡觉容易感冒。」「空调一直开着，车里挺凉快的。」「外面很热，记得把空调开大一点。」
+「空调开到24度左右最舒服。」「很多人开空调开到最低。」「空调关了以后车里会慢慢变热。」 Each was dropped before
+D-12 as well, so this is not a regression; catching every real claim (I-1) was put first. Released
+correctly: 「开空调吧，外面太热了。」「我已经习惯开空调开车了。」「空调开着的时候油耗会高一点。」.
+**Owner decision, 2026-10-11:** these are hard to tell from a claim, and it is acceptable for her to
+skip such a sentence or say she did not understand. No further work is planned; reopen only if a real
+drive shows it often.
+
+---
+
 ## D-9 — The hold budget releases a reply whose words were never judged — **OPEN** (found 2026-09-29)
 
 **Problem.** `DriverTurnPipeline` releases everything held once a turn holds more than 120 events

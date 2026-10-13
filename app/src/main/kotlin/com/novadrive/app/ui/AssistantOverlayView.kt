@@ -258,8 +258,19 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
         }
     }
 
+    private var workingCue = false
+    private var lastError: String? = null
+
+    /** The 3–7 s mark: a label only, cleared when she speaks or the turn ends. */
+    fun setWorkingCue(showing: Boolean) {
+        if (workingCue == showing) return
+        workingCue = showing
+        bindState(lastVoiceState, lastError)
+    }
+
     fun bindState(state: VoiceUiState, error: String?) {
         lastVoiceState = state
+        lastError = error
         val ui = AssistantUiStateMapper.from(state)
         if (drivingChrome) {
             settingsEntry.visibility = GONE
@@ -288,17 +299,18 @@ class AssistantOverlayView(context: Context) : FrameLayout(context) {
             actionCard.visibility = GONE
             return
         }
-        stateLabel.text = if (ui == AssistantUiState.LISTENING) {
-            context.getString(R.string.assistant_listening_active)
-        } else {
-            AssistantUiStateMapper.displayLabel(ui)
+        val showWork = workingCue && ui != AssistantUiState.ERROR && ui != AssistantUiState.RESPONDING
+        stateLabel.text = when {
+            showWork -> context.getString(R.string.assistant_working)
+            ui == AssistantUiState.LISTENING -> context.getString(R.string.assistant_listening_active)
+            else -> AssistantUiStateMapper.displayLabel(ui)
         }
         stateDot.setTextColor(
-            when (ui) {
-                AssistantUiState.LISTENING -> Color.parseColor("#FF4CAF50")
-                AssistantUiState.PROCESSING -> Color.parseColor("#FFFFC107")
-                AssistantUiState.RESPONDING -> Color.parseColor("#FF42A5F5")
-                AssistantUiState.ERROR -> Color.parseColor("#FFEF5350")
+            when {
+                showWork || ui == AssistantUiState.PROCESSING -> Color.parseColor("#FFFFC107")
+                ui == AssistantUiState.LISTENING -> Color.parseColor("#FF4CAF50")
+                ui == AssistantUiState.RESPONDING -> Color.parseColor("#FF42A5F5")
+                ui == AssistantUiState.ERROR -> Color.parseColor("#FFEF5350")
                 else -> Color.parseColor("#B0BEC5")
             },
         )

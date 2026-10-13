@@ -5,28 +5,48 @@
 import json, os, subprocess, sys
 CLIPS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "clips")
 
-LINES = {
-    "what": "你干什么", "what2": "你会干啥", "what3": "你都能帮我干嘛", "stuffy": "有点闷", "sweet": "说话嗲一点", "food": "你喜欢吃什么", "genki": "元气一点",
-    "bossy": "说话霸道一点", "normal": "正常一点", "color": "你喜欢什么颜色", "cold": "讲个冷知识",
-    "weather": "今天珠海天气怎么样", "nav": "导航去珠海金湾机场", "music": "放一首轻松的歌", "philo": "你觉得人为什么要开车",
-}
+
+
+def _driver_lines():
+    """The driver lines, from make_clips.py (one source; it is read, not imported, so edge-tts is not needed)."""
+    import ast, re
+    src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "make_clips.py"), encoding="utf-8").read()
+    return ast.literal_eval(re.search(r"LINES = (\{.*?\n\})", src, re.S).group(1))
+
+
+LINES = _driver_lines()
 
 NOTES = {
-    "小诺 · 新功能演示": ("claude/10-8 分支：新增「等待提示」，以及之前的修复。每个场景都是一次连续的实时录制，回复前的等待一秒未剪。",
-                    "What claude/10-8 adds (wait cues) on top of the 10-3 fixes. Every scene is one continuous real-time take; no reply wait is cut."),
-    "1  需要等的时候，先应一声": ("查天气、找歌要几秒。以前司机说完后是一段沉默；现在约 1.7 秒先说「收到，正在处理。」，超过 5 秒再说明原因（如「正在查询，稍等一下。」）。提示语是固定文本，从不声称已完成。",
-                          "A slow task: she says she is on it about 1.7 s after the last word, and says why after 5 s. Fixed wording that never claims the task is done."),
-    "2  想一想的问题": ("闲聊问题如果 1.8 秒内还没有回答，她先说「嗯，我想想。」，然后接上真正的回答，不重叠、不打断。",
-                   "A question with no answer yet after 1.8 s gets a short 'let me think', then the real reply follows without overlap."),
-    "3  问能力：马上回答": ("以前列能力（「能帮你调空调、开车窗…」）会被执行证据门当成「假装执行」拦下，要等 13–28 秒。现在列能力直接播出。",
-                      "An ability list used to be blocked as a claim of a done action (13-28 s of silence); now it plays straight away."),
+    "小诺 · 新功能演示": ("cursor/10-9：通义千问 Omni 端到端语音，声音是 Maia，不再经过 Azure。回复逐句检查后边生成边播（SPEC-014）。每个场景都是一次连续的实时录制，回复前的等待一秒未剪。",
+                    "cursor/10-9: Qwen-Omni end to end, voice Maia, no Azure. Replies play clause by clause once checked (SPEC-014). One real-time take per scene; no reply wait is cut."),
+    "1  需要等的时候，先应一声": ("查天气、找歌要几秒。前 7 秒不插话，从第 3 秒起屏幕显示「处理中」。满 7 秒还没有回答才说一次「收到，正在处理。」——这次回答都在 7 秒内到达，所以没有等待语。",
+                          "No filler for 7 s; a 'working' label from 3 s. Here every answer came within 7 s, so no wait line was spoken."),
+    "2  想一想的问题": ("闲聊不插「我想想」。每一句先检查不是在假装执行操作，检查过就边生成边播，不用等整段回答生成完。",
+                   "No filler. Each clause is checked for a false action claim and played while the rest is still being generated."),
+    "3  问能力：马上回答": ("列能力（「能帮你导航、调空调…」）不会被当成「假装执行」拦下，而且逐句播出，不等整段生成完。",
+                      "An ability list is not taken for a claim, and it plays clause by clause as it is generated."),
     "4  一句话 → 多个动作": ("「有点闷」触发一个场景：打开空调、调大风量、前窗开一点。三个动作都由车辆接口确认后才播报。",
                        "\"It's stuffy\" runs a scenario: air on, fan up, front windows open a little, each confirmed by the car."),
-    "5  更多说话风格": ("「嗲」「元气」改变的是 Azure 语音的情感风格，不只是用词，并且会一直保持。没有的风格（霸道）会如实说明。",
-                  "Sweet and energetic styles change the voice itself and stick; an unknown style is refused honestly."),
+    "5  更多说话风格": ("语气可以换，声音还是 Maia。没有的风格（霸道）会如实说明，不会假装换了一个声音。",
+                  "The tone can change; the voice stays Maia. An unknown style is refused honestly."),
     "6  出错提示 12 秒后自动消失": ("断网（飞行模式）后启动会话：显示连接失败的提示卡片，12 秒后自动消失，不会一直挡在地图上。",
                            "With no network, the connection error card appears and fades by itself after 12 s."),
 }
+NOTES.update({
+    # The commute demo (docs/DEMO_COMMUTE.md), in the order of the 豆包座舱 review video.
+    "1  上车：换个说话方式，调座椅": ("上车后先让她说话嗲一点（只换语气，声音还是 Maia），再把主驾座椅调高一点、再高一点——第二句「再调高一点」没说是什么，由上一句的座椅推断。座椅动作由车辆接口确认后才播报。",
+                            "A sweeter tone (the voice stays Maia), then the seat up, and 'higher again' resolved from context. Each action is confirmed by the car before she says it."),
+    "2  出发：导航去横琴镇": ("从横琴创业谷出发。说「导航去横琴镇」，屏幕列出地点，说「第一个」选路线，再说「开始导航」。车是模拟器里模拟行驶的。",
+                        "From 横琴创业谷: pick the place, pick the route, start. The car is driven by the emulator's route simulation."),
+    "3  路上：有蚊子": ("「前风挡那儿有一只蚊子」触发场景：车窗打开一半让它飞出去。「蚊子还没走」时她自己决定下一步，说的只是车辆确认过的动作。",
+                    "A mosquito: the windows open halfway. When it stays, she decides the next step and says only what the car confirmed."),
+    "4  路上：说不全的歌名": ("只说「阿Sa的老公唱的、叫闭目什么的」，她要自己想到是郑中基《闭目入神》，交给音乐 app 去找。没确认在播之前，她不会说「正在播放」。",
+                         "From a vague description she works out the song and hands it to the music app; she never says it is playing unless that is confirmed."),
+    "5  路上：问路况、天气，关窗": ("前面堵不堵、今天天气，都来自高德的实时查询，不是模型编的。最后关窗。",
+                            "Traffic ahead and today's weather come from live Amap lookups, not from the model; then the windows close."),
+    "6  到达横琴镇": ("模拟行驶到达终点，导航自己结束。等待到达的时间在成片里略去，并标出 ⏩。",
+                   "The simulated drive arrives and navigation ends by itself. The wait for arrival is cut in the final video and marked ⏩."),
+})
 RENAME = {
     "7  需要等的时候，先应一声": ("1  需要等的时候，先应一声", "A slow task: she says she is on it, and why if it takes longer"),
     "8  想一想的问题": ("2  想一想的问题", "A question that needs thought gets a short 'let me think'"),
@@ -128,7 +148,8 @@ def evidence(run, tl):
         if nxt and nxt[0] - e < 30:
             f = nxt[0]
             if not os.environ.get("NO_LAT"): out.append(f"Dialogue: 3,{ts(f)},{ts(f + 5.0)},Lat,,0,0,0,,{{\\fad(150,300)}}⏱ 说完 → 开口  {f - e:.1f} s")
-    cue_text = {"ack_action": "收到，正在处理。", "ack_chat": "嗯，我想想。", "provider_slow": "网络有点慢，请稍等。",
+    cue_text = {"progress": "收到，正在处理。", "delay": "还在处理，网络可能不太稳定，再等我一下。",
+                "ack_action": "收到，正在处理。", "ack_chat": "嗯，我想想。", "provider_slow": "网络有点慢，请稍等。",
                 "verifying": "我确认一下，马上回答你。", "still_waiting": "还在处理，网络可能不太稳定，再等我一下。",
                 "tool_running": "（说明正在执行的工具）稍等一下。"}
     phrase = {"navigate_to": "正在搜索路线，稍等一下。", "choose_navigation_option": "正在搜索路线，稍等一下。",

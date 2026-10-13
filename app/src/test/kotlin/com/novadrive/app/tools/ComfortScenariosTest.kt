@@ -136,7 +136,20 @@ class ComfortScenariosTest {
         assertTrue(port.cabinState.value.windows.values.all { it == 50 })
         assertEquals("车窗都开了一半。", opened.getString("announce"))
 
-        context.onSpeechStarted(3); context.onDriverUtterance("蚊子出去了", 3)
+        // 「蚊子还没走」 runs mosquito again: the windows are already half open, so the fan goes up.
+        context.onSpeechStarted(3); context.onDriverUtterance("蚊子还没走", 3)
+        val fanBefore = port.climateState.value.fanLevel
+        val again = scenario(d, "mosquito")
+        assertTrue(again.getBoolean("ok"), again.toString())
+        assertEquals("done", again.getString("status"))
+        assertEquals(listOf("control_climate", "control_climate"), steps(again).map { it.getString("tool") })
+        assertEquals(fanBefore + 1, port.climateState.value.fanLevel)
+        assertTrue(port.cabinState.value.windows.values.all { it == 50 }, "the windows are not touched again")
+        val announce = again.getString("announce")
+        assertTrue(announce.startsWith("车窗已经开着一半了，") && "风量调到了" in announce, announce)
+        assertFalse("又开" in announce, announce)
+
+        context.onSpeechStarted(4); context.onDriverUtterance("蚊子出去了", 4)
         val closed = scenario(d, "mosquito_done")
         assertTrue(closed.getBoolean("ok"))
         assertTrue(port.cabinState.value.windows.values.all { it == 0 })
@@ -257,6 +270,8 @@ class ComfortScenariosTest {
         clock = ComfortServer.MOSQUITO_TTL_MS + 1
         assertEquals(ComfortServer.NO_RECENT_MOSQUITO, server.call(call("run_scenario", "name" to "mosquito_done"), env).blockedReason)
         clock = 0
+        // Closed again first: with the windows still at 50 % mosquito would turn the fan up instead (FZ-01b).
+        runBlocking { port.setWindows(WindowId.entries.toSet(), 0) }
         assertTrue(JSONObject(server.call(call("run_scenario", "name" to "mosquito"), env).output!!).getBoolean("ok"))
         clock = ComfortServer.MOSQUITO_TTL_MS - 1
         assertTrue(JSONObject(server.call(call("run_scenario", "name" to "mosquito_done"), env).output!!).getBoolean("ok"))

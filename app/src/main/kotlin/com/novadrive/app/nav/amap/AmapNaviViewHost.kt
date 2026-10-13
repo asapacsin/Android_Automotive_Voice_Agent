@@ -10,7 +10,6 @@ import android.widget.FrameLayout
 import kotlin.math.roundToInt
 import com.amap.api.maps.AMapUtils
 import com.amap.api.maps.CameraUpdateFactory
-import com.amap.api.maps.CoordinateConverter
 import com.amap.api.maps.model.LatLng
 import com.amap.api.maps.model.MyLocationStyle
 import com.amap.api.navi.AMapNavi
@@ -170,8 +169,8 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
 
     /**
      * A cached platform fix, so the map is roughly right in the second before GNSS answers.
-     * It is WGS-84 and the map is GCJ-02, so it is converted here — this is the only file that
-     * may touch the SDK. A fix the policy judges stale is dropped, never shown as "you are here".
+     * It is WGS-84 and the map is GCJ-02, so it is converted through [AmapCoordinates], the one
+     * owner of that conversion. A fix the policy judges stale is dropped, never shown as "you are here".
      */
     private fun seedFromLastKnown() {
         if (recenter.settled || recenter.stopped) return
@@ -224,14 +223,8 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         }
     }
 
-    /** Android reports WGS-84; every Amap surface expects GCJ-02. Skew is ~100-500 m if skipped. */
-    private fun LocationFix.toGcj02(): LocationFix = runCatching {
-        val converted = CoordinateConverter(context)
-            .from(CoordinateConverter.CoordType.GPS)
-            .coord(LatLng(latitude, longitude))
-            .convert()
-        copy(latitude = converted.latitude, longitude = converted.longitude)
-    }.getOrElse { this }
+    /** Android reports WGS-84; every Amap surface expects GCJ-02. The one converter is [AmapCoordinates]. */
+    private fun LocationFix.toGcj02(): LocationFix = AmapCoordinates.toGcj02(context, this)
 
     /**
      * Every fix, from either source, funnels through here. The decision of whether it moves the

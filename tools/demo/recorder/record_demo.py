@@ -6,6 +6,10 @@ a player would play it. The emulator display is recorded with `adb emu screenrec
 screen.webm, driver.wav (16 kHz), reply.wav (24 kHz), timeline.json (scene/clip times, t=0 = video start).
 
     python record_demo.py OUT [scene ...]
+
+KEEP=1 records a take without restarting the app, so a drive started in one take is still running in
+the next (the commute demo, docs/DEMO_COMMUTE.md). Each take stays short: the bridge drops uplink
+audio in takes over about 70 s.
 """
 import json, os, socket, struct, subprocess, sys, threading, time, wave
 import numpy as np
@@ -18,6 +22,9 @@ PORT = 7790
 RATE = 16000
 FRAME = RATE * 2 // 50
 OUT_RATE = 24000
+KEEP = os.environ.get("KEEP") == "1"
+# 横琴·澳门青年创业谷, WGS-84 (OpenStreetMap, 2026-10-10): the emulator's GPS fix and the drive's start.
+ORIGIN = (22.1340339, 113.5369122)
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 
@@ -248,22 +255,46 @@ class Session:
 
 
 def run(out, scenes):
+    problems = local_problems(scenes)
+    if problems:
+        # Before anything opens: a missing clip used to surface mid-take, after the session was paid for.
+        sys.exit("not recording: " + "; ".join(problems))
+    if os.environ.get("NOVA_SPEND_QWEN_QUOTA") != "yes":
+        # The app's session is always Qwen (ADR-017): every take spends the owner's quota.
+        sys.exit("live Qwen sessions spend the owner's limited free quota (AGENTS.md hard rule); set NOVA_SPEND_QWEN_QUOTA=yes only when the owner approved this run")
     out = os.path.abspath(out)
     os.makedirs(out, exist_ok=True)
     s = Session(out)
-    adb("shell", "am", "force-stop", PKG)
-    adb("shell", "am", "start", "-n", f"{PKG}/.MainActivity")
-    time.sleep(14)
+    if any(sc.startswith("commute") for sc in scenes) and not KEEP:
+        # Before the app starts, so the session-start warm-up (district, weather) is at the origin.
+        adb("emu", "geo", "fix", str(ORIGIN[1]), str(ORIGIN[0]))
+    if not KEEP:
+        adb("shell", "am", "force-stop", PKG)
+        adb("shell", "am", "start", "-n", f"{PKG}/.MainActivity")
+        time.sleep(14)
     adb("logcat", "-c")
     logf = open(os.path.join(out, "logcat.txt"), "w", encoding="utf-8")
     logp = subprocess.Popen([ADB, "-e", "logcat", "-v", "epoch", "-s", "NovaVoice"], stdout=logf, stderr=subprocess.DEVNULL)
     s.serve()
     time.sleep(1)
-    tool("voice", "start")
-    for _ in range(60):
-        if "gemini_setup_complete" in adb("logcat", "-d", "-s", "NovaVoice"):
+    if not KEEP:
+        tool("voice", "start")
+    ready = KEEP  # a kept app's session is already up; its start lines are not in this take's log
+    for _ in range(0 if KEEP else 90):
+        log = adb("logcat", "-d", "-s", "NovaVoice")
+        if "qwen_session " in log or "gemini_setup_complete" in log:
+            ready = True
             break
+        if "session_provider_unavailable" in log:
+            reason = "unconfigured"
+            for code in ("QWEN_WORKSPACE_MISSING", "QWEN_API_KEY_MISSING", "QWEN_CONSENT_MISSING"):
+                if code in log:
+                    reason = code
+                    break
+            sys.exit(f"session not ready: {reason}")
         time.sleep(1)
+    if not ready:
+        sys.exit("session never became ready")
     time.sleep(3)
     video = os.path.join(out, "screen.webm")
     before = time.time()
@@ -294,7 +325,7 @@ def turn(s, key, **kw):
 
 
 def sc_intro(s):
-    s.title("小诺 · 新功能演示", "What is new on claude/10-8 — recorded 2026-10-08")
+    s.title("小诺 · 新功能演示", "Qwen Maia on cursor/10-9 — recorded 2026-10-09")
     time.sleep(4)
 
 
@@ -320,6 +351,20 @@ def sc_style(s):
     turn(s, "sweet")
     turn(s, "food")
     turn(s, "genki")
+    turn(s, "bossy")
+    turn(s, "normal")
+
+
+# The bridge drops uplink audio in takes over ~70 s: the style scene in two takes.
+def sc_style_a(s):
+    s.title("3  更多说话风格", "More speaking styles; an unknown one is refused honestly")
+    turn(s, "sweet")
+    turn(s, "food")
+    turn(s, "genki")
+
+
+def sc_style_b(s):
+    s.title("3  更多说话风格", "More speaking styles; an unknown one is refused honestly")
     turn(s, "bossy")
     turn(s, "normal")
 
@@ -378,8 +423,239 @@ def sc_think(s):
     turn(s, "philo", timeout=40)
 
 
-SCENES = {"intro": sc_intro, "ability": sc_ability, "ability2": sc_ability2, "scenario": sc_scenario, "style": sc_style, "noise": sc_noise,
-          "warm": sc_warm, "error": sc_error, "prep": sc_prep, "cue": sc_cue, "nav": sc_nav, "think": sc_think}
+# ---- The commute demo: the order of the 豆包座舱 review video, 横琴创业谷 → 横琴镇 ----
+# Record in this order, each as its own take; every take after the first with KEEP=1 so the drive
+# keeps running (docs/DEMO_COMMUTE.md).
+
+def log_has(s, *needles):
+    try:
+        text = open(os.path.join(s.out, "logcat.txt"), encoding="utf-8", errors="replace").read()
+    except OSError:
+        return False
+    return any(n in text for n in needles)
+
+
+def sc_commute_board(s):
+    s.title("1  上车：换个说话方式，调座椅", "Getting in: a sweeter voice, the seat higher, then higher again")
+    tool("nav_desk_origin", f"{ORIGIN[0]},{ORIGIN[1]}")
+    turn(s, "c_sweet")
+    turn(s, "c_seat")
+    turn(s, "c_seat2")
+
+
+def sc_commute_depart(s):
+    s.title("2  出发：导航去横琴镇", "Navigate to 横琴镇: choose the place, start; the car drives (emulated)")
+    tool("nav_desk_origin", f"{ORIGIN[0]},{ORIGIN[1]}")
+    turn(s, "c_nav", timeout=40)
+    turn(s, "c_pick", timeout=40)
+    turn(s, "c_go", timeout=40)
+    # The slowest drive Amap allows, so the route is still running for the next takes (~2.5 km).
+    tool("nav_speed", "40")
+    time.sleep(4)
+
+
+def sc_commute_mosq(s):
+    s.title("3  路上：有蚊子", "A mosquito: she opens the windows; it stays, and she does something about it")
+    turn(s, "c_mosq")
+    turn(s, "c_mosq2")
+
+
+def sc_commute_music(s):
+    s.title("4  路上：说不全的歌名", "A song she has to work out from a vague description")
+    turn(s, "c_music", timeout=40)
+
+
+def sc_commute_ask(s):
+    s.title("5  路上：问路况、天气，关窗", "Traffic ahead, the weather here, and close the windows")
+    turn(s, "c_traffic", timeout=40)
+    turn(s, "c_weather", timeout=40)
+    turn(s, "c_close")
+
+
+def sc_commute_arrive(s):
+    s.title("6  到达横琴镇", "Arrival")
+    tool("nav_speed", "120")
+    s.mark("cut_start")
+    begin = time.time()
+    while time.time() - begin < 150 and not log_has(s, "nav_arrived", "nav_emulator_end"):
+        time.sleep(1)
+    s.mark("cut_end")
+    if not log_has(s, "nav_arrived", "nav_emulator_end"):
+        turn(s, "c_end")
+    time.sleep(6)
+
+
+SCENES = {"intro": sc_intro, "ability": sc_ability, "ability2": sc_ability2, "scenario": sc_scenario, "style": sc_style, "style_a": sc_style_a, "style_b": sc_style_b, "noise": sc_noise,
+          "warm": sc_warm, "error": sc_error, "prep": sc_prep, "cue": sc_cue, "nav": sc_nav, "think": sc_think,
+          "commute_board": sc_commute_board, "commute_depart": sc_commute_depart, "commute_mosq": sc_commute_mosq,
+          "commute_music": sc_commute_music, "commute_ask": sc_commute_ask, "commute_arrive": sc_commute_arrive}
+
+# ---- Preflight: what a take needs, checked with no voice session open (no Qwen quota) ----
+# `python record_demo.py --preflight [scene ...]` before the first take. It restarts the app at the
+# commute origin, asks the debug build for its Qwen/Amap setup, runs the app's own place search for the
+# commute destination and routes to the first result with the Navi SDK. Exit 0 means no obvious failure
+# is waiting; it cannot say how she will sound or how fast she answers.
+DEST_QUERY = "横琴镇"          # c_nav, 导航去横琴镇
+MIN_DEST_M = 1700              # c3-c5 (six turns, ~150 s = 1.7 km at 40 km/h) must be spoken while the drive runs; route >= straight line
+
+
+def scene_clips(scene):
+    """The driver lines a scene says, read from its source (every line goes through turn())."""
+    import inspect, re
+    return re.findall(r'turn\(s, "([A-Za-z0-9_]+)"', inspect.getsource(SCENES[scene]))
+
+
+def local_problems(scenes, clips_dir=None):
+    clips_dir = clips_dir or CLIPS
+    unknown = [sc for sc in scenes if sc not in SCENES]
+    if unknown:
+        return ["unknown scene " + ", ".join(unknown)]
+    missing = sorted({k for sc in scenes for k in scene_clips(sc) if not os.path.isfile(os.path.join(clips_dir, k + ".pcm"))})
+    return ["missing clips " + ", ".join(missing) + " (run make_clips.py)"] if missing else []
+
+
+def preflight_settled(log, commute=True):
+    """True once the app has given its last preflight answer. `nav_calc_request accepted=true` and
+    `nav_calc_using_desk_origin` only start the route; its answer comes later, from the Navi SDK."""
+    if not commute:
+        return "debug_tool tool=preflight" in log
+    return any(n in log for n in ("nav_calc_success", "nav_calc_failure", "nav_calc_request accepted=false",
+                                  "preflight_search count=0"))
+
+
+# P53: the first place search may take this long before c_nav misses its 3.5 s budget.
+MAX_SEARCH_MS = 500
+
+
+def grade_preflight(log, commute=True):
+    """Problems in the app's answers to the preflight broadcast; [] when the take can start."""
+    import re
+    problems = []
+    m = re.search(r"debug_tool tool=preflight arg=\S* result=(.*)", log)
+    if not m:
+        return ["the app did not answer the preflight broadcast (debug build installed and started?)"]
+    got = dict(kv.split("=", 1) for kv in m.group(1).split() if "=" in kv)
+    if got.get("qwen") != "ok":
+        problems.append(f"Qwen not configured: {got.get('qwen')} (seed_qwen.py --accept-consent)")
+    if got.get("web_key") != "set":
+        problems.append("Amap Web key missing in the app (place search, traffic and weather need it)")
+    if got.get("map_host") != "live":
+        problems.append("no live map on screen (MainActivity not in front)")
+    if not commute:
+        return problems
+    if got.get("fix") != "set":
+        problems.append("no GPS fix in the app (adb emu geo fix)")
+    s = re.search(r"preflight_search count=(\d+) first_m=(-?\d+)", log)
+    if not s:
+        problems.append("the place search never answered")
+    elif int(s.group(1)) == 0:
+        problems.append(f"导航去{DEST_QUERY} finds nothing")
+    elif int(s.group(2)) < MIN_DEST_M:
+        problems.append(f"第一个 is {s.group(2)} m away (< {MIN_DEST_M}): the drive would end before c3-c5")
+    if s and int(s.group(1)) > 0:
+        # P53: c_nav's 3.5 s budget leaves the place search about 0.5 s.
+        t = re.search(r"preflight_search count=\d+ first_m=-?\d+ ms=(\d+)", log)
+        if not t:
+            problems.append("the place search reported no time (ms=): rebuild the debug app")
+        elif int(t.group(1)) > MAX_SEARCH_MS:
+            problems.append(f"the place search took {t.group(1)} ms (> {MAX_SEARCH_MS}): route restapi.amap.com "
+                            "direct, not through the PC proxy (Clash rule DOMAIN-SUFFIX,amap.com,DIRECT), "
+                            "then preflight again")
+    refused = re.search(r"nav_calc_request accepted=false\S*(?: reason=\S+)?", log)
+    if refused:
+        problems.append("the Navi SDK refused the route request: " + refused.group(0))
+    elif "nav_calc_failure" in log:
+        problems.append("the Navi SDK could not route there: " + re.search(r"nav_calc_failure\S* code=\S*", log).group(0))
+    elif "nav_calc_success" not in log:
+        problems.append("the Navi SDK never answered the route request")
+    return problems
+
+
+def preflight(scenes):
+    problems = local_problems(scenes)
+    if not os.path.isfile(ADB):
+        problems.append(f"adb not found at {ADB}")
+    elif adb("get-state").strip() != "device":
+        problems.append("no emulator attached")
+    elif "package:" not in adb("shell", "pm", "path", PKG):
+        problems.append(f"{PKG} is not installed")
+    if problems:
+        return problems
+    commute = any(sc.startswith("commute") for sc in scenes)
+    adb("emu", "geo", "fix", str(ORIGIN[1]), str(ORIGIN[0]))
+    adb("shell", "am", "force-stop", PKG)
+    adb("shell", "am", "start", "-n", f"{PKG}/.MainActivity")
+    time.sleep(14)
+    adb("logcat", "-c")
+    tool("nav_desk_origin", f"{ORIGIN[0]},{ORIGIN[1]}")
+    tool("preflight", DEST_QUERY if commute else "")
+    log = ""
+    for _ in range(30):
+        time.sleep(1)
+        log = adb("logcat", "-d", "-s", "NovaVoice")
+        if preflight_settled(log, commute):
+            break
+    # The route left on screen is not part of any take: the first take restarts the app.
+    adb("shell", "am", "force-stop", PKG)
+    return grade_preflight(log, commute)
+
+
+def selftest():
+    import tempfile
+    ok = ("debug_tool tool=preflight arg=横琴镇 result=qwen=ok web_key=set fix=set map_host=live\n"
+          "preflight_search count=5 first_m=2533 ms=180\npreflight_search_warm ms=60\nnav_calc_success routes=3\n")
+    cases = [
+        (ok, []),
+        ("", ["did not answer"]),
+        (ok.replace("qwen=ok", "qwen=QWEN_CONSENT_MISSING"), ["QWEN_CONSENT_MISSING"]),
+        (ok.replace("web_key=set", "web_key=missing"), ["Amap Web key"]),
+        (ok.replace("first_m=2533", "first_m=632"), ["632 m away"]),
+        (ok.replace("count=5 first_m=2533", "count=0 first_m=-1"), ["finds nothing"]),
+        (ok.replace("ms=180", "ms=500"), []),
+        (ok.replace("ms=180", "ms=2520"), ["took 2520 ms (> 500): route restapi.amap.com direct"]),
+        (ok.replace(" ms=180", ""), ["rebuild the debug app"]),
+        (ok.replace("nav_calc_success routes=3", "nav_calc_failure code=3"), ["code=3"]),
+        (ok.replace("nav_calc_success routes=3\n", ""), ["never answered the route"]),
+        (ok.replace("nav_calc_success routes=3", "nav_calc_request accepted=false reason=no_navi"), ["reason=no_navi"]),
+    ]
+    fails = 0
+    started = ok.replace("nav_calc_success routes=3", "nav_calc_using_desk_origin=true\nnav_calc_request accepted=true")
+    settled = [(started, False), (started + "nav_calc_success routes=3\n", True),
+               (started.replace("accepted=true", "accepted=false reason=no_navi"), True),
+               (ok.replace("count=5 first_m=2533 ms=180\npreflight_search_warm ms=60\nnav_calc_success routes=3",
+                           "count=0 first_m=-1 ms=300"), True)]
+    for log, want in settled:
+        good = preflight_settled(log) == want
+        fails += not good
+        print("ok  " if good else "FAIL", "settled" if want else "still waiting", repr(log.splitlines()[-1]))
+    good = grade_preflight(started + "nav_calc_success routes=3\n") == []
+    fails += not good
+    print("ok  " if good else "FAIL", "a route that starts, then succeeds, passes")
+    for log, want in cases:
+        got = grade_preflight(log)
+        good = (not want and not got) or (want and len(got) == 1 and want[0] in got[0])
+        fails += not good
+        print("ok  " if good else "FAIL", want or "pass", got)
+    with tempfile.TemporaryDirectory() as d:
+        for k in scene_clips("commute_board"):
+            open(os.path.join(d, k + ".pcm"), "wb").close()
+        checks = [(local_problems(["commute_board"], d), []),
+                  (local_problems(["commute_depart"], d), ["missing clips c_go, c_nav, c_pick (run make_clips.py)"]),
+                  (local_problems(["nope"], d), ["unknown scene nope"])]
+    for got, want in checks:
+        good = got == want
+        fails += not good
+        print("ok  " if good else "FAIL", want, got)
+    total = len(cases) + len(checks) + len(settled) + 1
+    print(f"selftest {total - fails}/{total}")
+    return fails == 0
+
 
 if __name__ == "__main__":
+    if sys.argv[1:2] == ["--selftest"]:
+        sys.exit(0 if selftest() else 1)
+    if sys.argv[1:2] == ["--preflight"]:
+        found = preflight(sys.argv[2:] or [sc for sc in SCENES if sc.startswith("commute")])
+        print("preflight PASS: no obvious failure waiting" if not found else "preflight FAIL\n- " + "\n- ".join(found))
+        sys.exit(1 if found else 0)
     run(sys.argv[1], sys.argv[2:] or list(SCENES))

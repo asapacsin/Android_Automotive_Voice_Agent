@@ -30,7 +30,7 @@ It takes about 30 minutes on the PC emulator (`nova_api34`, see [EMULATOR_TESTIN
 | **10-3:** the Azure connection is kept across sessions and warmed when the driver starts talking | 574e0ff (SPEC-019) | run B, `WARM-1` |
 | **10-3:** a dropped chat reply is corrected in 1.5 s, not 20 s | 9696ce5 | every chat scene |
 | **10-3:** a list of abilities is not an action claim | 9696ce5 | run B, `AB-1` |
-| **10-8:** wait cues — 「收到，正在处理。」 about 1.0 s or 「嗯，我想想。」 about 1.8 s after the last word when a reply is slow; a truthful reason at 5 s and 12 s; the reply follows without overlap; a tool turn still completes | SPEC-020 (A6) | run B, any slow turn (navigation and music are the usual ones); checker row `SPEC-020 wait cues on time`, plus by ear: no cue in the middle of a reply, no cue after a cough |
+| **10-9:** wait cues — silent for 7 s (label 「处理中」 from 3 s); one 「收到，正在处理。」 only if nothing useful has been spoken by 7–8 s; at 12 s a different delay line, not a repeat; the reply follows without overlap; a tool turn still completes | SPEC-020 (A6) | run B, any slow turn (navigation and music are the usual ones); checker row `SPEC-020 wait cues on time`, plus by ear: no status line before 7 s, no cue in the middle of a reply, no cue after a cough |
 
 ## Before the run
 

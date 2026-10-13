@@ -21,9 +21,12 @@ import java.util.Locale.US
 interface AmapLiveInfoRest {
     fun weatherNow(city: String, key: String): LiveInfoFetch<WeatherNow>
     fun weatherForecast(city: String, key: String): LiveInfoFetch<WeatherForecast>
-    fun regeoAdcode(latitude: Double, longitude: Double, key: String): LiveInfoFetch<String>
+    fun regeoPlace(latitude: Double, longitude: Double, key: String): LiveInfoFetch<RegeoPlace>
     fun placeDetail(poiId: String, key: String): LiveInfoFetch<PlaceDetail>
 }
+
+/** A fix's district adcode and the city it belongs to (a municipality's province), from regeo. */
+data class RegeoPlace(val adcode: String, val city: String?)
 
 /**
  * `query_live_info` (SPEC-011): weather, traffic on the route, POIs along it, and a place's details,
@@ -47,6 +50,8 @@ class LiveInfoTool(
     private val log: (String) -> Unit = { DebugVoiceLog.log(it) },
     /** SPEC-011 failure table: 4 s, then LIVE_INFO_UNAVAILABLE. */
     private val timeoutMs: Long = TIMEOUT_MS,
+    /** Pause between warm-up attempts; 0 in tests. */
+    private val warmRetryPauseMs: Long = WARM_RETRY_PAUSE_MS,
 ) {
     private data class Cached(val atMs: Long, val output: JSONObject)
 
@@ -115,16 +120,25 @@ class LiveInfoTool(
         val (label, resolveCity) = when (where) {
             HERE -> {
                 val fix = location() ?: return Precondition(NO_LOCATION)
-                "这里" to { rest.regeoAdcode(fix.first, fix.second, key) }
+                "这里" to { hereAdcode(fix, key) }
             }
             DESTINATION -> {
                 val destination = navigation()?.destination?.value ?: return Precondition(NO_DESTINATION)
                 val adcode = destination.adcode
                 "目的地" to {
-                    if (adcode != null) LiveInfoFetch.Ok(adcode) else rest.regeoAdcode(destination.latitude, destination.longitude, key)
+                    if (adcode != null) {
+                        LiveInfoFetch.Ok(adcode)
+                    } else {
+                        when (val place = rest.regeoPlace(destination.latitude, destination.longitude, key)) {
+                            is LiveInfoFetch.Ok -> LiveInfoFetch.Ok(place.value.adcode)
+                            is LiveInfoFetch.Failed -> place
+                        }
+                    }
                 }
             }
-            else -> where to { LiveInfoFetch.Ok(where) }
+            // The city the car is in resolves to the warm-up's district, so it shares its cache key
+            // (B4, 2026-10-09). Read from the cache only; never a network call to check.
+            else -> where to { LiveInfoFetch.Ok(warmDistrictOf(where) ?: where) }
         }
         return Ready {
             when (val city = resolveCity()) {
@@ -133,6 +147,83 @@ class LiveInfoTool(
             }
         }
     }
+
+    /**
+     * The district of the current fix. A district does not change within a ~1 km cell, so one
+     * lookup serves every weather question there for [ADCODE_TTL_MS]: from a slow network each
+     * Amap round trip is 1.1-1.5 s (measured 2026-10-09 from the PC proxy), and weather "here"
+     * otherwise needs two. Coordinates stay in memory and are never logged (I-8).
+     */
+    private fun hereAdcode(fix: Pair<Double, Double>, key: String): LiveInfoFetch<String> {
+        val cell = adcodeCell(fix)
+        val now = nowMs()
+        synchronized(adcodeCache) {
+            adcodeCache[cell]?.takeIf { now - it.first < ADCODE_TTL_MS }?.let { return LiveInfoFetch.Ok(it.second.adcode) }
+        }
+        return when (val fetched = rest.regeoPlace(fix.first, fix.second, key)) {
+            is LiveInfoFetch.Ok -> {
+                synchronized(adcodeCache) { adcodeCache[cell] = now to fetched.value }
+                LiveInfoFetch.Ok(fetched.value.adcode)
+            }
+            is LiveInfoFetch.Failed -> fetched
+        }
+    }
+
+    /** The cached district of the current fix, when the driver named its city; else null. Cache only. */
+    private fun warmDistrictOf(where: String): String? {
+        val fix = location() ?: return null
+        val cell = adcodeCell(fix)
+        val now = nowMs()
+        val place = synchronized(adcodeCache) {
+            adcodeCache[cell]?.takeIf { now - it.first < ADCODE_TTL_MS }?.second
+        } ?: return null
+        val city = place.city ?: return null
+        return place.adcode.takeIf { normalizeCity(city) == normalizeCity(where) }
+    }
+
+    private fun normalizeCity(name: String): String = name.trim().removeSuffix("市")
+
+    private val adcodeCache = mutableMapOf<String, Pair<Long, RegeoPlace>>()
+
+    private fun adcodeCell(fix: Pair<Double, Double>): String =
+        "%.2f,%.2f".format(US, fix.first, fix.second)
+
+    /**
+     * Resolves the district of the current fix and today's weather there in the background, at
+     * session start, so 「今天天气怎么样」 is answered from the cache. Measured 2026-10-09 from the
+     * PC proxy: the two lookups took 2.4-3.3 s of a 5.3-5.9 s weather turn. Both are answers the
+     * source returned within their TTLs (B2/B4); a failure is silent and the question retries.
+     *
+     * Each step is tried [WARM_ATTEMPTS] times: a single Amap call took 1.4-3.8 s from the cloud and
+     * 1.1-4 s from the PC proxy (P50, two of about eight timed out), so one slow call used to leave
+     * the cache empty and the weather question paid a cold lookup. Background only; nothing is heard.
+     */
+    fun warmHere() {
+        val key = webKey()?.takeIf { it.isNotBlank() } ?: return warmSkipped(AMAP_WEB_KEY_MISSING)
+        val fix = location() ?: return warmSkipped(NO_LOCATION)
+        CoroutineScope(Dispatchers.IO).async {
+            val district = warmStep("district", { it is LiveInfoFetch.Ok }) { hereAdcode(fix, key) }
+            log("live_info_warm kind=district ok=${district is LiveInfoFetch.Ok}")
+            if (district is LiveInfoFetch.Ok) {
+                val weather = warmStep("weather", { it.optBoolean("ok") }) { cachedWeather(district.value, tomorrow = false, key = key) }
+                log("live_info_warm kind=weather ok=${weather.optBoolean("ok")} cached=${weather.optBoolean("cached")}")
+            }
+        }
+    }
+
+    private suspend fun <T> warmStep(kind: String, ok: (T) -> Boolean, fetch: () -> T): T {
+        var result = fetch()
+        repeat(WARM_ATTEMPTS - 1) {
+            if (ok(result)) return result
+            log("live_info_warm_retry kind=$kind")
+            kotlinx.coroutines.delay(warmRetryPauseMs)
+            result = fetch()
+        }
+        return result
+    }
+
+    /** Only the outcome code, never a place (I-8, the SPEC-011 log shape). */
+    private fun warmSkipped(why: String) = log("live_info_warm kind=district ok=false code=$why")
 
     private fun cachedWeather(city: String, tomorrow: Boolean, key: String): JSONObject {
         val cacheKey = "$city|$tomorrow"
@@ -286,7 +377,10 @@ class LiveInfoTool(
         const val INVALID_ARGUMENT = "INVALID_ARGUMENT"
 
         const val TIMEOUT_MS = 4_000L
+        const val WARM_ATTEMPTS = 3
+        const val WARM_RETRY_PAUSE_MS = 1_000L
         const val WEATHER_TTL_MS = 10 * 60 * 1000L
+        const val ADCODE_TTL_MS = 30 * 60 * 1000L
         private const val MAX_CITY = 20
         private const val MAX_ALONG_ROUTE = 5
 
@@ -314,7 +408,7 @@ class LiveInfoTool(
             private val nothing = LiveInfoFetch.Failed(AmapLiveInfoParser.UNAVAILABLE)
             override fun weatherNow(city: String, key: String) = nothing
             override fun weatherForecast(city: String, key: String) = nothing
-            override fun regeoAdcode(latitude: Double, longitude: Double, key: String) = nothing
+            override fun regeoPlace(latitude: Double, longitude: Double, key: String) = nothing
             override fun placeDetail(poiId: String, key: String) = nothing
         }
 

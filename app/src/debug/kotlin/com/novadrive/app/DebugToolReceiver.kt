@@ -19,6 +19,7 @@ class DebugToolReceiver : BroadcastReceiver() {
                 "exit_navigation_mode" -> format(SafeAndroidActionExecutor(context).exitNavigationMode())
                 "probe_playback" -> probePlayback(context, arg)
                 "nav_route" -> navRoute(context, arg)
+                "preflight" -> preflight(context, arg)
                 "nav_desk_origin" -> navDeskOrigin(arg)
                 "nav_start" -> navStart(arg)
                 "nav_stop" -> navStop()
@@ -50,6 +51,8 @@ class DebugToolReceiver : BroadcastReceiver() {
                 "turn" -> beginTurn(arg)
                 "dispatch" -> dispatch(context, arg)
                 "voice" -> voice(context, arg)
+                // Reads filesDir/qwen_setup.txt (workspace, then key). The broadcast arg is never the secret.
+                "qwen_setup" -> applyQwenSetup(context)
                 // Host audio bridge (PC mic in, PC speakers out): arg `on:<port>` | `off` | `status`.
                 "bridge" -> when {
                     arg.startsWith("on") -> {
@@ -65,12 +68,7 @@ class DebugToolReceiver : BroadcastReceiver() {
                 }
                 else -> "unknown tool"
             }
-            val safeArg = when {
-                tool == "nav_desk_origin" || arg.startsWith("@") -> "<redacted>"
-                // Argument values can name a song, a person or a place (I-8): keys only.
-                tool == "dispatch" -> redactDispatchArg(arg)
-                else -> arg
-            }
+            val safeArg = safeDebugArg(tool, arg)
             Log.d("NovaVoice", "debug_tool tool=$tool arg=$safeArg result=$result")
         } catch (e: Exception) {
             Log.d("NovaVoice", "debug_tool failed: ${e.message}")
@@ -148,6 +146,36 @@ class DebugToolReceiver : BroadcastReceiver() {
             host.calculateDriveRoute(poi.latitude, poi.longitude, poi.name)
         }.start()
         return "resolving $target"
+    }
+
+    /**
+     * Demo preflight (tools/demo/recorder/record_demo.py --preflight): what a take needs, checked before
+     * any voice session opens, so a broken setup costs no Qwen quota. Answers the Qwen config code, the
+     * Amap Web key and the GPS fix; then runs the app's own place search for [query] and routes to the
+     * first result with the Navi SDK (nav_calc_success / nav_calc_failure). Logs counts and metres only.
+     */
+    private fun preflight(context: Context, query: String): String {
+        val app = context.applicationContext
+        val qwen = runCatching { QwenSettingsRepository(app).configProblem() ?: "ok" }.getOrElse { "error" }
+        val webKey = if (AmapSettingsRepository(app).loadWebKey().isNullOrBlank()) "missing" else "set"
+        val fix = if (runCatching { CoarseLocationProvider(app).lastKnown() }.getOrNull() != null) "set" else "none"
+        val host = NavigationHostGateway.current()
+        if (query.isNotBlank()) Thread {
+            val source = com.novadrive.app.nav.LiveDestinationCandidateSource(app)
+            fun timed(): Pair<List<com.novadrive.app.nav.DestinationCandidate>, Long> {
+                val started = System.nanoTime()
+                val result = runCatching { kotlinx.coroutines.runBlocking { source.resolve(query) } }.getOrDefault(emptyList())
+                return result to (System.nanoTime() - started) / 1_000_000
+            }
+            val (found, ms) = timed()
+            val first = found.firstOrNull()
+            Log.d("NovaVoice", "preflight_search count=${found.size} first_m=${first?.distanceMeters ?: -1} ms=$ms")
+            if (first != null && host != null) host.calculateDriveRoute(first.latitude, first.longitude, first.name)
+            // P53: the same search again on the same source, to show the warm (reused-connection) cost.
+            val (_, warmMs) = timed()
+            Log.d("NovaVoice", "preflight_search_warm ms=$warmMs")
+        }.start()
+        return "qwen=$qwen web_key=$webKey fix=$fix map_host=${if (host != null) "live" else "none"}"
     }
 
     /**
@@ -322,7 +350,42 @@ class DebugToolReceiver : BroadcastReceiver() {
         return safeOutput(name, result.output ?: "blocked=${result.blockedReason ?: "-"}")
     }
 
+    /**
+     * Debug-only. A two-line file in the app's files dir: workspace id, then the API key.
+     * The broadcast never carries either value, and neither is logged. The file is deleted.
+     */
+    private fun applyQwenSetup(context: Context): String {
+        val file = java.io.File(context.filesDir, "qwen_setup.txt")
+        if (!file.isFile) return "missing"
+        return try {
+            val lines = file.readLines()
+            val workspace = lines.getOrNull(0)?.trim().orEmpty()
+            val key = lines.getOrNull(1)?.trim().orEmpty()
+            val repo = QwenSettingsRepository(context.applicationContext)
+            repo.save(
+                QwenAppSettings(consentAccepted = true, workspaceId = workspace),
+                CredentialUpdate.Replace(key),
+            )
+            if (repo.configProblem() == null) "applied" else "rejected"
+        } catch (e: IllegalArgumentException) {
+            e.message?.takeIf { it.startsWith("QWEN_") } ?: "invalid"
+        } catch (_: Exception) {
+            "failed"
+        } finally {
+            file.delete()
+        }
+    }
+
     companion object {
+        /** Broadcast arguments that must never reach the log. */
+        internal fun safeDebugArg(tool: String?, arg: String): String = when {
+            tool == "qwen_setup" -> "<redacted>"
+            tool == "preflight" -> "<query>" // a destination is close to an address: never in the log
+            tool == "nav_desk_origin" || arg.startsWith("@") -> "<redacted>"
+            tool == "dispatch" -> redactDispatchArg(arg)
+            else -> arg
+        }
+
         /** `play_music:title=晴天,artist=周杰伦` -> `play_music:title,artist`. */
         internal fun redactDispatchArg(arg: String): String {
             val name = arg.substringBefore(':')

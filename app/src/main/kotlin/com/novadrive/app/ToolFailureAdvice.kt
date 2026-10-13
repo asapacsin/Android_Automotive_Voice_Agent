@@ -70,7 +70,7 @@ object ToolFailureAdvice {
         LiveInfoTool.NO_DESTINATION to
             "现在没有目的地，所以没有查。请用一句话问用户要查哪里，不要猜一个地方。",
         LiveInfoTool.NOT_NAVIGATING to
-            "现在没有在导航，也没有算好的路线，所以查不了路上的情况。请用一句话如实说现在没有在导航。",
+            "现在没有在导航，也没有算好的路线，所以查不了路上的情况。如果用户是在找附近的地点（例如加油站、充电站），马上改用 navigate_to（destination=附近的加油站）搜索，不要说没在导航；否则用一句话如实说现在没有在导航。",
         AmapLiveInfoParser.UNAVAILABLE to
             "这次查询没有拿到结果（超时或服务出错）。请用一句话如实说现在查不到，绝对不要猜测或编造天气、路况或地点信息。",
         AmapLiveInfoParser.QUOTA to

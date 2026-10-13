@@ -40,7 +40,10 @@ class ComfortServer(
 
     private fun runScenario(call: DomainVoiceEvent.ToolCall, env: ToolCallEnv): ToolDispatchResult {
         val name = call.arguments["name"].orEmpty()
-        val steps = ComfortScenarios.steps(name) ?: return env.failed(call, "INVALID_FIELD_VALUE")
+        val playbook = ComfortScenarios.steps(name) ?: return env.failed(call, "INVALID_FIELD_VALUE")
+        val stillThere = name == ComfortScenarios.MOSQUITO && windowsAlreadyAt(ComfortScenarios.MOSQUITO_WINDOW_PERCENT)
+        val steps = if (stillThere) ComfortScenarios.MOSQUITO_STILL_THERE else playbook
+        val prefix = if (stillThere) ComfortScenarios.MOSQUITO_STILL_THERE_PREFIX else ""
         if (name == ComfortScenarios.MOSQUITO_DONE) {
             if (windowsAlreadyClosed()) {
                 DebugVoiceLog.log("fz_scenario name=$name steps=0 ok=0 skipped=0")
@@ -67,7 +70,7 @@ class ComfortServer(
             }
         }
         if (runs.none { it.result?.deferredOutput != null }) {
-            val out = build(call, name, runs.map { it to it.result?.output })
+            val out = build(call, name, runs.map { it to it.result?.output }, prefix)
             val failed = out.getString("status") == STATUS_FAILED
             return ToolDispatchResult(
                 null, null,
@@ -79,7 +82,7 @@ class ComfortServer(
         val pending = "场景 " + runs.joinToString(" · ") { "${it.step.tool}·${it.step.action}" }
         return ToolDispatchResult(null, null, successChip = pending, deferredOutput = {
             val outputs = runs.map { run -> run to (run.result?.deferredOutput?.invoke() ?: run.result?.output) }
-            build(call, name, outputs).toString()
+            build(call, name, outputs, prefix).toString()
         })
     }
 
@@ -102,6 +105,9 @@ class ComfortServer(
         }
     }
 
+    private fun windowsAlreadyAt(percent: Int): Boolean =
+        cabinState()?.windows?.values?.all { it == percent } == true
+
     private fun windowsAlreadyClosed(): Boolean =
         cabinState()?.windows?.values?.all { it == CabinLimits.WINDOW_MIN } == true
 
@@ -110,7 +116,12 @@ class ComfortServer(
 
     private fun okOf(output: String): Boolean = runCatching { JSONObject(output).optBoolean("ok") }.getOrDefault(false)
 
-    private fun build(call: DomainVoiceEvent.ToolCall, name: String, outputs: List<Pair<StepRun, String?>>): JSONObject {
+    private fun build(
+        call: DomainVoiceEvent.ToolCall,
+        name: String,
+        outputs: List<Pair<StepRun, String?>>,
+        prefix: String = "",
+    ): JSONObject {
         val steps = JSONArray()
         val clauses = ArrayList<String>()
         val notDone = JSONArray()
@@ -136,7 +147,7 @@ class ComfortServer(
             }
         }
         DebugVoiceLog.log("fz_scenario name=$name steps=${outputs.size} ok=$okCount skipped=$skipped")
-        var announce = clauses.joinToString("，") + "。"
+        var announce = prefix + clauses.joinToString("，") + "。"
         if (name == ComfortScenarios.DROWSY) announce += ComfortScenarios.REST_STOP_OFFER
         val allOk = okCount == outputs.size
         if (allOk && name == ComfortScenarios.MOSQUITO) mosquitoAt = now()

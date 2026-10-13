@@ -2777,6 +2777,178 @@ tests:
     related: [SPEC-015]
     last_run: {at: null, result: null}
 
+  - id: QWEN-PROBE-Q1-001
+    capability: speech
+    name: "ADR-017 gate Q-1: Qwen-Omni Realtime + Maia measured outside the app, side by side with Gemini + Xiaoyi"
+    purpose: "ADR-017 Q-1: the latency, tool turn, barge-in and text-input facts SPEC-021 rests on; if Q-1 fails, ADR-017 is revised"
+    type: measurement
+    scope: END_TO_END
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    terminal_success: [runs_recorded, compare_printed, text_input_answered]
+    covers: []
+    prerequisites: ["the owner's PC with DASHSCOPE_API_KEY and DASHSCOPE_WORKSPACE_ID set (agents never enter keys)", "tools/speech-harness/speech clips", "Python 3 with aiohttp"]
+    procedure: ["python tools/qwen-omni-probe/qwen_probe.py --selftest", "$env:OUT='tools\\qwen-omni-probe\\out'; .\\tools\\qwen-omni-probe\\run_q1.ps1", "keep out/runs.jsonl, the compare output and the say/ WAV clips"]
+    pass_criteria: ["every mode ran without session.update errors", "chat: last word to first audio p50 recorded and compared with 3.4-4.6 s", "tool turn: total to the spoken result recorded", "barge: speech_started to cancel recorded, with and without CLIENT_CANCEL; cough and knock did not interrupt (semantic_vad)", "text: input_text accepted or refused, recorded (SPEC-021 open question 1)"]
+    evidence: []
+    related: [ADR-017, SPEC-021, QWEN-VOICE-EAR-001, P48]
+    last_run: {at: null, result: null}
+
+  - id: QWEN-ADAPTER-UNIT-001
+    capability: speech
+    name: "SPEC-021 steps 1-3: the shared OpenAI-Realtime client and the Qwen-Omni dialect keep the truth rules on a mock socket"
+    purpose: "ADR-017 gate Q-3 at JVM level: claim gate on audio, tool round trip, barge-in cancel, selection without fallback, no secret in a log or message"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: []
+    procedure: ["gradlew test --rerun-tasks :app:assembleDebug", "QwenOmniDialectTest, QwenOmniClientTest, QwenSettingsTest, RealtimeProviderFactoryTest, GeminiSettingsTest; the Baidu Flex suites unchanged"]
+    pass_criteria: ["SPEC-021 A1-A10 at JVM level", "Baidu goldens and BaiduFlexClientTest/BaiduFlexProtocolTest unchanged", "every Qwen code classified as intended (transient faults RETRYABLE)"]
+    evidence: ["2026-10-09 cloud, claude/10-9 merge 71a8d40: app 3447/0 (debug+release), behavior-test 130/0, ingress 119/0, evaluation 27/0, simulator 25/0, contracts 7/0, safety 2/0; QwenOmniDialectTest 28/0, QwenOmniClientTest 8/0; independent reviews: step 1 REVISE->PASS, steps 2-3 REVISE, REVISE, PASS (planner read the JUnit XML)"]
+    related: [ADR-017, SPEC-021, QWEN-PROBE-Q1-001, QWEN-EMU-001]
+    last_run: {at: 2026-10-09, result: PASS}
+
+  - id: P50-REVIEW-UNIT-001
+    capability: speech
+    name: "P50 review fixes: clause release and the provider-spoken wait cue never play unchecked model audio (I-1)"
+    purpose: "JVM proof of the fixes to the cursor/10-9 demo build: DriverTurn clause release, ActionClaimGuard enumerations, ProviderCueCapture, the stall watchdog, named-city weather"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    prerequisites: []
+    procedure: ["gradlew test --rerun-tasks :app:assembleDebug", "DriverTurnClauseReleaseTest, ActionClaimGuardTest, ProviderCueCaptureTest, QwenCueCaptureClientTest, LiveInfoToolTest, AmapLiveInfoParserTest; BaiduFlexClientTest and QwenOmniClientTest unmodified"]
+    pass_criteria: ["no clause released before the turn is classified", "an ability answer released only once answersCapabilityHelp passes", "a cue plays only with exactly its words, completed, no call; a reply captured as the cue reaches the normal path with its tool call", "a stall retry yields at most one response.create", "the current city's weather answered from the warm cache"]
+    evidence: ["2026-10-09 cloud, claude/10-9 9bdb135: app 3564/0 (debug 1785 + release 1779), behavior-test 130/0, ingress 119/0, evaluation 27/0, simulator 25/0, contracts 7/0, safety 2/0 (planner read the JUnit XML); independent review REVISE -> REVISE -> PASS"]
+    related: [P50, SPEC-014, SPEC-020, SPEC-011, QWEN-EMU-001, QWEN-ADAPTER-UNIT-001]
+    last_run: {at: 2026-10-09, result: PASS}
+
+  - id: QWEN-EMU-001
+    capability: speech
+    name: "ADR-017 gate Q-4: the demo on the emulator with Qwen + Maia selected, under docs/DEMO_REQUIREMENTS.md"
+    purpose: "The first time the Qwen adapter talks to the real server inside the app"
+    type: device
+    scope: END_TO_END
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    terminal_success: [check_req_pass, one_voice, tool_turns_complete]
+    covers: []
+    prerequisites: ["emulator nova_api34 on the owner's PC with this build (claude/10-9 at or after the P50 review fixes, dd5bc12)", "the product session is always Qwen (ADR-017 amendment); DASHSCOPE_API_KEY and DASHSCOPE_WORKSPACE_ID set on the PC, then python tools/demo/recorder/seed_qwen.py --accept-consent"]
+    procedure: ["record the demo scenes with tools/demo/recorder (one scene per take, < 70 s)", "python tools/demo/recorder/check_req.py on each take", "for the 7 s cue: one slow turn; check logcat for wait_cue_failed reason=not_cue|mismatch and wait_cue_cancelled"]
+    pass_criteria: ["check_req.py passes every take", "only Maia is heard", "every tool turn reaches a spoken result; no QWEN_* terminal error", "barge-in stops her within a clause", "今天珠海天气怎么样 at the Zhuhai fix after warm-up: <= 3.5 s, no Amap call at question time (SPEC-011 B4 amendment)", "an ability answer (你会干啥) <= 3.0 s with clause release gated on answersCapabilityHelp"]
+    evidence: ["2026-10-09 cursor/10-9 c783c9a (owner's PC, OPEN_PROBLEMS P50, not this build): chat 1.9-2.6 s, ability 2.0-2.7 s, thinking 2.4-2.6 s, music 2.3-4.3 s, scenario 3.0-5.1 s, weather 5.4-5.7 s, bossy 3.0-10.2 s (a Qwen stall); no reply_underrun > 300 ms. Not a pass: weather and one bossy take exceed 5 s, music/scenario exceed 3.5 s. The independent review of that build then found I-1 leaks (clause release before classification, a reply capturable as the cue), fixed in claude/10-9 525bc01 and dd5bc12 - so these takes must be re-recorded"]
+    related: [ADR-017, SPEC-021, QWEN-ADAPTER-UNIT-001, DEMO-10-3-001, P50, SPEC-014, SPEC-020, SPEC-011]
+    last_run: {at: null, result: null}
+
+  - id: DEMO-COMMUTE-001
+    capability: speech
+    name: "The commute demo 横琴创业谷 → 横琴镇, in the order of the 豆包座舱 review video, under docs/DEMO_REQUIREMENTS.md"
+    purpose: "Owner request 2026-10-10: a demo following the Weibo 家越07/豆包 video (style, seat + follow-up, mosquito + follow-up, vague song) on a usual trip (docs/DEMO_COMMUTE.md)"
+    type: device
+    scope: END_TO_END
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    terminal_success: [check_req_pass, one_voice, every_announced_action_has_ok_result]
+    covers: []
+    prerequisites: ["emulator nova_api34 on the owner's PC with claude/10-9", "seed_qwen.py --accept-consent run once; Amap Web key set", "python tools/demo/recorder/make_clips.py for the c_* lines", "python tools/demo/recorder/record_demo.py --preflight PASS (no voice session: Qwen config, Amap key, GPS fix, 横琴镇 >= 1.7 km, Navi SDK route; P51)"]
+    procedure: ["record c1_board..c6_arrive as in docs/DEMO_COMMUTE.md (KEEP=1 after the first take), or in the cloud with tools/demo/live (JVM, NOVA_LIVE_PROVIDER=qwen)", "python tools/demo/recorder/check_req.py on every take", "compose each take; CUT=commute python final_cut.py"]
+    pass_criteria: ["check_req.py passes every take (chat/style <= 3.0 s, tool turns <= 3.5 s, none > 5 s, no reply_underrun > 300 ms)", "only Maia (Amap guidance the known exception)", "every announced action has an ok=true tool result in the log", "蚊子还没走 and the vague song get a confirmed action or an honest answer, never an unproven claim", "no unmarked silence > 1.5 s in the final video"]
+    evidence: ["2026-10-10 cloud, harness validation only (Gemini, not the product provider; JVM, simulated car): run 1 every turn 1.8-3.5 s, check_req PASS; run 2 c_mosq2 TURN_DROP unproven_action_claim then 20 s Gemini correction grace, and c_music/c_traffic got no turn until c_weather (14.4 s) - Gemini-only path, logged, not fixed. Qwen not run: DashScope secrets absent", "2026-10-10 cloud JVM, Qwen + Maia, owner-approved 2 sessions: take 1 qwen3.5-omni-plus-realtime at 3e0be4b - every turn 2.4-3.1 s, check_req PASS; findings: 嗲一点 answered with no set_speaking_style (style stayed default), 蚊子还没走 re-ran mosquito and said 车窗又开了一半 with nothing changed (fixed 74d8ef8: status already_open), c_music clip spelled 阿Sa as letters (clip now 阿萨). Take 2 qwen3.8-omni-flash-realtime at 74d8ef8 - check_req FAIL c_sweet 3.3 s (> 3.0; two model round trips, ~0.33 s cloud-to-DashScope per hop, no app delay), every other turn 2.5-3.2 s; set_speaking_style sweet held for the drive; 蚊子还没走 answered 那再开大点窗 with NO tool call, released as no_claim_made (bare 窗 not a body noun) - gate fixed after the take (verb-first window promise is a claim), not re-recorded; vague song resolved to the wrong artist (陈伟霆), reply honest (已经让音乐app去找了). Every announced action in both takes has an ok=true result except take 2 c_mosq2", "2026-10-10 gate fix reviewed (6dbd43d..9c6bbb1 PASS after two REVISE rounds; then 已/正在 made adjacent-only): a window phrase is a claim only as a promise or completion, advice/negation/sequencing released; FalseCapabilityClaimTest 38/0, full suite app 1795/0, release 1789/0. JVM only - c_mosq2 and already_open not yet re-run live (needs one owner-approved Qwen take)", "2026-10-11 cloud JVM, owner-approved qwen3.5-omni-plus-realtime (never 3.8): Gemini rehearsals reh1 (c_mosq2 no reply -> FZ-01b fan-up playbook 26adf1b) and reh2 PASS; take 3 c_sweet lost to a 3.5 Plus ModelServingError on set_speaking_style + a false 导航还没开始 on a curly-quoted prompt (fixed 0314384); take 4 same c_sweet crash (persona tone-tool line reverted 5d5a355); take 5 11/12, c_pick 3.7 s from a 0.5 s quiet lead-in in the model's audio; take 6 at 5d5a355 check_req PASS, every turn 2.2-3.2 s, every announced action has an ok=true result, no error or drop, vague song resolved to 郑中基 · 闭目入神. Limitation: on 3.5 Plus the tone request is answered in words only (set_speaking_style crashes that model), so the style does not persist; 3.8 calls it. JVM harness, simulated car - not device evidence", "2026-10-11 cloud JVM, owner-approved one qwen3.5-omni-plus-realtime session: take 7 on the shortened tool descriptions (73% size, merged 939e6a8) check_req PASS, every turn 2.4-3.1 s; one Gemini rehearsal before it chose all 12 tools correctly; measured input per reply 4.46K tokens first, 6.29K last of 23 (qwen_reply_usage). JVM harness - not device evidence", "2026-10-12 cloud JVM, owner-asked one qwen3.5-omni-plus-realtime session at 22d89f3 with the default voice Ayano (log: qwen_session voice=Ayano): take 8 check_req PASS, every turn 2.6-3.5 s (about 0.4 s slower than take 7 with Maia; c_pick at the 3.5 s limit), every tool call right and ok=true, 125K tokens. JVM harness - not device evidence", "2026-10-12 cloud JVM, free Gemini rehearsal (gemini-3.1-flash-live-preview, oldest working) with the app's REAL Amap place search for the first time (harness used a simulated list before): check_req FAIL 4/12. c_nav 6.0 s = the real search 2.5 s (nav_resolve_start -> candidates) before any reply; it would also fail an emulator take, where the search took 1.1-4 s from the PC proxy - every earlier PASS had an instant simulated search. c_weather 22.2 s: tool answered from the warm cache in 1 ms, then Gemini sent nothing for 20 s (server stall after tool response; Gemini-only, the product Qwen client has a stall watchdog). c_mosq2 6.6 s and c_music 5.0 s: Gemini took ~4 s to issue the call (Qwen takes 6-8 answered these in 2.2-3.2 s). Other 8 turns 2.1-3.1 s; 第一个 picked a real 横琴 place, route 2850-3449 m", "2026-10-12 same day, Gemini drive scene (NOVA_LIVE_SCENES=drive: Amap guidance + speech rules, real search): 10/12. c_nav 4.7 s again (the real search; consistent across both runs), c_seat2 3.5 s at the limit; c_mosq2/c_music/c_weather 2.4-2.7 s this time (the first run's misses were Gemini variance). Speech rules: guidance holds judged on after_guidance 0.0-0.7 s", "2026-10-12 after NAV-FAST (P53: shared Amap connection; cloud take answers 横琴镇 from the real result fetched before the session): Gemini 3.1 commute rehearsal check_req PASS 12/12, every turn 2.3-3.5 s; c_nav 3.5 s with place search ms=0 - at the limit on Gemini alone (Qwen takes 6/8: 2.8-2.9 s), so the emulator search must stay under the preflight's 0.5 s"]
+    related: [QWEN-EMU-001, SPEC-015, SPEC-017, SPEC-011, SPEC-020, P50]
+    last_run: {at: null, result: null}
+
+  - id: DEMO-AMAP-LIVE-001
+    capability: navigation
+    name: "The commute demo's real Amap lookups at the demo origin: 导航去横琴镇 + 第一个 is >= 1.7 km away, the warm-up weather answers"
+    purpose: "Owner 2026-10-12: a local recording must not meet an obvious failure. The JVM harness simulates the route; the emulator take uses the real search (OPEN_PROBLEMS P51)"
+    type: integration
+    scope: INTERMEDIATE_FLOW
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:1ba5ea16295cee8cf04137c83cb3dbbef2a7730be916c0f8e720f95ae2e6642b
+      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:bf5d6f6dd7cb3b3a6309672942d792e368983257f1e8e349776978d205cf4461
+      bound_commit: 5f4dd97
+    covers: []
+    prerequisites: ["AMAP_WEB_KEY in the environment (free Amap Web API; no voice model)"]
+    procedure: ["NOVA_LIVE_AMAP=1 ./gradlew :app:testDebugUnitTest --tests '*DemoCommuteAmapLiveTest'"]
+    pass_criteria: ["LiveDestinationCandidateSource.resolve(横琴镇) at the origin: first result has 横琴 in its name and is >= 1700 m away (route >= straight line; c3-c5 need ~150 s = 1.7 km at 40 km/h)", "regeo + weatherNow at the origin both Ok"]
+    evidence: ["2026-10-12 cloud: with sortrule=distance FAIL (第一个 = 632 m, the origin 横琴澳门青年创业谷; Amap driving route 26 m); with sortrule=weight PASS 2/2 (横琴镇人民政府 2533 m from the WGS point)", "2026-10-12 after GCJ-SEARCH (GCJ origin) and the warm-up retry: PASS 2/2 in the full suite, 横琴镇人民政府 2045 m straight line (floor 1.7 km), route 2855 m = 257 s at 40 km/h; real warm-up district + weather ok"]
+    related: [P51, DEMO-COMMUTE-001, SPEC-005, SPEC-011]
+    last_run: {at: 2026-10-12, result: PASS}
+
+  - id: DEVUI-EMU-001
+    capability: speech
+    name: "The rebuilt developer screen on the emulator: cards render, each saves itself, Test connection, clear-all confirm"
+    purpose: "Owner request 2026-10-10 (rebuild the developer interface); JVM covers only DeveloperSettingsStatus and the no-dormant-provider rule"
+    type: device
+    scope: INTERMEDIATE_FLOW
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    covers: []
+    prerequisites: ["emulator nova_api34 on the owner's PC with claude/10-9 at or after 500e1fc"]
+    procedure: ["open 开发者设置; screenshot every card", "save the Qwen card with a key: hint shows 已配置, value never shown", "测试连接: QWEN_CONNECTION_OK or a QWEN_* code", "清除所有密钥: dialog, then every status line shows ✗"]
+    pass_criteria: ["no Baidu/Gemini/Azure field on screen", "status card matches the config banner", "no secret value in the screen, a toast or logcat"]
+    evidence: ["2026-10-10 cloud 2a5c6cd: app 1789/0, behavior-test 131/0 (developerSettingsNamesNoDormantProvider), DeveloperSettingsStatusTest 4/0"]
+    related: [ADR-017, SPEC-018, SPEC-021]
+    last_run: {at: null, result: null}
+
+  - id: QWEN-VOICE-EAR-001
+    capability: speech
+    name: "ADR-017 gate Q-2: Maia against Xiaoyi, by ear, on the probe's clips"
+    purpose: "ADR-017 Q-2: the owner picked Maia from the voice list; this confirms it on our own lines, including the SPEC-020 cue texts"
+    type: device
+    scope: END_TO_END
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: subjective_perception
+    release_blocking: false
+    terminal_success: [maia_preferred_or_rejected, cue_clips_usable]
+    autonomous_evidence: ["tools/qwen-omni-probe say mode writes one 24 kHz WAV per line plus summary.json (selftest OK, 2026-10-09 cloud)"]
+    remaining_uncertainty: ["how Maia sounds on our lines", "whether a style instruction changes her delivery", "whether the cue clips are clean enough to bundle (SPEC-021 step 4)"]
+    covers: []
+    human_reason: "Which voice sounds right is the owner's listening judgement (B-034)"
+    prerequisites: ["QWEN-PROBE-Q1-001 run, with its say/ clips", "the 2026-10-08 Xiaoyi demo clips for comparison"]
+    procedure: ["listen to say/*.wav next to the Xiaoyi clips of the same lines", "listen to the ten wait-cue clips"]
+    pass_criteria: ["Maia preferred to Xiaoyi, or the reason she is not", "each cue clip clean and natural, or marked unusable"]
+    returns: ["yes/no per criterion, one sentence of impression"]
+    evidence: []
+    related: [ADR-017, B-034, QWEN-PROBE-Q1-001, SPEC-021]
+  - id: CUSTOM-VOICE-EAR-001
+    capability: speech
+    name: "ADR-017 §6 amendment: the owner's custom voice, cloned per model, reads the car lines"
+    purpose: "Owner 2026-10-11: replace Maia with a young custom voice he designed (符玄 style, not a child, not mature); one clone per model, same voice after a model switch. 2026-10-12: Ayano, his own AI character's synthetic voice, is the default"
+    type: device
+    scope: END_TO_END
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: subjective_perception
+    release_blocking: false
+    terminal_success: [custom_voice_preferred_or_rejected]
+    autonomous_evidence: ["2026-10-11 cloud: tools/qwen-omni-voice/clone_voice.py selftest 16/16 against a mock (check offline, create per model, list, delete); QwenSettingsTest + QwenOmniDialectTest: a session sends only the selected model's own voice (a 3.5 Plus clone is never sent to 3.8), default Maia, the id never logged"]
+    remaining_uncertainty: [ "what the server does with a deleted or mismatched voice id at session.update", "how the clone sounds on our lines, and with the speaking styles"]
+    covers: []
+    human_reason: "Whether the voice sounds right is the owner's listening judgement (B-034)"
+    prerequisites: ["the owner's clip (10-20 s speech he holds the rights to) uploaded", "clone_voice.py create for qwen3.5-omni-plus-realtime and qwen3.8-omni-flash-realtime", "one owner-approved short text-only 3.5 Plus session: qwen_probe.py say with VOICE=<3.5 clone> (cheapest test, AGENTS.md)"]
+    procedure: ["listen to ayano_voice_sample_35plus.wav (branch claude/commute-demo-video)"]
+    pass_criteria: ["the clone preferred to Maia, or the reason it is not"]
+    returns: ["yes/no, one sentence of impression"]
+    evidence: ["2026-10-12 cloud: clip 15.3 s 24 kHz mono speech (offline check ok); clone_voice.py create -> one Ayano voice per model (3.5 Plus, 3.8 Flash; free enrollment quota); owner-approved qwen_probe say on qwen3.5-omni-plus-realtime, 8 one-line text sessions, no tools: 8/8 verbatim, no errors, first audio 1.3-3.7 s; sample pushed for the owner's ear. Default switched to Ayano in QwenAppSettings.DEFAULT_CUSTOM_VOICES"]
+    related: [ADR-017, B-034, QWEN-VOICE-EAR-001]
+    last_run: {at: null, result: null}
+
   - id: STYLE-EAR-001
     capability: speech
     name: 嗲 / 傲娇 / 温柔 / 元气 each sound right and appropriate, with the same voice
@@ -2928,7 +3100,7 @@ tests:
   - id: WAIT-CUE-UNIT-001
     capability: speech
     name: Wait cues fire on time from the last word, truthfully, once, and never block a tool result
-    purpose: "SPEC-020 A1-A5 - owner request 2026-10-08: say she is on it when a reply is slow, and why when it takes longer"
+    purpose: "SPEC-020 A1-A5 - owner timing 2026-10-09: silent until 7 s, one progress line, a different delay line at 12 s"
     type: unit
     scope: COMPONENT
     owner: AUTONOMOUS
@@ -2936,10 +3108,10 @@ tests:
     release_blocking: false
     prerequisites: []
     procedure: ["gradlew :app:testDebugUnitTest --tests *AssistantVoiceRevoicerWaitCueTest* --tests *WaitCueCoreIntegrationTest* --tests *WaitCuesTest* --tests *GeminiLiveProviderVoiceTest* --tests *ActionClaimGuardTest*", "gradlew :ingress:test --tests *WaitCueAudioTest*", "gradlew test --rerun-tasks :app:assembleDebug"]
-    pass_criteria: ["C1 at 1.0 s / C2 at 1.8 s from the last word (hangover backdated), C3/C4/C5 at 5 s by reason, C6 at 12 s, each once", "no cue once reply words are queued or audible, after a silent ResponseDone, without turn evidence, after an app-side cancel, in SILENT_WAIT/sleep or with a GUIDANCE prompt open", "a reply arriving during a cue follows it; a cancel stops both", "a cue during a deferred tool leaves the session THINKING and the result is delivered", "no cue text is a claim (I-1)"]
-    evidence: ["2026-10-08 cloud, claude/10-8 (merge 92a36ec): AssistantVoiceRevoicerWaitCueTest 25/0, WaitCueCoreIntegrationTest 5/0, WaitCueAudioTest 4/0, GeminiLiveProviderVoiceTest 8/0; app 1677/0, ingress 118/0; independent review REVISE, REVISE, PASS (planner read the JUnit XML)"]
+    pass_criteria: ["nothing spoken before 7 s; progress at 7 s from the last word (hangover backdated); delay at 12 s is a different sentence; a late wake-up says the delay only", "no cue once reply words are queued or audible, after a silent ResponseDone, without turn evidence, after an app-side cancel, in SILENT_WAIT/sleep or with a GUIDANCE prompt open", "a reply arriving during a cue follows it; a cancel stops both", "a cue during a deferred tool leaves the session THINKING and the result is delivered", "no cue text is a claim (I-1)"]
+    evidence: ["2026-10-08 cloud, claude/10-8 (merge 92a36ec): AssistantVoiceRevoicerWaitCueTest 25/0, WaitCueCoreIntegrationTest 5/0, WaitCueAudioTest 4/0, GeminiLiveProviderVoiceTest 8/0; app 1677/0, ingress 118/0; independent review REVISE, REVISE, PASS (planner read the JUnit XML)", "2026-10-09 cloud, cursor/maia-only-ux-9a6b: owner timing. WaitCuesTest 7/0, AssistantVoiceRevoicerWaitCueTest 27/0, WaitCueCoreIntegrationTest 5/0, GeminiLiveProviderVoiceTest 8/0, ActionClaimGuardTest 45/0, QwenOmniDialectTest 28/0, WaitCueAudioTest 4/0. check_demo_log.py --selftest OK. Not a device run."]
     related: [SPEC-020, P48, WAIT-CUE-EMU-001]
-    last_run: {at: 2026-10-08, result: PASS}
+    last_run: {at: 2026-10-09, result: PASS}
 
   - id: WAIT-CUE-EMU-001
     capability: speech
@@ -2954,7 +3126,7 @@ tests:
     covers: []
     prerequisites: ["emulator nova_api34 on the owner's PC with this build", "Azure voice on", "host bridge with headphones"]
     procedure: ["5 slow turns each: 导航去励骏庞都, 放点梶浦由记的歌, a chat question; plus 第一个 in the picker and a cough", "capture NovaVoice; python tools/demo/check_demo_log.py --run B <log>", "listen to the recorder audio for overlap"]
-    pass_criteria: ["checker row 'SPEC-020 wait cues on time' PASS: ack_action <= 1500 ms, ack_chat <= 2300 ms from the last word", "no wait_cue_failed", "every tool turn reaches work_delivered and a spoken result", "no cue after the picker's 第一个 or after the cough", "by ear: no cue in the middle of a reply, never two voices"]
+    pass_criteria: ["checker row 'SPEC-020 wait cues on time' PASS: progress between 6500 and 8000 ms, delay between 11500 and 13000 ms; retired codes ack_action/ack_chat/tool_running/provider_slow/verifying fail", "no wait_cue_failed", "every tool turn reaches work_delivered and a spoken result", "no cue after the picker's 第一个 or after the cough", "by ear: no spoken status before 7 s, no cue in the middle of a reply, never two voices"]
     evidence: ["2026-10-08 f8e29b6 partial (demo recorder, not this procedure): 12 turns, every one cued; ack_chat 1808-1900 ms PASS; ack_action 1608-1755 ms FAIL vs 1500 - it fires on the tool call's arrival, which Gemini sent 1.6-1.75 s after the last word; tool turns (query_live_info, play_music) completed and spoken; no wait_cue_failed; cue then reply in order on the player timeline (not checked by ear). Not run: navigation, picker 第一个, cough"]
     related: [SPEC-020, WAIT-CUE-UNIT-001, DEMO-10-3-001, P48]
     last_run: {at: null, result: null}

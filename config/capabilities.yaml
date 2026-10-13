@@ -480,6 +480,13 @@ change_impact:
       - EmptyResponseRetryPolicy
       - NetworkFaults
       - BaiduFlexClient
+      - OpenAiRealtimeClient
+      - ReplyUsage
+      - RealtimeDialect
+      - BaiduFlexDialect
+      - QwenOmniDialect
+      - QwenOmniClient
+      - QwenOmniProvider
       - BaiduRealtimeClient
       - BaiduFlexProvider
       - BaiduFlexProtocol
@@ -488,9 +495,13 @@ change_impact:
       - BaiduDirectRealtimeProvider
       - ConversationResetPolicy
       - GeminiLiveClient
+      - QwenSettings
       - GeminiTurnTiming
       - GeminiCorrectionGrace
       - WaitCues
+      - WaitCueClock
+      - ReplyStreaming
+      - ProviderCueCapture
       - GeminiPromptTurn
       - GuidanceClaims
       - GuidanceBlockers
@@ -519,6 +530,7 @@ change_impact:
     components:
       - EmbeddedNavigationController
       - AmapNaviViewHost
+      - AmapCoordinates
       - AmapDrivingPresentation
       - NavigationProgressTrace
       - NavigationStateStore

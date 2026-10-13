@@ -11,6 +11,8 @@ import com.novadrive.simulator.SimulatedVehicleControl
 import org.json.JSONObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -387,6 +389,87 @@ class FalseCapabilityClaimTest {
         assertNotReleased("开窗", "好的，车窗关上了")
     }
 
+    /** Live JVM take 2026-10-10: 「蚊子还没走」 → 「那再开大点窗…」 with no call, windows unchanged. */
+    @Test
+    fun aWindowPromiseWithNoToolCallIsAClaim() {
+        listOf(
+            "那再开大点窗，让它赶紧飞出去。",
+            "我再开点窗。",
+            "这就帮你关窗。",
+            "车窗再开大一点，它就出去了。",
+            "我把车窗关小一点。",
+            "我帮你开车窗。",
+            "我帮你关车窗。",
+            "这就帮你开窗户。",
+            "我摇下车窗。",
+            "我把车窗摇下来。",
+            "关窗了，放心吧。",
+            "好的，正在为你开窗。",
+            "已为你关窗。",
+            "好的，开窗。", // 2026-10-11: a bare imperative after an acknowledgement
+            "我把窗开大点。", // object-first with a bare 窗
+            "这就帮你把窗关上。",
+            "已经关窗了。",
+            "正在开窗。",
+        ).forEach { assertNotNull(ActionClaimGuard.carActionClaimMatch(it), it) }
+    }
+
+    /** Review 2026-10-10: advice, negation and explanation about a window are chat, never a claim. */
+    @Test
+    fun windowAdviceNegationAndExplanationAreNotClaims() {
+        listOf(
+            "窗外的风景真不错。",
+            "开车的时候注意安全哦。",
+            "要不要开点窗透透气？",
+            "开车窗外的风有点大吧。",
+            "风大的话先别开窗，噪音会很大。",
+            "那就不用开窗了。",
+            "开窗通风一下会好很多。",
+            "可以开点窗透透气。",
+            "开点窗呼吸新鲜空气会舒服些。",
+            "现在不建议开窗，外面空气不太好。",
+            "高速上开窗风阻大，确实更费油。",
+            "我帮你开窗帘。",
+            "开窗了吗？",
+            "我觉得开窗通风比较好。",
+            "我开车的时候不喜欢开窗。",
+            "最好先开窗散散味。",
+            "关窗好一点，外面太吵了。",
+            "开窗好处是空气新鲜，坏处是噪音大。",
+            "开窗好还是关窗好，主要看外面温度。",
+            "开窗好还是开空调好，主要看外面温度。", // D-12: 调 inside 空调 is not an action
+            "等它飞出去了再关窗。",
+            "外面正在下雨关窗吧。",
+            "记得把窗关上。",
+            "你可以把窗开大点。",
+            "好的，开窗之前先看看外面。",
+            "好的，开窗吗？",
+            "我已经习惯开窗开车了。",
+        ).forEach { assertNull(ActionClaimGuard.carActionClaimMatch(it), it) }
+        assertFalse(ActionClaimGuard.claimsDone("车窗没能开大，已经到顶了。"))
+    }
+
+    @Test
+    fun windowChatIsReleasedAndTheLiveCaseIsNot() {
+        assertReleased("今天风好大啊", "风大的话先别开窗，噪音会很大。")
+        assertReleased("车里有点味道", "开窗通风一下会好很多。")
+        assertReleased("外面好吵", "关窗好一点，外面太吵了。")
+        assertNotReleased("蚊子还没走", "那再开大点窗，让它赶紧飞出去。")
+        // The guard does not ask the model to act on a question back to the driver.
+        val guard = ActionClaimGuard()
+        guard.onUserTranscript("有点闷")
+        assertNull(guard.onResponseDone(com.novadrive.ingress.realtime.ResponseOutcome.spokenOnly(), "要不要开点窗透透气？"))
+    }
+
+    private fun assertReleased(request: String, reply: String) {
+        val turn = DriverTurn(epoch = 1)
+        turn.onUserTranscript(request) { DriverTurn.classify(it) }
+        turn.onResponseStarted(goodAudio, false)
+        turn.onAssistantText(reply)
+        val verdict = turn.onResponseDone(reply, hadToolCallInResponse = false)
+        assertTrue(verdict is DriverTurn.Verdict.Release, "$request / $reply: $verdict")
+    }
+
     @Test
     fun everyActionAnnouncementIsRecognisedAsAClaim() {
         val all = com.novadrive.vehicle.WindowId.entries.toSet()
@@ -558,5 +641,48 @@ class FalseCapabilityClaimTest {
         val output = JSONObject(dispatcher(DriverContext()).dispatch(call("query_live_info", mapOf("kind" to "news"))).output!!)
         assertFalse(output.getBoolean("ok"))
         assertEquals("INVALID_KIND", output.getString("error"))
+    }
+
+    /** D-12: 「空调」 and weather words hold action characters; masked before matching (maximum matching). */
+    @Test
+    fun aWordThatOnlyContainsAnActionCharacterIsNotAClaim() {
+        listOf(
+            "开窗好还是开空调好，主要看外面温度。",
+            "空调开着的时候油耗会高一点。",
+            "车里的空调是自动的。",
+            "明天有降雨，温度会低一点。",
+            "今天降水概率不高，温度二十八度。",
+            "要不要开空调？",
+            "开空调会更费油一点。",
+            "空调可以开到24度左右比较舒服。",
+        ).forEach { assertNull(ActionClaimGuard.carActionClaimMatch(it), it) }
+        listOf(
+            "空调已经调到24度了。",
+            "我帮你调一下空调。",
+            "好的，已为你打开空调。",
+            "空调温度调低了两度。",
+            "好的，温度已经降到22度。",
+        ).forEach { assertNotNull(ActionClaimGuard.carActionClaimMatch(it), it) }
+    }
+
+    /** Review 2026-10-11: caught before D-12 only through the 调 inside 空调. */
+    @Test
+    fun aClimateClaimWithoutTheActionCharacterIsStillAClaim() {
+        val done = listOf("已", "了", "好的", "正在", "为你", "为您", "马上", "这就")
+        listOf(
+            "空调开好了。",
+            "已经开空调了。",
+            "好的，已经帮你开空调了。",
+            "已经帮你把空调开到24度了。",
+            "空调已经开到最大了。",
+            "空调帮你开起来了。",
+            "好的，空调开上了。",
+            "空调关好了。",
+            "空调风量开大了。",
+            "好的，空调给你开着了。",
+        ).forEach { reply ->
+            assertNotNull(ActionClaimGuard.carActionClaimMatch(reply), reply)
+            if (done.any { it in reply }) assertTrue(ActionClaimGuard.claimsDone(reply), reply)
+        }
     }
 }

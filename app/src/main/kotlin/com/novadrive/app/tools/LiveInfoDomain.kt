@@ -15,16 +15,7 @@ object LiveInfoDomain : ToolDomain {
         // SPEC-011 B5: one tool, example phrasings per kind, in the style of the climate table.
         val queryLiveInfo = spec(
             name = QUERY_LIVE_INFO,
-            description = "查询高德的实时信息，只能根据返回结果回答，绝对不要自己编天气、路况或地点信息。" +
-                "kind=weather：「今天天气怎么样」「外面冷不冷」→ where=here；「目的地天气怎么样」「到那边会下雨吗」→ where=destination；" +
-                "「珠海天气怎么样」→ where=珠海；问「明天」时加 day=tomorrow。" +
-                "kind=route_traffic（正在导航时）：「前面堵不堵」「路上堵车吗」「路况怎么样」。" +
-                "kind=along_route（有路线时）：「路上有加油站吗」→ category=fuel；「附近有充电桩吗」「沿途充电站」→ charging；" +
-                "「下一个服务区」→ service_area；「路上有厕所吗」→ toilet；结果会显示在屏幕上，用户说第几个再用 choose_navigation_option。" +
-                "kind=place_details：「目的地几点关门」「那个地方电话多少」→ target=destination；「第二个几点开门」→ target=2。" +
-                "新闻、股票、油价、汇率没有数据来源，不要调用，如实说无法回答。" +
-                "ok=false 时按 next 如实说查不到的原因，不要猜。" +
-                "Live Amap lookups: weather, traffic on the route, POIs along it, place details. Answer only from the result.",
+            description = "查询高德实时信息，只按返回结果回答，绝不编造天气、路况或地点。weather：「今天天气怎么样」→where=here；「目的地会下雨吗」→destination；「珠海天气」→珠海；问明天加 day=tomorrow。route_traffic（导航中）：「前面堵不堵」「路况怎么样」。along_route（有路线时）：「路上有加油站吗」→category=fuel；「沿途充电站」→charging；「下一个服务区」→service_area；「路上有厕所吗」→toilet；没有路线时「附近有加油站吗」不用 along_route，改用 navigate_to；结果显示在屏幕，用户说第几个再用 choose_navigation_option。place_details：「目的地几点关门」→target=destination；「第二个几点开门」→target=2。新闻、股票、油价、汇率无数据源，不要调用，如实说无法回答。ok=false 按 next 说原因，不要猜。",
             properties = JSONObject()
                 .put("kind", JSONObject().put("type", "string").put("enum", JSONArray(LIVE_INFO_KINDS)))
                 .put(

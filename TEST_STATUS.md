@@ -2,16 +2,16 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-21 · 149 tests
+Updated 2026-09-21 · 158 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 58 |
+| autonomous PASS | 61 |
 | autonomous FAIL | 0 |
 | incomplete | 0 |
 | partial pass | 0 |
-| not run | 64 |
-| human required | 25 |
+| not run | 68 |
+| human required | 27 |
 | human pass | 0 |
 | human fail | 1 |
 | blocked external | 0 |
@@ -79,6 +79,10 @@ Updated 2026-09-21 · 149 tests
 - GATE-D10-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - FUZZY-TEXT-LIVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - FUZZY-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- QWEN-PROBE-Q1-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- QWEN-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- DEMO-COMMUTE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- DEVUI-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - GUIDANCE-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - CONFIG-CARD-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - P45-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -106,7 +110,7 @@ Updated 2026-09-21 · 149 tests
 | live_info | 4 | 1 | 0 | 3 |
 | media | 6 | 1 | 1 | 4 |
 | microphone | 1 | 0 | 1 | 0 |
-| navigation | 24 | 6 | 4 | 14 |
+| navigation | 25 | 7 | 4 | 14 |
 | performance | 2 | 2 | 0 | 0 |
 | permissions | 7 | 4 | 0 | 3 |
 | regression | 2 | 1 | 0 | 1 |
@@ -114,7 +118,7 @@ Updated 2026-09-21 · 149 tests
 | reliability | 8 | 4 | 1 | 3 |
 | saved_places | 3 | 0 | 0 | 3 |
 | security | 3 | 3 | 0 | 0 |
-| speech | 16 | 6 | 7 | 2 |
+| speech | 24 | 8 | 9 | 6 |
 | truthfulness | 9 | 4 | 0 | 5 |
 | turn_taking | 19 | 7 | 3 | 9 |
 | unsupported | 1 | 0 | 0 | 1 |
@@ -168,6 +172,7 @@ Updated 2026-09-21 · 149 tests
 | MUSIC-VLC-EMU-001 | media | VLC plays a local file handed off by play_music and the readback names it | AUTONOMOUS | NOT_RUN | yes | MUSIC-UNIT-001 (JVM) covers the result rules with a fake session source |
 | MIC-CABIN-001 | microphone | Open-mic thresholds in real cabin acoustics | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | NOISE-001 PASS - room noise produces no turn |
 | AUDIO-QUALITY-001 | navigation | Guidance loudness and speech quality in a cabin | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | 21 guidance play start/end pairs observed on an emulator drive; the mic is gated while … |
+| DEMO-AMAP-LIVE-001 | navigation | The commute demo's real Amap lookups at the demo origin: 导航去横琴镇 + 第一个 is >= 1.7 km away, the warm-up weather answers | AUTONOMOUS | PASS | no | 2026-10-12 cloud: with sortrule=distance FAIL (第一个 = 632 m, the origin 横琴澳门青年创业谷; Amap … |
 | GUIDANCE-DEVICE-001 | navigation | One voice on the short route; Amap audible only when the model cannot speak | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | GUIDANCE-EMU-001 measurements |
 | GUIDANCE-EMU-001 | navigation | Step-0 measurements for assistant-spoken guidance on the short route | AUTONOMOUS | NOT_RUN | yes | — |
 | NAV-CANCEL-001 | navigation | 算了 really cancels | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: nav_flow_cancelled |
@@ -222,10 +227,18 @@ Updated 2026-09-21 · 149 tests
 | EXPORTED-001 | security | The release build exposes no debug surface | AUTONOMOUS | PASS | yes | 2026-09-20, release manifest via aapt2: only MainActivity is exported; DeveloperSetting… |
 | RELEASE-LOG-001 | security | A release build does not log what the driver said | AUTONOMOUS | PASS | yes | 2026-09-20: DebugVoiceLog is the only logger in app/src/main, ingress/src/main and cont… |
 | SECRET-SCAN-001 | security | No secret is tracked by git | AUTONOMOUS | PASS | yes | part of the 737 |
+| CUSTOM-VOICE-EAR-001 | speech | ADR-017 §6 amendment: the owner's custom voice, cloned per model, reads the car lines | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | 2026-10-12 cloud: clip 15.3 s 24 kHz mono speech (offline check ok); clone_voice.py cre… |
 | DEMO-10-2-001 | speech | One demo run that exercises every claude/10-2 function, graded by the log checker | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | tools/demo/check_demo_log.py --selftest OK (2026-10-02 cloud) |
 | DEMO-10-3-001 | speech | One demo run that exercises the essential functions and every claude/10-2 and claude/10-3 function, graded by the log checker | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | tools/demo/check_demo_log.py --selftest OK (2026-10-03 cloud, 10-3 checks included) |
+| DEMO-COMMUTE-001 | speech | The commute demo 横琴创业谷 → 横琴镇, in the order of the 豆包座舱 review video, under docs/DEMO_REQUIREMENTS.md | AUTONOMOUS | NOT_RUN | no | 2026-10-10 cloud, harness validation only (Gemini, not the product provider; JVM, simul… |
+| DEVUI-EMU-001 | speech | The rebuilt developer screen on the emulator: cards render, each saves itself, Test connection, clear-all confirm | AUTONOMOUS | NOT_RUN | no | 2026-10-10 cloud 2a5c6cd: app 1789/0, behavior-test 131/0 (developerSettingsNamesNoDorm… |
 | P45-EMU-001 | speech | The P45 conversation on the emulator with live speech, with the Azure voice | AUTONOMOUS | NOT_RUN | no | — |
 | P45-UNIT-001 | speech | An interrupted unheard reply is never synthesised; a question restarts the sleep window; turn timings are logged | AUTONOMOUS | PASS | no | 2026-10-02 cloud, claude/10-2: GeminiLiveClientTest 69/0, ListeningLifecycleTest 36/0, … |
+| P50-REVIEW-UNIT-001 | speech | P50 review fixes: clause release and the provider-spoken wait cue never play unchecked model audio (I-1) | AUTONOMOUS | PASS | no | 2026-10-09 cloud, claude/10-9 9bdb135: app 3564/0 (debug 1785 + release 1779), behavior… |
+| QWEN-ADAPTER-UNIT-001 | speech | SPEC-021 steps 1-3: the shared OpenAI-Realtime client and the Qwen-Omni dialect keep the truth rules on a mock socket | AUTONOMOUS | PASS | no | 2026-10-09 cloud, claude/10-9 merge 71a8d40: app 3447/0 (debug+release), behavior-test … |
+| QWEN-EMU-001 | speech | ADR-017 gate Q-4: the demo on the emulator with Qwen + Maia selected, under docs/DEMO_REQUIREMENTS.md | AUTONOMOUS | NOT_RUN | no | 2026-10-09 cursor/10-9 c783c9a (owner's PC, OPEN_PROBLEMS P50, not this build): chat 1.… |
+| QWEN-PROBE-Q1-001 | speech | ADR-017 gate Q-1: Qwen-Omni Realtime + Maia measured outside the app, side by side with Gemini + Xiaoyi | AUTONOMOUS | NOT_RUN | no | — |
+| QWEN-VOICE-EAR-001 | speech | ADR-017 gate Q-2: Maia against Xiaoyi, by ear, on the probe's clips | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | tools/qwen-omni-probe say mode writes one 24 kHz WAV per line plus summary.json (selfte… |
 | STYLE-EAR-001 | speech | 嗲 / 傲娇 / 温柔 / 元气 each sound right and appropriate, with the same voice | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | STYLE-UNIT-001: compose swaps the tone paragraph; style persisted and sticky (JVM) |
 | STYLE-UNIT-001 | speech | set_speaking_style changes the tone, persists it and composes it | AUTONOMOUS | PASS | no | 2026-09-30 cloud, wt/W3b-style-tool 80b9072: SpeakingStyleToolTest 8/0, PersonaProfiles… |
 | TTS-AUDITION-001 | speech | The owner picks a Chinese TTS voice (and vendor) by ear | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | 2026-10-02 owner, by ear on edge_preview clips (D:/桌面/android_doc/tts_audition/edge_pre… |

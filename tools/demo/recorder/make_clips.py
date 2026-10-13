@@ -23,6 +23,21 @@ LINES = {
     "nav": "导航去珠海金湾机场",
     "music": "放一首轻松的歌",
     "philo": "你觉得人为什么要开车",
+    # The commute demo (docs/DEMO_COMMUTE.md): the order of the 豆包座舱 review video, 横琴创业谷 → 横琴镇.
+    "c_sweet": "能不能说话再稍微嗲一点",
+    "c_seat": "帮我把主驾座椅稍微调高一点",
+    "c_seat2": "再调高一点",
+    "c_nav": "导航去横琴镇",
+    "c_pick": "第一个",
+    "c_go": "开始导航",
+    "c_mosq": "前风挡那儿有一只蚊子",
+    "c_mosq2": "蚊子还没走",
+    # 阿萨, not 阿Sa: edge-tts spells "Sa" out as letters and the model then hears "RSA" (live takes 2026-10-10).
+    "c_music": "帮我放首歌，阿萨的老公唱的，最近很火那首，叫闭目什么的",
+    "c_traffic": "前面堵不堵",
+    "c_weather": "今天天气怎么样",
+    "c_close": "蚊子出去了，关上吧",
+    "c_end": "结束导航",
 }
 
 

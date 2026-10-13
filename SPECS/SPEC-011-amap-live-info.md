@@ -66,6 +66,11 @@ existing refusal still applies. News/stock/price words stay refused unconditiona
 
 B4. **Freshness.** Weather is cached 10 min per adcode; traffic and along-route are never cached.
 Every result says when it was reported.
+   *Amendment 2026-10-09 (P50, Qwen Maia demo):* the district of the current fix is cached per
+   ~1 km cell for 30 min together with its city name from the same regeo answer. A weather question
+   that names that city (「今天珠海天气怎么样」 in Zhuhai; a trailing 「市」 ignored) is answered from
+   the district's cached weather, so it costs no round trip after the session-start warm-up. Any
+   other city is looked up by name as before. The city name stays in memory and is never logged.
 
 B5. **Declarations.** The tool description lists example phrasings per kind, in the same style as
 the existing climate table that fixed CVC selection on 2026-09-19.
@@ -83,7 +88,7 @@ execute once between them.
 | No web-service key | `AMAP_WEB_KEY_MISSING` | 天气查询还没有配置 |
 | No location fix for `here` | `NO_LOCATION` | 还没有定位，查不了这里的天气 |
 | `destination` with no destination | `NO_DESTINATION` | asks where |
-| `route_traffic` / `along_route` without a route | `NOT_NAVIGATING` | 现在没有在导航 |
+| `route_traffic` / `along_route` without a route | `NOT_NAVIGATING` | 现在没有在导航; a 「附近有加油站吗」 asked without a route is a nearby search instead: `navigate_to`「附近的加油站」 (2026-10-13, tryout run: the refusal was what a first-time driver heard) |
 | Timeout (4 s) / HTTP error / `status≠1` | `LIVE_INFO_UNAVAILABLE` | 现在查不到 — never a guess |
 | Amap daily quota (infocode `10003`, `10044`) | `LIVE_INFO_QUOTA` | 今天的查询次数用完了 |
 | Zero results | `NO_RESULTS` | 沿途没有找到加油站 |

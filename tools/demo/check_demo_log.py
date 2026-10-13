@@ -43,8 +43,10 @@ BUDGET = {
     "chat_correction_ms": (1500, "9696ce5: GeminiCorrectionGrace.CHAT_CORRECTION_GRACE_MS"),
     "azure_cold_ms": (1000, "demo target; 574e0ff measured 426 ms after 60 s idle (was 1.8-4.5 s)"),
     "hold_p90_ms": (5000, "demo target: P45 saw 9.4 s; SPEC-014 clause release is the real fix"),
-    "cue_ack_action_ms": (1500, "SPEC-020 A6: C1 at 1.0 s after the last word + 0.5 s"),
-    "cue_ack_chat_ms": (2300, "SPEC-020 A6: C2 at 1.8 s after the last word + 0.5 s"),
+    "cue_progress_early_ms": (6500, "SPEC-020 2026-10-09: no spoken status before 6.5 s"),
+    "cue_progress_late_ms": (8000, "SPEC-020 2026-10-09: the one progress line is inside 7–8 s"),
+    "cue_delay_early_ms": (11500, "SPEC-020 2026-10-09: the delay line is not spoken before 11.5 s"),
+    "cue_delay_late_ms": (13000, "SPEC-020 2026-10-09: the delay line is the 12 s cue"),
 }
 BUSY = {"USER_SPEAKING", "THINKING", "SPEAKING"}
 LINE = re.compile(r"^(\d\d)-(\d\d)\s+(\d\d):(\d\d):(\d\d)\.(\d{3})\s.*?NovaVoice\s*:\s?(.*)$")
@@ -372,20 +374,43 @@ def check_p45(events: list[Event], res: Result) -> None:
         res.add("P45 F1 Gemini stream gaps", "INFO", f"max gap p50 {pct(gaps, 0.5)} ms, p90 {pct(gaps, 0.9)} ms; interrupted unheard {unheard}; empty turns {empty}")
 
 
+# Spoken before 7 s on the previous schedule. A new build must not emit them.
+RETIRED_CUE_CODES = {"ack_action", "ack_chat", "provider_slow", "verifying", "tool_running", "still_waiting"}
+
+
 def check_wait_cues(msgs: list[str], res: Result) -> None:
-    """SPEC-020: wait cues are timed from the driver's last word, and a cue never fails a reply."""
+    """SPEC-020 (2026-10-09): visual at 3 s, one progress line at 7 s, a different line at 12 s."""
     cues = [(field_str(m, "code"), field_int(m, "after_ms")) for m in msgs if m.startswith("wait_cue code=")]
     if not cues:
         res.add("SPEC-020 wait cues on time", "NOT_SEEN", "no wait_cue line (no reply was slow, or the build predates SPEC-020)")
     else:
-        late = []
+        bad = []
         for code, after in cues:
-            key = {"ack_action": "cue_ack_action_ms", "ack_chat": "cue_ack_chat_ms"}.get(code or "")
-            if key and after is not None and after > BUDGET[key][0]:
-                late.append(f"{code} {after} ms")
+            if code in RETIRED_CUE_CODES:
+                bad.append(f"retired {code}")
+                continue
+            if code == "visual" or after is None:
+                continue
+            if code == "progress":
+                if after < BUDGET["cue_progress_early_ms"][0]:
+                    bad.append(f"progress {after} ms early")
+                elif after > BUDGET["cue_progress_late_ms"][0]:
+                    bad.append(f"progress {after} ms late")
+            elif code == "delay":
+                if after < BUDGET["cue_delay_early_ms"][0]:
+                    bad.append(f"delay {after} ms early")
+                elif after > BUDGET["cue_delay_late_ms"][0]:
+                    bad.append(f"delay {after} ms late")
+            else:
+                bad.append(f"unknown {code}")
         counts = {c: sum(1 for x, _ in cues if x == c) for c in sorted({x for x, _ in cues if x})}
-        res.add("SPEC-020 wait cues on time", "PASS" if not late else "FAIL",
-                f"{counts}; late: {late or 'none'} (A6: C1 <= {BUDGET['cue_ack_action_ms'][0]} ms, C2 <= {BUDGET['cue_ack_chat_ms'][0]} ms)")
+        res.add(
+            "SPEC-020 wait cues on time",
+            "PASS" if not bad else "FAIL",
+            f"{counts}; bad: {bad or 'none'} "
+            f"(progress {BUDGET['cue_progress_early_ms'][0]}–{BUDGET['cue_progress_late_ms'][0]} ms, "
+            f"delay {BUDGET['cue_delay_early_ms'][0]}–{BUDGET['cue_delay_late_ms'][0]} ms)",
+        )
     failed = sum(1 for m in msgs if m.startswith("wait_cue_failed"))
     if failed:
         res.add("SPEC-020 wait cue synthesis", "FAIL", f"{failed} wait_cue_failed")
@@ -474,7 +499,7 @@ def selftest() -> int:
         ("11:00:58.000", "state=SPEAKING err=-"),
         ("11:00:58.500", "state=THINKING err=-"),
         ("11:00:59.000", "transcript=你: 讲个冷知识"),
-        ("11:00:59.100", "wait_cue code=ack_chat after_ms=1810"),
+        ("11:00:59.100", "wait_cue code=progress after_ms=7100"),
         ("11:00:59.150", "wait_cue_cancelled reason=reply_queued"),
         ("11:00:59.200", "azure_tts_first_audio ms=2400 chars=8 style=none"),
         ("11:00:59.600", "state=SPEAKING err=-"),
@@ -515,9 +540,12 @@ def selftest() -> int:
     stall = check("B", run_b.replace("10-02 11:00:51.000  100  100 D NovaVoice: TURN_RELEASE", "10-02 11:01:15.000  100  100 D NovaVoice: TURN_RELEASE"))
     if dict((c, v) for c, v, _ in stall.rows).get("P45 no stalled turn (VAD)") != "FAIL":
         problems.append("a 25 s hold was not flagged as a stall")
-    late_cue = check("B", run_b.replace("wait_cue code=ack_chat after_ms=1810", "wait_cue code=ack_chat after_ms=3100"))
+    late_cue = check("B", run_b.replace("wait_cue code=progress after_ms=7100", "wait_cue code=progress after_ms=9000"))
     if dict((c, v) for c, v, _ in late_cue.rows).get("SPEC-020 wait cues on time") != "FAIL":
         problems.append("a late wait cue was not flagged")
+    early_cue = check("B", run_b.replace("wait_cue code=progress after_ms=7100", "wait_cue code=ack_chat after_ms=1810"))
+    if dict((c, v) for c, v, _ in early_cue.rows).get("SPEC-020 wait cues on time") != "FAIL":
+        problems.append("a retired early wait cue was not flagged")
     failed_cue = check("B", run_b.replace("wait_cue_cancelled reason=reply_queued", "wait_cue_failed"))
     if dict((c, v) for c, v, _ in failed_cue.rows).get("SPEC-020 wait cue synthesis") != "FAIL":
         problems.append("a failed wait cue was not flagged")

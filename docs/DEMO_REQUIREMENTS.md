@@ -8,9 +8,10 @@ These limits apply to every demo, whether recorded or live, that goes to a mento
 
 | Check | Limit | Measured by |
 | --- | --- | --- |
-| Gap between two clauses of one reply, after the first clause has started playing | ≤ 150 ms for 95 % of clause joins, none > 300 ms | `assistant_voice_gap_ms` in the NovaVoice log |
+| Gap between two clauses of one reply, after the first clause has started playing (app-voiced path) | ≤ 150 ms for 95 % of clause joins, none > 300 ms | `assistant_voice_gap_ms` in the NovaVoice log |
+| Provider-voiced path (Qwen Maia): the player runs dry inside a reply (starvation, including a clause-release wait) | none > 300 ms | `reply_underrun ms=` in the NovaVoice log, logged by the client when a reply chunk leaves the gate later than the audio before it lasts. A pause inside the voice itself is not counted: Qwen streams about 3x faster than real time, so 0.4–0.6 s sentence pauses fall inside the response window and are not starvation (2026-10-09) |
 | Voice failures (`assistant_voice_failed`) | 0 | log |
-| Only one voice (Xiaoyi), never Gemini's own | always | by ear, plus `assistant_voice_provider_audio_dropped` |
+| Only one voice: the session's provider voice (Maia since ADR-017 / `e3f6faf`), never a second | always | by ear, plus `assistant_voice ignored reason=provider_speaks` |
 
 ## 2. She answers promptly
 
@@ -20,7 +21,7 @@ Time is measured from the end of the driver's speech to her first audible audio.
 | --- | --- |
 | Chat or style turn, warm | p50 ≤ 2.0 s, max ≤ 3.0 s |
 | Car action with a tool | p50 ≤ 2.5 s, max ≤ 3.5 s |
-| First reply after the app starts, or after a sleep | ≤ the warm limit + 0.5 s; the first `azure_tts_first_audio` ≤ 600 ms |
+| First reply after the app starts, or after a sleep | ≤ the warm limit + 0.5 s (app-voiced path only: the first `azure_tts_first_audio` ≤ 600 ms; the Qwen Maia session has no Azure layer) |
 | Any reply | never > 5 s; if one takes longer, the take is void |
 
 ## 3. No long silence in the video

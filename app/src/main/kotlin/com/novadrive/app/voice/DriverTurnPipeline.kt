@@ -28,6 +28,13 @@ class DriverTurnPipeline(
     /** Time-scoped post-AEC speech evidence for speech over playback (Astra P4). */
     private val speechEvidence: () -> Boolean,
     private val host: Host,
+    /**
+     * SPEC-014 clause release: true when the provider streams its reply's words ahead of their
+     * audio ([com.novadrive.ingress.realtime.ProviderCapabilities.streamedReplyText]).
+     */
+    private val clauseRelease: Boolean = false,
+    /** Sample rate of the provider's 16-bit mono reply audio, to bound released audio in ms. */
+    private val outputSampleRateHz: Int = 24_000,
 ) {
     /**
      * The adapter's side. Its callbacks are invoked while this pipeline's monitor is held: they must
@@ -52,7 +59,10 @@ class DriverTurnPipeline(
     }
 
     @Volatile
-    private var turn: DriverTurn = DriverTurn(0)
+    private var turn: DriverTurn = DriverTurn(0, clauseRelease)
+
+    /** SPEC-014: audio this response may play early, from its checked words. */
+    private val clauseBudget = ClauseAudioBudget(outputSampleRateHz)
 
     private val turnEpoch = java.util.concurrent.atomic.AtomicLong(0)
 
@@ -115,7 +125,7 @@ class DriverTurnPipeline(
             // ...including what the response still streams after this point.
             if (responseInProgress) supersededResponse = true
         }
-        turn = DriverTurn(turnEpoch.incrementAndGet())
+        turn = DriverTurn(turnEpoch.incrementAndGet(), clauseRelease)
         driverContext.onSpeechStarted(turn.epoch)
         if (playbackOrSpeaking) turn.onSpeechDuringPlayback(qualified = speechEvidence())
     }
@@ -129,6 +139,7 @@ class DriverTurnPipeline(
 
     @Synchronized
     private fun startResponse() {
+        clauseBudget.reset()
         val reason = turn.onResponseStarted(lastAudioSegment(), contextAwaitingAnswer())
         if (reason != DriverTurn.HoldReason.NONE) {
             DebugVoiceLog.log(
@@ -300,15 +311,35 @@ class DriverTurnPipeline(
             event is DomainVoiceEvent.AssistantTranscript
         if (!holdable) return false
         turn.hold(event)
+        // Audio arriving after its words were already checked plays within the granted budget.
+        if (clauseBudget.hasRoom) drainClauses(turn)
         if (turn.heldCount > MAX_HELD_AUDIO_EVENTS) {
             applyVerdict(turn, turn.onHoldBudgetExceeded())
         }
         return true
     }
 
+    /** SPEC-014: emits held output within the clause budget. Returns how many events were emitted. */
+    private fun drainClauses(target: DriverTurn): Int {
+        if (host.responseCancelledByClient) return 0
+        val pending = clauseBudget.take(target)
+        pending.forEach { host.emit(it as DomainVoiceEvent) }
+        return pending.size
+    }
+
     private fun applyVerdict(target: DriverTurn, verdict: DriverTurn.Verdict) {
         when (verdict) {
             DriverTurn.Verdict.Wait -> Unit
+            is DriverTurn.Verdict.ReleaseClauses -> {
+                clauseBudget.grant(verdict.checkedChars)
+                val events = drainClauses(target)
+                DebugVoiceLog.log(
+                    "TURN_RELEASE epoch=${target.epoch} reason=clause chars=${verdict.checkedChars} " +
+                        "audioMs=${clauseBudget.releasedMs} events=$events",
+                )
+            }
+            is DriverTurn.Verdict.CloseClauseGate ->
+                DebugVoiceLog.log("TURN_GATE_CLOSED epoch=${target.epoch} predicate=${verdict.predicate}")
             is DriverTurn.Verdict.Release -> {
                 val pending = target.takeHeld()
                 // A reply this client cancelled (a local pick answered the driver) is not shown

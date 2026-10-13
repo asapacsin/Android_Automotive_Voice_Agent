@@ -107,6 +107,28 @@ class SecretScanTest {
         assertTrue(hits.isEmpty()) { hits.joinToString("\n") { it.location() } }
     }
 
+    /** SPEC-021 A3: the owner's DashScope key lives in the Keystore only. */
+    @Test
+    fun scannedSourcesDoNotContainHardCodedDashScopeKeys() {
+        val hits = mutableListOf<SecretScanHit>()
+        scannedRepoFiles().forEach { file ->
+            hits += findHardCodedDashScopeKeys(repoRelative(file), file.readText())
+        }
+        assertTrue(hits.isEmpty()) { hits.joinToString("\n") { it.location() } }
+    }
+
+    @Test
+    fun dashScopeMatcherFailsOnPlantedKeyAndAllowsPlaceholders(@TempDir dir: Path) {
+        val secret = "sk" + "-" + "0a1b2c3d".repeat(4)
+        val relative = "Config.kt"
+        val file = dir.resolve(relative)
+        file.writeText("package x\n\nconst val QWEN_KEY = \"$secret\"\nconst val CRED_API_KEY = \"qwen_api_key\"\n")
+        val hits = findHardCodedDashScopeKeys(relative, file.readText())
+        assertMatcherFiredWithLocationOnly(hits, relative, secret)
+        assertTrue(hits.single().line == 3)
+        assertTrue(findHardCodedDashScopeKeys(relative, "val k = \"sk-placeholder-key\"\n").isEmpty())
+    }
+
     @Test
     fun googleMatcherFailsOnPlantedKey(@TempDir dir: Path) {
         val secret = "AI" + "za" + "x".repeat(35)
@@ -315,6 +337,14 @@ private val GOOGLE_API_KEY = Regex("AIza[0-9A-Za-z_\\-]{35}")
 
 internal fun findHardCodedGoogleApiKeys(file: String, content: String): List<SecretScanHit> =
     GOOGLE_API_KEY.findAll(content)
+        .map { SecretScanHit(file, lineNumberOf(content, it.range.first)) }
+        .distinctBy { it.location() }
+        .toList()
+
+private val DASHSCOPE_API_KEY = Regex("sk-[0-9a-f]{32}")
+
+internal fun findHardCodedDashScopeKeys(file: String, content: String): List<SecretScanHit> =
+    DASHSCOPE_API_KEY.findAll(content)
         .map { SecretScanHit(file, lineNumberOf(content, it.range.first)) }
         .distinctBy { it.location() }
         .toList()
