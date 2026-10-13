@@ -9,7 +9,13 @@ Exit 0 only on PASS. Never prints reply text: it is only counted (CJK characters
 wording markers for information).
 
 A turn "sounds sweet" when at least 2 of 3 hold against s_mood1: median F0 >= +8 %, F0 spread >= +2.0 st,
-pace <= -10 %. s_mood2 and s_mood3 must sound sweet, s_mood4 must not; s_seat is reported only (other text).
+pace <= -10 %; or when the median F0 alone rose >= +15 % (F0_ALONE). s_mood2 and s_mood3 must sound sweet,
+s_mood4 must not; s_seat is reported only (other text).
+
+F0_ALONE (2026-10-13): the 2-of-3 rule was set before any real run of the fix. On gemini-3.8-live the
+sweet delivery was carried by pitch alone: s_mood2 +35 %, s_mood3 +33 % (about 5 semitones) with pace
+unchanged, while default turns of the same voice stay within about +-12 % of each other (tryout runs,
+182-235 Hz around 205). +15 % is above that spread; the before-fix run (s_mood2 +6 %, s_mood3 +1 %) still fails.
 """
 import json, os, re, sys, tempfile, wave
 
@@ -29,6 +35,7 @@ SWITCH = {"s_sweet": "sweet", "s_normal": "default"}
 MUST_SWEET, MUST_NOT_SWEET = ("s_mood2", "s_mood3"), ("s_mood4",)
 REPLY_S = 5.0
 F0_UP, SPREAD_UP, PACE_DOWN = 0.08, 2.0, 0.10
+F0_ALONE = 0.15
 MARKERS = ["嘛", "呀", "啦", "哟", "呢", "人家", "哦"]
 ERROR_RE = tryout_check.ERROR_RE
 
@@ -40,7 +47,7 @@ def sounds_sweet(s, base):
     df = s["f0_hz"] / base["f0_hz"] - 1
     hits = [df >= F0_UP, s["spread_st"] - base["spread_st"] >= SPREAD_UP,
             base["pace_cps"] > 0 and s["pace_cps"] <= base["pace_cps"] * (1 - PACE_DOWN)]
-    return sum(hits) >= 2, df
+    return sum(hits) >= 2 or df >= F0_ALONE, df
 
 
 def markers(replies):
