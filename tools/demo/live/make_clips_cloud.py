@@ -23,7 +23,7 @@ DRIVER_PITCH lower (pitch and tempo together), to differ from the g_* guidance v
     PIPER_MODEL=... python3 tools/demo/live/make_clips_cloud.py u_hello u_can ...   # or: tryout
 
 The style scene's lines (s_*, STYLE below, docs/DEMO_STYLE.md) are made the same way (Piper, DRIVER_PITCH);
-s_seat copies c_seat.pcm when it exists, and the four identical s_mood* lines are made once and copied.
+the four identical s_mood* lines are made once and copied.
 
     PIPER_MODEL=... python3 tools/demo/live/make_clips_cloud.py style
 """
@@ -75,7 +75,7 @@ TRYOUT = {
     "u_bye": "好了，谢谢",
 }
 # docs/DEMO_STYLE.md: the speaking style before, after 「嗲一点」 and back. s_mood1..4 share one text
-# (made once, the pcm copied); s_seat is the commute's c_seat line (its clip is copied when present).
+# (made once, the pcm copied). All are the same driver voice.
 STYLE = {
     "s_mood1": "你今天心情怎么样",
     "s_sweet": "能不能说话再稍微嗲一点",
@@ -127,7 +127,7 @@ async def main(keys):
         if os.path.exists(os.path.join(OUT, k + ".pcm")):
             continue
         if k in STYLE:
-            twin = "c_seat" if k == "s_seat" else next((m for m in STYLE if m != k and STYLE[m] == STYLE[k]
+            twin = next((m for m in STYLE if m != k and STYLE[m] == STYLE[k]
                                                          and os.path.exists(os.path.join(OUT, m + ".pcm"))), None)
             if twin and os.path.exists(os.path.join(OUT, twin + ".pcm")):
                 shutil.copyfile(os.path.join(OUT, twin + ".pcm"), os.path.join(OUT, k + ".pcm"))
