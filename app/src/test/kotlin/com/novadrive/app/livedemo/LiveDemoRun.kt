@@ -71,10 +71,12 @@ class LiveDemoRun {
         val out = File(outPath).absoluteFile.apply { mkdirs() }
         val choice = System.getenv("NOVA_LIVE_PROVIDER")?.ifBlank { null } ?: "qwen"
         val scenes = System.getenv("NOVA_LIVE_SCENES")?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }
-            ?: SCENES.keys.filter { it != DRIVE }
+            ?: SCENES.keys.filter { it != DRIVE && it != TRYOUT }
         scenes.forEach { require(it in SCENES) { "unknown scene $it" } }
         require(DRIVE !in scenes || scenes.size == 1) { "the $DRIVE scene is a whole trip; run it alone" }
-        LiveDemo(out, choice).use { it.run(scenes) }
+        require(TRYOUT !in scenes || scenes.size == 1) { "the $TRYOUT scene is a whole session; run it alone" }
+        val prefetch = if (TRYOUT in scenes) listOf(COMMUTE_QUERY) + TRYOUT_QUERIES else listOf(COMMUTE_QUERY)
+        LiveDemo(out, choice, prefetch).use { it.run(scenes) }
     }
 
     companion object {
@@ -94,6 +96,19 @@ class LiveDemoRun {
             1_960 to "c_weather", // just past the junction
             2_450 to "c_close", // after the last turn, before arrival
         )
+
+        /**
+         * A first-time driver trying the app in their own words (NOVA_LIVE_SCENES=tryout, docs/DEMO_TRYOUT.md):
+         * one session, parked until u_go. tools/demo/live/tryout_check.py grades it line by line.
+         */
+        const val TRYOUT = "tryout"
+
+        /** The tryout's lines in order before the music barge-in, and after it. */
+        val TRYOUT_PARKED = listOf("u_hello", "u_can", "u_hot", "u_temp", "u_window", "u_sunroof", "u_gas", "u_cancel", "u_dest", "u_pick2", "u_go")
+        val TRYOUT_AFTER = listOf("u_mstop", "u_mumble", "u_call", "u_navoff", "u_bye")
+
+        /** Seconds into a playing reply at which the driver barges in with u_barge. */
+        const val BARGE_AFTER_S = 1.0
 
         val SCENES: LinkedHashMap<String, (LiveDemo) -> Unit> = linkedMapOf(
             "commute_board" to { s ->
@@ -141,6 +156,16 @@ class LiveDemoRun {
                 Thread.sleep(6_000)
                 s.snapshot("arrive")
             },
+            TRYOUT to { s ->
+                s.timeline.title("试用：第一次上车，自己的话", "A first try in the driver's own words: chat, the car, a refusal, a change of mind")
+                TRYOUT_PARKED.forEach { s.turn(it, 40.0) }
+                s.timeline.title("试用：路上，音乐、打断、电话", "On the road: music, a barge-in, a call, ending navigation")
+                s.world.speedKmh = 40.0
+                s.turn("u_eta", 40.0)
+                s.turnThenBarge("u_music", "u_barge", "play_music")
+                TRYOUT_AFTER.forEach { s.turn(it, 40.0) }
+                s.snapshot("end")
+            },
         )
     }
 }
@@ -148,8 +173,18 @@ class LiveDemoRun {
 /** The commute destination (docs/DEMO_COMMUTE.md); its search is fetched before the session opens (P53). */
 private const val COMMUTE_QUERY = "横琴镇"
 
+/** The tryout's destination searches (docs/DEMO_TRYOUT.md), prefetched like COMMUTE_QUERY; the candidates stay real. */
+private val TRYOUT_QUERIES = listOf("长隆海洋王国", "加油站")
+
+/** Tool arguments the tryout records per call (no contact, place or free text): what the grader checks. */
+private val TRYOUT_ARG_KEYS = setOf("index", "preference", "action", "window", "value", "scenario")
+
 /** One live session: the composition, the real-time microphone and the per-turn state log. */
-class LiveDemo(private val out: File, private val choice: String) : AutoCloseable {
+class LiveDemo(
+    private val out: File,
+    private val choice: String,
+    private val prefetchQueries: List<String> = listOf(COMMUTE_QUERY),
+) : AutoCloseable {
     private val repoRoot = File(System.getProperty("nova.repo.root") ?: "..")
     val timeline = LiveDemoTimeline(out, File(repoRoot, "tools/demo/recorder/clips"))
     val world = HengqinWorld()
@@ -181,11 +216,12 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
      * take does not wait on the network for 「导航去横琴镇」. The candidates are real; only the time is
      * taken out. Any other query still searches live.
      */
-    @Volatile private var prefetched: List<DestinationCandidate>? = null
+    @Volatile private var prefetched: Map<String, List<DestinationCandidate>> = emptyMap()
     private val search: DestinationCandidateSource = liveSearch?.let { live ->
         DestinationCandidateSource { query ->
             val ready = prefetched
-            if (ready != null && query.contains(COMMUTE_QUERY)) ready else live.resolve(query)
+            val key = ready.keys.filter { query.contains(it) }.maxByOrNull { it.length }
+            if (key != null) ready.getValue(key) else live.resolve(query)
         }
     } ?: world
     private val nav = EmbeddedNavigationController(resolver = search, engine = world)
@@ -202,6 +238,9 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
     private var openDriveKey: String? = null
     private var spokeOverReply = false
     private var micFramesGated = 0L
+
+    /** The tryout records the graded tool arguments per call (TRYOUT_ARG_KEYS). */
+    @Volatile private var tryout = false
 
     private val turnTools = JSONArray()
     private val turnTranscripts = mutableListOf<String>()
@@ -220,9 +259,9 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
 
     init {
         liveSearch?.let { live ->
-            val found = runBlocking { live.resolve(COMMUTE_QUERY) }
+            val found = prefetchQueries.associateWith { runBlocking { live.resolve(it) } }
             prefetched = found
-            DebugVoiceLog.log("livedemo_search prefetched=true count=${found.size}")
+            found.values.forEach { DebugVoiceLog.log("livedemo_search prefetched=true count=${it.size}") }
         }
     }
 
@@ -291,6 +330,9 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
         val result = dispatcher.dispatch(call)
         DebugVoiceLog.log("tool=${call.name} args=${call.arguments.keys} result=${result.successChip ?: result.blockedReason}")
         val record = JSONObject().put("name", call.name).put("t", timeline.now())
+        if (tryout) {
+            record.put("args", JSONObject(call.arguments.filterKeys { it in TRYOUT_ARG_KEYS }))
+        }
         val immediateOk = result.blockedReason == null && result.output?.contains("\"ok\":false") != true
         val deferred = result.deferredOutput
         synchronized(turnTools) { turnTools.put(record.put("ok", immediateOk).put("pending", deferred != null)) }
@@ -317,6 +359,7 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
         providerRef = built.provider
         playback = timeline.Playback(built.outputSampleRateHz)
         val drive = scenes == listOf(LiveDemoRun.DRIVE)
+        tryout = scenes == listOf(LiveDemoRun.TRYOUT)
         val rules = if (!drive) null else DriveSpeechRules(
             playback, scope,
             pickerOpen = {
@@ -381,6 +424,48 @@ class LiveDemo(private val out: File, private val choice: String) : AutoCloseabl
         timeline.waitReply(timeout = timeout)
         Thread.sleep(600)
         snapshot(key)
+    }
+
+    /**
+     * The tryout's barge-in: say [key]; once [tool] has been called (up to 10 s) and a reply is
+     * playing, wait [LiveDemoRun.BARGE_AFTER_S] into it and say [bargeKey] over her, as a driver would.
+     * Logs `livedemo_barge playing=<bool>`; false means there was nothing to interrupt (graded FAIL).
+     */
+    fun turnThenBarge(key: String, bargeKey: String, tool: String) {
+        DebugVoiceLog.log("debug_tool tool=voice arg=wake")
+        timeline.wakes += timeline.epochNow()
+        Thread.sleep(800)
+        val t = timeline.queueClip(key)
+        println(String.format(Locale.US, "[live] %7.2f say %s", t, key))
+        Thread.sleep(timeline.clipPcm(key).size * 1000L / 2 / LiveDemoTimeline.RATE)
+        val playingAt = awaitBargeMoment(tool)
+        snapshot(key)
+        val playing = playingAt != null && playback.playing
+        DebugVoiceLog.log("livedemo_barge playing=$playing")
+        timeline.wakes += timeline.epochNow()
+        DebugVoiceLog.log("debug_tool tool=voice arg=wake")
+        val tb = timeline.queueClip(bargeKey)
+        println(String.format(Locale.US, "[live] %7.2f say %s%s", tb, bargeKey, if (playing) " (over her reply)" else " (nothing playing)"))
+        Thread.sleep(timeline.clipPcm(bargeKey).size * 1000L / 2 / LiveDemoTimeline.RATE)
+        timeline.waitReply(timeout = 30.0, firstTimeout = 10.0)
+        Thread.sleep(600)
+        snapshot(bargeKey)
+    }
+
+    /** The barge-in moment: [tool] called, then a reply playing for [LiveDemoRun.BARGE_AFTER_S]; null if none came. */
+    private fun awaitBargeMoment(tool: String): Double? {
+        val begin = System.currentTimeMillis()
+        fun called() = synchronized(turnTools) { (0 until turnTools.length()).any { turnTools.getJSONObject(it).optString("name") == tool } }
+        while (!called() && System.currentTimeMillis() - begin < 10_000) Thread.sleep(20)
+        while (System.currentTimeMillis() - begin < 25_000) {
+            if (playback.playing) {
+                val started = timeline.now()
+                Thread.sleep((LiveDemoRun.BARGE_AFTER_S * 1000).toLong())
+                if (playback.playing) return started
+            }
+            Thread.sleep(20)
+        }
+        return null
     }
 
     /** An Amap prompt: the guidance listener goes true when its audio starts and false when it ends. */
