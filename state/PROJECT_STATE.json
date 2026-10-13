@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-13T07:26:23",
+  "generated_at": "2026-10-13T08:25:56",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "fe25791",
+    "commit": "2c64c36",
     "branch": "claude/10-13",
-    "subject": "Tryout grader: a goodbye may end the conversation",
+    "subject": "DEMO-TRYOUT-001 PASS 19/19 on Gemini with the P56 fix; DEMO-AMAP-LIVE-001 re-run and rebound",
     "working_tree_clean": false,
-    "uncommitted_files": 2
+    "uncommitted_files": 3
   },
   "tests": {
     "available": true,
@@ -123,11 +123,6 @@
       "id": "P55",
       "title": "10-13 bug: 「嗲一点」 changes neither the style on screen nor how she speaks",
       "status": "open. The persistence design is with the decider (AGENTS.md hard rule); a style scene"
-    },
-    {
-      "id": "P56",
-      "title": "「帮我把天窗打开」 opened all four windows",
-      "status": "unknown"
     }
   ],
   "tech_debt": [
@@ -197,13 +192,20 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "A0: | A0 | G-1 … G-1f measured on the short route | measurement (emulator) | `GUIDANCE-EMU-001` | not earned |",
-    "actionable_count": 127,
+    "NEXT_ACTION": "DEMO-TRYOUT-001: FAIL: A first-time driver in their own words (19 lines: chat, vague asks, a refusal, a change of mind, barge-in, mumble, call), graded per line",
+    "actionable_count": 128,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 28,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "DEMO-TRYOUT-001",
+        "blocked_by": null
+      },
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
@@ -1017,10 +1019,10 @@
         "blocked_by": null
       },
       {
-        "priority": 10,
-        "class": "stale state or harness defect",
-        "source": "state",
-        "item": "PROJECT_STATE.json",
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P57",
         "blocked_by": null
       },
       {

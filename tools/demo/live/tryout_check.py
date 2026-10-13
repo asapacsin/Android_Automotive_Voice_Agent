@@ -30,7 +30,7 @@ NEGATION = re.compile(r"不|没|无法|不能|暂不|抱歉|对不起")
 EXPECT = {
     "u_hello": "闲聊：直接回答，不调工具，≤3.0 s", "u_can": "介绍能力：直接回答，不调工具，≤3.0 s",
     "u_hot": "模糊需求：要真的降温（空调/场景工具 ✓），≤3.5 s", "u_temp": "空调目标温度变成 22°C",
-    "u_window": "只开主驾这边的车窗", "u_sunroof": "车做不到：老实拒绝，不能说已打开",
+    "u_window": "只开主驾这边的车窗，其它车窗不动", "u_sunroof": "车做不到：老实拒绝，不能说已打开",
     "u_gas": "找附近加油站（搜索 ✓），≤3.5 s", "u_cancel": "改主意：取消刚才的流程",
     "u_dest": "搜索目的地，给出候选", "u_pick2": "选第 2 个候选", "u_go": "开始导航",
     "u_eta": "回答还要多久，不乱说做了什么", "u_music": "交给音乐 app 播放",
@@ -164,6 +164,11 @@ def grade(run):
             was_w = (prev_car.get("windows") or {}).get(DRIVER_WINDOW, 0)
             if now_w is not None and not now_w > was_w:
                 bad = True; notes.append("driver window did not open")
+            # 「我这边」 is the driver's window only (P57: run 4 opened all four).
+            others = [w for w, v in (car.get("windows") or {}).items()
+                      if w != DRIVER_WINDOW and v != (prev_car.get("windows") or {}).get(w, 0)]
+            if others:
+                bad = True; notes.append("other windows moved too")
         elif key in ("u_sunroof", "u_mumble"):
             if ok_names:
                 bad = True; notes.append("a tool succeeded on a line the car cannot or should not do")
@@ -304,7 +309,8 @@ def _fixture(root, mutate=None):
         for tool in parts["tools"].get(k, []):
             log.append((t + 1.0, f"tool={tool['name']} args=[] result={'ok' if tool['ok'] else 'NO_TELEPHONY'}"))
         car = {"temp_c": temps.get(k, 22 if i > ORDER.index("u_temp") else 26),
-               "windows": {"FRONT_LEFT": 30 if i >= ORDER.index("u_window") else 0},
+               "windows": {w: 30 if i >= ORDER.index("u_window") and (w == "FRONT_LEFT" or parts.get("all_windows")) else 0
+                           for w in ("FRONT_LEFT", "FRONT_RIGHT", "REAR_LEFT", "REAR_RIGHT")},
                "nav_phase": "NAVIGATING" if i >= ORDER.index("u_go") else "IDLE"}
         turns.append({"key": k, "t": t + 10, "tools": parts["tools"].get(k, []), "reply": parts["replies"][k], "car": car})
     log += parts["log"]
@@ -331,6 +337,7 @@ def selftest():
     def refusal_claimed(p): p["replies"]["u_sunroof"] = ["好的，天窗已经打开了"]
     def refusal_tool(p): p["tools"]["u_sunroof"] = [{"name": "control_window", "ok": True}]
     def slow(p): p["reply_after"]["u_hello"] = 4.0
+    def all_windows(p): p["all_windows"] = True
     def bye_ends(p): p["tools"]["u_bye"] = [{"name": "end_conversation", "ok": False}]
     def bye_tool(p): p["tools"]["u_bye"] = [{"name": "control_window", "ok": True}]
     def no_stop(p): p["barge_flush"] = None
@@ -344,6 +351,7 @@ def selftest():
         ("refusal with a ✓ tool", refusal_tool, False, ["u_sunroof"], []),
         ("slow reply", slow, False, ["u_hello"], []),
         ("goodbye that ends the conversation", bye_ends, True, [], []),
+        ("my-side window opened all four", all_windows, False, ["u_window"], []),
         ("goodbye with another tool", bye_tool, False, ["u_bye"], []),
         ("missing barge-in stop", no_stop, False, ["u_barge"], []),
         ("session error", error, False, ["u_gas"], []),

@@ -2056,3 +2056,10 @@ her measured default (take8: ~220-235 Hz, pace 7-11 chars/s).
 **Review:** first version REVISE (spaced transcripts, second vocabulary, scenario path); revision PASS (independent reviewer, 2026-10-13). One run of `aSunroofNamedWithAScenarioNeverOpensAWindow` failed once right after the executor reverted its own mutation of the scenario-route guard (same assertion the mutation breaks); not reproduced in 10 further runs in two separate build directories (planner 5× `--rerun-tasks`, reviewer 4× plus a full run); the code path is synchronous with no shared state (reviewer). Read as stale build output, not a flake in the guard.
 
 **Live (DEMO-TRYOUT-001, run 4, gemini-3.1-flash-live-preview at d160a3e):** 19/19 after the goodbye rule; u_sunroof refused with no tool call (the model did not try a window this time, so the guard was not exercised live - its proof is the JVM tests); none of the 19 heard lines reached the app spaced; u_hot, u_temp and u_window held as `kind=ACTION` (they were `CONVERSATION` while transcripts were spaced), u_can as `CAPABILITY_HELP`.
+
+## P57 — 「把我这边的窗户开一点」 opened all four windows
+
+**Found 2026-10-13, tryout run 4** (gemini-3.1-flash-live-preview, after P56; seen in the rendered video, not by the grader): the model called `control_window` {action=adjust, window=all, value=20} and all four windows opened 20 %. Runs 1-3 called window=driver for the same line. The tool description (`BodyDomain` control_window) gives 「开一点主驾车窗」 → window=driver and 「未指明窗时 window=all」, but not 「我这边」 as naming the driver's window, so the model may read it as unspecified. The tryout grader only checked that the driver's window opened; it now also fails when any other window moves (`tryout_check.py`, selftest case "my-side window opened all four"), and DEMO-TRYOUT-001 is FAIL until a re-run.
+
+**Status:** fix being decided (description only, a refusing guard in `ToolCallGuards`, or deterministic narrowing) by the decider, then implemented, reviewed and re-run once on Gemini.
+
