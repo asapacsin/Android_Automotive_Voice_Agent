@@ -81,3 +81,22 @@ python3 tools/demo/live/tryout_check.py --selftest        # offline fixtures
 
 The u_* clips are Piper (`zh_CN-huayan-medium`, one speaker) slowed to 0.88 so the driver sounds
 lower than the g_* guidance voice; edge-tts is refused from the cloud (403).
+
+## The style scene (`NOVA_LIVE_SCENES=style`)
+
+The speaking style before, after 「嗲一点」 and back ([docs/DEMO_STYLE.md](../../../docs/DEMO_STYLE.md)): one
+session, parked, no drive speech rules, run alone (not in the default scene list). The same question
+(s_mood1..4) is asked before, after the switch, after a seat action, and after 「正常一点」. Tool calls
+record their `style` argument in state.json (with the tryout's argument keys).
+
+```bash
+PIPER_MODEL=.../zh_CN-huayan-medium.onnx python3 tools/demo/live/make_clips_cloud.py style   # s_* clips
+NOVA_LIVE_DEMO=1 NOVA_LIVE_PROVIDER=gemini NOVA_LIVE_SCENES=style NOVA_LIVE_OUT=/tmp/style \
+  ./gradlew --offline :app:testDebugUnitTest --tests '*LiveDemoRun*'
+python3 tools/demo/live/style_check.py /tmp/style     # graded; writes /tmp/style/prosody.json
+python3 tools/demo/live/render.py /tmp/style /tmp/style.mp4
+```
+
+`prosody.py RUN` measures any run (median F0, F0 spread in semitones, CJK characters per voiced second,
+per turn) and writes `prosody.json` (numbers only, never text); `render.py` shows those numbers under
+each reply when the file exists, and in the style scene the change against s_mood1.
