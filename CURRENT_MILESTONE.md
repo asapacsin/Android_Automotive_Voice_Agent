@@ -1,8 +1,8 @@
 # Current Milestone
 
-## Active defect — P57 (from `claude/10-13`, 2026-10-13)
+## Tryout — DEMO-TRYOUT-001 PASS on the JVM harness (2026-10-14)
 
-「把我这边的窗户开一点」 opened all four windows on tryout run 4. The dispatcher rewrites that call to the driver window. The Gemini re-run on 2026-10-13 passed `u_window` (`control_window` `window=driver`, no other window moved). `DEMO-TRYOUT-001` stays FAIL: `u_dest`, `u_pick2`, `u_go` and `u_eta` had no places because the Amap web key was rejected (`INVALID_USER_KEY`), and `u_bye` was 5.7 s. Video is on PR #12. A valid Amap web key is what a later take needs.
+P57: 「把我这边的窗户开一点」 opens only the driver window. The 2026-10-14 Gemini tryout (`gemini-3.1-flash-live-preview`, simulated car, not a device) graded `tryout_check.py` RESULT PASS, 19/19. `u_window` was `window=driver` and no other window moved. Place search prefetched five candidates. `u_can` 1.5 s, `u_pick2` 2.4 s, `u_barge` 1.7 s. The video is on PR #12. This is not device evidence.
 
 ## Active work — ADR-017: Qwen-Omni Realtime + Maia (cloud, `claude/10-9`, 2026-10-09)
 
