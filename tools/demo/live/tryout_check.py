@@ -26,6 +26,11 @@ DRIVER_WINDOW = "FRONT_LEFT"
 ERROR_RE = re.compile(r"state=ERROR|_PROTOCOL_ERROR|\berror=\w")
 DROP_RE = re.compile(r"TURN_DROP .*reason=unproven_action_claim")
 NEGATION = re.compile(r"不|没|无法|不能|暂不|抱歉|对不起")
+# Second-clause attitude seen on the 2026-10-14 takes. A result plus one of these is not a normal reply.
+ATTITUDE_RE = re.compile(
+    r"早点说|这种小事|这种事情|有什么事|有事吗|有事快说|快说|别绕弯子|够我忙|你就这点事|"
+    r"还有别的事|把话说清楚|你还要我说|本来就应该知道|不用特意通知|耐心等等"
+)
 # What each line checks (docs/DEMO_TRYOUT.md), shown in the video next to the verdict.
 EXPECT = {
     "u_hello": "闲聊：直接回答，不调工具，≤3.0 s", "u_can": "介绍能力：直接回答，不调工具，≤3.0 s",
@@ -118,6 +123,9 @@ def grade(run):
         ok_names = [x["name"] for x in tools if x.get("ok")]
         replies = turn.get("reply", [])
         notes, bad = [], False
+        if any(ATTITUDE_RE.search(r or "") for r in replies):
+            bad = True
+            notes.append("attitude after the result")
 
         # reply time, from his last audible word (after the flush, for the barge-in)
         start = end
@@ -128,11 +136,14 @@ def grade(run):
         first = first_on(heard, start, nxt)
         d = None if first is None else first - end
         limit = LIMIT.get(key, ANY_REPLY_S)
-        if key != "u_mumble":
+        # 「等一下」 is a barge-in: she must stop. A further sentence is the attitude this line used to add.
+        if key not in ("u_mumble", "u_barge"):
             if d is None:
                 bad = True; notes.append("no reply")
             elif d > limit:
                 bad = True; notes.append(f"slow (max {limit})")
+        elif key != "u_mumble" and d is not None and d > limit:
+            bad = True; notes.append(f"slow (max {limit})")
         if first is not None and longest_gap(heard, first, nxt) > SILENCE_S:
             bad = True; notes.append(f"silent > {SILENCE_S:.0f} s in the turn")
         if any(ERROR_RE.search(l) for l in win):
@@ -302,7 +313,7 @@ def _fixture(root, mutate=None):
                 end = max(end, t + parts["barge_flush"])
         if k == "u_music":
             spans.append((end + parts["reply_after"][k], end + parts["reply_after"][k] + 20))
-        elif parts["reply_after"].get(k) is not None:
+        elif parts["reply_after"].get(k) is not None and parts["replies"].get(k):
             spans.append((end + parts["reply_after"][k], end + parts["reply_after"][k] + 2.0))
         if k == "u_dest":
             log.append((t + 1.2, "nav_resolve_candidates count=5 ms=40"))
@@ -344,6 +355,8 @@ def selftest():
     def error(p): p["log"].append((5.0 + ORDER.index("u_gas") * p["step"] + 2.0, "state=ERROR err=GEMINI_PROTOCOL_ERROR"))
     def dropped(p): p["log"].append((5.0 + ORDER.index("u_sunroof") * p["step"] + 2.0,
                                      "TURN_DROP epoch=3 reason=unproven_action_claim kind=reply"))
+    def attitude(p): p["replies"]["u_hot"] = ["空调打开了。这种小事你早点说不就行了。"]
+    def barge_quiet(p): p["replies"]["u_barge"] = []
     cases = [
         ("pass", None, True, [], []),
         ("missing tool", no_tool, False, ["u_temp"], []),
@@ -356,6 +369,8 @@ def selftest():
         ("missing barge-in stop", no_stop, False, ["u_barge"], []),
         ("session error", error, False, ["u_gas"], []),
         ("claim drop is a WARN", dropped, True, [], ["u_sunroof"]),
+        ("attitude after the result", attitude, False, ["u_hot"], []),
+        ("barge-in with no extra sentence", barge_quiet, True, [], []),
     ]
     saved = check_req.CLIPS
     bad = []

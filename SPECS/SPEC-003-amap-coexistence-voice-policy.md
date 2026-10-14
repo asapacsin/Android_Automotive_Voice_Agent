@@ -55,7 +55,7 @@ There **is** metadata available without text matching: **turn provenance.** Afte
 
 That is exactly the `(amapActive, responseCategory, actionResult)` tuple §7 asks for, derived from protocol events rather than from what the words say. **Open question Q1 is whether Flex's event stream lets us attribute a `response.*` reliably to the preceding `response.create` we issued.** If it does, the category is clean; if not, the current time window is the fallback and must be documented as such.
 
-"Speak briefly" (§6, §33.8) cannot be enforced by the policy on an E2E model; it is a persona instruction (already present: 每次回复不超过两句话, and 工具结果返回后用一句话简短确认) and is *measured*, not enforced (SPEC-004 duration metric).
+"Speak briefly" (§6, §33.8) cannot be enforced by the policy on an E2E model; it is a persona instruction (already present: 每次只说一句话, and 工具结果返回后用一句话确认结果) and is *measured*, not enforced (SPEC-004 duration metric).
 
 ### C3 — §13 "queue the confirmation until Amap stops speaking" is currently infeasible on this device
 
