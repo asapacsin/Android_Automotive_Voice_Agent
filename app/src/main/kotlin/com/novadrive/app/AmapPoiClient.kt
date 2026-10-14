@@ -142,7 +142,7 @@ class AmapPoiClient(
     ): LiveInfoFetch<T> = try {
         val url = "$liveBaseUrl/$path".toHttpUrlOrNull()?.newBuilder()?.apply {
             params.forEach { (name, value) -> addQueryParameter(name, value) }
-            addQueryParameter("key", key)
+            addQueryParameter("key", key.trim())
             addQueryParameter("output", "JSON")
         }?.build()
         if (url == null) {
@@ -162,7 +162,7 @@ class AmapPoiClient(
         return try {
             val url = baseUrl.toHttpUrlOrNull()?.newBuilder()
                 ?.addQueryParameter("keywords", keyword)
-                ?.addQueryParameter("key", key)
+                ?.addQueryParameter("key", key.trim())
                 ?.addQueryParameter("offset", "1")
                 ?.addQueryParameter("page", "1")
                 ?.addQueryParameter("extensions", "base")
@@ -188,7 +188,7 @@ class AmapPoiClient(
         return try {
             val url = aroundUrl.toHttpUrlOrNull()?.newBuilder()
                 ?.addQueryParameter("keywords", keyword)
-                ?.addQueryParameter("key", key)
+                ?.addQueryParameter("key", key.trim())
                 ?.addQueryParameter("location", String.format(Locale.US, "%.6f,%.6f", longitude, latitude))
                 ?.addQueryParameter("radius", radiusMeters.toString())
                 ?.addQueryParameter("sortrule", NEARBY_SORT_RULE)
@@ -211,7 +211,7 @@ class AmapPoiClient(
         return try {
             val url = baseUrl.toHttpUrlOrNull()?.newBuilder()
                 ?.addQueryParameter("keywords", keyword)
-                ?.addQueryParameter("key", key)
+                ?.addQueryParameter("key", key.trim())
                 ?.addQueryParameter("offset", limit.toString())
                 ?.addQueryParameter("page", "1")
                 ?.addQueryParameter("extensions", "base")
@@ -239,7 +239,7 @@ class AmapPoiClient(
         return try {
             val url = aroundUrl.toHttpUrlOrNull()?.newBuilder()
                 ?.addQueryParameter("keywords", keyword)
-                ?.addQueryParameter("key", key)
+                ?.addQueryParameter("key", key.trim())
                 ?.addQueryParameter("location", String.format(Locale.US, "%.6f,%.6f", longitude, latitude))
                 ?.addQueryParameter("radius", radiusMeters.toString())
                 ?.addQueryParameter("sortrule", sortRule)
