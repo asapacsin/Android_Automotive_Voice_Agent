@@ -27,21 +27,49 @@ jobs:
           test -r /dev/kvm -a -w /dev/kvm
           echo "KVM is writable"
 
-      - name: Boot one emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 34
-          target: google_apis
-          arch: x86_64
-          cores: 2
-          ram-size: 2048M
-          emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -no-snapshot -camera-back none
-          disable-animations: true
-          script: |
-            set -eu
-            adb shell getprop sys.boot_completed
-            adb exec-out screencap -p > "$GITHUB_WORKSPACE/emulator.png"
-            file "$GITHUB_WORKSPACE/emulator.png"
+      - name: Boot one emulator and capture the screen
+        run: |
+          set -eu
+          SDK="${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"
+          export ANDROID_SDK_ROOT="$SDK"
+          export ANDROID_HOME="$SDK"
+          export PATH="$SDK/cmdline-tools/latest/bin:$SDK/emulator:$SDK/platform-tools:$PATH"
+          yes | sdkmanager --licenses >/dev/null || true
+          image="system-images;android-34;google_apis;x86_64"
+          installed=0
+          attempt=1
+          while [ "$attempt" -le 3 ]; do
+            if sdkmanager --install "platform-tools" "emulator" "$image"; then
+              installed=1
+              break
+            fi
+            echo "system image install failed (attempt $attempt); clearing the partial download"
+            rm -rf "$SDK/system-images/android-34/google_apis/x86_64"
+            attempt=$((attempt + 1))
+            sleep 5
+          done
+          test "$installed" = 1
+          echo no | avdmanager create avd -n nova -k "$image" --force
+          emulator -avd nova -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -no-snapshot -camera-back none -accel on >/tmp/emulator.log 2>&1 &
+          timeout 180 adb wait-for-device
+          boot=""
+          i=0
+          while [ "$i" -lt 60 ]; do
+            boot="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+            if [ "$boot" = "1" ]; then
+              break
+            fi
+            i=$((i + 1))
+            sleep 5
+          done
+          if [ "$boot" != "1" ]; then
+            echo "Android did not finish booting"
+            tail -n 80 /tmp/emulator.log || true
+            exit 1
+          fi
+          echo "Android boot completed"
+          adb exec-out screencap -p > "$GITHUB_WORKSPACE/emulator.png"
+          file "$GITHUB_WORKSPACE/emulator.png"
 
       - name: Upload the screen
         uses: actions/upload-artifact@v4
