@@ -59,3 +59,34 @@ entries:
       Owner timing 2026-10-09: silent for 0-7s except a visual from 3s, one progress line at 7-8s
       only if nothing useful has been spoken, a different delay line at 12s. SPEC-020 WaitCueAudio.
     suppresses_required_behavior: false
+  - id: DB-P57-001
+    problem_class: a driver-side window request must not move every window
+    triggers:
+      prior_failure: true
+    status: PASS
+    selected_basis: repo
+    selected_pattern: >-
+      ToolCallGuards.driverSideWindow rewrites a control_window target to driver when this turn
+      names only the driver side. AndroidToolDispatcher applies that before the body server.
+      The epoch rule matches sunroofOnWindowTool. The tool description is a hint only.
+    evidence: >-
+      P56 showed a tool description does not stop the model choosing window=all. P57 tryout run 4
+      sent window=all for 把我这边的窗户开一点. Refusing would leave the driver window shut and fail
+      DEMO-TRYOUT u_window, which is a supported request.
+    suppresses_required_behavior: false
+  - id: DB-TRYOUT-LATENCY-001
+    problem_class: tryout replies held until generation completes, or dropped for mentioning navigation
+    triggers:
+      prior_failure: true
+      async_lifecycle: true
+    status: PASS
+    selected_basis: repo
+    selected_pattern: >-
+      A capability-help prefix plays once it names two supported groups, including on Gemini
+      where clause release is off. A device noun that is also an action word is not a claim
+      unless the reply also shows progress or a promise.
+    evidence: >-
+      Second Gemini tryout: u_can audio and text started at turn open and TURN_RELEASE
+      waited for generationComplete (5.0 s). u_barge dropped a 13-character reply logged
+      noun=导航 verb=导航, then the correction was the line the driver heard.
+    suppresses_required_behavior: false

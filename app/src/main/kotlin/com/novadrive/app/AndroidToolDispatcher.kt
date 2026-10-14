@@ -105,21 +105,31 @@ class AndroidToolDispatcher(
      * only stored by telemetry during benchmark runs.
      */
     fun dispatch(call: DomainVoiceEvent.ToolCall): ToolDispatchResult {
-        Telemetry.record(EventType.TOOL_CALL_RECEIVED, toolType = call.name, detail = call.callId) {
-            com.novadrive.evaluation.Json.write(call.arguments.filterKeys { it != "_validation_error" })
+        val running = applyDriverSideWindow(call)
+        Telemetry.record(EventType.TOOL_CALL_RECEIVED, toolType = running.name, detail = running.callId) {
+            com.novadrive.evaluation.Json.write(running.arguments.filterKeys { it != "_validation_error" })
         }
-        Telemetry.record(EventType.TOOL_EXECUTION_START, toolType = call.name, detail = call.callId)
-        val result = guard(call) ?: dispatchUnrecorded(call)
+        Telemetry.record(EventType.TOOL_EXECUTION_START, toolType = running.name, detail = running.callId)
+        val result = guard(running) ?: dispatchUnrecorded(running)
         val deferred = result.deferredOutput
         if (deferred == null) {
-            recordEnd(call, result.output, result.blockedReason)
+            recordEnd(running, result.output, result.blockedReason)
             return result
         }
         return result.copy(deferredOutput = {
             val output = deferred()
-            recordEnd(call, output, null)
+            recordEnd(running, output, null)
             output
         })
+    }
+
+    /**
+     * P57: 「我这边」 is the driver window even when the model sends `window=all`. Scenario steps
+     * go through [dispatchUnrecorded] and are not rewritten here.
+     */
+    private fun applyDriverSideWindow(call: DomainVoiceEvent.ToolCall): DomainVoiceEvent.ToolCall {
+        val window = ToolCallGuards.driverSideWindow(call, driverContext()) ?: return call
+        return call.copy(arguments = call.arguments + ("window" to window))
     }
 
     private fun recordEnd(call: DomainVoiceEvent.ToolCall, output: String?, blocked: String?) {

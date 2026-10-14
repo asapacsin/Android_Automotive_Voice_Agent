@@ -1,5 +1,9 @@
 # Current Milestone
 
+## Tryout — DEMO-TRYOUT-001 PASS on the JVM harness (2026-10-14)
+
+P57: 「把我这边的窗户开一点」 opens only the driver window. The 2026-10-14 Gemini tryout (`gemini-3.1-flash-live-preview`, simulated car, not a device) graded `tryout_check.py` RESULT PASS, 19/19. `u_window` was `window=driver` and no other window moved. Place search prefetched five candidates. `u_can` 1.5 s, `u_pick2` 2.4 s, `u_barge` 1.7 s. The video is on PR #12. This is not device evidence.
+
 ## Active work — ADR-017: Qwen-Omni Realtime + Maia (cloud, `claude/10-9`, 2026-10-09)
 
 **The owner's decision:** one end-to-end model, `qwen3.8-omni-flash-realtime` with the stock voice Maia, no separate TTS ([ADR-017](DECISIONS/ADR-017-qwen-omni-realtime-end-to-end.md)). **2026-10-09:** the product session is Qwen Maia now (`VoiceProviderChoice` + fixed `session.update` voice); Gemini/Baidu/Azure developer fields no longer select the session. Gates Q-1 to Q-5 stay open; stack deletion still waits for Q-5. The adapter is [SPEC-021](SPECS/SPEC-021-qwen-omni-provider.md).
