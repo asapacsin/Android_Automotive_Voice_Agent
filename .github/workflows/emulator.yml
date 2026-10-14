@@ -40,8 +40,7 @@ jobs:
           script: |
             set -eu
             adb shell getprop sys.boot_completed
-            adb shell screencap -p /sdcard/emulator.png
-            adb pull /sdcard/emulator.png "$GITHUB_WORKSPACE/emulator.png"
+            adb exec-out screencap -p > "$GITHUB_WORKSPACE/emulator.png"
             file "$GITHUB_WORKSPACE/emulator.png"
 
       - name: Upload the screen
