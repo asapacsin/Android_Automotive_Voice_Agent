@@ -38,7 +38,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -no-snapshot -camera-back none
           disable-animations: true
           script: |
-            set -euo pipefail
+            set -eu
             adb shell getprop sys.boot_completed
             adb shell screencap -p /sdcard/emulator.png
             adb pull /sdcard/emulator.png "$GITHUB_WORKSPACE/emulator.png"
