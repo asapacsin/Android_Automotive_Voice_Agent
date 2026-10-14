@@ -60,6 +60,15 @@ class PersonaProfilesTest {
         }
     }
 
+    @Test fun defaultPersonaDoesNotScoldTheDriver() {
+        val text = PersonaProfiles.DEFAULT_INSTRUCTIONS
+        assertFalse("这种事还要我说吗" in text)
+        assertFalse("自负" in text)
+        assertFalse("不耐烦" in text)
+        assertTrue("用户提了要求就直接办" in text)
+        assertTrue("办完用一句话把结果说清楚" in text)
+    }
+
     @Test fun anActedToneNeverLicensesRefusingOrMisreporting() {
         // 傲娇 must stay words: 「才不帮你开」 after the window opened would contradict the result.
         for (style in listOf(SpeakingStyle.TSUNDERE, SpeakingStyle.GENTLE, SpeakingStyle.LIVELY)) {
