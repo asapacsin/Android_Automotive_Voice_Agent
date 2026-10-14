@@ -2876,10 +2876,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:aca48107e3fd216b8a9357f0a47b9ebfb027ed9b130aa22726855a0d1deb2a25
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:8f6bc48983e5eec3e9926900708b4f6edbad58fb8f15fe70009a4159a70edf27
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: fe25791
+      apk_digest: null
+      bound_commit: 30654af
     covers: []
     prerequisites: ["GEMINI_API_KEY (free tier) - Gemini first, Ayano last (AGENTS.md 2026-10-13)", "AMAP_WEB_KEY (prefetch of 横琴镇/长隆海洋王国/加油站)", "u_* clips: PIPER_MODEL=... python3 tools/demo/live/make_clips_cloud.py tryout"]
     procedure: ["NOVA_LIVE_DEMO=1 NOVA_LIVE_PROVIDER=gemini NOVA_LIVE_SCENES=tryout NOVA_LIVE_OUT=RUN ./gradlew --offline :app:testDebugUnitTest --tests '*LiveDemoRun*'", "python3 tools/demo/live/tryout_check.py RUN", "python3 tools/demo/live/render.py RUN RUN.mp4"]
