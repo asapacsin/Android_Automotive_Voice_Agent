@@ -2878,8 +2878,8 @@ tests:
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
       harness_digest: sha256:8f6bc48983e5eec3e9926900708b4f6edbad58fb8f15fe70009a4159a70edf27
       artifact_digests: {}
-      apk_digest: null
-      bound_commit: 30654af
+      apk_digest: sha256:158daace7ebbf2593049d8421bd6eb9185bff019c2639f73ca24d5c4fd4e16c6
+      bound_commit: cecd56c
     covers: []
     prerequisites: ["GEMINI_API_KEY (free tier) - Gemini first, Ayano last (AGENTS.md 2026-10-13)", "AMAP_WEB_KEY (prefetch of 横琴镇/长隆海洋王国/加油站)", "u_* clips: PIPER_MODEL=... python3 tools/demo/live/make_clips_cloud.py tryout"]
     procedure: ["NOVA_LIVE_DEMO=1 NOVA_LIVE_PROVIDER=gemini NOVA_LIVE_SCENES=tryout NOVA_LIVE_OUT=RUN ./gradlew --offline :app:testDebugUnitTest --tests '*LiveDemoRun*'", "python3 tools/demo/live/tryout_check.py RUN", "python3 tools/demo/live/render.py RUN RUN.mp4"]
