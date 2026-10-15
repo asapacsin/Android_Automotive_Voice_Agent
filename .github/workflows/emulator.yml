@@ -72,7 +72,7 @@ jobs:
             exit 1
           fi
           chmod +x ./gradlew
-          ./gradlew :app:assembleDebug
+          ./gradlew :app:assembleDebug -Pnova.ci.releaseSha1=true
           test -f "$HOME/nova-drive-build/app/outputs/apk/debug/app-debug.apk"
 
       - name: Boot the emulator and record the drive

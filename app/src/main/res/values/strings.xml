@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">小诺</string>
+    <string name="nova_force_voice_log" translatable="false"></string>
     <string name="mic_start">按住麦克风开始</string>
     <string name="mic_stop">结束会话</string>
     <string name="developer_settings">开发者设置</string>

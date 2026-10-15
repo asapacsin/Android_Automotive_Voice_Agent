@@ -45,6 +45,13 @@ android {
     buildTypes {
         getByName("debug") {
             isMinifyEnabled = false
+            // The GitHub drive build is signed with the debug certificate, and that
+            // certificate is registered as the Amap release security code. Amap checks
+            // the release code only when the APK is not debuggable.
+            if (providers.gradleProperty("nova.ci.releaseSha1").orNull == "true") {
+                isDebuggable = false
+                resValue("string", "nova_force_voice_log", "1")
+            }
         }
         getByName("release") {
             isMinifyEnabled = false
