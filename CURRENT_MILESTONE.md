@@ -1,5 +1,9 @@
 # Current Milestone
 
+## Branch claude/10-15 (2026-10-15)
+
+`claude/10-13` + the Cursor tryout work (`cursor/p57-my-side-window-9a6b`, `cursor/drop-scolding-tone-9a6b`), reviewed and fixed: three stale session goldens, the driver-window rewrite now narrows only `window=all`, and 「导航去…」 is a claim again (OPEN_PROBLEMS P57). Full JVM suite 4086 / 0 failures. Gemini tryout RESULT PASS 19/19, video `demo-videos/tryout_gemini_2026-10-15.mp4` (Gemini's voice, not Ayano). Not merged: `cursor/github-emulator-9a6b` (based on an old commit; its drive step has failed on every run) and `wt/p57` (superseded).
+
 ## Tryout — DEMO-TRYOUT-001 PASS on the JVM harness (2026-10-14)
 
 P57: 「把我这边的窗户开一点」 opens only the driver window. The 2026-10-14 Gemini tryout (`gemini-3.1-flash-live-preview`, simulated car, not a device) graded `tryout_check.py` RESULT PASS, 19/19. `u_window` was `window=driver` and no other window moved. Place search prefetched five candidates. `u_can` 1.5 s, `u_pick2` 2.4 s, `u_barge` 1.7 s. The video is on PR #12. This is not device evidence.
