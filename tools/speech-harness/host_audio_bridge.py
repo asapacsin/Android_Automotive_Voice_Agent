@@ -242,6 +242,44 @@ def feed_mic(uplink, device, stop):
         proc.kill()
 
 
+class Recorder:
+    """--record DIR: the driver stream as sent and her reply audio, on one clock (feed start = 0).
+
+    Synthetic test clips and the model's replies only; written to DIR as driver.wav / reply.wav and
+    t0.txt (the wall-clock feed start), for muxing with a screen recording. Never a real driver."""
+
+    def __init__(self, out):
+        self.out, self.t0, self.driver = out, None, b""
+        self.reply, self.reply_rate = bytearray(), 0
+
+    def started(self, stream):
+        self.t0, self.driver = time.time(), bytes(stream)
+
+    def add_reply(self, pcm, rate):
+        if self.t0 is None:
+            return
+        self.reply_rate = rate
+        at = int((time.time() - self.t0) * rate) * 2
+        if at > len(self.reply):
+            self.reply += bytes(at - len(self.reply))
+        self.reply += pcm
+
+    def save(self):
+        if not self.out or self.t0 is None:
+            return
+        import wave
+        os.makedirs(self.out, exist_ok=True)
+        for name, data, rate in (("driver", self.driver, RATE), ("reply", bytes(self.reply), self.reply_rate or 24000)):
+            with wave.open(os.path.join(self.out, name + ".wav"), "wb") as w:
+                w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate); w.writeframes(data)
+        with open(os.path.join(self.out, "t0.txt"), "w") as f:
+            f.write(f"{self.t0:.3f}\n")
+        print(f"[record] driver {len(self.driver) / 2 / RATE:.1f} s, reply {len(self.reply) / 2 / max(1, self.reply_rate):.1f} s -> {self.out}", flush=True)
+
+
+RECORDER = Recorder(None)
+
+
 def feed_file(uplink, paths, stop, lead=1.0, gap=0.0):
     """Clips in order, [gap] seconds of silence between them, then silence for ever."""
     stream = bytearray(int(RATE * 2 * lead))
@@ -251,6 +289,7 @@ def feed_file(uplink, paths, stop, lead=1.0, gap=0.0):
         if i:
             stream += bytes(int(RATE * 2 * gap) // 2 * 2)
         stream += clip
+    RECORDER.started(stream)
     pos = 0
 
     def next_frame():
@@ -311,6 +350,7 @@ def downlink(conn, stop, play):
         reply_bytes += length
         reply_rate = rate
         last = time.time()
+        RECORDER.add_reply(pcm, rate)
         if ffplay and rate != player_rate:
             if player:
                 player.kill()
@@ -403,10 +443,15 @@ def main():
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--from-file", help="clip.pcm, or several comma-separated, played in order")
     ap.add_argument("--gap", type=float, default=4.0, help="seconds of silence between --from-file clips")
+    ap.add_argument("--lead", type=float, default=1.0, help="seconds of silence before the first --from-file clip")
     ap.add_argument("--duration", type=float)
     ap.add_argument("--no-play", action="store_true")
     ap.add_argument("--no-start", action="store_true", help="leave the session asleep (wake-word test)")
+    ap.add_argument("--record", help="save driver.wav / reply.wav / t0.txt here (with --from-file)")
+    ap.add_argument("--provider", choices=["gemini"],
+                    help="debug builds: open a Gemini session; stops if the session is anything else")
     args = ap.parse_args()
+    RECORDER.out = args.record
 
     if args.list:
         print("\n".join(list_mics()))
@@ -429,7 +474,7 @@ def main():
     uplink = Uplink()
     if args.from_file:
         paths = args.from_file.split(",")
-        feeder = lambda: feed_file(uplink, paths, stop, gap=args.gap)
+        feeder = lambda: feed_file(uplink, paths, stop, lead=args.lead, gap=args.gap)
     else:
         feeder = lambda: feed_mic(uplink, device, stop)
 
@@ -466,7 +511,19 @@ def main():
                         print("[bridge] speak now; press Enter to start a new turn, Ctrl+C to quit", flush=True)
                 if not args.no_start and not started_session:
                     started_session = True
+                    if args.provider:
+                        broadcast("provider", args.provider)
                     broadcast("voice", "start")
+                    if args.provider:
+                        # Quota guard (AGENTS.md): the newest session must be the one asked for.
+                        time.sleep(2)
+                        out = adb("logcat", "-d", "-s", "NovaVoice").stdout
+                        choices = re.findall(r"session_provider choice=([a-z_]+)", out)
+                        if not choices or choices[-1] != "gemini_live":
+                            broadcast("voice", "stop")
+                            print(f"QUOTA GUARD: session is {choices[-1] if choices else 'unknown'}, stopping", flush=True)
+                            stop.set()
+                            break
             time.sleep(0.2)
             if dead.is_set() or uplink.conn is None:
                 print("[bridge] app disconnected; reconnecting", flush=True)
@@ -488,6 +545,7 @@ def main():
         conn.close()
     for proc in LOGCAT:
         proc.kill()
+    RECORDER.save()
     print("[bridge] off", flush=True)
 
 

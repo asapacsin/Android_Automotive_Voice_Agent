@@ -174,7 +174,8 @@ def main():
         time.sleep(8)
         adb("logcat", "-c")
         start_session()
-        time.sleep(5)
+        # A first session from DEEP_IDLE: 5 s lost the first line on the GitHub emulator (S1).
+        time.sleep(12)
         for sc in scenarios:
             ok, failures, lines = run_scenario(sc, args.wait)
             results[sc["id"]].append(ok)

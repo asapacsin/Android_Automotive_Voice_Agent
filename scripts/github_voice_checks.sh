@@ -112,4 +112,33 @@ shot voice_end
 tool voice stop
 tool provider clear
 rm -f "$ev/scenarios_raw.txt"
+
+# ---- the review demo: the real app, driver audio over the host bridge, her replies recorded -----
+# Clips are the synthetic speech-harness lines. The bridge re-applies provider=gemini and stops if
+# the session is not gemini_live (quota guard). Its stdout carries transcripts: not kept.
+adb shell am force-stop com.novadrive.app
+app_up || true
+sleep 3
+S="tools/speech-harness/speech"
+clips="$S/help_gan_sha.pcm,$S/ctx_too_hot.pcm,$S/temp24.pcm,$S/nav_zhuhai.pcm,$S/pick_second.pcm,$S/music_on.pcm,$S/cancel.pcm,$S/volume_up.pcm"
+mark
+rec_start="$(date +%s.%N)"
+adb shell screenrecord --time-limit 180 --bit-rate 4000000 /sdcard/voice_demo.mp4 &
+rec2=$!
+python3 tools/speech-harness/host_audio_bridge.py --from-file "$clips" --lead 8 --gap 11 --duration 150 \
+  --no-play --provider gemini --record "$ev/demo_audio" >/dev/null 2>"$ev/bridge_err.txt" || true
+wait "$rec2" || true
+note "demo: provider=$(nova | grep -oE 'session_provider choice=[a-z_]+' | tail -1) tools=$(nova | grep -oE '^.*tool=[a-z_]+ ' | grep -oE 'tool=[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ') errors=$(count 'state=ERROR|_PROTOCOL_ERROR')"
+adb pull /sdcard/voice_demo.mp4 "$ev/voice_demo_screen.mp4" >/dev/null 2>&1 || true
+if [ -f "$ev/demo_audio/t0.txt" ] && [ -f "$ev/voice_demo_screen.mp4" ]; then
+  off="$(python3 -c "import sys; print(max(0.0, float(open(sys.argv[1]).read()) - float(sys.argv[2]) - 0.4))" "$ev/demo_audio/t0.txt" "$rec_start")"
+  ffmpeg -v error -y -i "$ev/voice_demo_screen.mp4" -itsoffset "$off" -i "$ev/demo_audio/driver.wav" -itsoffset "$off" -i "$ev/demo_audio/reply.wav" \
+    -filter_complex "[1:a]aresample=48000[d];[2:a]aresample=48000[r];[d][r]amix=inputs=2:normalize=0[a]" \
+    -map 0:v -map "[a]" -c:v copy -c:a aac -b:a 128k -shortest -movflags +faststart "$ev/voice_demo.mp4" \
+    && note "demo: voice_demo.mp4 written (audio offset ${off} s)" || note "demo: mux failed"
+  rm -f "$ev/voice_demo_screen.mp4"
+else
+  note "demo: no recording ($(tail -c 300 "$ev/bridge_err.txt" 2>/dev/null | tr '\n' ' '))"
+fi
+rm -f "$ev/bridge_err.txt"
 note "voice: done, override cleared"
