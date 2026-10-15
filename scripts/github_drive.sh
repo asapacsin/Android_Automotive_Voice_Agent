@@ -22,6 +22,7 @@ diagnose() {
   echo "::${level} title=drive ${stage}::amap_auth=[${auth:-none}] ${sha:-no SHA1Package line} app=[${calc:-none}] ${surface:-map surface attached} crash=[${fatal:-none}]"
 }
 stage() { echo "::notice title=drive stage::$1"; }
+trap 'echo "::error title=drive script failed::line ${LINENO} exit $?"' ERR
 
 adb install -r -g --abi arm64-v8a "$apk"
 
@@ -72,6 +73,12 @@ fi
 echo "map startup seen"
 stage "map up"
 
+# Record the real screen from here: route planning, the start, then the simulated drive.
+# screenrecord stops itself at its limit (180 s is its maximum).
+adb shell screenrecord --time-limit 180 --bit-rate 6000000 /sdcard/drive.mp4 &
+recorder=$!
+sleep 4
+
 adb shell am broadcast -a com.novadrive.app.DEBUG_TOOL -p com.novadrive.app \
   --es tool nav_route --es arg "$(cat /tmp/route-arg)" >/dev/null
 rm -f /tmp/route-arg
@@ -117,19 +124,16 @@ fi
 echo "navigation started"
 stage "navigation started"
 
-adb shell screenrecord --time-limit 24 --bit-rate 4000000 /data/local/tmp/drive.mp4
-adb pull /data/local/tmp/drive.mp4 "$root/drive-phone.mp4" >/dev/null
+wait "$recorder" || true
+sleep 3
+adb pull /sdcard/drive.mp4 "$root/drive-phone.mp4" >/dev/null
+test -s "$root/drive-phone.mp4"
 
+# Run 38721062441: the old side-panel step died in ffmpeg (exit 234 = -22, invalid argument).
+# The phone screen is the demo; only remux it so it plays in a browser.
 sudo apt-get update -q >/dev/null
-sudo apt-get install -y -q ffmpeg fonts-noto-cjk >/dev/null
-font="$(fc-list :lang=zh file | head -1 | cut -d: -f1)"
-test -n "$font"
-dur="$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$root/drive-phone.mp4")"
-ffmpeg -y -f lavfi -i "color=c=0x111111:s=640x960:d=${dur}" \
-  -vf "drawtext=fontfile=${font}:text='模拟用户':fontsize=52:fontcolor=white:x=48:y=80,drawtext=fontfile=${font}:text='帮我导航':fontsize=40:fontcolor=white:x=48:y=220,drawtext=fontfile=${font}:text='开始导航':fontsize=40:fontcolor=white:x=48:y=320,drawtext=fontfile=${font}:text='小诺正在这条路上开':fontsize=32:fontcolor=0xdddddd:x=48:y=460" \
-  -c:v libx264 -pix_fmt yuv420p "$root/drive-panel.mp4" >/dev/null
-ffmpeg -y -i "$root/drive-phone.mp4" -i "$root/drive-panel.mp4" \
-  -filter_complex "[0:v]scale=540:-2,pad=540:960:(ow-iw)/2:(oh-ih)/2:black[phone];[phone][1:v]hstack=inputs=2" \
-  -c:v libx264 -pix_fmt yuv420p -movflags +faststart "$root/drive.mp4" >/dev/null
+sudo apt-get install -y -q ffmpeg >/dev/null
+ffmpeg -v error -y -i "$root/drive-phone.mp4" -c copy -movflags +faststart "$root/drive.mp4" \
+  || cp "$root/drive-phone.mp4" "$root/drive.mp4"
 echo "drive video ready"
 diagnose "finished, video recorded" notice
