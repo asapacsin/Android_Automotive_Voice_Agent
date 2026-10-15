@@ -982,7 +982,7 @@ tests:
     release_blocking: true
     prerequisites: ["a session with no prior adjustment"]
     procedure: ["scenario S16, which restarts the app first"]
-    pass_criteria: ["follow_up kind=clarify", "no control_climate call"]
+    pass_criteria: ["she answers the turn (asks which, or says what she needs) - no silent drop", "no control_climate succeeds: a guessed call is refused by the AMBIGUOUS_REFERENT guard (SPEC-015 FZ-14); the removed follow_up kind=clarify log line is no longer the signal (updated 2026-10-15)"]
     evidence: ["2026-09-20: 「您是指温度还是风量呢？」", "STALE_BIND apk_digest mismatch"]
     related: [SPEC-006]
     last_run: {at: 2026-09-20, result: PASS}
