@@ -4,7 +4,7 @@ An Android voice assistant for driving. Speech goes to **Qwen-Omni Realtime with
 (the owner's own synthetic voice, cloned per model; stock Maia only as a typed-in fallback, owner
 2026-10-12), end-to-end speech-to-speech with function calling** (the product session since 2026-10-09,
 [ADR-017](DECISIONS/ADR-017-qwen-omni-realtime-end-to-end.md); the Gemini Live and Baidu stacks stay
-in the tree until ADR-017's gates pass, but no setting selects them) — there is no separate ASR or TTS. The map and turn-by-turn
+in the tree until ADR-017's gates pass, but no setting selects them (debug builds: an in-memory debug override for tests and demos, decided 2026-10-15)) — there is no separate ASR or TTS. The map and turn-by-turn
 navigation are the **Amap Navigation SDK embedded in our own Activity**. Locale `zh-CN`.
 
 ## Commands

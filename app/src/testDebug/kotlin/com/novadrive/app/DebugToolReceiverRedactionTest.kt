@@ -14,6 +14,27 @@ class DebugToolReceiverRedactionTest {
     }
 
     @Test
+    fun geminiSetupArgumentIsNeverLogged() {
+        val line = DebugToolReceiver.safeDebugArg("gemini_setup", "AIza-secret-key-value")
+        assertEquals("<redacted>", line)
+        assertFalse(line.contains("AIza"))
+    }
+
+    @Test
+    fun providerToolSetsAndClearsTheInMemoryOverride() {
+        try {
+            assertEquals("override=gemini_live next_session", DebugToolReceiver.provider("gemini"))
+            assertEquals(true, DebugProviderOverride.geminiRequested)
+            assertEquals("usage: provider:gemini|clear", DebugToolReceiver.provider("qwen"))
+            assertEquals(true, DebugProviderOverride.geminiRequested)
+            assertEquals("override=none next_session", DebugToolReceiver.provider("clear"))
+            assertEquals(false, DebugProviderOverride.geminiRequested)
+        } finally {
+            DebugProviderOverride.set(false)
+        }
+    }
+
+    @Test
     fun dispatchArgumentValuesAreNotLogged() {
         val line = DebugToolReceiver.redactDispatchArg("play_music:title=晴天,artist=周杰伦,query=放周杰伦的晴天")
         assertEquals("play_music:title,artist,query", line)

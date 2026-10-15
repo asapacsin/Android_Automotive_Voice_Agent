@@ -53,6 +53,10 @@ class DebugToolReceiver : BroadcastReceiver() {
                 "voice" -> voice(context, arg)
                 // Reads filesDir/qwen_setup.txt (workspace, then key). The broadcast arg is never the secret.
                 "qwen_setup" -> applyQwenSetup(context)
+                // Reads filesDir/gemini_setup.txt (the key). The broadcast arg is never the secret.
+                "gemini_setup" -> applyGeminiSetup(context)
+                // In-memory, debug-only provider override (2026-10-15): `gemini` | `clear`; next session.
+                "provider" -> provider(arg)
                 // Host audio bridge (PC mic in, PC speakers out): arg `on:<port>` | `off` | `status`.
                 "bridge" -> when {
                     arg.startsWith("on") -> {
@@ -376,10 +380,38 @@ class DebugToolReceiver : BroadcastReceiver() {
         }
     }
 
+    /**
+     * Debug-only. A one-line file in the app's files dir: the Gemini API key. Stored with consent
+     * through the Gemini settings repository; never in the broadcast, never logged; the file is deleted.
+     */
+    private fun applyGeminiSetup(context: Context): String {
+        val file = java.io.File(context.filesDir, "gemini_setup.txt")
+        if (!file.isFile) return "missing"
+        return try {
+            val key = file.readLines().firstOrNull()?.trim().orEmpty()
+            val repo = GeminiSettingsRepository(context.applicationContext)
+            repo.save(repo.loadSettings().copy(consentAccepted = true), CredentialUpdate.Replace(key))
+            if (repo.debugOverrideProblem() == null) "applied" else "rejected"
+        } catch (e: IllegalArgumentException) {
+            e.message?.takeIf { it.startsWith("GEMINI_") } ?: "invalid"
+        } catch (_: Exception) {
+            "failed"
+        } finally {
+            file.delete()
+        }
+    }
+
     companion object {
+        /** `provider` tool: sets or clears the in-memory override; anything else changes nothing. */
+        internal fun provider(arg: String): String = when (arg.trim().lowercase()) {
+            "gemini" -> { DebugProviderOverride.set(true); "override=gemini_live next_session" }
+            "clear" -> { DebugProviderOverride.set(false); "override=none next_session" }
+            else -> "usage: provider:gemini|clear"
+        }
+
         /** Broadcast arguments that must never reach the log. */
         internal fun safeDebugArg(tool: String?, arg: String): String = when {
-            tool == "qwen_setup" -> "<redacted>"
+            tool == "qwen_setup" || tool == "gemini_setup" -> "<redacted>"
             tool == "preflight" -> "<query>" // a destination is close to an address: never in the log
             tool == "nav_desk_origin" || arg.startsWith("@") -> "<redacted>"
             tool == "dispatch" -> redactDispatchArg(arg)

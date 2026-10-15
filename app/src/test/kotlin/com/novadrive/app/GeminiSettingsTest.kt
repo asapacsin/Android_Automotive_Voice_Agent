@@ -135,6 +135,66 @@ class GeminiSettingsTest {
         assertEquals(0, azureCalls)
     }
 
+    // ---- debug provider override (decided by the decider, 2026-10-15) ----
+
+    @Test
+    fun releaseAppIgnoresTheDebugOverride() {
+        for (pref in VoiceProviderPreference.entries) {
+            val s = GeminiAppSettings(provider = pref, consentAccepted = true)
+            assertEquals(VoiceProviderId.QWEN, VoiceProviderChoice.resolveForSession(s, true, debuggable = false, geminiOverride = true))
+        }
+    }
+
+    @Test
+    fun debugAppWithoutOverrideIsQwenAsToday() {
+        val s = GeminiAppSettings(provider = VoiceProviderPreference.GEMINI, consentAccepted = true)
+        assertEquals(VoiceProviderId.QWEN, VoiceProviderChoice.resolveForSession(s, true, debuggable = true, geminiOverride = false))
+        assertEquals(VoiceProviderChoice.resolve(s, true), VoiceProviderChoice.resolveForSession(s, true, true, false))
+    }
+
+    @Test
+    fun debugAppWithOverrideIsGemini() {
+        assertEquals(VoiceProviderId.GEMINI_LIVE, VoiceProviderChoice.resolveForSession(GeminiAppSettings(), false, debuggable = true, geminiOverride = true))
+    }
+
+    @Test
+    fun overrideWithoutGeminiKeyFailsWithGeminiCodeAndNeverOpensQwen() {
+        // The stored preference is QWEN, where configProblem passes silently: the override must not.
+        val stored = GeminiAppSettings(provider = VoiceProviderPreference.QWEN, consentAccepted = true)
+        assertNull(GeminiSettingsValidator.configProblem(stored, keyPresent = false))
+        assertEquals("GEMINI_API_KEY_MISSING", GeminiSettingsValidator.debugOverrideProblem(stored, keyPresent = false))
+        assertEquals("GEMINI_CONSENT_MISSING", GeminiSettingsValidator.debugOverrideProblem(GeminiAppSettings(), keyPresent = true))
+        assertNull(GeminiSettingsValidator.debugOverrideProblem(stored, keyPresent = true))
+        var qwenCalls = 0
+        val code = VoiceProviderChoice.startProblem(
+            VoiceProviderChoice.resolveForSession(stored, false, debuggable = true, geminiOverride = true),
+            qwen = { qwenCalls++; null },
+            gemini = { GeminiSettingsValidator.debugOverrideProblem(stored, keyPresent = false) },
+            azure = { null },
+        )
+        assertEquals("GEMINI_API_KEY_MISSING", code)
+        assertEquals(0, qwenCalls)
+        var qwenBuilt = false
+        val failure = runCatching {
+            sessionConfigFor(
+                VoiceProviderId.GEMINI_LIVE,
+                gemini = { GeminiSettingsValidator.configOrThrow(GeminiSettingsValidator.debugOverrideSettings(stored), "", "i") },
+                baidu = { error("baidu") },
+                qwen = { qwenBuilt = true; error("qwen") },
+            )
+        }.exceptionOrNull()
+        assertEquals("GEMINI_API_KEY_MISSING", failure?.message)
+        assertFalse(qwenBuilt)
+    }
+
+    @Test
+    fun overrideUsesTheHarnessModelEvenWhenTheStoredOneIsInvalid() {
+        val stored = GeminiAppSettings(consentAccepted = true, model = "not-a-model")
+        assertEquals(VoiceCatalog.geminiExperimentOrder.first(), GeminiSettingsValidator.debugOverrideSettings(stored).model)
+        assertNull(GeminiSettingsValidator.debugOverrideProblem(stored, keyPresent = true))
+        assertEquals("GEMINI_VOICE_INVALID", GeminiSettingsValidator.debugOverrideProblem(stored.copy(voice = "bad voice"), keyPresent = true))
+    }
+
     @Test
     fun configCodesMapToOneHonestSentence() {
         assertEquals("语音服务未配置：请在开发者设置里填写 Gemini 密钥。", GeminiSettingsValidator.screenMessage("GEMINI_API_KEY_MISSING"))
