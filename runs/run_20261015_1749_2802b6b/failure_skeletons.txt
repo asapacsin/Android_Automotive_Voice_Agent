@@ -1,0 +1,51 @@
+-- S1
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=2945 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=3443 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+-- S15
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   transcript_bubble_shown
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_turn_done status=completed calls=1 spoke=true dur_ms=2900 first_audio_ms=793 first_text_ms=793 gen_ms=1616 msgs=19 max_gap_ms=628
+   state=LISTENING err=-
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=44347 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true
+   gemini_resumption_update resumable=true

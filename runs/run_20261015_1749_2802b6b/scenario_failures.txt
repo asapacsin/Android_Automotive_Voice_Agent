@@ -1,0 +1,2 @@
+          expected /tool=control_climate/
+          forbidden /^tool=/ matched (text omitted)
