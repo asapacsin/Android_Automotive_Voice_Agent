@@ -1,0 +1,25 @@
+          expected /tool=control_climate/
+          expected /tool=control_climate/
+          expected /nav_saved_place slot=HOME set=true/
+          expected /nav_resolve_candidates count=1/
+          expected /tool=control_music/
+          expected /MEDIA_LIBRARY_UNSUPPORTED/
+          expected /tool=navigate_to/
+          expected /nav_resolve_candidates count=/
+          expected /tool=choose_navigation_option/
+          expected /tool=exit_navigation_mode/
+          expected /tool=query_live_info/
+          expected /live_info kind=weather/
+          expected /tool=control_climate/
+          expected /tool=set_speech_output|listening .*SILENT_WAIT/
+          expected /listening .*->SLEEP|SLEEP/
+          expected /tool=control_climate/
+          expected /tool=navigate_to/
+          expected /nav_resolve_candidates count=/
+          expected /TURN_DROP|flex_user_text|no_claim_made|tool=control_climate/
+          expected /follow_up=true kind=clarify/
+          expected /^tool=navigate_to/
+          expected /^tool=control_climate/
+          expected /^tool=describe_camera_view|TURN_DROP|no_claim_made/
+          expected /导航/
+          expected /音乐|空调|电话|摄像头|地图/
