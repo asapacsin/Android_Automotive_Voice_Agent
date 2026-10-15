@@ -69,6 +69,11 @@ jobs:
           sudo chown -R "$USER" /opt/android-sdk
           export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
           export ANDROID_HOME=/opt/android-sdk
+          # Run 38719315653 signed the APK with c5330c7c..., not the keystore installed in
+          # ~/.android: AGP looks in ANDROID_USER_HOME / ANDROID_PREFS_ROOT / ANDROID_SDK_HOME first.
+          echo "::notice title=android location env::$(env | grep -E '^ANDROID_(USER_HOME|PREFS_ROOT|SDK_HOME|EMULATOR_HOME|AVD_HOME)=' | tr '\n' ' ')"
+          unset ANDROID_PREFS_ROOT ANDROID_SDK_HOME
+          export ANDROID_USER_HOME="$HOME/.android"
           bash scripts/cloud_setup.sh
           sha1=$(keytool -exportcert -alias androiddebugkey -keystore "$HOME/.android/debug.keystore" -storepass android | openssl dgst -sha1 | awk '{print $2}')
           md5=$(keytool -exportcert -alias androiddebugkey -keystore "$HOME/.android/debug.keystore" -storepass android | openssl dgst -md5 | awk '{print $2}')
@@ -91,6 +96,12 @@ jobs:
           shape="length=${#key}"
           if printf '%s' "$key" | grep -Eq '^[0-9a-f]+$'; then shape="$shape lowercase-hex"; else shape="$shape not-lowercase-hex"; fi
           echo "::notice title=amap binding the app presents::package=${pkg} apk_sha1=${apk_sha1} key ${shape}"
+          stores="$(find / -name debug.keystore -not -path '/proc/*' 2>/dev/null | while read -r f; do printf '%s=%s ' "$f" "$(keytool -exportcert -alias androiddebugkey -keystore "$f" -storepass android 2>/dev/null | openssl dgst -sha1 | awk '{print substr($2,1,8)}')"; done)"
+          echo "::notice title=debug keystores on the runner::${stores}"
+          if [ "$apk_sha1" != "$sha1" ]; then
+            echo "::error title=apk not signed with the Amap-registered certificate::apk_sha1=${apk_sha1} expected=${sha1}"
+            exit 1
+          fi
 
       - name: Boot the emulator and record the drive
         uses: reactivecircus/android-emulator-runner@v2

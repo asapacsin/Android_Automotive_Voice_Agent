@@ -145,8 +145,10 @@ fetch_music() {
 
 install_keystore() {
   [ -n "${NOVA_DEBUG_KEYSTORE_B64:-}" ] || return 0
-  mkdir -p "$HOME/.android"
-  local target="$HOME/.android/debug.keystore"
+  # AGP reads ANDROID_USER_HOME before ~/.android (GitHub run 38719315653 signed with another key).
+  local dir="${ANDROID_USER_HOME:-$HOME/.android}"
+  mkdir -p "$dir"
+  local target="$dir/debug.keystore"
   local tmp
   tmp="$(mktemp)"
   if echo "$NOVA_DEBUG_KEYSTORE_B64" | base64 -d >"$tmp" 2>/dev/null && [ -s "$tmp" ]; then
