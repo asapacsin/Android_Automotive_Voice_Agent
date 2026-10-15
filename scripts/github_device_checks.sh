@@ -64,10 +64,26 @@ print(f"@{float(sys.argv[1]) + 0.02:.4f},{float(sys.argv[2]) + 0.015:.4f}")
 PY
 )"
 
+# Optional keys from Actions secrets (absent -> those checks are reported as skipped). Each is
+# written to a file, pushed, copied into the app's files dir and deleted; never printed.
+setup_key() { # env-name tool file
+  local value="${!1:-}"
+  if [ -z "$value" ]; then note "secret $1: not set"; return 1; fi
+  local tmp; tmp="$(mktemp)"; printf '%s\n' "$value" >"$tmp"
+  adb push "$tmp" "/data/local/tmp/$3" >/dev/null; rm -f "$tmp"
+  adb shell chmod 644 "/data/local/tmp/$3"
+  adb shell run-as com.novadrive.app cp "/data/local/tmp/$3" "files/$3"
+  adb shell rm -f "/data/local/tmp/$3"
+  tool "$2" x; sleep 2
+  note "secret $1: set, $2 -> $(result_of "$2")"
+}
+
 # ---- dispatch rows -------------------------------------------------------------------------
 mark
 app_up && note "app: map up" || note "app: map did not come up"
 shot app_start
+web_key=0; setup_key AMAP_WEB_KEY amap_web_setup amap_web_setup.txt && web_key=1 || true
+gemini_key=0; setup_key GEMINI_API_KEY gemini_setup gemini_setup.txt && gemini_key=1 || true
 tool dispatch "navigate_to:destination=回家"; sleep 4
 note "PLACE-UNSET-001: navigate_to 回家 before a home is saved -> $(result_of dispatch) asks_for_address=$(nova | grep 'debug_tool tool=dispatch ' | tail -1 | grep -q '地址' && echo yes || echo no)"
 tool dispatch "save_place:slot=home,address=珠海站"; sleep 8
@@ -96,9 +112,10 @@ wait_for "nav_calc_success" 90 && note "NAV: route calculated" || note "NAV: rou
 shot nav_route_preview
 tool nav_start emulator:50
 wait_for "nav_started" 30 && note "NAV: navigation started (emulator 50 km/h)" || note "NAV: navigation did not start"
-sleep 10; shot nav_t10
-sleep 10; shot nav_t20
-sleep 15; shot nav_t35
+view() { tool nav_view_state x; sleep 1; note "P58 view $1: $(nova | grep 'debug_tool tool=nav_view_state ' | tail -1 | grep -oE 'naviMode=[a-z_0-9]+ bearing=[0-9.-]+ tilt=[0-9.-]+')"; }
+sleep 10; shot nav_t10; view t10
+sleep 10; shot nav_t20; view t20
+sleep 15; shot nav_t35; view t35
 tool nav_overview overview; sleep 3; shot nav_overview
 note "NAV-UI-007: overview -> $(result_of nav_overview)"
 sleep 5
@@ -107,7 +124,7 @@ note "NAV-UI-007: lock -> $(result_of nav_lock)"
 i=0
 while [ "$i" -lt 60 ]; do
   if nova | grep -q "nav_stopped"; then break; fi
-  if [ $((i % 6)) -eq 0 ]; then shot "nav_drive_$((i * 5))s"; fi
+  if [ $((i % 6)) -eq 0 ]; then shot "nav_drive_$((i * 5))s"; view "drive_$((i * 5))s"; fi
   i=$((i + 1)); sleep 5
 done
 wait "$recorder" || true

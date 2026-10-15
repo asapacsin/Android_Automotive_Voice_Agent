@@ -40,6 +40,8 @@ class DebugToolReceiver : BroadcastReceiver() {
                 }
                 "nav_overview" -> navOverview()
                 "nav_lock" -> navLock()
+                "nav_view_state" -> NavigationHostGateway.current()?.debugViewState() ?: "no live map host"
+                "amap_web_setup" -> applyAmapWebSetup(context)
                 "climate" -> climate(arg)
                 "wake" -> wake(context, arg)
                 // Cuts the realtime socket as a lost signal would, so recovery can be a scenario
@@ -358,6 +360,23 @@ class DebugToolReceiver : BroadcastReceiver() {
      * Debug-only. A two-line file in the app's files dir: workspace id, then the API key.
      * The broadcast never carries either value, and neither is logged. The file is deleted.
      */
+    /** Same pattern as qwen_setup: the Amap web-service key from a pushed file, which is deleted. */
+    private fun applyAmapWebSetup(context: Context): String {
+        val file = java.io.File(context.filesDir, "amap_web_setup.txt")
+        if (!file.isFile) return "missing"
+        return try {
+            val key = file.readLines().firstOrNull()?.trim().orEmpty()
+            if (key.isEmpty()) return "invalid"
+            val repo = AmapSettingsRepository(context.applicationContext)
+            repo.save(CredentialUpdate.Replace(key))
+            if (repo.isConfigured()) "applied" else "rejected"
+        } catch (_: Exception) {
+            "failed"
+        } finally {
+            file.delete()
+        }
+    }
+
     private fun applyQwenSetup(context: Context): String {
         val file = java.io.File(context.filesDir, "qwen_setup.txt")
         if (!file.isFile) return "missing"
@@ -411,7 +430,7 @@ class DebugToolReceiver : BroadcastReceiver() {
 
         /** Broadcast arguments that must never reach the log. */
         internal fun safeDebugArg(tool: String?, arg: String): String = when {
-            tool == "qwen_setup" || tool == "gemini_setup" -> "<redacted>"
+            tool == "qwen_setup" || tool == "gemini_setup" || tool == "amap_web_setup" -> "<redacted>"
             tool == "preflight" -> "<query>" // a destination is close to an address: never in the log
             tool == "nav_desk_origin" || arg.startsWith("@") -> "<redacted>"
             tool == "dispatch" -> redactDispatchArg(arg)

@@ -105,6 +105,9 @@ jobs:
 
       - name: Boot the emulator and run the device checks
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          AMAP_WEB_KEY: ${{ secrets.AMAP_WEB_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         with:
           api-level: 34
           target: google_apis

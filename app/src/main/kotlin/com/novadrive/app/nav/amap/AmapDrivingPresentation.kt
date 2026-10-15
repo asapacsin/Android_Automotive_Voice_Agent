@@ -71,6 +71,22 @@ internal object AmapDrivingPresentation {
             true
         }.getOrDefault(false)
 
+    /**
+     * Debug diagnostics (P58): the view's navigation mode and the map camera, numbers only - no
+     * position. "car_up" with a bearing that follows the road is heading-up; bearing 0 while the
+     * car turns is north-up.
+     */
+    fun viewState(naviView: AMapNaviView, navigating: Boolean): String = runCatching {
+        val mode = when (naviView.naviMode) {
+            AMapNaviView.CAR_UP_MODE -> "car_up"
+            AMapNaviView.NORTH_UP_MODE -> "north_up"
+            else -> "other_${naviView.naviMode}"
+        }
+        val camera = naviView.map?.cameraPosition
+        "naviMode=$mode bearing=${camera?.bearing?.let { "%.0f".format(java.util.Locale.US, it) }} " +
+            "tilt=${camera?.tilt?.let { "%.0f".format(java.util.Locale.US, it) }} navigating=$navigating"
+    }.getOrElse { "failed=${it.javaClass.simpleName}" }
+
     fun listener(onExit: () -> Unit): AMapNaviViewListener = ExitForwardingListener(onExit)
 
     private fun enableLiveTraffic(navi: AMapNavi) {

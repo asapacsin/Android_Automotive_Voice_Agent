@@ -728,6 +728,9 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         return AmapDrivingPresentation.showOverview(naviView)
     }
 
+    /** Debug diagnostics (P58); see [AmapDrivingPresentation.viewState]. */
+    fun debugViewState(): String = AmapDrivingPresentation.viewState(naviView, isNavigating)
+
     fun resumeTracking(): Boolean {
         if (!isNavigating) return false
         return AmapDrivingPresentation.resumeTracking(naviView)

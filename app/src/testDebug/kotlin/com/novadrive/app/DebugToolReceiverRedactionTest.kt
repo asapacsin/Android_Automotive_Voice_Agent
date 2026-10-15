@@ -14,6 +14,13 @@ class DebugToolReceiverRedactionTest {
     }
 
     @Test
+    fun amapWebSetupArgumentIsNeverLogged() {
+        val line = DebugToolReceiver.safeDebugArg("amap_web_setup", "0123456789abcdef0123456789abcdef")
+        assertEquals("<redacted>", line)
+        assertFalse(line.contains("0123456789abcdef"))
+    }
+
+    @Test
     fun geminiSetupArgumentIsNeverLogged() {
         val line = DebugToolReceiver.safeDebugArg("gemini_setup", "AIza-secret-key-value")
         assertEquals("<redacted>", line)
