@@ -71,6 +71,19 @@ def start_session():
         sys.exit(3)
 
 
+def wait_idle(timeout=20):
+    """Until her newest state line is LISTENING: a reply still playing from the previous
+    scenario must not land in this one's window (S15 after S14, GitHub emulator 2026-10-15)."""
+    end = time.time() + timeout
+    while time.time() < end:
+        out = adb("logcat", "-d", "-s", "NovaVoice").stdout
+        states = re.findall(r"\bstate=([A-Z_]+)", out)
+        if not states or states[-1] == "LISTENING":
+            return True
+        time.sleep(1)
+    return False
+
+
 def push_clip(name):
     local = os.path.join(CLIPS, name + ".pcm")
     if not os.path.isfile(local):
@@ -117,6 +130,7 @@ def run_scenario(sc, wait):
         missing = push_clip(clip)
         if missing:
             return False, [missing], []
+    wait_idle()
     marker = f"scenario_marker_{sc['id']}_{int(time.time() * 1000)}"
     # A log line of our own is the scenario boundary: reading the whole buffer would let one
     # scenario pass on the previous one's evidence, which is the classic way a suite like this
@@ -180,7 +194,8 @@ def main():
             ok, failures, lines = run_scenario(sc, args.wait)
             results[sc["id"]].append(ok)
             if not ok:
-                details[sc["id"]] = (failures, lines[-25:])
+                kept = [ln for ln in lines if "gemini_resumption_update" not in ln]
+                details[sc["id"]] = (failures, kept[-60:])
             print(f"  {'PASS' if ok else 'FAIL'}  {sc['id']:5} {sc['utterance']}", flush=True)
             if not ok:
                 for failure in failures:
