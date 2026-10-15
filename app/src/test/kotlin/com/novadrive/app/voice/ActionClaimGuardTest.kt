@@ -487,6 +487,23 @@ class ActionClaimGuardTest {
     }
 
     @Test
+    fun mentioningNavigationIsNotItselfACarAction() {
+        // Tryout u_barge: 「等一下」 got a 13-character reply logged noun=导航 verb=导航,
+        // with none of the action words listed before 导航. The reply was dropped and the
+        // driver heard the 没听清 correction. A mention is not an action.
+        assertNull(ActionClaimGuard.carActionClaimMatch("好的，导航继续。"))
+        assertNull(ActionClaimGuard.carActionClaimMatch("好的，你说，导航还在。"))
+        assertNull(ActionClaimGuard.carActionClaim("好的，导航继续。"))
+        assertFalse(ActionClaimGuard.claimsDone("好的，导航继续。"))
+        // Progress or another verb still claims a navigation that no tool ran.
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("导航到家。正在搜索。"))
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("已取消导航。"))
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("已经帮你导航到家了。"))
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("导航好了。"))
+        assertTrue(ActionClaimGuard.claimsDone("现在导航已退出。"))
+    }
+
+    @Test
     fun anEnumerationThatPromisesOrClaimsToActIsAClaim() {
         // Review 2026-10-09: the two-group enumeration exemption let these through.
         assertNotNull(ActionClaimGuard.carActionClaimMatch("空调、车窗我都帮你打开。"))

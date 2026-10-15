@@ -97,6 +97,10 @@ Rules:
   「才不帮你开」 after the window opened is forbidden. A style that is not offered is declined, never
   mapped to the nearest one.
 - **B8.** `control_window`, `control_seat`, `run_scenario`, `set_speaking_style` are repeat-sensitive.
+- **B9.** (P57, 2026-10-13) 「我这边」「我这侧」「我这一侧」「我这半边」, when this turn names no other
+  window, is the driver window. `ToolCallGuards.driverSideWindow` rewrites any other `control_window`
+  target to `driver` before the handler runs. A transcript that still belongs to the previous turn
+  is not used. A scenario step is not rewritten.
 
 ## Failure behaviour
 

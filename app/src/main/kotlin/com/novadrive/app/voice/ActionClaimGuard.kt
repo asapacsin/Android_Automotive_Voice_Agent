@@ -616,8 +616,27 @@ class ActionClaimGuard {
          */
         fun describesCarAction(reply: String): Boolean =
             !refuses(reply) && !isMediaRefusalOnly(reply) && (
-                (DEVICE_NOUNS.any { it in reply } && ACTION_WORDS.any { it in maskCompounds(reply) }) || pairClaimWords(reply) != null
+                (DEVICE_NOUNS.any { it in reply } && matchedAction(reply) != null) || pairClaimWords(reply) != null
             )
+
+        /**
+         * 「导航」 is both a device noun and an action word. A reply that only mentions it
+         * (tryout `u_barge`, 13 characters, logged `noun=导航 verb=导航` with no earlier action
+         * word) was dropped as a car action, and the driver heard the 「没听清」 correction
+         * several seconds later. It counts as the action only together with progress or a
+         * promise. Any other action word still counts on its own.
+         */
+        private val SELF_NAMED_ACTIONS = setOf("导航")
+        private val NAV_PROGRESS = listOf(
+            "已", "正在", "为你", "为您", "马上", "这就", "帮你", "帮您", "给你", "给您", "好了",
+        )
+
+        private fun matchedAction(reply: String): String? {
+            val masked = maskCompounds(reply)
+            ACTION_WORDS.firstOrNull { it in masked && it !in SELF_NAMED_ACTIONS }?.let { return it }
+            val self = ACTION_WORDS.firstOrNull { it in masked && it in SELF_NAMED_ACTIONS } ?: return null
+            return self.takeIf { NAV_PROGRESS.any { mark -> mark in reply } }
+        }
 
         private fun isNavigationResult(output: String): Boolean =
             output.contains("\"tool\":\"navigate_to\"") ||
@@ -676,7 +695,7 @@ class ActionClaimGuard {
 
         fun claimsDone(reply: String): Boolean =
             !declines(reply) && !isMediaRefusalOnly(reply) && (
-                (DONE_WORDS.any { it in reply } && ACTION_WORDS.any { it in maskCompounds(reply) }) || pairClaimWords(reply) != null
+                (DONE_WORDS.any { it in reply } && matchedAction(reply) != null) || pairClaimWords(reply) != null
             )
 
         /**
@@ -716,11 +735,13 @@ class ActionClaimGuard {
                 pairClaimWords(reply)?.let { (noun, verb) -> return ClaimMatch("car_action", noun, verb) }
             }
             if (describesCarAction(reply)) {
-                return ClaimMatch(
-                    "car_action",
-                    DEVICE_NOUNS.first { it in reply },
-                    ACTION_WORDS.first { it in maskCompounds(reply) },
-                )
+                matchedAction(reply)?.let { verb ->
+                    return ClaimMatch(
+                        "car_action",
+                        DEVICE_NOUNS.first { it in reply },
+                        verb,
+                    )
+                }
             }
             if (claimsDone(reply)) {
                 CONTROL_VERBS.firstOrNull { it in maskCompounds(reply) }?.let { return ClaimMatch("done_claim", null, it) }
