@@ -585,7 +585,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: FAIL
+    status: PASS
     release_blocking: true
     prerequisites: ["NAV-UI-002 setup"]
     procedure:
@@ -596,10 +596,18 @@ tests:
       - "STALE_BIND apk_digest mismatch"
       - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t0_after_start.png compass 北 at left"
       - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t2_plus_23s.png compass 北 at bottom; heading-up, not frozen north-up"
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:9462f47ca7654ba6780a4dc6b2ef4df6473611b4ac1977c85eedfcba6af5b107
+      registry_digest: sha256:eff6f3ff2af443c9ab1a14e0b5df1b5ce4f9a12e85ed0bb94df04aacaf7a9fc4
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: 9cc4eae
     covers: [navigation.heading_up_map]
     related: [P26, SPEC-007]
-    last_run: {at: 2026-10-15, result: FAIL}
-    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): nav_presentation mode=driving naviMode=car_up logged, but the map stayed north-up: car heading west-north-west at nav_drive_90s.jpg and south at the end with 北 at the top (OPEN_PROBLEMS P58)"]
+    last_run: {at: 2026-10-15, result: PASS}
+    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): nav_presentation mode=driving naviMode=car_up logged, but the map stayed north-up: car heading west-north-west at nav_drive_90s.jpg and south at the end with 北 at the top (OPEN_PROBLEMS P58)", "2026-10-15 correction, GitHub run 38762173178 at ca1374d with the nav_view_state debug sample: naviMode=car_up throughout and the camera bearing follows travel (357, 39, 40, 11, 354, 245, 27 degrees); the compass labels rotate with it (docs/evidence/gha-2026-10-15-r3/nav_drive_0s.jpg 北 upper-left at 39, nav_drive_120s.jpg 北 on the right at 245) and the car arrow stays up. The earlier FAIL read a frame taken mid-turn, where Amap's smoothed rotation lags. P58 closed: not a defect."]
 
   - id: NAV-UI-004
     capability: navigation
@@ -677,6 +685,7 @@ tests:
       - "observe arrival lifecycle"
     pass_criteria: ["arrival callback observed", "app arrival handling executed", "session ends automatically", "no terminal regression"]
     evidence:
+      - "2026-10-15 re-run at ca1374d (GitHub run 38762173178, after the diagnostics-only change to AmapDrivingPresentation): same results - overview=true, lock=true, nav_proximity_arrival x1, nav_stopped reached=true reason=emulator_end, FATAL 0, ANR 0"
       - "2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006: nav_route -> nav_calc_success, nav_start emulator:50, drive to arrival without manual stop: nav_proximity_arrival x1, nav_stopped reached=true reason=emulator_end, FATAL 0, ANR 0; guidance plays x15 (Amap, emulator audio off); artifacts docs/evidence/gha-2026-10-15/nav_t10.jpg, nav_drive_90s.jpg, nav_end.jpg; full video ci/device-evidence runs/run_20261015_1524_aec4006/checks_drive.mp4"
       - "2026-09-21 (Windows desk): video D:/桌面/android_doc/nav_e2e_arrival_2026-09-21/nav_e2e_arrival.mp4 (not in the repo)"
       - "log:NovaVoice/nav_proximity_arrival@23:17:26 then nav_stopped reason=emulator_end; no nav_remain_regression"
@@ -697,7 +706,7 @@ tests:
     ended_by: natural
     regressions: []
     evidence_bind:
-      code_digest: sha256:408b1755f05a869cc672a311edd39f9a9604c3e5e67356e0461b43c99545659d
+      code_digest: sha256:bec04ac1eb830975f9340469fdeb6b3b034a2067170702602a1c05d76ff49e8e
       procedure_digest: sha256:5e87199d84803a2726797c2880dbfdf6544778a1c8b3f483471bef673ac2e54b
       registry_digest: sha256:1de4231f8a53d1ed465dc9975992be67243e49c335cee584700a4cde7d471df8
       harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
@@ -707,7 +716,7 @@ tests:
         "docs/evidence/gha-2026-10-15/nav_route_preview.jpg": sha256:a27f8e2749342c1f00517809d19708dc9ba90f1d86d7c81467c54fb7e945e9be
         "docs/evidence/gha-2026-10-15/nav_t10.jpg": sha256:43384110ee62d978ec5ead4e3fdf6b9ea3cd1c5b4171d1a9c6d9f71b7f773ca2
       apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: d4902d4
+      bound_commit: 9cc4eae
     covers: [navigation.arrival_lifecycle]
     related: [P26, P31, SPEC-007]
     last_run: {at: 2026-10-15, result: PASS}
@@ -793,6 +802,7 @@ tests:
       - "nav_stop"
     pass_criteria: ["overview shows the whole remaining route", "return restores lock-car"]
     evidence:
+      - "2026-10-15 re-run at ca1374d (GitHub run 38762173178, after the diagnostics-only change to AmapDrivingPresentation): same results - overview=true, lock=true, nav_proximity_arrival x1, nav_stopped reached=true reason=emulator_end, FATAL 0, ANR 0"
       - "STALE_BIND code_digest mismatch"
       - "log:NovaVoice/debug_tool tool=nav_overview result=overview=true"
       - "log:NovaVoice/nav_presentation mode=overview"
@@ -805,7 +815,7 @@ tests:
       - {criterion: lock_restored, required: true, observed: true, evidence: "log:NovaVoice/debug_tool nav_lock result=lock=true (GitHub run 38756802061) + artifact:docs/evidence/gha-2026-10-15/nav_lock_restored.jpg"}
     ended_by: manual
     evidence_bind:
-      code_digest: sha256:408b1755f05a869cc672a311edd39f9a9604c3e5e67356e0461b43c99545659d
+      code_digest: sha256:bec04ac1eb830975f9340469fdeb6b3b034a2067170702602a1c05d76ff49e8e
       procedure_digest: sha256:caa86bda4983aa479e911fc0789a5d30fa7917bae84e685a641cd7ce08f7e22b
       registry_digest: sha256:5873151f6f1e23984800a00b8662df2034c27d32253b8079246cd67a3df4946e
       harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
@@ -813,7 +823,7 @@ tests:
         "docs/evidence/gha-2026-10-15/nav_lock_restored.jpg": sha256:c32fbf35411918966f8a54b86672666a6c0cad87b8b92baf712ef4a148d4d91a
         "docs/evidence/gha-2026-10-15/nav_overview.jpg": sha256:4d39790f22a0d2b14660257a2338ae197077d0c8bd3a972503c7b9b953cc71bd
       apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: d4902d4
+      bound_commit: 9cc4eae
     covers: [navigation.return_to_tracking]
     related: [P26, SPEC-007]
     last_run: {at: 2026-10-15, result: PASS}

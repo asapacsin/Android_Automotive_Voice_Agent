@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-10-15T15:26:41",
+  "generated_at": "2026-10-15T16:01:42",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "d4902d4",
+    "commit": "9cc4eae",
     "branch": "claude/10-15",
-    "subject": "speech-harness README: gemini_setup's full result codes (review note)",
+    "subject": "Final tryout take for review (Gemini 3.1, simulated car): 17/19, two lines slow after the tool ran",
     "working_tree_clean": false,
-    "uncommitted_files": 12
+    "uncommitted_files": 3
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-10-15T14:25:02",
+    "collected_at": "2026-10-15T15:44:22",
     "total": {
       "tests": 313,
       "failures": 0,
@@ -118,11 +118,6 @@
       "id": "P55",
       "title": "10-13 bug: 「嗲一点」 changes neither the style on screen nor how she speaks",
       "status": "open. The persistence design is with the decider (AGENTS.md hard rule); a style scene"
-    },
-    {
-      "id": "P58",
-      "title": "The navigation map stays north-up while the car turns (car-up not applied on screen)",
-      "status": "OPEN, found 2026-10-15 by the GitHub emulator device checks (run 38756802061, API 34"
     }
   ],
   "tech_debt": [
@@ -192,8 +187,8 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "NAV-UI-003: FAIL: Vehicle heading rotates the navigation map",
-    "actionable_count": 116,
+    "NEXT_ACTION": "DEMO-TRYOUT-001: FAIL: A first-time driver in their own words (19 lines: chat, vague asks, a refusal, a change of mind, barge-in, mumble, call), graded per line",
+    "actionable_count": 115,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 28,
@@ -203,7 +198,7 @@
         "priority": 2,
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
-        "item": "NAV-UI-003",
+        "item": "DEMO-TRYOUT-001",
         "blocked_by": null
       },
       {
@@ -925,13 +920,6 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P56",
-        "blocked_by": null
-      },
-      {
-        "priority": 9,
-        "class": "unfinished or open problem",
-        "source": "OPEN_PROBLEMS.md",
-        "item": "P58",
         "blocked_by": null
       },
       {

@@ -2100,7 +2100,7 @@ The take before that failed for two other reasons, both fixed before this run. A
 
 ## P58 — The navigation map stays north-up while the car turns (car-up not applied on screen)
 
-**Status:** OPEN, found 2026-10-15 by the GitHub emulator device checks (run 38756802061, API 34
+**Status:** CLOSED 2026-10-15 - not a defect (see the correction at the end). Found the same day by the GitHub emulator device checks (run 38756802061, API 34
 x86_64 running the arm64 app, emulator navi at 50 km/h). Not yet seen on a phone.
 
 **Seen:** `nav_presentation mode=driving naviMode=car_up` is logged and
@@ -2119,3 +2119,9 @@ those causes.
 the drive and after the first turn; compare with GPS-driven navigation (`nav_start` without
 `emulator`). Amap Navi SDK documentation for `setNaviMode` / `AMapNaviViewOptions` to be checked
 before changing the code (rule 6).
+
+**Correction, same day (run 38762173178 at ca1374d):** the new `nav_view_state` debug sample shows
+`naviMode=car_up` throughout and a camera bearing that follows travel (357, 39, 40, 11, 354, 245,
+27 degrees); in the frames the compass labels rotate with it and the car arrow stays up
+(`docs/evidence/gha-2026-10-15-r3/`). The first reading used a frame taken mid-turn, where Amap's
+smoothed rotation lags the car. Car-up works on the API 34 emulator; NAV-UI-003 PASS.
