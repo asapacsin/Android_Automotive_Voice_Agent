@@ -1,0 +1,3 @@
+          expected /tool=control_climate/
+          expected /MEDIA_LIBRARY_UNSUPPORTED/
+          expected /follow_up=true kind=clarify/
