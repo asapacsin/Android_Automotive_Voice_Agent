@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-15T09:43:46",
+  "generated_at": "2026-10-15T09:45:36",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "f3dabaa",
+    "commit": "99fbc8f",
     "branch": "claude/10-15",
-    "subject": "Tryout demo video on claude/10-15: Gemini take, tryout_check PASS 19/19",
-    "working_tree_clean": false,
-    "uncommitted_files": 3
+    "subject": "TEST_STATUS: regenerate (registry validates again)",
+    "working_tree_clean": true,
+    "uncommitted_files": 0
   },
   "tests": {
     "available": true,
@@ -193,7 +193,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "A0: | A0 | G-1 … G-1f measured on the short route | measurement (emulator) | `GUIDANCE-EMU-001` | not earned |",
-    "actionable_count": 126,
+    "actionable_count": 127,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 28,
@@ -1009,6 +1009,13 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P56",
+        "blocked_by": null
+      },
+      {
+        "priority": 10,
+        "class": "stale state or harness defect",
+        "source": "state",
+        "item": "PROJECT_STATE.json",
         "blocked_by": null
       },
       {
