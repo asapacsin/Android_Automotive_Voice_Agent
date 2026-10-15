@@ -1753,7 +1753,7 @@ The toggle is experimental and off by default, so a driver on default settings i
 
 ## P47 — Steady background noise: Gemini never detects the start of speech
 
-**Status:** OPEN, found 2026-10-08 while recording the new-functions demo. PC emulator nova_api34, build e0ba94f (`claude/10-3`), Gemini VAD start LOW / end HIGH (4f857e9), host audio bridge as the microphone.
+**Status:** gate deadlock FIXED 2026-10-15 (JVM + live harness, see below); behaviour in a real noisy cabin still open. Found 2026-10-08 while recording the new-functions demo. PC emulator nova_api34, build e0ba94f (`claude/10-3`), Gemini VAD start LOW / end HIGH (4f857e9), host audio bridge as the microphone.
 
 **Seen:** a fan-like noise bed (brown + pink noise, steady) was mixed into the uplink from 3 s before the driver's line 「你喜欢什么颜色」 (synthetic speech, about −23 dBFS RMS). Gemini logged **no `ACTIVITY_START`** and the driver got no reply.
 
@@ -1771,6 +1771,34 @@ The app did capture the speech: `session_diag peak` rose to about 10 900 during 
 **Next:**
 1. Repeat with a real microphone and a real fan (DEMO_10-3 MIC-1, `HUMAN_REQUIRED`). Synthetic noise on the emulator is software-path evidence only.
 2. If it reproduces, compare start sensitivity HIGH with end HIGH on the same clips. Then decide between server VAD tuning and client-side activity signals (`activityStart`/`activityEnd` with automatic detection off) — that choice is an ADR.
+
+### Root cause found and fixed, 2026-10-15 (`claude/10-15`, planner)
+
+**Not the server.** `tools/gemini-live-probe/vad_noise_probe.py` streams the same recipe (fan-like
+brown+pink bed from t=0, a driver line at 3 s, speech -23 dBFS) straight to the API with the app's
+VAD settings: `ACTIVITY_START` 0.26-0.52 s after the onset at noise -32 and -40 dBFS, START LOW and
+HIGH, on gemini-3.1-flash-live-preview and gemini-3.8-live (6 sessions); she replied every time.
+
+**Our gate.** `SpeechUplinkGate` learned the noise floor only from frames it already judged quiet,
+starting from RMS 80 (threshold ~176). A bed already present at start (-32 dBFS = RMS ~820) made
+every frame "voiced": the gate opened on the fan and never closed. The JVM live harness now takes a
+continuous noise loop (`NOVA_LIVE_NOISE_PCM`, under every frame; `NOVA_LIVE_CLIPS` for the -23 dBFS
+clips): tryout at -32 dBFS, old gate - **0 `UPLINK_GATE_SEGMENT` in the whole session**, 11/19 turns
+opened. **Fix:** minimum statistics (R. Martin, IEEE TSAP 2001; the quietest frame of the last
+1.5 s is noise, since speech has gaps) raises the floor when even the quietest recent frame is
+"voiced"; trusted only after a full window so 1.2 s of voicing at session start stays speech
+(`SpeechUplinkGateTest.aClosedSegmentReportsItsShape`). `SpeechUplinkGateNoiseBedTest` (5; 3 fail
+with the fix removed).
+
+**Live, same harness, Gemini 3.1 (free), one run each:** quiet tryout 19/19 heard (19 segments, as
+before; u_can 3.0 s and u_call 8.3 s were model time after the tool call - identical gate timing to
+the passing run). Noise -40 dBFS (17 dB SNR): old gate 16 turns / 3 lines unanswered, new gate 18 /
+1. Noise -32 dBFS (9 dB SNR, raw noise): segments 0 -> 16-17, turns 11 -> 14-16; lines still missed
+and replies slower in noise (the gate's hangover keeps the uplink open longer).
+
+**Still open:** speech 9-17 dB over *unsuppressed* noise is harsher than the phone, which records
+with `VOICE_COMMUNICATION` and the platform `NoiseSuppressor` before the gate; slower replies in noise
+and the remaining misses are for the cabin test with a real mic (MIC-CABIN-001, DEMO_10-3 MIC-1).
 
 ### P45 addendum 3, 2026-10-08: the stall and the warm-up on build e0ba94f
 

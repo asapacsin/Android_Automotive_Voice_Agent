@@ -203,7 +203,11 @@ class LiveDemo(
     private val prefetchQueries: List<String> = listOf(COMMUTE_QUERY),
 ) : AutoCloseable {
     private val repoRoot = File(System.getProperty("nova.repo.root") ?: "..")
-    val timeline = LiveDemoTimeline(out, File(repoRoot, "tools/demo/recorder/clips"))
+    // NOVA_LIVE_CLIPS: another clip set with the same names, e.g. the noisy copies of P47.
+    val timeline = LiveDemoTimeline(
+        out,
+        System.getenv("NOVA_LIVE_CLIPS")?.takeIf { it.isNotBlank() }?.let(::File) ?: File(repoRoot, "tools/demo/recorder/clips"),
+    )
     val world = HengqinWorld()
     private val vehicle = SimulatedVehicleControl()
     private val music = SimulatedMusic()

@@ -113,6 +113,29 @@ class SpeechUplinkGate(
     /** Slow-moving estimate of the room. Starts optimistic; only quiet frames move it. */
     private var noiseRms = INITIAL_NOISE_RMS
 
+    /**
+     * P47: the quietest frame of the last [MIN_TRACK_MS] (minimum statistics, R. Martin, IEEE TSAP
+     * 2001: speech always has gaps, so the minimum over a few seconds is the noise). The EMA above
+     * learns only from frames already judged quiet, so a steady bed louder than the starting
+     * threshold (a fan at -32 dBFS is RMS ~820 against a threshold of ~176) was "speech" forever:
+     * the gate opened on it and never closed. When even the quietest recent frame is "voiced",
+     * the floor jumps to it. A monotonic deque keeps the minimum O(1) per frame.
+     */
+    private val minTrackFrames = maxOf(1, MIN_TRACK_MS / frameMs)
+    private val minWarmupFrames = maxOf(1, MIN_WARMUP_MS / frameMs)
+    private val minWindow = ArrayDeque<Pair<Long, Int>>()
+    private var frameIndex = 0L
+
+    private fun trackMinimum(rms: Int) {
+        frameIndex++
+        while (minWindow.isNotEmpty() && minWindow.last().second >= rms) minWindow.removeLast()
+        minWindow.addLast(frameIndex to rms)
+        while (minWindow.first().first <= frameIndex - minTrackFrames) minWindow.removeFirst()
+        if (frameIndex < minWarmupFrames) return
+        val quietest = minWindow.first().second
+        if (quietest >= voicedThreshold) noiseRms = quietest.toDouble()
+    }
+
     private var lastFinished: Segment? = null
 
     /** Voiced/unvoiced for the last [EVIDENCE_WINDOW_MS] of frames, whatever the gate's state. */
@@ -177,6 +200,8 @@ class SpeechUplinkGate(
     fun reset() {
         onCaptureInterrupted()
         noiseRms = INITIAL_NOISE_RMS
+        minWindow.clear()
+        frameIndex = 0
         silentMsWhileOpen = 0
     }
 
@@ -184,6 +209,7 @@ class SpeechUplinkGate(
     fun offer(frame: ByteArray): Decision {
         val rms = rms(frame)
         lastRms = rms
+        trackMinimum(rms)
         val peak = peakAbs(frame)
         val voiced = rms >= voicedThreshold
         recent.addLast(voiced)
@@ -303,6 +329,20 @@ class SpeechUplinkGate(
         const val NOISE_FACTOR = 2.2
 
         const val INITIAL_NOISE_RMS = 80.0
+
+        /**
+         * The minimum-statistics window (P47): longer than any gap-free stretch of speech, short
+         * enough that a fan already running at session start is learned before the first line
+         * (the noisy tryout's first line came 0.8 s in; a 3 s window let the gate stay open on the
+         * fan through it and the next one).
+         */
+        const val MIN_TRACK_MS = 1_500
+
+        /**
+         * The minimum is trusted only after a full window: 1.2 s of gap-free voicing right at
+         * session start (SpeechUplinkGateTest.aClosedSegmentReportsItsShape) must stay speech.
+         */
+        const val MIN_WARMUP_MS = MIN_TRACK_MS
         private const val NOISE_ADAPT = 0.05
 
         /**
