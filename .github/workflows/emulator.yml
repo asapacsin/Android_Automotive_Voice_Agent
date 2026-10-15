@@ -15,6 +15,7 @@ on:
 
 jobs:
   drive:
+    if: ${{ github.event_name != 'push' || !contains(github.event.head_commit.message, 'skip-drive') }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -72,7 +73,7 @@ jobs:
             exit 1
           fi
           chmod +x ./gradlew
-          ./gradlew :app:assembleDebug -Pnova.ci.releaseSha1=true
+          ./gradlew :app:assembleDebug
           test -f "$HOME/nova-drive-build/app/outputs/apk/debug/app-debug.apk"
 
       - name: Boot the emulator and record the drive

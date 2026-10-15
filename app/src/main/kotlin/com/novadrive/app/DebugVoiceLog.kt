@@ -8,8 +8,7 @@ object DebugVoiceLog {
     private var enabled = false
 
     fun init(context: Context) {
-        val debuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-        enabled = debuggable || context.getString(R.string.nova_force_voice_log).isNotEmpty()
+        enabled = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
     }
 
     val isEnabled: Boolean get() = enabled
