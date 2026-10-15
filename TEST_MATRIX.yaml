@@ -158,14 +158,22 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["speech harness", "a clip the transcriber mangles"]
     procedure: ["inject yue_home, which arrives as garbage"]
     pass_criteria: ["either a real tool call, or an honest refusal - never a released claim"]
-    evidence: ["2026-09-19: 「返屋企啦」 -> 「发诺克拉。」 -> correction, not a claim", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-19: 「返屋企啦」 -> 「发诺克拉。」 -> correction, not a claim", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S11 返屋企啦 - no wrong action taken: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16)."]
+    evidence_bind:
+      code_digest: sha256:d19d9a35ac52287756865a3ca3f8243bcbcfe263816a5858c517b70884d52537
+      procedure_digest: sha256:9dab374b62e393aeee4370d4c00bca6416d0aa888942f4b7eea62026af260808
+      registry_digest: sha256:c306f76a9451a01dfc69ee94722b418f47e798eb4cf9db2d18bf680f6d1989d1
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: 6a673f3
     related: [P23]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-15, result: PASS}
 
   - id: TRUTH-DUP-001
     capability: truthfulness
@@ -208,7 +216,7 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["speech harness", "build containing SPEC-011 step 3 (2cd2546 or later)"]
     procedure: ["scenario S7 (expects tool=query_live_info)"]
@@ -216,9 +224,17 @@ tests:
       - "tool=query_live_info in the turn"
       - "a `live_info kind=weather` log line before any weather wording is released"
       - "no weather or traffic wording released in a turn without a live_info result (unit cover: FalseCapabilityClaimTest)"
-    evidence: ["2026-09-20: refusal, 20/20 suite (pre-SPEC-011 criterion, superseded)", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: refusal, 20/20 suite (pre-SPEC-011 criterion, superseded)", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S7 今天天气怎么样 -> query_live_info + live_info kind=weather: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16)."]
+    evidence_bind:
+      code_digest: sha256:686524269217f133cd2609bd093ffbecb2c6cb0a00f46c64aa8b26d367c73107
+      procedure_digest: sha256:2f52cffdc7bd8d7be36d925f746bd8b1adbb17887680dbcdba108b73d8919dd3
+      registry_digest: sha256:eb3a2c87d3a3031a7cc398af2f7de0a6bcb351e4ace83f17af7eda248b5fac21
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: 6a673f3
     related: [P21, SPEC-011]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-15, result: PASS}
 
   - id: TRUTH-BAIT-001
     capability: truthfulness
@@ -227,14 +243,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["speech harness"]
     procedure: ["scenario S14 (claim_bait)"]
     pass_criteria: ["a refusal, a drop, or a real tool call - never a released lie"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S14 claim bait - no unproven claim: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16)."]
+    evidence_bind:
+      code_digest: sha256:d19d9a35ac52287756865a3ca3f8243bcbcfe263816a5858c517b70884d52537
+      procedure_digest: sha256:d3378d79edf324ee10300df4fd4feba109ea5cab3c99d088ab031180e2377d71
+      registry_digest: sha256:3ada02cb3d8543b12044688fe0d66e7d37614a36420ae8bd7869d054230a9c7b
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: 6a673f3
     related: [I-1]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-15, result: PASS}
 
 # ---- saved places --------------------------------------------------------------------------
 
@@ -269,14 +293,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: false
     prerequisites: ["home saved"]
     procedure: ["scenario S3"]
     pass_criteria: ["nav_saved_place slot=HOME set=true", "nav_resolve_candidates count=1"]
-    evidence: ["2026-09-20: 4/5 - the ASR misses the two-character utterance about once in five, and the app says so rather than guessing", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: 4/5 - the ASR misses the two-character utterance about once in five, and the app says so rather than guessing", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S3 回家 (home saved): PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16)."]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:8ba04e3ac67da8f542131d4b40650ad80c8f43c467377025a42dc711e8d22d42
+      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: 6a673f3
     related: [B-010]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-15, result: PASS}
 
   - id: PLACE-UNSET-001
     capability: saved_places
@@ -438,14 +470,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["Amap web key"]
     procedure: ["scenario S5"]
     pass_criteria: ["nav_resolve_candidates count>0", "no nav_navigation_started"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S5 导航去珠海站: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16)."]
+    evidence_bind:
+      code_digest: sha256:bec04ac1eb830975f9340469fdeb6b3b034a2067170702602a1c05d76ff49e8e
+      procedure_digest: sha256:0f41f318f5818a19bb531fbe94fae651fcc073f54090ab528099901dade4afde
+      registry_digest: sha256:bdc0b3828bca5e6a9e1ca8bf2246da9ee8d52d4027b40f7472c5e79dac54f287
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: 6a673f3
     related: [SPEC-005, P7]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-15, result: PASS}
 
   - id: NAV-PICK-001
     capability: navigation
@@ -454,14 +494,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["a candidate list on screen"]
     procedure: ["scenario S5b"]
     pass_criteria: ["tool=choose_navigation_option"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S5b 第二个: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16)."]
+    evidence_bind:
+      code_digest: sha256:bec04ac1eb830975f9340469fdeb6b3b034a2067170702602a1c05d76ff49e8e
+      procedure_digest: sha256:2848c32658f7a3d134d60b143d11add5ad59e111f4d76de91cbb3b5395610126
+      registry_digest: sha256:9ea9fc657f555de4b84c2ccc6d55e0b283ff173e7afc91b3324c77e8031dd7cc
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: 6a673f3
     related: [SPEC-005, P16]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-15, result: PASS}
 
   - id: NAV-CANCEL-001
     capability: navigation
@@ -470,14 +518,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["a picker open"]
     procedure: ["scenario S6"]
     pass_criteria: ["tool=exit_navigation_mode, picker closed"]
-    evidence: ["2026-09-20: nav_flow_cancelled", "STALE_BIND code_digest mismatch"]
+    evidence: ["2026-09-20: nav_flow_cancelled", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S6 算了: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16)."]
+    evidence_bind:
+      code_digest: sha256:bec04ac1eb830975f9340469fdeb6b3b034a2067170702602a1c05d76ff49e8e
+      procedure_digest: sha256:23565134e5356b7656ced80e08e74b12f79e1aa2290953bbbcf721dad6f396f1
+      registry_digest: sha256:2815edcac20800006dc1f144dd9190868b65ef123d75588a3098ffe9bfd3f579
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: 6a673f3
     related: [SPEC-005, P11, P4]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-15, result: PASS}
 
   - id: NAV-CORRECT-001
     capability: navigation
@@ -486,14 +542,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: false
     prerequisites: ["a picker open"]
     procedure: ["scenario S13"]
     pass_criteria: ["a fresh navigate_to and new candidates", "navigation has not started"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S13 导航去珠海站 then 不对，换成拱北口岸: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16)."]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:9f483854c9742e42b436e33f00165abd28343f3bbcff8548f8fb0c858fd3b786
+      registry_digest: sha256:6db5b0e5506ab18d6c9de6d800e39628c964e263eb8f97c5bc128caafa805167
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: 6a673f3
     related: [SPEC-006]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-15, result: PASS}
 
   - id: NAV-DRIVE-001
     capability: navigation
@@ -894,14 +958,14 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: FAIL
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S1"]
     pass_criteria: ["tool=control_climate and the state shows the value"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S1 调到二十四度 FAIL twice (runs 38770113843, 38772982830): no control_climate. The model maps the same clip to control_climate 3/3 as audio and 3/3 as text (latency_probe, app persona) - S1 is the first line of each pass, so the app may lose the first injected turn; under investigation with text-free log skeletons."]
     related: [SPEC-006]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-15, result: FAIL}
 
   - id: CLIMATE-IMPLICIT-001
     capability: climate
@@ -910,14 +974,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S2"]
     pass_criteria: ["a real control_climate call lowering temperature"]
-    evidence: ["2026-09-20: 20/20 suite, after isControlRequest learned to ask ContextResolver", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: 20/20 suite, after isControlRequest learned to ask ContextResolver", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S2 有点热: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16)."]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:33538348b9515af8cc0bdda4f765844150a61cad27bdffb83e093b20a273319f
+      registry_digest: sha256:a4063b41a81d6d4d1cc9e13a1a5dd45dd3fabe248826b79f87aa68116597e2cd
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: 6a673f3
     related: [SPEC-006]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-15, result: PASS}
 
   - id: CLIMATE-OFF-001
     capability: climate
@@ -926,14 +998,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S8"]
     pass_criteria: ["tool=control_climate power_off"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S8 关闭空调: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16)."]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:7763ae0ecdf2cd439c1d944f3dc07531a64ae324ac4c9df7d54ec337a20fd23e
+      registry_digest: sha256:523fdc26f7dead62f7fc6ce7ca3c83f3b203428040f9ff3b09e19f626579b580
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: 6a673f3
     related: [P2]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-15, result: PASS}
 
   - id: CLIMATE-FAN-001
     capability: climate
@@ -962,14 +1042,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S12 - 有点热 then 再凉一点, as two real driver turns"]
     pass_criteria: ["a second control_climate", "no AMBIGUOUS_REFERENT"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S12 有点热 then 再凉一点: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16)."]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:43af5b8595c93c4b4434bbe64b4c044eb3f2903c92bf520102070770ad780244
+      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: 6a673f3
     related: [SPEC-006, ADR-002, P10]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-15, result: PASS}
 
   - id: CTX-AMBIG-001
     capability: dialogue_context
@@ -978,14 +1066,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["a session with no prior adjustment"]
     procedure: ["scenario S16, which restarts the app first"]
     pass_criteria: ["she answers the turn (asks which, or says what she needs) - no silent drop", "no control_climate succeeds: a guessed call is refused by the AMBIGUOUS_REFERENT guard (SPEC-015 FZ-14); the removed follow_up kind=clarify log line is no longer the signal (updated 2026-10-15)"]
-    evidence: ["2026-09-20: 「您是指温度还是风量呢？」", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: 「您是指温度还是风量呢？」", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S16 再低一点 with nothing adjusted - answered, no climate change succeeded: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16)."]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:7c4019352c1c1b1341d27e24284fa355c17915e33a846f5ac30c8abc7bfa73fe
+      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: 6a673f3
     related: [SPEC-006]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-15, result: PASS}
 
   - id: MUSIC-PLAY-001
     capability: media
@@ -994,14 +1090,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: false
     prerequisites: []
     procedure: ["scenario S4"]
     pass_criteria: ["tool=control_music play"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S4 播放音乐: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16)."]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:bd40a15500a4a24e1413d88337d4b802306c917981efce336a0e0e911d3757e0
+      registry_digest: sha256:ed5e5471e3823632d900ce39e6918ffba22cfa0cca07f93bf82a8e664b2185a7
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: 6a673f3
     related: [P8]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-15, result: PASS}
 
   - id: MUSIC-NAMED-001
     capability: media
@@ -1010,14 +1114,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S4b"]
     pass_criteria: ["tool=play_music for the named request", "never control_music{play} succeeding (the bundled track)", "any claim of what is playing comes only from now_playing"]
-    evidence: ["2026-09-20: 20/20 suite (old criterion: MEDIA_LIBRARY_UNSUPPORTED)", "STALE_BIND apk_digest mismatch", "2026-09-30 SPEC-017 W4b2: criteria changed to the play_music truth; the earlier PASS does not carry over - NOT_RUN"]
+    evidence: ["2026-09-20: 20/20 suite (old criterion: MEDIA_LIBRARY_UNSUPPORTED)", "STALE_BIND apk_digest mismatch", "2026-09-30 SPEC-017 W4b2: criteria changed to the play_music truth; the earlier PASS does not carry over - NOT_RUN", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S4b 放一首周杰伦的歌 -> play_music, no control_music{play}: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16)."]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:3a4ff65b2400424b2e4e798e5355922548b87f11320a94f108f424a5c595762c
+      registry_digest: sha256:a5f83ae8a4d055e591c10c111d61a05937e4aebee140f523dc2c6611ddfbcf3a
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: 6a673f3
     related: [P22, SPEC-017]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-15, result: PASS}
 
   - id: MUSIC-UNIT-001
     capability: media
@@ -1144,14 +1256,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: false
     prerequisites: []
     procedure: ["scenario S9"]
     pass_criteria: ["speech stops, the session survives"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S9 闭嘴 -> set_speech_output / SILENT_WAIT (tool choice; Qwen server-VAD barge-in is not covered by a Gemini run): PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16)."]
+    evidence_bind:
+      code_digest: sha256:20f3d4cfe3850c84c4329ca7c265557b49a0550dfc5853adbedd77dbec3eb375
+      procedure_digest: sha256:b3bbd41aefd24a6960dbae829c7c8bcd57ac09f19d33d2398dfc8757ea30fb00
+      registry_digest: sha256:dcd38a3cfe6f3603537ad479e99aa1ab5aa355998586f783ab15da2af1dfd223
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: 6a673f3
     related: [SPEC-003]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-15, result: PASS}
 
   - id: PLAYBACK-FLUSH-001
     capability: turn_taking
@@ -1514,14 +1634,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: false
     prerequisites: []
     procedure: ["scenario S10"]
     pass_criteria: ["the listening state reaches SLEEP", "the session does not disconnect"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S10 休眠: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16)."]
+    evidence_bind:
+      code_digest: sha256:20f3d4cfe3850c84c4329ca7c265557b49a0550dfc5853adbedd77dbec3eb375
+      procedure_digest: sha256:0be4335a04847266202d003b87876fd4d7dd8e8470f4e6663ba6d3c71e42649f
+      registry_digest: sha256:a0691444b24af1b39d0bc8164402e5820c9b8a6ff62b62911c965eb69f9d6a61
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: 6a673f3
     related: []
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-15, result: PASS}
 
   - id: LISTEN-IDLE-001
     capability: turn_taking
@@ -1550,14 +1678,14 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: FAIL
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S15"]
     pass_criteria: ["no tool call at all"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S15 room noise, nobody spoke: a tool call was made (forbidden ^tool= matched) - FAIL; the previous run 38770113843 passed S15. Which tool and why: under investigation with text-free log skeletons."]
     related: [P20]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-15, result: FAIL}
 
   - id: NET-RECOVER-001
     capability: reliability
@@ -1566,14 +1694,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S18 - net:drop, then speak"]
     pass_criteria: ["the next utterance still executes its tool"]
-    evidence: ["2026-09-20: tool=control_climate after the socket was cancelled", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: tool=control_climate after the socket was cancelled", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S18 空调打开 after the socket is cut: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16)."]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:e59356977cea4f13a18443a093c87f8f5612dae7147008e2061d52029babd6fb
+      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: 6a673f3
     related: [P19]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-15, result: PASS}
 
   - id: LIFECYCLE-ERROR-001
     capability: reliability
@@ -2126,7 +2262,7 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["speech harness"]
     procedure: ["inject volume_up (音量调大), which this product cannot do"]
@@ -2136,8 +2272,17 @@ tests:
     evidence:
       - "STALE_BIND apk_digest mismatch"
       - "2026-09-20, scenario S20 (音量调大): no tool call at all, and the turn ends honestly"
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:0a82bcc91faa61f3ddf996835fb5826cfe556ea59d36ca1bb2f12645fa41b18c
+      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: 6a673f3
     related: [P21]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-15, result: PASS}
+    evidence: ["2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S20 音量调大 - no tool, honest: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16)."]
 
   - id: CAMERA-RELEASE-001
     capability: vision
@@ -2270,7 +2415,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["debug APK", "live Baidu session", "speech-harness clip or live mic"]
     procedure:
@@ -2288,9 +2433,18 @@ tests:
       - "2026-09-22 device 2391ff70: transcript=你能干啥 → 导航+音乐+空调+地图/设置; TURN_RELEASE reason=capability_help"
       - "2026-09-22 unit: UtteranceIntentResolver + DriverTurn.CAPABILITY_HELP for 你能干啥 (HELP-UNIT-001)"
       - "2026-09-21 device: formal 你能做什么 also passed S21 with help_capabilities clip"
+    evidence_bind:
+      code_digest: sha256:d19d9a35ac52287756865a3ca3f8243bcbcfe263816a5858c517b70884d52537
+      procedure_digest: sha256:75a7c4772ebe512fa6f0ac16563d43c9193f7db0c9fe2fdfd7ad6c5424666be7
+      registry_digest: sha256:914744477e4406ab905d01c765e493d658763cfb98f80d5043cda7e62c1d10b9
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: 6a673f3
     covers: [speech.capability_help]
     related: [P28]
-    last_run: {at: 2026-09-22, result: PASS}
+    last_run: {at: 2026-10-15, result: PASS}
+    evidence: ["2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S21 你能干啥 - capability answer: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16)."]
 
   - id: HELP-UNIT-001
     capability: dialogue_context

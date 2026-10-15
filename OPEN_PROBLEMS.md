@@ -2125,3 +2125,16 @@ before changing the code (rule 6).
 27 degrees); in the frames the compass labels rotate with it and the car arrow stays up
 (`docs/evidence/gha-2026-10-15-r3/`). The first reading used a frame taken mid-turn, where Amap's
 smoothed rotation lags the car. Car-up works on the API 34 emulator; NAV-UI-003 PASS.
+
+## P59 — After 「算了」 cancels the route choice, the route stays drawn on the map
+
+**Status:** OPEN, seen 2026-10-15 in the real-app demo on the GitHub emulator (Gemini via the debug
+override, run 38772982830, `demo-videos/real_app_emulator_gemini_voice_2026-10-15.mp4` ~1:15 and
+~2:05). 「导航去珠海站」 then 「第二个」 showed the 3-route picker; 「算了」 got
+`exit_navigation_mode` and 「已取消导航选择」, the picker closed, but the selected route line and
+the destination flag stayed on the map afterwards. NAV-CANCEL-001 (S6) passes on the log
+(`exit_navigation_mode`), which does not look at the map.
+
+**Next:** check what `exit_navigation_mode` does in the AWAITING_ROUTE_SELECTION phase
+(`AmapNaviViewHost` / `EmbeddedNavigationController`): the route overlay may need clearing when no
+navigation was started. Add a screenshot check to the device run.

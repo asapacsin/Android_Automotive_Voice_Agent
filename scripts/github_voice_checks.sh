@@ -104,6 +104,25 @@ python3 tools/speech-harness/run_scenarios.py --wait 14 --provider gemini >"$ev/
 wait "$rec1" || true
 grep -E '^\s+(PASS|FAIL)\s+S[0-9]+b?\b|^\s+(ok|FLAKY|FAIL)\s+S[0-9]+' "$ev/scenarios_raw.txt" | sed -E 's/^\s+//' | awk '{print $1, $2}' >"$ev/scenarios.txt" || true
 grep -E '^\s+expected /|^\s+forbidden /' "$ev/scenarios_raw.txt" | sed -E "s/ matched .*/ matched (text omitted)/" >"$ev/scenario_failures.txt" || true
+# Text-free skeleton of each failing scenario's log tail: event names and ASCII key=value codes
+# only; any token with CJK text (transcripts, replies, place names) or digits-with-dots is dropped.
+python3 - "$ev/scenarios_raw.txt" >"$ev/failure_skeletons.txt" <<'PY' || true
+import re, sys
+text = open(sys.argv[1], encoding="utf-8", errors="replace").read()
+part = text.split("=== last failing log per scenario ===", 1)
+if len(part) == 2:
+    for line in part[1].splitlines():
+        if line.startswith("-- "):
+            print(line.split(":", 1)[0]); continue
+        keep = []
+        for tok in line.split():
+            if re.search(r"[\u3000-\u9fff\uff00-\uffef]", tok) or re.search(r"\d+\.\d{3,}", tok):
+                continue
+            if re.fullmatch(r"[A-Za-z_]+(=[A-Za-z0-9_.:\-\[\],%✓✗]{0,40})?", tok):
+                keep.append(tok)
+        if keep:
+            print("   " + " ".join(keep[:12]))
+PY
 note "voice: scenarios $(tr '\n' ' ' <"$ev/scenarios.txt")"
 note "voice: session errors=$(count 'state=ERROR|_PROTOCOL_ERROR') provider_lines=$(nova | grep -oE 'session_provider choice=[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ') quota_guard=$(grep -c 'QUOTA GUARD' "$ev/scenarios_raw.txt" 2>/dev/null || echo 0)"
 adb pull /sdcard/voice_part1.mp4 "$ev/voice_part1_phone.mp4" >/dev/null 2>&1 || true
