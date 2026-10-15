@@ -1,0 +1,1 @@
+          expected /tool=control_climate/
