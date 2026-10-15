@@ -229,6 +229,8 @@ drive shows it often.
 
 ## D-9 — The hold budget releases a reply whose words were never judged — **OPEN** (found 2026-09-29)
 
+**Owner 2026-10-15:** offered A/B options (P46 wait ~1.2 s for her reply; D-9 drop an unchecked reply; P48 code-written confirmations) and chose to leave this alone for now - current behaviour stays; not to be reopened without the owner.
+
 **Problem.** `DriverTurnPipeline` releases everything held once a turn holds more than 120 events
 (`DriverTurn.onHoldBudgetExceeded`), whatever the hold reason. That includes
 `AWAITING_EXECUTION_PROOF` and `UNCLASSIFIED_CLAIM`, whose words are only judged at the end of the

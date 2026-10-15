@@ -1726,7 +1726,7 @@ This is not the start-sensitivity change: the server did detect the activity. Th
 
 ## P46 — Assistant-spoken guidance (SPEC-018) gives up on the first prompt and never comes back
 
-**Status:** OPEN, found 2026-10-03 while recording the demo video. PC emulator nova_api34, build 9696ce5 (`claude/10-3`), Azure voice on, 助手播报导航 on. Short drive to 长隆海洋王国 started by voice, emulator speed 60 km/h.
+**Status:** OPEN, found 2026-10-03 while recording the demo video. PC emulator nova_api34, build 9696ce5 (`claude/10-3`), Azure voice on, 助手播报导航 on. Short drive to 长隆海洋王国 started by voice, emulator speed 60 km/h. **Owner 2026-10-15:** offered A/B options (P46 wait ~1.2 s for her reply; D-9 drop an unchecked reply; P48 code-written confirmations) and chose to leave this alone for now - current behaviour stays; not to be reopened without the owner.
 
 **Seen:** the driver hears no guidance from 小诺. Every prompt goes to Amap's own voice.
 
@@ -1808,7 +1808,7 @@ and the remaining misses are for the cabin test with a real mic (MIC-CABIN-001, 
 
 ## P48 — The assistant voice lags: slow first reply, gaps between clauses, chat replies held until generation ends
 
-**Status:** OPEN, 2026-10-08. Owner requirement: [docs/DEMO_REQUIREMENTS.md](docs/DEMO_REQUIREMENTS.md) — no laggy AI speech. PC emulator nova_api34, build e0ba94f, Azure voice on.
+**Status:** OPEN, 2026-10-08. Owner requirement: [docs/DEMO_REQUIREMENTS.md](docs/DEMO_REQUIREMENTS.md) — no laggy AI speech. PC emulator nova_api34, build e0ba94f, Azure voice on. **Owner 2026-10-15:** offered A/B options (P46 wait ~1.2 s for her reply; D-9 drop an unchecked reply; P48 code-written confirmations) and chose to leave this alone for now - current behaviour stays; not to be reopened without the owner.
 
 | Symptom | Measured | Cause | Owner |
 | --- | --- | --- | --- |
