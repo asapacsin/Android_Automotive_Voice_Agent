@@ -20,7 +20,6 @@ Updated 2026-09-21 · 159 tests
 
 **HUMAN_VALIDATION_READY = FALSE**
 
-- the registry does not validate: 2 problem(s)
 - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - TRUTH-MISHEARD-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -173,7 +172,7 @@ Updated 2026-09-21 · 159 tests
 | MUSIC-VLC-EMU-001 | media | VLC plays a local file handed off by play_music and the readback names it | AUTONOMOUS | NOT_RUN | yes | MUSIC-UNIT-001 (JVM) covers the result rules with a fake session source |
 | MIC-CABIN-001 | microphone | Open-mic thresholds in real cabin acoustics | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | NOISE-001 PASS - room noise produces no turn |
 | AUDIO-QUALITY-001 | navigation | Guidance loudness and speech quality in a cabin | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | 21 guidance play start/end pairs observed on an emulator drive; the mic is gated while … |
-| DEMO-AMAP-LIVE-001 | navigation | The commute demo's real Amap lookups at the demo origin: 导航去横琴镇 + 第一个 is >= 1.7 km away, the warm-up weather answers | AUTONOMOUS | STALE | no | 2026-10-12 cloud: with sortrule=distance FAIL (第一个 = 632 m, the origin 横琴澳门青年创业谷; Amap … |
+| DEMO-AMAP-LIVE-001 | navigation | The commute demo's real Amap lookups at the demo origin: 导航去横琴镇 + 第一个 is >= 1.7 km away, the warm-up weather answers | AUTONOMOUS | PASS | no | 2026-10-12 cloud: with sortrule=distance FAIL (第一个 = 632 m, the origin 横琴澳门青年创业谷; Amap … |
 | GUIDANCE-DEVICE-001 | navigation | One voice on the short route; Amap audible only when the model cannot speak | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | GUIDANCE-EMU-001 measurements |
 | GUIDANCE-EMU-001 | navigation | Step-0 measurements for assistant-spoken guidance on the short route | AUTONOMOUS | NOT_RUN | yes | — |
 | NAV-CANCEL-001 | navigation | 算了 really cancels | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: nav_flow_cancelled |
