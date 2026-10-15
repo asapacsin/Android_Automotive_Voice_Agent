@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-15T19:10:13",
+  "generated_at": "2026-10-15T19:31:29",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "8d05eb3",
+    "commit": "77405b3",
     "branch": "claude/10-15",
-    "subject": "Voice suite 22/23 on the real app (Gemini): NOISE-001 PASS after P60; S1 was the runner; push all clips first [voice]",
+    "subject": "Rebind speech rows after the P60 change: S7/S11/S21 re-passed live, music text-live 10/10 again",
     "working_tree_clean": false,
-    "uncommitted_files": 1
+    "uncommitted_files": 3
   },
   "tests": {
     "available": true,
@@ -193,7 +193,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "DEMO-TRYOUT-001: FAIL: A first-time driver in their own words (19 lines: chat, vague asks, a refusal, a change of mind, barge-in, mumble, call), graded per line",
-    "actionable_count": 95,
+    "actionable_count": 92,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 28,
@@ -469,13 +469,6 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
-        "item": "CLIMATE-SET-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 6,
-        "class": "behaviour without regression protection",
-        "source": "TEST_MATRIX.yaml",
         "item": "CONFIG-CARD-EMU-001",
         "blocked_by": null
       },
@@ -617,13 +610,6 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "SPEECH-WORKLOAD-DEVICE-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 6,
-        "class": "behaviour without regression protection",
-        "source": "TEST_MATRIX.yaml",
-        "item": "SUITE-SCENARIO-001",
         "blocked_by": null
       },
       {
@@ -785,13 +771,6 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P59",
-        "blocked_by": null
-      },
-      {
-        "priority": 10,
-        "class": "stale state or harness defect",
-        "source": "state",
-        "item": "PROJECT_STATE.json",
         "blocked_by": null
       },
       {

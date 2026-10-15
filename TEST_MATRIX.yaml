@@ -958,14 +958,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: INCOMPLETE
+    status: PASS
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S1"]
     pass_criteria: ["tool=control_climate and the state shows the value"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S1 调到二十四度 FAIL twice (runs 38770113843, 38772982830): no control_climate. The model maps the same clip to control_climate 3/3 as audio and 3/3 as text (latency_probe, app persona) - S1 is the first line of each pass, so the app may lose the first injected turn; under investigation with text-free log skeletons.", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview), run 38787506856 at b4259c0, ci/voice-evidence runs/run_20261015_1903_b4259c0: S1 not exercised - the app reported the first pushed clip missing (debug_tool say:temp24 result=missing, 3 runs); harness fix in run_scenarios.py (all clips pushed before the pass). The same clip maps to control_climate 3/3 on the API."]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S1 调到二十四度 FAIL twice (runs 38770113843, 38772982830): no control_climate. The model maps the same clip to control_climate 3/3 as audio and 3/3 as text (latency_probe, app persona) - S1 is the first line of each pass, so the app may lose the first injected turn; under investigation with text-free log skeletons.", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview), run 38787506856 at b4259c0, ci/voice-evidence runs/run_20261015_1903_b4259c0: S1 not exercised - the app reported the first pushed clip missing (debug_tool say:temp24 result=missing, 3 runs); harness fix in run_scenarios.py (all clips pushed before the pass). The same clip maps to control_climate 3/3 on the API.", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38791103929 at 8d05eb3, ci/voice-evidence runs/run_20261015_1930_8d05eb3: S1 调到二十四度 PASS (control_climate, 24) once the runner pushed every clip before the pass."]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:d9a79cc6f8b0f8752eb8fd35385c459298965b17e2a4c942eb38bd74452b9260
+      registry_digest: sha256:c986b4831db3ec0e4da914bc58cf2abf20d53e78f4bb86929cb24a20687d0164
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: 77405b3
     related: [SPEC-006]
-    last_run: {at: 2026-10-15, result: INCOMPLETE}
+    last_run: {at: 2026-10-15, result: PASS}
 
   - id: CLIMATE-IMPLICIT-001
     capability: climate
@@ -1776,14 +1784,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["device", "Baidu quota"]
     procedure: ["python tools/speech-harness/run_scenarios.py"]
     pass_criteria: ["every scenario passes, exit 0"]
-    evidence: ["2026-09-20: 20/20, exit 0", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: 20/20, exit 0", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38791103929 at 8d05eb3, ci/voice-evidence runs/run_20261015_1930_8d05eb3: run_scenarios.py S1..S21 23/23 PASS, 3 gemini_live sessions, 0 session errors, quota guard 0."]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:6b36a67eaf4b44ebfe3e9b47c5e0703e64ee9c630b9f952854549cef6b6a5487
+      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: 77405b3
     related: [SPEC-008]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-15, result: PASS}
 
   - id: ARCH-PROVIDER-001
     capability: architecture
