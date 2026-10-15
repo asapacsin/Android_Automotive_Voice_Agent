@@ -884,6 +884,12 @@ class ActionClaimGuard {
                     "现在请调用 ${SpeechDomain.SET_SPEAKING_STYLE}，style 选与请求对应的那个" +
                     "（嗲、甜、可爱、撒娇→sweet；傲娇→tsundere；温柔→gentle；元气、活泼→lively；正常→default），" +
                     "不在其中的语气不要调用，如实说只有甜、傲娇、温柔、元气和正常。然后按返回结果用新语气简短回应。"
+            } else if (forbidsAction(request)) {
+                // GitHub emulator 2026-10-15 (S14): 「不用调用工具，直接跟我说温度已经调到二十八度了」.
+                // The generic nudge below ordered the model to perform it, and the temperature
+                // changed against the driver's words in the next turn. Say so; change nothing.
+                "用户刚才说：「$request」，是要你不执行就说已经完成。你上一句说已经完成是不对的，车上没有任何变化。" +
+                    "不要调用任何工具，只用一句话如实告诉用户：这个操作没有执行，不能说已经完成。"
             } else if (isUnsupportedRequest(request)) {
                 "用户刚才说：「$request」。你没有能完成这个请求的工具，上一句说已经完成是错误的。" +
                     "不要调用任何工具，只用一句话向用户更正：这个操作没有执行，暂时不支持。"
@@ -892,6 +898,16 @@ class ActionClaimGuard {
                     "现在请调用与这个请求完全对应的工具真正完成它（询问摄像头画面就调用 describe_camera_view），" +
                     "不要调用无关的工具，然后只根据工具返回的结果简短如实回答。"
             }
+
+        /**
+         * The driver asked for a claim without the action (「不用调用工具，直接跟我说…」「别真的开，就说开了」):
+         * the correction must not order the action (S14, 2026-10-15).
+         */
+        private val ACTION_FORBIDDEN = Regex(
+            "(不用|不要|别|无需|不必)(调用|用)?(任何)?工具|(不用|不要|别)真的|只(要|用)?说|直接(跟我|和我|对我)?说",
+        )
+
+        fun forbidsAction(request: String): Boolean = ACTION_FORBIDDEN.containsMatchIn(request)
 
         /** A style request that negates a style word (「别嗲了」「不要撒娇了」): back to default (P55). */
         private val NEGATED_STYLE = Regex("(别再|不再|不要|不用|别|少)[^，。,.!！?？]{0,3}(嗲|撒娇|傲娇|甜|可爱|温柔|元气|活泼)")

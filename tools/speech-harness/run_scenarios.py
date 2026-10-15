@@ -187,6 +187,10 @@ def main():
         adb("shell", "monkey", "-p", PKG, "-c", "android.intent.category.LAUNCHER", "1")
         time.sleep(8)
         adb("logcat", "-c")
+        # The app creates its own external files dir; a first `adb push` that creates it as the
+        # shell user left S1's clip invisible to the app ("say:temp24 result=missing", 2026-10-15).
+        broadcast("voice", "say:warmup")
+        time.sleep(1)
         start_session()
         # A first session from DEEP_IDLE: 5 s lost the first line on the GitHub emulator (S1).
         time.sleep(12)

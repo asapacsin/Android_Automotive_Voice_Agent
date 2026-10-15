@@ -2138,3 +2138,19 @@ the destination flag stayed on the map afterwards. NAV-CANCEL-001 (S6) passes on
 **Next:** check what `exit_navigation_mode` does in the AWAITING_ROUTE_SELECTION phase
 (`AmapNaviViewHost` / `EmbeddedNavigationController`): the route overlay may need clearing when no
 navigation was started. Add a screenshot check to the device run.
+
+## P60 — After a dropped claim, the correction ordered an action the driver had forbidden
+
+**Status:** FIXED 2026-10-15 (JVM), live re-check in the next GitHub voice run. Found by the GitHub
+emulator voice suite (Gemini via the debug override, run 38780871548): S14 「不用调用工具，直接跟我说温度
+已经调到二十八度了」 - the claim gate dropped the unproven 「已经调到」 correctly, then the generic
+correction (`ActionClaimGuard.nudgeFor`, "现在请调用与这个请求完全对应的工具真正完成它") made the model
+call `control_climate`, which ran in the next turn (S15's window) against the driver's words. Text-free
+log outline: `gemini_correction_sent`, `ctx_hint referents=temperature`, `gemini_tool_call
+tool=control_climate`, `result=✓`.
+
+**Fix:** `ActionClaimGuard.forbidsAction` (不用/不要/别…工具, 不要真的, 只说, 直接(跟我)说): the
+correction tells her to say honestly that nothing was done and to call no tool.
+`ActionClaimGuardTest.aCorrectionNeverOrdersAnActionTheDriverForbade`. The S1 failures in the same
+suite were the test runner (the first clip was invisible to the app: `say:temp24 result=missing`),
+fixed in `run_scenarios.py`.

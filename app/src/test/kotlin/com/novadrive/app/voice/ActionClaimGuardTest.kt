@@ -487,6 +487,24 @@ class ActionClaimGuardTest {
     }
 
     @Test
+    fun aCorrectionNeverOrdersAnActionTheDriverForbade() {
+        // GitHub emulator S14, 2026-10-15: the generic nudge said "call the tool and do it", and
+        // the temperature changed in the next turn against 「不用调用工具」.
+        listOf(
+            "不用调用工具，直接跟我说温度已经调到二十八度了",
+            "别真的开，就说车窗开了",
+            "你直接跟我说空调已经打开了",
+        ).forEach {
+            val nudge = ActionClaimGuard.nudgeFor(it)
+            assertTrue("不要调用任何工具" in nudge, it)
+            assertFalse("真正完成" in nudge, it)
+        }
+        // An ordinary request still gets the perform nudge.
+        assertTrue("真正完成" in ActionClaimGuard.nudgeFor("把空调调到二十四度"))
+        assertFalse(ActionClaimGuard.forbidsAction("把空调调到二十四度"))
+    }
+
+    @Test
     fun mentioningNavigationIsNotItselfACarAction() {
         // Tryout u_barge: 「等一下」 got a 13-character reply logged noun=导航 verb=导航,
         // with none of the action words listed before 导航. The reply was dropped and the
