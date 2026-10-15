@@ -40,7 +40,7 @@ Gemini's own, not Ayano.
 adb push gemini_key.txt /data/local/tmp/gemini_setup.txt && adb shell chmod 644 /data/local/tmp/gemini_setup.txt
 adb shell run-as com.novadrive.app cp /data/local/tmp/gemini_setup.txt files/gemini_setup.txt
 adb shell rm /data/local/tmp/gemini_setup.txt; rm gemini_key.txt
-adb shell am broadcast -n com.novadrive.app/.DebugToolReceiver --es tool gemini_setup   # logs result=applied|rejected, never the key
+adb shell am broadcast -n com.novadrive.app/.DebugToolReceiver --es tool gemini_setup   # result=applied|rejected|missing|invalid|failed|GEMINI_*, never the key
 adb shell am broadcast -n com.novadrive.app/.DebugToolReceiver --es tool provider --es arg gemini   # `clear` turns it off
 ```
 
