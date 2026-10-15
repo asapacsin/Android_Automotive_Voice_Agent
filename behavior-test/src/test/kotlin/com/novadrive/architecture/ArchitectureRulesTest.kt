@@ -202,6 +202,22 @@ class ArchitectureRulesTest {
         }
     }
 
+    // ---- ADR-017 (2026-10-15): the debug provider override is set only from debug sources ----
+
+    @Test
+    fun onlyDebugSourcesSetTheProviderOverride() {
+        val holder = "app/src/main/kotlin/com/novadrive/app/DebugProviderOverride.kt"
+        val writers = kotlinFiles("app/src/main").filter { it.readText().contains("DebugProviderOverride.set(") }
+            .map { it.relativeTo(root).invariantSeparatorsPath }.filter { it != holder }
+        assertTrue(writers.isEmpty()) {
+            "Only app/src/debug may set the Gemini debug override (ADR-017, 2026-10-15); main writers: $writers"
+        }
+        assertTrue(text(holder).contains("private set")) { "the override value must be settable only through set()" }
+        assertTrue(text("app/src/debug/kotlin/com/novadrive/app/DebugToolReceiver.kt").contains("DebugProviderOverride.set(")) {
+            "DebugToolReceiver is the override's one writer"
+        }
+    }
+
     // ---- maintenance: files do not grow without somebody noticing ----
 
     @Test
