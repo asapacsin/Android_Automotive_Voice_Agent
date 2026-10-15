@@ -1,0 +1,39 @@
+-- S1
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=2164 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   debug_tool tool=voice arg=say:temp24 result=missing
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=2665 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=3164 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=3665 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+-- S15
+   test_speech_start bytes=48000
+   debug_tool tool=voice arg=say:noise_room
+   test_speech_end frames=165 elapsedMs=1650
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=43930 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   gemini_correction_sent
+   ctx_hint epoch=17 referents=temperature pending=0
+   TURN_HOLD epoch=17 reason=AWAITING_EXECUTION_PROOF kind=ACTION durationMs=-1
+   gemini_turn_open
+   state=LISTENING err=-
+   gemini_tool_call id=fc_14490885930327333479 tool=control_climate args=valid
+   tool=control_climate args=[action, result=✓
+   state=LISTENING err=-
+   gemini_tool_response id=fc_14490885930327333479 chars=186
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   transcript_bubble_shown
+   session_diag state=SPEAKING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=44431 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   gemini_turn_done status=completed calls=1 spoke=true dur_ms=2814 first_audio_ms=1076 first_text_ms=1076 gen_ms=1491 msgs=21 max_gap_ms=435
+   state=LISTENING err=-
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=44930 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
