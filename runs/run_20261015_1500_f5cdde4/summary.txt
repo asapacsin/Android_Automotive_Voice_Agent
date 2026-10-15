@@ -1,0 +1,40 @@
+app: map up
+PLACE-UNSET-001: navigate_to 回家 before a home is saved -> "ok":false "error":"HOME_NOT_SET" 
+PLACE-SAVE-001: save_place home -> "ok":false "error":"ADDRESS_NOT_FOUND"  saved_place_set_slot_home=0
+CALL-NOSIM-001: place_call -> "ok":false "error":"CONTACT_NOT_FOUND"  dialer_activities_before=0 after=0 (the emulator has a simulated SIM)
+APPS-001: open_app settings -> result=Accepted 
+APPS-001: open_app maps -> result=Accepted 
+APPS-001: open_app music -> result=unknown 
+TRANSCRIPT-FADE-EMU-001: probe transcript_bubble_shown transcript_bubble_shown transcript_bubble_faded since_line_ms=25063 
+NAV: route calculated
+NAV: navigation started (emulator 50 km/h)
+NAV-UI-007: overview -> result=overview=true 
+NAV-UI-007: lock -> result=lock=true 
+NAV-MID-ROUTE-001 / NAV-UI-00x: maneuver=6 lane_shown=24 junction_shown=0 traffic_update=5 presentation_driving=2 lights=3 cameras=19 speed_over=0 ring=5 guidance_play=15
+NAV-E2E-ARRIVAL-001: proximity_arrival=1 stopped=nav_stopped reached=true reason=emulator_end
+NAV crash check: fatal=0 anr=0
+PROCDEATH-001: after am kill pid=none
+PROCDEATH-001: relaunch did not reach the map
+PROCDEATH-001: fatal=0 wake= listening_claims=1
+PERM-DENY-001: voice start -> result=MicPermissionMissing  mic_missing=1 wake_permission_failure=0 listening=0 fatal=0
+app_start.jpg
+checks_drive.mp4
+nav_drive_0s.jpg
+nav_drive_120s.jpg
+nav_drive_150s.jpg
+nav_drive_180s.jpg
+nav_drive_30s.jpg
+nav_drive_60s.jpg
+nav_drive_90s.jpg
+nav_end.jpg
+nav_lock_restored.jpg
+nav_overview.jpg
+nav_route_preview.jpg
+nav_t10.jpg
+nav_t20.jpg
+nav_t35.jpg
+perm_denied.jpg
+procdeath_relaunched.jpg
+summary.txt
+transcript_probe_after.jpg
+transcript_probe_shown.jpg
