@@ -69,7 +69,7 @@ mark
 app_up && note "app: map up" || note "app: map did not come up"
 shot app_start
 tool dispatch "navigate_to:destination=回家"; sleep 4
-note "PLACE-UNSET-001: navigate_to 回家 before a home is saved -> $(result_of dispatch)"
+note "PLACE-UNSET-001: navigate_to 回家 before a home is saved -> $(result_of dispatch) asks_for_address=$(nova | grep 'debug_tool tool=dispatch ' | tail -1 | grep -q '地址' && echo yes || echo no)"
 tool dispatch "save_place:slot=home,address=珠海站"; sleep 8
 note "PLACE-SAVE-001: save_place home -> $(result_of dispatch) saved_place_set_slot_home=$(count 'saved_place_set slot=HOME')"
 dialer_before="$(adb shell dumpsys activity activities | grep -c 'com.android.dialer' || true)"
@@ -77,18 +77,14 @@ tool dispatch "place_call:contact=张三"; sleep 4
 dialer_after="$(adb shell dumpsys activity activities | grep -c 'com.android.dialer' || true)"
 note "CALL-NOSIM-001: place_call -> $(result_of dispatch) dialer_activities_before=$dialer_before after=$dialer_after (the emulator has a simulated SIM)"
 adb shell am start -W -n com.novadrive.app/.MainActivity >/dev/null
-for app in settings maps music; do
+for app in settings maps; do
   tool open_app "$app"; sleep 3
   note "APPS-001: open_app $app -> $(result_of open_app)"
   adb shell am start -W -n com.novadrive.app/.MainActivity >/dev/null
 done
-
-# ---- transcript bubble probe ---------------------------------------------------------------
-mark
-adb shell am start -W -n com.novadrive.app/.TranscriptFadeProbeActivity --el speaking_ms 5000 --el held_ms 15000 >/dev/null
-sleep 3; shot transcript_probe_shown
-sleep 30; shot transcript_probe_after
-note "TRANSCRIPT-FADE-EMU-001: probe $(nova | grep -oE 'transcript_bubble_(shown|faded)( since_line_ms=[0-9]+)?' | tr '\n' ' ')"
+tool dispatch "open_app:app=music"; sleep 3
+note "APPS-001: dispatch open_app app=music (outside the allow-list) -> $(result_of dispatch)"
+adb shell am start -W -n com.novadrive.app/.MainActivity >/dev/null
 
 # ---- simulated drive to arrival ------------------------------------------------------------
 mark
@@ -143,6 +139,15 @@ tool voice start; sleep 6
 shot perm_denied
 note "PERM-DENY-001: voice start -> $(result_of voice) mic_missing=$(count 'MicPermissionMissing|MIC_PERMISSION') wake_permission_failure=$(count 'wake_permission_failure') listening=$(count 'state=LISTENING') fatal=$(adb logcat -d | grep -c 'FATAL EXCEPTION' || true)"
 adb shell pm grant com.novadrive.app android.permission.RECORD_AUDIO || true
+
+# ---- transcript bubble probe ---------------------------------------------------------------
+mark
+adb shell am start -W -n com.novadrive.app/.TranscriptFadeProbeActivity --el speaking_ms 5000 --el held_ms 15000 >/dev/null
+sleep 3; shot transcript_probe_shown
+sleep 30; shot transcript_probe_after
+note "TRANSCRIPT-FADE-EMU-001: probe $(nova | grep -oE 'transcript_bubble_(shown|faded)( since_line_ms=[0-9]+)?' | tr '\n' ' ')"
+# The probe activity must not stay on top of the app (run 38753002305: every later screenshot was the probe).
+adb shell am force-stop com.novadrive.app
 
 ls -1 "$ev" | tee -a "$summary" >/dev/null
 echo "device checks finished"
