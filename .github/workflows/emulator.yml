@@ -61,6 +61,14 @@ jobs:
           export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
           export ANDROID_HOME=/opt/android-sdk
           bash scripts/cloud_setup.sh
+          sha1=$(keytool -exportcert -alias androiddebugkey -keystore "$HOME/.android/debug.keystore" -storepass android | openssl dgst -sha1 | awk '{print $2}')
+          md5=$(keytool -exportcert -alias androiddebugkey -keystore "$HOME/.android/debug.keystore" -storepass android | openssl dgst -md5 | awk '{print $2}')
+          echo "debug cert sha1=$sha1"
+          echo "debug cert md5=$md5"
+          if [ "$sha1" != "322fe8e733d503aafa6f0037df665452cbd4daeb" ]; then
+            echo "The debug keystore secret is not the certificate registered on the Amap Android key."
+            exit 1
+          fi
           chmod +x ./gradlew
           ./gradlew :app:assembleDebug
           test -f "$HOME/nova-drive-build/app/outputs/apk/debug/app-debug.apk"
