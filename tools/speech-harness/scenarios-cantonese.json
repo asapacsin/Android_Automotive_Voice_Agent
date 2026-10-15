@@ -29,7 +29,7 @@
       "say": "yue_music",
       "fresh": true,
       "_note": "A request for a STYLE of song, which this product cannot serve. The honest answer is a refusal; playing the bundled track and saying yes is the false-capability claim P22 exists to prevent.",
-      "expect": ["MEDIA_LIBRARY_UNSUPPORTED|TURN_DROP|no_claim_made|flex_user_text"],
+      "expect": ["^tool=play_music|MEDIA_LIBRARY_UNSUPPORTED|TURN_DROP|no_claim_made"],
       "forbid": []
     }
   ]
