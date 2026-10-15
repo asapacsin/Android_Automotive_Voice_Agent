@@ -80,7 +80,17 @@ jobs:
           fi
           chmod +x ./gradlew
           ./gradlew :app:assembleDebug
-          test -f "$HOME/nova-drive-build/app/outputs/apk/debug/app-debug.apk"
+          apk="$HOME/nova-drive-build/app/outputs/apk/debug/app-debug.apk"
+          test -f "$apk"
+          # What Amap will see: the certificate the APK is really signed with, and the shape of the
+          # key the manifest got (length and character class only - never the key).
+          signer="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner"
+          apk_sha1="$("$signer" verify --print-certs "$apk" | sed -n 's/.*certificate SHA-1 digest: //p' | head -1)"
+          pkg="$("$(dirname "$signer")/aapt2" dump packagename "$apk" 2>/dev/null || echo unknown)"
+          key="$(sed -n 's/^AMAP_API_KEY=//p' local.properties | tr -d '[:space:]')"
+          shape="length=${#key}"
+          if printf '%s' "$key" | grep -Eq '^[0-9a-f]+$'; then shape="$shape lowercase-hex"; else shape="$shape not-lowercase-hex"; fi
+          echo "::notice title=amap binding the app presents::package=${pkg} apk_sha1=${apk_sha1} key ${shape}"
 
       - name: Boot the emulator and record the drive
         uses: reactivecircus/android-emulator-runner@v2
