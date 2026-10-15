@@ -7,7 +7,6 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 
 adb install -r -g --abi arm64-v8a "$apk"
-adb shell am start -W -n com.novadrive.app/.MainActivity >/dev/null
 
 origin="$(sed -n 's/.*GeoFix *= *"\([0-9.][0-9.]*\) \([0-9.][0-9.]*\)".*/\1 \2/p' scripts/emulator.ps1 | head -1)"
 test -n "$origin"
@@ -16,6 +15,7 @@ set -- $origin
 lon="$1"
 lat="$2"
 adb emu geo fix "$lon" "$lat" >/dev/null
+adb shell am start -W -n com.novadrive.app/.MainActivity >/dev/null
 python3 - "$lat" "$lon" <<'PY' > /tmp/route-arg
 import sys
 lat = float(sys.argv[1]) + 0.02
@@ -23,17 +23,35 @@ lon = float(sys.argv[2]) + 0.015
 sys.stdout.write(f"@{lat:.4f},{lon:.4f}")
 PY
 
+# map_loaded is only one camera-reapply line. The host also logs when GPS starts
+# and when the camera is checked. Any of those means the map screen is up.
 ready=0
 i=0
-while [ "$i" -lt 48 ]; do
-  if adb logcat -d -s NovaVoice:D | grep -q "map_loaded"; then
+while [ "$i" -lt 36 ]; do
+  logs="$(adb logcat -d -s NovaVoice:D || true)"
+  if printf '%s\n' "$logs" | grep -q "map_surface skipped=translator_unsafe"; then
+    echo "map surface skipped: translator unsafe"
+    exit 1
+  fi
+  if printf '%s\n' "$logs" | grep -Eq "map_loaded|map_recenter ok=true|map_recenter_check|amap_gps startGPS="; then
     ready=1
     break
   fi
+  if ! adb shell pidof com.novadrive.app >/dev/null 2>&1; then
+    echo "app process exited during startup"
+    printf '%s\n' "$logs" | tail -n 40
+    exit 1
+  fi
+  echo "waiting for map startup ($i)"
   i=$((i + 1))
   sleep 5
 done
-test "$ready" = 1
+if [ "$ready" != 1 ]; then
+  echo "map startup timed out"
+  adb logcat -d -s NovaVoice:D | tail -n 40 || true
+  exit 1
+fi
+echo "map startup seen"
 
 adb shell am broadcast -a com.novadrive.app.DEBUG_TOOL -p com.novadrive.app \
   --es tool nav_route --es arg "$(cat /tmp/route-arg)" >/dev/null
@@ -46,10 +64,16 @@ while [ "$i" -lt 36 ]; do
     routed=1
     break
   fi
+  echo "waiting for route ($i)"
   i=$((i + 1))
   sleep 5
 done
-test "$routed" = 1
+if [ "$routed" != 1 ]; then
+  echo "route timed out"
+  adb logcat -d -s NovaVoice:D | tail -n 40 || true
+  exit 1
+fi
+echo "route ready"
 
 adb shell am broadcast -a com.novadrive.app.DEBUG_TOOL -p com.novadrive.app \
   --es tool nav_start --es arg emulator:80 >/dev/null
@@ -61,10 +85,16 @@ while [ "$i" -lt 12 ]; do
     started=1
     break
   fi
+  echo "waiting for navigation start ($i)"
   i=$((i + 1))
   sleep 2
 done
-test "$started" = 1
+if [ "$started" != 1 ]; then
+  echo "navigation start timed out"
+  adb logcat -d -s NovaVoice:D | tail -n 40 || true
+  exit 1
+fi
+echo "navigation started"
 
 adb shell screenrecord --time-limit 24 --bit-rate 4000000 /data/local/tmp/drive.mp4
 adb pull /data/local/tmp/drive.mp4 "$root/drive-phone.mp4" >/dev/null
