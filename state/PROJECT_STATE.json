@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-15T17:26:25",
+  "generated_at": "2026-10-15T19:10:13",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "6a673f3",
+    "commit": "8d05eb3",
     "branch": "claude/10-15",
-    "subject": "CTX-AMBIG-001: pass criteria follow the AMBIGUOUS_REFERENT guard (the clarify log line was removed)",
+    "subject": "Voice suite 22/23 on the real app (Gemini): NOISE-001 PASS after P60; S1 was the runner; push all clips first [voice]",
     "working_tree_clean": false,
-    "uncommitted_files": 4
+    "uncommitted_files": 1
   },
   "tests": {
     "available": true,
@@ -192,8 +192,8 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "CLIMATE-SET-001: FAIL: An explicit temperature is set",
-    "actionable_count": 96,
+    "NEXT_ACTION": "DEMO-TRYOUT-001: FAIL: A first-time driver in their own words (19 lines: chat, vague asks, a refusal, a change of mind, barge-in, mumble, call), graded per line",
+    "actionable_count": 95,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 28,
@@ -203,21 +203,7 @@
         "priority": 2,
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
-        "item": "CLIMATE-SET-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
         "item": "DEMO-TRYOUT-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NOISE-001",
         "blocked_by": null
       },
       {
@@ -477,6 +463,13 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "CAMERA-RELEASE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "CLIMATE-SET-001",
         "blocked_by": null
       },
       {

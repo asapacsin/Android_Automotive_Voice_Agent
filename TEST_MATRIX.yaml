@@ -163,15 +163,15 @@ tests:
     prerequisites: ["speech harness", "a clip the transcriber mangles"]
     procedure: ["inject yue_home, which arrives as garbage"]
     pass_criteria: ["either a real tool call, or an honest refusal - never a released claim"]
-    evidence: ["2026-09-19: 「返屋企啦」 -> 「发诺克拉。」 -> correction, not a claim", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S11 返屋企啦 - no wrong action taken: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16)."]
+    evidence: ["2026-09-19: 「返屋企啦」 -> 「发诺克拉。」 -> correction, not a claim", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S11 返屋企啦 - no wrong action taken: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-15 S11 re-passed at b4259c0 (with the P60 claim-gate change) in GitHub voice run 38787506856, Gemini debug override"]
     evidence_bind:
-      code_digest: sha256:d19d9a35ac52287756865a3ca3f8243bcbcfe263816a5858c517b70884d52537
+      code_digest: sha256:1cd282056cacbf46e1194ac2b64979e11962fcccc46b8d7ee5fdd0d4e320d5fa
       procedure_digest: sha256:9dab374b62e393aeee4370d4c00bca6416d0aa888942f4b7eea62026af260808
       registry_digest: sha256:c306f76a9451a01dfc69ee94722b418f47e798eb4cf9db2d18bf680f6d1989d1
       harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
       artifact_digests: {}
       apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 6a673f3
+      bound_commit: 8d05eb3
     related: [P23]
     last_run: {at: 2026-10-15, result: PASS}
 
@@ -224,15 +224,15 @@ tests:
       - "tool=query_live_info in the turn"
       - "a `live_info kind=weather` log line before any weather wording is released"
       - "no weather or traffic wording released in a turn without a live_info result (unit cover: FalseCapabilityClaimTest)"
-    evidence: ["2026-09-20: refusal, 20/20 suite (pre-SPEC-011 criterion, superseded)", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S7 今天天气怎么样 -> query_live_info + live_info kind=weather: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16)."]
+    evidence: ["2026-09-20: refusal, 20/20 suite (pre-SPEC-011 criterion, superseded)", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S7 今天天气怎么样 -> query_live_info + live_info kind=weather: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-15 S7 re-passed at b4259c0 (with the P60 claim-gate change) in GitHub voice run 38787506856, Gemini debug override"]
     evidence_bind:
-      code_digest: sha256:686524269217f133cd2609bd093ffbecb2c6cb0a00f46c64aa8b26d367c73107
+      code_digest: sha256:ff9c589b9dc5d16099d5f69867cdfd0b7ac9800d71466a6571e70a912364f409
       procedure_digest: sha256:2f52cffdc7bd8d7be36d925f746bd8b1adbb17887680dbcdba108b73d8919dd3
       registry_digest: sha256:eb3a2c87d3a3031a7cc398af2f7de0a6bcb351e4ace83f17af7eda248b5fac21
       harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
       artifact_digests: {}
       apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 6a673f3
+      bound_commit: 8d05eb3
     related: [P21, SPEC-011]
     last_run: {at: 2026-10-15, result: PASS}
 
@@ -1159,15 +1159,15 @@ tests:
     prerequisites: ["Gemini Live (default provider, ADR-013) text turns with the owner's key (never logged)", "a set of 10 music descriptions"]
     procedure: ["send each description as a text turn", "record the play_music arguments per description"]
     pass_criteria: [">= 8/10 descriptions produce play_music with a plausible title or artist/work", "0/10 produce control_music{play}"]
-    evidence: ["2026-10-01 re-run after the FZ-14 wording fix: GeminiTextLiveMappingTest MUSIC 10/10", "2026-10-01 cloud, gemini-3.8-live, GeminiTextLiveMappingTest (opt-in NOVA_GEMINI_TEXT_LIVE=1; fresh session per phrase, app client + RealtimeToolCatalog + default persona): 9/10 play_music, 0/10 control_music. M-01 梶浦/空之境界 -> play_music{artist,album_or_work,mood,query} (no title); M-02 提神 -> {mood,query}; M-03 晴天 -> {title,artist,query}; M-04 下雨天 -> MISS no call; M-05 十年 -> {title,artist}; M-06 进击的巨人 -> {album_or_work}; M-07 钢琴 -> {mood,query}; M-08 红豆 -> {title,artist}; M-09 千与千寻 -> {album_or_work,query}; M-10 八十年代粤语 -> {query}. Control: 放首歌 -> control_music{play}", "STALE_BIND code_digest mismatch", "2026-10-15 cloud, gemini-3.1-flash-live-preview, GeminiTextLiveMappingTest: MUSIC 10/10 play_music with title/artist/work or mood/query, 0/10 control_music{play}; MUSIC_CONTROL 1/1."]
+    evidence: ["2026-10-01 re-run after the FZ-14 wording fix: GeminiTextLiveMappingTest MUSIC 10/10", "2026-10-01 cloud, gemini-3.8-live, GeminiTextLiveMappingTest (opt-in NOVA_GEMINI_TEXT_LIVE=1; fresh session per phrase, app client + RealtimeToolCatalog + default persona): 9/10 play_music, 0/10 control_music. M-01 梶浦/空之境界 -> play_music{artist,album_or_work,mood,query} (no title); M-02 提神 -> {mood,query}; M-03 晴天 -> {title,artist,query}; M-04 下雨天 -> MISS no call; M-05 十年 -> {title,artist}; M-06 进击的巨人 -> {album_or_work}; M-07 钢琴 -> {mood,query}; M-08 红豆 -> {title,artist}; M-09 千与千寻 -> {album_or_work,query}; M-10 八十年代粤语 -> {query}. Control: 放首歌 -> control_music{play}", "STALE_BIND code_digest mismatch", "2026-10-15 cloud, gemini-3.1-flash-live-preview, GeminiTextLiveMappingTest: MUSIC 10/10 play_music with title/artist/work or mood/query, 0/10 control_music{play}; MUSIC_CONTROL 1/1.", "2026-10-15 re-run at 8d05eb3 (after P60), gemini-3.1-flash-live-preview: MUSIC 10/10, MUSIC_CONTROL 1/1; FUZZY 17/19 again"]
     evidence_bind:
-      code_digest: sha256:d19d9a35ac52287756865a3ca3f8243bcbcfe263816a5858c517b70884d52537
+      code_digest: sha256:1cd282056cacbf46e1194ac2b64979e11962fcccc46b8d7ee5fdd0d4e320d5fa
       procedure_digest: sha256:f803e58b4943f7015563223448ac11f0c1c47350bad177b7f2682550c6bb0c81
       registry_digest: sha256:36f1bd13116237afa37238ca65b5f53baa0c1d44355cb505250764641df6e24f
       harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
       artifact_digests: {}
       apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: f5cdde4
+      bound_commit: 8d05eb3
     related: [SPEC-017]
     last_run: {at: 2026-10-15, result: PASS}
 
@@ -2442,17 +2442,17 @@ tests:
       - "2026-09-22 unit: UtteranceIntentResolver + DriverTurn.CAPABILITY_HELP for 你能干啥 (HELP-UNIT-001)"
       - "2026-09-21 device: formal 你能做什么 also passed S21 with help_capabilities clip"
     evidence_bind:
-      code_digest: sha256:d19d9a35ac52287756865a3ca3f8243bcbcfe263816a5858c517b70884d52537
+      code_digest: sha256:1cd282056cacbf46e1194ac2b64979e11962fcccc46b8d7ee5fdd0d4e320d5fa
       procedure_digest: sha256:75a7c4772ebe512fa6f0ac16563d43c9193f7db0c9fe2fdfd7ad6c5424666be7
       registry_digest: sha256:914744477e4406ab905d01c765e493d658763cfb98f80d5043cda7e62c1d10b9
       harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
       artifact_digests: {}
       apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 6a673f3
+      bound_commit: 8d05eb3
     covers: [speech.capability_help]
     related: [P28]
     last_run: {at: 2026-10-15, result: PASS}
-    evidence: ["2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S21 你能干啥 - capability answer: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16)."]
+    evidence: ["2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S21 你能干啥 - capability answer: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-15 S21 re-passed at b4259c0 (with the P60 claim-gate change) in GitHub voice run 38787506856, Gemini debug override"]
 
   - id: HELP-UNIT-001
     capability: dialogue_context
