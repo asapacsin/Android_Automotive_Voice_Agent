@@ -90,3 +90,19 @@ entries:
       waited for generationComplete (5.0 s). u_barge dropped a 13-character reply logged
       noun=导航 verb=导航, then the correction was the line the driver heard.
     suppresses_required_behavior: false
+  - id: DB-GHA-EMU-001
+    problem_class: host one Android emulator on GitHub Actions
+    triggers:
+      hardware: true
+      nonobvious_sdk: true
+      prior_failure: true
+    status: PASS
+    selected_basis: industry
+    selected_pattern: >-
+      GitHub-hosted Ubuntu runners expose /dev/kvm. Open it with the documented udev rule,
+      then boot one API 34 Google APIs x86_64 emulator with android-emulator-runner.
+    evidence: >-
+      GitHub changelog 2024-04-02: hardware-accelerated Android virtualization on 2-vCPU
+      Linux runners. reactivecircus/android-emulator-runner runs that image on ubuntu-latest.
+      Cursor and Claude cloud sessions do not provide a usable nested KVM.
+    suppresses_required_behavior: false
