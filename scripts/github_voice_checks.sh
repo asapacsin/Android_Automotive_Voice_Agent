@@ -124,6 +124,11 @@ if len(part) == 2:
             print("   " + " ".join(keep[:12]))
 PY
 note "voice: scenarios $(tr '\n' ' ' <"$ev/scenarios.txt")"
+if [ ! -s "$ev/scenarios.txt" ]; then
+  # The runner printed no result: keep its last lines without any CJK text (tracebacks, adb errors).
+  grep -v -P '[\x{3000}-\x{9fff}\x{ff00}-\x{ffef}]' "$ev/scenarios_raw.txt" | tail -n 15 >"$ev/runner_tail.txt" || true
+  note "voice: runner produced no results; adb devices: $(adb devices | tail -n +2 | tr '\n' ' ')"
+fi
 note "voice: session errors=$(count 'state=ERROR|_PROTOCOL_ERROR') provider_lines=$(nova | grep -oE 'session_provider choice=[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ') quota_guard=$(grep -c 'QUOTA GUARD' "$ev/scenarios_raw.txt" 2>/dev/null || echo 0)"
 adb pull /sdcard/voice_part1.mp4 "$ev/voice_part1_phone.mp4" >/dev/null 2>&1 || true
 ffmpeg -v error -y -i "$ev/voice_part1_phone.mp4" -c copy -movflags +faststart "$ev/voice_screen.mp4" && rm -f "$ev/voice_part1_phone.mp4" || true
