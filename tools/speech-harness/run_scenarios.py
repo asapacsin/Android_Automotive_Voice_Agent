@@ -47,6 +47,30 @@ def log_since(marker):
     return lines
 
 
+PROVIDER = None  # --provider gemini: the debug-only in-memory override (decided by the decider, 2026-10-15)
+
+
+def start_session():
+    """`voice start`, re-applying the provider override first (a restart clears it, by design).
+
+    Quota guard (AGENTS.md: no Qwen session while the work is on Gemini): with --provider gemini the
+    newest session_provider line must say gemini_live, or the whole run stops before any audio.
+    """
+    if PROVIDER:
+        broadcast("provider", PROVIDER)
+        time.sleep(1)
+    broadcast("voice", "start")
+    if not PROVIDER:
+        return
+    time.sleep(2)
+    out = adb("logcat", "-d", "-s", "NovaVoice").stdout
+    choices = re.findall(r"session_provider choice=([a-z_]+)", out)
+    if choices and choices[-1] != "gemini_live":
+        broadcast("voice", "stop")
+        print(f"QUOTA GUARD: session is {choices[-1]}, not gemini_live - stopping before any audio", flush=True)
+        sys.exit(3)
+
+
 def push_clip(name):
     local = os.path.join(CLIPS, name + ".pcm")
     if not os.path.isfile(local):
@@ -74,7 +98,7 @@ def run_scenario(sc, wait):
     # follows - which on the first run silently invalidated the three scenarios after it.
     # start() resumes a session in SILENT_WAIT or SLEEP, is a no-op for an active one, and
     # costs no model turn.
-    broadcast("voice", "start")
+    start_session()
     # Long enough for a session opened from DEEP_IDLE to reach LISTENING: injecting during
     # setup gets the response cancelled (status=cancelled reason=client_cancelled).
     time.sleep(6)
@@ -128,7 +152,10 @@ def main():
     ap.add_argument("--only", nargs="*", default=None)
     ap.add_argument("--wait", type=int, default=14)
     ap.add_argument("--file", default=os.path.join(HERE, "scenarios.json"))
+    ap.add_argument("--provider", choices=["gemini"], help="debug builds: open Gemini sessions (quota guard on)")
     args = ap.parse_args()
+    global PROVIDER
+    PROVIDER = args.provider
 
     with open(args.file, encoding="utf-8") as handle:
         scenarios = json.load(handle)["scenarios"]
@@ -146,7 +173,7 @@ def main():
         adb("shell", "monkey", "-p", PKG, "-c", "android.intent.category.LAUNCHER", "1")
         time.sleep(8)
         adb("logcat", "-c")
-        broadcast("voice", "start")
+        start_session()
         time.sleep(5)
         for sc in scenarios:
             ok, failures, lines = run_scenario(sc, args.wait)

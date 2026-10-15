@@ -100,16 +100,16 @@ shot voice_ready
 
 adb shell screenrecord --time-limit 180 --bit-rate 4000000 /sdcard/voice_part1.mp4 &
 rec1=$!
-python3 tools/speech-harness/run_scenarios.py --wait 14 >"$ev/scenarios_raw.txt" 2>&1 || true
+python3 tools/speech-harness/run_scenarios.py --wait 14 --provider gemini >"$ev/scenarios_raw.txt" 2>&1 || true
 wait "$rec1" || true
 grep -E '^\s+(PASS|FAIL)\s+S[0-9]+b?\b|^\s+(ok|FLAKY|FAIL)\s+S[0-9]+' "$ev/scenarios_raw.txt" | sed -E 's/^\s+//' | awk '{print $1, $2}' >"$ev/scenarios.txt" || true
 grep -E '^\s+expected /|^\s+forbidden /' "$ev/scenarios_raw.txt" | sed -E "s/ matched .*/ matched (text omitted)/" >"$ev/scenario_failures.txt" || true
-rm -f "$ev/scenarios_raw.txt"
 note "voice: scenarios $(tr '\n' ' ' <"$ev/scenarios.txt")"
-note "voice: session errors=$(count 'state=ERROR|_PROTOCOL_ERROR') provider_lines=$(nova | grep -oE 'session_provider choice=[a-z_]+' | sort | uniq -c | tr '\n' ' ')"
+note "voice: session errors=$(count 'state=ERROR|_PROTOCOL_ERROR') provider_lines=$(nova | grep -oE 'session_provider choice=[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ') quota_guard=$(grep -c 'QUOTA GUARD' "$ev/scenarios_raw.txt" 2>/dev/null || echo 0)"
 adb pull /sdcard/voice_part1.mp4 "$ev/voice_part1_phone.mp4" >/dev/null 2>&1 || true
 ffmpeg -v error -y -i "$ev/voice_part1_phone.mp4" -c copy -movflags +faststart "$ev/voice_screen.mp4" && rm -f "$ev/voice_part1_phone.mp4" || true
 shot voice_end
 tool voice stop
 tool provider clear
+rm -f "$ev/scenarios_raw.txt"
 note "voice: done, override cleared"
