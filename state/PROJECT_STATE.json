@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-10-15T09:45:36",
+  "generated_at": "2026-10-15T13:16:54",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "99fbc8f",
+    "commit": "5b73190",
     "branch": "claude/10-15",
-    "subject": "TEST_STATUS: regenerate (registry validates again)",
-    "working_tree_clean": true,
-    "uncommitted_files": 0
+    "subject": "Document the GitHub emulator: Amap code 22 was the APK's signing certificate",
+    "working_tree_clean": false,
+    "uncommitted_files": 1
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-10-15T09:38:31",
+    "collected_at": "2026-10-15T10:05:31",
     "total": {
       "tests": 313,
       "failures": 0,
