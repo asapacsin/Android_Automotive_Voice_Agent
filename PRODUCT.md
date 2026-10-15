@@ -15,7 +15,7 @@ A Chinese-language voice assistant for driving, running on an Android phone. The
 4. Navigation hands off to the Amap app and enters turn-by-turn guidance.
 5. The assistant keeps running while the map is in the foreground.
 
-Persona: **小诺**, wake phrase 你好小诺. Locale `zh-CN`, Mandarin only, metric units. The persona is a configurable session instruction; the default is a composed, slightly proud character that must never claim an action succeeded unless a tool actually returned success.
+Persona: **小诺**, wake phrase 你好小诺. Locale `zh-CN`, Mandarin only, metric units. The persona is a configurable session instruction; the default is a calm, plain character that does the request and confirms the result in one sentence, with no attitude (owner, 2026-10-14: the proud and impatient tone was dropped after the tryout), and that must never claim an action succeeded unless a tool actually returned success.
 
 ## Supported platform
 

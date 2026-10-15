@@ -58,6 +58,8 @@ object ToolCallGuards {
     /** A second window the driver named. 「都」 alone is not one: 「我这边的窗户都开一点」 is still theirs. */
     private val OTHER_WINDOW = listOf(
         "副驾驶", "副驾", "乘客", "右前", "左后", "右后", "后排", "后窗", "全部", "所有", "四个", "两边", "两侧",
+        // Review 2026-10-15: 「我这边和后面的都开一点」 named the rear windows too.
+        "后面", "后边", "后头", "后座", "前排", "右边", "右侧", "别的", "其他", "其它", "大家", "每扇", "每个窗",
     )
 
     /**
@@ -132,15 +134,18 @@ object ToolCallGuards {
      * 「把我这边的窗户开一点」 answered with `window=all` (P57, tryout run 4: all four windows
      * opened 20 %). The driver's side is the driver window. Returns `driver` when this turn's
      * words name only that side and the call would move a different one; null leaves the argument
-     * alone. A transcript older than the speech onset is the previous turn's, so it is not used
+     * alone. Only `window=all` (or no window) is narrowed. A transcript older than the speech
+     * onset is the previous turn's, so it is not used
      * (same rule as [sunroofOnWindowTool]). Another named window (副驾, 后排, 全部, …) is left to
      * the call. The tool description is only a hint.
      */
     fun driverSideWindow(call: DomainVoiceEvent.ToolCall, context: DriverContext?): String? {
         if (call.name != com.novadrive.app.voice.BodyToolActions.WINDOW_TOOL || context == null) return null
         if (context.currentEpoch() <= 0 || context.currentEpoch() < context.capabilityEpoch()) return null
+        // Only an unspecified target is narrowed. A window the model named (rear, passenger, …)
+        // came from other words in the line, e.g. 「我这边冷，把后面的窗户关上」 (review 2026-10-15).
         val window = call.arguments["window"]
-        if (window == "driver" || window == "front_left") return null
+        if (window != null && window != com.novadrive.app.vehicle.WindowToolHandler.WINDOW_ALL) return null
         val said = TranscriptText.normalize(context.currentRequestText())
         if (DRIVER_SIDE.none { it in said }) return null
         if (OTHER_WINDOW.any { it in said }) return null

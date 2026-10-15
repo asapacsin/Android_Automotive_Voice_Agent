@@ -635,8 +635,15 @@ class ActionClaimGuard {
             val masked = maskCompounds(reply)
             ACTION_WORDS.firstOrNull { it in masked && it !in SELF_NAMED_ACTIONS }?.let { return it }
             val self = ACTION_WORDS.firstOrNull { it in masked && it in SELF_NAMED_ACTIONS } ?: return null
-            return self.takeIf { NAV_PROGRESS.any { mark -> mark in reply } }
+            return self.takeIf { NAV_PROGRESS.any { mark -> mark in reply } || NAV_HEADING.containsMatchIn(reply) }
         }
+
+        /**
+         * 「导航去机场」「导航到公司了」 state a route that no tool may have started (I-1, review
+         * 2026-10-15: these passed once 导航 needed a progress word). A destination after 导航, or
+         * 我来/我帮, is the action. 「导航继续」「导航还在」 stay mentions.
+         */
+        private val NAV_HEADING = Regex("导航(一下)?(去|到|至|回|前往)|我来导航|我帮你导航|我帮您导航")
 
         private fun isNavigationResult(output: String): Boolean =
             output.contains("\"tool\":\"navigate_to\"") ||

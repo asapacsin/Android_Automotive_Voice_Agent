@@ -98,8 +98,9 @@ Rules:
   mapped to the nearest one.
 - **B8.** `control_window`, `control_seat`, `run_scenario`, `set_speaking_style` are repeat-sensitive.
 - **B9.** (P57, 2026-10-13) 「我这边」「我这侧」「我这一侧」「我这半边」, when this turn names no other
-  window, is the driver window. `ToolCallGuards.driverSideWindow` rewrites any other `control_window`
-  target to `driver` before the handler runs. A transcript that still belongs to the previous turn
+  window, is the driver window. `ToolCallGuards.driverSideWindow` rewrites a `control_window` target of
+  `all` (or none) to `driver` before the handler runs; a window the model named (rear, passenger) is
+  never rewritten (review 2026-10-15). A transcript that still belongs to the previous turn
   is not used. A scenario step is not rewritten.
 
 ## Failure behaviour

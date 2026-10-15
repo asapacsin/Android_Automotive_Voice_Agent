@@ -501,6 +501,10 @@ class ActionClaimGuardTest {
         assertNotNull(ActionClaimGuard.carActionClaimMatch("已经帮你导航到家了。"))
         assertNotNull(ActionClaimGuard.carActionClaimMatch("导航好了。"))
         assertTrue(ActionClaimGuard.claimsDone("现在导航已退出。"))
+        // Review 2026-10-15: a destination after 导航 is a route claim with no progress word.
+        listOf("好的，导航去机场。", "导航去公司了。", "现在导航去横琴镇。", "好，导航到家。", "我来导航。", "导航回家。").forEach {
+            assertNotNull(ActionClaimGuard.carActionClaimMatch(it), it)
+        }
     }
 
     @Test

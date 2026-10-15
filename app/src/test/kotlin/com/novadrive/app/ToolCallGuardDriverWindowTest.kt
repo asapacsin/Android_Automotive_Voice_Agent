@@ -74,6 +74,35 @@ class ToolCallGuardDriverWindowTest {
     }
 
     @Test
+    fun `a window the model named from other words is never rewritten`() = runBlocking {
+        // Review 2026-10-15: 「我这边冷，把后面的窗户关上」 with window=rear closed the driver window.
+        val rear = DomainVoiceEvent.ToolCall("c4", "control_window", mapOf("action" to "close", "window" to "rear"))
+        assertNull(ToolCallGuards.driverSideWindow(rear, context("我这边冷，把后面的窗户关上")))
+        val passenger = DomainVoiceEvent.ToolCall("c5", "control_window", mapOf("action" to "open", "window" to "passenger"))
+        assertNull(ToolCallGuards.driverSideWindow(passenger, context("我这边太晒，开右边的窗")))
+        val car = SimulatedVehicleControl()
+        val dispatcher = AndroidToolDispatcher(WillingExecutor, ClimateToolHandler(car), noCamera(), cabin = car) {
+            context("我这边冷，把后面的窗户打开一半")
+        }
+        val before = car.getCabinState().windows
+        val setRear = DomainVoiceEvent.ToolCall("c6", "control_window", mapOf("action" to "set", "window" to "rear", "value" to "50"))
+        assertTrue(JSONObject(dispatcher.dispatch(setRear).output!!).getBoolean("ok"))
+        val after = car.getCabinState().windows
+        assertEquals(before.getValue(WindowId.FRONT_LEFT), after.getValue(WindowId.FRONT_LEFT), "the driver window must not move")
+        assertTrue(after.getValue(WindowId.REAR_LEFT) > before.getValue(WindowId.REAR_LEFT))
+    }
+
+    @Test
+    fun `my side plus another named group is not narrowed`() {
+        listOf("我这边和后面的都开一点", "我这边跟右边的窗户开一点", "我这边和别的窗户都开一点").forEach {
+            assertNull(ToolCallGuards.driverSideWindow(adjustAll, context(it)), it)
+        }
+        // A window call with no window argument is the unspecified case and is narrowed.
+        val noWindow = DomainVoiceEvent.ToolCall("c7", "control_window", mapOf("action" to "adjust", "value" to "20"))
+        assertEquals("driver", ToolCallGuards.driverSideWindow(noWindow, context("我这边的窗户开一点")))
+    }
+
+    @Test
     fun `a driver window already named is left alone`() {
         val driver = adjustAll.copy(arguments = adjustAll.arguments + ("window" to "driver"))
         assertNull(ToolCallGuards.driverSideWindow(driver, context("把我这边的窗户开一点")))
