@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-10-15T13:16:54",
+  "generated_at": "2026-10-15T15:26:41",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "5b73190",
+    "commit": "d4902d4",
     "branch": "claude/10-15",
-    "subject": "Document the GitHub emulator: Amap code 22 was the APK's signing certificate",
+    "subject": "speech-harness README: gemini_setup's full result codes (review note)",
     "working_tree_clean": false,
-    "uncommitted_files": 1
+    "uncommitted_files": 12
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-10-15T10:05:31",
+    "collected_at": "2026-10-15T14:25:02",
     "total": {
       "tests": 313,
       "failures": 0,
@@ -90,11 +90,6 @@
       "status": "OPEN, found 2026-10-03 while recording the demo video. PC emulator nova_api34, build 9696ce5 (`claude/10-3`), Azure voic"
     },
     {
-      "id": "P47",
-      "title": "Steady background noise: Gemini never detects the start of speech",
-      "status": "OPEN, found 2026-10-08 while recording the new-functions demo. PC emulator nova_api34, build e0ba94f (`claude/10-3`), Ge"
-    },
-    {
       "id": "P48",
       "title": "The assistant voice lags: slow first reply, gaps between clauses, chat replies held until generation ends",
       "status": "OPEN, 2026-10-08. Owner requirement: [docs/DEMO_REQUIREMENTS.md](docs/DEMO_REQUIREMENTS.md) — no laggy AI speech. PC emu"
@@ -123,6 +118,11 @@
       "id": "P55",
       "title": "10-13 bug: 「嗲一点」 changes neither the style on screen nor how she speaks",
       "status": "open. The persistence design is with the decider (AGENTS.md hard rule); a style scene"
+    },
+    {
+      "id": "P58",
+      "title": "The navigation map stays north-up while the car turns (car-up not applied on screen)",
+      "status": "OPEN, found 2026-10-15 by the GitHub emulator device checks (run 38756802061, API 34"
     }
   ],
   "tech_debt": [
@@ -192,13 +192,20 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "A0: | A0 | G-1 … G-1f measured on the short route | measurement (emulator) | `GUIDANCE-EMU-001` | not earned |",
-    "actionable_count": 127,
+    "NEXT_ACTION": "NAV-UI-003: FAIL: Vehicle heading rotates the navigation map",
+    "actionable_count": 116,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 28,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-UI-003",
+        "blocked_by": null
+      },
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
@@ -448,13 +455,6 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
-        "item": "APPS-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 6,
-        "class": "behaviour without regression protection",
-        "source": "TEST_MATRIX.yaml",
         "item": "BARGEIN-001",
         "blocked_by": null
       },
@@ -546,13 +546,6 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
-        "item": "FUZZY-TEXT-LIVE-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 6,
-        "class": "behaviour without regression protection",
-        "source": "TEST_MATRIX.yaml",
         "item": "GATE-D10-DEVICE-001",
         "blocked_by": null
       },
@@ -623,13 +616,6 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
-        "item": "MUSIC-TEXT-LIVE-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 6,
-        "class": "behaviour without regression protection",
-        "source": "TEST_MATRIX.yaml",
         "item": "MUSIC-VLC-EMU-001",
         "blocked_by": null
       },
@@ -645,13 +631,6 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "NAV-CORRECT-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 6,
-        "class": "behaviour without regression protection",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-E2E-ARRIVAL-001",
         "blocked_by": null
       },
       {
@@ -679,55 +658,6 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
-        "item": "NAV-SIM-QA-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 6,
-        "class": "behaviour without regression protection",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-UI-002",
-        "blocked_by": null
-      },
-      {
-        "priority": 6,
-        "class": "behaviour without regression protection",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-UI-003",
-        "blocked_by": null
-      },
-      {
-        "priority": 6,
-        "class": "behaviour without regression protection",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-UI-004",
-        "blocked_by": null
-      },
-      {
-        "priority": 6,
-        "class": "behaviour without regression protection",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-UI-005",
-        "blocked_by": null
-      },
-      {
-        "priority": 6,
-        "class": "behaviour without regression protection",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-UI-006",
-        "blocked_by": null
-      },
-      {
-        "priority": 6,
-        "class": "behaviour without regression protection",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-UI-007",
-        "blocked_by": null
-      },
-      {
-        "priority": 6,
-        "class": "behaviour without regression protection",
-        "source": "TEST_MATRIX.yaml",
         "item": "NET-RECOVER-001",
         "blocked_by": null
       },
@@ -749,13 +679,6 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
-        "item": "PERM-DENY-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 6,
-        "class": "behaviour without regression protection",
-        "source": "TEST_MATRIX.yaml",
         "item": "PLACE-NAV-001",
         "blocked_by": null
       },
@@ -764,13 +687,6 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "PLACE-SAVE-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 6,
-        "class": "behaviour without regression protection",
-        "source": "TEST_MATRIX.yaml",
-        "item": "PLACE-UNSET-001",
         "blocked_by": null
       },
       {
@@ -1009,6 +925,13 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P56",
+        "blocked_by": null
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P58",
         "blocked_by": null
       },
       {

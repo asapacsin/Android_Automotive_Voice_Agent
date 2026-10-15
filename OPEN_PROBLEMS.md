@@ -2097,3 +2097,25 @@ The take before that failed for two other reasons, both fixed before this run. A
 
 **Review 2026-10-15 (claude/10-15, planner):** the merged branch was red (three session goldens - `qwen_session_update`, `baidu_session_update`, its variant - still held the old `control_window` description) and had two defects, both fixed with tests. (1) The rewrite also replaced a window the model named: 「我这边冷，把后面的窗户关上」 with `window=rear` closed the driver window instead; only `window=all` (or none) is narrowed now, and 后面/后边/前排/右边/别的/其他… count as another window. (2) The 导航 relaxation let 「好的，导航去机场。」「导航去公司了。」「现在导航去横琴镇。」 through the claim gate with no tool run (I-1); a destination after 导航 (去/到/至/回/前往) or 我来导航 is a claim again, 「导航继续」 is still a mention. The refuse-and-recall variant (wt/p57 86e9b9f, decider option B) is dropped: its review found it needs a claim-gate change (R1), and narrowing passed a live take without one.
 
+
+## P58 — The navigation map stays north-up while the car turns (car-up not applied on screen)
+
+**Status:** OPEN, found 2026-10-15 by the GitHub emulator device checks (run 38756802061, API 34
+x86_64 running the arm64 app, emulator navi at 50 km/h). Not yet seen on a phone.
+
+**Seen:** `nav_presentation mode=driving naviMode=car_up` is logged and
+`AmapDrivingPresentation` calls `AMapNaviView.setNaviMode(CAR_UP_MODE)` (line ~50) and sets it in
+the view options (line ~93), yet the screenshots show north-up throughout: heading north at
+`docs/evidence/gha-2026-10-15/nav_t10.jpg` (arrow up, 北 at the top), heading west-north-west at
+`nav_drive_90s.jpg` (arrow points up-left, 北 still at the top), heading south at the end (arrow
+down). NAV-UI-003 is FAIL on that evidence.
+
+**Not known yet:** whether this is the emulator's simulated navigation (the bearing it feeds), the
+order in which the options and `setNaviMode` are applied, or a real defect that a phone would show.
+The 2026-09-28 emulator notes describe the map following the car; nothing in this run separates
+those causes.
+
+**Next:** on the GitHub emulator, log `naviView.naviMode` and the camera bearing a few seconds into
+the drive and after the first turn; compare with GPS-driven navigation (`nav_start` without
+`emulator`). Amap Navi SDK documentation for `setNaviMode` / `AMapNaviViewOptions` to be checked
+before changing the code (rule 6).
