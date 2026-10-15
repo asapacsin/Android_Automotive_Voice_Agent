@@ -18,13 +18,22 @@ diagnose() {
   sha="$(printf '%s\n' "$all" | grep -oE 'SHA1Package:[0-9A-Fa-f:]+;[A-Za-z0-9_.]+' | head -1)"
   calc="$(printf '%s\n' "$nova" | grep -oE 'nav_calc_failure code=-?[0-9]+|nav_calc_success|nav_started|map_loaded|amap_gps startGPS=[a-z]+|nav_guidance_tts_init code=-?[0-9]+' | sort | uniq -c | tr '\n' ' ')"
   surface="$(printf '%s\n' "$nova" | grep -oE 'map_surface skipped=[a-z_]+' | head -1)"
-  fatal="$(printf '%s\n' "$all" | grep -oE 'FATAL EXCEPTION|Fatal signal [0-9]+ \([A-Z]+\)|SIGILL|UnsatisfiedLinkError' | sort | uniq -c | tr '\n' ' ')"
+  fatal="$(printf '%s\n' "$all" | grep -oE 'ANR in [a-z.]+|FATAL EXCEPTION|Fatal signal [0-9]+ \([A-Z]+\)|SIGILL|UnsatisfiedLinkError' | sort | uniq -c | tr '\n' ' ')"
   echo "::${level} title=drive ${stage}::amap_auth=[${auth:-none}] ${sha:-no SHA1Package line} app=[${calc:-none}] ${surface:-map surface attached} crash=[${fatal:-none}]"
 }
 stage() { echo "::notice title=drive stage::$1"; }
 trap 'echo "::error title=drive script failed::line ${LINENO} exit $?"' ERR
 
 adb install -r -g --abi arm64-v8a "$apk"
+
+# Run 38722477883: "Pixel Launcher isn't responding" covered the map for the whole video. The
+# launcher is not ours; let the cold emulator settle, then hide system error dialogs and
+# dismiss any that is already up.
+sleep 30
+adb shell settings put global hide_error_dialogs 1 || true
+adb shell settings put secure anr_show_background 0 || true
+adb shell am force-stop com.google.android.apps.nexuslauncher || true
+adb shell input keyevent KEYCODE_HOME || true
 
 origin="$(sed -n 's/.*GeoFix *= *"\([0-9.][0-9.]*\) \([0-9.][0-9.]*\)".*/\1 \2/p' scripts/emulator.ps1 | head -1)"
 test -n "$origin"
@@ -75,6 +84,7 @@ stage "map up"
 
 # Record the real screen from here: route planning, the start, then the simulated drive.
 # screenrecord stops itself at its limit (180 s is its maximum).
+adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS >/dev/null 2>&1 || true
 adb shell screenrecord --time-limit 180 --bit-rate 6000000 /sdcard/drive.mp4 &
 recorder=$!
 sleep 4
