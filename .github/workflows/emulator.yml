@@ -4,6 +4,7 @@
 # The debug APK is checked against the Amap key's 调试版安全码 SHA1.
 # Rerun after that debug SHA1 is saved on the key.
 # Retest the Amap key after the GitHub secret is replaced.
+# Retest after the new Android key is stored in AMAP_API_KEY.
 # The job must not print coordinates, addresses, or transcripts.
 
 name: Drive video
