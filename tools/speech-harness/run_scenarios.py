@@ -191,6 +191,12 @@ def main():
         # shell user left S1's clip invisible to the app ("say:temp24 result=missing", 2026-10-15).
         broadcast("voice", "say:warmup")
         time.sleep(1)
+        # Every clip up front: the first file pushed after launch was still invisible to the app
+        # when S1 asked for it (result=missing twice, GitHub emulator 2026-10-15); later ones were not.
+        for sc in scenarios:
+            for clip in (sc["say"] if isinstance(sc["say"], list) else [sc["say"]]):
+                push_clip(clip)
+        time.sleep(3)
         start_session()
         # A first session from DEEP_IDLE: 5 s lost the first line on the GitHub emulator (S1).
         time.sleep(12)

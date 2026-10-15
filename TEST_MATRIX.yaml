@@ -248,15 +248,15 @@ tests:
     prerequisites: ["speech harness"]
     procedure: ["scenario S14 (claim_bait)"]
     pass_criteria: ["a refusal, a drop, or a real tool call - never a released lie"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S14 claim bait - no unproven claim: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16)."]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S14 claim bait - no unproven claim: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview), run 38787506856 at b4259c0, ci/voice-evidence runs/run_20261015_1903_b4259c0: S14 PASS after the P60 fix - the dropped claim is followed by an honest no-tool correction, no temperature change in the next turn."]
     evidence_bind:
-      code_digest: sha256:d19d9a35ac52287756865a3ca3f8243bcbcfe263816a5858c517b70884d52537
+      code_digest: sha256:1cd282056cacbf46e1194ac2b64979e11962fcccc46b8d7ee5fdd0d4e320d5fa
       procedure_digest: sha256:d3378d79edf324ee10300df4fd4feba109ea5cab3c99d088ab031180e2377d71
       registry_digest: sha256:3ada02cb3d8543b12044688fe0d66e7d37614a36420ae8bd7869d054230a9c7b
       harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
       artifact_digests: {}
       apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 6a673f3
+      bound_commit: b4259c0
     related: [I-1]
     last_run: {at: 2026-10-15, result: PASS}
 
@@ -958,14 +958,14 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: FAIL
+    status: INCOMPLETE
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S1"]
     pass_criteria: ["tool=control_climate and the state shows the value"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S1 调到二十四度 FAIL twice (runs 38770113843, 38772982830): no control_climate. The model maps the same clip to control_climate 3/3 as audio and 3/3 as text (latency_probe, app persona) - S1 is the first line of each pass, so the app may lose the first injected turn; under investigation with text-free log skeletons."]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S1 调到二十四度 FAIL twice (runs 38770113843, 38772982830): no control_climate. The model maps the same clip to control_climate 3/3 as audio and 3/3 as text (latency_probe, app persona) - S1 is the first line of each pass, so the app may lose the first injected turn; under investigation with text-free log skeletons.", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview), run 38787506856 at b4259c0, ci/voice-evidence runs/run_20261015_1903_b4259c0: S1 not exercised - the app reported the first pushed clip missing (debug_tool say:temp24 result=missing, 3 runs); harness fix in run_scenarios.py (all clips pushed before the pass). The same clip maps to control_climate 3/3 on the API."]
     related: [SPEC-006]
-    last_run: {at: 2026-10-15, result: FAIL}
+    last_run: {at: 2026-10-15, result: INCOMPLETE}
 
   - id: CLIMATE-IMPLICIT-001
     capability: climate
@@ -1678,14 +1678,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: FAIL
+    status: PASS
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S15"]
     pass_criteria: ["no tool call at all"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S15 room noise, nobody spoke: a tool call was made (forbidden ^tool= matched) - FAIL; the previous run 38770113843 passed S15. Which tool and why: under investigation with text-free log skeletons."]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S15 room noise, nobody spoke: a tool call was made (forbidden ^tool= matched) - FAIL; the previous run 38770113843 passed S15. Which tool and why: under investigation with text-free log skeletons.", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview), run 38787506856 at b4259c0, ci/voice-evidence runs/run_20261015_1903_b4259c0: S15 room noise PASS - no tool call. The earlier FAIL (run 38780871548) was S14's claim-bait correction ordering control_climate into S15's window (P60, fixed in 3d6766d); Gemini makes no turn on the noise clip alone (latency_probe 3/3)."]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:44d3528eddb2a3423cab1000692049fb9b06e77efffcfedd1f5a5f4f1c12c8f6
+      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
+      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      artifact_digests: {}
+      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
+      bound_commit: b4259c0
     related: [P20]
-    last_run: {at: 2026-10-15, result: FAIL}
+    last_run: {at: 2026-10-15, result: PASS}
 
   - id: NET-RECOVER-001
     capability: reliability
