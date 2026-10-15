@@ -59,3 +59,19 @@ entries:
       Owner timing 2026-10-09: silent for 0-7s except a visual from 3s, one progress line at 7-8s
       only if nothing useful has been spoken, a different delay line at 12s. SPEC-020 WaitCueAudio.
     suppresses_required_behavior: false
+  - id: DB-GHA-EMU-001
+    problem_class: host one Android emulator on GitHub Actions
+    triggers:
+      hardware: true
+      nonobvious_sdk: true
+      prior_failure: true
+    status: PASS
+    selected_basis: industry
+    selected_pattern: >-
+      GitHub-hosted Ubuntu runners expose /dev/kvm. Open it with the documented udev rule,
+      then boot one API 34 Google APIs x86_64 emulator with android-emulator-runner.
+    evidence: >-
+      GitHub changelog 2024-04-02: hardware-accelerated Android virtualization on 2-vCPU
+      Linux runners. reactivecircus/android-emulator-runner runs that image on ubuntu-latest.
+      Cursor and Claude cloud sessions do not provide a usable nested KVM.
+    suppresses_required_behavior: false

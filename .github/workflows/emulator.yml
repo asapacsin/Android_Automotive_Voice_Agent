@@ -1,0 +1,99 @@
+# Record the real drive: simulated user plus the 小诺 map, on a GitHub-hosted emulator.
+# ubuntu-latest has working KVM. The app is built only when the Actions secrets are set.
+# Required secrets: AMAP_API_KEY, NOVA_VENDOR_ZIP_URL, NOVA_DEBUG_KEYSTORE_B64.
+# The debug APK is checked against the Amap key's 调试版安全码 SHA1.
+# Rerun after that debug SHA1 is saved on the key.
+# Retest the Amap key after the GitHub secret is replaced.
+# Retest after the new Android key is stored in AMAP_API_KEY.
+# The job must not print coordinates, addresses, or transcripts.
+
+name: Drive video
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - cursor/github-emulator-9a6b
+
+jobs:
+  drive:
+    if: ${{ github.event_name != 'push' || !contains(github.event.head_commit.message, 'skip-drive') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm || true
+          if [ -e /dev/kvm ]; then
+            sudo chmod 666 /dev/kvm
+          fi
+          ls -l /dev/kvm
+          test -r /dev/kvm -a -w /dev/kvm
+
+      - name: Require the app secrets
+        env:
+          AMAP_API_KEY: ${{ secrets.AMAP_API_KEY }}
+          NOVA_VENDOR_ZIP_URL: ${{ secrets.NOVA_VENDOR_ZIP_URL }}
+          NOVA_VENDOR_ZIP_AUTH: ${{ secrets.NOVA_VENDOR_ZIP_AUTH }}
+          NOVA_DEBUG_KEYSTORE_B64: ${{ secrets.NOVA_DEBUG_KEYSTORE_B64 }}
+        run: |
+          missing=0
+          for name in AMAP_API_KEY NOVA_VENDOR_ZIP_URL NOVA_DEBUG_KEYSTORE_B64; do
+            eval "value=\${$name}"
+            if [ -z "$value" ]; then
+              echo "missing $name"
+              missing=1
+            fi
+          done
+          test "$missing" = 0
+
+      - name: Build the debug APK
+        env:
+          AMAP_API_KEY: ${{ secrets.AMAP_API_KEY }}
+          NOVA_VENDOR_ZIP_URL: ${{ secrets.NOVA_VENDOR_ZIP_URL }}
+          NOVA_VENDOR_ZIP_AUTH: ${{ secrets.NOVA_VENDOR_ZIP_AUTH }}
+          NOVA_DEBUG_KEYSTORE_B64: ${{ secrets.NOVA_DEBUG_KEYSTORE_B64 }}
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q openjdk-17-jdk-headless unzip
+          sudo mkdir -p /opt/android-sdk
+          sudo chown -R "$USER" /opt/android-sdk
+          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+          export ANDROID_HOME=/opt/android-sdk
+          bash scripts/cloud_setup.sh
+          sha1=$(keytool -exportcert -alias androiddebugkey -keystore "$HOME/.android/debug.keystore" -storepass android | openssl dgst -sha1 | awk '{print $2}')
+          md5=$(keytool -exportcert -alias androiddebugkey -keystore "$HOME/.android/debug.keystore" -storepass android | openssl dgst -md5 | awk '{print $2}')
+          echo "debug cert sha1=$sha1"
+          echo "debug cert md5=$md5"
+          if [ "$sha1" != "322fe8e733d503aafa6f0037df665452cbd4daeb" ]; then
+            echo "The debug keystore secret is not the certificate registered on the Amap Android key."
+            exit 1
+          fi
+          chmod +x ./gradlew
+          ./gradlew :app:assembleDebug
+          test -f "$HOME/nova-drive-build/app/outputs/apk/debug/app-debug.apk"
+
+      - name: Boot the emulator and record the drive
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          cores: 2
+          ram-size: 2048M
+          emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -no-snapshot -camera-back none
+          disable-animations: true
+          script: bash scripts/github_drive.sh "$HOME/nova-drive-build/app/outputs/apk/debug/app-debug.apk"
+
+      - name: Upload the drive video
+        uses: actions/upload-artifact@v4
+        with:
+          name: drive-video
+          path: drive.mp4
+          if-no-files-found: error
