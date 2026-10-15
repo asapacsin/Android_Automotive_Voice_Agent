@@ -191,3 +191,31 @@ after `speech_started`, the SPEC-012 R0 case, instead of waiting for one by chan
 emulator drive runs at 50 km/h). `voice say:` could not read clips pushed by a rooted adbd on
 this AVD (`missing <clip>.pcm`: root-owned files are invisible to the app through FUSE), hence
 the bridge.
+
+## The emulator on GitHub Actions (2026-10-15)
+
+Cloud agent containers (Claude, Cursor) have no `/dev/kvm` and no `vmx`/`svm` CPU flag, so no
+usable emulator. GitHub-hosted `ubuntu-latest` runners do have KVM (GitHub changelog 2024-04-02).
+`.github/workflows/emulator.yml` builds the debug APK, boots an API 34 `google_apis` x86_64
+emulator (`reactivecircus/android-emulator-runner`), installs the arm64 build (API 34's
+translator runs Amap, see above) and runs `scripts/github_drive.sh`: map → `nav_route` →
+`nav_start emulator:80`, recording the real screen for 180 s. It runs on `workflow_dispatch` or
+a push to `claude/10-15` whose message contains `[drive]`; the video is pushed to branch
+`ci/drive-video` (agents cannot download Actions logs or artifacts, so every stage, Amap auth
+token, route error code, crash and ANR count is reported as an annotation - never the key, a
+coordinate or a transcript). Secrets: `AMAP_API_KEY` (Android SDK key), `NOVA_DEBUG_KEYSTORE_B64`,
+`NOVA_VENDOR_ZIP_URL` (+ optional `NOVA_VENDOR_ZIP_AUTH`).
+
+**Amap error 22 ("certificate not valid"), 2026-10-15.** Route planning failed with
+`nav_calc_failure code=22`, which Amap's navi error-code page
+(lbs.amap.com/api/android-navi-sdk/guide/tools/errorcode) defines as the SHA1/package binding
+check. The workflow verified the keystore file in `~/.android` (SHA1 `322fe8e7…`, the one
+registered on the key), but `apksigner` showed the APK signed with `c5330c7c…`. Pinning
+`ANDROID_USER_HOME=$HOME/.android` (AGP reads it before `~/.android`) and installing the keystore
+there made the APK `322fe8e7…`; route and navigation then worked (run 38721062441). The build
+step now fails on a SHA1 mismatch instead of booting an emulator for nothing. Which variable
+sent AGP elsewhere was not identified (none of `ANDROID_USER_HOME/PREFS_ROOT/SDK_HOME` was printed set).
+
+**Pixel Launcher ANR.** The cold emulator's launcher raises "isn't responding" over the map; the
+script waits 30 s, sets `hide_error_dialogs`, restarts the launcher and closes dialogs before
+recording.

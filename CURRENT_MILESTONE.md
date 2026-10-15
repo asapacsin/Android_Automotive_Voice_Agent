@@ -2,7 +2,7 @@
 
 ## Branch claude/10-15 (2026-10-15)
 
-`claude/10-13` + the Cursor tryout work (`cursor/p57-my-side-window-9a6b`, `cursor/drop-scolding-tone-9a6b`), reviewed and fixed: three stale session goldens, the driver-window rewrite now narrows only `window=all`, and 「导航去…」 is a claim again (OPEN_PROBLEMS P57). Full JVM suite 4086 / 0 failures. Gemini tryout RESULT PASS 19/19, video `demo-videos/tryout_gemini_2026-10-15.mp4` (Gemini's voice, not Ayano). Not merged: `cursor/github-emulator-9a6b` (based on an old commit; its drive step has failed on every run) and `wt/p57` (superseded).
+`claude/10-13` + the Cursor tryout work (`cursor/p57-my-side-window-9a6b`, `cursor/drop-scolding-tone-9a6b`), reviewed and fixed: three stale session goldens, the driver-window rewrite now narrows only `window=all`, and 「导航去…」 is a claim again (OPEN_PROBLEMS P57). Full JVM suite 4086 / 0 failures. Gemini tryout RESULT PASS 19/19, video `demo-videos/tryout_gemini_2026-10-15.mp4` (Gemini's voice, not Ayano). GitHub emulator (moved here from `cursor/github-emulator-9a6b`, fixed: APK was signed with the wrong debug certificate → Amap code 22): run 38724466975 drove the real app on an API 34 emulator - map, route, turn-by-turn with lanes and junction view at 80 km/h, arrival; 180 s video on branch `ci/drive-video` (`docs/EMULATOR_TESTING.md`). No voice in it: the session is unconfigured (no Qwen by rule). Not merged: the rest of `cursor/github-emulator-9a6b` (based on an old commit; its drive step has failed on every run) and `wt/p57` (superseded).
 
 ## Tryout — DEMO-TRYOUT-001 PASS on the JVM harness (2026-10-14)
 
