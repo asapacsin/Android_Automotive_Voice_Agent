@@ -523,6 +523,7 @@ instead of asking is a failure).
 | CVC-44 | adjustment made, then `SLEEP`, then re-woken | 再低一点。 | stale by S2 | **none** | required | pre-sleep referent reused |
 | CVC-45 | adjustment made, then app restarted | 再低一点。 | stale by S3 | **none** | required | context survived the restart |
 | CVC-46 | navigation cancelled in CVC-36 | 就那个第二个。 | stale by S5/S7 | **none** | required | a cancelled list is still selectable |
+| CVC-47 | guidance running, no list or pending search on screen | 不去了。 | vague never-mind, not an end request (decider 2026-10-16, option B) | **none** (no `exit_navigation_mode`; a call is refused `VAGUE_EXIT_WHILE_NAVIGATING`) | — | navigation ends, or the reply does not say navigation is still running and that 「结束导航」 ends it, or she asks a yes/no question |
 
 ---
 

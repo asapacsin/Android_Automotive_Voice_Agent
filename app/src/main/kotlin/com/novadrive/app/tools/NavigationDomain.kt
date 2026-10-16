@@ -42,7 +42,7 @@ object NavigationDomain : ToolDomain {
         )
         val exitNavigationMode = specNoArgs(
             name = "exit_navigation_mode",
-            description = "真正停止屏幕导航或关闭候选列表：「结束导航」「取消导航」「不去了」，或导航/选择时说「算了」「返回」。只口头答应不调用则屏幕不变。按 status 答：navigation_stopped=已结束，navigation_selection_cancelled=已取消选择，no_navigation_active=当前没有导航。",
+            description = "真正停止屏幕导航或关闭候选列表：「结束导航」「取消导航」「退出导航」；候选列表显示时「算了」「不用了」「不去了」「返回」关闭列表。导航中只说「算了」「不去了」不会结束导航。只口头答应不调用则屏幕不变。按 status 答：navigation_stopped=已结束，navigation_selection_cancelled=已取消选择，no_navigation_active=当前没有导航。",
         )
         val savePlace = spec(
             name = "save_place",
