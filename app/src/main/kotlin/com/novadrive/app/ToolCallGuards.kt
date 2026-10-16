@@ -54,9 +54,9 @@ object ToolCallGuards {
      * 不要导航了 forms or as noun + refusal at the end of the line (导航不要了).
      */
     private const val END_VERBS = "结束|退出|停止|停|取消|关闭|关掉|关|终止"
-    private val NEAR_END = Regex("($END_VERBS)[了掉吧]{0,2}(导航|路线|行程)|(导航|路线|行程).{0,2}($END_VERBS)")
+    private val NEAR_END = Regex("($END_VERBS)(一?下)?[了掉吧]{0,2}(这个|这次|本次|此次|当前的?|现在的?)?(导航|路线|行程)|(导航|路线|行程).{0,2}($END_VERBS)")
     private val EXPLICIT_NO_NAV = Regex("不(要|用|想|需要)?导航了?|别再?导航")
-    private val NOUN_REFUSED = Regex("(导航|路线|行程)(不要|不用|不需要)了?[。！!，,\\s]*$")
+    private val NOUN_REFUSED = Regex("(导航|路线|行程)(不要|不用|不需要)了?[吧啊呀]?[。！!，,\\s]*$")
     /** 「不要结束导航」: a negated end verb is no end request. 「要不结束导航吧」 is not a negation. */
     private val NEGATED_END = Regex("(不要|不用|不需要|不想|别再?|(?<!要)不)($END_VERBS)")
     private val CONTINUE_NAV = Regex("继续(导航|路线|行程)|(导航|路线|行程)(还在)?继续|停车")

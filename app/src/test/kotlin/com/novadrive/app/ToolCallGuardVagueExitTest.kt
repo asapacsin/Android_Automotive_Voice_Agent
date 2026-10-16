@@ -73,7 +73,7 @@ class ToolCallGuardVagueExitTest {
     @Test
     fun `lines about the guidance voice or the route are not end requests`() {
         listOf("导航别说话了", "导航太吵了别说了", "关掉导航声音", "把导航声音关小一点", "关闭导航播报", "导航不要走高速",
-            "我不想走这条路线", "关窗，然后导航去公司", "关空调导航到公司", "不用管导航",
+            "我不想走这条路线", "关窗，然后导航去公司", "关空调导航到公司", "不用管导航", "关这个空调导航去公司",
         ).forEach {
             assertEquals(
                 ToolCallGuards.VAGUE_EXIT_WHILE_NAVIGATING,
@@ -87,6 +87,8 @@ class ToolCallGuardVagueExitTest {
     fun `suggestions and near forms end the drive`() {
         listOf("要不结束导航吧", "要不关了导航吧", "导航不要了", "导航不用了", "把导航取消", "导航可以结束了", "关了导航",
             "把导航停了", "先把导航關掉",
+            "结束当前导航", "退出当前导航", "结束本次导航", "取消这个导航", "停止这次导航", "结束当前的导航", "结束一下导航",
+            "导航不要了吧", "导航不用了吧",
         ).forEach {
             assertNull(ToolCallGuards.vagueExitWhileNavigating(exit, context(it), navigating = true, listOpen = false), it)
         }
