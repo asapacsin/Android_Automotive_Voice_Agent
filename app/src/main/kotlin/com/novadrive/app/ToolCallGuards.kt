@@ -47,7 +47,7 @@ object ToolCallGuards {
     const val UNSUPPORTED_BODY_PART = "UNSUPPORTED_BODY_PART"
     const val NEARBY_QUESTION_WHILE_NAVIGATING = "NEARBY_QUESTION_WHILE_NAVIGATING"
     const val VAGUE_EXIT_WHILE_NAVIGATING = "VAGUE_EXIT_WHILE_NAVIGATING"
-    private val EXPLICIT_END = Regex("(结束|退出|停止|取消|关闭|关掉|停掉)导航|不导航了|导航结束|别导航了")
+    private val EXPLICIT_END = Regex("(结束|退出|停止|取消|关闭|关掉|停掉|关了)导航|不(要|用)?导航了|别导航|导航(结束|关了|关掉|不要了)|结束路线")
 
     /** Words that do ask to go somewhere (else) - only these may replace an active route. */
     private val GO_INTENT = Regex("导航|带我去|带我到|开过去|开去|前往|就去|改去|换(个|成)?(目的地|地方)|去(最近|附近|那|这)")

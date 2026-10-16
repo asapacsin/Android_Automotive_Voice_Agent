@@ -41,7 +41,9 @@ class ToolCallGuardVagueExitTest {
 
     @Test
     fun `an explicit end request ends the drive`() {
-        listOf("结束导航", "退出导航", "停止导航", "取消导航", "关闭导航", "不导航了", "导航结束", "别导航了", "算了，结束导航吧").forEach {
+        listOf("结束导航", "退出导航", "停止导航", "取消导航", "关闭导航", "不导航了", "导航结束", "别导航了", "算了，结束导航吧",
+            "不要导航了", "不用导航了", "导航关了", "把导航关了", "导航关掉", "结束路线", "不去了，结束导航", "别导航", "导航不要了", "关了导航",
+        ).forEach {
             assertNull(ToolCallGuards.vagueExitWhileNavigating(exit, context(it), navigating = true, listOpen = false), it)
         }
     }
