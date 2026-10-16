@@ -778,7 +778,7 @@ tests:
     ended_by: natural
     regressions: []
     evidence_bind:
-      code_digest: sha256:bec04ac1eb830975f9340469fdeb6b3b034a2067170702602a1c05d76ff49e8e
+      code_digest: sha256:c59f6ea83cd65030eb9c8c59bdda395ce20e585987c190c81006d16bd3c3ff41
       procedure_digest: sha256:5e87199d84803a2726797c2880dbfdf6544778a1c8b3f483471bef673ac2e54b
       registry_digest: sha256:1de4231f8a53d1ed465dc9975992be67243e49c335cee584700a4cde7d471df8
       harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
@@ -788,10 +788,11 @@ tests:
         "docs/evidence/gha-2026-10-15/nav_route_preview.jpg": sha256:a27f8e2749342c1f00517809d19708dc9ba90f1d86d7c81467c54fb7e945e9be
         "docs/evidence/gha-2026-10-15/nav_t10.jpg": sha256:43384110ee62d978ec5ead4e3fdf6b9ea3cd1c5b4171d1a9c6d9f71b7f773ca2
       apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 9cc4eae
+      bound_commit: bf6210f
     covers: [navigation.arrival_lifecycle]
     related: [P26, P31, SPEC-007]
-    last_run: {at: 2026-10-15, result: PASS}
+    last_run: {at: 2026-10-16, result: PASS}
+    evidence: ["2026-10-16 GitHub device run 38832785831 at 02d9ab7: nav_proximity_arrival x1, nav_stopped reached=true reason=emulator_end, FATAL 0, ANR 0"]
 
   - id: NAV-UI-005
     capability: navigation
@@ -887,7 +888,7 @@ tests:
       - {criterion: lock_restored, required: true, observed: true, evidence: "log:NovaVoice/debug_tool nav_lock result=lock=true (GitHub run 38756802061) + artifact:docs/evidence/gha-2026-10-15/nav_lock_restored.jpg"}
     ended_by: manual
     evidence_bind:
-      code_digest: sha256:bec04ac1eb830975f9340469fdeb6b3b034a2067170702602a1c05d76ff49e8e
+      code_digest: sha256:c59f6ea83cd65030eb9c8c59bdda395ce20e585987c190c81006d16bd3c3ff41
       procedure_digest: sha256:caa86bda4983aa479e911fc0789a5d30fa7917bae84e685a641cd7ce08f7e22b
       registry_digest: sha256:5873151f6f1e23984800a00b8662df2034c27d32253b8079246cd67a3df4946e
       harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
@@ -895,11 +896,11 @@ tests:
         "docs/evidence/gha-2026-10-15/nav_lock_restored.jpg": sha256:c32fbf35411918966f8a54b86672666a6c0cad87b8b92baf712ef4a148d4d91a
         "docs/evidence/gha-2026-10-15/nav_overview.jpg": sha256:4d39790f22a0d2b14660257a2338ae197077d0c8bd3a972503c7b9b953cc71bd
       apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 9cc4eae
+      bound_commit: bf6210f
     covers: [navigation.return_to_tracking]
     related: [P26, SPEC-007]
-    last_run: {at: 2026-10-15, result: PASS}
-    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): nav_overview -> overview=true, whole remaining route shown (nav_overview.jpg); nav_lock -> lock=true, lock-car driving view restored (nav_lock_restored.jpg)"]
+    last_run: {at: 2026-10-16, result: PASS}
+    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): nav_overview -> overview=true, whole remaining route shown (nav_overview.jpg); nav_lock -> lock=true, lock-car driving view restored (nav_lock_restored.jpg)", "2026-10-16 GitHub device run 38832785831 at 02d9ab7 (after the P59 debug hook): overview=true, lock=true"]
 
   - id: NAV-UI-008
     capability: navigation

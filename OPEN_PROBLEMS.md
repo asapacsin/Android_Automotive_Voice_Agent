@@ -2154,3 +2154,15 @@ correction tells her to say honestly that nothing was done and to call no tool.
 `ActionClaimGuardTest.aCorrectionNeverOrdersAnActionTheDriverForbade`. The S1 failures in the same
 suite were the test runner (the first clip was invisible to the app: `say:temp24 result=missing`),
 fixed in `run_scenarios.py`.
+
+**P59 experiment, 2026-10-16 (GitHub device run at 02d9ab7, `ci/device-evidence runs/run_20261016_0125_02d9ab7/p59_*.jpg`):**
+the voice flow by dispatch (navigate_to, choose index 2, exit_navigation_mode) reproduces it: after
+the cancel the route line and the destination flag stay. Four removal calls were tried after the
+cancel, one per round: `AMapNavi.stopNavi()`, `AMapNaviView.setRouteMarkerVisible(false, false,
+false)`, the idle view options, and `AMapNaviView.map.clear()`. None removes the route line (the
+marker and map-clear variants remove only the flag); a new route still draws afterwards. The SDK
+11.2.100 exposes no route-overlay removal (javap of AMapNaviView / AMapNavi / AMapNaviViewOptions);
+web search from the container returned nothing usable. Remaining options, untried: destroy and
+re-create the AMapNavi instance on cancel, or draw routes ourselves (`setAutoDrawRoute(false)` plus
+our own `RouteOverLay`, removable). Both are larger changes to the map owner; cosmetic only - the
+flow state is correct.
