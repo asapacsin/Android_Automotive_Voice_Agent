@@ -33,6 +33,8 @@ PHRASES = {
     "fan_up": "风量调大",
     "ac_off": "关闭空调",
     "nav_zhuhai": "导航去珠海站",
+    "nav_shizimen": "导航去十字门",
+    "pick_first": "第一个",
     "nav_fix": "不对，换成拱北口岸",
     "nav_wanda": "导航到万达",
     "cancel": "算了",

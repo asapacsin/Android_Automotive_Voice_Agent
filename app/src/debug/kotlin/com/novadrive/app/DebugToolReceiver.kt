@@ -60,6 +60,9 @@ class DebugToolReceiver : BroadcastReceiver() {
                 "gemini_setup" -> applyGeminiSetup(context)
                 // In-memory, debug-only provider override (2026-10-15): `gemini` | `clear`; next session.
                 "provider" -> provider(arg)
+                // P62: SPEC-018's developer toggle 「助手播报导航（实验）」, read when the map host is
+                // created (restart the app after it): `on` | `on:<deadlineMs>` (measurement) | `off`.
+                "guidance_relay" -> guidanceRelay(context, arg)
                 // Host audio bridge (PC mic in, PC speakers out): arg `on:<port>` | `off` | `status`.
                 "bridge" -> when {
                     arg.startsWith("on") -> {
@@ -464,6 +467,17 @@ class DebugToolReceiver : BroadcastReceiver() {
      *  - "camera"                     : open the camera through the real UI path is not reachable
      *                                   from here; use a tap on 📷 instead
      */
+    private fun guidanceRelay(context: Context, arg: String): String {
+        val on = arg.startsWith("on")
+        val deadline = if (on) arg.substringAfter(':', "").toLongOrNull()?.coerceIn(500L, 8_000L) else null
+        val prefs = context.getSharedPreferences(com.novadrive.app.nav.amap.AmapGuidanceVoice.PREFS, Context.MODE_PRIVATE)
+        prefs.edit()
+            .putBoolean(com.novadrive.app.nav.amap.AmapGuidanceVoice.PREF_ASSISTANT_VOICE, on)
+            .putLong(com.novadrive.app.nav.amap.AmapGuidanceVoice.PREF_DEBUG_DEADLINE_MS, deadline ?: 0L)
+            .commit()
+        return "relay=${if (on) "on" else "off"} deadline_ms=${deadline ?: "default"} next_map_host"
+    }
+
     private fun voice(context: Context, arg: String): String {
         val gateway = com.novadrive.app.voice.VoiceSessionGateway
         return when {

@@ -44,16 +44,49 @@ internal object AmapGuidanceVoice : TTSPlayListener {
     fun onNavigationText(text: String?) {
         val active = relay ?: return
         if (text.isNullOrBlank()) return
-        feedText(text)
+        // P62: with the relay on, the host hears only what Amap's fallback speaks (relay's speaker
+        // below); what 小诺 speaks arrives as her own reply audio.
+        feedText(text, host = false)
         active.onGuidanceText(text)
     }
 
-    private fun feedText(text: String) {
+    private fun feedText(text: String, host: Boolean = true) {
         // Debug host bridge only (null otherwise): the emulator speaker is inaudible, so the
         // guidance text is spoken again on the PC.
-        runCatching { HostAudioTap.guidanceSink?.invoke(text) }
+        if (host) runCatching { HostAudioTap.guidanceSink?.invoke(text) }
         textReceiver?.invoke(text)
     }
+
+    /**
+     * P63: a sentence the app itself must say during navigation (the over-speed warning), spoken
+     * like guidance: through the relay when it is on (小诺's voice, Amap as the fallback), else by
+     * Amap's TTS, whose play listener gates the microphone (P3) and feeds the host bridge.
+     */
+    fun speakAlert(navi: AMapNavi?, text: String) {
+        mainHandler.post {
+            val active = relay
+            if (active != null) {
+                runCatching { textReceiver?.invoke(text) }
+                active.onGuidanceText(text)
+                DebugVoiceLog.log("nav_alert_spoken via=relay chars=${text.length}")
+                return@post
+            }
+            val accepted = runCatching { navi?.playTTS(text, false) ?: false }.getOrDefault(false)
+            DebugVoiceLog.log("nav_alert_spoken via=amap accepted=$accepted chars=${text.length}")
+        }
+    }
+
+    /** P63: every speed-HUD change; the over-speed warning is spoken when [alert] says so (the limit only in the log). */
+    fun onSpeedHud(alert: OverspeedAlert, snap: DrivingSpeedHud.Snapshot, navi: AMapNavi?) {
+        val sentence = alert.onSnapshot(snap, SystemClock.elapsedRealtime()) ?: return
+        DebugVoiceLog.log("nav_overspeed_alert limitKmh=${snap.limitKmh}")
+        speakAlert(navi, sentence)
+    }
+
+    private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
+
+    /** Debug builds only (the debug receiver's `guidance_relay on:<ms>`): a measurement deadline, else SPEC-018's. */
+    @Volatile var debugDeadlineMs: Long? = null
 
     override fun onPlayEnd(text: String?) {
         DebugVoiceLog.log("nav_guidance_play_end")
@@ -93,6 +126,8 @@ internal object AmapGuidanceVoice : TTSPlayListener {
                 override fun sendPrompt(text: String, promptId: String) = VoiceSessionGateway.sendPrompt(text, promptId)
             },
             amap = GuidanceSpeaker { text ->
+                // P62: only the fallback reaches the host bridge (debug; null otherwise).
+                runCatching { HostAudioTap.guidanceSink?.invoke(text) }
                 val accepted = runCatching { navi.playTTS(text, true) }.getOrDefault(false)
                 DebugVoiceLog.log("nav_guidance_fallback_tts accepted=$accepted")
                 accepted
@@ -106,7 +141,9 @@ internal object AmapGuidanceVoice : TTSPlayListener {
                     if (speaking) NavigationGuidanceVoice.onPlayStart() else NavigationGuidanceVoice.onPlayEnd()
             },
             enabled = { true },
+            deadlineMs = debugDeadlineMs ?: GuidanceRelay.DEFAULT_DEADLINE_MS,
         )
+        DebugVoiceLog.log("nav_guidance_relay deadline_ms=${debugDeadlineMs ?: GuidanceRelay.DEFAULT_DEADLINE_MS}")
         this.relay = relay
         val listener: (Boolean) -> Unit = { speaking -> handler.post { relay.onAmapSpeaking(speaking) } }
         amapListener = listener
@@ -133,6 +170,15 @@ internal object AmapGuidanceVoice : TTSPlayListener {
 
     fun assistantVoiceEnabled(context: android.content.Context): Boolean =
         context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).getBoolean(PREF_ASSISTANT_VOICE, false)
+
+    /** GUIDANCE-EMU-001 measurement only: written by the debug receiver, read in debuggable builds. */
+    const val PREF_DEBUG_DEADLINE_MS = "debug_deadline_ms"
+
+    fun debugDeadline(context: android.content.Context): Long? {
+        if (!DebugVoiceLog.isEnabled) return null
+        val ms = context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).getLong(PREF_DEBUG_DEADLINE_MS, 0L)
+        return ms.takeIf { it > 0 }
+    }
 
     internal fun broadcastModeName(mode: Int): String = when (mode) {
         BroadcastMode.CONCISE -> "concise"

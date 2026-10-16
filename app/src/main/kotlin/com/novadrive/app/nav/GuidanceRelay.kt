@@ -45,7 +45,7 @@ class GuidanceRelay(
     private val amap: GuidanceSpeaker,
     private val arbiter: GuidanceArbiterView,
     private val enabled: () -> Boolean,
-    private val deadlineMs: Long = 1_200,
+    private val deadlineMs: Long = DEFAULT_DEADLINE_MS,
     private val cooldownMs: Long = 60_000,
     private val strikeLimit: Int = 2,
     private val log: (String) -> Unit = { com.novadrive.app.DebugVoiceLog.log(it) },
@@ -305,6 +305,8 @@ class GuidanceRelay(
     private fun waited(p: Prompt): Long = clock() - p.enqueuedAt
 
     companion object {
+        /** SPEC-018 B2 default, until G-1 (GUIDANCE-EMU-001) sets it from measurement. */
+        const val DEFAULT_DEADLINE_MS = 1_200L
         const val VERBATIM_PREFIX = "请一字不改地朗读下面这句导航提示，不要加任何别的话："
         const val BRACKET_MS_PER_CHAR = 300L
         const val BRACKET_MIN_MS = 1_500L

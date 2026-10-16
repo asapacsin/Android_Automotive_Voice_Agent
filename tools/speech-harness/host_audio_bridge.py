@@ -271,7 +271,13 @@ class Recorder:
             self.guidance.append((time.time() - self.t0, text))
 
     def _guidance_track(self):
-        """Each guidance sentence voiced with edge-tts (a male voice, so it is not her) on the clock."""
+        """Each sentence Amap's own voice speaks, voiced with edge-tts on the clock.
+
+        A female voice, zh-CN-XiaoyiNeural (owner test 10-16, P62: the male one sounded unlike
+        anything in the car; the driver clips use Xiaoxiao, so this one is told apart). With
+        the SPEC-018 relay on, only the sentences Amap's fallback speaks arrive here; the ones she
+        speaks are in her reply audio.
+        """
         if not self.guidance:
             return None
         try:
@@ -283,7 +289,7 @@ class Recorder:
         for at, text in self.guidance:
             mp3 = tempfile.mktemp(suffix=".mp3")
             try:
-                asyncio.run(edge_tts.Communicate(text, "zh-CN-YunxiNeural").save(mp3))
+                asyncio.run(edge_tts.Communicate(text, "zh-CN-XiaoyiNeural").save(mp3))
                 pcm = subprocess.run([ff, "-loglevel", "error", "-i", mp3, "-ac", "1", "-ar", str(rate), "-f", "s16le", "-"],
                                      capture_output=True, check=True).stdout
             except Exception:
@@ -433,7 +439,7 @@ def _say(text):
     runner = ("import sys, runpy\ntry:\n import truststore; truststore.inject_into_ssl()\nexcept ImportError: pass\n"
               "sys.argv = ['edge_tts'] + sys.argv[1:]; runpy.run_module('edge_tts', run_name='__main__')")
     try:
-        made = subprocess.run([sys.executable, "-c", runner, "--voice", "zh-CN-XiaoxiaoNeural", "--text", text,
+        made = subprocess.run([sys.executable, "-c", runner, "--voice", "zh-CN-XiaoyiNeural", "--text", text,
                                "--write-media", out], capture_output=True, timeout=20).returncode == 0
     except subprocess.TimeoutExpired:
         made = False

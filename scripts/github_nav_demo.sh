@@ -47,6 +47,8 @@ sudo apt-get update -q >/dev/null
 sudo apt-get install -y -q ffmpeg >/dev/null
 
 adb install -r -g --abi arm64-v8a "$apk"
+# The summary greps the whole drive from logcat: keep it from rolling over.
+adb logcat -G 16M || true
 sleep 30
 adb shell settings put global hide_error_dialogs 1 || true
 adb shell am force-stop com.google.android.apps.nexuslauncher || true
@@ -79,6 +81,10 @@ setup_key() { # env-name tool file
 app_up && note "app: map up" || note "app: map did not come up"
 setup_key AMAP_WEB_KEY amap_web_setup amap_web_setup.txt || true
 if ! setup_key GEMINI_API_KEY gemini_setup gemini_setup.txt; then note "nav demo: skipped - no GEMINI_API_KEY"; exit 0; fi
+# P62 / GUIDANCE-EMU-001: guidance in her voice (SPEC-018 relay, ADR-014), Amap only as the fallback.
+# 3000 ms is a measurement deadline (SPEC-018's default 1200 ms is set from G-1, never measured).
+tool guidance_relay on:3000; sleep 1
+note "guidance relay: $(result_of guidance_relay)"
 adb shell am force-stop com.novadrive.app
 app_up || true
 sleep 3
@@ -88,7 +94,8 @@ rec_start="$(date +%s.%N)"
 (
   for i in 1 2 3; do
     echo "$(date +%s.%N)" >"$ev/seg${i}_start.txt"
-    adb shell screenrecord --time-limit 180 --bit-rate 4000000 "/sdcard/nav_seg${i}.mp4" || true
+    # P64: half resolution, so the guest encoder takes less of the CPU the map renders on.
+    adb shell screenrecord --time-limit 180 --size 576x1248 --bit-rate 3000000 "/sdcard/nav_seg${i}.mp4" || true
     [ -f "$ev/stop_recording" ] && break
   done
 ) &
@@ -103,12 +110,19 @@ recorder=$!
 ) &
 
 S="tools/speech-harness/speech"
-clips="$S/nav_zhuhai.pcm,$S/pick_second.pcm,$S/start_nav.pcm,$S/ctx_too_hot.pcm,$S/music_on.pcm,$S/eta_q.pcm,$S/gas_nearby.pcm,$S/music_off.pcm"
+# P63: 十字门, a route with a 40 km/h speed camera (NAV-MID-ROUTE-001, 2026-09-21), driven at 90.
+clips="$S/nav_shizimen.pcm,$S/pick_first.pcm,$S/start_nav.pcm,$S/ctx_too_hot.pcm,$S/music_on.pcm,$S/eta_q.pcm,$S/gas_nearby.pcm,$S/music_off.pcm"
 python3 tools/speech-harness/host_audio_bridge.py --from-file "$clips" --lead 8 --gap 20 --duration 420 \
   --no-play --provider gemini --record "$ev/demo_audio" >/dev/null 2>"$ev/bridge_err.txt" || true
 note "nav demo: provider=$(nova | grep -oE 'session_provider choice=[a-z_]+' | tail -1) started=$(count 'nav_started') stopped=$(nova | grep -oE 'nav_stopped reached=[a-z]+ reason=[a-z_]+' | tail -1) guidance=$(count 'nav_guidance_play_start') tools=$(nova | grep -oE '^tool=[a-z_]+|tool=[a-z_]+ args' | grep -oE 'tool=[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ') errors=$(count 'state=ERROR|_PROTOCOL_ERROR')"
 # Let the drive reach the destination if it has not yet.
 for _ in $(seq 1 40); do nova | grep -q "nav_stopped" && break; sleep 5; done
+# P62 relay: who spoke each guidance sentence, and how long until her audio (codes and ms only).
+note "relay: $(nova | grep -oE 'nav_guidance_relay [a-z_]+=[a-z0-9_]+' | sort -u | tr '\n' ' ')routes: $(nova | grep -oE 'guidance_route prompt=g[0-9]+ to=[a-z]+ reason=[A-Z_]+' | sed -E 's/prompt=g[0-9]+ //' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')"
+note "relay claims: assistant_waited_ms=$(nova | grep -oE 'guidance_claim prompt=g[0-9]+ side=assistant waited_ms=[0-9]+' | grep -oE '[0-9]+$' | tr '\n' ',') amap=$(count 'guidance_claim .* side=amap') fidelity: $(nova | grep -oE 'guidance_fidelity prompt=g[0-9]+ result=[A-Z_]+' | grep -oE 'result=[A-Z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')fallback_tts: $(nova | grep -oE 'nav_guidance_fallback_tts accepted=[a-z]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')"
+# P63: limits seen, time over, warnings spoken, Amap rings.
+note "overspeed: limits=$(nova | grep -oE 'nav_speed kmh=[0-9]+ limitKmh=[0-9]+' | grep -oE 'limitKmh=[0-9]+' | sort -u | tr '\n' ' ')over_lines=$(count 'nav_speed .* over=1') alerts=$(count 'nav_overspeed_alert') spoken: $(nova | grep -oE 'nav_alert_spoken via=[a-z]+( accepted=[a-z]+)?' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')rings=$(count 'nav_play_ring')"
+note "gemini closes: $(nova | grep -oE 'gemini_closed code=[0-9]+ reason_class=[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')"
 sleep 8
 touch "$ev/stop_recording"
 adb shell pkill -INT screenrecord || true
@@ -130,8 +144,13 @@ if [ -s "$ev/screen.mp4" ] && [ -f "$ev/demo_audio/t0.txt" ]; then
   ffmpeg -v error -y "${inputs[@]}" -filter_complex "$mix" -map 0:v -map "[a]" -c:v copy -c:a aac -b:a 128k \
     -movflags +faststart "$ev/nav_demo.mp4" && note "nav demo: nav_demo.mp4 written (offset ${off} s, guidance=$( [ -f "$ev/demo_audio/guidance.wav" ] && echo yes || echo no))" || note "nav demo: mux failed"
 fi
+# P64: the frame rate the viewer sees.
+if [ -s "$ev/nav_demo.mp4" ]; then
+  note "video: $(ffprobe -v error -select_streams v:0 -count_packets -show_entries stream=nb_read_packets,width,height -show_entries format=duration -of csv=p=0 "$ev/nav_demo.mp4" | tr '\n' ' ' | awk -F'[ ,]+' '{printf "%sx%s frames=%s seconds=%.0f fps=%.1f", $1, $2, $3, $4, $3/$4}')"
+fi
 rm -f "$ev"/seg*.mp4 "$ev/screen.mp4" "$ev/segs.txt" "$ev/stop_recording" "$ev/bridge_err.txt"
 shot nav_demo_end
 tool voice stop
 tool provider clear
+tool guidance_relay off
 note "nav demo: done"

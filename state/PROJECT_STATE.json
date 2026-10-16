@@ -1,72 +1,19 @@
 {
-  "generated_at": "2026-10-15T19:31:29",
+  "generated_at": "2026-10-16T03:02:58",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "77405b3",
+    "commit": "5b8f087",
     "branch": "claude/10-15",
-    "subject": "Rebind speech rows after the P60 change: S7/S11/S21 re-passed live, music text-live 10/10 again",
+    "subject": "Owner test 10-16: three findings from the navigation demo recorded (P62 voice, P63 overspeed, P64 frame rate)",
     "working_tree_clean": false,
-    "uncommitted_files": 3
+    "uncommitted_files": 14
   },
   "tests": {
-    "available": true,
-    "collected_at": "2026-10-15T15:44:22",
-    "total": {
-      "tests": 313,
-      "failures": 0,
-      "errors": 0,
-      "skipped": 0
-    },
-    "by_module": {
-      "evaluation": {
-        "tests": 27,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "app": {
-        "tests": 1,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "simulator": {
-        "tests": 25,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "safety": {
-        "tests": 2,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "behavior-test": {
-        "tests": 131,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "contracts": {
-        "tests": 7,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "ingress": {
-        "tests": 120,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      }
-    },
-    "passing": true
+    "available": false,
+    "reason": "no JUnit XML found; run gradlew test"
   },
   "apk": {
-    "built": true,
-    "bytes": 224801809,
-    "built_at": "2026-10-13T07:25:16"
+    "built": false
   },
   "capabilities": {
     "available": true,
@@ -123,6 +70,21 @@
       "id": "P59",
       "title": "After 「算了」 cancels the route choice, the route stays drawn on the map",
       "status": "OPEN, seen 2026-10-15 in the real-app demo on the GitHub emulator (Gemini via the debug"
+    },
+    {
+      "id": "P62",
+      "title": "Turn-by-turn guidance is not spoken in her voice (demo used a male voice)",
+      "status": "OPEN 2026-10-16. Owner test 10-16 ([docs/owner-tests/test-10-16.md](docs/owner-tests/test-10-16.md)):"
+    },
+    {
+      "id": "P63",
+      "title": "No spoken warning when the car is over the speed limit",
+      "status": "OPEN 2026-10-16. Owner test 10-16: \"overspeed no voice warning\"."
+    },
+    {
+      "id": "P64",
+      "title": "The emulator demo runs at about 6.5 frames per second",
+      "status": "OPEN 2026-10-16. Owner test 10-16: \"the simulation is laggy\"."
     }
   ],
   "tech_debt": [
@@ -192,18 +154,284 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "DEMO-TRYOUT-001: FAIL: A first-time driver in their own words (19 lines: chat, vague asks, a refusal, a change of mind, barge-in, mumble, call), graded per line",
-    "actionable_count": 92,
+    "NEXT_ACTION": "app-debug.apk: no debug APK has been built from this tree",
+    "actionable_count": 134,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 28,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
       {
+        "priority": 1,
+        "class": "broken build or missing artifact",
+        "source": "build output",
+        "item": "app-debug.apk",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "APPS-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "BARGEIN-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "CLIMATE-IMPLICIT-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "CLIMATE-OFF-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "CLIMATE-SET-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "CTX-AMBIG-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "CTX-CHAIN-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "DEMO-AMAP-LIVE-001",
+        "blocked_by": null
+      },
+      {
         "priority": 2,
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
         "item": "DEMO-TRYOUT-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "FUZZY-TEXT-LIVE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "HELP-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "MUSIC-NAMED-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "MUSIC-PLAY-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "MUSIC-TEXT-LIVE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-CANCEL-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-CORRECT-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-E2E-ARRIVAL-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-PICK-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-SEARCH-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-SIM-QA-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-UI-002",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-UI-003",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-UI-004",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-UI-005",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-UI-006",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-UI-007",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NET-RECOVER-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NOISE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "PERM-DENY-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "PLACE-NAV-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "PLACE-SAVE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "PLACE-UNSET-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "SLEEP-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "SUITE-SCENARIO-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "TRUTH-BAIT-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "TRUTH-MISHEARD-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "TRUTH-WEATHER-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "UNSUPPORTED-001",
         "blocked_by": null
       },
       {
@@ -771,6 +999,34 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P59",
+        "blocked_by": null
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P62",
+        "blocked_by": null
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P63",
+        "blocked_by": null
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P64",
+        "blocked_by": null
+      },
+      {
+        "priority": 10,
+        "class": "stale state or harness defect",
+        "source": "state",
+        "item": "PROJECT_STATE.json",
         "blocked_by": null
       },
       {

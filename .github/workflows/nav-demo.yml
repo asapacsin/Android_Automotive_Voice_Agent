@@ -119,8 +119,9 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_5
-          cores: 2
-          ram-size: 2048M
+          # P64 (owner test 10-16, 6.5 fps): all 4 runner cores and 4 GB for the emulator.
+          cores: 4
+          ram-size: 4096M
           emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -no-snapshot -camera-back none
           disable-animations: true
           script: bash scripts/github_nav_demo.sh "$HOME/nova-drive-build/app/outputs/apk/debug/app-debug.apk"
