@@ -165,13 +165,13 @@ tests:
     pass_criteria: ["either a real tool call, or an honest refusal - never a released claim"]
     evidence: ["2026-09-19: 「返屋企啦」 -> 「发诺克拉。」 -> correction, not a claim", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S11 返屋企啦 - no wrong action taken: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-15 S11 re-passed at b4259c0 (with the P60 claim-gate change) in GitHub voice run 38787506856, Gemini debug override", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S11 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
     evidence_bind:
-      code_digest: sha256:1cd282056cacbf46e1194ac2b64979e11962fcccc46b8d7ee5fdd0d4e320d5fa
+      code_digest: sha256:913a42a153e38099710ae40e547b60a6daab35d263168283cc601fd9568d4594
       procedure_digest: sha256:9dab374b62e393aeee4370d4c00bca6416d0aa888942f4b7eea62026af260808
       registry_digest: sha256:c306f76a9451a01dfc69ee94722b418f47e798eb4cf9db2d18bf680f6d1989d1
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 8d05eb3
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [P23]
     last_run: {at: 2026-10-16, result: PASS}
 
@@ -226,13 +226,13 @@ tests:
       - "no weather or traffic wording released in a turn without a live_info result (unit cover: FalseCapabilityClaimTest)"
     evidence: ["2026-09-20: refusal, 20/20 suite (pre-SPEC-011 criterion, superseded)", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S7 今天天气怎么样 -> query_live_info + live_info kind=weather: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-15 S7 re-passed at b4259c0 (with the P60 claim-gate change) in GitHub voice run 38787506856, Gemini debug override", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S7 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
     evidence_bind:
-      code_digest: sha256:ff9c589b9dc5d16099d5f69867cdfd0b7ac9800d71466a6571e70a912364f409
+      code_digest: sha256:eb2ebd71a31a7433dd261f5269025deeec81a5dca6d393d68f8409d2addb17bd
       procedure_digest: sha256:2f52cffdc7bd8d7be36d925f746bd8b1adbb17887680dbcdba108b73d8919dd3
-      registry_digest: sha256:eb3a2c87d3a3031a7cc398af2f7de0a6bcb351e4ace83f17af7eda248b5fac21
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      registry_digest: sha256:2ec3c42db12f48d30f16b61435f61177cb4baf5194b73cafc97f6f9fac6ed135
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 8d05eb3
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [P21, SPEC-011]
     last_run: {at: 2026-10-16, result: PASS}
 
@@ -250,13 +250,13 @@ tests:
     pass_criteria: ["a refusal, a drop, or a real tool call - never a released lie"]
     evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S14 claim bait - no unproven claim: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview), run 38787506856 at b4259c0, ci/voice-evidence runs/run_20261015_1903_b4259c0: S14 PASS after the P60 fix - the dropped claim is followed by an honest no-tool correction, no temperature change in the next turn.", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S14 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
     evidence_bind:
-      code_digest: sha256:1cd282056cacbf46e1194ac2b64979e11962fcccc46b8d7ee5fdd0d4e320d5fa
+      code_digest: sha256:913a42a153e38099710ae40e547b60a6daab35d263168283cc601fd9568d4594
       procedure_digest: sha256:d3378d79edf324ee10300df4fd4feba109ea5cab3c99d088ab031180e2377d71
       registry_digest: sha256:3ada02cb3d8543b12044688fe0d66e7d37614a36420ae8bd7869d054230a9c7b
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: b4259c0
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [I-1]
     last_run: {at: 2026-10-16, result: PASS}
 
@@ -279,10 +279,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:157ec0e4cef8d9960f1a42717963fe7b97c67f7bf11281a0ea6d1bc32d51c58a
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: adb9d04
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [B-010]
     last_run: {at: 2026-10-16, result: PASS}
 
@@ -303,10 +303,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:8ba04e3ac67da8f542131d4b40650ad80c8f43c467377025a42dc711e8d22d42
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 6a673f3
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [B-010]
     last_run: {at: 2026-10-16, result: PASS}
 
@@ -327,10 +327,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:d0604ec6bee49e6e45bfd056b8bdeb4a5f8b75b6f088b2c874919045fc4b9b14
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: d4902d4
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [B-010]
     last_run: {at: 2026-10-16, result: PASS}
 
@@ -477,13 +477,13 @@ tests:
     pass_criteria: ["nav_resolve_candidates count>0", "no nav_navigation_started"]
     evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S5 导航去珠海站: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S5 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
     evidence_bind:
-      code_digest: sha256:bec04ac1eb830975f9340469fdeb6b3b034a2067170702602a1c05d76ff49e8e
+      code_digest: sha256:8c483964f961ffaa5c2cd73703fa25fb8b473f63ae4fddee55665724499552a2
       procedure_digest: sha256:0f41f318f5818a19bb531fbe94fae651fcc073f54090ab528099901dade4afde
-      registry_digest: sha256:bdc0b3828bca5e6a9e1ca8bf2246da9ee8d52d4027b40f7472c5e79dac54f287
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      registry_digest: sha256:4f6defe5c129b94878e638477cff64ac8581261955c65a52830c06f8af15c8c2
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 6a673f3
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [SPEC-005, P7]
     last_run: {at: 2026-10-16, result: PASS}
 
@@ -501,13 +501,13 @@ tests:
     pass_criteria: ["tool=choose_navigation_option"]
     evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S5b 第二个: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S5b PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
     evidence_bind:
-      code_digest: sha256:bec04ac1eb830975f9340469fdeb6b3b034a2067170702602a1c05d76ff49e8e
+      code_digest: sha256:8c483964f961ffaa5c2cd73703fa25fb8b473f63ae4fddee55665724499552a2
       procedure_digest: sha256:2848c32658f7a3d134d60b143d11add5ad59e111f4d76de91cbb3b5395610126
-      registry_digest: sha256:9ea9fc657f555de4b84c2ccc6d55e0b283ff173e7afc91b3324c77e8031dd7cc
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      registry_digest: sha256:57b2077c14a9db2695a092ad0029cba6defc584a998a2dea9ce9e5344bb01e08
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 6a673f3
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [SPEC-005, P16]
     last_run: {at: 2026-10-16, result: PASS}
 
@@ -525,13 +525,13 @@ tests:
     pass_criteria: ["tool=exit_navigation_mode, picker closed"]
     evidence: ["2026-09-20: nav_flow_cancelled", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S6 算了: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S6 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
     evidence_bind:
-      code_digest: sha256:bec04ac1eb830975f9340469fdeb6b3b034a2067170702602a1c05d76ff49e8e
+      code_digest: sha256:8c483964f961ffaa5c2cd73703fa25fb8b473f63ae4fddee55665724499552a2
       procedure_digest: sha256:23565134e5356b7656ced80e08e74b12f79e1aa2290953bbbcf721dad6f396f1
-      registry_digest: sha256:2815edcac20800006dc1f144dd9190868b65ef123d75588a3098ffe9bfd3f579
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      registry_digest: sha256:ce26bd4b05ffe24e719d79777aa4ddfc275b5c7a8ee3dcd19e8cd833aad115ae
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 6a673f3
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [SPEC-005, P11, P4]
     last_run: {at: 2026-10-16, result: PASS}
 
@@ -552,10 +552,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:9f483854c9742e42b436e33f00165abd28343f3bbcff8548f8fb0c858fd3b786
       registry_digest: sha256:6db5b0e5506ab18d6c9de6d800e39628c964e263eb8f97c5bc128caafa805167
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 6a673f3
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [SPEC-006]
     last_run: {at: 2026-10-16, result: PASS}
 
@@ -641,10 +641,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:b74d385a2176eedd9ac924b3d3ba9234c478d1b894b21562c9a00310b465afed
       registry_digest: sha256:d94b10f6a164113d870829d82b2438290dceca906e8ffeb081a41712f055c939
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: d4902d4
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     covers: [navigation.lock_car_tracking]
     related: [P26, SPEC-007]
     last_run: {at: 2026-10-16, result: PASS}
@@ -672,10 +672,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:9462f47ca7654ba6780a4dc6b2ef4df6473611b4ac1977c85eedfcba6af5b107
       registry_digest: sha256:eff6f3ff2af443c9ab1a14e0b5df1b5ce4f9a12e85ed0bb94df04aacaf7a9fc4
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 9cc4eae
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     covers: [navigation.heading_up_map]
     related: [P26, SPEC-007]
     last_run: {at: 2026-10-16, result: PASS}
@@ -704,10 +704,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:38f1c63118e647bbf397746839ad7302015ccd978b5751d8eca16f23131a0778
       registry_digest: sha256:a00a8c8f01e2fbd2ffde3ccfff4bf11aa1bb1cb2ccdf1110715c8f8c63edb1ee
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: d4902d4
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     covers: [navigation.traffic_presentation]
     related: [P26, SPEC-007]
     last_run: {at: 2026-10-16, result: PASS}
@@ -778,17 +778,17 @@ tests:
     ended_by: natural
     regressions: []
     evidence_bind:
-      code_digest: sha256:c59f6ea83cd65030eb9c8c59bdda395ce20e585987c190c81006d16bd3c3ff41
+      code_digest: sha256:8c483964f961ffaa5c2cd73703fa25fb8b473f63ae4fddee55665724499552a2
       procedure_digest: sha256:5e87199d84803a2726797c2880dbfdf6544778a1c8b3f483471bef673ac2e54b
-      registry_digest: sha256:1de4231f8a53d1ed465dc9975992be67243e49c335cee584700a4cde7d471df8
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      registry_digest: sha256:41ff97696d8d4af2099fcddb5825287316a6e2038e220dbba4762ce975e8a83a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests:
         "docs/evidence/gha-2026-10-15/nav_drive_90s.jpg": sha256:c300a017036832ebb096e5c97437eb29764e2cc2be82e3fc98eaf3efcfd5a422
         "docs/evidence/gha-2026-10-15/nav_end.jpg": sha256:b9caea9b78a8059fb4307c8e46e50f6101269851fb3fdb13026f6d9cab4500bf
         "docs/evidence/gha-2026-10-15/nav_route_preview.jpg": sha256:a27f8e2749342c1f00517809d19708dc9ba90f1d86d7c81467c54fb7e945e9be
         "docs/evidence/gha-2026-10-15/nav_t10.jpg": sha256:43384110ee62d978ec5ead4e3fdf6b9ea3cd1c5b4171d1a9c6d9f71b7f773ca2
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: bf6210f
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     covers: [navigation.arrival_lifecycle]
     related: [P26, P31, SPEC-007]
     last_run: {at: 2026-10-16, result: PASS}
@@ -816,10 +816,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:2bb18fc79e81fdc4d40f4148b4fea570f441428849f89d9e613055d92b176c0f
       registry_digest: sha256:9a6326285e1a1a5b20a0a8fdd2a4b9057a858c442645074355586f5306197f9d
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: d4902d4
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     covers: [navigation.maneuver_guidance]
     related: [P26, SPEC-007]
     last_run: {at: 2026-10-16, result: PASS}
@@ -848,10 +848,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:cb995940e078458c8253b79ece0c8ad57b90e13b3acfcd852483c4ea4727e43d
       registry_digest: sha256:c2e10bf1dc4a2c5d6b092b64517cded36a237d30737d11526646932e54037f74
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: d4902d4
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     covers: [navigation.lane_junction_presentation]
     related: [P26, SPEC-007]
     last_run: {at: 2026-10-16, result: PASS}
@@ -888,15 +888,15 @@ tests:
       - {criterion: lock_restored, required: true, observed: true, evidence: "log:NovaVoice/debug_tool nav_lock result=lock=true (GitHub run 38756802061) + artifact:docs/evidence/gha-2026-10-15/nav_lock_restored.jpg"}
     ended_by: manual
     evidence_bind:
-      code_digest: sha256:c59f6ea83cd65030eb9c8c59bdda395ce20e585987c190c81006d16bd3c3ff41
+      code_digest: sha256:8c483964f961ffaa5c2cd73703fa25fb8b473f63ae4fddee55665724499552a2
       procedure_digest: sha256:caa86bda4983aa479e911fc0789a5d30fa7917bae84e685a641cd7ce08f7e22b
-      registry_digest: sha256:5873151f6f1e23984800a00b8662df2034c27d32253b8079246cd67a3df4946e
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      registry_digest: sha256:a3cac435bb6b4be3fd01ae91a95a3b27ca605231e1cb41ed73067eb329751d1b
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests:
         "docs/evidence/gha-2026-10-15/nav_lock_restored.jpg": sha256:c32fbf35411918966f8a54b86672666a6c0cad87b8b92baf712ef4a148d4d91a
         "docs/evidence/gha-2026-10-15/nav_overview.jpg": sha256:4d39790f22a0d2b14660257a2338ae197077d0c8bd3a972503c7b9b953cc71bd
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: bf6210f
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     covers: [navigation.return_to_tracking]
     related: [P26, SPEC-007]
     last_run: {at: 2026-10-16, result: PASS}
@@ -969,10 +969,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:d9a79cc6f8b0f8752eb8fd35385c459298965b17e2a4c942eb38bd74452b9260
       registry_digest: sha256:c986b4831db3ec0e4da914bc58cf2abf20d53e78f4bb86929cb24a20687d0164
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 77405b3
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [SPEC-006]
     last_run: {at: 2026-10-16, result: PASS}
 
@@ -993,10 +993,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:33538348b9515af8cc0bdda4f765844150a61cad27bdffb83e093b20a273319f
       registry_digest: sha256:a4063b41a81d6d4d1cc9e13a1a5dd45dd3fabe248826b79f87aa68116597e2cd
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 6a673f3
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [SPEC-006]
     last_run: {at: 2026-10-16, result: PASS}
 
@@ -1017,10 +1017,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:7763ae0ecdf2cd439c1d944f3dc07531a64ae324ac4c9df7d54ec337a20fd23e
       registry_digest: sha256:523fdc26f7dead62f7fc6ce7ca3c83f3b203428040f9ff3b09e19f626579b580
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 6a673f3
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [P2]
     last_run: {at: 2026-10-16, result: PASS}
 
@@ -1061,10 +1061,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:43af5b8595c93c4b4434bbe64b4c044eb3f2903c92bf520102070770ad780244
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 6a673f3
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [SPEC-006, ADR-002, P10]
     last_run: {at: 2026-10-16, result: PASS}
 
@@ -1085,10 +1085,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:7c4019352c1c1b1341d27e24284fa355c17915e33a846f5ac30c8abc7bfa73fe
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 6a673f3
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [SPEC-006]
     last_run: {at: 2026-10-16, result: PASS}
 
@@ -1109,10 +1109,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:bd40a15500a4a24e1413d88337d4b802306c917981efce336a0e0e911d3757e0
       registry_digest: sha256:ed5e5471e3823632d900ce39e6918ffba22cfa0cca07f93bf82a8e664b2185a7
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 6a673f3
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [P8]
     last_run: {at: 2026-10-16, result: PASS}
 
@@ -1133,10 +1133,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:3a4ff65b2400424b2e4e798e5355922548b87f11320a94f108f424a5c595762c
       registry_digest: sha256:a5f83ae8a4d055e591c10c111d61a05937e4aebee140f523dc2c6611ddfbcf3a
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 6a673f3
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [P22, SPEC-017]
     last_run: {at: 2026-10-16, result: PASS}
 
@@ -1272,13 +1272,13 @@ tests:
     pass_criteria: ["speech stops, the session survives"]
     evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S9 闭嘴 -> set_speech_output / SILENT_WAIT (tool choice; Qwen server-VAD barge-in is not covered by a Gemini run): PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S9 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
     evidence_bind:
-      code_digest: sha256:20f3d4cfe3850c84c4329ca7c265557b49a0550dfc5853adbedd77dbec3eb375
+      code_digest: sha256:07de9fec6aafca4a647887027fbeeda17a84c9c0c15bb6c90c42bfd10d693dc6
       procedure_digest: sha256:b3bbd41aefd24a6960dbae829c7c8bcd57ac09f19d33d2398dfc8757ea30fb00
       registry_digest: sha256:dcd38a3cfe6f3603537ad479e99aa1ab5aa355998586f783ab15da2af1dfd223
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 6a673f3
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [SPEC-003]
     last_run: {at: 2026-10-16, result: PASS}
 
@@ -1650,13 +1650,13 @@ tests:
     pass_criteria: ["the listening state reaches SLEEP", "the session does not disconnect"]
     evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S10 休眠: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S10 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
     evidence_bind:
-      code_digest: sha256:20f3d4cfe3850c84c4329ca7c265557b49a0550dfc5853adbedd77dbec3eb375
+      code_digest: sha256:07de9fec6aafca4a647887027fbeeda17a84c9c0c15bb6c90c42bfd10d693dc6
       procedure_digest: sha256:0be4335a04847266202d003b87876fd4d7dd8e8470f4e6663ba6d3c71e42649f
       registry_digest: sha256:a0691444b24af1b39d0bc8164402e5820c9b8a6ff62b62911c965eb69f9d6a61
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 6a673f3
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: []
     last_run: {at: 2026-10-16, result: PASS}
 
@@ -1697,10 +1697,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:44d3528eddb2a3423cab1000692049fb9b06e77efffcfedd1f5a5f4f1c12c8f6
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: b4259c0
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [P20]
     last_run: {at: 2026-10-16, result: PASS}
 
@@ -1721,10 +1721,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:e59356977cea4f13a18443a093c87f8f5612dae7147008e2061d52029babd6fb
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 6a673f3
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [P19]
     last_run: {at: 2026-10-16, result: PASS}
 
@@ -1795,10 +1795,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:6b36a67eaf4b44ebfe3e9b47c5e0703e64ee9c630b9f952854549cef6b6a5487
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 77405b3
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [SPEC-008]
     last_run: {at: 2026-10-16, result: PASS}
 
@@ -1898,10 +1898,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:ea0c12924c4dcb7bb99ef7c520b706ae719a292f9dcbb04ab614bb108e1fb2fc
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: d4902d4
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [I-1]
     last_run: {at: 2026-10-16, result: PASS}
     evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): RECORD_AUDIO revoked, force-stop, relaunch, debug voice start -> MicPermissionMissing; listening=0, no FATAL; perm_denied.jpg", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): RECORD_AUDIO revoked, voice start -> MicPermissionMissing, mic_missing=1 listening=0 fatal=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
@@ -2272,10 +2272,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:3b3d9198d887ad794bc41d3e8093ff77c03000d45dbb3855457b7b76ce450d24
       registry_digest: sha256:b349474b2e41e9f157fe3ca798484e86a054d41feffa45c38824560a3debac67
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: d4902d4
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: []
     last_run: {at: 2026-10-16, result: PASS}
     evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): open_app settings Accepted, maps Accepted; dispatch open_app app=music -> ok=false APP_NOT_ALLOWED", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): open_app settings Accepted, maps Accepted, music -> ok=false APP_NOT_ALLOWED; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
@@ -2301,10 +2301,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:0a82bcc91faa61f3ddf996835fb5826cfe556ea59d36ca1bb2f12645fa41b18c
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 6a673f3
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [P21]
     last_run: {at: 2026-10-16, result: PASS}
     evidence: ["2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S20 音量调大 - no tool, honest: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S20 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
@@ -2459,13 +2459,13 @@ tests:
       - "2026-09-22 unit: UtteranceIntentResolver + DriverTurn.CAPABILITY_HELP for 你能干啥 (HELP-UNIT-001)"
       - "2026-09-21 device: formal 你能做什么 also passed S21 with help_capabilities clip"
     evidence_bind:
-      code_digest: sha256:1cd282056cacbf46e1194ac2b64979e11962fcccc46b8d7ee5fdd0d4e320d5fa
+      code_digest: sha256:913a42a153e38099710ae40e547b60a6daab35d263168283cc601fd9568d4594
       procedure_digest: sha256:75a7c4772ebe512fa6f0ac16563d43c9193f7db0c9fe2fdfd7ad6c5424666be7
       registry_digest: sha256:914744477e4406ab905d01c765e493d658763cfb98f80d5043cda7e62c1d10b9
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 8d05eb3
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     covers: [speech.capability_help]
     related: [P28]
     last_run: {at: 2026-10-16, result: PASS}
@@ -2515,10 +2515,10 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:5633b46ce1e9a06c94565c581ea053d3e51ab43744df78da7efe5dc8b2827879
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: d4902d4
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [P29, NAV-DRIVE-001, B-022]
     last_run: {at: 2026-10-16, result: PASS}
     evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): checks_drive.mp4 (180 s, the embedded Amap navigation UI from route to arrival); also ci/drive-video videos/drive_20261015_1113_557704f.mp4", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): checks_drive.mp4 present (embedded Amap navigation UI drive), fatal=0 anr=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
@@ -2763,6 +2763,14 @@ tests:
       - {criterion: map_recentred, required: true, observed: true, evidence: "log:NovaVoice/AFF-RECENTER 1/1 (voice checks run 38891890665 device.txt at 2db208c)"}
       - {criterion: climate_toggled_without_model_call, required: true, observed: true, evidence: "log:NovaVoice/AFF-AC 1/1, no tool=control_climate (voice checks run 38891890665 device.txt at 2db208c); earlier 0/1 in run 38835222165 was a race - the model tool call arrived before the transcript"}
     ended_by: natural
+    evidence_bind:
+      code_digest: sha256:8c483964f961ffaa5c2cd73703fa25fb8b473f63ae4fddee55665724499552a2
+      procedure_digest: sha256:cfebb0f8b25cef30de9656b5e4ee6596c8d6ea4f6c7f9fe4b94fc69eff3e07d9
+      registry_digest: sha256:326bf4c018faf7b90b1def460567d8a610c5411ab92e599e53c38cd2fcc1f4a8
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [SPEC-010, B-024]
     last_run: {at: 2026-10-16, result: PASS}
 
@@ -3345,6 +3353,14 @@ tests:
     owner: AUTONOMOUS
     status: PASS
     release_blocking: false
+    evidence_bind:
+      code_digest: sha256:8c483964f961ffaa5c2cd73703fa25fb8b473f63ae4fddee55665724499552a2
+      procedure_digest: sha256:2e6fb340d8948ea7e78c9d5f7e14c92ac2484f3f3a6e2605d1c10dfc54b1373c
+      registry_digest: sha256:1c41a5dbc8b33cd05cc1947bdca1f414ee7fd0e9279badf13c434385ef2867bd
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     covers: [navigation.speed_hud]
     prerequisites: ["emulator with this build, relay toggle off (default)", "route with a speed-limit camera (十字门 from the emulator origin)"]
     procedure: ["nav_route 十字门, start the emulator drive", "nav_speed 90 once moving", "drive past the limit camera", "read the NovaVoice log"]
