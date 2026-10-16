@@ -75,6 +75,7 @@ The rules are [harness/CONSTITUTION.md](harness/CONSTITUTION.md) 12 and 17–19;
 | What is being worked on now | [CURRENT_MILESTONE.md](CURRENT_MILESTONE.md) |
 | Defects found in real use, and their root causes | [OPEN_PROBLEMS.md](OPEN_PROBLEMS.md) |
 | What "done" means per evidence level | [ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md) |
+| What a green CI check means (tiers A/B/C, verdicts, quarantine, review gate) | [docs/CI.md](docs/CI.md), [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) |
 | Settled decisions — read before reopening one | [DECISIONS/](DECISIONS/README.md) |
 | Periodic architecture clean-up | [docs/AGENT_MAINTENANCE.md](docs/AGENT_MAINTENANCE.md) |
 | Driving the test phone over ADB | [tools/speech-harness/README.md](tools/speech-harness/README.md) |
