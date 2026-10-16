@@ -2373,3 +2373,8 @@ The scripted driver reads an app log line a real driver cannot see. Product limi
 who starts in the ~0.3-0.5 s before her guidance audio, before SPEC-012 R0 can arm, is cut off (P3 /
 ADR-014 §4, accepted). Proved first by a short piece run (`[navpiece]`, first six lines), before any
 full demo (owner rule 2026-10-16).
+
+**Piece check passed (nav demo piece run 38869906819 at 1df8c66, first six lines, relay on, 90 km/h):**
+navigation started; climate, music and ETA all answered with their tools while she spoke 7 guidance
+prompts (7/7 MATCH); no line cut. The deterministic 95.8 s collision did not recur (the session-ready
+wait shifted the timeline), so the in-flight wait is proved offline (`--selftest`), not yet live.
