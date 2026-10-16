@@ -32,6 +32,10 @@ call is the failure class this SPEC must not make worse ([P2](../OPEN_PROBLEMS.m
 
 `along_route` results are shown as destination candidates in the **existing picker**, so choosing
 one (「第一个」) is the existing, device-verified navigation path, and SPEC-010 makes it sayable.
+While a route is being driven the list does **not** end it: the drive keeps guiding until a
+candidate is picked (then the old route ends and the new one is calculated); closing the list
+returns to the drive, and arrival while it is open ends the drive and closes it (owner test 10-16,
+`EmbeddedNavigationController.keptGuidance`; before, showing the list stopped navigation).
 
 ## Non-goals
 

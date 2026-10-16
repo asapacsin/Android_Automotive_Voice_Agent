@@ -76,11 +76,14 @@ class LiveInfoAlongRouteWiringTest {
         // The same picker a spoken search fills.
         assertEquals(NavigationPhase.AWAITING_DESTINATION_SELECTION, navigation.state().value)
         assertEquals(stations.map { it.id }, navigation.destinationCandidates.value.map { it.id })
-        assertEquals(1, engine.stopNaviCount, "replacing the destination ends the old guidance, as navigate_to does")
+        // Owner test 10-16: showing the list is a question about the route, not a new destination -
+        // the drive keeps going until a station is picked (nav demo runs lost the route here).
+        assertEquals(0, engine.stopNaviCount, "the list alone must not end the drive")
 
         // 「第一个」 arrives as choose_navigation_option{index=1}: the existing path.
         val pick = dispatcher.dispatch(call(AndroidToolDispatcher.CHOOSE_NAVIGATION_OPTION, mapOf("index" to "1")))
         assertEquals(null, pick.blockedReason, pick.output)
+        assertEquals(1, engine.stopNaviCount, "picking a station ends the old guidance, as navigate_to does")
         assertEquals(NavigationPhase.CALCULATING_ROUTE, navigation.state().value)
         assertEquals("中石化新港加油站", engine.calculateCalls.last().endName)
     }

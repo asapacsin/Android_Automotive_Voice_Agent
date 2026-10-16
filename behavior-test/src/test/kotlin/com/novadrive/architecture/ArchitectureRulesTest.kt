@@ -238,7 +238,7 @@ class ArchitectureRulesTest {
             "app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt" to 470,
             // SPEC-020 (2026-10-09): forwards the 3 s working label. Was 500.
             "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt" to 510,
-            "app/src/main/kotlin/com/novadrive/app/nav/EmbeddedNavigationController.kt" to 500,
+            "app/src/main/kotlin/com/novadrive/app/nav/EmbeddedNavigationController.kt" to 545, // owner test 10-16: an along-route list keeps the drive (keptGuidance: request, select, cancel, end, arrival) - one state machine, not split across files
             // Gemini Live adapter (ADR-010), recorded 2026-09-29 at 465 and 56 lines.
             // SPEC-018 step 1: GUIDANCE-turn hooks at the client's turn points; correlation state already extracted to GeminiPromptTurn.kt
             // ADR-016 / SPEC-019 (2026-10-02): four SpeechText call sites at the transcript points; the logic is in GeminiSpeechText.kt.

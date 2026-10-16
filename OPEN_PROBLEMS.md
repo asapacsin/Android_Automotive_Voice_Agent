@@ -2223,6 +2223,15 @@ navigation ended; whether that reset should follow the host instead is a separat
 mid-drive (legacy flag cleared), the nearby question through the real dispatcher -> `ok=false
 NEARBY_QUESTION_WHILE_NAVIGATING`, no route replaced, navigation not stopped.
 
+**Second cause found (warm worker piece 6c00cfa, 2026-10-16):** the guard did refuse (`guard_nearby_nav
+decision=refused`); the route was replaced by the along-route answer itself: `query_live_info`
+along_route put the stations into the destination picker, and opening the picker stopped navigation
+(`EmbeddedNavigationController.request` → `stopNavigation("replaced")`). The earlier "pass" (run
+38837935246) found no stations, so no picker opened. **Fix:** an along-route list shown while
+driving keeps the drive (`keptGuidance`); a pick ends the old route, cancel returns to the drive,
+arrival or 「结束导航」 end it. EmbeddedNavigationControllerTest +7, LiveInfoAlongRouteWiringTest
+updated (list: no stop; pick: stop). SPEC-011 amended. Full suite 4170/0/0.
+
 ## P62 — Turn-by-turn guidance is not spoken in her voice (demo used a male voice)
 
 **Status:** OPEN 2026-10-16. Owner test 10-16 ([docs/owner-tests/test-10-16.md](docs/owner-tests/test-10-16.md)):

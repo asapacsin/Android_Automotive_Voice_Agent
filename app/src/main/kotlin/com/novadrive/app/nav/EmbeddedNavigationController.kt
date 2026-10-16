@@ -45,6 +45,13 @@ class EmbeddedNavigationController(
     @Volatile
     private var startNaviIssuedForSelection = false
 
+    /**
+     * Owner test 10-16 (nav demo runs 38871517346, worker 6c00cfa): an along-route list shown while
+     * driving keeps the current guidance until a candidate is picked. Non-null = the route being
+     * driven (its destination and selection), restored on cancel. Guarded by [lock].
+     */
+    private var keptGuidance: Pair<Destination?, DestinationCandidate?>? = null
+
     private val _destinationCandidates = MutableStateFlow<List<DestinationCandidate>>(emptyList())
     val destinationCandidates: StateFlow<List<DestinationCandidate>> = _destinationCandidates.asStateFlow()
 
@@ -59,19 +66,25 @@ class EmbeddedNavigationController(
         engine.attachNavigationEndedCallback(::onNavigationEnded)
     }
 
-    suspend fun requestDestination(query: String) = request { resolver.resolve(query) }
+    suspend fun requestDestination(query: String) = request(keepGuidance = false) { resolver.resolve(query) }
 
     /**
      * SPEC-011 `along_route`: POIs found along the route go into the same picker as a search, so
      * choosing one is the existing destination → route → guidance path, not a second one.
      */
-    suspend fun requestCandidates(candidates: List<DestinationCandidate>) = request { candidates }
+    suspend fun requestCandidates(candidates: List<DestinationCandidate>) = request(keepGuidance = true) { candidates }
 
-    private suspend fun request(resolve: suspend () -> List<DestinationCandidate>) {
+    private suspend fun request(keepGuidance: Boolean, resolve: suspend () -> List<DestinationCandidate>) {
         // Changing destination while driving: end the current guidance first, otherwise the
         // old route keeps navigating underneath the new picker. Done outside the lock because
-        // the host's ended-callback re-enters onNavigationEnded.
-        if (store.phase.value == NavigationPhase.NAVIGATING) {
+        // the host's ended-callback re-enters onNavigationEnded. An along-route list (a question,
+        // not a new destination) keeps the guidance until a candidate is picked (keptGuidance).
+        val driving = store.phase.value == NavigationPhase.NAVIGATING
+        val kept = synchronized(lock) { keptGuidance }
+        if (keepGuidance && driving) {
+            synchronized(lock) { keptGuidance = store.destination.value to selectedDestination }
+        } else if (driving || (!keepGuidance && kept != null)) {
+            synchronized(lock) { keptGuidance = null }
             engine.stopNavigation("replaced")
         }
         NavigationLocalPickGuard.onListReplaced()
@@ -91,11 +104,18 @@ class EmbeddedNavigationController(
             if (seq != generation) return
             DebugVoiceLog.log("nav_resolve_candidates count=${resolved.size} ms=$resolveMs")
             when {
+                resolved.isEmpty() && keptGuidance != null -> {
+                    val kept = keptGuidance
+                    keptGuidance = null
+                    selectedDestination = kept?.second
+                    store.update(NavigationPhase.NAVIGATING, kept?.first)
+                    null
+                }
                 resolved.isEmpty() -> {
                     failLocked("no_candidates")
                     null
                 }
-                resolved.size == 1 -> {
+                resolved.size == 1 && keptGuidance == null -> {
                     _destinationCandidates.value = emptyList()
                     prepareCalculationLocked(resolved.first())
                     resolved.first()
@@ -114,6 +134,15 @@ class EmbeddedNavigationController(
     }
 
     fun selectDestination(candidateId: String) {
+        // A pick from an along-route list replaces the route still being driven (keptGuidance).
+        val replacing = synchronized(lock) {
+            store.phase.value == NavigationPhase.AWAITING_DESTINATION_SELECTION && keptGuidance != null &&
+                _destinationCandidates.value.any { it.id == candidateId }
+        }
+        if (replacing) {
+            synchronized(lock) { keptGuidance = null }
+            engine.stopNavigation("replaced")
+        }
         // seq is captured under the lock: reading `generation` after releasing it would
         // hand requestCalculation a newer flow's sequence and mis-attribute a failure.
         var seq = 0L
@@ -284,8 +313,13 @@ class EmbeddedNavigationController(
      * 「结束导航」/「算了」 by voice: stops embedded guidance if it is running, otherwise closes an
      * open destination/route picker. Reports what actually happened so the reply can be truthful.
      */
-    suspend fun endByVoice(): VoiceEndResult =
-        when (store.phase.value) {
+    suspend fun endByVoice(): VoiceEndResult {
+        if (synchronized(lock) { keptGuidance != null }) {
+            cancel() // back to the route being driven, which 「结束导航」 then ends
+            stopNavigation()
+            return VoiceEndResult.STOPPED_NAVIGATION
+        }
+        return when (store.phase.value) {
             NavigationPhase.NAVIGATING -> {
                 stopNavigation()
                 VoiceEndResult.STOPPED_NAVIGATION
@@ -298,6 +332,7 @@ class EmbeddedNavigationController(
             }
             else -> VoiceEndResult.NOTHING_ACTIVE
         }
+    }
 
     fun cancel() {
         synchronized(lock) {
@@ -310,8 +345,17 @@ class EmbeddedNavigationController(
             NavigationLocalPickGuard.invalidate()
             generation += 1
             clearCandidatesLocked()
-            selectedDestination = null
             startNaviIssuedForSelection = false
+            val kept = keptGuidance
+            keptGuidance = null
+            if (kept != null) {
+                // The along-route list closed unpicked: the drive that never stopped carries on.
+                selectedDestination = kept.second
+                store.update(NavigationPhase.NAVIGATING, kept.first)
+                DebugVoiceLog.log("nav_flow_cancelled kept_guidance=true")
+                return
+            }
+            selectedDestination = null
             store.reset()
             DebugVoiceLog.log("nav_flow_cancelled")
             onFlowEnded()
@@ -379,6 +423,12 @@ class EmbeddedNavigationController(
      */
     private fun onNavigationEnded(reason: String) {
         synchronized(lock) {
+            // The drive kept under an along-route list ended on its own (arrival): close the list too.
+            if (keptGuidance != null && reason != "replaced") {
+                keptGuidance = null
+                NavigationLocalPickGuard.invalidate()
+                store.update(NavigationPhase.NAVIGATING)
+            }
             if (store.phase.value != NavigationPhase.NAVIGATING) return
             val ended = if (reason == "arrived" || reason == "emulator_end") {
                 NavigationPhase.ARRIVED
