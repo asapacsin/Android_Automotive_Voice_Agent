@@ -5,6 +5,10 @@
 # bridge stops unless the session is gemini_live). Driver lines are synthetic (edge-tts). Output:
 # evidence/nav_demo.mp4 (screen + driver + her replies + guidance voiced with edge-tts) and summary.txt
 # (counts and codes only - no transcript, address or coordinate).
+# Verdict: checks go to evidence/results.jsonl (scripts/ci_verdict.py, suite "navpiece"); the script
+# writes evidence/verdict.json and exits with the verdict's code (0 pass, 1 fail, 3 blocked).
+# Best-effort steps (screen recording, ffmpeg muxing, logcat clearing, launcher cosmetics) are
+# marked "|| true" on purpose.
 set -eu
 apk="${1:?apk path}"
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -13,6 +17,20 @@ ev="$root/evidence"
 mkdir -p "$ev"
 summary="$ev/summary.txt"
 : >"$summary"
+R="$ev/results.jsonl"; : >"$R"
+# The bridge's output files hold transcripts: never left behind, even on an abort.
+trap 'rm -f "$ev"/bridge_out.txt "$ev"/bridge_err.txt' EXIT
+trap 'exit 130' INT TERM  # a signal exits through the EXIT trap above
+res() { python3 scripts/ci_verdict.py record --out "$R" --id "$1" --status "$2" --detail "${3:-}"; }
+# The verdict for this run, written to evidence/verdict.json; the script exits with its code.
+# complete() is recorded only right before a normal finish: an abort can never come out PASS.
+complete() { res navpiece:complete PASS "${1:-run completed}"; }
+finish() {
+  local rc=0
+  python3 scripts/ci_verdict.py verdict --manifest config/ci_checks.json --suite navpiece \
+    --results "$R" --json-out "$ev/verdict.json" || rc=$?
+  exit "$rc"
+}
 trap 'echo "::error title=nav demo failed::line ${LINENO} exit $?"' ERR
 
 note() { echo "$1" | tee -a "$summary"; echo "::notice title=${1%%:*}::${1#*: }"; }
@@ -81,19 +99,31 @@ setup_key() { # env-name tool file
 
 
 app_up && note "app: map up" || note "app: map did not come up"
-setup_key AMAP_WEB_KEY amap_web_setup amap_web_setup.txt || true
-if ! setup_key GEMINI_API_KEY gemini_setup gemini_setup.txt; then note "nav demo: skipped - no GEMINI_API_KEY"; exit 0; fi
+web_key=0; setup_key AMAP_WEB_KEY amap_web_setup amap_web_setup.txt && web_key=1 || true
+# Every mode (routes, speedoff, the voice pieces) resolves named destinations via Amap web search.
+if [ "$web_key" = 0 ]; then
+  note "nav demo: blocked - no AMAP_WEB_KEY"
+  res navpiece:session BLOCKED "secret AMAP_WEB_KEY not set"
+  res navpiece:complete BLOCKED "secret AMAP_WEB_KEY not set"
+  finish
+fi
 # Piece "routes" (owner 2026-10-16: a 5-minute demo): route length and speed cameras per candidate
 # destination, no driving, no voice model. Numbers only.
 if [ "${NAV_DEMO_PIECE:-}" = "1" ] && [ "$(tr -dc a-z <scripts/nav_piece.txt 2>/dev/null)" = "routes" ]; then
   adb shell am force-stop com.novadrive.app; app_up || true; sleep 3
-  for d in 珠海站 拱北口岸 珠海大剧院 九洲港 香洲港 珠海市人民医院 华发商都 横琴口岸; do
-    mark; tool nav_route "$d"
-    if wait_for "nav_calc_success" 60; then sleep 2; tool nav_route_info x; sleep 1; note "route $d: $(nova | grep 'debug_tool tool=nav_route_info ' | tail -1 | sed -E 's/.*result=//')"
-    else note "route $d: no route"; fi
+  routes_ok=0; routes_n=0
+  dests=(珠海站 拱北口岸 珠海大剧院 九洲港 香洲港 珠海市人民医院 华发商都 横琴口岸)
+  # Logged by index only (route 3/8), never the place name.
+  for d in "${dests[@]}"; do
+    mark; tool nav_route "$d"; routes_n=$((routes_n + 1))
+    if wait_for "nav_calc_success" 60; then routes_ok=$((routes_ok + 1)); sleep 2; tool nav_route_info x; sleep 1; note "route $routes_n/${#dests[@]}: $(nova | grep 'debug_tool tool=nav_route_info ' | tail -1 | sed -E 's/.*result=//')"
+    else note "route $routes_n/${#dests[@]}: no route"; fi
   done
+  if [ "$routes_ok" = "$routes_n" ]; then res navpiece:routes PASS "routes=$routes_ok/$routes_n"
+  else res navpiece:routes FAIL "routes=$routes_ok/$routes_n"; fi
   note "nav demo: done (routes piece)"
-  exit 0
+  complete "routes piece"
+  finish
 fi
 
 # Piece "speedoff" (NAV-OVERSPEED-001): the shipped path - relay OFF, Amap's voice - at the real 60 km/h
@@ -104,11 +134,27 @@ if [ "${NAV_DEMO_PIECE:-}" = "1" ] && [ "$(tr -dc a-z <scripts/nav_piece.txt 2>/
   if wait_for "nav_calc_success" 60; then
     tool nav_start emulator:120; wait_for "nav_started" 30 || true
     i=0; while [ "$i" -lt 60 ]; do nova | grep -q "nav_overspeed_alert" && { sleep 25; break; }; nova | grep -q "nav_stopped" && break; i=$((i + 1)); sleep 5; done
+    os_limits="$(nova | grep -oE 'nav_speed kmh=[0-9]+ limitKmh=[1-9][0-9]*' | grep -oE 'limitKmh=[0-9]+' | sort -u | tr '\n' ' ')"
+    os_alerts="$(count 'nav_overspeed_alert')"; os_amap="$(count 'nav_alert_queued to=amap')"
+    if [ -n "$os_limits" ] && [ "$os_alerts" -ge 1 ] && [ "$os_amap" -ge 1 ]; then
+      res navpiece:NAV-OVERSPEED-001 PASS "limits=${os_limits% } alerts=$os_alerts queued_to_amap=$os_amap"
+    else
+      res navpiece:NAV-OVERSPEED-001 FAIL "limits=${os_limits:-none} alerts=$os_alerts queued_to_amap=$os_amap"
+    fi
     note "NAV-OVERSPEED-001: queue=$(count 'nav_alert_queue installed=true') limits=$(nova | grep -oE 'nav_speed kmh=[0-9]+ limitKmh=[1-9][0-9]*' | grep -oE 'limitKmh=[0-9]+' | sort -u | tr '\n' ' ')over=$(count 'nav_speed .*over=1') alerts=$(count 'nav_overspeed_alert') queued: $(nova | grep -oE 'nav_alert_(queued to=[a-z]+|dropped reason=[a-z_]+)' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')routes: $(nova | grep -oE 'guidance_route prompt=g[0-9]+ to=[a-z]+ reason=[A-Z_]+' | sed -E 's/prompt=g[0-9]+ //' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')fallback_tts: $(nova | grep -oE 'nav_guidance_fallback_tts accepted=[a-z]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')play_start=$(count 'nav_guidance_play_start') uplink_closed=$(count 'speech_arbiter out=uplink decision=CLOSED')"
     tool nav_stop x; sleep 2
-  else note "NAV-OVERSPEED-001: no route"; fi
+  else note "NAV-OVERSPEED-001: no route"; res navpiece:NAV-OVERSPEED-001 FAIL "no route"; fi
   note "nav demo: done (speedoff piece)"
-  exit 0
+  complete "speedoff piece"
+  finish
+fi
+
+# The voice pieces open a Gemini session; routes and speedoff above need no voice model.
+if ! setup_key GEMINI_API_KEY gemini_setup gemini_setup.txt; then
+  note "nav demo: blocked - no GEMINI_API_KEY"
+  res navpiece:session BLOCKED "secret GEMINI_API_KEY not set"
+  res navpiece:complete BLOCKED "secret GEMINI_API_KEY not set"
+  finish
 fi
 
 # P62 / GUIDANCE-EMU-001: guidance in her voice (SPEC-018 relay, ADR-014), Amap only as the fallback.
@@ -168,12 +214,21 @@ elif [ -n "${NAV_DEMO_PIECE:-}" ]; then
   clips="$(echo "$clips" | cut -d, -f1-6)"; duration=150
   note "piece mode: first 6 lines, ${duration} s"
 fi
+set +e
 python3 tools/speech-harness/host_audio_bridge.py --from-file "$clips" --lead 8 --gap "${DEMO_GAP:-20}" --duration "$duration" --wait-quiet \
-  --no-play --provider gemini --record "$ev/demo_audio" >"$ev/bridge_out.txt" 2>"$ev/bridge_err.txt" || true
+  --no-play --provider gemini --record "$ev/demo_audio" >"$ev/bridge_out.txt" 2>"$ev/bridge_err.txt"
+bridge_rc=$?
+set -e
+if [ "$bridge_rc" = 0 ]; then res navpiece:bridge PASS "rc=0"; else res navpiece:bridge FAIL "rc=$bridge_rc"; fi
 # Codes and numbers only from the bridge output (it also echoes app lines, which are never kept).
 note "driver waits: $(grep -oE 'wait_quiet line=[0-9]+ ms=[0-9]+ cap=[01] reason=[a-z]+' "$ev/bridge_out.txt" | sed -E 's/wait_quiet //' | tr '\n' ' ')(the scripted driver reads the app's guidance log; a real driver cannot)"
 rm -f "$ev/bridge_out.txt"
 note "nav demo: provider=$(nova | grep -oE 'session_provider choice=[a-z_]+' | tail -1) started=$(count 'nav_started') stopped=$(nova | grep -oE 'nav_stopped reached=[a-z]+ reason=[a-z_]+' | tail -1) guidance=$(count 'nav_guidance_play_start') tools=$(nova | grep -oE '^tool=[a-z_]+|tool=[a-z_]+ args' | grep -oE 'tool=[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ') errors=$(count 'state=ERROR|_PROTOCOL_ERROR')"
+nd_choice="$(nova | grep -oE 'session_provider choice=[a-z_]+' | tail -1)"; nd_qwen="$(count 'session_provider choice=qwen')"
+if [ "$nd_choice" = "session_provider choice=gemini_live" ] && [ "$nd_qwen" = 0 ]; then res navpiece:quota-guard PASS "gemini_live, no qwen session"
+else res navpiece:quota-guard FAIL "provider=${nd_choice#session_provider choice=} qwen_lines=$nd_qwen"; fi
+nd_started="$(count 'nav_started')"
+if [ "$nd_started" -ge 1 ]; then res navpiece:nav-started PASS "started=$nd_started"; else res navpiece:nav-started FAIL "started=0"; fi
 # Let the drive reach the destination if it has not yet.
 # Pieces stop early; the full drives (and the 5-minute demo) wait for arrival.
 { [ -z "${NAV_DEMO_PIECE:-}" ] || [ "${NAV_DEMO_PIECE:-}" = "demo" ]; } && for _ in $(seq 1 24); do nova | grep -q "nav_stopped" && break; sleep 5; done
@@ -210,9 +265,16 @@ fi
 if [ -s "$ev/nav_demo.mp4" ]; then
   note "video: $(ffprobe -v error -select_streams v:0 -count_packets -show_entries stream=nb_read_packets,width,height -show_entries format=duration -of csv=p=0 "$ev/nav_demo.mp4" | tr '\n' ' ' | awk -F'[ ,]+' '$4 > 0 {printf "%sx%s frames=%s seconds=%.0f fps=%.1f", $1, $2, $3, $4, $3/$4}')"
 fi
+if [ -s "$ev/nav_demo.mp4" ]; then res navpiece:video PASS "nav_demo.mp4 written"; else res navpiece:video FAIL "nav_demo.mp4 not written"; fi
+nd_fatal="$(adb logcat -d | grep -cE 'FATAL EXCEPTION|Fatal signal' || true)"
+nd_anr="$(adb logcat -d | grep -cE 'ANR in com.novadrive' || true)"
+if [ "$nd_fatal" = 0 ] && [ "$nd_anr" = 0 ]; then res navpiece:no-crash PASS "fatal=0 anr=0"
+else res navpiece:no-crash FAIL "fatal=$nd_fatal anr=$nd_anr"; fi
 rm -f "$ev"/seg*.mp4 "$ev/screen.mp4" "$ev/segs.txt" "$ev/stop_recording" "$ev/bridge_err.txt"
 shot nav_demo_end
 tool voice stop
 tool provider clear
 tool guidance_relay off
 note "nav demo: done"
+complete "voice piece"
+finish
