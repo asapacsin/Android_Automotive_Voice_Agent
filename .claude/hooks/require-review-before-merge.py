@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """PreToolUse(Bash): an executor branch is merged only after its review (owner 2026-10-16).
 
-`git merge ... exec/<name>` or `git pull <remote> exec/<name>` is refused unless the last valid line in
-state/reviews.log for that branch's tip is PASS, or WAIVED on a branch that changes no <module>/src/main
-(grammar shared with scripts/delegation_check.py; invalid lines never count). Reviews happen after the executor finishes and before
+`git merge ... <ref containing exec/>` or `git pull . exec/<name>` is refused unless the last valid
+line in state/reviews.log for the tip of the ref actually being merged (e.g. origin/exec/x, not the
+local exec/x) is PASS, or WAIVED on a branch that changes no production module source (grammar shared
+with scripts/delegation_check.py; invalid lines and ambiguous keys never count). `git pull <remote>
+exec/<name>` from a real remote is always refused: fetch, review the fetched tip, then merge it.
+Advisory only: `delegation_check.py --ci` is the enforcement. Reviews happen after the executor finishes and before
 integration - the Writer/Reviewer pattern and "add an adversarial review step before treating a
 task as done" from the official Claude Code best-practices guide. PENDING does not count.
 Fails open on anything unexpected, so a broken hook never blocks all work.
@@ -26,35 +29,73 @@ def _gate():
     return mod
 
 
+_VALUE_OPTS = {"-m", "-F", "-s", "-X", "--message", "--file", "--strategy", "--strategy-option",
+               "--cleanup", "-S", "--gpg-sign", "--into-name"}
+
+
+def _invocations(command):
+    """(verb, operands) for each `git ... merge|pull ...` segment of a shell command."""
+    import shlex
+    for seg in re.split(r"[;&|\n]+", command):
+        try:
+            toks = shlex.split(seg)
+        except ValueError:
+            toks = seg.split()
+        if "git" not in toks:
+            continue
+        toks = toks[toks.index("git") + 1:]
+        verb = next((t for t in toks if t in ("merge", "pull")), None)
+        if verb is None:
+            continue
+        rest, operands, skip = toks[toks.index(verb) + 1:], [], False
+        for t in rest:
+            if skip:
+                skip = False
+            elif t.startswith("-"):
+                skip = t in _VALUE_OPTS
+            else:
+                operands.append(t)
+        yield verb, operands
+
+
 def decide(command, repo, log_path):
-    if not re.search(r"\bgit\b[^;&|]*\b(merge|pull)\b", command):
+    if not re.search(r"\bgit\b[^;&|]*\b(merge|pull)\b", command) or "exec/" not in command:
         return None
-    branches = re.findall(r"\b(exec/[A-Za-z0-9._/-]+)", command)
-    if not branches:
+    refs = []
+    for verb, operands in _invocations(command):
+        if verb == "pull":
+            remote, specs = (operands[0], operands[1:]) if operands else (None, [])
+            specs = [x for x in specs if "exec/" in x]
+            if specs and remote != ".":
+                return ("git pull %s %s: fetch, review the fetched tip, then merge it."
+                        % (remote, " ".join(specs)))
+            refs += [x.split(":")[0].lstrip("+") for x in specs]
+        else:
+            refs += [x for x in operands if "exec/" in x]
+    if not refs:
         return None
     dc = _gate()
     records, _ = dc.parse_log(log_path)  # invalid lines never count
-    for branch in branches:
-        try:
-            tip = subprocess.run(["git", "-C", repo, "rev-parse", branch + "^{commit}"],
-                                 capture_output=True, text=True, check=True).stdout.strip()
-        except Exception:
+    for ref in refs:
+        tip = dc.resolve(repo, ref)
+        if tip is None:
             return None
-        rec = dc.lookup(records, [tip])  # last valid line wins
+        rec, _ = dc.lookup(records, [tip], repo)  # last valid line wins; ambiguous keys refused
         status = rec[1] if rec else None
         if status == "WAIVED":
             try:
                 mb = dc.git(repo, "merge-base", "HEAD", tip).strip()
                 if dc.touches(dc.changed(repo, mb, tip), "main/"):
-                    return ("%s (tip %s) is WAIVED but changes <module>/src/main; it needs a reviewer PASS."
-                            % (branch, tip[:12]))
+                    return ("%s (tip %s) is WAIVED but changes production module source; it needs a "
+                            "reviewer PASS." % (ref, tip[:12]))
             except Exception:
                 return None
             continue
         if status != "PASS":
             return ("%s (tip %s) has no accepted review in state/reviews.log (latest: %s). Run the reviewer "
                     "on the branch first, then record '<tip-sha> PASS <yyyy-mm-dd> <note>' (or WAIVED with "
-                    "a reason of 4+ words, not for src/main) and merge." % (branch, tip[:12], status or "none"))
+                    "a reason of 4+ words, non-production source only) and merge."
+                    % (ref, tip[:12], status or "none"))
     return None
 
 
@@ -83,6 +124,9 @@ def selftest():
     ok = ok and decide("git log exec/x", tmp, log) is None and decide("git merge main", tmp, log) is None
     open(log, "a").write(tip[:12] + " REVISE 2026-10-16 reviewer asked changes\n")
     ok = ok and decide("git merge --no-ff exec/x", tmp, log) is not None
+    ok = ok and decide("git pull origin exec/x", tmp, log) is not None
+    run("update-ref", "refs/remotes/origin/exec/x", tip)
+    ok = ok and decide("git merge refs/remotes/origin/exec/x", tmp, log) is not None
     print("require-review-before-merge selftest: %s" % ("ok" if ok else "FAIL"))
     return 0 if ok else 1
 

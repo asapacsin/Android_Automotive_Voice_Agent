@@ -1,16 +1,34 @@
 #!/usr/bin/env python3
 """Audit: module source must arrive through reviewed executor merges (AGENTS.md hard rule, owner 2026-10-16).
 
-Checks HEAD's first-parent chain since the baseline:
-- a non-merge commit touching <module>/src/** is a violation (direct commit, fast-forward, cherry-pick);
-- a merge touching <module>/src/** whose subject does not start with "Merge exec/" is a violation,
-  unless its second parent is reachable from an upstream ref (a sync from the base branch);
-- every "Merge exec/" merge needs an accepted record in state/reviews.log (grammar: parse_log).
+Checks HEAD's first-parent chain since the baseline. "Module source" is any path `<top-dir>/src/**`
+(case-insensitive). Paths are compared with renames off, so a move counts as delete + add.
+- a non-merge commit touching module source is a VIOLATION (direct commit, fast-forward, cherry-pick);
+- an octopus merge (more than 2 parents) touching module source is a VIOLATION, whatever its subject;
+- module source changed IN a merge commit itself (`git diff-tree -c`: evil merge, conflict resolution,
+  `--no-commit` extras, amended merges) is a VIOLATION for every merge, exec and upstream sync alike.
+  Conflicts are resolved on the executor branch (merge the base into it before review), never in the merge;
+- a merge touching module source whose subject does not start with "Merge exec/" is a VIOLATION, unless
+  its second parent is reachable from an upstream ref u AND the merge itself is not reachable from u
+  (a sync from the base branch; default upstream: origin/main; CI passes the PR base with --upstream);
+- every "Merge exec/" merge needs an accepted record in state/reviews.log (grammar: parse_line).
+  WAIVED is accepted only when every module-source path it touches is in a non-production source set
+  (src/debug, src/test, src/testDebug, src/testRelease, src/androidTest); merges in the history of
+  REVIEW_CUTOFF are grandfathered for that rule only. REVISED needs a fix that descends from the revised
+  branch tip, has its own PASS and is merged into HEAD. A record key must resolve unambiguously to the
+  commit it is matched against.
 
 Modes: default audit (exit 1 on violation/missing/invalid; unresolved only reported), --ci (exit 1 on
-anything, never fails open), --stop-hook (fails open, never blocks on unresolved), --selftest.
-Prints `sha subject` only.
+anything, never fails open, refuses shallow history, ignores the env overrides unless NOVA_GATE_TEST=1),
+--stop-hook (fails open, never blocks on unresolved), --selftest. Prints `sha subject` only.
+
+Accepted limits (not closed here):
+- state/reviews.log is self-attested: the gate checks records, not that a reviewer really ran;
+- a PR can edit this checker or the log; that needs branch protection / CODEOWNERS;
+- a build script can redirect source sets outside `<dir>/src/`;
+- the PreToolUse hook is advisory; this --ci job is the enforcement.
 """
+import datetime
 import os
 import re
 import shutil
@@ -18,18 +36,31 @@ import subprocess
 import sys
 import tempfile
 
-BASELINE = os.environ.get("NOVA_DELEGATION_BASELINE") or "860371129f130852c918d99d49fb79bcb4e7b4bf"
-# WAIVED on a merge touching <module>/src/main/** is grandfathered only for merges in this commit's history.
-REVIEW_CUTOFF = os.environ.get("NOVA_REVIEW_CUTOFF") or "1fb1ed2185777865b4f6d2fa21321efaab01d552"
-DEFAULT_UPSTREAMS = ("origin/main", "origin/HEAD", "origin/claude/10-13")
-MODULES = ("app", "behavior-test", "contracts", "demo", "evaluation", "feedback", "ingress",
-           "orchestration", "safety", "simulator", "vehicle", "verification")
-REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-REVIEW_LOG = os.path.join(REPO, "state", "reviews.log")
+BASELINE_DEFAULT = "860371129f130852c918d99d49fb79bcb4e7b4bf"
+# WAIVED on production module source is grandfathered only for merges in this commit's history.
+REVIEW_CUTOFF_DEFAULT = "1fb1ed2185777865b4f6d2fa21321efaab01d552"
+DEFAULT_UPSTREAMS = ("origin/main",)
+NONPROD_SETS = ("debug", "test", "testdebug", "testrelease", "androidtest")
+REPO_DEFAULT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 STATUSES = ("PASS", "WAIVED", "PENDING", "REVISE", "REVISED")
-_SHA = re.compile(r"^[0-9a-f]{7,40}$")
-_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_SHA = re.compile(r"[0-9a-f]{7,40}", re.ASCII)
+_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", re.ASCII)
+
+
+def config(ci=False):
+    """(repo, baseline, cutoff). Env overrides apply outside --ci, or in --ci only with NOVA_GATE_TEST=1."""
+    env = os.environ
+    test = env.get("NOVA_GATE_TEST") == "1"
+    use_env = (not ci) or test
+    repo = env.get("NOVA_GATE_REPO") if test else None
+    baseline = (use_env and env.get("NOVA_DELEGATION_BASELINE")) or BASELINE_DEFAULT
+    cutoff = (use_env and env.get("NOVA_REVIEW_CUTOFF")) or REVIEW_CUTOFF_DEFAULT
+    return repo or REPO_DEFAULT, baseline, cutoff
+
+
+REPO, BASELINE, REVIEW_CUTOFF = config()
+REVIEW_LOG = os.path.join(REPO, "state", "reviews.log")
 
 
 def git(repo, *args):
@@ -50,15 +81,19 @@ def parse_line(line):
     if len(parts) < 4:
         raise ValueError("needs '<sha> <STATUS> <YYYY-MM-DD> <note>'")
     sha, status, date, note = parts[0], parts[1], parts[2], parts[3:]
-    if not _SHA.match(sha):
+    if not _SHA.fullmatch(sha):
         raise ValueError("bad sha %r" % sha)
     if status not in STATUSES:
         raise ValueError("unknown status %r" % status)
-    if not _DATE.match(date):
+    if not _DATE.fullmatch(date):
+        raise ValueError("bad date %r" % date)
+    try:
+        datetime.date.fromisoformat(date)
+    except ValueError:
         raise ValueError("bad date %r" % date)
     if status == "WAIVED" and len(note) < 4:
         raise ValueError("WAIVED needs a reason of at least 4 words")
-    if status == "REVISED" and not _SHA.match(note[0]):
+    if status == "REVISED" and not _SHA.fullmatch(note[0]):
         raise ValueError("REVISED note must start with the fix branch tip sha")
     return sha, status, note
 
@@ -79,45 +114,88 @@ def parse_log(log_path):
     return records, invalid
 
 
-def lookup(records, candidates):
-    """Last valid record whose sha is a prefix of any candidate full sha."""
-    found = None
+def resolve(repo, ref):
+    """Full sha of ref as a commit, or None (unknown or ambiguous)."""
+    r = subprocess.run(["git", "-C", repo, "rev-parse", "--verify", "--quiet", ref + "^{commit}"],
+                       capture_output=True, text=True)
+    return r.stdout.strip() if r.returncode == 0 else None
+
+
+def lookup(records, candidates, repo=None):
+    """Last valid record whose sha prefixes a candidate full sha. With repo, a key that is ambiguous or
+    resolves to another commit is refused and (record or None, refused keys) is returned."""
+    found, refused = None, []
     for r in records:
-        if any(c.startswith(r[0]) for c in candidates):
-            found = r
-    return found
+        hit = next((c for c in candidates if c.startswith(r[0])), None)
+        if hit is None:
+            continue
+        if repo is not None and resolve(repo, r[0]) != hit:
+            refused.append(r[0])
+            continue
+        found = r
+    return (found, refused) if repo is not None else found
 
 
 def changed(repo, parent, sha):
-    return git(repo, "diff", "--name-only", parent, sha).split()
+    return git(repo, "diff", "--no-renames", "--name-only", parent, sha).split()
+
+
+def is_src(path):
+    parts = path.split("/")
+    return len(parts) >= 3 and parts[1].lower() == "src"
+
+
+def is_prod_src(path):
+    parts = path.split("/")
+    return is_src(path) and (len(parts) < 4 or parts[2].lower() not in NONPROD_SETS)
 
 
 def touches(paths, sub=""):
-    return any(p.startswith("%s/src/%s" % (m, sub)) for p in paths for m in MODULES)
+    """Any module-source path; sub="main/" means production source (anything outside NONPROD_SETS)."""
+    return any((is_prod_src(p) if sub else is_src(p)) for p in paths)
 
 
 def existing_refs(repo, refs):
     return [r for r in refs if git_ok(repo, "rev-parse", "--verify", "--quiet", r + "^{commit}")]
 
 
+def first_parent_merges(repo, baseline):
+    out = git(repo, "log", "--first-parent", "--merges", "--format=%H %P|%s", "%s..HEAD" % baseline)
+    for line in out.splitlines():
+        shas, _, subject = line.partition("|")
+        sha, *parents = shas.split()
+        yield sha, parents, subject
+
+
 def violations(repo=REPO, baseline=BASELINE, upstreams=None):
     if upstreams is None:
         upstreams = existing_refs(repo, DEFAULT_UPSTREAMS)
-    out = git(repo, "log", "--first-parent", "--no-merges", "--format=%H",
-              "%s..HEAD" % baseline, "--", *["%s/src" % m for m in MODULES])
     result = []
+    out = git(repo, "log", "--first-parent", "--no-merges", "--format=%H", "%s..HEAD" % baseline)
     for sha in out.split():
-        subject = git(repo, "log", "-1", "--format=%s", sha).strip()
-        result.append("%s %s" % (sha[:12], subject))
-    for line in git(repo, "log", "--first-parent", "--merges", "--format=%H %P|%s",
-                    "%s..HEAD" % baseline).splitlines():
-        shas, _, subject = line.partition("|")
-        sha, *parents = shas.split()
-        if subject.startswith("Merge exec/") or not touches(changed(repo, parents[0], sha)):
+        paths = git(repo, "diff-tree", "--no-commit-id", "--no-renames", "--name-only", "-r", "--root",
+                    sha).split()
+        if touches(paths):
+            subject = git(repo, "log", "-1", "--format=%s", sha).strip()
+            result.append("%s %s" % (sha[:12], subject))
+    for sha, parents, subject in first_parent_merges(repo, baseline):
+        label = "%s %s" % (sha[:12], subject)
+        in_merge = git(repo, "diff-tree", "-c", "--name-only", "-r", "--no-commit-id", sha).split()
+        if touches(in_merge):
+            result.append("%s (change made in the merge commit)" % label)
             continue
-        if any(git_ok(repo, "merge-base", "--is-ancestor", p, u) for p in parents[1:] for u in upstreams):
+        if not touches(changed(repo, parents[0], sha)):
             continue
-        result.append("%s %s (non-exec merge of module source)" % (sha[:12], subject))
+        if len(parents) > 2:
+            result.append("%s (octopus merge of module source)" % label)
+            continue
+        if subject.startswith("Merge exec/"):
+            continue
+        if any(git_ok(repo, "merge-base", "--is-ancestor", p, u)
+               and not git_ok(repo, "merge-base", "--is-ancestor", sha, u)
+               for p in parents[1:] for u in upstreams):
+            continue
+        result.append("%s (non-exec merge of module source)" % label)
     return result
 
 
@@ -126,16 +204,16 @@ def review_findings(repo=REPO, baseline=BASELINE, log_path=REVIEW_LOG, cutoff=RE
     records, invalid = parse_log(log_path)
     invalid = ["INVALID RECORD " + i for i in invalid]
     missing, unresolved = [], []
-    out = git(repo, "log", "--first-parent", "--merges", "--format=%H %P|%s", "%s..HEAD" % baseline)
-    for line in out.splitlines():
-        shas, _, subject = line.partition("|")
-        sha, *parents = shas.split()
+    for sha, parents, subject in first_parent_merges(repo, baseline):
         if not subject.startswith("Merge exec/"):
             continue
         label = "%s %s" % (sha[:12], subject)
-        rec = lookup(records, [sha] + parents[1:])
+        rec, refused = lookup(records, [sha] + parents[1:], repo)
+        for k in refused:
+            invalid.append("INVALID RECORD key %s is ambiguous or names another commit: %s" % (k, label))
         if rec is None:
-            missing.append(label)
+            if not refused:
+                missing.append(label)
             continue
         status = rec[1]
         if status == "PASS":
@@ -143,20 +221,19 @@ def review_findings(repo=REPO, baseline=BASELINE, log_path=REVIEW_LOG, cutoff=RE
         if status == "WAIVED":
             if touches(changed(repo, parents[0], sha), "main/") and not git_ok(
                     repo, "merge-base", "--is-ancestor", sha, cutoff):
-                invalid.append("WAIVED on <module>/src/main after the cutoff: " + label)
+                invalid.append("WAIVED on production module source after the cutoff: " + label)
             continue
         if status == "REVISED":
-            fix = rec[2][0]
-            fix_rec = None
-            try:
-                full = git(repo, "rev-parse", "--verify", "--quiet", fix + "^{commit}").strip()
-                fix_rec = lookup(records, [full])
-                merged = git_ok(repo, "merge-base", "--is-ancestor", full, "HEAD")
-            except subprocess.CalledProcessError:
-                merged = False
-            if fix_rec and fix_rec[1] == "PASS" and merged:
-                continue
-            unresolved.append("%s (REVISED fix %s has no PASS or is not merged)" % (label, fix))
+            fix = resolve(repo, rec[2][0])
+            tip = parents[1] if len(parents) > 1 else None
+            ok = False
+            if fix and tip and fix != tip and git_ok(repo, "merge-base", "--is-ancestor", tip, fix) \
+                    and git_ok(repo, "merge-base", "--is-ancestor", fix, "HEAD"):
+                fix_rec, _ = lookup(records, [fix], repo)
+                ok = bool(fix_rec and fix_rec[1] == "PASS")
+            if not ok:
+                unresolved.append("%s (REVISED fix %s: no PASS, not merged, or not a fix of this work)"
+                                  % (label, rec[2][0]))
             continue
         unresolved.append("%s (%s)" % (label, status))
     return missing, unresolved, invalid
@@ -169,6 +246,8 @@ def review_status(repo=REPO, baseline=BASELINE, log_path=REVIEW_LOG, cutoff=REVI
 
 
 def check_history(repo, baseline):
+    if git(repo, "rev-parse", "--is-shallow-repository").strip() == "true":
+        raise RuntimeError("shallow repository")
     if not git_ok(repo, "cat-file", "-e", baseline + "^{commit}") or not git_ok(
             repo, "merge-base", "--is-ancestor", baseline, "HEAD"):
         raise RuntimeError("baseline %s not in history" % baseline[:12])
@@ -269,20 +348,26 @@ def selftest():
         v = violations(tmp, base, [])
         ok = ok and len(v) == 2 and any("Merge branch 'foo'" in x for x in v)
         ok = ok and len(violations(tmp, base, ["foo"])) == 1
+        ok = ok and len(violations(tmp, base, ["HEAD"])) == 2  # circular upstream does not exempt
         log = os.path.join(tmp, "reviews.log")
-        open(log, "w").write("# header\n")
+        with open(log, "w") as f:
+            f.write("# header\n")
         missing, unresolved, invalid = review_findings(tmp, base, log, base)
         ok = ok and len(missing) == 1 and invalid == []
         tip = g("rev-parse", "exec/t")
-        open(log, "a").write(tip[:12] + " PENDING 2026-10-16 x\n")
+        with open(log, "a") as f:
+            f.write(tip[:12] + " PENDING 2026-10-16 x\n")
         missing, unresolved, invalid = review_findings(tmp, base, log, base)
         ok = ok and missing == [] and len(unresolved) == 1
-        open(log, "a").write(tip[:12] + " PASSED 2026-10-16 x\n")
+        with open(log, "a") as f:
+            f.write(tip[:12] + " PASSED 2026-10-16 x\n")
         missing, unresolved, invalid = review_findings(tmp, base, log, base)
         ok = ok and len(invalid) == 1 and len(unresolved) == 1
-        open(log, "w").write(tip[:12] + " PASS 2026-10-16 reviewer\n")
+        with open(log, "w") as f:
+            f.write(tip[:12] + " PASS 2026-10-16 reviewer\n")
         ok = ok and review_findings(tmp, base, log, base) == ([], [], [])
-        open(log, "w").write(tip[:12] + " WAIVED 2026-10-16 four words of reason\n")
+        with open(log, "w") as f:
+            f.write(tip[:12] + " WAIVED 2026-10-16 four words of reason\n")
         missing, unresolved, invalid = review_findings(tmp, base, log, base)
         ok = ok and len(invalid) == 1
         print("delegation_check selftest: %s" % ("ok" if ok else "FAIL"))
@@ -297,13 +382,11 @@ def main(argv=None):
         return selftest()
     if "--stop-hook" in argv:
         return stop_hook()
+    ci = "--ci" in argv
+    repo, baseline, cutoff = config(ci)
     upstreams = [argv[i + 1] for i, a in enumerate(argv) if a == "--upstream" and i + 1 < len(argv)]
-    repo = REPO
-    if upstreams:
-        upstreams = existing_refs(repo, upstreams)
-    else:
-        upstreams = None
-    return audit(repo, BASELINE, REVIEW_LOG, REVIEW_CUTOFF, upstreams, ci="--ci" in argv)
+    upstreams = existing_refs(repo, upstreams) if upstreams else None
+    return audit(repo, baseline, os.path.join(repo, "state", "reviews.log"), cutoff, upstreams, ci=ci)
 
 
 if __name__ == "__main__":
