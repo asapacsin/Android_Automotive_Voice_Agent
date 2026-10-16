@@ -46,6 +46,8 @@ object ToolCallGuards {
     const val AMBIGUOUS_REFERENT = "AMBIGUOUS_REFERENT"
     const val UNSUPPORTED_BODY_PART = "UNSUPPORTED_BODY_PART"
     const val NEARBY_QUESTION_WHILE_NAVIGATING = "NEARBY_QUESTION_WHILE_NAVIGATING"
+    const val VAGUE_EXIT_WHILE_NAVIGATING = "VAGUE_EXIT_WHILE_NAVIGATING"
+    private val EXPLICIT_END = Regex("(结束|退出|停止|取消|关闭|关掉|停掉)导航|不导航了|导航结束|别导航了")
 
     /** Words that do ask to go somewhere (else) - only these may replace an active route. */
     private val GO_INTENT = Regex("导航|带我去|带我到|开过去|开去|前往|就去|改去|换(个|成)?(目的地|地方)|去(最近|附近|那|这)")
@@ -180,6 +182,39 @@ object ToolCallGuards {
         if (!QUESTION.containsMatchIn(said)) return decide("not_question", null)
         if (GO_INTENT.containsMatchIn(said)) return decide("go_intent", null)
         return decide("refused", NEARBY_QUESTION_WHILE_NAVIGATING)
+    }
+
+    /** Whether a destination or route list is on screen; closing it with 「算了」 is correct. */
+    internal fun listOpenNow(): Boolean =
+        com.novadrive.app.nav.EmbeddedNavigation.currentOrNull()?.state()?.value.let {
+            it == com.novadrive.app.nav.NavigationPhase.AWAITING_DESTINATION_SELECTION ||
+                it == com.novadrive.app.nav.NavigationPhase.AWAITING_ROUTE_SELECTION
+        }
+
+    /**
+     * Owner demo, warm worker run 4d1ad5c (2026-10-16): mid-drive, after 「沿途没有找到加油站」 with
+     * no list shown, the driver said 「算了」 and the model called `exit_navigation_mode`, ending the
+     * drive. While navigating with no list open, only an explicit end request (结束导航, 退出导航, …)
+     * may end it. Stale words are not used (same rule as [nearbyQuestionWhileNavigating]).
+     */
+    fun vagueExitWhileNavigating(
+        call: DomainVoiceEvent.ToolCall,
+        context: DriverContext?,
+        navigating: Boolean = navigatingNow(),
+        listOpen: Boolean = listOpenNow(),
+    ): String? {
+        if (call.name != "exit_navigation_mode" || !navigating || context == null) return null
+        fun decide(code: String, result: String?): String? {
+            com.novadrive.app.DebugVoiceLog.log(
+                "guard_vague_exit decision=$code cur=${context.currentEpoch()} cap=${context.capabilityEpoch()}",
+            )
+            return result
+        }
+        if (listOpen) return decide("list_open", null)
+        if (context.currentEpoch() <= 0 || context.currentEpoch() < context.capabilityEpoch()) return decide("stale_words", null)
+        val said = TranscriptText.normalize(context.currentRequestText())
+        if (EXPLICIT_END.containsMatchIn(said)) return decide("explicit_end", null)
+        return decide("refused", VAGUE_EXIT_WHILE_NAVIGATING)
     }
 
     /**
