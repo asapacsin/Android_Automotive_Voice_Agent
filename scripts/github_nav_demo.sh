@@ -89,10 +89,10 @@ adb shell am force-stop com.novadrive.app
 app_up || true
 sleep 3
 
-# Screen: three back-to-back 180 s recordings (screenrecord's limit), stopped once the drive ends.
+# Screen: up to five back-to-back 180 s recordings (screenrecord's limit), stopped once the drive ends.
 rec_start="$(date +%s.%N)"
 (
-  for i in 1 2 3; do
+  for i in 1 2 3 4 5; do
     echo "$(date +%s.%N)" >"$ev/seg${i}_start.txt"
     # P64: half resolution, so the guest encoder takes less of the CPU the map renders on.
     adb shell screenrecord --time-limit 180 --size 576x1248 --bit-rate 3000000 "/sdcard/nav_seg${i}.mp4" || true
@@ -104,15 +104,15 @@ recorder=$!
 # Once navigation starts, speed the simulated car up so the whole drive fits in the video.
 (
   for _ in $(seq 1 120); do
-    if nova | grep -q "nav_started"; then sleep 8; tool nav_speed 90; break; fi
+    if nova | grep -q "nav_started"; then sleep 8; tool nav_speed 120; break; fi
     sleep 3
   done
 ) &
 
 S="tools/speech-harness/speech"
-# P63: 十字门, a route with a 40 km/h speed camera (NAV-MID-ROUTE-001, 2026-09-21), driven at 90.
+# P63: 十字门 (20 km; a 60 km/h limit on the way, run 38847890114), driven at 120 so it arrives.
 clips="$S/nav_shizimen.pcm,$S/pick_first.pcm,$S/start_nav.pcm,$S/ctx_too_hot.pcm,$S/music_on.pcm,$S/eta_q.pcm,$S/gas_nearby.pcm,$S/music_off.pcm"
-python3 tools/speech-harness/host_audio_bridge.py --from-file "$clips" --lead 8 --gap 20 --duration 420 \
+python3 tools/speech-harness/host_audio_bridge.py --from-file "$clips" --lead 8 --gap 20 --duration 600 \
   --no-play --provider gemini --record "$ev/demo_audio" >/dev/null 2>"$ev/bridge_err.txt" || true
 note "nav demo: provider=$(nova | grep -oE 'session_provider choice=[a-z_]+' | tail -1) started=$(count 'nav_started') stopped=$(nova | grep -oE 'nav_stopped reached=[a-z]+ reason=[a-z_]+' | tail -1) guidance=$(count 'nav_guidance_play_start') tools=$(nova | grep -oE '^tool=[a-z_]+|tool=[a-z_]+ args' | grep -oE 'tool=[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ') errors=$(count 'state=ERROR|_PROTOCOL_ERROR')"
 # Let the drive reach the destination if it has not yet.
@@ -129,7 +129,7 @@ adb shell pkill -INT screenrecord || true
 wait "$recorder" || true
 sleep 2
 : >"$ev/segs.txt"
-for i in 1 2 3; do
+for i in 1 2 3 4 5; do
   if adb pull "/sdcard/nav_seg${i}.mp4" "$ev/seg${i}.mp4" >/dev/null 2>&1 && [ -s "$ev/seg${i}.mp4" ]; then echo "file 'seg${i}.mp4'" >>"$ev/segs.txt"; fi
 done
 (cd "$ev" && ffmpeg -v error -y -f concat -safe 0 -i segs.txt -c copy screen.mp4) || true

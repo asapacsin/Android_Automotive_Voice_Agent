@@ -3330,7 +3330,7 @@ tests:
     prerequisites: ["KVM-capable host with an ARM-translation emulator image (the owner's PC)", "this build with the developer toggle 「助手播报导航」 on", "Gemini key", "route 横琴创业谷 → 励骏庞都 only (owner test-run policy)"]
     procedure: ["simulated drive of the short route", "collect guidance_route / guidance_claim / guidance_fidelity / nav_guidance_fallback_tts lines", "repeat once with the network cut mid-route"]
     pass_criteria: ["every G-1…G-1f question answered with numbers", "G-1b: if playTTS is silent with the inner voice off, stop and escalate (ADR-014 fallback cannot be met)"]
-    evidence: []
+    evidence: ["measurements only, no verdict yet (G-1b audibility, G-1c, G-1d and the network-cut repeat remain) - 2026-10-16 GitHub emulator API 34 (arm64 app under translation), Gemini gemini-3.1-flash-live-preview via the debug override, relay on with a 3000 ms measurement deadline, route to 十字门 (not the owner's short route: the GitHub origin is fixed). Run 38843628215 at e9f8535: echo loop found (G-1f: onGetNavigationText also reports our own playTTS) - 242 routes, 197 fallbacks. Run 38847890114 at 128494c (ci/nav-demo runs/run_20261016_0416_128494c): 23 prompts sent and claimed by the assistant, G-1 text->played audio 626-1371 ms (median 754 ms, 1 of 23 over the 1200 ms default), G-1e fidelity 23/23 MATCH; 18 to Amap (15 NOT_ACTIVE after a 1008 close, 1 DRIVER_SPEAKING, 1 RESPONSE_OPEN, 1 SEND_FAILED); G-1b+ playTTS with inner voice off fired no TTSPlayListener start (nav_guidance_play_start 0). Not answered: G-1b audibility of playTTS with the inner voice off (emulator -no-audio), G-1c, G-1d, the network-cut repeat"]
     related: [SPEC-018, ADR-014]
     last_run: {at: null, result: null}
 

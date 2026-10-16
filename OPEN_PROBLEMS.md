@@ -2245,6 +2245,12 @@ gate; G-1f - `onGetNavigationText` does fire with the inner voice off, including
 `playTTS` text reappearing in `onGetNavigationText`: no web search from this container, nothing
 found in the SDK's Javadoc copies under the scratchpad; the echo is inferred from the counts.
 
+**Run 2 (nav demo run 38847890114 at 128494c, echo fix in):** she spoke the guidance. 23 prompts
+went to her and all 23 were claimed and judged MATCH (her words agreed with Amap's on directions and
+distances); first audio 626-1371 ms after the text (median 754 ms). 18 went to Amap's fallback, 15 of
+them after a Gemini 1008 close (fixed in fe8933e: no longer terminal). Video:
+`demo-videos/navigation_demo_her_voice_guidance_2026-10-16.mp4`. The voice is Gemini's, not Ayano.
+
 ## P63 — No spoken warning when the car is over the speed limit
 
 **Status:** OPEN 2026-10-16. Owner test 10-16: "overspeed no voice warning".
@@ -2270,6 +2276,10 @@ run's alert went the relay way; the shipped relay-off path is NAV-OVERSPEED-001.
 (waits for Amap, mic bracketed, cleared at navigation end), the drop check uses the map host's own
 navigation state, and Amap starting inside the bracket cancels the estimate close.
 
+**Run 2 (38847890114):** the 60 km/h limit was seen again, one warning queued to the relay (spoken in
+her voice as a guidance prompt; part of the 23 MATCH). The relay-off path (shipped) is still
+NAV-OVERSPEED-001, NOT_RUN.
+
 ## P64 — The emulator demo runs at about 6.5 frames per second
 
 **Status:** OPEN 2026-10-16. Owner test 10-16: "the simulation is laggy".
@@ -2289,3 +2299,5 @@ limit, not the app's.
 **Run 1 (38843628215):** 4 cores / 4 GB and recording at 576x1248 raised the average from 6.5 to 8.4
 fps (4542 frames in 540 s). Better, still not smooth: the remaining cost is ARM translation and
 software rendering, which this rig cannot remove.
+
+**Run 2 (38847890114):** 10.7 fps (5780 frames in 540 s); the echo loop no longer burns CPU.

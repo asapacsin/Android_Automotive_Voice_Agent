@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-16T04:03:25",
+  "generated_at": "2026-10-16T04:18:45",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "128494c",
+    "commit": "fe8933e",
     "branch": "claude/10-15",
-    "subject": "Guidance relay hears Amap only from the SDK listener; backlog drains when its own bracket closes [navdemo]",
+    "subject": "Gemini: a 1008 after setup is a dropped session, resumed, not a terminal auth failure",
     "working_tree_clean": false,
-    "uncommitted_files": 6
+    "uncommitted_files": 4
   },
   "tests": {
     "available": false,
