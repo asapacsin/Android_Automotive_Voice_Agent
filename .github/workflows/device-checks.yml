@@ -3,6 +3,9 @@
 # transcript bubble and the nav pieces P61/P63, judged by the Verdict step (suite "device").
 # Opens no voice model session (the mic-revoked voice start fails before a session; P61 uses voice
 # stop): it spends no paid or quota API except Amap web search (AMAP_WEB_KEY).
+# Fork pull requests skip this job (no secrets, read-only token), and GitHub counts a skipped job
+# as passing for a required check. That is why Device checks is not a required check; Tier A's
+# fork runs report BLOCKED (red) instead.
 # Emulator evidence is never evidence of real cabin acoustics, echo cancellation, voice
 # naturalness or hardware behaviour.
 # ubuntu-latest has working KVM. The app is built only when the Actions secrets are set.

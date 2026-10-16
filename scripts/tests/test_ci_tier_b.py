@@ -310,23 +310,69 @@ exit 0
 """
 
 
+def stub_tree(tmp):
+    """A copy of the nav demo with stub adb/sudo/sleep/ffmpeg and a stub bridge; returns PATH."""
+    for rel in ("scripts/github_nav_demo.sh", "scripts/ci_verdict.py", "scripts/emulator.ps1",
+                "config/ci_checks.json"):
+        os.makedirs(os.path.join(tmp, os.path.dirname(rel)), exist_ok=True)
+        shutil.copy(os.path.join(ROOT, rel), os.path.join(tmp, rel))
+    stub = os.path.join(tmp, "stub")
+    os.makedirs(stub)
+    for name, body in (("python3", STUB_PY), ("adb", STUB_ADB), ("sudo", "#!/bin/sh\nexit 0\n"),
+                       ("sleep", "#!/bin/sh\nexit 0\n"), ("ffmpeg", "#!/bin/sh\nexit 1\n")):
+        path = os.path.join(stub, name)
+        with open(path, "w") as fh:
+            fh.write(body)
+        os.chmod(path, 0o755)
+    return stub + os.pathsep + os.environ["PATH"]
+
+
+class BlockedRunTest(Base):
+    def run_demo(self, tmp, piece=None, **keys):
+        path = stub_tree(tmp)
+        env = {k: v for k, v in os.environ.items() if k not in ("GEMINI_API_KEY", "AMAP_WEB_KEY")}
+        env.update(PATH=path, NOVA_REAL_PY=sys.executable, NOVA_TEST_MARK=os.path.join(tmp, "m"),
+                   NAV_DEMO_PIECE="1" if piece else "", **keys)
+        if piece:
+            with open(os.path.join(tmp, "scripts/nav_piece.txt"), "w") as fh:
+                fh.write(piece + "\n")
+        proc = subprocess.run(["bash", os.path.join(tmp, "scripts/github_nav_demo.sh"), "app.apk"],
+                              env=env, capture_output=True, text=True, timeout=120)
+        verdict = json.loads(read_abs(os.path.join(tmp, "evidence/verdict.json")))["verdict"]
+        return proc.returncode, verdict
+
+    def test_no_amap_web_key_is_blocked(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, verdict = self.run_demo(tmp, GEMINI_API_KEY="x")
+            self.assertEqual((rc, verdict), (3, "BLOCKED"))
+
+    def test_no_gemini_key_is_blocked_for_a_voice_piece(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, verdict = self.run_demo(tmp, AMAP_WEB_KEY="x")
+            self.assertEqual((rc, verdict), (3, "BLOCKED"))
+
+    def test_routes_without_gemini_key_is_not_blocked(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, verdict = self.run_demo(tmp, piece="routes", AMAP_WEB_KEY="x")
+            # The stub logs no route, so it fails - but it ran: not BLOCKED.
+            self.assertEqual((rc, verdict), (1, "FAIL"))
+
+    def test_session_and_complete_blocked_verdict(self):
+        rc, text = run("verdict", "--manifest", os.path.join(ROOT, "config/ci_checks.json"),
+                       "--suite", "navpiece", "--results",
+                       self.results([rec("navpiece:session", "BLOCKED", "secret AMAP_WEB_KEY not set"),
+                                     rec("navpiece:complete", "BLOCKED", "secret AMAP_WEB_KEY not set")]),
+                       clock=False)
+        self.assertEqual(rc, 3, text)
+        self.assertIn("VERDICT navpiece BLOCKED", text)
+
+
 class AbortCleanupTest(unittest.TestCase):
     def test_kill_mid_bridge_leaves_no_bridge_files(self):
         with tempfile.TemporaryDirectory() as tmp:
-            for rel in ("scripts/github_nav_demo.sh", "scripts/ci_verdict.py", "scripts/emulator.ps1",
-                        "config/ci_checks.json"):
-                os.makedirs(os.path.join(tmp, os.path.dirname(rel)), exist_ok=True)
-                shutil.copy(os.path.join(ROOT, rel), os.path.join(tmp, rel))
-            stub = os.path.join(tmp, "stub")
-            os.makedirs(stub)
-            for name, body in (("python3", STUB_PY), ("adb", STUB_ADB), ("sudo", "#!/bin/sh\nexit 0\n"),
-                               ("sleep", "#!/bin/sh\nexit 0\n"), ("ffmpeg", "#!/bin/sh\nexit 1\n")):
-                path = os.path.join(stub, name)
-                with open(path, "w") as fh:
-                    fh.write(body)
-                os.chmod(path, 0o755)
+            path = stub_tree(tmp)
             mark = os.path.join(tmp, "bridge_running")
-            env = dict(os.environ, PATH=stub + os.pathsep + os.environ["PATH"], NOVA_REAL_PY=sys.executable,
+            env = dict(os.environ, PATH=path, NOVA_REAL_PY=sys.executable,
                        NOVA_TEST_MARK=mark, GEMINI_API_KEY="x", AMAP_WEB_KEY="x", NAV_DEMO_PIECE="")
             proc = subprocess.Popen(["bash", os.path.join(tmp, "scripts/github_nav_demo.sh"), "app.apk"],
                                     env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,

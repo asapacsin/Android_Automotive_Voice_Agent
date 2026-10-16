@@ -104,11 +104,7 @@ web_key=0; setup_key AMAP_WEB_KEY amap_web_setup amap_web_setup.txt && web_key=1
 if [ "$web_key" = 0 ]; then
   note "nav demo: blocked - no AMAP_WEB_KEY"
   res navpiece:session BLOCKED "secret AMAP_WEB_KEY not set"
-  finish
-fi
-if ! setup_key GEMINI_API_KEY gemini_setup gemini_setup.txt; then
-  note "nav demo: blocked - no GEMINI_API_KEY"
-  res navpiece:session BLOCKED "secret GEMINI_API_KEY not set"
+  res navpiece:complete BLOCKED "secret AMAP_WEB_KEY not set"
   finish
 fi
 # Piece "routes" (owner 2026-10-16: a 5-minute demo): route length and speed cameras per candidate
@@ -150,6 +146,14 @@ if [ "${NAV_DEMO_PIECE:-}" = "1" ] && [ "$(tr -dc a-z <scripts/nav_piece.txt 2>/
   else note "NAV-OVERSPEED-001: no route"; res navpiece:NAV-OVERSPEED-001 FAIL "no route"; fi
   note "nav demo: done (speedoff piece)"
   complete "speedoff piece"
+  finish
+fi
+
+# The voice pieces open a Gemini session; routes and speedoff above need no voice model.
+if ! setup_key GEMINI_API_KEY gemini_setup gemini_setup.txt; then
+  note "nav demo: blocked - no GEMINI_API_KEY"
+  res navpiece:session BLOCKED "secret GEMINI_API_KEY not set"
+  res navpiece:complete BLOCKED "secret GEMINI_API_KEY not set"
   finish
 fi
 
