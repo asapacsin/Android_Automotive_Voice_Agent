@@ -335,11 +335,20 @@ LAST_REPLY = [0.0]
 # The scripted driver reads an app log line a real driver cannot see - said in every hand-over.
 INFLIGHT = {"since": None}
 INFLIGHT_TIMEOUT_S = 3.5
+# Piece run 38864188722: the Gemini connection failed at start and line 1 was spoken into nothing.
+# The driver waits for a ready session (`gemini_setup_complete`) - up to SESSION_CAP_S - after a
+# start, a close or a failed connection.
+SESSION = {"ready": False, "watch": False}
+SESSION_CAP_S = 30.0
 
 
 def on_app_line(text, now=None):
     """Updates the quiet signals from one NovaVoice line (codes only are read)."""
     now = time.time() if now is None else now
+    if "gemini_setup_complete" in text:
+        SESSION["ready"] = True
+    elif re.search(r"gemini_closed code=|GEMINI_LIVE_CONNECTION_FAILED|session_provider choice=", text):
+        SESSION["ready"] = False
     gate = re.search(r"speech_arbiter out=uplink decision=(OPEN|CLOSED)", text)
     if gate:
         UPLINK["closed"] = gate.group(1) == "CLOSED"
@@ -352,6 +361,8 @@ def on_app_line(text, now=None):
 def quiet_reason(now=None):
     """None when the driver may speak, else why not: uplink | inflight | reply."""
     now = time.time() if now is None else now
+    if SESSION["watch"] and not SESSION["ready"]:
+        return "session"
     if UPLINK["closed"]:
         return "uplink"
     since = INFLIGHT["since"]
@@ -405,6 +416,7 @@ def feed_file_waiting(uplink, paths, stop, lead, gap, cap):
         if i:
             plan.append(("pcm", bytes(int(RATE * 2 * gap) // 2 * 2)))
         plan += [("wait", i), ("pcm", clip)]
+    SESSION["watch"] = True
     sent = bytearray()
     RECORDER.started(b"")
     RECORDER.driver = sent  # grows with what is sent, so the video's driver track stays in sync
@@ -422,8 +434,9 @@ def feed_file_waiting(uplink, paths, stop, lead, gap, cap):
                 why = quiet_reason(now)
                 if why:
                     state["why"] = why
-                if why is None or waited >= cap:
-                    print(f"[bridge] wait_quiet line={item + 1} ms={int(waited * 1000)} cap={int(waited >= cap)} reason={state['why']}", flush=True)
+                limit = SESSION_CAP_S if why == "session" or state["why"] == "session" else cap
+                if why is None or waited >= limit:
+                    print(f"[bridge] wait_quiet line={item + 1} ms={int(waited * 1000)} cap={int(waited >= limit)} reason={state['why']}", flush=True)
                     state["step"] += 1
                     state["wait_from"] = None
                     continue
@@ -581,6 +594,10 @@ def follow_log(stop):
 def selftest():
     """Offline: the quiet signals from scripted NovaVoice lines (no emulator, no API)."""
     LAST_REPLY[0] = 0.0
+    SESSION["watch"] = True
+    on_app_line("session_provider choice=gemini_live", 99.0)
+    assert quiet_reason(99.5) == "session", "no line before the session is ready"
+    on_app_line("gemini_setup_complete", 99.8)
     on_app_line("speech_arbiter out=uplink decision=OPEN reason=idle", 100.0)
     assert quiet_reason(100.0) is None
     on_app_line("guidance_route prompt=g7 to=assistant reason=SENT waited_ms=0", 100.0)
@@ -595,6 +612,10 @@ def selftest():
     assert quiet_reason(113.6) is None, "after 3.5 s the prompt went to Amap: no longer held"
     on_app_line("guidance_route prompt=g9 to=amap reason=AMAP_SPEAKING waited_ms=0", 120.0)
     assert quiet_reason(120.1) is None, "a prompt routed to Amap is not her in-flight speech"
+    on_app_line("gemini_closed code=1008 reason_class=other", 130.0)
+    assert quiet_reason(130.1) == "session", "after a close, wait for the resumed session"
+    on_app_line("gemini_setup_complete", 131.0)
+    assert quiet_reason(131.1) is None
     print("selftest ok")
 
 
