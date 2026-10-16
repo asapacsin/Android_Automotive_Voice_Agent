@@ -459,14 +459,6 @@ class DebugToolReceiver : BroadcastReceiver() {
         }
     }
 
-    /**
-     * Speech harness. arg:
-     *  - "start" / "stop"             : voice session via the same gateway as the wake word
-     *  - "say:<name>"                 : inject files/test_speech/<name>.pcm (16 kHz mono PCM16)
-     *  - "speak:<text>"               : a text turn, as the camera auto-look sends
-     *  - "camera"                     : open the camera through the real UI path is not reachable
-     *                                   from here; use a tap on 📷 instead
-     */
     private fun guidanceRelay(context: Context, arg: String): String {
         val on = arg.startsWith("on")
         val deadline = if (on) arg.substringAfter(':', "").toLongOrNull()?.coerceIn(500L, 8_000L) else null
@@ -478,6 +470,14 @@ class DebugToolReceiver : BroadcastReceiver() {
         return "relay=${if (on) "on" else "off"} deadline_ms=${deadline ?: "default"} next_map_host"
     }
 
+    /**
+     * Speech harness. arg:
+     *  - "start" / "stop"             : voice session via the same gateway as the wake word
+     *  - "say:<name>"                 : inject files/test_speech/<name>.pcm (16 kHz mono PCM16)
+     *  - "speak:<text>"               : a text turn, as the camera auto-look sends
+     *  - "camera"                     : open the camera through the real UI path is not reachable
+     *                                   from here; use a tap on 📷 instead
+     */
     private fun voice(context: Context, arg: String): String {
         val gateway = com.novadrive.app.voice.VoiceSessionGateway
         return when {

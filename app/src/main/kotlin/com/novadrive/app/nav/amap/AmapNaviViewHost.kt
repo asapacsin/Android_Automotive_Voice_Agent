@@ -808,7 +808,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         if (snap == lastSpeedHud) return
         lastSpeedHud = snap
         post { speedHud.bind(snap) }
-        AmapGuidanceVoice.onSpeedHud(overspeedAlert, snap, navi) // P63: overspeed said aloud
+        AmapGuidanceVoice.onSpeedHud(overspeedAlert, snap) // P63: overspeed said aloud
         if (snap.visible) {
             DebugVoiceLog.log(
                 "nav_speed kmh=${snap.speedKmh} limitKmh=${snap.limitKmh} over=${if (snap.overspeed) 1 else 0}",

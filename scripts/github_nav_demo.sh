@@ -121,7 +121,7 @@ for _ in $(seq 1 40); do nova | grep -q "nav_stopped" && break; sleep 5; done
 note "relay: $(nova | grep -oE 'nav_guidance_relay [a-z_]+=[a-z0-9_]+' | sort -u | tr '\n' ' ')routes: $(nova | grep -oE 'guidance_route prompt=g[0-9]+ to=[a-z]+ reason=[A-Z_]+' | sed -E 's/prompt=g[0-9]+ //' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')"
 note "relay claims: assistant_waited_ms=$(nova | grep -oE 'guidance_claim prompt=g[0-9]+ side=assistant waited_ms=[0-9]+' | grep -oE '[0-9]+$' | tr '\n' ',') amap=$(count 'guidance_claim .* side=amap') fidelity: $(nova | grep -oE 'guidance_fidelity prompt=g[0-9]+ result=[A-Z_]+' | grep -oE 'result=[A-Z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')fallback_tts: $(nova | grep -oE 'nav_guidance_fallback_tts accepted=[a-z]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')"
 # P63: limits seen, time over, warnings spoken, Amap rings.
-note "overspeed: limits=$(nova | grep -oE 'nav_speed kmh=[0-9]+ limitKmh=[0-9]+' | grep -oE 'limitKmh=[0-9]+' | sort -u | tr '\n' ' ')over_lines=$(count 'nav_speed .* over=1') alerts=$(count 'nav_overspeed_alert') spoken: $(nova | grep -oE 'nav_alert_spoken via=[a-z]+( accepted=[a-z]+)?' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')rings=$(count 'nav_play_ring')"
+note "overspeed: limits=$(nova | grep -oE 'nav_speed kmh=[0-9]+ limitKmh=[0-9]+' | grep -oE 'limitKmh=[0-9]+' | sort -u | tr '\n' ' ')over_lines=$(count 'nav_speed .* over=1') alerts=$(count 'nav_overspeed_alert') queued: $(nova | grep -oE 'nav_alert_(queued to=[a-z]+|dropped reason=[a-z_]+)' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')rings=$(count 'nav_play_ring')"
 note "gemini closes: $(nova | grep -oE 'gemini_closed code=[0-9]+ reason_class=[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')"
 sleep 8
 touch "$ev/stop_recording"
@@ -146,7 +146,7 @@ if [ -s "$ev/screen.mp4" ] && [ -f "$ev/demo_audio/t0.txt" ]; then
 fi
 # P64: the frame rate the viewer sees.
 if [ -s "$ev/nav_demo.mp4" ]; then
-  note "video: $(ffprobe -v error -select_streams v:0 -count_packets -show_entries stream=nb_read_packets,width,height -show_entries format=duration -of csv=p=0 "$ev/nav_demo.mp4" | tr '\n' ' ' | awk -F'[ ,]+' '{printf "%sx%s frames=%s seconds=%.0f fps=%.1f", $1, $2, $3, $4, $3/$4}')"
+  note "video: $(ffprobe -v error -select_streams v:0 -count_packets -show_entries stream=nb_read_packets,width,height -show_entries format=duration -of csv=p=0 "$ev/nav_demo.mp4" | tr '\n' ' ' | awk -F'[ ,]+' '$4 > 0 {printf "%sx%s frames=%s seconds=%.0f fps=%.1f", $1, $2, $3, $4, $3/$4}')"
 fi
 rm -f "$ev"/seg*.mp4 "$ev/screen.mp4" "$ev/segs.txt" "$ev/stop_recording" "$ev/bridge_err.txt"
 shot nav_demo_end

@@ -31,12 +31,24 @@ internal object AmapGuidanceVoice : TTSPlayListener {
 
     /** SPEC-018: the relay of this navigation when 「助手播报导航」 is on, else null (today's path). */
     @Volatile private var relay: GuidanceRelay? = null
-    @Volatile private var amapListener: ((Boolean) -> Unit)? = null
+
+    /**
+     * P63, toggle off (every shipped build): the app's own sentences (the over-speed warning) go
+     * through a [GuidanceRelay] that never sends to the assistant (`enabled = false`), so they get
+     * its Amap rules: wait until Amap is quiet, bracket the `playTTS` for the arbiter (mic gated
+     * whether or not G-1b+ holds), cleared at navigation end. Not installed as the active relay.
+     */
+    @Volatile private var alertQueue: GuidanceRelay? = null
+    private val amapListeners = mutableListOf<(Boolean) -> Unit>()
+
+    /** The alert sentence already handed to the host bridge, so its listener echo is not voiced twice. */
+    @Volatile private var alertFedToHost: String? = null
 
     override fun onPlayStart(text: String?) {
         DebugVoiceLog.log("nav_guidance_play_start chars=${text?.length ?: 0}")
         NavigationGuidanceVoice.onPlayStart()
         if (text.isNullOrBlank() || relay != null) return
+        if (text == alertFedToHost) { alertFedToHost = null; textReceiver?.invoke(text); return }
         feedText(text)
     }
 
@@ -58,29 +70,35 @@ internal object AmapGuidanceVoice : TTSPlayListener {
     }
 
     /**
-     * P63: a sentence the app itself must say during navigation (the over-speed warning), spoken
-     * like guidance: through the relay when it is on (小诺's voice, Amap as the fallback), else by
-     * Amap's TTS, whose play listener gates the microphone (P3) and feeds the host bridge.
+     * P63: a sentence the app itself must say during navigation (the over-speed warning), queued
+     * like guidance on the main thread: to the relay when the toggle is on (小诺's voice, Amap as the
+     * fallback), else to [alertQueue] (Amap's voice once Amap is quiet, bracketed for the arbiter).
+     * The log says where it was queued, not that it was heard: the relay's `guidance_route`,
+     * `guidance_claim` and `nav_guidance_fallback_tts` lines say what happened to it.
      */
-    fun speakAlert(navi: AMapNavi?, text: String) {
+    fun speakAlert(text: String) {
         mainHandler.post {
-            val active = relay
-            if (active != null) {
-                runCatching { textReceiver?.invoke(text) }
-                active.onGuidanceText(text)
-                DebugVoiceLog.log("nav_alert_spoken via=relay chars=${text.length}")
+            if (!com.novadrive.app.NavigationState.navigating) {
+                DebugVoiceLog.log("nav_alert_dropped reason=not_navigating")
                 return@post
             }
-            val accepted = runCatching { navi?.playTTS(text, false) ?: false }.getOrDefault(false)
-            DebugVoiceLog.log("nav_alert_spoken via=amap accepted=$accepted chars=${text.length}")
+            val active = relay
+            val queue = active ?: alertQueue
+            if (queue == null) {
+                DebugVoiceLog.log("nav_alert_dropped reason=no_queue")
+                return@post
+            }
+            if (active != null) runCatching { textReceiver?.invoke(text) }
+            queue.onGuidanceText(text)
+            DebugVoiceLog.log("nav_alert_queued to=${if (active != null) "relay" else "amap"} chars=${text.length}")
         }
     }
 
-    /** P63: every speed-HUD change; the over-speed warning is spoken when [alert] says so (the limit only in the log). */
-    fun onSpeedHud(alert: OverspeedAlert, snap: DrivingSpeedHud.Snapshot, navi: AMapNavi?) {
+    /** P63: every speed-HUD change; the over-speed warning is queued when [alert] says so (the limit only in the log). */
+    fun onSpeedHud(alert: OverspeedAlert, snap: DrivingSpeedHud.Snapshot) {
         val sentence = alert.onSnapshot(snap, SystemClock.elapsedRealtime()) ?: return
         DebugVoiceLog.log("nav_overspeed_alert limitKmh=${snap.limitKmh}")
-        speakAlert(navi, sentence)
+        speakAlert(sentence)
     }
 
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
@@ -109,11 +127,26 @@ internal object AmapGuidanceVoice : TTSPlayListener {
             DebugVoiceLog.log("nav_guidance_voice enabled=false exception=${it.javaClass.simpleName}")
         }
         applyConciseBroadcast(navi)
-        if (assistantVoice) installRelay(navi)
+        if (assistantVoice) installRelay(navi) else installAlertQueue(navi)
+    }
+
+    private fun installAlertQueue(navi: AMapNavi) {
+        val queue = buildRelay(navi, assistantSpeaks = false)
+        alertQueue = queue
+        DebugVoiceLog.log("nav_alert_queue installed=true")
     }
 
     private fun installRelay(navi: AMapNavi) {
-        val handler = Handler(Looper.getMainLooper())
+        val relay = buildRelay(navi, assistantSpeaks = true)
+        DebugVoiceLog.log("nav_guidance_relay deadline_ms=${debugDeadlineMs ?: GuidanceRelay.DEFAULT_DEADLINE_MS}")
+        this.relay = relay
+        GuidanceRelay.install(relay) { task -> mainHandler.post { task() } }
+        DebugVoiceLog.log("nav_guidance_relay installed=true")
+    }
+
+    /** One relay construction for both uses; `assistantSpeaks = false` never sends to the session. */
+    private fun buildRelay(navi: AMapNavi, assistantSpeaks: Boolean): GuidanceRelay {
+        val handler = mainHandler
         val relay = GuidanceRelay(
             clock = { SystemClock.elapsedRealtime() },
             schedule = { delayMs, task ->
@@ -126,10 +159,13 @@ internal object AmapGuidanceVoice : TTSPlayListener {
                 override fun sendPrompt(text: String, promptId: String) = VoiceSessionGateway.sendPrompt(text, promptId)
             },
             amap = GuidanceSpeaker { text ->
-                // P62: only the fallback reaches the host bridge (debug; null otherwise).
-                runCatching { HostAudioTap.guidanceSink?.invoke(text) }
                 val accepted = runCatching { navi.playTTS(text, true) }.getOrDefault(false)
                 DebugVoiceLog.log("nav_guidance_fallback_tts accepted=$accepted")
+                // P62: only what Amap's voice was given reaches the host bridge (debug; null otherwise).
+                if (accepted && HostAudioTap.guidanceSink != null) {
+                    if (!assistantSpeaks) alertFedToHost = text
+                    runCatching { HostAudioTap.guidanceSink?.invoke(text) }
+                }
                 accepted
             },
             arbiter = object : GuidanceArbiterView {
@@ -140,16 +176,13 @@ internal object AmapGuidanceVoice : TTSPlayListener {
                 override fun bracket(speaking: Boolean) =
                     if (speaking) NavigationGuidanceVoice.onPlayStart() else NavigationGuidanceVoice.onPlayEnd()
             },
-            enabled = { true },
+            enabled = { assistantSpeaks },
             deadlineMs = debugDeadlineMs ?: GuidanceRelay.DEFAULT_DEADLINE_MS,
         )
-        DebugVoiceLog.log("nav_guidance_relay deadline_ms=${debugDeadlineMs ?: GuidanceRelay.DEFAULT_DEADLINE_MS}")
-        this.relay = relay
         val listener: (Boolean) -> Unit = { speaking -> handler.post { relay.onAmapSpeaking(speaking) } }
-        amapListener = listener
+        synchronized(amapListeners) { amapListeners += listener }
         NavigationGuidanceVoice.addListener(listener)
-        GuidanceRelay.install(relay) { task -> handler.post { task() } }
-        DebugVoiceLog.log("nav_guidance_relay installed=true")
+        return relay
     }
 
     /**
@@ -192,14 +225,21 @@ internal object AmapGuidanceVoice : TTSPlayListener {
         // Guidance cut off mid-sentence may never report its end; do not leave the mic gated.
         if (NavigationGuidanceVoice.speaking) NavigationGuidanceVoice.onPlayEnd()
         relay?.onNavigationEnded()
+        alertQueue?.onNavigationEnded() // P63: a warning still waiting for Amap is never said after the drive
+        alertFedToHost = null
     }
 
     fun disable(navi: AMapNavi?) {
         runCatching { navi?.removeTTSPlayListener(this) }
         relay?.let { GuidanceRelay.uninstall(it) }
         relay = null
-        amapListener?.let { NavigationGuidanceVoice.removeListener(it) }
-        amapListener = null
+        alertQueue?.onNavigationEnded()
+        alertQueue = null
+        alertFedToHost = null
+        synchronized(amapListeners) {
+            amapListeners.forEach { NavigationGuidanceVoice.removeListener(it) }
+            amapListeners.clear()
+        }
         textReceiver = null
         // Guidance cut off mid-sentence may never report its end; do not leave the mic gated.
         if (NavigationGuidanceVoice.speaking) NavigationGuidanceVoice.onPlayEnd()

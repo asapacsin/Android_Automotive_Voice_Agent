@@ -473,4 +473,42 @@ class GuidanceRelayTest {
         assertEquals("g2", sent.last().first)
         assertEquals(1, spoken.size)
     }
+
+    // ---- P63: the over-speed warning with the toggle off (an alert queue: enabled = false) ----
+
+    private val alert = "您已超速，限速40公里"
+
+    @Test
+    fun alertQueueWaitsForAmapToFinishThenSpeaks() {
+        enabled = false
+        amapSpeaking = true
+        relay.onGuidanceText(alert)
+        assertTrue(spoken.isEmpty(), "never over Amap's own sentence")
+        assertTrue(sent.isEmpty(), "an alert queue never sends to the assistant")
+        amapEnds()
+        assertEquals(listOf(alert), spoken)
+    }
+
+    @Test
+    fun alertQueueGatesTheMicUntilTheEstimateWithNoListenerCallback() {
+        enabled = false
+        relay.onGuidanceText(alert)
+        assertEquals(listOf(alert), spoken)
+        assertEquals(listOf(true), brackets, "bracketed for the arbiter at playTTS")
+        val estimate = maxOf(GuidanceRelay.BRACKET_MIN_MS, GuidanceRelay.BRACKET_MS_PER_CHAR * alert.length)
+        advance(estimate - 1)
+        assertEquals(listOf(true), brackets, "still gated before the estimate")
+        advance(1)
+        assertEquals(listOf(true, false), brackets, "closed by the estimate though no listener end came")
+    }
+
+    @Test
+    fun alertPendingAtNavigationEndIsNeverSpoken() {
+        enabled = false
+        amapSpeaking = true
+        relay.onGuidanceText(alert)
+        relay.onNavigationEnded()
+        amapEnds()
+        assertTrue(spoken.isEmpty())
+    }
 }

@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-16T03:05:56",
+  "generated_at": "2026-10-16T03:19:30",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "e9f8535",
+    "commit": "0f2f972",
     "branch": "claude/10-15",
-    "subject": "Owner test 10-16 fixes: guidance in her voice, spoken overspeed warning, smoother demo [navdemo]",
+    "subject": "Voice checks run 38835222165 recorded: live-info place_details 7/10, 「空调」 alone reached the model, wake not runnable in CI",
     "working_tree_clean": false,
-    "uncommitted_files": 2
+    "uncommitted_files": 6
   },
   "tests": {
     "available": false,
@@ -155,10 +155,10 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "app-debug.apk: no debug APK has been built from this tree",
-    "actionable_count": 133,
+    "actionable_count": 134,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
-    "QUEUED_FOR_HUMAN": 28,
+    "QUEUED_FOR_HUMAN": 29,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
       {
@@ -789,6 +789,13 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "NAV-MID-ROUTE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-OVERSPEED-001",
         "blocked_by": null
       },
       {

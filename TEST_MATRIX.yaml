@@ -3334,6 +3334,45 @@ tests:
     related: [SPEC-018, ADR-014]
     last_run: {at: null, result: null}
 
+  - id: NAV-OVERSPEED-001
+    capability: navigation
+    name: Spoken over-speed warning with the guidance toggle off (the shipped path)
+    purpose: "P63 (owner test 10-16): over a known limit, 「您已超速，限速N公里」 is said in Amap's voice once Amap is quiet, with the mic gated while it plays"
+    type: device
+    scope: INTERMEDIATE_FLOW
+    owner: AUTONOMOUS
+    status: NOT_RUN
+    release_blocking: false
+    covers: [navigation.speed_hud]
+    prerequisites: ["emulator with this build, relay toggle off (default)", "route with a speed-limit camera (十字门 from the emulator origin)"]
+    procedure: ["nav_route 十字门, start the emulator drive", "nav_speed 90 once moving", "drive past the limit camera", "read the NovaVoice log"]
+    pass_criteria: ["nav_overspeed_alert limitKmh=<N> at the first over=1", "nav_alert_queued to=amap", "guidance_route to=amap reason=DISABLED, then nav_guidance_fallback_tts accepted=true", "nav_guidance_play_start for the alert, or the relay bracket, with session_diag guidanceGated=true while it plays", "no alert after nav_stopped", "no coordinate, address or transcript in the log"]
+    evidence: ["2026-10-16: not covered by nav demo e9f8535/its fix - that run has the relay ON; the shipped relay-off path needs its own run (reviewer R4)"]
+    related: [P63, SPEC-018, NAV-MID-ROUTE-001]
+    last_run: {at: null, result: null}
+
+  - id: NAV-OVERSPEED-DEVICE-001
+    capability: navigation
+    name: The over-speed warning is heard in the car
+    purpose: "P63: what the driver hears - the emulator has no audio, so whether the warning is audible over road noise is a person's check"
+    type: device
+    scope: END_TO_END
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: physical_world
+    release_blocking: false
+    terminal_success: [warning_heard_once_per_limit]
+    autonomous_evidence: ["NAV-OVERSPEED-001", "OverspeedAlertTest", "GuidanceRelayTest alert-queue tests"]
+    remaining_uncertainty: ["whether Amap's native engine speaks a forced custom TTS right after its own camera prompt", "loudness over road noise"]
+    covers: [navigation.speed_hud]
+    human_reason: "Needs a person in a moving car past a speed camera, listening"
+    prerequisites: ["phone with this build", "a road with a speed camera"]
+    procedure: ["drive past a speed camera above its limit (as a passenger with a simulated drive is acceptable)", "listen"]
+    pass_criteria: ["「您已超速，限速N公里」 heard once per camera", "not spoken over Amap's own sentence"]
+    returns: ["heard yes/no, over Amap yes/no"]
+    evidence: []
+    related: [P63]
+
   - id: GUIDANCE-DEVICE-001
     capability: navigation
     name: One voice on the short route; Amap audible only when the model cannot speak
