@@ -463,12 +463,17 @@ def cmd_scenarios(args):
     rc = args.runner_rc
     if rc is not None and rc == QUOTA_GUARD_RC:
         runner = make_record(f"{prefix}runner", "BLOCKED", "quota guard")
-    elif rc is not None and rc != 0:
+    elif rc is not None and rc not in (0, 1):
         runner = make_record(f"{prefix}runner", "FAIL", f"runner exit {rc}")
     elif not parsed:
         runner = make_record(f"{prefix}runner", "FAIL", "runner produced no results")
     elif not summary_seen or not run_ids <= summary_ids:
         runner = make_record(f"{prefix}runner", "FAIL", "run incomplete: no summary")
+    elif rc == 1:
+        # run_scenarios.py exits 1 when any scenario is under 100%; with a complete summary the
+        # per-scenario records carry that and the verdict judges them (planner, CI-1R2).
+        runner = make_record(f"{prefix}runner", "PASS",
+                             "runner exit 1: scenario failures judged per scenario")
     else:
         runner = make_record(f"{prefix}runner", "PASS", f"{len(parsed)} scenario results")
     records.append(runner)

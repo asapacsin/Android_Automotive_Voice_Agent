@@ -437,6 +437,31 @@ class ReviewScenarioTest(ScenariosTest):
         self.assertEqual(rs[-1]["status"], "PASS")
 
 
+class RunnerRcOneTest(ScenariosTest):
+    def test_rc1_complete_summary(self):
+        for sid, want in (("S1", 1), ("YUE-HOME", 0)):
+            raw = f"  PASS  S9\n  FAIL  {sid}\n" + SUMMARY + f"  ok  S9 1/1\n  FAIL  {sid} 0/1\n"
+            out, rs = self.scen(raw, prefix="cantonese:", rc=1)
+            by = {r["id"]: r for r in rs}
+            self.assertEqual(by["cantonese:runner"]["status"], "PASS")
+            self.assertEqual(by["cantonese:runner"]["detail"], "runner exit 1: scenario failures judged per scenario")
+            self.assertEqual(by[f"cantonese:{sid}"]["status"], "FAIL")
+            other = self.results([rec("voice:runner", "PASS"), rec("voice:S1", "PASS"), rec("device:runner", "PASS"),
+                                  rec("device:D1", "PASS"), rec("liveinfo:runner", "PASS"), rec("liveinfo:L1", "PASS"),
+                                  rec("voice:quota-guard", "PASS")], "other.jsonl")
+            rc, text = run("verdict", "--manifest", SHIPPED, "--suite", "voice", "--today", TODAY,
+                           "--results", out, "--results", other)
+            self.assertEqual(rc != 0, bool(want), text)
+
+    def test_rc1_traceback(self):
+        _, rs = self.scen("  PASS S1\nTraceback (most recent call last):\n", rc=1)
+        self.assertEqual(rs[-1]["status"], "FAIL")
+
+    def test_rc2_complete_summary(self):
+        _, rs = self.scen("  PASS S1\n" + SUMMARY + "  ok  S1 1/1\n", rc=2)
+        self.assertEqual(rs[-1], {"id": "x:runner", "status": "FAIL", "detail": "runner exit 2"})
+
+
 class ReviewVerdictTest(Base):
     def test_pass_record_with_partial_counts_malformed(self):
         rc, _ = self.verdict(self.manifest(["a"]), self.results([{"id": "a", "status": "PASS", "detail": "", "passes": 6, "runs": 10}]))
