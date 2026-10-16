@@ -2,6 +2,10 @@
 # (workflow_dispatch); builds once, boots the emulator once, then scripts/github_test_worker.sh picks
 # up every commit on the branch tagged [worker:<piece>], rebuilds incrementally, reinstalls and runs
 # the piece. Evidence: branch ci/test-worker. One job, up to ~5.5 h (GitHub's limit is 6 h).
+# Each piece's verdict (scripts/ci_verdict.py, suite navpiece) ends its summary.txt; the worker loop
+# itself never fails on a piece failure, so read the verdict line, not the job status.
+# Emulator evidence is never evidence of real cabin acoustics, echo cancellation, voice
+# naturalness or hardware behaviour.
 # The job must not print coordinates, addresses, transcripts or keys.
 
 name: Test worker

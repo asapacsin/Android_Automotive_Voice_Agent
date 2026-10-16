@@ -5,6 +5,8 @@
 # (warm Gradle), reinstalls the app and runs the piece, then pushes the evidence to
 # ci/test-worker runs/<time>_<sha>_<piece>/. Pieces: navpiece (first six demo lines, ~150 s),
 # navdemo (the full drive). Logs carry codes only, as in the scripts it calls.
+# Each published run ends summary.txt with "verdict: PASS|FAIL|BLOCKED" (scripts/ci_verdict.py, suite
+# navpiece). Emulator evidence: never proof of cabin acoustics, echo cancellation, voice or hardware.
 set -u
 branch="${WORKER_BRANCH:?branch}"
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -57,12 +59,21 @@ while [ "$(date +%s)" -lt "$deadline" ]; do
   rm -f evidence/build.log
   build_s=$(( $(date +%s) - t0 ))
   python3 tools/speech-harness/make_speech.py >/dev/null 2>&1 || true
+  # The loop never dies on a piece failure (no set -e here); the piece's rc and verdict are recorded.
+  piece_rc=0
   case "$piece" in
-    navpiece) NAV_DEMO_PIECE=1 timeout 600 bash scripts/github_nav_demo.sh "$apk" || true ;;
-    navdemo) NAV_DEMO_PIECE= timeout 1500 bash scripts/github_nav_demo.sh "$apk" || true ;;
-    *) echo "unknown piece $piece" >>evidence/summary.txt ;;
+    navpiece) NAV_DEMO_PIECE=1 timeout 600 bash scripts/github_nav_demo.sh "$apk"; piece_rc=$? ;;
+    navdemo) NAV_DEMO_PIECE= timeout 1500 bash scripts/github_nav_demo.sh "$apk"; piece_rc=$? ;;
+    *) echo "unknown piece $piece" >>evidence/summary.txt; piece_rc=2 ;;
   esac
-  echo "worker: piece=$piece build_s=$build_s total_s=$(( $(date +%s) - t0 ))" >>evidence/summary.txt
+  # The script writes evidence/verdict.json; if it died before that, judge what it recorded.
+  if [ ! -s evidence/verdict.json ]; then
+    python3 scripts/ci_verdict.py verdict --manifest config/ci_checks.json --suite navpiece \
+      --results evidence/results.jsonl --json-out evidence/verdict.json >/dev/null 2>&1
+  fi
+  verdict="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["verdict"])' evidence/verdict.json 2>/dev/null || echo BLOCKED)"
+  echo "worker: piece=$piece rc=$piece_rc build_s=$build_s total_s=$(( $(date +%s) - t0 ))" >>evidence/summary.txt
+  echo "verdict: $verdict" >>evidence/summary.txt
   publish "$name"
 done
 echo "::notice title=worker::stopped at $(date -u +%H:%M)"

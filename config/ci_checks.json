@@ -7,19 +7,19 @@
       "optional": []
     },
     "voice": {
-      "description": "Voice checks on the emulator against the Gemini live harness.",
-      "required": ["voice:runner", "voice:S*", "device:runner", "device:*", "liveinfo:runner", "liveinfo:*", "cantonese:runner", "cantonese:*", "voice:quota-guard"],
+      "description": "Voice checks on the emulator against the Gemini live harness (free tier, not deterministic). devrows: is the scenarios-device.json runner.",
+      "required": ["voice:runner", "voice:S*", "devrows:runner", "devrows:*", "liveinfo:runner", "liveinfo:*", "cantonese:runner", "cantonese:*", "voice:quota-guard"],
       "optional": ["voice:demo-recording", "wake:WAKE-SYNTH-001"]
     },
     "device": {
-      "description": "Device checks (filled by a later task).",
-      "required": [],
-      "optional": []
+      "description": "Device rows on the emulator without a voice model session (scripts/github_device_checks.sh).",
+      "required": ["device:app-up", "device:PLACE-UNSET-001", "device:PLACE-SAVE-001", "device:APPS-001", "device:NAV-ROUTE-001", "device:NAV-START-001", "device:NAV-UI-007", "device:NAV-E2E-ARRIVAL-001", "device:NAV-CRASH-001", "device:PROCDEATH-001", "device:PERM-DENY-001", "device:TRANSCRIPT-FADE-EMU-001", "device:PIECE-P61", "device:PIECE-P63"],
+      "optional": ["device:CALL-NOSIM-001", "device:P59"]
     },
     "navpiece": {
-      "description": "Navigation demo sub-task checks (filled by a later task).",
-      "required": [],
-      "optional": []
+      "description": "Navigation demo pieces (scripts/github_nav_demo.sh): every recorded navpiece: check is required except the video.",
+      "required": ["navpiece:*"],
+      "optional": ["navpiece:video"]
     }
   },
   "quarantine": [
