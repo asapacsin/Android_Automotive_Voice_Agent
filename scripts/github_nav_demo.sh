@@ -83,6 +83,19 @@ setup_key() { # env-name tool file
 app_up && note "app: map up" || note "app: map did not come up"
 setup_key AMAP_WEB_KEY amap_web_setup amap_web_setup.txt || true
 if ! setup_key GEMINI_API_KEY gemini_setup gemini_setup.txt; then note "nav demo: skipped - no GEMINI_API_KEY"; exit 0; fi
+# Piece "routes" (owner 2026-10-16: a 5-minute demo): route length and speed cameras per candidate
+# destination, no driving, no voice model. Numbers only.
+if [ "${NAV_DEMO_PIECE:-}" = "1" ] && [ "$(tr -dc a-z <scripts/nav_piece.txt 2>/dev/null)" = "routes" ]; then
+  adb shell am force-stop com.novadrive.app; app_up || true; sleep 3
+  for d in 珠海站 拱北口岸 珠海大剧院 九洲港 香洲港 珠海市人民医院 华发商都 横琴口岸; do
+    mark; tool nav_route "$d"
+    if wait_for "nav_calc_success" 60; then sleep 2; tool nav_route_info x; sleep 1; note "route $d: $(nova | grep 'debug_tool tool=nav_route_info ' | tail -1 | sed -E 's/.*result=//')"
+    else note "route $d: no route"; fi
+  done
+  note "nav demo: done (routes piece)"
+  exit 0
+fi
+
 # P62 / GUIDANCE-EMU-001: guidance in her voice (SPEC-018 relay, ADR-014), Amap only as the fallback.
 # 3000 ms is a measurement deadline (SPEC-018's default 1200 ms is set from G-1, never measured).
 tool guidance_relay on:3000; sleep 1
@@ -91,6 +104,8 @@ adb shell am force-stop com.novadrive.app
 app_up || true
 sleep 3
 
+# The 5-minute demo drives faster; decided before the speed-up loop below is forked.
+[ "${NAV_DEMO_PIECE:-}" = "1" ] && [ "$(tr -dc a-z <scripts/nav_piece.txt 2>/dev/null)" = "demo" ] && DEMO_SPEED=120
 # Screen: up to five back-to-back 180 s recordings (screenrecord's limit), stopped once the drive ends.
 rec_start="$(date +%s.%N)"
 (
@@ -106,7 +121,7 @@ recorder=$!
 # Once navigation starts, speed the simulated car up so the whole drive fits in the video.
 (
   for _ in $(seq 1 120); do
-    if nova | grep -q "nav_started"; then sleep 8; tool nav_speed 90; break; fi
+    if nova | grep -q "nav_started"; then sleep 8; tool nav_speed "${DEMO_SPEED:-90}"; break; fi
     sleep 3
   done
 ) &
@@ -120,7 +135,12 @@ clips="$S/nav_shizimen.pcm,$S/pick_first.pcm,$S/start_nav.pcm,$S/ctx_too_hot.pcm
 duration=960
 # The running worker passes NAV_DEMO_PIECE=1; scripts/nav_piece.txt names which piece (default: lines).
 if [ "${NAV_DEMO_PIECE:-}" = "1" ] && [ -s scripts/nav_piece.txt ]; then NAV_DEMO_PIECE="$(tr -dc a-z <scripts/nav_piece.txt)"; fi
-if [ "${NAV_DEMO_PIECE:-}" = "gas" ]; then
+if [ "${NAV_DEMO_PIECE:-}" = "demo" ]; then
+  # The 5-minute demo (owner 2026-10-16): main driver functions and ambiguous commands, one drive.
+  clips="$S/nav_demo_dest.pcm,$S/pick_first.pcm,$S/start_nav.pcm,$S/ctx_too_hot.pcm,$S/ctx_cooler.pcm,$S/music_on.pcm,$S/fz_mosquito.pcm,$S/fz_mosquito_done.pcm,$S/fz_seat_high.pcm,$S/fz_lower_more.pcm,$S/gas_nearby.pcm,$S/cancel.pcm,$S/eta_q.pcm,$S/music_off.pcm"
+  duration=330; DEMO_GAP=12
+  note "piece mode: 5-minute demo, ${duration} s"
+elif [ "${NAV_DEMO_PIECE:-}" = "gas" ]; then
   # Piece P61 in the real order: navigate, pick, start, then the gas question while driving.
   clips="$S/nav_shizimen.pcm,$S/pick_first.pcm,$S/start_nav.pcm,$S/gas_nearby.pcm"; duration=130
   note "piece mode: gas question while navigating, ${duration} s"
@@ -128,7 +148,7 @@ elif [ -n "${NAV_DEMO_PIECE:-}" ]; then
   clips="$(echo "$clips" | cut -d, -f1-6)"; duration=150
   note "piece mode: first 6 lines, ${duration} s"
 fi
-python3 tools/speech-harness/host_audio_bridge.py --from-file "$clips" --lead 8 --gap 20 --duration "$duration" --wait-quiet \
+python3 tools/speech-harness/host_audio_bridge.py --from-file "$clips" --lead 8 --gap "${DEMO_GAP:-20}" --duration "$duration" --wait-quiet \
   --no-play --provider gemini --record "$ev/demo_audio" >"$ev/bridge_out.txt" 2>"$ev/bridge_err.txt" || true
 # Codes and numbers only from the bridge output (it also echoes app lines, which are never kept).
 note "driver waits: $(grep -oE 'wait_quiet line=[0-9]+ ms=[0-9]+ cap=[01] reason=[a-z]+' "$ev/bridge_out.txt" | sed -E 's/wait_quiet //' | tr '\n' ' ')(the scripted driver reads the app's guidance log; a real driver cannot)"

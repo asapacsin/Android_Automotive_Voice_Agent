@@ -34,6 +34,8 @@ PHRASES = {
     "ac_off": "关闭空调",
     "nav_zhuhai": "导航去珠海站",
     "nav_shizimen": "导航去十字门",
+    # The 5-minute demo's destination (owner 2026-10-16), set from the routes piece.
+    "nav_demo_dest": "导航去珠海站",
     "pick_first": "第一个",
     "nav_fix": "不对，换成拱北口岸",
     "nav_wanda": "导航到万达",
