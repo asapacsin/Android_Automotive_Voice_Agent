@@ -19,3 +19,4 @@ f602106 PASS 2026-10-16 reviewer PASS after two REVISE rounds (false-green input
 5dcb18c PASS 2026-10-16 reviewer PASS after three REVISE rounds (guard only during guidance; adjacency explicit-end rule); E2E on Gemini harness still unverified. Record written after the merge 7607122 by planner error (see commit), review itself preceded the merge
 b9c77df REVISED 2026-10-16 5dcb18c reviewer REVISE resolved by the vague-exit-r1 branch (R1-R3)
 9fab533 REVISED 2026-10-16 5dcb18c reviewer REVISE resolved by the vague-exit-r1 branch (structural explicit end)
+f7fe086 PASS 2026-10-16 reviewer PASS after two REVISE rounds (bypasses closed; merge-tree re-merge check; no real merge flagged)
