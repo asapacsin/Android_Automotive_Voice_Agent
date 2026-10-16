@@ -1,0 +1,13 @@
+app: map up
+secret AMAP_WEB_KEY: set, amap_web_setup -> result=applied 
+secret GEMINI_API_KEY: set, gemini_setup -> result=applied 
+route 珠海站: routes=3 r12:len=9854,time=2220,cams=60@10 r13:len=8639,time=2460,cams=60@23 r14:len=9796,time=2340,cams=70@6;60@19
+route 拱北口岸: routes=3 r12:len=8298,time=2340,cams= r13:len=10192,time=2100,cams= r14:len=10060,time=2280,cams=70@6
+route 珠海大剧院: routes=3 r12:len=29432,time=4080,cams=80@30;80@32;80@34;70@42 r13:len=28910,time=4140,cams=60@10;80@16;80@18;80@20;70@28 r14:len=27695,time=4380,cams=60@23;80@29;80@31;80@33;70@41
+route 九洲港: routes=2 r12:len=4915,time=720,cams= r13:len=5311,time=1080,cams=
+route 香洲港: routes=1 r12:len=3057,time=660,cams=
+route 珠海市人民医院: routes=3 r12:len=1547,time=480,cams= r13:len=1274,time=480,cams= r14:len=1453,time=540,cams=
+route 华发商都: routes=3 r12:len=11119,time=2460,cams= r13:len=12288,time=2400,cams=70@6 r14:len=11976,time=2640,cams=
+route 横琴口岸: routes=3 r12:len=28909,time=4440,cams=80@30;80@32;80@34;70@42 r13:len=28387,time=4440,cams=60@10;80@16;80@18;80@20;70@28 r14:len=27172,time=4740,cams=60@23;80@29;80@31;80@33;70@41
+nav demo: done (routes piece)
+worker: piece=navpiece build_s=148 total_s=285
