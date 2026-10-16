@@ -280,7 +280,7 @@ class LiveInfoTool(
     // ---- the route ------------------------------------------------------------
 
     private fun routeTraffic(): Checked {
-        if (navigation()?.state()?.value != NavigationPhase.NAVIGATING) return Precondition(NOT_NAVIGATING)
+        if (navigation()?.isGuiding() != true) return Precondition(NOT_NAVIGATING)
         return Ready {
             val traffic = route.traffic() ?: return@Ready failure(AmapLiveInfoParser.UNAVAILABLE)
             success(ROUTE_TRAFFIC)
@@ -295,7 +295,9 @@ class LiveInfoTool(
     private fun alongRoute(rawCategory: String?): Checked {
         val category = AlongRouteCategory.fromWire(rawCategory) ?: return Precondition(INVALID_ARGUMENT)
         val controller = navigation()
-        if (controller == null || controller.state().value !in ROUTE_ON_SCREEN) return Precondition(NOT_NAVIGATING)
+        if (controller == null || !controller.isGuiding() && controller.state().value !in ROUTE_ON_SCREEN) {
+            return Precondition(NOT_NAVIGATING)
+        }
         return Ready {
             val found = route.alongRoute(category) ?: return@Ready failure(AmapLiveInfoParser.UNAVAILABLE)
             if (found.isEmpty()) return@Ready failure(AmapLiveInfoParser.NO_RESULTS).put("category", category.spoken)
@@ -384,7 +386,7 @@ class LiveInfoTool(
         private const val MAX_CITY = 20
         private const val MAX_ALONG_ROUTE = 5
 
-        /** A calculated route exists in the SDK: the route picker, or guidance. */
+        /** A calculated route exists in the SDK: the route picker, or guidance (see also isGuiding). */
         private val ROUTE_ON_SCREEN = setOf(
             NavigationPhase.AWAITING_ROUTE_SELECTION,
             NavigationPhase.ROUTE_READY,
