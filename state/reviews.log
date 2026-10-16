@@ -1,11 +1,14 @@
 # Review record for executor merges (owner 2026-10-16: reviews must actually run before work is accepted).
-# One line per `Merge exec/*` commit on the working branch since the delegation baseline:
-#   <merge-sha-12> PASS|WAIVED|PENDING <yyyy-mm-dd> <who/why>
-# PASS = the reviewer agent returned PASS on that change. WAIVED needs a reason (debug-only, docs/config,
-# verified otherwise). PENDING = a review is running; scripts/delegation_check.py reports it until replaced.
+# Grammar (shared parser: scripts/delegation_check.py parse_line), one record per line:
+#   <hex sha, 7-40 chars> <STATUS> <YYYY-MM-DD> <note, at least 1 word>
+# STATUS: PASS = the reviewer agent returned PASS. WAIVED = accepted without the reviewer; the note is a
+#   reason of at least 4 words, and it is refused for merges touching <module>/src/main/** after the cutoff
+#   commit 1fb1ed2. PENDING = a review is running. REVISE = the reviewer asked for changes. REVISED = the
+#   REVISE was resolved; the note starts with the fix branch tip sha, which needs its own PASS and must be merged.
+# Any other non-#, non-blank line is INVALID and fails the gate. Append-only: the LAST valid line per sha wins.
 # Keyed by the executor branch tip (before merge) or the merge commit. Before a merge, the
-# require-review-before-merge hook needs a PASS/WAIVED line for the branch tip; after, the Stop hook
-# blocks the end of a turn while any executor merge has no line.
+# require-review-before-merge hook needs PASS (or WAIVED off src/main) for the branch tip; after, the Stop
+# hook blocks on a missing or invalid record; `delegation_check.py --ci` also fails on PENDING/REVISE.
 30321d0 WAIVED 2026-10-16 config and scripts only (deny rules, hook, audit); hook selftest 17/17, the planner's own Edit and Bash writes to module source were refused
 0c100a6 WAIVED 2026-10-16 debug-only tool (nav_route_info) plus a pure formatter with tests; no product path changed
 b9c77df PENDING 2026-10-16 reviewer REVISE (R1 hint contradicts guard, R2 regex misses phrasings, R3 advice) - fix in progress
