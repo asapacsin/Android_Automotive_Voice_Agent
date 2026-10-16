@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-16T04:55:31",
+  "generated_at": "2026-10-16T06:20:41",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "cf224f0",
+    "commit": "d6a167b",
     "branch": "claude/10-15",
-    "subject": "Nav demo run 38849988938: arrival on video with her voice on the guidance; P62 fixed on Gemini, P65 found",
+    "subject": "Nav demo back to 90 km/h with a 16-minute recording, so every line is answered and it arrives [navdemo]",
     "working_tree_clean": false,
-    "uncommitted_files": 3
+    "uncommitted_files": 2
   },
   "tests": {
     "available": false,
@@ -160,7 +160,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "app-debug.apk: no debug APK has been built from this tree",
-    "actionable_count": 135,
+    "actionable_count": 136,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 29,
@@ -1039,6 +1039,13 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P65",
+        "blocked_by": null
+      },
+      {
+        "priority": 10,
+        "class": "stale state or harness defect",
+        "source": "state",
+        "item": "PROJECT_STATE.json",
         "blocked_by": null
       },
       {

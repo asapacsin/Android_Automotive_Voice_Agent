@@ -2210,6 +2210,15 @@ setup 1008 stays AUTH_FAILED. The fixed word list gained policy, cancelled, resu
 billing, model and content so the next close says more than "other".
 `a1008AfterSetupIsADroppedSessionUnlessItIsAboutTheKeyOrQuota`.
 
+**Regression 2026-10-16 (nav demo run 38855381048 at d6a167b, relay on, 90 km/h):** 「附近有加油站吗」
+replaced the route again (「找到5个加油站…请说第几个」, `nav_stopped reason=replaced`). That run had five
+Gemini 1008 closes, each now resumed instead of terminal (fe8933e); a voice-session stop or restart
+runs `NavigationState.reset()` (VoiceSessionController.stop/release), so the legacy flag the guard read
+said "not navigating" while the car still was. **Fix:** the guard reads `ToolCallGuards.navigatingNow()`
+- the map host's own `isNavigating`, or the legacy flag. (The same legacy-flag trap the P63 review
+found for the overspeed alert.) Open: the legacy reset on session stop also tells SpeechArbiter that
+navigation ended; whether that reset should follow the host instead is a separate item.
+
 ## P62 — Turn-by-turn guidance is not spoken in her voice (demo used a male voice)
 
 **Status:** OPEN 2026-10-16. Owner test 10-16 ([docs/owner-tests/test-10-16.md](docs/owner-tests/test-10-16.md)):

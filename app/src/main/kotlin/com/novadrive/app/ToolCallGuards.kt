@@ -148,10 +148,19 @@ object ToolCallGuards {
      * that asks to go there is refused here; 「带我去附近的加油站」 still goes through. A transcript
      * older than the speech onset belongs to the previous turn and is not used.
      */
+    /**
+     * Whether a route is being driven: the map host's own state, or the legacy flag. The legacy flag
+     * alone is not enough - a voice-session stop or restart clears it while the car keeps
+     * navigating (nav demo run 38855381048: after Gemini reconnects 「附近有加油站吗」 replaced the
+     * route again, P61's regression).
+     */
+    internal fun navigatingNow(): Boolean =
+        NavigationState.navigating || com.novadrive.app.nav.NavigationHostGateway.current()?.isNavigating == true
+
     fun nearbyQuestionWhileNavigating(
         call: DomainVoiceEvent.ToolCall,
         context: DriverContext?,
-        navigating: Boolean = NavigationState.navigating,
+        navigating: Boolean = navigatingNow(),
     ): String? {
         if (call.name != "navigate_to" || !navigating || context == null) return null
         if (context.currentEpoch() <= 0 || context.currentEpoch() < context.capabilityEpoch()) return null
