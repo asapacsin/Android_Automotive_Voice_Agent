@@ -49,6 +49,8 @@ sudo apt-get install -y -q ffmpeg >/dev/null
 adb install -r -g --abi arm64-v8a "$apk"
 # The summary greps the whole drive from logcat: keep it from rolling over.
 adb logcat -G 16M || true
+# The warm worker reuses one emulator: start every run with an empty log, or counts mix runs.
+adb logcat -c || true
 sleep 30
 adb shell settings put global hide_error_dialogs 1 || true
 adb shell am force-stop com.google.android.apps.nexuslauncher || true
