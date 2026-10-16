@@ -347,7 +347,8 @@ open class CoreActionExecutor(
      */
     override fun exitNavigationMode(): AndroidActionResult {
         val outcome = runBlocking { navigationFlow.endByVoice() }
-        NavigationState.reset()
+        // Closing an along-route list keeps the drive (and its speech mute) going.
+        if (!navigationFlow.isGuiding()) NavigationState.reset()
         return AndroidActionResult.Accepted(
             when (outcome) {
                 EmbeddedNavigationController.VoiceEndResult.STOPPED_NAVIGATION -> "navigation_stopped"

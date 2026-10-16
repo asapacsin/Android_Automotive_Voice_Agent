@@ -88,6 +88,44 @@ class LiveInfoAlongRouteWiringTest {
         assertEquals("中石化新港加油站", engine.calculateCalls.last().endName)
     }
 
+    private fun drive() = runBlocking {
+        engine.results = listOf(station("d", "珠海站", 30_000))
+        engine.routes = listOf(RouteCandidate(10, 30_000, 2_400))
+        navigation.requestDestination("珠海站")
+        engine.emitSuccess(intArrayOf(10))
+        navigation.selectRoute(10)
+        val lookup = dispatcher.dispatch(call(LiveInfoTool.TOOL, mapOf("kind" to "along_route", "category" to "fuel")))
+        lookup.deferredOutput!!()
+        assertEquals(NavigationPhase.AWAITING_DESTINATION_SELECTION, navigation.state().value)
+    }
+
+    @Test
+    fun withTheListOpenTheRouteToolsStillSeeTheDrive() = runBlocking {
+        drive()
+        val traffic = dispatcher.dispatch(call(LiveInfoTool.TOOL, mapOf("kind" to "route_traffic")))
+        val trafficOut = traffic.output ?: traffic.deferredOutput!!()
+        assertTrue(!trafficOut.contains("NOT_NAVIGATING"), trafficOut)
+        val again = dispatcher.dispatch(call(LiveInfoTool.TOOL, mapOf("kind" to "along_route", "category" to "fuel")))
+        val againOut = again.output ?: again.deferredOutput!!()
+        assertTrue(JSONObject(againOut).getBoolean("ok"), againOut)
+        assertEquals(0, engine.stopNaviCount, "a second along-route list keeps the drive")
+        assertTrue(navigation.isGuiding())
+    }
+
+    @Test
+    fun exitNavigationModeWithTheListOpenKeepsTheSpeechMute() = runBlocking {
+        try {
+            drive()
+            assertTrue(NavigationState.navigating)
+            dispatcher.dispatch(call("exit_navigation_mode", emptyMap()))
+            assertEquals(NavigationPhase.NAVIGATING, navigation.state().value)
+            assertTrue(NavigationState.navigating, "the drive continues, so the mute stays")
+            assertEquals(0, engine.stopNaviCount)
+        } finally {
+            NavigationState.reset()
+        }
+    }
+
     @Test
     fun withoutARouteThePickerIsLeftAlone() {
         val result = dispatcher.dispatch(call(LiveInfoTool.TOOL, mapOf("kind" to "along_route", "category" to "fuel")))

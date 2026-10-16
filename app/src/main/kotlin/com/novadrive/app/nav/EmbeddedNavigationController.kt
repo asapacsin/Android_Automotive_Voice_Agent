@@ -79,14 +79,13 @@ class EmbeddedNavigationController(
         // old route keeps navigating underneath the new picker. Done outside the lock because
         // the host's ended-callback re-enters onNavigationEnded. An along-route list (a question,
         // not a new destination) keeps the guidance until a candidate is picked (keptGuidance).
-        val driving = store.phase.value == NavigationPhase.NAVIGATING
-        val kept = synchronized(lock) { keptGuidance }
-        if (keepGuidance && driving) {
-            synchronized(lock) { keptGuidance = store.destination.value to selectedDestination }
-        } else if (driving || (!keepGuidance && kept != null)) {
-            synchronized(lock) { keptGuidance = null }
-            engine.stopNavigation("replaced")
+        // Phase read and keptGuidance written in one block: an arrival cannot slip in between.
+        val stop = synchronized(lock) {
+            val driving = store.phase.value == NavigationPhase.NAVIGATING
+            if (keepGuidance && driving) keptGuidance = store.destination.value to selectedDestination
+            (!keepGuidance && keptGuidance != null || driving && !keepGuidance).also { if (it) keptGuidance = null }
         }
+        if (stop) engine.stopNavigation("replaced")
         NavigationLocalPickGuard.onListReplaced()
         val seq = synchronized(lock) {
             generation += 1
@@ -104,13 +103,7 @@ class EmbeddedNavigationController(
             if (seq != generation) return
             DebugVoiceLog.log("nav_resolve_candidates count=${resolved.size} ms=$resolveMs")
             when {
-                resolved.isEmpty() && keptGuidance != null -> {
-                    val kept = keptGuidance
-                    keptGuidance = null
-                    selectedDestination = kept?.second
-                    store.update(NavigationPhase.NAVIGATING, kept?.first)
-                    null
-                }
+                resolved.isEmpty() && restoreKeptLocked() -> null
                 resolved.isEmpty() -> {
                     failLocked("no_candidates")
                     null
@@ -150,7 +143,7 @@ class EmbeddedNavigationController(
             if (store.phase.value != NavigationPhase.AWAITING_DESTINATION_SELECTION) return
             val match = _destinationCandidates.value.firstOrNull { it.id == candidateId }
             if (match == null) {
-                failLocked("unknown_candidate")
+                if (!restoreKeptLocked()) failLocked("unknown_candidate")
                 return
             }
             DebugVoiceLog.log("nav_destination_selected candidateId=$candidateId")
@@ -197,13 +190,16 @@ class EmbeddedNavigationController(
         }
     }
 
+    /** Guidance is running, even under an along-route list (keptGuidance). */
+    fun isGuiding(): Boolean = synchronized(lock) { store.phase.value == NavigationPhase.NAVIGATING || keptGuidance != null }
+
     override fun showOverview(): Boolean {
-        if (store.phase.value != NavigationPhase.NAVIGATING) return false
+        if (!isGuiding()) return false
         return engine.showOverview()
     }
 
     override fun resumeTracking(): Boolean {
-        if (store.phase.value != NavigationPhase.NAVIGATING) return false
+        if (!isGuiding()) return false
         return engine.resumeTracking()
     }
 
@@ -315,9 +311,8 @@ class EmbeddedNavigationController(
      */
     suspend fun endByVoice(): VoiceEndResult {
         if (synchronized(lock) { keptGuidance != null }) {
-            cancel() // back to the route being driven, which 「结束导航」 then ends
-            stopNavigation()
-            return VoiceEndResult.STOPPED_NAVIGATION
+            cancel() // closes the list only: back to the route being driven; a second 「结束导航」 ends it
+            return VoiceEndResult.CANCELLED_SELECTION
         }
         return when (store.phase.value) {
             NavigationPhase.NAVIGATING -> {
@@ -346,12 +341,7 @@ class EmbeddedNavigationController(
             generation += 1
             clearCandidatesLocked()
             startNaviIssuedForSelection = false
-            val kept = keptGuidance
-            keptGuidance = null
-            if (kept != null) {
-                // The along-route list closed unpicked: the drive that never stopped carries on.
-                selectedDestination = kept.second
-                store.update(NavigationPhase.NAVIGATING, kept.first)
+            if (restoreKeptLocked()) {
                 DebugVoiceLog.log("nav_flow_cancelled kept_guidance=true")
                 return
             }
@@ -397,6 +387,7 @@ class EmbeddedNavigationController(
             generation += 1
             clearCandidatesLocked()
             selectedDestination = null
+            keptGuidance = null
             startNaviIssuedForSelection = false
             store.update(NavigationPhase.STOPPED)
             onFlowEnded()
@@ -425,9 +416,8 @@ class EmbeddedNavigationController(
         synchronized(lock) {
             // The drive kept under an along-route list ended on its own (arrival): close the list too.
             if (keptGuidance != null && reason != "replaced") {
-                keptGuidance = null
                 NavigationLocalPickGuard.invalidate()
-                store.update(NavigationPhase.NAVIGATING)
+                restoreKeptLocked() // so ARRIVED below carries the kept destination
             }
             if (store.phase.value != NavigationPhase.NAVIGATING) return
             val ended = if (reason == "arrived" || reason == "emulator_end") {
@@ -509,6 +499,16 @@ class EmbeddedNavigationController(
         clearCandidatesLocked()
         store.update(NavigationPhase.ERROR, selectedDestination?.toDestination())
         onFlowEnded()
+    }
+
+    /** The along-route list closes unpicked: the drive that never stopped carries on. */
+    private fun restoreKeptLocked(): Boolean {
+        val kept = keptGuidance ?: return false
+        keptGuidance = null
+        clearCandidatesLocked()
+        selectedDestination = kept.second
+        store.update(NavigationPhase.NAVIGATING, kept.first)
+        return true
     }
 
     private fun clearCandidatesLocked() {
