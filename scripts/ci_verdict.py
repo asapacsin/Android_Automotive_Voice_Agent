@@ -24,6 +24,8 @@ QUARANTINE_MAX_DAYS = 30
 ID_RE = re.compile(r"^[A-Za-z0-9_.:\-]+$")
 PATTERN_RE = re.compile(r"^[A-Za-z0-9_.:\-]+\*?$")
 TEST_CLOCK_ENV = "NOVA_CI_TEST_CLOCK"
+UNQUARANTINABLE = ("voice:quota-guard", "navpiece:quota-guard")
+UNQUARANTINABLE_PREFIXES = ("junit:", "build:", "gate:", "ci:", "matrix:", "gradle:")
 
 
 class ManifestError(Exception):
@@ -173,6 +175,9 @@ def load_manifest(path, today):
             raise ManifestError(f"quarantine[{n}]: unknown suite {q['suite']}")
         if not ID_RE.fullmatch(q["id"]):
             raise ManifestError(f"quarantine[{n}]: id must be one concrete check id, no wildcard")
+        if q["id"] in UNQUARANTINABLE or q["id"].startswith(UNQUARANTINABLE_PREFIXES):
+            raise ManifestError(
+                f"quarantine[{n}] {q['id']}: safety and global checks cannot be quarantined")
         if q["id"].endswith(":runner"):
             raise ManifestError(f"quarantine[{n}] {q['id']}: a runner check cannot be quarantined")
         if not any(_matches(pt, q["id"]) for pt in suites[q["suite"]]["required"]):
@@ -310,9 +315,9 @@ def cmd_verdict(args):
             print("bad --today: expected YYYY-MM-DD", file=sys.stderr)
             print(f"VERDICT {args.suite} FAIL")
             return 2
-        if today < real_today and os.environ.get(TEST_CLOCK_ENV) != "1":
-            print(f"--today may not be earlier than the real UTC date (set {TEST_CLOCK_ENV}=1 "
-                  "only in tests)", file=sys.stderr)
+        if os.environ.get(TEST_CLOCK_ENV) != "1":
+            print(f"--today is only allowed with {TEST_CLOCK_ENV}=1 (tests); production uses "
+                  "the real UTC date", file=sys.stderr)
             print(f"VERDICT {args.suite} FAIL")
             return 2
     else:
@@ -413,8 +418,14 @@ def _status_from_counts(flag, passes, runs, single_failed):
 
 
 def parse_scenarios(text):
-    """Return (ordered {id: (status, passes, runs, detail)}, summary_seen, per_run_ids)."""
-    single, repeat, order = {}, {}, []
+    """Parse run_scenarios.py output.
+
+    Returns (results, summary_seen, per_run_ids, summary_ids):
+    results is an ordered {id: (status, passes, runs, detail)} where passes/runs are None for
+    single-run results or invalid counts; summary_seen tells whether the "=== summary ===" header
+    appeared; per_run_ids and summary_ids are the sets of ids on per-run and summary lines.
+    """
+    single, repeat, order, dup = {}, {}, [], set()
     summary_seen = False
     for line in text.splitlines():
         stripped = line.strip()
@@ -426,6 +437,8 @@ def parse_scenarios(text):
         m = _REPEAT.match(line)
         if m:
             sid = m.group(2)
+            if sid in repeat:
+                dup.add(sid)
             repeat[sid] = (m.group(1), int(m.group(3)), int(m.group(4)))
             if sid not in order:
                 order.append(sid)
@@ -438,7 +451,9 @@ def parse_scenarios(text):
                 order.append(sid)
     out = {}
     for sid in order:
-        if sid in repeat:
+        if sid in dup:
+            out[sid] = ("FAIL", None, None, "duplicate summary")
+        elif sid in repeat:
             flag, p, n = repeat[sid]
             status, detail = _status_from_counts(flag, p, n, single.get(sid) == "FAIL")
             ok_counts = n > 0 and 0 <= p <= n and not (status == "PASS" and p != n)

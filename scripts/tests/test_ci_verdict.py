@@ -462,6 +462,30 @@ class RunnerRcOneTest(ScenariosTest):
         self.assertEqual(rs[-1], {"id": "x:runner", "status": "FAIL", "detail": "runner exit 2"})
 
 
+class R3Test(ScenariosTest):
+    def test_forward_today_refused_without_test_clock(self):
+        import datetime
+        real = datetime.datetime.now(datetime.timezone.utc).date()
+        fwd = (real + datetime.timedelta(days=60)).isoformat()
+        q = quar("a", expires=(real + datetime.timedelta(days=75)).isoformat())
+        rc, out = run("verdict", "--manifest", self.manifest(["a"], quarantine=[q]), "--suite", "s",
+                      "--today", fwd, "--results", self.results([rec("a", "FAIL")]), clock=False)
+        self.assertEqual(rc, 2, out)
+
+    def test_duplicate_summary(self):
+        _, rs = self.scen("  PASS S1\n" + SUMMARY + "  ok  S1 1/1\n  ok  S1 1/1\n")
+        by = {r["id"]: r for r in rs}
+        self.assertEqual((by["x:S1"]["status"], by["x:S1"]["detail"]), ("FAIL", "duplicate summary"))
+
+    def test_safety_and_global_checks_not_quarantinable(self):
+        for rid in ("voice:quota-guard", "navpiece:quota-guard", "junit:app", "build:assembleDebug",
+                    "gate:delegation", "ci:script-tests", "matrix:validate", "gradle:test"):
+            with self.subTest(rid=rid):
+                rc, out = self.verdict(self.manifest([rid], quarantine=[quar(rid)]), self.results([rec(rid, "FAIL")]))
+                self.assertEqual(rc, 2, out)
+                self.assertIn("cannot be quarantined", out)
+
+
 class ReviewVerdictTest(Base):
     def test_pass_record_with_partial_counts_malformed(self):
         rc, _ = self.verdict(self.manifest(["a"]), self.results([{"id": "a", "status": "PASS", "detail": "", "passes": 6, "runs": 10}]))
