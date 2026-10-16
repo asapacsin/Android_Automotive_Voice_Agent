@@ -1,0 +1,45 @@
+{
+  "_doc": "CI check manifest read by scripts/ci_verdict.py. Each suite lists required and optional check ids (a trailing * is a prefix wildcard that must match at least one result). A required check passes only on PASS; FAIL, FLAKY, SKIPPED or a missing result fail the job, BLOCKED blocks it. Quarantine entries need all of id, suite, reason, owner, tracking, remove_when, expires (YYYY-MM-DD, at most 30 days ahead); they only cover measured FAIL/FLAKY results, and an expired entry makes the manifest invalid.",
+  "suites": {
+    "tier-a": {
+      "description": "Tier A: JVM suites, debug build and harness gates on every push.",
+      "required": ["gradle:test", "junit:app", "junit:behavior-test", "junit:contracts", "junit:evaluation", "junit:ingress", "junit:safety", "junit:simulator", "build:assembleDebug", "ci:verdict-selftest", "ci:script-tests", "gate:delegation", "gate:review-records", "gate:review-hook-selftest", "matrix:validate"],
+      "optional": []
+    },
+    "voice": {
+      "description": "Voice checks on the emulator against the Gemini live harness.",
+      "required": ["voice:runner", "voice:S*", "device:runner", "device:*", "liveinfo:runner", "liveinfo:*", "cantonese:runner", "cantonese:*", "voice:quota-guard"],
+      "optional": ["voice:demo-recording", "wake:WAKE-SYNTH-001"]
+    },
+    "device": {
+      "description": "Device checks (filled by a later task).",
+      "required": [],
+      "optional": []
+    },
+    "navpiece": {
+      "description": "Navigation demo sub-task checks (filled by a later task).",
+      "required": [],
+      "optional": []
+    }
+  },
+  "quarantine": [
+    {
+      "id": "cantonese:YUE-HOME",
+      "suite": "voice",
+      "reason": "Cantonese home request scored 0/1 on Gemini; whether an ambiguous Cantonese request should ask back is an open owner decision",
+      "owner": "product owner (decision) / planner",
+      "tracking": "TEST_MATRIX TRUTH-MEDIA-001; owner choice queued 2026-10-16",
+      "remove_when": "owner decides the expected behaviour and the scenario passes 1/1",
+      "expires": "2026-10-30"
+    },
+    {
+      "id": "liveinfo:LI-PLACE",
+      "suite": "voice",
+      "reason": "place_details answered 6/10 on Gemini (FLAKY)",
+      "owner": "planner",
+      "tracking": "TEST_MATRIX LIVE-INFO-DEVICE-001 (FAIL)",
+      "remove_when": "10/10 on two consecutive voice-check runs",
+      "expires": "2026-10-30"
+    }
+  ]
+}
