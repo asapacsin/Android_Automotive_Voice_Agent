@@ -15,3 +15,4 @@ fe8933e PASS 2026-10-16 1008 after setup is a dropped session (follow-ups: SPEC-
 b314591 PASS 2026-10-16 ToolCallGuards.navigatingNow (follow-up: legacy NavigationState reset on session stop)
 c378eb13b9f2 WAIVED 2026-10-16 TEST_MATRIX and generated state only (rebind of 36 rows to runs 38891890665/38891892916); validated by test_matrix.py --validate (95 -> 9 problems), no code
 20eba04 WAIVED 2026-10-16 Tier C release checklist is reporting-only (not a CI gate) and touches no module source; planner reran its 10 rule tests and --release (NOT_READY 38/96)
+f602106 PASS 2026-10-16 reviewer PASS after two REVISE rounds (false-green inputs closed; 95 tests, adversarial probes red)
