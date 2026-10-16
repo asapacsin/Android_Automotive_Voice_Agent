@@ -2,25 +2,25 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-21 · 159 tests
+Updated 2026-09-21 · 161 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 98 |
-| autonomous FAIL | 0 |
+| autonomous PASS | 100 |
+| autonomous FAIL | 1 |
 | incomplete | 0 |
 | partial pass | 0 |
-| not run | 32 |
-| human required | 27 |
+| not run | 30 |
+| human required | 28 |
 | human pass | 0 |
 | human fail | 1 |
 | blocked external | 0 |
 | not applicable | 0 |
-| **release-blocking failures** | **0** |
+| **release-blocking failures** | **1** |
 
 **HUMAN_VALIDATION_READY = FALSE**
 
-- the registry does not validate: 47 problem(s)
+- the registry does not validate: 53 problem(s)
 - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - TRUTH-MEDIA-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -34,9 +34,8 @@ Updated 2026-09-21 · 159 tests
 - VISION-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - CAMERA-RELEASE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - ECHO-001 is AUTONOMOUS and NOT_RUN - run it or fix it
-- AFFORDANCE-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - TRUTH-LIVEINFO-NEWS-001 is AUTONOMOUS and NOT_RUN - run it or fix it
-- LIVE-INFO-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- LIVE-INFO-DEVICE-001 is AUTONOMOUS and FAIL - run it or fix it
 - LIVE-INFO-L6-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - LIVE-INFO-REGRESSION-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - SPEECH-ARBITER-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -64,7 +63,7 @@ Updated 2026-09-21 · 159 tests
 | Capability | Tests | Passing | Awaiting a human | Not run |
 | --- | --- | --- | --- | --- |
 | apps | 1 | 1 | 0 | 0 |
-| architecture | 5 | 4 | 0 | 1 |
+| architecture | 5 | 5 | 0 | 0 |
 | body | 1 | 1 | 0 | 0 |
 | calling | 8 | 6 | 1 | 1 |
 | cantonese | 2 | 1 | 1 | 0 |
@@ -72,10 +71,10 @@ Updated 2026-09-21 · 159 tests
 | comfort | 3 | 2 | 0 | 1 |
 | dialogue_context | 4 | 4 | 0 | 0 |
 | lifecycle | 1 | 0 | 0 | 1 |
-| live_info | 4 | 1 | 0 | 3 |
+| live_info | 4 | 1 | 0 | 2 |
 | media | 6 | 4 | 1 | 1 |
 | microphone | 1 | 0 | 1 | 0 |
-| navigation | 25 | 19 | 4 | 2 |
+| navigation | 27 | 20 | 5 | 2 |
 | performance | 2 | 2 | 0 | 0 |
 | permissions | 7 | 5 | 0 | 2 |
 | regression | 2 | 2 | 0 | 0 |
@@ -96,7 +95,7 @@ Updated 2026-09-21 · 159 tests
 | ID | Capability | Test | Owner | Status | Release blocking | Evidence |
 | --- | --- | --- | --- | --- | --- | --- |
 | APPS-001 | apps | open_app reaches a real app | AUTONOMOUS | STALE | no | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
-| AFFORDANCE-DEVICE-001 | architecture | Spoken control names act on the phone with no model tool call | AUTONOMOUS | NOT_RUN | no | — |
+| AFFORDANCE-DEVICE-001 | architecture | Spoken control names act on the phone with no model tool call | AUTONOMOUS | STALE | no | 2026-10-16 GitHub emulator API 34 (arm64 app), Gemini debug override, voice checks run … |
 | AFFORDANCE-UNIT-001 | architecture | Spoken on-screen controls match whole utterances and run once per turn | AUTONOMOUS | PASS | yes | 2026-09-25 cloud: 2066 JVM tests, 0 failures |
 | ARCH-PROVIDER-001 | architecture | Vendor wire vocabulary stays inside adapters | AUTONOMOUS | PASS | no | checked against a deliberately reintroduced breach |
 | GEMINI-LIVE-CLOUD-001 | architecture | The app's Gemini client against the real API (cloud) | AUTONOMOUS | PASS | no | 2026-09-29: ac_on, fan_up, nav_wanda 3/3 PASS (docs/reports/2026-09-29-gemini-live-prob… |
@@ -125,7 +124,7 @@ Updated 2026-09-21 · 159 tests
 | HELP-001 | dialogue_context | 「你能做什么」 / 「你能干啥」 gets a short capability answer | AUTONOMOUS | STALE | yes | 2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemi… |
 | HELP-UNIT-001 | dialogue_context | Help-request grammar and nudge are unit-covered | AUTONOMOUS | PASS | yes | UtteranceIntentResolver grammar + DriverTurn.CAPABILITY_HELP 2026-09-22 unit PASS |
 | PROCDEATH-001 | lifecycle | The app survives process death | AUTONOMOUS | NOT_RUN | yes | STALE_BIND apk_digest mismatch |
-| LIVE-INFO-DEVICE-001 | live_info | Each live_info kind is selected from speech | AUTONOMOUS | NOT_RUN | yes | — |
+| LIVE-INFO-DEVICE-001 | live_info | Each live_info kind is selected from speech | AUTONOMOUS | FAIL | yes | 2026-10-16 GitHub emulator, Gemini debug override, run 38835222165 at 66de495 (runs/run… |
 | LIVE-INFO-L6-001 | live_info | Every live_info source returns real data with the owner's key | AUTONOMOUS | NOT_RUN | yes | 2026-09-25 partial: REST weatherInfo base/all, regeo and place/detail returned real dat… |
 | LIVE-INFO-REGRESSION-001 | live_info | SPEC-008 suite does not regress with query_live_info added | AUTONOMOUS | NOT_RUN | yes | — |
 | LIVE-INFO-UNIT-001 | live_info | query_live_info parses, fails honestly and opens the picker for along-route results | AUTONOMOUS | PASS | yes | 2026-09-25 cloud: :app ran in a stub-iFlytek mirror because vendor Msc.jar is absent in… |
@@ -139,13 +138,15 @@ Updated 2026-09-21 · 159 tests
 | AUDIO-QUALITY-001 | navigation | Guidance loudness and speech quality in a cabin | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | 21 guidance play start/end pairs observed on an emulator drive; the mic is gated while … |
 | DEMO-AMAP-LIVE-001 | navigation | The commute demo's real Amap lookups at the demo origin: 导航去横琴镇 + 第一个 is >= 1.7 km away, the warm-up weather answers | AUTONOMOUS | STALE | no | 2026-10-12 cloud: with sortrule=distance FAIL (第一个 = 632 m, the origin 横琴澳门青年创业谷; Amap … |
 | GUIDANCE-DEVICE-001 | navigation | One voice on the short route; Amap audible only when the model cannot speak | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | GUIDANCE-EMU-001 measurements |
-| GUIDANCE-EMU-001 | navigation | Step-0 measurements for assistant-spoken guidance on the short route | AUTONOMOUS | NOT_RUN | yes | — |
+| GUIDANCE-EMU-001 | navigation | Step-0 measurements for assistant-spoken guidance on the short route | AUTONOMOUS | NOT_RUN | yes | measurements only, no verdict yet (G-1b audibility, G-1c, G-1d and the network-cut repe… |
 | NAV-CANCEL-001 | navigation | 算了 really cancels | AUTONOMOUS | STALE | yes | 2026-09-20: nav_flow_cancelled |
 | NAV-CHOICE-STALE-001 | navigation | A spoken ordinal on a stale list is re-presented before it is accepted | AUTONOMOUS | PASS | yes | 2026-09-24: NavigationPendingChoiceTest 10/10 (cloud Linux build) |
 | NAV-CORRECT-001 | navigation | A mid-flow destination change replaces the list | AUTONOMOUS | STALE | no | 2026-09-20: 20/20 suite |
 | NAV-DRIVE-001 | navigation | A route calculates and guides to arrival | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | NAV-SEARCH-001, NAV-PICK-001, NAV-CANCEL-001, NAV-CORRECT-001 PASS |
 | NAV-E2E-ARRIVAL-001 | navigation | Navigation reaches the destination and terminates by arrival | AUTONOMOUS | STALE | yes | 2026-10-16 GitHub device run 38832785831 at 02d9ab7: nav_proximity_arrival x1, nav_stop… |
 | NAV-MID-ROUTE-001 | navigation | Mid-route navigation baseline without countdown entitlement | AUTONOMOUS | NOT_RUN | yes | 2026-09-21: nav_traffic_countdown status=BLOCKED_EXTERNAL_AMAP_ENTITLEMENT |
+| NAV-OVERSPEED-001 | navigation | Spoken over-speed warning with the guidance toggle off (the shipped path) | AUTONOMOUS | STALE | no | 2026-10-16: not covered by nav demo e9f8535/its fix - that run has the relay ON; the sh… |
+| NAV-OVERSPEED-DEVICE-001 | navigation | The over-speed warning is heard in the car | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | NAV-OVERSPEED-001 |
 | NAV-PHONETIC-CONFIRM-001 | navigation | A phonetic lead asks for confirmation and never navigates | AUTONOMOUS | PASS | yes | 2026-09-24: NavigationPendingChoiceTest 10/10 with an injected proposer |
 | NAV-PHONETIC-DEVICE-001 | navigation | Misheard destination name is confirmed by voice on the device | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | NAV-CHOICE-STALE-001 and NAV-PHONETIC-CONFIRM-001 passed 2026-09-24 |
 | NAV-PICK-001 | navigation | 第二个 picks from the on-screen list | AUTONOMOUS | STALE | yes | 2026-09-20: 20/20 suite |
