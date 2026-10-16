@@ -141,6 +141,10 @@ if [ "${NAV_DEMO_PIECE:-}" = "demo" ]; then
   clips="$S/nav_demo_dest.pcm,$S/pick_first.pcm,$S/start_nav.pcm,$S/ctx_too_hot.pcm,$S/ctx_cooler.pcm,$S/music_on.pcm,$S/fz_mosquito.pcm,$S/fz_mosquito_done.pcm,$S/fz_seat_high.pcm,$S/fz_lower_more.pcm,$S/gas_nearby.pcm,$S/cancel.pcm,$S/eta_q.pcm,$S/music_off.pcm"
   duration=400; DEMO_GAP=12
   note "piece mode: 5-minute demo, ${duration} s"
+elif [ "${NAV_DEMO_PIECE:-}" = "window" ]; then
+  # Piece: the ambiguous window lines while navigating (5-minute demo 5224551: 有蚊子 was cut by a prompt).
+  clips="$S/nav_demo_dest.pcm,$S/pick_first.pcm,$S/start_nav.pcm,$S/fz_mosquito.pcm,$S/fz_mosquito_done.pcm"; duration=120; DEMO_GAP=12
+  note "piece mode: window lines while navigating, ${duration} s"
 elif [ "${NAV_DEMO_PIECE:-}" = "gas" ]; then
   # Piece P61 in the real order: navigate, pick, start, then the gas question while driving.
   clips="$S/nav_shizimen.pcm,$S/pick_first.pcm,$S/start_nav.pcm,$S/gas_nearby.pcm"; duration=130
@@ -164,7 +168,7 @@ note "relay claims: assistant_waited_ms=$(nova | grep -oE 'guidance_claim prompt
 # P63: limits seen, time over, warnings spoken, Amap rings.
 note "overspeed: limits=$(nova | grep -oE 'nav_speed kmh=[0-9]+ limitKmh=[0-9]+' | grep -oE 'limitKmh=[0-9]+' | sort -u | tr '\n' ' ')over_lines=$(count 'nav_speed .* over=1') alerts=$(count 'nav_overspeed_alert') queued: $(nova | grep -oE 'nav_alert_(queued to=[a-z]+|dropped reason=[a-z_]+)' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')rings=$(count 'nav_play_ring')"
 note "listening: $(nova | grep -oE 'listening [A-Z_]+->[A-Z_]+ reason=[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')uplink_closed=$(count 'speech_arbiter out=uplink decision=CLOSED') droppedGuidance=$(nova | grep -oE 'droppedGuidance=[0-9]+' | tail -1)"
-note "P61 guard: $(nova | grep -oE 'guard_nearby_nav decision=[a-z_]+ cur=[0-9]+ cap=[0-9]+' | tr '\n' ' ')refused=$(count 'NEARBY_QUESTION_WHILE_NAVIGATING') nav_stopped: $(nova | grep -oE 'nav_stopped reached=[a-z]+ reason=[a-z_]+' | tr '\n' ' ')tools_in_order: $(nova | grep -oE '^tool=[a-z_]+ args=[^ ]+ result=[A-Za-z_]+|tool=[a-z_]+ args=\[[^]]*\] result=[A-Za-z_()]+' | sed -E 's/args=\[[^]]*\] //' | uniq | tr '\n' ' ')guard_vague_exit: $(nova | grep -oE 'guard_vague_exit decision=[a-z_]+' | tr '\n' ' ')"
+note "P61 guard: $(nova | grep -oE 'guard_nearby_nav decision=[a-z_]+ cur=[0-9]+ cap=[0-9]+' | tr '\n' ' ')refused=$(count 'NEARBY_QUESTION_WHILE_NAVIGATING') nav_stopped: $(nova | grep -oE 'nav_stopped reached=[a-z]+ reason=[a-z_]+' | tr '\n' ' ')tools_in_order: $(nova | grep -oE 'tool=[a-z_]+ args=\[[^]]*\] result=[^ ]+' | sed -E 's/args=\[[^]]*\] //' | uniq | tr '\n' ' ')guard_vague_exit: $(nova | grep -oE 'guard_vague_exit decision=[a-z_]+' | tr '\n' ' ')"
 note "gemini closes: $(nova | grep -oE 'gemini_closed code=[0-9]+ reason_class=[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')"
 sleep 8
 touch "$ev/stop_recording"
