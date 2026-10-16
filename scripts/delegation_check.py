@@ -32,6 +32,51 @@ def violations(repo=REPO, baseline=BASELINE):
     return result
 
 
+REVIEW_LOG = os.path.join(REPO, "state", "reviews.log")
+
+
+def review_status(repo=REPO, baseline=BASELINE, log_path=REVIEW_LOG):
+    """(missing, pending): executor merges since the baseline with no review line / a PENDING one."""
+    out = git(repo, "log", "--first-parent", "--merges", "--format=%H %s", "%s..HEAD" % baseline)
+    entries = {}
+    if os.path.exists(log_path):
+        for line in open(log_path, encoding="utf-8"):
+            parts = line.split()
+            if parts and not line.startswith("#") and len(parts) >= 2:
+                entries[parts[0]] = parts[1]
+    missing, pending = [], []
+    for line in out.splitlines():
+        sha, _, subject = line.partition(" ")
+        if not subject.startswith("Merge exec/"):
+            continue
+        status = next((v for k, v in entries.items() if sha.startswith(k)), None)
+        if status is None:
+            missing.append("%s %s" % (sha[:12], subject))
+        elif status == "PENDING":
+            pending.append("%s %s" % (sha[:12], subject))
+    return missing, pending
+
+
+def stop_hook():
+    """Stop hook (official docs: decision "block" keeps Claude working): a direct source commit, or an
+    executor merge with no review line, blocks the end of the turn. PENDING does not block."""
+    try:
+        v = violations()
+        missing, _ = review_status()
+    except Exception:  # never wedge a session on a broken check
+        return 0
+    if v or missing:
+        reason = []
+        if v:
+            reason.append("module source committed outside an executor merge: " + "; ".join(v))
+        if missing:
+            reason.append("executor merges with no review record in state/reviews.log (run the reviewer, "
+                          "then add PASS, or WAIVED with a reason): " + "; ".join(missing))
+        import json
+        print(json.dumps({"decision": "block", "reason": " | ".join(reason)}, ensure_ascii=False))
+    return 0
+
+
 def selftest():
     tmp = tempfile.mkdtemp()
     try:
@@ -61,6 +106,17 @@ def selftest():
         commit("safety/src/test/B.kt", "planner wrote source")
         v = violations(tmp, base)
         ok = ok and len(v) == 1 and v[0].endswith("planner wrote source")
+        g("checkout", "-q", "-b", "exec/u", base)
+        commit("app/src/main/C.kt", "more executor work")
+        g("checkout", "-q", "main")
+        g("merge", "-q", "--no-ff", "-m", "Merge exec/u: thing", "exec/u")
+        log = os.path.join(tmp, "reviews.log")
+        open(log, "w").write("# header\n")
+        missing, pending = review_status(tmp, base, log)
+        ok = ok and len(missing) == 1 and missing[0].endswith("Merge exec/u: thing")
+        open(log, "a").write(g("rev-parse", "HEAD")[:12] + " PENDING 2026-10-16 x\n")
+        missing, pending = review_status(tmp, base, log)
+        ok = ok and missing == [] and len(pending) == 1
         print("delegation_check selftest: %s" % ("ok" if ok else "FAIL %r" % v))
         return 0 if ok else 1
     finally:
@@ -70,6 +126,8 @@ def selftest():
 def main():
     if "--selftest" in sys.argv:
         return selftest()
+    if "--stop-hook" in sys.argv:
+        return stop_hook()
     v = violations()
     for line in v:
         print(line)
@@ -77,7 +135,15 @@ def main():
         print("%d commit(s) wrote module source on the working branch outside an executor merge"
               % len(v))
         return 1
-    print("delegation_check: no direct module-source commits since baseline")
+    missing, pending = review_status()
+    for line in missing:
+        print("NO REVIEW " + line)
+    for line in pending:
+        print("REVIEW PENDING " + line)
+    if missing:
+        print("%d executor merge(s) without a review record (state/reviews.log)" % len(missing))
+        return 1
+    print("delegation_check: no direct module-source commits since baseline; every executor merge has a review record")
     return 0
 
 
