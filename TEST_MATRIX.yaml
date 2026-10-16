@@ -77,7 +77,7 @@ tests:
       - "wake_detection"
       - "listening DEEP_IDLE->ACTIVE reason=wake_word"
       - "a realtime session opens"
-    evidence: ["2026-09-19 on 2391ff70", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-19 on 2391ff70", "STALE_BIND apk_digest mismatch", "2026-10-16 GitHub emulator run 38835222165: not runnable there - wake_init_failure x10, credentials_complete=false (the iFlytek wake credentials are not in the Actions secrets); stays NOT_RUN for a host with the vendor credentials"]
     related: [B-003, SPEC-001, P6]
     last_run: {at: 2026-09-19, result: PASS}
 
@@ -2743,7 +2743,7 @@ tests:
     type: device
     scope: END_TO_END
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: FAIL
     release_blocking: false
     prerequisites: ["test phone over ADB", "build containing SPEC-010 step 4a", "tools/speech-harness"]
     procedure:
@@ -2755,9 +2755,14 @@ tests:
       - "no transcript or place name in the log"
       - "no spoken reply contradicting the local success (e.g. 没有成功) when the model's own call is refused DUPLICATE_IN_TURN, and no reply at all when cancelCurrentResponse ran before a response existed"
     terminal_success: [music_stopped, climate_toggled, map_recentred]
-    evidence: []
+    evidence: ["2026-10-16 GitHub emulator API 34 (arm64 app), Gemini debug override, voice checks run 38835222165 at 66de495 (ci/voice-evidence runs/run_20261016_0226_66de495): AFF-PAUSE 1/1, AFF-RECENTER 1/1, AFF-AC 0/1 - spoken 「空调」 alone reached the model, which called control_climate (forbidden by the row)"]
+    acceptance:
+      - {criterion: music_stopped, required: true, observed: true, evidence: "run 38835222165 device.txt AFF-PAUSE 1/1"}
+      - {criterion: map_recentred, required: true, observed: true, evidence: "run 38835222165 device.txt AFF-RECENTER 1/1"}
+      - {criterion: climate_toggled_without_model_call, required: true, observed: false, evidence: "run 38835222165 device_failures.txt: forbidden /^tool=control_climate/ matched"}
+    ended_by: natural
     related: [SPEC-010, B-024]
-    last_run: {at: null, result: null}
+    last_run: {at: 2026-10-16, result: FAIL}
 
 # ---- live info (SPEC-011) ------------------------------------------------------------------
 
@@ -2806,14 +2811,20 @@ tests:
     type: device
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: FAIL
     release_blocking: true
     prerequisites: ["test phone over ADB", "build 2cd2546 or later", "speech harness clips for weather, route_traffic, along_route, place_details"]
     procedure: ["inject each kind's clip 10 times through the speech harness", "count tool=query_live_info kind=<kind> lines per clip"]
     pass_criteria: ["each kind selected with the right kind >= 9/10", "no coordinate, address or transcript in the log"]
-    evidence: []
+    evidence: ["2026-10-16 GitHub emulator, Gemini debug override, run 38835222165 at 66de495 (runs/run_20261016_0226_66de495 liveinfo.txt): weather 10/10, route_traffic 10/10, along_route 10/10, place_details 7/10 (3 runs: no query_live_info call)"]
+    acceptance:
+      - {criterion: weather_kind, required: true, observed: true, evidence: "run 38835222165 liveinfo.txt LI-WEATHER 10/10"}
+      - {criterion: route_traffic_kind, required: true, observed: true, evidence: "run 38835222165 liveinfo.txt LI-TRAFFIC 10/10"}
+      - {criterion: along_route_kind, required: true, observed: true, evidence: "run 38835222165 liveinfo.txt LI-ALONG 10/10"}
+      - {criterion: place_details_kind, required: true, observed: false, evidence: "run 38835222165 liveinfo.txt LI-PLACE 7/10 (needs >= 9/10)"}
+    ended_by: natural
     related: [SPEC-011]
-    last_run: {at: null, result: null}
+    last_run: {at: 2026-10-16, result: FAIL}
 
   - id: LIVE-INFO-L6-001
     capability: live_info
