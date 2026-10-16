@@ -1,0 +1,7 @@
+app: map up
+secret AMAP_WEB_KEY: set, amap_web_setup -> result=applied 
+PLACE-UNSET-001: navigate_to 回家 before a home is saved -> "ok":false "error":"HOME_NOT_SET"  asks_for_address=yes
+PLACE-SAVE-001: save_place home -> "ok":true  saved_place_set_slot_home=1
+CALL-NOSIM-001: place_call -> "ok":false "error":"CONTACT_NOT_FOUND"  dialer_activities_before=0 after=0 (the emulator has a simulated SIM)
+APPS-001: open_app settings -> result=Accepted 
+APPS-001: open_app maps -> result=Accepted 
