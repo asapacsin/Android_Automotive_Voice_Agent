@@ -241,6 +241,14 @@ does not change architecture ownership, invariants, or who may certify work. Age
   Qwen voice can answer (a custom or cloned voice: how she sounds, reading the car lines) skips
   Gemini, whose voice is not ours, and goes straight to the cheapest Qwen model with the
   smallest input: text-only turns reading the lines, one short session, no full demo. (Until the owner says the work is done this waits: "Gemini first, Ayano last" above.)
+- **Test each piece before a full demo run** (owner, 2026-10-16). Before any full real-run demo (a
+  recorded end-to-end drive or session), break the demo into its sub-tasks, one per function it
+  shows. For a navigation demo these are: destination search and pick, route start, guidance voice,
+  each driver request, the over-speed warning, arrival and reconnect. Test each sub-task on its own
+  with the cheapest check that proves it (JVM suite, scripted or mock server, a short targeted
+  emulator check), and have it reviewed. Run the full demo only after every sub-task has passed. A
+  full run is the final proof, never the way to find bugs: when it fails, go back to the failing
+  sub-task, fix and verify it alone, then run the full demo again.
 - **Demo-oriented tests, no API the function does not need** (owner, 2026-10-11). Write test cases
   from the demo's user scenarios: the driver lines and expected outcomes of `docs/DEMO_COMMUTE.md`
   and `docs/DEMO_REQUIREMENTS.md` (say this, the car does that, she says this, within this time),
