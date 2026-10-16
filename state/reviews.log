@@ -11,8 +11,13 @@
 # hook blocks on a missing or invalid record; `delegation_check.py --ci` also fails on PENDING/REVISE.
 # Module source = any <top-dir>/src/** (case-insensitive, renames counted as delete + add). WAIVED only
 #   for src/debug, src/test, src/testDebug, src/testRelease, src/androidTest after the cutoff.
-# No source change may be made IN a merge commit (conflict resolution, --no-commit extras, amends): resolve
-#   conflicts on the executor branch (merge the base into it before review). Octopus merges of source are refused.
+# No module source may differ between a merge commit and git's automatic re-merge of its parents
+#   (merge-tree --write-tree): no conflict resolution, --no-commit extras or amends in a merge. Clean
+#   automatic merges of one file edited on both sides pass. Resolve conflicts on the executor branch (merge
+#   the base into it before review). An upstream sync with conflicting source goes through an executor
+#   branch that merges the upstream, resolves, is reviewed, and lands as `Merge exec/<sync>`. Octopus merges
+#   of source are refused. A VIOLATION in first-parent history cannot be waived; only a reviewed change of
+#   BASELINE in scripts/delegation_check.py (visible in the diff) moves past it. Dates: at most today+1 (UTC).
 # REVISED: the fix must descend from the revised branch tip. A key must resolve unambiguously to its commit.
 30321d0 WAIVED 2026-10-16 config and scripts only (deny rules, hook, audit); hook selftest 17/17, the planner's own Edit and Bash writes to module source were refused
 0c100a6 WAIVED 2026-10-16 debug-only tool (nav_route_info) plus a pure formatter with tests; no product path changed

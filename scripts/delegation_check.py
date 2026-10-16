@@ -5,9 +5,14 @@ Checks HEAD's first-parent chain since the baseline. "Module source" is any path
 (case-insensitive). Paths are compared with renames off, so a move counts as delete + add.
 - a non-merge commit touching module source is a VIOLATION (direct commit, fast-forward, cherry-pick);
 - an octopus merge (more than 2 parents) touching module source is a VIOLATION, whatever its subject;
-- module source changed IN a merge commit itself (`git diff-tree -c`: evil merge, conflict resolution,
-  `--no-commit` extras, amended merges) is a VIOLATION for every merge, exec and upstream sync alike.
-  Conflicts are resolved on the executor branch (merge the base into it before review), never in the merge;
+- module source that differs between a two-parent merge commit and git's own automatic re-merge of its
+  parents (`git merge-tree --write-tree`: evil merge, conflict resolution, `--no-commit` extras, amended
+  merges) is a VIOLATION "change made in the merge commit", for every merge, exec and upstream sync alike.
+  Clean automatic merges of the same file edited on both sides pass. Conflicts are resolved on the
+  executor branch (merge the base into it before review), never in the merge. An upstream sync whose
+  source files conflict cannot be resolved in the sync merge either: the supported route is an executor
+  branch that merges the upstream, resolves the conflict, is reviewed, and lands as `Merge exec/<sync>`.
+  If merge-tree is unavailable or fails, the merge is reported as unverifiable (a VIOLATION: --ci fails);
 - a merge touching module source whose subject does not start with "Merge exec/" is a VIOLATION, unless
   its second parent is reachable from an upstream ref u AND the merge itself is not reachable from u
   (a sync from the base branch; default upstream: origin/main; CI passes the PR base with --upstream);
@@ -21,6 +26,9 @@ Checks HEAD's first-parent chain since the baseline. "Module source" is any path
 Modes: default audit (exit 1 on violation/missing/invalid; unresolved only reported), --ci (exit 1 on
 anything, never fails open, refuses shallow history, ignores the env overrides unless NOVA_GATE_TEST=1),
 --stop-hook (fails open, never blocks on unresolved), --selftest. Prints `sha subject` only.
+
+A VIOLATION in first-parent history cannot be waived: the only way out is a reviewed change of BASELINE
+in this file, which is visible in the diff. Record dates may be at most 1 day after today's UTC date.
 
 Accepted limits (not closed here):
 - state/reviews.log is self-attested: the gate checks records, not that a reviewer really ran;
@@ -91,6 +99,9 @@ def parse_line(line):
         datetime.date.fromisoformat(date)
     except ValueError:
         raise ValueError("bad date %r" % date)
+    if datetime.date.fromisoformat(date) > datetime.datetime.now(datetime.timezone.utc).date() + \
+            datetime.timedelta(days=1):
+        raise ValueError("date %r is in the future" % date)
     if status == "WAIVED" and len(note) < 4:
         raise ValueError("WAIVED needs a reason of at least 4 words")
     if status == "REVISED" and not _SHA.fullmatch(note[0]):
@@ -167,6 +178,20 @@ def first_parent_merges(repo, baseline):
         yield sha, parents, subject
 
 
+def merge_commit_change(repo, sha, parents):
+    """None, or why the merge commit itself changes module source compared with git's own automatic
+    re-merge of its two parents (`git merge-tree --write-tree`, git >= 2.38; exit 1 = conflicts, and the
+    re-merged tree then holds conflict markers, so any resolution of a source conflict is flagged)."""
+    r = subprocess.run(["git", "-C", repo, "merge-tree", "--write-tree", "--no-messages", parents[0],
+                        parents[1]], capture_output=True, text=True)
+    tree = r.stdout.split("\n", 1)[0].strip() if r.stdout else ""
+    if r.returncode not in (0, 1) or not _SHA.fullmatch(tree):
+        return "cannot verify: git merge-tree --write-tree unavailable or failed (git >= 2.38 needed)"
+    if touches(changed(repo, tree, sha)):
+        return "change made in the merge commit"
+    return None
+
+
 def violations(repo=REPO, baseline=BASELINE, upstreams=None):
     if upstreams is None:
         upstreams = existing_refs(repo, DEFAULT_UPSTREAMS)
@@ -180,14 +205,15 @@ def violations(repo=REPO, baseline=BASELINE, upstreams=None):
             result.append("%s %s" % (sha[:12], subject))
     for sha, parents, subject in first_parent_merges(repo, baseline):
         label = "%s %s" % (sha[:12], subject)
-        in_merge = git(repo, "diff-tree", "-c", "--name-only", "-r", "--no-commit-id", sha).split()
-        if touches(in_merge):
-            result.append("%s (change made in the merge commit)" % label)
+        if len(parents) > 2:
+            if touches(changed(repo, parents[0], sha)):
+                result.append("%s (octopus merge of module source)" % label)
+            continue
+        problem = merge_commit_change(repo, sha, parents)
+        if problem:
+            result.append("%s (%s)" % (label, problem))
             continue
         if not touches(changed(repo, parents[0], sha)):
-            continue
-        if len(parents) > 2:
-            result.append("%s (octopus merge of module source)" % label)
             continue
         if subject.startswith("Merge exec/"):
             continue

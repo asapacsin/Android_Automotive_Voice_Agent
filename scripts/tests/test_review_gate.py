@@ -254,6 +254,10 @@ class HookTests(Repo):
         self.assertIsNotNone(self.decide("git merge --no-ff origin/exec/x"))
         self.assertIsNotNone(self.decide("git merge refs/remotes/origin/exec/x -m 'Merge exec/x'"))
 
+    def test_signed_merge_without_record_refused(self):
+        self.assertIsNotNone(self.decide("git merge -S exec/x"))
+        self.assertIsNotNone(self.decide("git merge --gpg-sign exec/x"))
+
     def test_pull_from_remote_refused(self):
         self.record("%s PASS %s reviewer" % (self.tip[:12], D))
         reason = self.decide("git pull origin exec/x")
@@ -398,6 +402,93 @@ class CorrectionTests(Repo):
         finally:
             os.environ.clear()
             os.environ.update(old)
+
+    def test_clean_merge_same_file_both_sides(self):
+        lines = "".join("line %d\n" % i for i in range(40))
+        path = os.path.join(self.tmp, "app/src/main/S.kt")
+        os.makedirs(os.path.dirname(path))
+        with open(path, "w") as f:
+            f.write(lines)
+        self.g("add", "-A")
+        self.g("commit", "-q", "-m", "in base")
+        self.base = self.cutoff = self.g("rev-parse", "HEAD")
+        self.g("checkout", "-q", "-b", "exec/a")
+        with open(path, "w") as f:
+            f.write(lines.replace("line 35\n", "exec edit\n"))
+        tip = self.commit("docs/x.md", "exec edit")
+        self.g("checkout", "-q", "main")
+        self.g("checkout", "-q", "-b", "exec/m")
+        with open(path, "w") as f:
+            f.write(lines.replace("line 2\n", "main edit\n"))
+        mtip = self.commit("docs/y.md", "main edit")
+        self.g("checkout", "-q", "main")
+        self.g("merge", "-q", "--no-ff", "-m", "Merge exec/m: main side", "exec/m")
+        self.g("merge", "-q", "--no-ff", "-m", "Merge exec/a: thing", "exec/a")
+        with open(path) as f:
+            text = f.read()
+        self.assertIn("exec edit", text)
+        self.assertIn("main edit", text)
+        self.record("%s PASS %s reviewer" % (tip[:12], D), "%s PASS %s reviewer" % (mtip[:12], D))
+        self.assertAccepted()
+
+    def test_conflict_resolved_in_exec_merge(self):
+        self.rebase_with("app/src/main/C.kt")
+        self.g("checkout", "-q", "-b", "exec/a")
+        tip = self.commit("app/src/main/C.kt", "exec side")
+        self.g("checkout", "-q", "main")
+        self.g("checkout", "-q", "-b", "exec/m")
+        mtip = self.commit("app/src/main/C.kt", "main side")
+        self.g("checkout", "-q", "main")
+        self.g("merge", "-q", "--no-ff", "-m", "Merge exec/m: main side", "exec/m")
+        r = subprocess.run(["git", "-C", self.tmp, "-c", "user.name=t", "-c", "user.email=t@t", "merge",
+                            "--no-ff", "exec/a"], capture_output=True)
+        self.assertNotEqual(r.returncode, 0)
+        with open(os.path.join(self.tmp, "app/src/main/C.kt"), "w") as f:
+            f.write("resolved\n")
+        self.g("add", "-A")
+        self.g("commit", "-q", "-m", "Merge exec/a: thing")
+        self.record("%s PASS %s reviewer" % (tip[:12], D), "%s PASS %s reviewer" % (mtip[:12], D))
+        self.assertIn("change made in the merge commit", self.assertCiFails())
+
+    def test_merge_tree_unavailable_fails_closed(self):
+        tip = self.exec_merge("a")
+        self.record("%s PASS %s reviewer" % (tip[:12], D))
+        real = subprocess.run
+
+        def fake(cmd, *a, **k):
+            if "merge-tree" in cmd:
+                return subprocess.CompletedProcess(cmd, 129, "", "unknown option")
+            return real(cmd, *a, **k)
+        dc.subprocess.run = fake
+        try:
+            out = self.assertCiFails()
+            rc, plain = self.run_audit(False)
+        finally:
+            dc.subprocess.run = real
+        self.assertIn("cannot verify", out)
+        self.assertEqual(rc, 1)
+        self.assertIn("cannot verify", plain)
+
+    def test_future_date_invalid(self):
+        import datetime
+        today = datetime.datetime.now(datetime.timezone.utc).date()
+        far = (today + datetime.timedelta(days=2)).isoformat()
+        near = (today + datetime.timedelta(days=1)).isoformat()
+        self.assertRaises(ValueError, dc.parse_line, "abcdef0 PASS %s x" % far)
+        self.assertIsNotNone(dc.parse_line("abcdef0 PASS %s x" % near))
+
+    def test_ambiguous_or_mismatched_key_refused(self):
+        tip = self.exec_merge("a")
+        self.record("%s PASS %s reviewer" % (tip[:7], D))
+        real = dc.resolve
+        try:
+            dc.resolve = lambda repo, ref: None  # ambiguous: rev-parse --verify fails
+            self.assertIn("ambiguous or names another commit", self.assertCiFails())
+            dc.resolve = lambda repo, ref: "f" * 40  # resolves to another commit
+            self.assertIn("ambiguous or names another commit", self.assertCiFails())
+        finally:
+            dc.resolve = real
+        self.assertAccepted()
 
     def cli(self, *args):
         env = dict(os.environ, NOVA_GATE_TEST="1", NOVA_GATE_REPO=self.tmp,

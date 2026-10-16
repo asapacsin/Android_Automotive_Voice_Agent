@@ -30,7 +30,7 @@ def _gate():
 
 
 _VALUE_OPTS = {"-m", "-F", "-s", "-X", "--message", "--file", "--strategy", "--strategy-option",
-               "--cleanup", "-S", "--gpg-sign", "--into-name"}
+               "--cleanup", "--into-name"}
 
 
 def _invocations(command):
