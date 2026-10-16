@@ -57,6 +57,9 @@ PHRASES = {
     "fz_drowsy": "好困啊。",
     # WAKE-SYNTH-001 - the wake phrase, injected through the debug wake path
     "wake_phrase": "你好小诺。",
+    # The navigation demo (scripts/github_nav_demo.sh): questions asked while driving
+    "eta_q": "还要多久到？",
+    "gas_nearby": "附近有加油站吗？",
 }
 
 

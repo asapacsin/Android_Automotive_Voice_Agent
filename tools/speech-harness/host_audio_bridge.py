@@ -251,6 +251,7 @@ class Recorder:
     def __init__(self, out):
         self.out, self.t0, self.driver = out, None, b""
         self.reply, self.reply_rate = bytearray(), 0
+        self.guidance = []
 
     def started(self, stream):
         self.t0, self.driver = time.time(), bytes(stream)
@@ -264,6 +265,38 @@ class Recorder:
             self.reply += bytes(at - len(self.reply))
         self.reply += pcm
 
+    def add_guidance(self, text):
+        """Amap's guidance sentence (a tagged text frame) at its time; voiced at save() for the video."""
+        if self.t0 is not None and self.out:
+            self.guidance.append((time.time() - self.t0, text))
+
+    def _guidance_track(self):
+        """Each guidance sentence voiced with edge-tts (a male voice, so it is not her) on the clock."""
+        if not self.guidance:
+            return None
+        try:
+            import asyncio, tempfile, edge_tts  # noqa: E401
+        except ImportError:
+            return None
+        rate, track = 24000, bytearray()
+        ff = shutil.which("ffmpeg")
+        for at, text in self.guidance:
+            mp3 = tempfile.mktemp(suffix=".mp3")
+            try:
+                asyncio.run(edge_tts.Communicate(text, "zh-CN-YunxiNeural").save(mp3))
+                pcm = subprocess.run([ff, "-loglevel", "error", "-i", mp3, "-ac", "1", "-ar", str(rate), "-f", "s16le", "-"],
+                                     capture_output=True, check=True).stdout
+            except Exception:
+                continue
+            finally:
+                if os.path.exists(mp3):
+                    os.remove(mp3)
+            pos = int(at * rate) * 2
+            if pos > len(track):
+                track += bytes(pos - len(track))
+            track += pcm
+        return bytes(track), rate
+
     def save(self):
         if not self.out or self.t0 is None:
             return
@@ -272,6 +305,10 @@ class Recorder:
         for name, data, rate in (("driver", self.driver, RATE), ("reply", bytes(self.reply), self.reply_rate or 24000)):
             with wave.open(os.path.join(self.out, name + ".wav"), "wb") as w:
                 w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate); w.writeframes(data)
+        voiced = self._guidance_track()
+        if voiced:
+            with wave.open(os.path.join(self.out, "guidance.wav"), "wb") as w:
+                w.setnchannels(1); w.setsampwidth(2); w.setframerate(voiced[1]); w.writeframes(voiced[0])
         with open(os.path.join(self.out, "t0.txt"), "w") as f:
             f.write(f"{self.t0:.3f}\n")
         print(f"[record] driver {len(self.driver) / 2 / RATE:.1f} s, reply {len(self.reply) / 2 / max(1, self.reply_rate):.1f} s -> {self.out}", flush=True)
@@ -345,6 +382,7 @@ def downlink(conn, stop, play):
         if pcm is None:
             break
         if rate == 0:  # tagged frame: Amap guidance text, spoken here (never printed: it names places)
+            RECORDER.add_guidance(pcm.decode("utf-8", "replace"))
             speak_guidance(pcm.decode("utf-8", "replace"), play)
             continue
         reply_bytes += length
