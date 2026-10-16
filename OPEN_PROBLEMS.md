@@ -2354,3 +2354,13 @@ guidance prompt plays is not heard (P3 / ADR-014 §4, an accepted cost), and aft
 request she sleeps (P17); the wake word resumes her. Research: no usable web results from this
 container (search engines blocked or irrelevant); from general knowledge, consumer follow-up windows
 count from the end of the assistant's own reply and are not stretched by other audio.
+
+**Amendment (decider, 2026-10-16), after runs 38853123513 and 38860693378:** the music line collided
+deterministically with a guidance prompt whose audio began 0.1 s after the line started (95.8 / 95.9 s);
+every wait was 0 ms because the uplink was still open while the prompt was in flight (SENT → audio
+648-1526 ms). The rig now also waits while a prompt is in flight: `guidance_route … to=assistant
+reason=SENT` marks it, the next uplink CLOSED or 3.5 s clears it (`host_audio_bridge.py --selftest`).
+The scripted driver reads an app log line a real driver cannot see. Product limit unchanged: a driver
+who starts in the ~0.3-0.5 s before her guidance audio, before SPEC-012 R0 can arm, is cut off (P3 /
+ADR-014 §4, accepted). Proved first by a short piece run (`[navpiece]`, first six lines), before any
+full demo (owner rule 2026-10-16).

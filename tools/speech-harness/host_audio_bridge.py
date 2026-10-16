@@ -329,10 +329,43 @@ RECORDER = Recorder(None)
 # when the car is quiet; a scripted driver, like a real one, waits for that before the next line.
 UPLINK = {"closed": False}
 LAST_REPLY = [0.0]
+# P65 amendment (decider, 2026-10-16): a guidance prompt sent to her but not yet audible. The relay
+# logs `guidance_route ... to=assistant reason=SENT` 0.6-1.5 s before her audio; the mark clears when
+# the uplink closes (her audio started) or after 3.5 s (the relay's 3 s deadline: Amap takes it).
+# The scripted driver reads an app log line a real driver cannot see - said in every hand-over.
+INFLIGHT = {"since": None}
+INFLIGHT_TIMEOUT_S = 3.5
+
+
+def on_app_line(text, now=None):
+    """Updates the quiet signals from one NovaVoice line (codes only are read)."""
+    now = time.time() if now is None else now
+    gate = re.search(r"speech_arbiter out=uplink decision=(OPEN|CLOSED)", text)
+    if gate:
+        UPLINK["closed"] = gate.group(1) == "CLOSED"
+        if UPLINK["closed"]:
+            INFLIGHT["since"] = None
+    if re.search(r"guidance_route prompt=g[0-9]+ to=assistant reason=SENT", text):
+        INFLIGHT["since"] = now
+
+
+def quiet_reason(now=None):
+    """None when the driver may speak, else why not: uplink | inflight | reply."""
+    now = time.time() if now is None else now
+    if UPLINK["closed"]:
+        return "uplink"
+    since = INFLIGHT["since"]
+    if since is not None:
+        if now - since < INFLIGHT_TIMEOUT_S:
+            return "inflight"
+        INFLIGHT["since"] = None
+    if now - LAST_REPLY[0] <= 0.6:
+        return "reply"
+    return None
 
 
 def quiet_now():
-    return not UPLINK["closed"] and time.time() - LAST_REPLY[0] > 0.6
+    return quiet_reason() is None
 
 
 def feed_file(uplink, paths, stop, lead=1.0, gap=0.0, wait_quiet=False, cap=10.0):
@@ -375,7 +408,7 @@ def feed_file_waiting(uplink, paths, stop, lead, gap, cap):
     sent = bytearray()
     RECORDER.started(b"")
     RECORDER.driver = sent  # grows with what is sent, so the video's driver track stays in sync
-    state = {"step": 0, "pos": 0, "wait_from": None}
+    state = {"step": 0, "pos": 0, "wait_from": None, "why": "none"}
 
     def next_frame():
         while state["step"] < len(plan):
@@ -384,9 +417,13 @@ def feed_file_waiting(uplink, paths, stop, lead, gap, cap):
                 now = time.time()
                 if state["wait_from"] is None:
                     state["wait_from"] = now
+                    state["why"] = "none"
                 waited = now - state["wait_from"]
-                if quiet_now() or waited >= cap:
-                    print(f"[bridge] wait_quiet line={item + 1} ms={int(waited * 1000)} cap={int(waited >= cap)}", flush=True)
+                why = quiet_reason(now)
+                if why:
+                    state["why"] = why
+                if why is None or waited >= cap:
+                    print(f"[bridge] wait_quiet line={item + 1} ms={int(waited * 1000)} cap={int(waited >= cap)} reason={state['why']}", flush=True)
                     state["step"] += 1
                     state["wait_from"] = None
                     continue
@@ -531,9 +568,7 @@ def follow_log(stop):
         if stop.is_set():
             break
         text = line.split("NovaVoice", 1)[-1].lstrip(": ").rstrip()
-        gate = re.search(r"speech_arbiter out=uplink decision=(OPEN|CLOSED)", text)
-        if gate:
-            UPLINK["closed"] = gate.group(1) == "CLOSED"
+        on_app_line(text)
         if text.startswith("state="):
             if text == last_state:
                 continue
@@ -543,7 +578,30 @@ def follow_log(stop):
     proc.kill()
 
 
+def selftest():
+    """Offline: the quiet signals from scripted NovaVoice lines (no emulator, no API)."""
+    LAST_REPLY[0] = 0.0
+    on_app_line("speech_arbiter out=uplink decision=OPEN reason=idle", 100.0)
+    assert quiet_reason(100.0) is None
+    on_app_line("guidance_route prompt=g7 to=assistant reason=SENT waited_ms=0", 100.0)
+    assert quiet_reason(100.5) == "inflight", "a sent prompt holds the driver"
+    on_app_line("speech_arbiter out=uplink decision=CLOSED reason=guidance", 101.0)
+    assert quiet_reason(101.1) == "uplink", "her audio started: the gate holds"
+    assert INFLIGHT["since"] is None, "closing the gate clears the in-flight mark"
+    on_app_line("speech_arbiter out=uplink decision=OPEN reason=guidance_end", 104.0)
+    assert quiet_reason(104.1) is None
+    on_app_line("guidance_route prompt=g8 to=assistant reason=SENT waited_ms=0", 110.0)
+    assert quiet_reason(113.0) == "inflight"
+    assert quiet_reason(113.6) is None, "after 3.5 s the prompt went to Amap: no longer held"
+    on_app_line("guidance_route prompt=g9 to=amap reason=AMAP_SPEAKING waited_ms=0", 120.0)
+    assert quiet_reason(120.1) is None, "a prompt routed to Amap is not her in-flight speech"
+    print("selftest ok")
+
+
 def main():
+    if "--selftest" in sys.argv:
+        selftest()
+        return
     for stream in (sys.stdout, sys.stderr):
         stream.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser()
