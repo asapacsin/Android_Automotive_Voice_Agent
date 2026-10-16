@@ -1,0 +1,6 @@
+app: map up
+secret AMAP_WEB_KEY: set, amap_web_setup -> result=applied 
+secret GEMINI_API_KEY: set, gemini_setup -> result=applied 
+nav demo: provider=session_provider choice=gemini_live started=1 stopped=nav_stopped reached=true reason=replaced guidance=8 tools= 4 tool=choose_navigation_option  2 tool=control_climate  4 tool=control_music  4 tool=navigate_to  2 tool=query_live_info  errors=1
+nav demo: nav_demo.mp4 written (offset 0.1235486030578613 s, guidance=yes)
+nav demo: done
