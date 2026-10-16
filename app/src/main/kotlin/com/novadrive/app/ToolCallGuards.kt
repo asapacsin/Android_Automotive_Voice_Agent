@@ -47,20 +47,27 @@ object ToolCallGuards {
     const val UNSUPPORTED_BODY_PART = "UNSUPPORTED_BODY_PART"
     const val NEARBY_QUESTION_WHILE_NAVIGATING = "NEARBY_QUESTION_WHILE_NAVIGATING"
     const val VAGUE_EXIT_WHILE_NAVIGATING = "VAGUE_EXIT_WHILE_NAVIGATING"
-    /** A navigation noun and an end verb, in either order (R2, review 2026-10-16). */
-    private val END_NOUN = Regex("导航|路线|行程")
-    private val END_VERB = Regex("结束|退出|停止|停|取消|关闭|关掉|关|终止|不要|不用|不需要|不想|别再?|别")
+    /**
+     * An end verb next to a navigation noun (R2, review 2026-10-16). The verb may follow the noun
+     * within two characters (把导航取消, 导航可以结束了) or precede it with only 了/掉/吧 between
+     * (关了导航), so 「关空调导航到公司」 is not an end. Refusals (不要/不用) count only in the
+     * 不要导航了 forms or as noun + refusal at the end of the line (导航不要了).
+     */
+    private const val END_VERBS = "结束|退出|停止|停|取消|关闭|关掉|关|终止"
+    private val NEAR_END = Regex("($END_VERBS)[了掉吧]{0,2}(导航|路线|行程)|(导航|路线|行程).{0,2}($END_VERBS)")
     private val EXPLICIT_NO_NAV = Regex("不(要|用|想|需要)?导航了?|别再?导航")
-    /** 「不要结束导航」: a negated end verb is no end request; it is removed before matching. */
-    private val NEGATED_END = Regex("(不要|不用|不需要|不想|别再?|不)(结束|退出|停止|停|取消|关闭|关掉|关|终止)")
+    private val NOUN_REFUSED = Regex("(导航|路线|行程)(不要|不用|不需要)了?[。！!，,\\s]*$")
+    /** 「不要结束导航」: a negated end verb is no end request. 「要不结束导航吧」 is not a negation. */
+    private val NEGATED_END = Regex("(不要|不用|不需要|不想|别再?|(?<!要)不)($END_VERBS)")
     private val CONTINUE_NAV = Regex("继续(导航|路线|行程)|(导航|路线|行程)(还在)?继续|停车")
-    private val TRADITIONAL = mapOf('導' to '导', '結' to '结', '關' to '关', '閉' to '闭', '終' to '终', '線' to '线', '繼' to '继', '續' to '续', '別' to '别', '須' to '需')
+    /** 「关掉导航声音」: the guidance voice is not the guidance. */
+    private val NAV_SOUND = Regex("(导航|路线)(的)?(声音|音量|播报|语音|提示音?)")
+    private val TRADITIONAL = mapOf('導' to '导', '結' to '结', '關' to '关', '閉' to '闭', '終' to '终', '線' to '线', '繼' to '继', '續' to '续', '別' to '别', '須' to '须')
 
     internal fun isExplicitEnd(text: String): Boolean {
         val simplified = text.map { TRADITIONAL[it] ?: it }.joinToString("")
-        val said = CONTINUE_NAV.replace(NEGATED_END.replace(simplified, "#"), "#")
-        if (EXPLICIT_NO_NAV.containsMatchIn(said)) return true
-        return END_NOUN.containsMatchIn(said) && END_VERB.containsMatchIn(said)
+        val said = NAV_SOUND.replace(CONTINUE_NAV.replace(NEGATED_END.replace(simplified, "#"), "#"), "#")
+        return EXPLICIT_NO_NAV.containsMatchIn(said) || NOUN_REFUSED.containsMatchIn(said) || NEAR_END.containsMatchIn(said)
     }
 
     /** Words that do ask to go somewhere (else) - only these may replace an active route. */
