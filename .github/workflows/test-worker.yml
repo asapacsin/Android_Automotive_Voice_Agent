@@ -7,6 +7,11 @@
 name: Test worker
 
 on:
+  # A new workflow can be dispatched only once it is on the default branch; until then a commit
+  # tagged [worker-start] on the working branch starts it.
+  push:
+    branches:
+      - claude/10-15
   workflow_dispatch:
     inputs:
       minutes:
@@ -17,11 +22,12 @@ permissions:
   contents: write
 
 concurrency:
-  group: test-worker
-  cancel-in-progress: true
+  group: test-worker-${{ github.event_name == 'push' && !contains(github.event.head_commit.message, '[worker-start]') && github.sha || 'live' }}
+  cancel-in-progress: false
 
 jobs:
   worker:
+    if: ${{ github.event_name != 'push' || contains(github.event.head_commit.message, '[worker-start]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 355
     steps:
@@ -57,7 +63,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           AMAP_API_KEY: ${{ secrets.AMAP_API_KEY }}
           WORKER_BRANCH: ${{ github.ref_name }}
-          WORKER_MINUTES: ${{ inputs.minutes }}
+          WORKER_MINUTES: ${{ inputs.minutes || '320' }}
         with:
           api-level: 34
           target: google_apis
