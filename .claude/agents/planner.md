@@ -60,6 +60,9 @@ between materially different designs, integrating several workers, anything with
 
 Do not delegate just because an agent exists. Doing it yourself is right when that is cheaper.
 
+Module source (`<module>/src/**`) in the main checkout is never yours to write (owner 2026-10-16): dispatch an executor.
+Enforced by `permissions.deny` and `.claude/hooks/guard-source-writes.py`; audited by `scripts/delegation_check.py`.
+
 **Unsure which to pick → `decider`, then the owner** (owner, 2026-10-12; `AGENTS.md` hard rule).
 When you do not know which option to choose and the documents do not settle it, do not guess. Send
 `decider` (Opus 5.5, xhigh effort) the question, the options, the evidence and the binding

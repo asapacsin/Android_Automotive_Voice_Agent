@@ -1,5 +1,33 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Edit(/app/src/**)",
+      "Write(/app/src/**)",
+      "Edit(/behavior-test/src/**)",
+      "Write(/behavior-test/src/**)",
+      "Edit(/contracts/src/**)",
+      "Write(/contracts/src/**)",
+      "Edit(/demo/src/**)",
+      "Write(/demo/src/**)",
+      "Edit(/evaluation/src/**)",
+      "Write(/evaluation/src/**)",
+      "Edit(/feedback/src/**)",
+      "Write(/feedback/src/**)",
+      "Edit(/ingress/src/**)",
+      "Write(/ingress/src/**)",
+      "Edit(/orchestration/src/**)",
+      "Write(/orchestration/src/**)",
+      "Edit(/safety/src/**)",
+      "Write(/safety/src/**)",
+      "Edit(/simulator/src/**)",
+      "Write(/simulator/src/**)",
+      "Edit(/vehicle/src/**)",
+      "Write(/vehicle/src/**)",
+      "Edit(/verification/src/**)",
+      "Write(/verification/src/**)"
+    ]
+  },
   "hooks": {
     "Stop": [
       {
@@ -20,6 +48,17 @@
           {
             "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-source-writes.py\""
           }
         ]
       }

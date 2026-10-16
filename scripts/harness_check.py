@@ -116,7 +116,8 @@ def main():
 
     # The verdict rules must hold: an incomplete run proving itself unable to be PASS is
     # what keeps a future 0.6.4-shaped overclaim from ever reaching a report.
-    for script in ("acceptance.py", "test_matrix.py", "model_route.py", "design_basis.py"):
+    for script in ("acceptance.py", "test_matrix.py", "model_route.py", "design_basis.py",
+                   "delegation_check.py"):
         try:
             proc = subprocess.run(
                 [sys.executable, os.path.join(REPO, "scripts", script), "--selftest"],
@@ -127,6 +128,18 @@ def main():
                                 % (script, proc.stdout, proc.stderr))
         except Exception as exc:
             failures.append("scripts/%s --selftest could not run: %r" % (script, exc))
+
+    # Module source must arrive through executor merges (AGENTS.md hard rule, owner 2026-10-16).
+    try:
+        proc = subprocess.run(
+            [sys.executable, os.path.join(REPO, "scripts", "delegation_check.py")],
+            cwd=REPO, capture_output=True, text=True,
+        )
+        if proc.returncode != 0:
+            failures.append("scripts/delegation_check.py found direct source commits:\n%s"
+                            % proc.stdout)
+    except Exception as exc:
+        failures.append("scripts/delegation_check.py could not run: %r" % (exc,))
 
     for path in REQUIRED:
         if not os.path.isfile(os.path.join(REPO, path)):
