@@ -2169,7 +2169,7 @@ flow state is correct.
 
 ## P61 — Mid-drive 「附近有加油站吗」 replaced the active route with a gas-station list
 
-**Status:** FIXED 2026-10-16, verified live: nav demo run 38837935246 at 67f1f2a (`ci/nav-demo runs/run_20261016_0217_67f1f2a`, `demo-videos/real_app_navigation_demo_2026-10-16.mp4` ~2:00) - 「附近有加油站吗」 mid-drive got `query_live_info`, she answered 「沿途没有找到加油站」, the route stayed and the drive reached the destination (`reached=true`). A 1008 close still came at ~5:00, after the last driver line, while asleep (`errors=1`); the reason class was not in the run's summary - next run collects it. Found by the
+**Status:** REOPENED 2026-10-16 (second cause, see below; fix merged e68ad02, live check pending). First fix verified live: nav demo run 38837935246 at 67f1f2a (`ci/nav-demo runs/run_20261016_0217_67f1f2a`, `demo-videos/real_app_navigation_demo_2026-10-16.mp4` ~2:00) - 「附近有加油站吗」 mid-drive got `query_live_info`, she answered 「沿途没有找到加油站」, the route stayed and the drive reached the destination (`reached=true`). A 1008 close still came at ~5:00, after the last driver line, while asleep (`errors=1`); the reason class was not in the run's summary - next run collects it. Found by the
 real-app navigation demo on the GitHub emulator (Gemini via the debug override, run 38835153662,
 `ci/nav-demo runs/run_20261016_0144_bf6210f`): while navigating to 珠海站 at 90 km/h, the driver
 asked 「附近有加油站吗」 and the model called `navigate_to` destination=附近的加油站. The nearby
