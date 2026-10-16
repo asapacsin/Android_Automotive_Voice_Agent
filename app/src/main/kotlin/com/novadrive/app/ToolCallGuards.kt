@@ -45,6 +45,16 @@ object ToolCallGuards {
     const val DUPLICATE_IN_TURN = "DUPLICATE_IN_TURN"
     const val AMBIGUOUS_REFERENT = "AMBIGUOUS_REFERENT"
     const val UNSUPPORTED_BODY_PART = "UNSUPPORTED_BODY_PART"
+    const val NEARBY_QUESTION_WHILE_NAVIGATING = "NEARBY_QUESTION_WHILE_NAVIGATING"
+
+    /** Words that do ask to go somewhere (else) - only these may replace an active route. */
+    private val GO_INTENT = Regex("导航|带我去|带我到|开过去|开去|前往|就去|改去|换(个|成)?(目的地|地方)|去(最近|附近|那|这)")
+
+    /** 「路上有加油站吗」「前面有服务区吗」: along the route, which is query_live_info's along_route. */
+    private val ON_THE_WAY = Regex("路上|沿途|沿路|前面|前方")
+
+    /** A question, not a command: 吗 / 有没有 / 哪里有 / 在哪 / a question mark. */
+    private val QUESTION = Regex("吗|有没有|哪里有|哪儿有|在哪|多远|[?？]")
 
     /** Body parts this product cannot move, from their owner, [UtteranceIntentResolver]. */
     private val unsupportedPartWords: List<String> by lazy {
@@ -128,6 +138,30 @@ object ToolCallGuards {
         if (unsupportedPartWords.none { it in said }) return null
         val rest = unsupportedPartWords.fold(said) { text, word -> text.replace(word, "") }
         return if (windowWords.any { it in rest } || "窗" in rest) null else UNSUPPORTED_BODY_PART
+    }
+
+    /**
+     * P61 (GitHub emulator navigation demo, 2026-10-16): mid-drive 「附近有加油站吗？」 was answered
+     * with `navigate_to`, which replaced the active route with a list of gas stations. P54 already
+     * decided the split: with no route a nearby question is a nearby search (navigate_to), with a
+     * route it is `query_live_info` along_route. While navigating, a nearby *question* with no word
+     * that asks to go there is refused here; 「带我去附近的加油站」 still goes through. A transcript
+     * older than the speech onset belongs to the previous turn and is not used.
+     */
+    fun nearbyQuestionWhileNavigating(
+        call: DomainVoiceEvent.ToolCall,
+        context: DriverContext?,
+        navigating: Boolean = NavigationState.navigating,
+    ): String? {
+        if (call.name != "navigate_to" || !navigating || context == null) return null
+        if (context.currentEpoch() <= 0 || context.currentEpoch() < context.capabilityEpoch()) return null
+        val said = TranscriptText.normalize(context.currentRequestText())
+        val destination = call.arguments["destination"].orEmpty()
+        val nearby = com.novadrive.app.nav.DestinationQuery.isNearbyRequest(said) ||
+            com.novadrive.app.nav.DestinationQuery.isNearbyRequest(destination) ||
+            ON_THE_WAY.containsMatchIn(said)
+        if (!nearby || !QUESTION.containsMatchIn(said) || GO_INTENT.containsMatchIn(said)) return null
+        return NEARBY_QUESTION_WHILE_NAVIGATING
     }
 
     /**

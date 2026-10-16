@@ -53,6 +53,10 @@ object ToolFailureAdvice {
         PhoneCallTool.CALL_FAILED to
             "拨号没有成功，没有接通。" +
             "请用一句话如实告诉用户没打出去，不要谎称已经接通。",
+        ToolCallGuards.NEARBY_QUESTION_WHILE_NAVIGATING to
+            "现在正在导航，用户只是问附近或路上有没有，不是要换目的地，所以没有改路线，导航还在继续。" +
+                "请调用 query_live_info，kind=along_route，查沿途的，然后按结果如实简短回答；" +
+                "用户之后明确说要去那里时再调用 navigate_to。不要说已经开始导航或已经换了路线。",
         ToolCallGuards.UNSUPPORTED_BODY_PART to
             "用户说的是小诺控制不了的部件，所以没有执行，车窗也没有动。" +
             "请用一句话如实说暂时还不支持，不要说已经做了，也不要改开车窗。",

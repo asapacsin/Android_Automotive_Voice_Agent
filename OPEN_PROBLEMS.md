@@ -2166,3 +2166,37 @@ web search from the container returned nothing usable. Remaining options, untrie
 re-create the AMapNavi instance on cancel, or draw routes ourselves (`setAutoDrawRoute(false)` plus
 our own `RouteOverLay`, removable). Both are larger changes to the map owner; cosmetic only - the
 flow state is correct.
+
+## P61 — Mid-drive 「附近有加油站吗」 replaced the active route with a gas-station list
+
+**Status:** FIXED 2026-10-16 (JVM), live re-check in the next navigation demo run. Found by the
+real-app navigation demo on the GitHub emulator (Gemini via the debug override, run 38835153662,
+`ci/nav-demo runs/run_20261016_0144_bf6210f`): while navigating to 珠海站 at 90 km/h, the driver
+asked 「附近有加油站吗」 and the model called `navigate_to` destination=附近的加油站. The nearby
+search ran, so the route picker replaced the route being driven, and the rest of the demo had no
+navigation. This is P54's split the other way round: with no route a nearby question goes to
+`navigate_to` (nearby search); with a route it goes to `query_live_info` kind=along_route, and only
+an explicit "go there" changes the destination.
+
+**Fix (deterministic, the prompt only shapes tone):** `ToolCallGuards.nearbyQuestionWhileNavigating`
+in the dispatcher's guard chain refuses `navigate_to` when a route is active, the current request
+is a question (吗/有没有/哪里有/在哪/多远/？) about something nearby or on the way
+(`DestinationQuery.isNearbyRequest`, 路上/沿途/前面), and has no go-intent (导航/带我去/开过去/前往/
+改去/换目的地/去最近…). The result is ok=false `NEARBY_QUESTION_WHILE_NAVIGATING`; its advice
+(`ToolFailureAdvice`) sends her to `query_live_info` along_route and forbids claiming a new route.
+The guard acts only on fresh words (current epoch at or after the capability epoch).
+`ToolCallGuardNearbyWhileNavigatingTest` (5 tests: questions refused, go-intent still navigates,
+no route untouched, stale words and other tools untouched, dispatcher result with no navigation
+executed). Research: P54's source (ai.google.dev function-calling best practices: say when to use
+each tool) covers the description side; nothing found on guarding a destination change against a
+question, so the guard follows the repository's existing pattern (P56 `sunroofOnWindowTool`).
+
+**Also from that run:** at ~1:42 the Gemini session closed with 1008, mapped to
+`GEMINI_LIVE_AUTH_FAILED`; the session reconnected. The reason text is not logged by design (it can
+quote the request), so the cause was unknown. `GeminiLiveClient` now logs `gemini_closed code=…
+reason_class=<word>` where the word comes from a fixed list (`GeminiLiveProtocol.closeReasonClass`:
+quota, auth, deadline, tool, invalid_argument, not_supported, not_found, unavailable, session,
+other, none), never the text. Community reports of mid-session 1008 on the Live API cite invalid
+arguments, unsupported operations and deadlines rather than the key (from memory of python-genai
+issue threads; not re-verified from this container, which has no web search). Whether 1008 after a
+completed setup should stay AUTH_FAILED is open until the next run shows the class.

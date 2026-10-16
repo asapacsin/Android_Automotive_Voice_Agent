@@ -225,6 +225,7 @@ class AndroidToolDispatcher(
         val context = driverContext()
         val code = ToolCallGuards.unsupportedMedia(call, context)
             ?: ToolCallGuards.sunroofOnWindowTool(call, context)
+            ?: ToolCallGuards.nearbyQuestionWhileNavigating(call, context)
             ?: ToolCallGuards.ambiguousReferent(call, context)
             ?: ToolCallGuards.repeatedInTurn(call, context)
         return code?.let { failed(call, it, ToolCallGuards.refusalDetails(it, context)) }

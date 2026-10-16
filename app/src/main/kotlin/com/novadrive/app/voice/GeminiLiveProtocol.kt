@@ -250,6 +250,28 @@ object GeminiLiveProtocol {
         else -> CONNECTION_CLOSED
     }
 
+    /**
+     * A fixed word for what a close reason is about, for the debug log: the reason text itself can
+     * quote the request, so only one of these words is ever logged (P61 demo: a 1008 mid-drive was
+     * mapped to AUTH_FAILED with nothing to say whether the key or the request was the cause).
+     */
+    fun closeReasonClass(reason: String?): String {
+        val r = reason.orEmpty().lowercase()
+        return when {
+            r.isBlank() -> "none"
+            "quota" in r || "exhausted" in r || "rate limit" in r -> "quota"
+            "api key" in r || "api_key" in r || "permission" in r || "unauthenticated" in r || "auth" in r -> "auth"
+            "deadline" in r || "timeout" in r || "timed out" in r -> "deadline"
+            "function" in r || "tool" in r -> "tool"
+            "invalid argument" in r || "invalid_argument" in r || "invalid" in r -> "invalid_argument"
+            "not implemented" in r || "not supported" in r || "not enabled" in r -> "not_supported"
+            "not found" in r -> "not_found"
+            "unavailable" in r || "overloaded" in r || "internal" in r -> "unavailable"
+            "session" in r || "duration" in r -> "session"
+            else -> "other"
+        }
+    }
+
     /** Generic, never the server's reason text (it can quote the request). */
     fun closeFailure(code: Int, reason: String?, resumeRejected: Boolean = false): VoiceProviderException {
         // A resumed setup rejected with 1007 is an expired handle, not a malformed setup: retry fresh.

@@ -196,6 +196,28 @@ class GeminiLiveProtocolTest {
     }
 
     @Test
+    fun closeReasonIsLoggedOnlyAsAFixedWord() {
+        val words = setOf("none", "quota", "auth", "deadline", "tool", "invalid_argument", "not_supported", "not_found", "unavailable", "session", "other")
+        val cases = mapOf(
+            null to "none", "" to "none",
+            "You exceeded your current quota" to "quota",
+            "API key not valid. Please pass a valid API key." to "auth",
+            "Deadline expired before operation could complete." to "deadline",
+            "Function call navigate_to failed" to "tool",
+            "Request contains an invalid argument." to "invalid_argument",
+            "Operation is not implemented, or supported, or enabled." to "not_supported",
+            "Requested entity was not found." to "not_found",
+            "The service is currently unavailable." to "unavailable",
+            "导航到珠海 lat 22.27" to "other",
+        )
+        cases.forEach { (reason, expected) ->
+            val word = GeminiLiveProtocol.closeReasonClass(reason)
+            assertEquals(expected, word, reason.toString())
+            assertTrue(word in words, word)
+        }
+    }
+
+    @Test
     fun rejectedResumedSetupIsRetryableNotMalformed() {
         val resumed = GeminiLiveProtocol.closeFailure(1007, "invalid handle", resumeRejected = true)
         assertEquals(GeminiLiveProtocol.RESUME_UNAVAILABLE, resumed.code)
