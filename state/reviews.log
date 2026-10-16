@@ -33,3 +33,4 @@ f602106 PASS 2026-10-16 reviewer PASS after two REVISE rounds (false-green input
 b9c77df REVISED 2026-10-16 5dcb18c reviewer REVISE resolved by the vague-exit-r1 branch (R1-R3)
 9fab533 REVISED 2026-10-16 5dcb18c reviewer REVISE resolved by the vague-exit-r1 branch (structural explicit end)
 f7fe086 PASS 2026-10-16 reviewer PASS after two REVISE rounds (bypasses closed; merge-tree re-merge check; no real merge flagged)
+5dcbff3 PASS 2026-10-16 reviewer PASS after two REVISE rounds (Tier B checks on real log tokens; aborts and missing secrets never pass); emulator and GitHub runs still unverified
