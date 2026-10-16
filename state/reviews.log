@@ -1,11 +1,24 @@
 # Review record for executor merges (owner 2026-10-16: reviews must actually run before work is accepted).
-# One line per `Merge exec/*` commit on the working branch since the delegation baseline:
-#   <merge-sha-12> PASS|WAIVED|PENDING <yyyy-mm-dd> <who/why>
-# PASS = the reviewer agent returned PASS on that change. WAIVED needs a reason (debug-only, docs/config,
-# verified otherwise). PENDING = a review is running; scripts/delegation_check.py reports it until replaced.
+# Grammar (shared parser: scripts/delegation_check.py parse_line), one record per line:
+#   <hex sha, 7-40 chars> <STATUS> <YYYY-MM-DD> <note, at least 1 word>
+# STATUS: PASS = the reviewer agent returned PASS. WAIVED = accepted without the reviewer; the note is a
+#   reason of at least 4 words, and it is refused for merges touching <module>/src/main/** after the cutoff
+#   commit 1fb1ed2. PENDING = a review is running. REVISE = the reviewer asked for changes. REVISED = the
+#   REVISE was resolved; the note starts with the fix branch tip sha, which needs its own PASS and must be merged.
+# Any other non-#, non-blank line is INVALID and fails the gate. Append-only: the LAST valid line per sha wins.
 # Keyed by the executor branch tip (before merge) or the merge commit. Before a merge, the
-# require-review-before-merge hook needs a PASS/WAIVED line for the branch tip; after, the Stop hook
-# blocks the end of a turn while any executor merge has no line.
+# require-review-before-merge hook needs PASS (or WAIVED off src/main) for the branch tip; after, the Stop
+# hook blocks on a missing or invalid record; `delegation_check.py --ci` also fails on PENDING/REVISE.
+# Module source = any <top-dir>/src/** (case-insensitive, renames counted as delete + add). WAIVED only
+#   for src/debug, src/test, src/testDebug, src/testRelease, src/androidTest after the cutoff.
+# No module source may differ between a merge commit and git's automatic re-merge of its parents
+#   (merge-tree --write-tree): no conflict resolution, --no-commit extras or amends in a merge. Clean
+#   automatic merges of one file edited on both sides pass. Resolve conflicts on the executor branch (merge
+#   the base into it before review). An upstream sync with conflicting source goes through an executor
+#   branch that merges the upstream, resolves, is reviewed, and lands as `Merge exec/<sync>`. Octopus merges
+#   of source are refused. A VIOLATION in first-parent history cannot be waived; only a reviewed change of
+#   BASELINE in scripts/delegation_check.py (visible in the diff) moves past it. Dates: at most today+1 (UTC).
+# REVISED: the fix must descend from the revised branch tip. A key must resolve unambiguously to its commit.
 30321d0 WAIVED 2026-10-16 config and scripts only (deny rules, hook, audit); hook selftest 17/17, the planner's own Edit and Bash writes to module source were refused
 0c100a6 WAIVED 2026-10-16 debug-only tool (nav_route_info) plus a pure formatter with tests; no product path changed
 b9c77df PENDING 2026-10-16 reviewer REVISE (R1 hint contradicts guard, R2 regex misses phrasings, R3 advice) - fix in progress
@@ -14,3 +27,9 @@ b9c77df PENDING 2026-10-16 reviewer REVISE (R1 hint contradicts guard, R2 regex 
 fe8933e PASS 2026-10-16 1008 after setup is a dropped session (follow-ups: SPEC-013 text, reconnect budget per session start)
 b314591 PASS 2026-10-16 ToolCallGuards.navigatingNow (follow-up: legacy NavigationState reset on session stop)
 c378eb13b9f2 WAIVED 2026-10-16 TEST_MATRIX and generated state only (rebind of 36 rows to runs 38891890665/38891892916); validated by test_matrix.py --validate (95 -> 9 problems), no code
+20eba04 WAIVED 2026-10-16 Tier C release checklist is reporting-only (not a CI gate) and touches no module source; planner reran its 10 rule tests and --release (NOT_READY 38/96)
+f602106 PASS 2026-10-16 reviewer PASS after two REVISE rounds (false-green inputs closed; 95 tests, adversarial probes red)
+5dcb18c PASS 2026-10-16 reviewer PASS after three REVISE rounds (guard only during guidance; adjacency explicit-end rule); E2E on Gemini harness still unverified. Record written after the merge 7607122 by planner error (see commit), review itself preceded the merge
+b9c77df REVISED 2026-10-16 5dcb18c reviewer REVISE resolved by the vague-exit-r1 branch (R1-R3)
+9fab533 REVISED 2026-10-16 5dcb18c reviewer REVISE resolved by the vague-exit-r1 branch (structural explicit end)
+f7fe086 PASS 2026-10-16 reviewer PASS after two REVISE rounds (bypasses closed; merge-tree re-merge check; no real merge flagged)

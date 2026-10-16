@@ -31,19 +31,10 @@
     {
       "id": "cantonese:YUE-HOME",
       "suite": "voice",
-      "reason": "Cantonese home request scored 0/1 on Gemini; whether an ambiguous Cantonese request should ask back is an open owner decision",
-      "owner": "product owner (decision) / planner",
-      "tracking": "TEST_MATRIX TRUTH-MEDIA-001; owner choice queued 2026-10-16",
+      "reason": "expected behaviour for an ambiguous Cantonese home request is undefined until the owner decides (YUE-POLICY-001), so a failure cannot be judged a regression",
+      "owner": "product owner (decision YUE-POLICY-001); planner maintains the entry",
+      "tracking": "TEST_MATRIX YUE-POLICY-001 (owner decision on ambiguous Cantonese requests, queued 2026-10-16); release still blocked via the Tier C checklist",
       "remove_when": "owner decides the expected behaviour and the scenario passes 1/1",
-      "expires": "2026-10-30"
-    },
-    {
-      "id": "liveinfo:LI-PLACE",
-      "suite": "voice",
-      "reason": "place_details answered 6/10 on Gemini (FLAKY)",
-      "owner": "planner",
-      "tracking": "TEST_MATRIX LIVE-INFO-DEVICE-001 (FAIL)",
-      "remove_when": "10/10 on two consecutive voice-check runs",
       "expires": "2026-10-30"
     }
   ]

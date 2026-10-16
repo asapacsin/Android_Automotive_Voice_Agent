@@ -47,7 +47,28 @@ object ToolCallGuards {
     const val UNSUPPORTED_BODY_PART = "UNSUPPORTED_BODY_PART"
     const val NEARBY_QUESTION_WHILE_NAVIGATING = "NEARBY_QUESTION_WHILE_NAVIGATING"
     const val VAGUE_EXIT_WHILE_NAVIGATING = "VAGUE_EXIT_WHILE_NAVIGATING"
-    private val EXPLICIT_END = Regex("(结束|退出|停止|取消|关闭|关掉|停掉|关了)导航|不(要|用)?导航了|别导航|导航(结束|关了|关掉|不要了)|结束路线")
+    /**
+     * An end verb next to a navigation noun (R2, review 2026-10-16). The verb may follow the noun
+     * within two characters (把导航取消, 导航可以结束了) or precede it with only 了/掉/吧 between
+     * (关了导航), so 「关空调导航到公司」 is not an end. Refusals (不要/不用) count only in the
+     * 不要导航了 forms or as noun + refusal at the end of the line (导航不要了).
+     */
+    private const val END_VERBS = "结束|退出|停止|停|取消|关闭|关掉|关|终止"
+    private val NEAR_END = Regex("($END_VERBS)(一?下)?[了掉吧]{0,2}(这个|这次|本次|此次|当前的?|现在的?)?(导航|路线|行程)|(导航|路线|行程).{0,2}($END_VERBS)")
+    private val EXPLICIT_NO_NAV = Regex("不(要|用|想|需要)?导航了?|别再?导航")
+    private val NOUN_REFUSED = Regex("(导航|路线|行程)(不要|不用|不需要)了?[吧啊呀]?[。！!，,\\s]*$")
+    /** 「不要结束导航」: a negated end verb is no end request. 「要不结束导航吧」 is not a negation. */
+    private val NEGATED_END = Regex("(不要|不用|不需要|不想|别再?|(?<!要)不)($END_VERBS)")
+    private val CONTINUE_NAV = Regex("继续(导航|路线|行程)|(导航|路线|行程)(还在)?继续|停车")
+    /** 「关掉导航声音」: the guidance voice is not the guidance. */
+    private val NAV_SOUND = Regex("(导航|路线)(的)?(声音|音量|播报|语音|提示音?)")
+    private val TRADITIONAL = mapOf('導' to '导', '結' to '结', '關' to '关', '閉' to '闭', '終' to '终', '線' to '线', '繼' to '继', '續' to '续', '別' to '别', '須' to '须')
+
+    internal fun isExplicitEnd(text: String): Boolean {
+        val simplified = text.map { TRADITIONAL[it] ?: it }.joinToString("")
+        val said = NAV_SOUND.replace(CONTINUE_NAV.replace(NEGATED_END.replace(simplified, "#"), "#"), "#")
+        return EXPLICIT_NO_NAV.containsMatchIn(said) || NOUN_REFUSED.containsMatchIn(said) || NEAR_END.containsMatchIn(said)
+    }
 
     /** Words that do ask to go somewhere (else) - only these may replace an active route. */
     private val GO_INTENT = Regex("导航|带我去|带我到|开过去|开去|前往|就去|改去|换(个|成)?(目的地|地方)|去(最近|附近|那|这)")
@@ -143,14 +164,6 @@ object ToolCallGuards {
     }
 
     /**
-     * P61 (GitHub emulator navigation demo, 2026-10-16): mid-drive 「附近有加油站吗？」 was answered
-     * with `navigate_to`, which replaced the active route with a list of gas stations. P54 already
-     * decided the split: with no route a nearby question is a nearby search (navigate_to), with a
-     * route it is `query_live_info` along_route. While navigating, a nearby *question* with no word
-     * that asks to go there is refused here; 「带我去附近的加油站」 still goes through. A transcript
-     * older than the speech onset belongs to the previous turn and is not used.
-     */
-    /**
      * Whether a route is being driven: the map host's own state, or the legacy flag. The legacy flag
      * alone is not enough - a voice-session stop or restart clears it while the car keeps
      * navigating (nav demo run 38855381048: after Gemini reconnects 「附近有加油站吗」 replaced the
@@ -159,6 +172,14 @@ object ToolCallGuards {
     internal fun navigatingNow(): Boolean =
         NavigationState.navigating || com.novadrive.app.nav.NavigationHostGateway.current()?.isNavigating == true
 
+    /**
+     * P61 (GitHub emulator navigation demo, 2026-10-16): mid-drive 「附近有加油站吗？」 was answered
+     * with `navigate_to`, which replaced the active route with a list of gas stations. P54 already
+     * decided the split: with no route a nearby question is a nearby search (navigate_to), with a
+     * route it is `query_live_info` along_route. While navigating, a nearby *question* with no word
+     * that asks to go there is refused here; 「带我去附近的加油站」 still goes through. A transcript
+     * older than the speech onset belongs to the previous turn and is not used.
+     */
     fun nearbyQuestionWhileNavigating(
         call: DomainVoiceEvent.ToolCall,
         context: DriverContext?,
@@ -184,6 +205,28 @@ object ToolCallGuards {
         return decide("refused", NEARBY_QUESTION_WHILE_NAVIGATING)
     }
 
+    private val PRE_GUIDANCE = setOf(
+        com.novadrive.app.nav.NavigationPhase.RESOLVING_DESTINATION,
+        com.novadrive.app.nav.NavigationPhase.AWAITING_DESTINATION_SELECTION,
+        com.novadrive.app.nav.NavigationPhase.PLANNING_ROUTE,
+        com.novadrive.app.nav.NavigationPhase.CALCULATING_ROUTE,
+        com.novadrive.app.nav.NavigationPhase.AWAITING_ROUTE_SELECTION,
+        com.novadrive.app.nav.NavigationPhase.ROUTE_READY,
+    )
+
+    /**
+     * Whether guidance itself is running. The legacy flag is set by navigate before the search,
+     * so a pending search (any pre-guidance phase) is not guidance (decider 2026-10-16, SPEC-006 CVC-36).
+     */
+    internal fun guidanceRunning(phase: com.novadrive.app.nav.NavigationPhase?, navigating: Boolean): Boolean = when {
+        phase == com.novadrive.app.nav.NavigationPhase.NAVIGATING -> true
+        phase in PRE_GUIDANCE -> false
+        else -> navigating
+    }
+
+    internal fun guidanceRunningNow(): Boolean =
+        guidanceRunning(com.novadrive.app.nav.EmbeddedNavigation.currentOrNull()?.state()?.value, navigatingNow())
+
     /** Whether a destination or route list is on screen; closing it with 「算了」 is correct. */
     internal fun listOpenNow(): Boolean =
         com.novadrive.app.nav.EmbeddedNavigation.currentOrNull()?.state()?.value.let {
@@ -200,7 +243,7 @@ object ToolCallGuards {
     fun vagueExitWhileNavigating(
         call: DomainVoiceEvent.ToolCall,
         context: DriverContext?,
-        navigating: Boolean = navigatingNow(),
+        navigating: Boolean = guidanceRunningNow(),
         listOpen: Boolean = listOpenNow(),
     ): String? {
         if (call.name != "exit_navigation_mode" || !navigating || context == null) return null
@@ -213,7 +256,7 @@ object ToolCallGuards {
         if (listOpen) return decide("list_open", null)
         if (context.currentEpoch() <= 0 || context.currentEpoch() < context.capabilityEpoch()) return decide("stale_words", null)
         val said = TranscriptText.normalize(context.currentRequestText())
-        if (EXPLICIT_END.containsMatchIn(said)) return decide("explicit_end", null)
+        if (isExplicitEnd(said)) return decide("explicit_end", null)
         return decide("refused", VAGUE_EXIT_WHILE_NAVIGATING)
     }
 
