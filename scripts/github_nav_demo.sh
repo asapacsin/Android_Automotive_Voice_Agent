@@ -92,7 +92,7 @@ sleep 3
 # Screen: up to five back-to-back 180 s recordings (screenrecord's limit), stopped once the drive ends.
 rec_start="$(date +%s.%N)"
 (
-  for i in 1 2 3 4 5; do
+  for i in 1 2 3 4 5 6; do
     echo "$(date +%s.%N)" >"$ev/seg${i}_start.txt"
     # P64: half resolution, so the guest encoder takes less of the CPU the map renders on.
     adb shell screenrecord --time-limit 180 --size 576x1248 --bit-rate 3000000 "/sdcard/nav_seg${i}.mp4" || true
@@ -104,23 +104,24 @@ recorder=$!
 # Once navigation starts, speed the simulated car up so the whole drive fits in the video.
 (
   for _ in $(seq 1 120); do
-    if nova | grep -q "nav_started"; then sleep 8; tool nav_speed 120; break; fi
+    if nova | grep -q "nav_started"; then sleep 8; tool nav_speed 90; break; fi
     sleep 3
   done
 ) &
 
 S="tools/speech-harness/speech"
-# P63: 十字门 (20 km; a 60 km/h limit on the way, run 38847890114), driven at 120 so it arrives.
+# P63: 十字门 (20 km; a 60 km/h limit on the way). 90 km/h: at 120 the prompts came so often that a driver
+# line was cut (run 38853123513, P65); the bridge records 16 min so the drive arrives on video.
 clips="$S/nav_shizimen.pcm,$S/pick_first.pcm,$S/start_nav.pcm,$S/ctx_too_hot.pcm,$S/music_on.pcm,$S/eta_q.pcm,$S/gas_nearby.pcm,$S/music_off.pcm"
 # P65 (decider 2026-10-16): the driver waits (<= 10 s) for the uplink to open and for her to be quiet.
-python3 tools/speech-harness/host_audio_bridge.py --from-file "$clips" --lead 8 --gap 20 --duration 600 --wait-quiet \
+python3 tools/speech-harness/host_audio_bridge.py --from-file "$clips" --lead 8 --gap 20 --duration 960 --wait-quiet \
   --no-play --provider gemini --record "$ev/demo_audio" >"$ev/bridge_out.txt" 2>"$ev/bridge_err.txt" || true
 # Codes and numbers only from the bridge output (it also echoes app lines, which are never kept).
 note "driver waits: $(grep -oE 'wait_quiet line=[0-9]+ ms=[0-9]+ cap=[01]' "$ev/bridge_out.txt" | sed -E 's/wait_quiet //' | tr '\n' ' ')"
 rm -f "$ev/bridge_out.txt"
 note "nav demo: provider=$(nova | grep -oE 'session_provider choice=[a-z_]+' | tail -1) started=$(count 'nav_started') stopped=$(nova | grep -oE 'nav_stopped reached=[a-z]+ reason=[a-z_]+' | tail -1) guidance=$(count 'nav_guidance_play_start') tools=$(nova | grep -oE '^tool=[a-z_]+|tool=[a-z_]+ args' | grep -oE 'tool=[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ') errors=$(count 'state=ERROR|_PROTOCOL_ERROR')"
 # Let the drive reach the destination if it has not yet.
-for _ in $(seq 1 40); do nova | grep -q "nav_stopped" && break; sleep 5; done
+for _ in $(seq 1 24); do nova | grep -q "nav_stopped" && break; sleep 5; done
 # P62 relay: who spoke each guidance sentence, and how long until her audio (codes and ms only).
 note "relay: $(nova | grep -oE 'nav_guidance_relay [a-z_]+=[a-z0-9_]+' | sort -u | tr '\n' ' ')routes: $(nova | grep -oE 'guidance_route prompt=g[0-9]+ to=[a-z]+ reason=[A-Z_]+' | sed -E 's/prompt=g[0-9]+ //' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')"
 note "relay claims: assistant_waited_ms=$(nova | grep -oE 'guidance_claim prompt=g[0-9]+ side=assistant waited_ms=[0-9]+' | grep -oE '[0-9]+$' | tr '\n' ',') amap=$(count 'guidance_claim .* side=amap') fidelity: $(nova | grep -oE 'guidance_fidelity prompt=g[0-9]+ result=[A-Z_]+' | grep -oE 'result=[A-Z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')fallback_tts: $(nova | grep -oE 'nav_guidance_fallback_tts accepted=[a-z]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')echo_dropped=$(count 'guidance_echo_dropped')"
@@ -134,7 +135,7 @@ adb shell pkill -INT screenrecord || true
 wait "$recorder" || true
 sleep 2
 : >"$ev/segs.txt"
-for i in 1 2 3 4 5; do
+for i in 1 2 3 4 5 6; do
   if adb pull "/sdcard/nav_seg${i}.mp4" "$ev/seg${i}.mp4" >/dev/null 2>&1 && [ -s "$ev/seg${i}.mp4" ]; then echo "file 'seg${i}.mp4'" >>"$ev/segs.txt"; fi
 done
 (cd "$ev" && ffmpeg -v error -y -f concat -safe 0 -i segs.txt -c copy screen.mp4) || true
