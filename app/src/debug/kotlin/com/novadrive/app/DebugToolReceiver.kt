@@ -6,6 +6,7 @@ import android.content.Intent
 import android.util.Log
 import com.novadrive.app.nav.NavigationHostGateway
 import com.novadrive.app.nav.amap.EmulatorNaviSpeed
+import com.novadrive.app.nav.amap.RouteCameraSummary
 
 class DebugToolReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -29,6 +30,18 @@ class DebugToolReceiver : BroadcastReceiver() {
                     com.amap.api.navi.AMapNavi.getInstance(context.applicationContext)
                         .setEmulatorNaviSpeed(kmh)
                     "kmh=$kmh"
+                }
+                // Calculated routes: length, time, speed-camera limits (numbers only, no coordinates).
+                "nav_route_info" -> {
+                    val paths = com.amap.api.navi.AMapNavi.getInstance(context.applicationContext).naviPaths
+                    RouteCameraSummary.format(
+                        paths.orEmpty().map { (id, p) ->
+                            RouteCameraSummary.RouteInfo(
+                                id, p.allLength, p.allTime,
+                                p.allCameras.orEmpty().mapIndexed { i, c -> c.cameraSpeed to i },
+                            )
+                        },
+                    )
                 }
                 // The SDK speaks the current guidance now, through its own TTS path (onPlayStart/End):
                 // lets the harness start a prompt at a chosen moment in a driver utterance (SPEC-012 R0).
