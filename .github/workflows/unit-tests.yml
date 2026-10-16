@@ -1,0 +1,63 @@
+# Unit, architecture and secret-scan tests on every push and pull request (owner, 2026-10-16: the
+# 4190+ JVM tests ran only in agent sessions, so nothing on GitHub caught a regression).
+# Counts come from the JUnit XML, never the Gradle summary (AGENTS.md). Needs the same secrets as the
+# emulator workflows (the vendor zip holds files the tests check for).
+
+name: Unit tests
+
+on:
+  push:
+    branches:
+      - claude/**
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: unit-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build (shared script)
+        env:
+          AMAP_API_KEY: ${{ secrets.AMAP_API_KEY }}
+          NOVA_VENDOR_ZIP_URL: ${{ secrets.NOVA_VENDOR_ZIP_URL }}
+          NOVA_VENDOR_ZIP_AUTH: ${{ secrets.NOVA_VENDOR_ZIP_AUTH }}
+          NOVA_DEBUG_KEYSTORE_B64: ${{ secrets.NOVA_DEBUG_KEYSTORE_B64 }}
+        run: bash scripts/github_build_apk.sh
+
+      - name: Unit and architecture tests
+        run: |
+          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+          export ANDROID_HOME=/opt/android-sdk
+          ./gradlew test :behavior-test:test --continue || true
+
+      - name: Count results from the JUnit XML
+        run: |
+          python3 - <<'PY'
+          import glob, os, re, sys
+          root = os.path.expanduser("~/nova-drive-build")
+          t = f = e = 0
+          failed = []
+          for p in glob.glob(root + "/**/test-results/**/*.xml", recursive=True):
+              s = open(p, encoding="utf-8", errors="replace").read()
+              m = re.search(r'tests="(\d+)" skipped="\d+" failures="(\d+)" errors="(\d+)"', s)
+              if not m:
+                  continue
+              t += int(m[1]); f += int(m[2]); e += int(m[3])
+              if int(m[2]) or int(m[3]):
+                  failed += re.findall(r'<testcase name="([^"]+)" classname="([^"]+)"[^>]*>\s*<(?:failure|error)', s)
+          print("::notice title=unit tests::%d tests, %d failures, %d errors" % (t, f, e))
+          for name, cls in failed[:30]:
+              print("::error title=failed test::%s.%s" % (cls, name))
+          sys.exit(1 if (f or e or t == 0) else 0)
+          PY
