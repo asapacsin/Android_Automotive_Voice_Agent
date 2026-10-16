@@ -49,6 +49,47 @@ class ToolCallGuardVagueExitTest {
     }
 
     @Test
+    fun `structural explicit end requests end the drive`() {
+        listOf("把导航取消", "把导航取消了", "导航取消", "导航关闭", "把导航关闭", "不需要导航了", "不用导航", "不要导航",
+            "关导航", "终止导航", "取消路线", "停止路线", "把导航停了", "导航可以结束了", "别再导航了", "不想导航了",
+            "算了不用导航", "结束导航", "退出导航", "停止导航", "不要导航了", "導航結束",
+        ).forEach {
+            assertNull(ToolCallGuards.vagueExitWhileNavigating(exit, context(it), navigating = true, listOpen = false), it)
+        }
+    }
+
+    @Test
+    fun `continuing or a negated end is not an end request`() {
+        listOf("继续导航", "导航继续", "不要结束导航").forEach {
+            assertFalse(ToolCallGuards.isExplicitEnd(it), it)
+            assertEquals(
+                ToolCallGuards.VAGUE_EXIT_WHILE_NAVIGATING,
+                ToolCallGuards.vagueExitWhileNavigating(exit, context(it), navigating = true, listOpen = false),
+                it,
+            )
+        }
+    }
+
+    @Test
+    fun `a pending search before guidance may still be cancelled`() {
+        // Legacy flag set by navigate before the search; phase RESOLVING_DESTINATION (SPEC-006 CVC-36).
+        NavigationState.begin()
+        val pre = listOf(
+            com.novadrive.app.nav.NavigationPhase.RESOLVING_DESTINATION,
+            com.novadrive.app.nav.NavigationPhase.AWAITING_DESTINATION_SELECTION,
+            com.novadrive.app.nav.NavigationPhase.PLANNING_ROUTE,
+            com.novadrive.app.nav.NavigationPhase.CALCULATING_ROUTE,
+            com.novadrive.app.nav.NavigationPhase.AWAITING_ROUTE_SELECTION,
+            com.novadrive.app.nav.NavigationPhase.ROUTE_READY,
+        )
+        pre.forEach { assertFalse(ToolCallGuards.guidanceRunning(it, navigating = true), it.name) }
+        val navigating = ToolCallGuards.guidanceRunning(com.novadrive.app.nav.NavigationPhase.RESOLVING_DESTINATION, NavigationState.navigating)
+        assertNull(ToolCallGuards.vagueExitWhileNavigating(exit, context("算了，不去了"), navigating = navigating, listOpen = false))
+        assertTrue(ToolCallGuards.guidanceRunning(com.novadrive.app.nav.NavigationPhase.NAVIGATING, navigating = false))
+        assertTrue(ToolCallGuards.guidanceRunning(null, navigating = true))
+    }
+
+    @Test
     fun `with a list open never-mind closes the list`() {
         assertNull(ToolCallGuards.vagueExitWhileNavigating(exit, context("算了"), navigating = true, listOpen = true))
     }
@@ -74,7 +115,10 @@ class ToolCallGuardVagueExitTest {
         val output = JSONObject(dispatcher.dispatch(exit).output!!)
         assertFalse(output.getBoolean("ok"))
         assertEquals(ToolCallGuards.VAGUE_EXIT_WHILE_NAVIGATING, output.getString("error"))
-        assertTrue("导航还在继续" in output.getString("next"), output.toString())
+        val next = output.getString("next")
+        assertTrue("导航还在继续" in next, output.toString())
+        assertTrue("结束导航" in next, output.toString())
+        assertFalse("导航已结束" in next.replace("不要说导航已结束", ""), output.toString())
         assertEquals(0, executor.exits, "navigation must not be stopped")
         assertTrue(NavigationState.navigating)
     }
