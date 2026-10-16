@@ -343,3 +343,13 @@ overspeed alert reads the host too, so three notions of "navigating" exist (lega
 (2026-10-16). Fix direction: one owner for "a route is being guided" (the host/controller), the legacy
 flag derived from it and never reset by the voice session. Not fixed.
 
+
+## D-CANCEL-SEARCH — 「算了」 during a destination search cancels nothing (recorded 2026-10-16)
+
+Found by the independent review of the vague-exit fix (merge `7607122`). Since that fix the guard lets a
+vague exit through before guidance starts, as SPEC-006 CVC-36 intends. But
+`EmbeddedNavigationController.endByVoice` returns `NOTHING_ACTIVE` in RESOLVING_DESTINATION,
+PLANNING_ROUTE, CALCULATING_ROUTE and ROUTE_READY without cancelling the search or discarding its late
+result (EmbeddedNavigationController.kt ~312-330). Effect: the driver says 「算了，不去了」 while the
+search runs, and the result still arrives and shows candidates. Owner: EmbeddedNavigationController.
+Next step: an executor packet (cancel the in-flight flow, drop the late result, test each phase).
