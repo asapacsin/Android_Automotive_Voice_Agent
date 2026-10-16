@@ -390,7 +390,7 @@ class GeminiLiveClient(
                 resumptionHandle = null
                 DebugVoiceLog.log("gemini_resume_rejected handle_cleared=true")
             }
-            fail(pending, GeminiLiveProtocol.closeFailure(code, reason, resumeRejected), "socket_closed", closed = true)
+            fail(pending, GeminiLiveProtocol.closeFailure(code, reason, resumeRejected, afterSetup = pending.isCompleted), "socket_closed", closed = true)
         }
     }
 

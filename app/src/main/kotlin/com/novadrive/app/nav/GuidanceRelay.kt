@@ -204,7 +204,7 @@ class GuidanceRelay(
     private fun onBracketEstimate() = locked {
         if (!bracketOpen) return@locked
         closeBracket()
-        effects += { arbiter.bracket(false); afterOwnBracketClosed() }
+        effects += { try { arbiter.bracket(false) } finally { afterOwnBracketClosed() } }
     }
 
     /**
@@ -333,7 +333,7 @@ class GuidanceRelay(
         handedToAmap.indexOfLast { it.first == text }.takeIf { it >= 0 }?.let { handedToAmap.removeAt(it) } // no echo comes
         if (!bracketOpen || bracketTimer !== timer) return@locked
         closeBracket()
-        effects += { arbiter.bracket(false); afterOwnBracketClosed() }
+        effects += { try { arbiter.bracket(false) } finally { afterOwnBracketClosed() } }
     }
 
     private fun checkMainLooper() {

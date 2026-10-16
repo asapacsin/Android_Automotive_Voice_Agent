@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-16T03:54:39",
+  "generated_at": "2026-10-16T04:03:25",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "77e9c8d",
+    "commit": "128494c",
     "branch": "claude/10-15",
-    "subject": "Guidance relay: Amap's echo of a fallback is not new guidance; P63 re-review fixes [navdemo]",
+    "subject": "Guidance relay hears Amap only from the SDK listener; backlog drains when its own bracket closes [navdemo]",
     "working_tree_clean": false,
-    "uncommitted_files": 3
+    "uncommitted_files": 6
   },
   "tests": {
     "available": false,

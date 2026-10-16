@@ -2201,6 +2201,15 @@ arguments, unsupported operations and deadlines rather than the key (from memory
 issue threads; not re-verified from this container, which has no web search). Whether 1008 after a
 completed setup should stay AUTH_FAILED is open until the next run shows the class.
 
+**2026-10-16, decided (planner; the evidence settles it, no option left open):** run 38843628215
+logged `gemini_closed code=1008 reason_class=other` ~3 min into the drive, while asleep; the screen
+then showed 已断开 for the rest of the drive, because AUTH_FAILED is terminal. A session that
+completed setup had its key accepted, so a later 1008 whose reason is not about the key or quota is
+now `CONNECTION_CLOSED` (retryable, resumed with the handle, `ReconnectPolicy` caps at 5); during
+setup 1008 stays AUTH_FAILED. The fixed word list gained policy, cancelled, resumption, idle,
+billing, model and content so the next close says more than "other".
+`a1008AfterSetupIsADroppedSessionUnlessItIsAboutTheKeyOrQuota`.
+
 ## P62 — Turn-by-turn guidance is not spoken in her voice (demo used a male voice)
 
 **Status:** OPEN 2026-10-16. Owner test 10-16 ([docs/owner-tests/test-10-16.md](docs/owner-tests/test-10-16.md)):
