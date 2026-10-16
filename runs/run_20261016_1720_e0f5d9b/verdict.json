@@ -1,0 +1,139 @@
+{
+  "suite": "device",
+  "verdict": "FAIL",
+  "checks": [
+    {
+      "id": "device:app-up",
+      "required": true,
+      "status": "PASS",
+      "detail": "map up"
+    },
+    {
+      "id": "device:PLACE-UNSET-001",
+      "required": true,
+      "status": "PASS",
+      "detail": "asks_for_address=yes"
+    },
+    {
+      "id": "device:PLACE-SAVE-001",
+      "required": true,
+      "status": "PASS",
+      "detail": "saved_place_set_slot_home=1"
+    },
+    {
+      "id": "device:APPS-001",
+      "required": true,
+      "status": "PASS",
+      "detail": "allowed_ok=2/2 music_refused=yes"
+    },
+    {
+      "id": "device:NAV-ROUTE-001",
+      "required": true,
+      "status": "PASS",
+      "detail": "nav_calc_success"
+    },
+    {
+      "id": "device:NAV-START-001",
+      "required": true,
+      "status": "PASS",
+      "detail": "nav_started"
+    },
+    {
+      "id": "device:NAV-UI-007",
+      "required": true,
+      "status": "PASS",
+      "detail": "overview=result=overview=true  lock=result=lock=true "
+    },
+    {
+      "id": "device:NAV-E2E-ARRIVAL-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:NAV-CRASH-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:PROCDEATH-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:PERM-DENY-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:TRANSCRIPT-FADE-EMU-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:PIECE-P61",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:PIECE-P63",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:CALL-NOSIM-001",
+      "required": false,
+      "status": "PASS",
+      "detail": "result=\"ok\":false \"error\":\"CONTACT_NOT_FOUND\"  fatal=0"
+    },
+    {
+      "id": "device:P59",
+      "required": false,
+      "status": "SKIPPED",
+      "detail": "not executed"
+    }
+  ],
+  "problems": [
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:NAV-E2E-ARRIVAL-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:NAV-CRASH-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:PROCDEATH-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:PERM-DENY-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:TRANSCRIPT-FADE-EMU-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:PIECE-P61 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:PIECE-P63 has no result"
+    }
+  ]
+}

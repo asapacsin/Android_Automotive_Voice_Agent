@@ -1,0 +1,18 @@
+app: map up
+secret AMAP_WEB_KEY: set, amap_web_setup -> result=applied 
+PLACE-UNSET-001: navigate_to 回家 before a home is saved -> "ok":false "error":"HOME_NOT_SET"  asks_for_address=yes
+PLACE-SAVE-001: save_place home -> "ok":true  saved_place_set_slot_home=1
+CALL-NOSIM-001: place_call -> "ok":false "error":"CONTACT_NOT_FOUND"  dialer_activities_before=0 after=0 (the emulator has a simulated SIM)
+APPS-001: open_app settings -> result=Accepted 
+APPS-001: open_app maps -> result=Accepted 
+APPS-001: dispatch open_app app=music (outside the allow-list) -> "ok":false "error":"APP_NOT_ALLOWED" 
+NAV: route calculated
+NAV: navigation started (emulator 50 km/h)
+P58 view t10: naviMode=car_up bearing=357 tilt=26
+P58 view t20: naviMode=car_up bearing=360 tilt=29
+P58 view t35: naviMode=car_up bearing=5 tilt=30
+NAV-UI-007: overview -> result=overview=true 
+NAV-UI-007: lock -> result=lock=true 
+P58 view drive_0s: naviMode=car_up bearing=77 tilt=15
+P58 view drive_30s: naviMode=car_up bearing=40 tilt=21
+P58 view drive_60s: naviMode=car_up bearing=11 tilt=29
