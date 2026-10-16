@@ -2324,4 +2324,24 @@ guidance plays (P3, SPEC-012), and `ListeningLifecycle` sleeps after 30 s with n
 consecutive lines landing in guidance windows make 30 s of "silence". At 90 km/h (run 38847890114,
 23 prompts) climate, music and live info all worked. **Open question:** whether guidance time should
 pause the inactivity countdown (a lifecycle rule; SPEC-012/SPEC-018 own it), or the demo driver
-should wait for guidance to finish as a real driver mostly does. Not decided yet.
+should wait for guidance to finish as a real driver mostly does.
+
+**Measured from the run's own tracks (decider, 2026-10-16):** the climate answer ended at ~83 s (the
+countdown's last restart); the music line (95.75-96.6 s) fell entirely inside her guidance audio
+(95.35-98.25 s; guidance began 0.4 s before the driver, so SPEC-012 B6 R0 could not protect it); 聆听中
+→ 休眠中 at 112.9 s, exactly 30 s after the restart; ETA, gas and music-off then arrived while asleep.
+One gated line is enough (the next one comes ~35 s after the last restart). Her audio plus the tail
+covered 31% of the drive at 120 km/h, 23% at 90.
+
+**Decision (decider, 2026-10-16): B, test rig only.** `docs/LISTENING_LIFECYCLE.md` already says the
+countdown is not extended by navigation guidance (P17's device criterion), and SPEC-018 B6 says
+guidance never changes the listening state; pausing the countdown (A) would be a lifecycle contract
+change for the owner, would not save the gated line, and would only have moved the deadline 0.65 s
+past the next line. The demo driver now waits, at most 10 s, until the app's uplink is open and she is
+quiet (`host_audio_bridge.py --wait-quiet`, read from `speech_arbiter out=uplink decision=`), never
+repeats a line and never wakes her; the summary records the waits, listening transitions by reason,
+the uplink-closed count and `droppedGuidance`. **Limit to state:** a driver who starts speaking while a
+guidance prompt plays is not heard (P3 / ADR-014 §4, an accepted cost), and after 30 s with no heard
+request she sleeps (P17); the wake word resumes her. Research: no usable web results from this
+container (search engines blocked or irrelevant); from general knowledge, consumer follow-up windows
+count from the end of the assistant's own reply and are not stretched by other audio.

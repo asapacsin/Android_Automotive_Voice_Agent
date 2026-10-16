@@ -112,8 +112,12 @@ recorder=$!
 S="tools/speech-harness/speech"
 # P63: 十字门 (20 km; a 60 km/h limit on the way, run 38847890114), driven at 120 so it arrives.
 clips="$S/nav_shizimen.pcm,$S/pick_first.pcm,$S/start_nav.pcm,$S/ctx_too_hot.pcm,$S/music_on.pcm,$S/eta_q.pcm,$S/gas_nearby.pcm,$S/music_off.pcm"
-python3 tools/speech-harness/host_audio_bridge.py --from-file "$clips" --lead 8 --gap 20 --duration 600 \
-  --no-play --provider gemini --record "$ev/demo_audio" >/dev/null 2>"$ev/bridge_err.txt" || true
+# P65 (decider 2026-10-16): the driver waits (<= 10 s) for the uplink to open and for her to be quiet.
+python3 tools/speech-harness/host_audio_bridge.py --from-file "$clips" --lead 8 --gap 20 --duration 600 --wait-quiet \
+  --no-play --provider gemini --record "$ev/demo_audio" >"$ev/bridge_out.txt" 2>"$ev/bridge_err.txt" || true
+# Codes and numbers only from the bridge output (it also echoes app lines, which are never kept).
+note "driver waits: $(grep -oE 'wait_quiet line=[0-9]+ ms=[0-9]+ cap=[01]' "$ev/bridge_out.txt" | sed -E 's/wait_quiet //' | tr '\n' ' ')"
+rm -f "$ev/bridge_out.txt"
 note "nav demo: provider=$(nova | grep -oE 'session_provider choice=[a-z_]+' | tail -1) started=$(count 'nav_started') stopped=$(nova | grep -oE 'nav_stopped reached=[a-z]+ reason=[a-z_]+' | tail -1) guidance=$(count 'nav_guidance_play_start') tools=$(nova | grep -oE '^tool=[a-z_]+|tool=[a-z_]+ args' | grep -oE 'tool=[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ') errors=$(count 'state=ERROR|_PROTOCOL_ERROR')"
 # Let the drive reach the destination if it has not yet.
 for _ in $(seq 1 40); do nova | grep -q "nav_stopped" && break; sleep 5; done
@@ -122,6 +126,7 @@ note "relay: $(nova | grep -oE 'nav_guidance_relay [a-z_]+=[a-z0-9_]+' | sort -u
 note "relay claims: assistant_waited_ms=$(nova | grep -oE 'guidance_claim prompt=g[0-9]+ side=assistant waited_ms=[0-9]+' | grep -oE '[0-9]+$' | tr '\n' ',') amap=$(count 'guidance_claim .* side=amap') fidelity: $(nova | grep -oE 'guidance_fidelity prompt=g[0-9]+ result=[A-Z_]+' | grep -oE 'result=[A-Z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')fallback_tts: $(nova | grep -oE 'nav_guidance_fallback_tts accepted=[a-z]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')echo_dropped=$(count 'guidance_echo_dropped')"
 # P63: limits seen, time over, warnings spoken, Amap rings.
 note "overspeed: limits=$(nova | grep -oE 'nav_speed kmh=[0-9]+ limitKmh=[0-9]+' | grep -oE 'limitKmh=[0-9]+' | sort -u | tr '\n' ' ')over_lines=$(count 'nav_speed .* over=1') alerts=$(count 'nav_overspeed_alert') queued: $(nova | grep -oE 'nav_alert_(queued to=[a-z]+|dropped reason=[a-z_]+)' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')rings=$(count 'nav_play_ring')"
+note "listening: $(nova | grep -oE 'listening [A-Z_]+->[A-Z_]+ reason=[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')uplink_closed=$(count 'speech_arbiter out=uplink decision=CLOSED') droppedGuidance=$(nova | grep -oE 'droppedGuidance=[0-9]+' | tail -1)"
 note "gemini closes: $(nova | grep -oE 'gemini_closed code=[0-9]+ reason_class=[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')"
 sleep 8
 touch "$ev/stop_recording"

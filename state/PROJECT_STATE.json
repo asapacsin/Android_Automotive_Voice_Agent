@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-10-16T04:44:16",
+  "generated_at": "2026-10-16T04:55:31",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "876e20c",
+    "commit": "cf224f0",
     "branch": "claude/10-15",
-    "subject": "Nav demo run 38847890114: she speaks the guidance (23/23 MATCH, 754 ms median); demo drives to arrival [navdemo]",
+    "subject": "Nav demo run 38849988938: arrival on video with her voice on the guidance; P62 fixed on Gemini, P65 found",
     "working_tree_clean": false,
     "uncommitted_files": 3
   },

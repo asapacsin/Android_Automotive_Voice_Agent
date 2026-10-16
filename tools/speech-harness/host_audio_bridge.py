@@ -257,6 +257,7 @@ class Recorder:
         self.t0, self.driver = time.time(), bytes(stream)
 
     def add_reply(self, pcm, rate):
+        LAST_REPLY[0] = time.time()
         if self.t0 is None:
             return
         self.reply_rate = rate
@@ -323,8 +324,26 @@ class Recorder:
 RECORDER = Recorder(None)
 
 
-def feed_file(uplink, paths, stop, lead=1.0, gap=0.0):
-    """Clips in order, [gap] seconds of silence between them, then silence for ever."""
+# P65 (decider, 2026-10-16): --wait-quiet. The app's own uplink gate (SpeechAuthority's
+# `speech_arbiter out=uplink decision=OPEN|CLOSED`, tailed by follow_log) and her reply audio say
+# when the car is quiet; a scripted driver, like a real one, waits for that before the next line.
+UPLINK = {"closed": False}
+LAST_REPLY = [0.0]
+
+
+def quiet_now():
+    return not UPLINK["closed"] and time.time() - LAST_REPLY[0] > 0.6
+
+
+def feed_file(uplink, paths, stop, lead=1.0, gap=0.0, wait_quiet=False, cap=10.0):
+    """Clips in order, [gap] seconds of silence between them, then silence for ever.
+
+    [wait_quiet]: after each gap, wait (at most [cap] s, then speak anyway: `wait_cap`) until the
+    uplink is open and she is not speaking. Never repeats a line, never wakes her; the recorded
+    driver track is what was actually sent.
+    """
+    if wait_quiet:
+        return feed_file_waiting(uplink, paths, stop, lead, gap, cap)
     stream = bytearray(int(RATE * 2 * lead))
     for i, path in enumerate(paths):
         clip = open(path, "rb").read()
@@ -340,6 +359,49 @@ def feed_file(uplink, paths, stop, lead=1.0, gap=0.0):
         chunk = bytes(stream[pos:pos + CHUNK])
         pos += CHUNK
         return chunk + bytes(CHUNK - len(chunk))
+
+    paced(uplink, next_frame, stop)
+
+
+def feed_file_waiting(uplink, paths, stop, lead, gap, cap):
+    clips = [open(p, "rb").read() for p in paths]
+    for path, clip in zip(paths, clips):
+        print(f"[bridge] clip {path} ({len(clip) / RATE / 2:.2f} s)", flush=True)
+    plan = [("pcm", bytes(int(RATE * 2 * lead) // 2 * 2))]
+    for i, clip in enumerate(clips):
+        if i:
+            plan.append(("pcm", bytes(int(RATE * 2 * gap) // 2 * 2)))
+        plan += [("wait", i), ("pcm", clip)]
+    sent = bytearray()
+    RECORDER.started(b"")
+    RECORDER.driver = sent  # grows with what is sent, so the video's driver track stays in sync
+    state = {"step": 0, "pos": 0, "wait_from": None}
+
+    def next_frame():
+        while state["step"] < len(plan):
+            kind, item = plan[state["step"]]
+            if kind == "wait":
+                now = time.time()
+                if state["wait_from"] is None:
+                    state["wait_from"] = now
+                waited = now - state["wait_from"]
+                if quiet_now() or waited >= cap:
+                    print(f"[bridge] wait_quiet line={item + 1} ms={int(waited * 1000)} cap={int(waited >= cap)}", flush=True)
+                    state["step"] += 1
+                    state["wait_from"] = None
+                    continue
+                break  # still waiting: send silence
+            chunk = item[state["pos"]:state["pos"] + CHUNK]
+            if chunk:
+                state["pos"] += CHUNK
+                chunk = chunk + bytes(CHUNK - len(chunk))
+                sent.extend(chunk)
+                return chunk
+            state["step"] += 1
+            state["pos"] = 0
+        silence = bytes(CHUNK)
+        sent.extend(silence)
+        return silence
 
     paced(uplink, next_frame, stop)
 
@@ -469,6 +531,9 @@ def follow_log(stop):
         if stop.is_set():
             break
         text = line.split("NovaVoice", 1)[-1].lstrip(": ").rstrip()
+        gate = re.search(r"speech_arbiter out=uplink decision=(OPEN|CLOSED)", text)
+        if gate:
+            UPLINK["closed"] = gate.group(1) == "CLOSED"
         if text.startswith("state="):
             if text == last_state:
                 continue
@@ -489,6 +554,9 @@ def main():
     ap.add_argument("--gap", type=float, default=4.0, help="seconds of silence between --from-file clips")
     ap.add_argument("--lead", type=float, default=1.0, help="seconds of silence before the first --from-file clip")
     ap.add_argument("--duration", type=float)
+    ap.add_argument("--wait-quiet", action="store_true",
+                    help="with --from-file: before each line wait (<= --wait-cap s) until the uplink is open and she is quiet")
+    ap.add_argument("--wait-cap", type=float, default=10.0)
     ap.add_argument("--no-play", action="store_true")
     ap.add_argument("--no-start", action="store_true", help="leave the session asleep (wake-word test)")
     ap.add_argument("--record", help="save driver.wav / reply.wav / t0.txt here (with --from-file)")
@@ -518,7 +586,8 @@ def main():
     uplink = Uplink()
     if args.from_file:
         paths = args.from_file.split(",")
-        feeder = lambda: feed_file(uplink, paths, stop, lead=args.lead, gap=args.gap)
+        feeder = lambda: feed_file(uplink, paths, stop, lead=args.lead, gap=args.gap,
+                                   wait_quiet=args.wait_quiet, cap=min(args.wait_cap, 10.0))
     else:
         feeder = lambda: feed_mic(uplink, device, stop)
 
