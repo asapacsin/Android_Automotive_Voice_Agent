@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-16T03:41:27",
+  "generated_at": "2026-10-16T03:54:39",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "9d3dbf4",
+    "commit": "77e9c8d",
     "branch": "claude/10-15",
-    "subject": "P63 review fixes: the over-speed warning waits for Amap and gates the mic on the shipped path",
+    "subject": "Guidance relay: Amap's echo of a fallback is not new guidance; P63 re-review fixes [navdemo]",
     "working_tree_clean": false,
-    "uncommitted_files": 8
+    "uncommitted_files": 3
   },
   "tests": {
     "available": false,

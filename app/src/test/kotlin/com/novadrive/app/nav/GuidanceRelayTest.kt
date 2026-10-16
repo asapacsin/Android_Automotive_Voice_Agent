@@ -46,10 +46,11 @@ class GuidanceRelayTest {
             override fun amapSpeaking() = amapSpeaking
             override fun transientFocusLoss() = focusLoss
             override fun abandon(promptId: String) { abandoned += promptId }
+            // Mirrors production (round-3 review): the relay's own bracket reaches the arbiter's
+            // speaking state only; the relay hears Amap solely through the SDK listener (amapEnds()).
             override fun bracket(speaking: Boolean) {
                 brackets += speaking
                 amapSpeaking = speaking
-                if (!speaking) relay.onAmapSpeaking(false)
             }
         },
         enabled = { enabled },
@@ -550,5 +551,18 @@ class GuidanceRelayTest {
         relay.onGuidanceText("前方左转")
         advance(2_000)
         assertEquals(2, spoken.size)
+    }
+
+    @Test
+    fun relayDeadlineFallbackWithNoListenerClosesAtTheEstimateAndTheBacklogDrains() {
+        relay.onGuidanceText("前方左转")
+        assertEquals("g1", sent.last().first)
+        advance(1_200) // DEADLINE: Amap speaks it
+        assertEquals(listOf("前方左转"), spoken)
+        relay.onGuidanceText("再右转") // waits: Amap (the relay's bracket) is speaking
+        assertEquals(1, spoken.size)
+        advance(maxOf(GuidanceRelay.BRACKET_MIN_MS, GuidanceRelay.BRACKET_MS_PER_CHAR * 4))
+        assertEquals(listOf(true, false), brackets.take(2), "closed by the estimate, no listener callback")
+        assertEquals(listOf("前方左转", "再右转"), spoken, "the backlog sentence is spoken once the bracket closes")
     }
 }

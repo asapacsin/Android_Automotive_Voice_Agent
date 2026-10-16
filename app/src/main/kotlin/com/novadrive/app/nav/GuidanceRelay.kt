@@ -183,7 +183,8 @@ class GuidanceRelay(
     }
 
     /**
-     * Amap's voice started or ended (its listener); an end closes the relay's bracket. A start while
+     * Amap's player started or ended - the SDK's TTSPlayListener only, never the relay's own bracket
+     * (round-3 review). An end closes the relay's bracket. A start while
      * the bracket is open (P63 re-review: Amap's own voice is on behind the alert queue) cancels the
      * length estimate, so only the listener's end may close it; navigation end unsticks a lost end.
      */
@@ -203,7 +204,15 @@ class GuidanceRelay(
     private fun onBracketEstimate() = locked {
         if (!bracketOpen) return@locked
         closeBracket()
-        effects += { arbiter.bracket(false) }
+        effects += { arbiter.bracket(false); afterOwnBracketClosed() }
+    }
+
+    /**
+     * The arbiter has been told our bracket ended, so Amap reads as quiet now: drain the backlog and
+     * the queue. (Before the round-3 fix this ran only because the relay heard its own bracket's
+     * end back through `NavigationGuidanceVoice`.)
+     */
+    private fun afterOwnBracketClosed() = locked {
         speakAmapIfQuiet()
         pump()
     }
@@ -316,16 +325,15 @@ class GuidanceRelay(
             val accepted = runCatching { amap.speak(text) }.getOrDefault(false)
             // Refused (the speaker logs `nav_guidance_fallback_tts accepted=false`): nothing is
             // speaking, so close this bracket now rather than hold it for the estimate.
-            if (!accepted) onSpeakRefused(timer)
+            if (!accepted) onSpeakRefused(timer, text)
         }
     }
 
-    private fun onSpeakRefused(timer: Cancellable) = locked {
+    private fun onSpeakRefused(timer: Cancellable, text: String) = locked {
+        handedToAmap.indexOfLast { it.first == text }.takeIf { it >= 0 }?.let { handedToAmap.removeAt(it) } // no echo comes
         if (!bracketOpen || bracketTimer !== timer) return@locked
         closeBracket()
-        effects += { arbiter.bracket(false) }
-        speakAmapIfQuiet()
-        pump()
+        effects += { arbiter.bracket(false); afterOwnBracketClosed() }
     }
 
     private fun checkMainLooper() {

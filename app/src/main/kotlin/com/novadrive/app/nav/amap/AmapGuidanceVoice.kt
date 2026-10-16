@@ -39,7 +39,6 @@ internal object AmapGuidanceVoice : TTSPlayListener {
      * whether or not G-1b+ holds), cleared at navigation end. Not installed as the active relay.
      */
     @Volatile private var alertQueue: GuidanceRelay? = null
-    private val amapListeners = mutableListOf<(Boolean) -> Unit>()
 
     /** The alert sentence already handed to the host bridge, so its listener echo is not voiced twice. */
     @Volatile private var alertFedToHost: String? = null
@@ -47,6 +46,7 @@ internal object AmapGuidanceVoice : TTSPlayListener {
     override fun onPlayStart(text: String?) {
         DebugVoiceLog.log("nav_guidance_play_start chars=${text?.length ?: 0}")
         NavigationGuidanceVoice.onPlayStart()
+        tellRelays(true)
         if (text.isNullOrBlank() || relay != null) return
         if (text == alertFedToHost) { alertFedToHost = null; textReceiver?.invoke(text); return }
         feedText(text)
@@ -110,6 +110,18 @@ internal object AmapGuidanceVoice : TTSPlayListener {
     override fun onPlayEnd(text: String?) {
         DebugVoiceLog.log("nav_guidance_play_end")
         NavigationGuidanceVoice.onPlayEnd()
+        tellRelays(false)
+    }
+
+    /**
+     * The relays hear Amap's player only from the SDK's own TTSPlayListener - never from
+     * `NavigationGuidanceVoice`'s publish, which also carries the relay's own bracket: hearing its
+     * own bracket start cancelled its length estimate (P63 round-3 review).
+     */
+    private fun tellRelays(speaking: Boolean) {
+        val targets = listOfNotNull(relay, alertQueue)
+        if (targets.isEmpty()) return
+        mainHandler.post { targets.forEach { it.onAmapSpeaking(speaking) } }
     }
 
     /** SPEC-018 developer toggle, set by the host before [enable]; false = today's Amap voice. */
@@ -180,9 +192,6 @@ internal object AmapGuidanceVoice : TTSPlayListener {
             enabled = { assistantSpeaks },
             deadlineMs = debugDeadlineMs ?: GuidanceRelay.DEFAULT_DEADLINE_MS,
         )
-        val listener: (Boolean) -> Unit = { speaking -> handler.post { relay.onAmapSpeaking(speaking) } }
-        synchronized(amapListeners) { amapListeners += listener }
-        NavigationGuidanceVoice.addListener(listener)
         return relay
     }
 
@@ -237,10 +246,6 @@ internal object AmapGuidanceVoice : TTSPlayListener {
         alertQueue?.onNavigationEnded()
         alertQueue = null
         alertFedToHost = null
-        synchronized(amapListeners) {
-            amapListeners.forEach { NavigationGuidanceVoice.removeListener(it) }
-            amapListeners.clear()
-        }
         textReceiver = null
         // Guidance cut off mid-sentence may never report its end; do not leave the mic gated.
         if (NavigationGuidanceVoice.speaking) NavigationGuidanceVoice.onPlayEnd()
