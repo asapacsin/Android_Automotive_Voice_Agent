@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-16T04:18:45",
+  "generated_at": "2026-10-16T04:44:16",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "fe8933e",
+    "commit": "876e20c",
     "branch": "claude/10-15",
-    "subject": "Gemini: a 1008 after setup is a dropped session, resumed, not a terminal auth failure",
+    "subject": "Nav demo run 38847890114: she speaks the guidance (23/23 MATCH, 754 ms median); demo drives to arrival [navdemo]",
     "working_tree_clean": false,
-    "uncommitted_files": 4
+    "uncommitted_files": 3
   },
   "tests": {
     "available": false,
@@ -84,7 +84,12 @@
     {
       "id": "P64",
       "title": "The emulator demo runs at about 6.5 frames per second",
-      "status": "OPEN 2026-10-16. Owner test 10-16: \"the simulation is laggy\"."
+      "status": "IMPROVED, rest is a test-rig limit (2026-10-16): 6.5 → 10.6-10.7 fps. Originally OPEN 2026-10-16. Owner test 10-16: \"the"
+    },
+    {
+      "id": "P65",
+      "title": "With her voice on the guidance, a talkative route puts her to sleep between driver lines",
+      "status": "OPEN 2026-10-16. Found by nav demo run 38849988938 (relay on, 120 km/h): after the"
     }
   ],
   "tech_debt": [
@@ -155,7 +160,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "app-debug.apk: no debug APK has been built from this tree",
-    "actionable_count": 134,
+    "actionable_count": 135,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 29,
@@ -1027,6 +1032,13 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P64",
+        "blocked_by": null
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P65",
         "blocked_by": null
       },
       {

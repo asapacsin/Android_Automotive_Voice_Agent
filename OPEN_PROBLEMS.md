@@ -2251,6 +2251,18 @@ distances); first audio 626-1371 ms after the text (median 754 ms). 18 went to A
 them after a Gemini 1008 close (fixed in fe8933e: no longer terminal). Video:
 `demo-videos/navigation_demo_her_voice_guidance_2026-10-16.mp4`. The voice is Gemini's, not Ayano.
 
+**Run 3 (nav demo run 38849988938 at 876e20c, 120 km/h to arrival):** 47 prompts spoken by her, 43
+MATCH, 1 MISMATCH_DIRECTION and 1 MISMATCH_NUMBER (both re-spoken by Amap), then FIDELITY_STRIKES
+handed 2 more to Amap (strike limit 2 per navigation); 12 echoes dropped live
+(`guidance_echo_dropped`), 12 fallbacks in total. First audio 571-1610 ms (3 of 47 over 1200 ms).
+The drive reached 十字门站; a 1008 close (reason_class=session) no longer ended the session.
+Video: `demo-videos/navigation_demo_arrival_her_voice_2026-10-16.mp4`.
+
+**Status:** FIXED for the demo on Gemini, verified live (runs 2 and 3). Limit: the product session
+(Qwen) does not declare `verbatimPromptSpeech`, so the shipped app keeps Amap's voice for guidance
+until a Qwen relay is solved; GUIDANCE-EMU-001 still lacks G-1b audibility, G-1c, G-1d and a
+network-cut repeat.
+
 ## P63 — No spoken warning when the car is over the speed limit
 
 **Status:** OPEN 2026-10-16. Owner test 10-16: "overspeed no voice warning".
@@ -2282,7 +2294,7 @@ NAV-OVERSPEED-001, NOT_RUN.
 
 ## P64 — The emulator demo runs at about 6.5 frames per second
 
-**Status:** OPEN 2026-10-16. Owner test 10-16: "the simulation is laggy".
+**Status:** IMPROVED, rest is a test-rig limit (2026-10-16): 6.5 → 10.6-10.7 fps. Originally OPEN 2026-10-16. Owner test 10-16: "the simulation is laggy".
 
 **Measured:** `ffprobe` on the demo video: 2861 frames in 440 s, average 6.5 fps. The emulator has
 2 cores and 2 GB; the GitHub runner has no GPU, so the map is drawn by SwiftShader on the CPU; the
@@ -2301,3 +2313,15 @@ fps (4542 frames in 540 s). Better, still not smooth: the remaining cost is ARM 
 software rendering, which this rig cannot remove.
 
 **Run 2 (38847890114):** 10.7 fps (5780 frames in 540 s); the echo loop no longer burns CPU.
+
+## P65 — With her voice on the guidance, a talkative route puts her to sleep between driver lines
+
+**Status:** OPEN 2026-10-16. Found by nav demo run 38849988938 (relay on, 120 km/h): after the
+climate reply she went to 休眠中 and the music, ETA and gas lines got no answer (tools: climate only).
+**Measured:** 47 guidance prompts in ~10 min (about one every 12 s); the microphone is gated while
+guidance plays (P3, SPEC-012), and `ListeningLifecycle` sleeps after 30 s with no driver speech
+(`SLEEP_AFTER_INACTIVITY_MS`). The scripted driver speaks every 20 s regardless of guidance, so two
+consecutive lines landing in guidance windows make 30 s of "silence". At 90 km/h (run 38847890114,
+23 prompts) climate, music and live info all worked. **Open question:** whether guidance time should
+pause the inactivity countdown (a lifecycle rule; SPEC-012/SPEC-018 own it), or the demo driver
+should wait for guidance to finish as a real driver mostly does. Not decided yet.
