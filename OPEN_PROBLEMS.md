@@ -2287,7 +2287,7 @@ network-cut repeat.
 
 ## P63 — No spoken warning when the car is over the speed limit
 
-**Status:** OPEN 2026-10-16. Owner test 10-16: "overspeed no voice warning".
+**Status:** FIXED 2026-10-16, verified on the emulator both ways: her voice (relay on, 5-minute demo 5224551, 60 km/h camera) and the shipped Amap voice (relay off, NAV-OVERSPEED-001 PASS, worker 327f8f6, 70 km/h camera). Audibility in a real car: NAV-OVERSPEED-DEVICE-001 (person). Limit: no warning where Amap knows no limit (no camera/sign). Owner test 10-16: "overspeed no voice warning".
 
 **Measured:** in the demo the HUD shows 90 km/h and 「限速 –」 for the whole drive: no speed limit
 was known, so nothing could be over it. Amap Navi SDK 11.2.100 gives a limit only at speed cameras

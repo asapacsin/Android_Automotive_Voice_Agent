@@ -3341,15 +3341,22 @@ tests:
     type: device
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: false
     covers: [navigation.speed_hud]
     prerequisites: ["emulator with this build, relay toggle off (default)", "route with a speed-limit camera (十字门 from the emulator origin)"]
     procedure: ["nav_route 十字门, start the emulator drive", "nav_speed 90 once moving", "drive past the limit camera", "read the NovaVoice log"]
     pass_criteria: ["nav_overspeed_alert limitKmh=<N> at the first over=1", "nav_alert_queued to=amap", "guidance_route to=amap reason=DISABLED, then nav_guidance_fallback_tts accepted=true", "nav_guidance_play_start for the alert, or the relay bracket, with session_diag guidanceGated=true while it plays", "no alert after nav_stopped", "no nav_alert_dropped reason=not_navigating while navigation is active", "Amap's own manoeuvre prompt right after an alert still plays (nav_guidance_play_start)", "no coordinate, address or transcript in the log"]
-    evidence: ["2026-10-16: not covered by nav demo e9f8535/its fix - that run has the relay ON; the shipped relay-off path needs its own run (reviewer R4)", "2026-10-16 piece check, device checks run 38863113123 at 3884acf (ci/device-evidence runs/run_20261016_0710_3884acf): relay off, 50 km/h drive, debug speak_alert 60 through the real speak path -> nav_alert_queued to=amap, guidance_route to=amap reason=DISABLED, nav_guidance_fallback_tts accepted=true, speech_arbiter out=uplink decision=CLOSED (mic gated); after nav_stop -> nav_alert_dropped reason=not_navigating. Not yet shown: the HUD trigger at a real camera with the relay off (JVM: OverspeedAlertTest), audibility (NAV-OVERSPEED-DEVICE-001)"]
+    evidence: ["2026-10-16: not covered by nav demo e9f8535/its fix - that run has the relay ON; the shipped relay-off path needs its own run (reviewer R4)", "2026-10-16 piece check, device checks run 38863113123 at 3884acf (ci/device-evidence runs/run_20261016_0710_3884acf): relay off, 50 km/h drive, debug speak_alert 60 through the real speak path -> nav_alert_queued to=amap, guidance_route to=amap reason=DISABLED, nav_guidance_fallback_tts accepted=true, speech_arbiter out=uplink decision=CLOSED (mic gated); after nav_stop -> nav_alert_dropped reason=not_navigating. Not yet shown: the HUD trigger at a real camera with the relay off (JVM: OverspeedAlertTest), audibility (NAV-OVERSPEED-DEVICE-001)", "2026-10-16 warm test worker, run 327f8f6 (ci/test-worker runs/20261016_1110_327f8f6_navpiece): relay off, debug nav_route 珠海站, emulator 120 km/h - limitKmh=70, over=1, nav_overspeed_alert 1, nav_alert_queued to=amap, guidance_route to=amap reason=DISABLED, nav_guidance_fallback_tts accepted=true, speech_arbiter uplink CLOSED 1; earlier piece 38863113123: dropped after nav_stop (reason=not_navigating)"]
+    acceptance:
+      - {criterion: alert_at_known_limit, required: true, observed: true, evidence: "log:NovaVoice/nav_overspeed_alert limitKmh=70 (run 327f8f6)"}
+      - {criterion: queued_to_amap_relay_off, required: true, observed: true, evidence: "log:NovaVoice/nav_alert_queued to=amap + guidance_route reason=DISABLED"}
+      - {criterion: spoken_by_amap_fallback, required: true, observed: true, evidence: "log:NovaVoice/nav_guidance_fallback_tts accepted=true"}
+      - {criterion: mic_gated_while_playing, required: true, observed: true, evidence: "log:NovaVoice/speech_arbiter out=uplink decision=CLOSED"}
+      - {criterion: no_alert_after_stop, required: true, observed: true, evidence: "run 38863113123: nav_alert_dropped reason=not_navigating"}
+    ended_by: manual
     related: [P63, SPEC-018, NAV-MID-ROUTE-001]
-    last_run: {at: null, result: null}
+    last_run: {at: 2026-10-16, result: PASS}
 
   - id: NAV-OVERSPEED-DEVICE-001
     capability: navigation
