@@ -63,6 +63,15 @@ class DebugToolReceiver : BroadcastReceiver() {
                 // P62: SPEC-018's developer toggle 「助手播报导航（实验）」, read when the map host is
                 // created (restart the app after it): `on` | `on:<deadlineMs>` (measurement) | `off`.
                 "guidance_relay" -> guidanceRelay(context, arg)
+                // Piece check (owner rule 2026-10-16): the over-speed sentence through the real speak
+                // path (relay or alert queue), without waiting for a route that passes a camera.
+                "speak_alert" -> {
+                    val limit = arg.toIntOrNull() ?: 60
+                    com.novadrive.app.nav.amap.AmapGuidanceVoice.speakAlert(com.novadrive.app.nav.amap.OverspeedAlert.sentence(limit)) {
+                        NavigationHostGateway.current()?.isNavigating == true
+                    }
+                    "alert_posted limitKmh=$limit"
+                }
                 // Host audio bridge (PC mic in, PC speakers out): arg `on:<port>` | `off` | `status`.
                 "bridge" -> when {
                     arg.startsWith("on") -> {
@@ -438,6 +447,7 @@ class DebugToolReceiver : BroadcastReceiver() {
             tool == "preflight" -> "<query>" // a destination is close to an address: never in the log
             tool == "nav_desk_origin" || arg.startsWith("@") -> "<redacted>"
             tool == "dispatch" -> redactDispatchArg(arg)
+            tool == "turn" -> "<text>" // what the driver said: never in the log (AGENTS.md)
             else -> arg
         }
 
