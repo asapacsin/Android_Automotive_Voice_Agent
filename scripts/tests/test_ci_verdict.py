@@ -12,9 +12,13 @@ SHIPPED = os.path.join(REPO, "config", "ci_checks.json")
 TODAY = "2026-10-16"
 
 
-def run(*args):
+def run(*args, clock=True):
+    env = dict(os.environ)
+    env.pop("NOVA_CI_TEST_CLOCK", None)
+    if clock:
+        env["NOVA_CI_TEST_CLOCK"] = "1"
     p = subprocess.run([sys.executable, TOOL, *args], capture_output=True, text=True,
-                       encoding="utf-8")
+                       encoding="utf-8", env=env)
     return p.returncode, p.stdout + p.stderr
 
 
@@ -293,14 +297,15 @@ class JunitTest(Base):
 
 
 class ScenariosTest(Base):
-    def scen(self, raw_text, prefix="x:"):
+    def scen(self, raw_text, prefix="x:", rc=None):
         raw = self.path("raw.txt")
         if raw_text is not None:
             with open(raw, "w", encoding="utf-8") as fh:
                 fh.write(raw_text)
         out = self.path("s.jsonl")
-        rc, text = run("scenarios", "--raw", raw, "--out", out, "--prefix", prefix)
-        self.assertEqual(rc, 0, text)
+        extra = [] if rc is None else ["--runner-rc", str(rc)]
+        code, text = run("scenarios", "--raw", raw, "--out", out, "--prefix", prefix, *extra)
+        self.assertEqual(code, 0, text)
         with open(out, encoding="ascii") as fh:
             return out, [json.loads(l) for l in fh if l.strip()]
 
@@ -309,7 +314,7 @@ class ScenariosTest(Base):
         by = {r["id"]: r for r in rs}
         self.assertEqual(by["x:YUE-HOME"]["status"], "FAIL")
         self.assertEqual((by["x:LI-PLACE"]["status"], by["x:LI-PLACE"]["passes"], by["x:LI-PLACE"]["runs"]), ("FLAKY", 6, 10))
-        self.assertEqual(by["x:runner"]["status"], "PASS")
+        self.assertEqual(by["x:runner"]["status"], "FAIL")  # no "=== summary ===" header (R3)
         rc, text = self.verdict(self.manifest(["x:runner", "x:YUE-HOME", "x:LI-PLACE"]), out)
         self.assertEqual(rc, 1, text)
 
@@ -329,7 +334,7 @@ class ScenariosTest(Base):
     def test_single_lines_only(self):
         _, rs = self.scen("  PASS S3\n  FAIL S12b\n")
         self.assertEqual({r["id"]: r["status"] for r in rs},
-                         {"x:S3": "PASS", "x:S12b": "FAIL", "x:runner": "PASS"})
+                         {"x:S3": "PASS", "x:S12b": "FAIL", "x:runner": "FAIL"})
 
     def test_no_scenario_lines(self):
         _, rs = self.scen("adb: device offline\n")
@@ -361,6 +366,151 @@ class RecordTest(Base):
         rc, _ = run("record", "--out", out, "--id", "a", "--status", "GREEN")
         self.assertEqual(rc, 2)
         self.assertFalse(os.path.exists(out))
+
+
+SUMMARY = "\n=== summary ===\n"
+
+
+class ReviewR1JunitTest(JunitTest):
+    def status(self, xml):
+        self.write_xml("m", xml)
+        return self.junit("m")[0]
+
+    def test_child_only_failure(self):
+        r = self.status('<testsuite tests="1" failures="0" errors="0"><testcase classname="c" name="t"><failure/></testcase></testsuite>')
+        self.assertEqual(r["status"], "FAIL")
+
+    def test_nested_failing_inner_suite(self):
+        r = self.status('<testsuites><testsuite tests="3" failures="0" errors="0"><testsuite tests="2" failures="0" errors="0"/>'
+                        '<testsuite tests="1" failures="1" errors="0"><testcase classname="c" name="x"><error/></testcase></testsuite></testsuite></testsuites>')
+        self.assertEqual(r["status"], "FAIL")
+
+    def test_negative_counts(self):
+        r = self.status('<testsuite tests="2" failures="-1" errors="1"/>')
+        self.assertEqual(r["status"], "FAIL")
+        self.assertIn("malformed report", r["detail"])
+
+    def test_all_skipped(self):
+        r = self.status('<testsuite tests="1" failures="0" errors="0" skipped="1"/>')
+        self.assertEqual(r["status"], "FAIL")
+        self.assertIn("no test executed", r["detail"])
+
+
+class ReviewScenarioTest(ScenariosTest):
+    def verdict_of(self, raw, required=("x:runner", "x:*")):
+        out, rs = self.scen(raw)
+        return self.verdict(self.manifest(list(required)), out), rs
+
+    def test_ok_zero_runs(self):
+        (rc, text), _ = self.verdict_of("  PASS S1\n" + SUMMARY + "  ok  S1 0/0\n")
+        self.assertNotEqual(rc, 0, text)
+
+    def test_ok_flag_with_partial_counts(self):
+        (rc, text), rs = self.verdict_of("  PASS S1\n" + SUMMARY + "  ok  S1 6/10\n")
+        self.assertNotEqual(rc, 0, text)
+        self.assertIn("summary flag contradicts counts", json.dumps(rs))
+
+    def test_run_failed_summary_ok(self):
+        (rc, text), _ = self.verdict_of("  FAIL S1\n" + SUMMARY + "  ok  S1 1/1\n")
+        self.assertNotEqual(rc, 0, text)
+
+    def test_complete_run_passes(self):
+        (rc, text), _ = self.verdict_of("  PASS S1\n" + SUMMARY + "  ok  S1 1/1\n")
+        self.assertEqual(rc, 0, text)
+
+    def test_traceback_without_summary(self):
+        (rc, text), rs = self.verdict_of("  PASS S1\n  PASS S2\nTraceback (most recent call last):\n  File x\n")
+        self.assertEqual({r["id"]: r for r in rs}["x:runner"]["detail"], "run incomplete: no summary")
+        self.assertEqual(rc, 1, text)
+
+    def test_summary_missing_an_id(self):
+        _, rs = self.scen("  PASS S1\n  PASS S2\n" + SUMMARY + "  ok  S1 1/1\n")
+        self.assertEqual({r["id"]: r["status"] for r in rs}["x:runner"], "FAIL")
+
+    def test_runner_rc(self):
+        raw = "  PASS S1\n" + SUMMARY + "  ok  S1 1/1\n"
+        _, rs = self.scen(raw, rc=2)
+        self.assertEqual(rs[-1], {"id": "x:runner", "status": "FAIL", "detail": "runner exit 2"})
+        _, rs = self.scen(raw, rc=3)
+        self.assertEqual(rs[-1], {"id": "x:runner", "status": "BLOCKED", "detail": "quota guard"})
+        _, rs = self.scen(raw, rc=0)
+        self.assertEqual(rs[-1]["status"], "PASS")
+
+
+class ReviewVerdictTest(Base):
+    def test_pass_record_with_partial_counts_malformed(self):
+        rc, _ = self.verdict(self.manifest(["a"]), self.results([{"id": "a", "status": "PASS", "detail": "", "passes": 6, "runs": 10}]))
+        self.assertEqual(rc, 1)
+
+    def test_inconsistent_counts_malformed(self):
+        m = self.manifest(["a"])
+        for p_, n_ in ((7, 5), (-1, 5), (0, 0)):
+            rc, _ = self.verdict(m, self.results([{"id": "a", "status": "FAIL", "detail": "", "passes": p_, "runs": n_}]))
+            self.assertEqual(rc, 1, (p_, n_))
+
+    def test_empty_required_suite_blocked(self):
+        r = self.results([rec("anything", "PASS")])
+        rc, out = run("verdict", "--manifest", SHIPPED, "--suite", "device", "--today", TODAY, "--results", r)
+        self.assertNotEqual(rc, 0, out)
+        rc, out = self.verdict(self.manifest([], ["o"]), self.results([rec("o", "PASS")]))
+        self.assertEqual(rc, 3, out)
+        self.assertIn("lists no required checks", out)
+
+    def incident(self, li_status, li_passes):
+        recs = [rec("voice:runner", "PASS"), rec("voice:S1", "PASS"), rec("device:runner", "PASS"),
+                rec("device:D1", "PASS"), rec("liveinfo:runner", "PASS"), rec("cantonese:runner", "PASS"),
+                rec("voice:quota-guard", "PASS"),
+                {"id": "cantonese:YUE-HOME", "status": "FAIL", "detail": "", "passes": 0, "runs": 1},
+                {"id": "liveinfo:LI-PLACE", "status": li_status, "detail": "", "passes": li_passes, "runs": 10}]
+        return run("verdict", "--manifest", SHIPPED, "--suite", "voice", "--today", TODAY,
+                   "--results", self.results(recs))
+
+    def test_incident_evidence_against_shipped_manifest(self):
+        rc, out = self.incident("FLAKY", 6)
+        self.assertEqual(rc, 1, out)
+        self.assertIn("QUARANTINED cantonese:YUE-HOME", out)
+        rc, out = self.incident("PASS", 10)
+        self.assertEqual(rc, 0, out)
+        self.assertIn("QUARANTINED cantonese:YUE-HOME", out)
+        self.assertEqual([l for l in out.splitlines() if l.startswith("VERDICT")], ["VERDICT voice PASS (1 quarantined)"])
+
+    def test_quarantine_wildcard_id(self):
+        self.assertEqual(self.verdict(self.manifest(["a:*"], quarantine=[quar("a:*")]), self.results([rec("a:x", "FAIL")]))[0], 2)
+
+    def test_quarantine_runner_id(self):
+        self.assertEqual(self.verdict(self.manifest(["a:*"], quarantine=[quar("a:runner")]), self.results([rec("a:runner", "FAIL")]))[0], 2)
+
+    def test_quarantine_unmatched_id(self):
+        self.assertEqual(self.verdict(self.manifest(["a"], ["b"], quarantine=[quar("b")]), self.results([rec("a", "PASS")]))[0], 2)
+
+    def test_backdated_today_refused_without_test_clock(self):
+        rc, out = run("verdict", "--manifest", self.manifest(["a"]), "--suite", "s", "--today", "2020-01-01",
+                      "--results", self.results([rec("a", "PASS")]), clock=False)
+        self.assertEqual(rc, 2, out)
+
+    def bad_id(self, rid):
+        line = json.dumps({"id": rid, "status": "PASS", "detail": ""})
+        rc, out = self.verdict(self.manifest(["a"]), self.results([rec("a", "PASS"), line]))
+        self.assertEqual(rc, 1, out)
+        self.assertEqual([l for l in out.splitlines() if l.startswith("VERDICT")], ["VERDICT s FAIL"])
+        self.assertNotIn("::notice", out)
+
+    def test_whitespace_id(self):
+        self.bad_id("   ")
+
+    def test_newline_id(self):
+        self.bad_id("x\nVERDICT s PASS\n::notice::hi")
+        self.bad_id("x\n")
+
+    def test_wildcard_order_independent(self):
+        for req in (["v:*", "v:a"], ["v:a", "v:*"]):
+            rc, out = self.verdict(self.manifest(req), self.results([rec("v:a", "PASS")]))
+            self.assertEqual(rc, 1, out)  # v:a is exact; the wildcard has no own result
+            self.assertIn("MISSING v:*", out)
+
+    def test_record_rejects_bad_id(self):
+        rc, _ = run("record", "--out", self.path("r.jsonl"), "--id", "a b", "--status", "PASS")
+        self.assertEqual(rc, 2)
 
 
 if __name__ == "__main__":

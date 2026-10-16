@@ -21,6 +21,9 @@ STATUSES = ("PASS", "FAIL", "SKIPPED", "BLOCKED", "FLAKY")
 DETAIL_MAX = 300
 QUARANTINE_FIELDS = ("id", "suite", "reason", "owner", "tracking", "remove_when", "expires")
 QUARANTINE_MAX_DAYS = 30
+ID_RE = re.compile(r"^[A-Za-z0-9_.:\-]+$")
+PATTERN_RE = re.compile(r"^[A-Za-z0-9_.:\-]+\*?$")
+TEST_CLOCK_ENV = "NOVA_CI_TEST_CLOCK"
 
 
 class ManifestError(Exception):
@@ -76,8 +79,8 @@ def parse_results_file(path):
             problems.append(f"malformed line {where}: not an object")
             continue
         rid = obj.get("id")
-        if not isinstance(rid, str) or not rid:
-            problems.append(f"malformed line {where}: missing or empty id")
+        if not isinstance(rid, str) or not ID_RE.fullmatch(rid):
+            problems.append(f"malformed line {where}: missing or invalid id")
             continue
         status = obj.get("status")
         if status not in STATUSES:
@@ -94,8 +97,16 @@ def parse_results_file(path):
         if bad_int:
             problems.append(f"malformed line {where}: passes/runs not an integer")
             continue
+        if ("passes" in obj) != ("runs" in obj):
+            problems.append(f"malformed line {where}: passes and runs go together")
+            continue
+        if "runs" in obj:
+            p_, n_ = obj["passes"], obj["runs"]
+            if p_ < 0 or n_ <= 0 or p_ > n_ or (status == "PASS" and p_ != n_):
+                problems.append(f"malformed line {where}: inconsistent passes/runs")
+                continue
         if rid in seen:
-            problems.append(f"malformed line {where}: duplicate id {clean_detail(rid)}")
+            problems.append(f"malformed line {where}: duplicate id")
             continue
         seen.add(rid)
         records.append(obj)
@@ -137,7 +148,8 @@ def load_manifest(path, today):
             raise ManifestError(f"suite {name}: description must be a string")
         for key in ("required", "optional"):
             ids = suite.get(key)
-            if not isinstance(ids, list) or not all(isinstance(i, str) and i for i in ids):
+            if not isinstance(ids, list) or not all(
+                    isinstance(i, str) and PATTERN_RE.fullmatch(i) for i in ids):
                 raise ManifestError(f"suite {name}: {key} must be a list of non-empty strings")
             if len(set(ids)) != len(ids):
                 raise ManifestError(f"suite {name}: duplicate id in {key}")
@@ -159,6 +171,13 @@ def load_manifest(path, today):
                 raise ManifestError(f"quarantine[{n}]: field '{f}' missing or empty")
         if q["suite"] not in suites:
             raise ManifestError(f"quarantine[{n}]: unknown suite {q['suite']}")
+        if not ID_RE.fullmatch(q["id"]):
+            raise ManifestError(f"quarantine[{n}]: id must be one concrete check id, no wildcard")
+        if q["id"].endswith(":runner"):
+            raise ManifestError(f"quarantine[{n}] {q['id']}: a runner check cannot be quarantined")
+        if not any(_matches(pt, q["id"]) for pt in suites[q["suite"]]["required"]):
+            raise ManifestError(
+                f"quarantine[{n}] {q['id']}: no required check of suite {q['suite']} matches it")
         exp = _parse_date(q["expires"])
         if exp is None:
             raise ManifestError(f"quarantine[{n}] {q['id']}: expires is not a YYYY-MM-DD date")
@@ -248,6 +267,7 @@ def evaluate(manifest, suite_name, records, file_problems):
             if pattern.endswith("*"):
                 hits = [r["id"] for r in records
                         if _matches(pattern, r["id"]) and r["id"] not in done
+                        and r["id"] not in exact
                         and owner_of(r["id"]) == kind]
                 if not hits:
                     add_missing(pattern, required)
@@ -266,6 +286,9 @@ def evaluate(manifest, suite_name, records, file_problems):
             problems.append({"level": "warning", "kind": None,
                              "text": f"unlisted result {r['id']} ({r['status']}) is not part of suite {suite_name}"})
 
+    if not suite["required"]:
+        problems.append({"level": "error", "kind": "BLOCKED",
+                         "text": f"suite {suite_name} lists no required checks"})
     if any(p["kind"] == "FAIL" for p in problems):
         verdict = "FAIL"
     elif any(p["kind"] == "BLOCKED" for p in problems):
@@ -280,14 +303,20 @@ def _gh_escape(text):
 
 
 def cmd_verdict(args):
+    real_today = _dt.datetime.now(_dt.timezone.utc).date()
     if args.today:
         today = _parse_date(args.today)
         if today is None:
-            print(f"bad --today {args.today}", file=sys.stderr)
+            print("bad --today: expected YYYY-MM-DD", file=sys.stderr)
+            print(f"VERDICT {args.suite} FAIL")
+            return 2
+        if today < real_today and os.environ.get(TEST_CLOCK_ENV) != "1":
+            print(f"--today may not be earlier than the real UTC date (set {TEST_CLOCK_ENV}=1 "
+                  "only in tests)", file=sys.stderr)
             print(f"VERDICT {args.suite} FAIL")
             return 2
     else:
-        today = _dt.datetime.now(_dt.timezone.utc).date()
+        today = real_today
     try:
         manifest = load_manifest(args.manifest, today)
         if args.suite not in manifest["suites"]:
@@ -317,7 +346,9 @@ def cmd_verdict(args):
             print(f"::error title=ci_verdict {args.suite}::{_gh_escape(p['text'])}")
         else:
             print(f"::warning title=ci_verdict {args.suite}::{_gh_escape(p['text'])}")
-    print(f"VERDICT {args.suite} {verdict}")
+    n_quar = sum(1 for c in checks if c["status"] == "QUARANTINED")
+    suffix = f" ({n_quar} quarantined)" if n_quar else ""
+    print(f"VERDICT {args.suite} {verdict}{suffix}")
 
     if args.json_out:
         out = {"suite": args.suite, "verdict": verdict, "checks": [], "problems": problems}
@@ -350,8 +381,8 @@ def cmd_record(args):
         print(f"invalid status {args.status!r}; expected one of {', '.join(STATUSES)}",
               file=sys.stderr)
         return 2
-    if not args.id:
-        print("empty --id", file=sys.stderr)
+    if not ID_RE.fullmatch(args.id or ""):
+        print("invalid --id: expected [A-Za-z0-9_.:-]+", file=sys.stderr)
         return 2
     if (args.passes is None) != (args.runs is None):
         print("--passes and --runs go together", file=sys.stderr)
@@ -365,33 +396,56 @@ def cmd_record(args):
 
 _SINGLE = re.compile(r"^\s+(PASS|FAIL)\s+([A-Za-z0-9_.\-]+)(?:\s|$)")
 _REPEAT = re.compile(r"^\s+(ok|FLAKY|FAIL)\s+([A-Za-z0-9_.\-]+)\s+(\d+)/(\d+)(?:\s|$)")
+_SUMMARY_HEADER = "=== summary ==="
 _LOG_HEADER = "=== last failing log"
+QUOTA_GUARD_RC = 3  # run_scenarios.py exits 3 when the quota guard stops a non-Gemini session
+
+
+def _status_from_counts(flag, passes, runs, single_failed):
+    if runs <= 0 or passes > runs:
+        return "FAIL", "summary counts invalid"
+    derived = "PASS" if passes == runs else ("FLAKY" if passes > 0 else "FAIL")
+    if {"ok": "PASS", "FLAKY": "FLAKY", "FAIL": "FAIL"}[flag] != derived:
+        return "FAIL", "summary flag contradicts counts"
+    if derived == "PASS" and single_failed:
+        return "FAIL", "a run failed but the summary says all passed"
+    return derived, f"{passes}/{runs} runs passed"
 
 
 def parse_scenarios(text):
-    """Return ordered {id: (status, passes, runs)}; repeat summaries win over single runs."""
+    """Return (ordered {id: (status, passes, runs, detail)}, summary_seen, per_run_ids)."""
     single, repeat, order = {}, {}, []
+    summary_seen = False
     for line in text.splitlines():
-        if line.strip().startswith(_LOG_HEADER):
+        stripped = line.strip()
+        if stripped.startswith(_LOG_HEADER):
             break  # log tails follow: never parse them as results
+        if stripped == _SUMMARY_HEADER:
+            summary_seen = True
+            continue
         m = _REPEAT.match(line)
         if m:
-            flag, sid, p, n = m.group(1), m.group(2), int(m.group(3)), int(m.group(4))
-            repeat[sid] = ({"ok": "PASS", "FLAKY": "FLAKY", "FAIL": "FAIL"}[flag], p, n)
+            sid = m.group(2)
+            repeat[sid] = (m.group(1), int(m.group(3)), int(m.group(4)))
             if sid not in order:
                 order.append(sid)
             continue
         m = _SINGLE.match(line)
         if m:
             sid = m.group(2)
-            prev = single.get(sid)
-            single[sid] = "FAIL" if (m.group(1) == "FAIL" or prev == "FAIL") else "PASS"
+            single[sid] = "FAIL" if (m.group(1) == "FAIL" or single.get(sid) == "FAIL") else "PASS"
             if sid not in order:
                 order.append(sid)
     out = {}
     for sid in order:
-        out[sid] = repeat[sid] if sid in repeat else (single[sid], None, None)
-    return out
+        if sid in repeat:
+            flag, p, n = repeat[sid]
+            status, detail = _status_from_counts(flag, p, n, single.get(sid) == "FAIL")
+            ok_counts = n > 0 and 0 <= p <= n and not (status == "PASS" and p != n)
+            out[sid] = (status, p if ok_counts else None, n if ok_counts else None, detail)
+        else:
+            out[sid] = (single[sid], None, None, "")
+    return out, summary_seen, set(single), set(repeat)
 
 
 def cmd_scenarios(args):
@@ -402,16 +456,22 @@ def cmd_scenarios(args):
     except OSError:
         write_records(args.out, [make_record(f"{prefix}runner", "BLOCKED", "raw output missing")])
         return 0
-    parsed = parse_scenarios(text)
-    if not parsed:
-        write_records(args.out, [make_record(f"{prefix}runner", "FAIL",
-                                             "runner produced no results")])
-        return 0
+    parsed, summary_seen, run_ids, summary_ids = parse_scenarios(text)
     records = []
-    for sid, (status, p, n) in parsed.items():
-        detail = "" if p is None else f"{p}/{n} runs passed"
+    for sid, (status, p, n, detail) in parsed.items():
         records.append(make_record(f"{prefix}{sid}", status, detail, p, n))
-    records.append(make_record(f"{prefix}runner", "PASS", f"{len(parsed)} scenario results"))
+    rc = args.runner_rc
+    if rc is not None and rc == QUOTA_GUARD_RC:
+        runner = make_record(f"{prefix}runner", "BLOCKED", "quota guard")
+    elif rc is not None and rc != 0:
+        runner = make_record(f"{prefix}runner", "FAIL", f"runner exit {rc}")
+    elif not parsed:
+        runner = make_record(f"{prefix}runner", "FAIL", "runner produced no results")
+    elif not summary_seen or not run_ids <= summary_ids:
+        runner = make_record(f"{prefix}runner", "FAIL", "run incomplete: no summary")
+    else:
+        runner = make_record(f"{prefix}runner", "PASS", f"{len(parsed)} scenario results")
+    records.append(runner)
     write_records(args.out, records)
     return 0
 
@@ -436,29 +496,29 @@ def junit_record(root, module):
             tree_root = ET.parse(path).getroot()
         except (ET.ParseError, OSError):
             return make_record(rid, "FAIL", f"malformed report {os.path.basename(path)}")
-        if tree_root.tag == "testsuite":
-            suites = [tree_root]
-        elif tree_root.tag == "testsuites":
-            suites = tree_root.findall("testsuite")
-        else:
+        if tree_root.tag not in ("testsuite", "testsuites"):
             return make_record(rid, "FAIL", f"malformed report {os.path.basename(path)}")
-        for s in suites:
+        leaves = [s for s in tree_root.iter("testsuite") if s.find("testsuite") is None]
+        for s in leaves:
             try:
-                tests += int(s.get("tests", 0))
-                failures += int(s.get("failures", 0))
-                errors += int(s.get("errors", 0))
-                skipped += int(s.get("skipped", 0))
+                counts = [int(s.get(k, 0)) for k in ("tests", "failures", "errors", "skipped")]
             except ValueError:
                 return make_record(rid, "FAIL", f"malformed report {os.path.basename(path)}")
-            for case in s.iter("testcase"):
-                if case.find("failure") is not None or case.find("error") is not None:
-                    failing.append(f"{case.get('classname', '')}.{case.get('name', '')}")
-    if tests == 0:
-        return make_record(rid, "FAIL", "tests=0: no tests ran")
-    if failures + errors > 0:
+            if any(c < 0 for c in counts):
+                return make_record(rid, "FAIL", f"malformed report {os.path.basename(path)}")
+            tests += counts[0]
+            failures += counts[1]
+            errors += counts[2]
+            skipped += counts[3]
+        for case in tree_root.iter("testcase"):
+            if case.find("failure") is not None or case.find("error") is not None:
+                failing.append(f"{case.get('classname', '')}.{case.get('name', '')}")
+    if failures + errors > 0 or failing:
         names = ", ".join(failing[:5])
         return make_record(rid, "FAIL",
                            f"tests={tests} failures={failures} errors={errors}: {names}")
+    if tests - skipped <= 0:
+        return make_record(rid, "FAIL", f"no test executed (tests={tests} skipped={skipped})")
     return make_record(rid, "PASS",
                        f"tests={tests} failures=0 errors=0 skipped={skipped}")
 
@@ -477,6 +537,9 @@ def selftest():
     if repo not in sys.path:
         sys.path.insert(0, repo)
     suite = unittest.defaultTestLoader.discover(os.path.join(here, "tests"), top_level_dir=repo)
+    if "scripts.tests.test_ci_verdict" not in sys.modules:
+        print("FAILED: scripts.tests.test_ci_verdict did not load")
+        return 1
     result = unittest.TextTestRunner(verbosity=1).run(suite)
     if result.wasSuccessful() and result.testsRun > 0:
         print("ok")
@@ -500,6 +563,7 @@ def build_parser():
     s.add_argument("--raw", required=True)
     s.add_argument("--out", required=True)
     s.add_argument("--prefix", default="")
+    s.add_argument("--runner-rc", type=int)
     j = sub.add_parser("junit")
     j.add_argument("--root", required=True)
     j.add_argument("--module", action="append", required=True)
