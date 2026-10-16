@@ -1,0 +1,17 @@
+app: map up
+secret AMAP_WEB_KEY: set, amap_web_setup -> result=applied 
+secret GEMINI_API_KEY: set, gemini_setup -> result=applied 
+guidance relay: result=relay=on 
+piece mode: gas question while navigating, 130 s
+driver waits: line=1 ms=0 cap=0 reason=none line=2 ms=0 cap=0 reason=none line=3 ms=0 cap=0 reason=none line=4 ms=0 cap=0 reason=none (the scripted driver reads the app's guidance log; a real driver cannot)
+nav demo: provider=session_provider choice=gemini_live started=1 stopped=nav_stopped reached=true reason=replaced guidance=0 tools= 4 tool=choose_navigation_option  4 tool=navigate_to  2 tool=query_live_info  errors=0
+relay: nav_guidance_relay deadline_ms=3000 nav_guidance_relay installed=true routes:  2 guidance_route to=amap reason=RESPONSE_OPEN  1 guidance_route to=amap reason=SEND_FAILED  1 guidance_route to=assistant reason=SENT 
+relay claims: assistant_waited_ms=750, amap=0 fidelity:  1 result=MATCH fallback_tts:  3 nav_guidance_fallback_tts accepted=true echo_dropped=3
+overspeed: limits=limitKmh=0 over_lines=0 alerts=0 queued: rings=1
+listening:  1 listening ACTIVE->SLEEP reason=inactivity_timeout  1 listening DEEP_IDLE->ACTIVE reason=start uplink_closed=3 droppedGuidance=droppedGuidance=981
+P61 guard: guard_nearby_nav decision=refused cur=4 cap=4 refused=1 nav_stopped: nav_stopped reached=true reason=replaced tools_in_order: tool=navigate_to tool=choose_navigation_option tool=navigate_to tool=query_live_info 
+gemini closes: 
+nav demo: nav_demo.mp4 written (offset 0.0 s, guidance=yes)
+video: 576x1248 frames=1001 seconds=151 fps=6.6
+nav demo: done
+worker: piece=navpiece build_s=60 total_s=287
