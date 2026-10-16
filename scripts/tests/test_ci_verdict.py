@@ -446,8 +446,8 @@ class RunnerRcOneTest(ScenariosTest):
             self.assertEqual(by["cantonese:runner"]["status"], "PASS")
             self.assertEqual(by["cantonese:runner"]["detail"], "runner exit 1: scenario failures judged per scenario")
             self.assertEqual(by[f"cantonese:{sid}"]["status"], "FAIL")
-            other = self.results([rec("voice:runner", "PASS"), rec("voice:S1", "PASS"), rec("device:runner", "PASS"),
-                                  rec("device:D1", "PASS"), rec("liveinfo:runner", "PASS"), rec("liveinfo:L1", "PASS"),
+            other = self.results([rec("voice:runner", "PASS"), rec("voice:S1", "PASS"), rec("devrows:runner", "PASS"),
+                                  rec("devrows:D1", "PASS"), rec("liveinfo:runner", "PASS"), rec("liveinfo:L1", "PASS"),
                                   rec("voice:quota-guard", "PASS")], "other.jsonl")
             rc, text = run("verdict", "--manifest", SHIPPED, "--suite", "voice", "--today", TODAY,
                            "--results", out, "--results", other)
@@ -506,8 +506,8 @@ class ReviewVerdictTest(Base):
         self.assertIn("lists no required checks", out)
 
     def incident(self, li_status, li_passes):
-        recs = [rec("voice:runner", "PASS"), rec("voice:S1", "PASS"), rec("device:runner", "PASS"),
-                rec("device:D1", "PASS"), rec("liveinfo:runner", "PASS"), rec("cantonese:runner", "PASS"),
+        recs = [rec("voice:runner", "PASS"), rec("voice:S1", "PASS"), rec("devrows:runner", "PASS"),
+                rec("devrows:D1", "PASS"), rec("liveinfo:runner", "PASS"), rec("cantonese:runner", "PASS"),
                 rec("voice:quota-guard", "PASS"),
                 {"id": "cantonese:YUE-HOME", "status": "FAIL", "detail": "", "passes": 0, "runs": 1},
                 {"id": "liveinfo:LI-PLACE", "status": li_status, "detail": "", "passes": li_passes, "runs": 10}]

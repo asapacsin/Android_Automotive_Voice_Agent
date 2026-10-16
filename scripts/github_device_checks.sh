@@ -22,7 +22,12 @@ summary="$ev/summary.txt"
 R="$ev/results.jsonl"; : >"$R"
 res() { python3 scripts/ci_verdict.py record --out "$R" --id "$1" --status "$2" --detail "${3:-}"; }
 # PASS/FAIL from a condition (a shell expression, evaluated as one unit): pf ID DETAIL 'COND'
+# Conditions read only shell variables, so scripts/tests/test_ci_tier_b.py can replay them on real lines.
 pf() { if eval "$3"; then res "$1" PASS "$2"; else res "$1" FAIL "$2"; fi; }
+# App crashes only (another process's crash is not ours): the AndroidRuntime "Process:" line of a
+# FATAL EXCEPTION, a native "Fatal signal ... (com.novadrive...)", an ANR in the app.
+app_fatal() { adb logcat -d | grep -cE 'Process: com\.novadrive|Fatal signal .*\(com\.novadrive' || true; }
+app_anr() { adb logcat -d | grep -cE 'ANR in com\.novadrive' || true; }
 trap 'echo "::error title=device checks failed::line ${LINENO} exit $?"' ERR
 
 note() { echo "$1" | tee -a "$summary"; echo "::notice title=${1%%:*}::${1#*: }"; }
@@ -91,7 +96,6 @@ if app_up; then note "app: map up"; res device:app-up PASS "map up"
 else note "app: map did not come up"; res device:app-up FAIL "map did not come up"; fi
 shot app_start
 web_key=0; setup_key AMAP_WEB_KEY amap_web_setup amap_web_setup.txt && web_key=1 || true
-gemini_key=0; setup_key GEMINI_API_KEY gemini_setup gemini_setup.txt && gemini_key=1 || true
 tool dispatch "navigate_to:destination=回家"; sleep 4
 asks="$(nova | grep 'debug_tool tool=dispatch ' | tail -1 | grep -q '地址' && echo yes || echo no)"
 note "PLACE-UNSET-001: navigate_to 回家 before a home is saved -> $(result_of dispatch) asks_for_address=$asks"
@@ -100,12 +104,15 @@ tool dispatch "save_place:slot=home,address=珠海站"; sleep 8
 saved="$(count 'saved_place_set slot=HOME')"
 note "PLACE-SAVE-001: save_place home -> $(result_of dispatch) saved_place_set_slot_home=$saved"
 if [ "$web_key" = 0 ]; then res device:PLACE-SAVE-001 BLOCKED "secret AMAP_WEB_KEY not set"
-else pf device:PLACE-SAVE-001 "saved_place_set_slot_home=$saved" [ "$saved" -ge 1 ]; fi
+else pf device:PLACE-SAVE-001 "saved_place_set_slot_home=$saved" '[ "$saved" -ge 1 ]'; fi
 dialer_before="$(adb shell dumpsys activity activities | grep -c 'com.android.dialer' || true)"
 tool dispatch "place_call:contact=张三"; sleep 4
 dialer_after="$(adb shell dumpsys activity activities | grep -c 'com.android.dialer' || true)"
 call_res="$(result_of dispatch)"
-pf device:CALL-NOSIM-001 "result=$call_res" 'grep -q "\"ok\":true" <<<"$call_res"'
+# Optional (the emulator has a simulated SIM, no contacts): PASS is a graceful outcome - the call
+# went out ("ok":true) or the dispatch refused with a code (e.g. CONTACT_NOT_FOUND) - and no crash.
+call_fatal="$(app_fatal)"
+pf device:CALL-NOSIM-001 "result=$call_res fatal=$call_fatal" '{ grep -q "\"ok\":true" <<<"$call_res" || grep -qE "\"error\":\"[A-Z_]+\"" <<<"$call_res"; } && [ "$call_fatal" = 0 ]'
 note "CALL-NOSIM-001: place_call -> $call_res dialer_activities_before=$dialer_before after=$dialer_after (the emulator has a simulated SIM)"
 adb shell am start -W -n com.novadrive.app/.MainActivity >/dev/null
 apps_ok=0
@@ -113,14 +120,14 @@ for app in settings maps; do
   tool open_app "$app"; sleep 3
   app_res="$(result_of open_app)"
   note "APPS-001: open_app $app -> $app_res"
-  grep -q '"ok":true' <<<"$app_res" && apps_ok=$((apps_ok + 1))
+  grep -q 'result=Accepted' <<<"$app_res" && apps_ok=$((apps_ok + 1))
   adb shell am start -W -n com.novadrive.app/.MainActivity >/dev/null
 done
 tool dispatch "open_app:app=music"; sleep 3
 music_res="$(result_of dispatch)"
 note "APPS-001: dispatch open_app app=music (outside the allow-list) -> $music_res"
 music_refused=no
-grep -qE '"ok":false|"error":|Rejected' <<<"$music_res" && music_refused=yes
+grep -qE '"ok":false|"error":"[A-Z_]+"|Rejected\(' <<<"$music_res" && music_refused=yes
 pf device:APPS-001 "allowed_ok=$apps_ok/2 music_refused=$music_refused" '[ "$apps_ok" = 2 ] && [ "$music_refused" = yes ]'
 adb shell am start -W -n com.novadrive.app/.MainActivity >/dev/null
 
@@ -150,7 +157,7 @@ sleep 5
 tool nav_lock lock; sleep 3; shot nav_lock_restored
 lock_res="$(result_of nav_lock)"
 note "NAV-UI-007: lock -> $lock_res"
-pf device:NAV-UI-007 "overview=$ov_res lock=$lock_res" 'grep -q "\"ok\":true" <<<"$ov_res" && grep -q "\"ok\":true" <<<"$lock_res"'
+pf device:NAV-UI-007 "overview=$ov_res lock=$lock_res" 'grep -q "result=overview=true" <<<"$ov_res" && grep -q "result=lock=true" <<<"$lock_res"'
 i=0
 while [ "$i" -lt 60 ]; do
   if nova | grep -q "nav_stopped"; then break; fi
@@ -164,10 +171,12 @@ ffmpeg -v error -y -i "$ev/checks_drive_phone.mp4" -c copy -movflags +faststart 
 shot nav_end
 note "NAV-MID-ROUTE-001 / NAV-UI-00x: maneuver=$(count 'nav_maneuver ') lane_shown=$(count 'nav_lane_info shown=true') junction_shown=$(count 'nav_junction shown=true') traffic_update=$(count 'nav_traffic_status_update') presentation_driving=$(count 'nav_presentation mode=driving') lights=$(count 'nav_remain_lights') cameras=$(count 'nav_camera_ahead') speed_over=$(count 'nav_speed .*over=1') ring=$(count 'nav_play_ring') guidance_play=$(count 'nav_guidance_play_start')"
 stopped="$(nova | grep -oE 'nav_stopped reached=(true|false) reason=[a-z_]+' | tail -1)"
-note "NAV-E2E-ARRIVAL-001: proximity_arrival=$(count 'nav_proximity_arrival') stopped=$stopped"
-pf device:NAV-E2E-ARRIVAL-001 "${stopped:-no nav_stopped}" 'grep -q "nav_stopped reached=true" <<<"$stopped"'
-fatal="$(adb logcat -d | grep -cE 'FATAL EXCEPTION|Fatal signal' || true)"
-anr="$(adb logcat -d | grep -cE 'ANR in com.novadrive' || true)"
+prox="$(count 'nav_proximity_arrival')"
+note "NAV-E2E-ARRIVAL-001: proximity_arrival=$prox stopped=$stopped"
+# reached=true is also logged on a manual stop: arrival needs emulator_end or a proximity arrival.
+pf device:NAV-E2E-ARRIVAL-001 "proximity_arrival=$prox ${stopped:-no nav_stopped}" 'grep -q "nav_stopped reached=true" <<<"$stopped" && { grep -q "reason=emulator_end" <<<"$stopped" || [ "$prox" -ge 1 ]; }'
+fatal="$(app_fatal)"
+anr="$(app_anr)"
 note "NAV crash check: fatal=$fatal anr=$anr"
 pf device:NAV-CRASH-001 "fatal=$fatal anr=$anr" '[ "$fatal" = 0 ] && [ "$anr" = 0 ]'
 
@@ -204,10 +213,11 @@ adb shell input keyevent KEYCODE_HOME; sleep 2
 adb shell am kill com.novadrive.app || true
 sleep 2
 note "PROCDEATH-001: after am kill pid=$(adb shell pidof com.novadrive.app || echo none)"
+mark  # the relaunch must log a fresh map line
 pd_up=no
 if app_up; then pd_up=yes; note "PROCDEATH-001: relaunched, map up"; else note "PROCDEATH-001: relaunch did not reach the map"; fi
 sleep 5; shot procdeath_relaunched
-pd_fatal="$(adb logcat -d | grep -cE 'FATAL EXCEPTION.*|Process: com.novadrive' || true)"
+pd_fatal="$(app_fatal)"
 pf device:PROCDEATH-001 "map_up=$pd_up fatal=$pd_fatal" '[ "$pd_up" = yes ] && [ "$pd_fatal" = 0 ]'
 note "PROCDEATH-001: fatal=$pd_fatal wake=$(nova | grep -oE 'wake_[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ';') listening_claims=$(count 'state=LISTENING')"
 
@@ -219,7 +229,7 @@ app_up || true
 tool voice start; sleep 6
 shot perm_denied
 mic_missing="$(count 'MicPermissionMissing|MIC_PERMISSION')"; listening="$(count 'state=LISTENING')"
-pm_fatal="$(adb logcat -d | grep -c 'FATAL EXCEPTION' || true)"
+pm_fatal="$(app_fatal)"
 note "PERM-DENY-001: voice start -> $(result_of voice) mic_missing=$mic_missing wake_permission_failure=$(count 'wake_permission_failure') listening=$listening fatal=$pm_fatal"
 pf device:PERM-DENY-001 "mic_missing=$mic_missing listening=$listening fatal=$pm_fatal" '[ "$mic_missing" -ge 1 ] && [ "$listening" = 0 ] && [ "$pm_fatal" = 0 ]'
 adb shell pm grant com.novadrive.app android.permission.RECORD_AUDIO || true
@@ -245,7 +255,7 @@ app_up || true
 tool nav_route "$dest"
 if wait_for "nav_calc_success" 90; then
   tool nav_start emulator:50
-  wait_for "nav_started" 30 || true
+  p61_nav=no; wait_for "nav_started" 30 && p61_nav=yes
   sleep 10
   # Piece P61-after-restart: a voice-session stop clears the legacy flag (VoiceSessionController.stop);
   # the nearby question must still be refused while the map navigates.
@@ -254,17 +264,18 @@ if wait_for "nav_calc_success" 90; then
   tool dispatch "navigate_to:destination=附近的加油站"; sleep 6
   p61_res="$(result_of dispatch)"; replaced="$(count 'nav_stopped .*reason=replaced')"
   note "PIECE P61 after session stop: dispatch -> $p61_res route_replaced=$replaced nav_stopped_lines=$(count 'nav_stopped')"
-  p61_ok=no; [ "$replaced" = 0 ] && ! grep -q '"ok":true' <<<"$p61_res" && p61_ok=yes
-  pf device:PIECE-P61 "route_replaced=$replaced result=$p61_res" '[ "$p61_ok" = yes ]'
+  if [ "$p61_nav" != yes ]; then res device:PIECE-P61 FAIL "not navigating"
+  else pf device:PIECE-P61 "route_replaced=$replaced result=$p61_res" '[ "$replaced" = 0 ] && grep -qE "\"error\":\"NEARBY_QUESTION_WHILE_NAVIGATING\"|\"ok\":false" <<<"$p61_res"'; fi
   # Piece P63 speak path (relay off): the alert queue waits for Amap, plays it, gates the mic.
   tool speak_alert 60; sleep 8
   p63_amap="$(count 'nav_alert_queued to=amap')"
   note "PIECE P63 speak path: $(result_of speak_alert) queued: $(nova | grep -oE 'nav_alert_(queued to=[a-z]+|dropped reason=[a-z_]+)' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')routes: $(nova | grep -oE 'guidance_route prompt=g[0-9]+ to=[a-z]+ reason=[A-Z_]+' | sed -E 's/prompt=g[0-9]+ //' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')fallback_tts: $(nova | grep -oE 'nav_guidance_fallback_tts accepted=[a-z]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')brackets: $(nova | grep -oE 'speech_arbiter out=uplink decision=[A-Z]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')"
   tool nav_stop x; sleep 3
+  mark  # only the alert after the stop counts
   tool speak_alert 60; sleep 3
   p63_drop="$(nova | grep -oE 'nav_alert_dropped reason=[a-z_]+' | tail -1)"
   note "PIECE P63 after stop: $p63_drop"
-  pf device:PIECE-P63 "queued_to_amap=$p63_amap after_stop=${p63_drop:-none}" '[ "$p63_amap" -ge 1 ] && [ -n "$p63_drop" ]'
+  pf device:PIECE-P63 "queued_to_amap=$p63_amap after_stop=${p63_drop:-none}" '[ "$p63_amap" -ge 1 ] && [ "$p63_drop" = "nav_alert_dropped reason=not_navigating" ]'
 else
   note "PIECE checks: route failed, not run"
   res device:PIECE-P61 FAIL "route failed"

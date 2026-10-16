@@ -30,8 +30,9 @@ on:
       - ".github/workflows/device-checks.yml"
       - "config/ci_checks.json"
 
+# Only pull requests share a group (a new push cancels the older PR run); other runs never cancel.
 concurrency:
-  group: device-checks-${{ github.ref }}
+  group: device-checks-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: true
 
 permissions:
@@ -40,7 +41,8 @@ permissions:
 jobs:
   drive:
     # A push runs it only when the commit message asks: [checks]; pull requests and manual runs always.
-    if: ${{ github.event_name != 'push' || contains(github.event.head_commit.message, '[checks]') }}
+    # Fork pull requests are skipped: no secrets and a read-only token there.
+    if: ${{ (github.event_name != 'push' || contains(github.event.head_commit.message, '[checks]')) && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -64,18 +66,40 @@ jobs:
           NOVA_VENDOR_ZIP_URL: ${{ secrets.NOVA_VENDOR_ZIP_URL }}
           NOVA_VENDOR_ZIP_AUTH: ${{ secrets.NOVA_VENDOR_ZIP_AUTH }}
           NOVA_DEBUG_KEYSTORE_B64: ${{ secrets.NOVA_DEBUG_KEYSTORE_B64 }}
+        # A missing secret is BLOCKED, not FAIL: every required id of the suite is recorded BLOCKED
+        # (a wildcard through its <prefix>runner), the step exits 0, the later steps are skipped and
+        # the Verdict step reports BLOCKED (exit 3).
+        id: secrets
         run: |
-          missing=0
+          missing=""
           for name in AMAP_API_KEY NOVA_VENDOR_ZIP_URL NOVA_DEBUG_KEYSTORE_B64; do
             eval "value=\${$name}"
             if [ -z "$value" ]; then
               echo "missing $name"
-              missing=1
+              missing="$missing $name"
             fi
           done
-          test "$missing" = 0
+          if [ -z "$missing" ]; then echo "ok=true" >>"$GITHUB_OUTPUT"; exit 0; fi
+          echo "ok=false" >>"$GITHUB_OUTPUT"
+          first="${missing# }"; first="${first%% *}"
+          python3 - "device" "secret $first not set" <<'PY'
+          import json, subprocess, sys
+          suite, detail = sys.argv[1], sys.argv[2]
+          required = json.load(open("config/ci_checks.json"))["suites"][suite]["required"]
+          ids = []
+          for rid in required:
+              if rid.endswith("*"):
+                  rid = rid[:rid.rfind(":") + 1] + "runner"
+              if rid not in ids:
+                  ids.append(rid)
+          for rid in ids:
+              subprocess.run([sys.executable, "scripts/ci_verdict.py", "record", "--out",
+                              "evidence/results.jsonl", "--id", rid, "--status", "BLOCKED",
+                              "--detail", detail], check=True)
+          PY
 
       - name: Build the debug APK
+        if: steps.secrets.outputs.ok == 'true'
         env:
           AMAP_API_KEY: ${{ secrets.AMAP_API_KEY }}
           NOVA_VENDOR_ZIP_URL: ${{ secrets.NOVA_VENDOR_ZIP_URL }}
@@ -84,10 +108,10 @@ jobs:
         run: bash scripts/github_build_apk.sh
 
       - name: Boot the emulator and run the device checks
+        if: steps.secrets.outputs.ok == 'true'
         uses: reactivecircus/android-emulator-runner@v2
         env:
           AMAP_WEB_KEY: ${{ secrets.AMAP_WEB_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         with:
           api-level: 34
           target: google_apis

@@ -72,6 +72,8 @@ while [ "$(date +%s)" -lt "$deadline" ]; do
       --results evidence/results.jsonl --json-out evidence/verdict.json >/dev/null 2>&1
   fi
   verdict="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["verdict"])' evidence/verdict.json 2>/dev/null || echo BLOCKED)"
+  # A piece that exited non-zero is never published as PASS (timeout, crash, script error).
+  if [ "$piece_rc" != 0 ] && [ "$verdict" = PASS ]; then verdict="FAIL (piece exit $piece_rc)"; fi
   echo "worker: piece=$piece rc=$piece_rc build_s=$build_s total_s=$(( $(date +%s) - t0 ))" >>evidence/summary.txt
   echo "verdict: $verdict" >>evidence/summary.txt
   publish "$name"

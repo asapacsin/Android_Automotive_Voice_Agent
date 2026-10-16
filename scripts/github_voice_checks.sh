@@ -20,10 +20,11 @@ summary="$ev/summary.txt"
 R="$ev/results.jsonl"; : >"$R"
 res() { python3 scripts/ci_verdict.py record --out "$R" --id "$1" --status "$2" --detail "${3:-}"; }
 # Raw runner output holds transcripts: it never survives the script, even on an error exit.
-trap 'rm -f "$ev"/*_raw.txt' EXIT
+trap 'rm -f "$ev"/*_raw.txt "$ev"/bridge_err.txt' EXIT
+trap 'exit 130' INT TERM  # a signal exits through the EXIT trap above
 # Parse one runner's raw output into results.jsonl (one record per scenario plus <prefix>runner).
-scen() { # raw-file prefix
-  python3 scripts/ci_verdict.py scenarios --raw "$1" --out "$ev/scen_part.jsonl" --prefix "$2"
+scen() { # raw-file prefix runner-rc
+  python3 scripts/ci_verdict.py scenarios --raw "$1" --out "$ev/scen_part.jsonl" --prefix "$2" --runner-rc "$3"
   cat "$ev/scen_part.jsonl" >>"$R"; rm -f "$ev/scen_part.jsonl"
 }
 qg_fail=""  # quota guard: reasons it failed (codes only)
@@ -124,7 +125,7 @@ rc=$?
 set -e
 wait "$rec1" || true  # best-effort: screen recording
 note "voice: runner rc=$rc"
-scen "$ev/scenarios_raw.txt" voice:
+scen "$ev/scenarios_raw.txt" voice: "$rc"
 grep -E '^\s+(PASS|FAIL)\s+S[0-9]+b?\b|^\s+(ok|FLAKY|FAIL)\s+S[0-9]+' "$ev/scenarios_raw.txt" | sed -E 's/^\s+//' | awk '{print $1, $2}' >"$ev/scenarios.txt" || true
 grep -E '^\s+expected /|^\s+forbidden /' "$ev/scenarios_raw.txt" | sed -E "s/ matched .*/ matched (text omitted)/" >"$ev/scenario_failures.txt" || true
 # Text-free skeleton of each failing scenario's log tail: event names and ASCII key=value codes
@@ -170,7 +171,7 @@ suite() { # name, result prefix, then runner args
   rc=$?
   set -e
   note "suite $name: runner rc=$rc"
-  scen "$ev/${name}_raw.txt" "$prefix"
+  scen "$ev/${name}_raw.txt" "$prefix" "$rc"
   grep -E '^\s+(ok|FLAKY|FAIL)\s+[A-Z][A-Z0-9-]*\s+[0-9]+/[0-9]+' "$ev/${name}_raw.txt" | sed -E 's/^\s+//' | awk '{print $1, $2, $3}' >"$ev/${name}.txt" || true
   grep -E '^\s+expected /|^\s+forbidden /' "$ev/${name}_raw.txt" | sed -E "s/ matched .*/ matched (text omitted)/" | sort | uniq -c >"$ev/${name}_failures.txt" || true
   note "suite $name: $(tr '\n' ' ' <"$ev/${name}.txt") guard=$(grep -c 'QUOTA GUARD' "$ev/${name}_raw.txt" || true)"

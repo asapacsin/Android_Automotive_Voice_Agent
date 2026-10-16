@@ -275,7 +275,17 @@ def evaluate(manifest, suite_name, records, file_problems):
                         and r["id"] not in exact
                         and owner_of(r["id"]) == kind]
                 if not hits:
-                    add_missing(pattern, required)
+                    # A required wildcard with no results is BLOCKED (not missing) when its
+                    # runner (<prefix up to the last ':'>runner) itself reported BLOCKED.
+                    runner_id = pattern[:pattern.rfind(":") + 1] + "runner" if ":" in pattern else None
+                    runner = by_id.get(runner_id) if runner_id else None
+                    if required and runner is not None and runner["status"] == "BLOCKED":
+                        checks.append({"id": pattern, "required": True, "status": "BLOCKED",
+                                       "detail": f"runner {runner_id} BLOCKED"})
+                        problems.append({"level": "error", "kind": "BLOCKED",
+                                         "text": f"required {pattern} is BLOCKED: {runner_id} BLOCKED"})
+                    else:
+                        add_missing(pattern, required)
                 for rid in hits:
                     done.add(rid)
                     add_result(rid, required, by_id[rid])

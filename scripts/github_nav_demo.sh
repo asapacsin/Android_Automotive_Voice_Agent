@@ -18,8 +18,13 @@ mkdir -p "$ev"
 summary="$ev/summary.txt"
 : >"$summary"
 R="$ev/results.jsonl"; : >"$R"
+# The bridge's output files hold transcripts: never left behind, even on an abort.
+trap 'rm -f "$ev"/bridge_out.txt "$ev"/bridge_err.txt' EXIT
+trap 'exit 130' INT TERM  # a signal exits through the EXIT trap above
 res() { python3 scripts/ci_verdict.py record --out "$R" --id "$1" --status "$2" --detail "${3:-}"; }
 # The verdict for this run, written to evidence/verdict.json; the script exits with its code.
+# complete() is recorded only right before a normal finish: an abort can never come out PASS.
+complete() { res navpiece:complete PASS "${1:-run completed}"; }
 finish() {
   local rc=0
   python3 scripts/ci_verdict.py verdict --manifest config/ci_checks.json --suite navpiece \
@@ -94,7 +99,13 @@ setup_key() { # env-name tool file
 
 
 app_up && note "app: map up" || note "app: map did not come up"
-setup_key AMAP_WEB_KEY amap_web_setup amap_web_setup.txt || true
+web_key=0; setup_key AMAP_WEB_KEY amap_web_setup amap_web_setup.txt && web_key=1 || true
+# Every mode (routes, speedoff, the voice pieces) resolves named destinations via Amap web search.
+if [ "$web_key" = 0 ]; then
+  note "nav demo: blocked - no AMAP_WEB_KEY"
+  res navpiece:session BLOCKED "secret AMAP_WEB_KEY not set"
+  finish
+fi
 if ! setup_key GEMINI_API_KEY gemini_setup gemini_setup.txt; then
   note "nav demo: blocked - no GEMINI_API_KEY"
   res navpiece:session BLOCKED "secret GEMINI_API_KEY not set"
@@ -105,14 +116,17 @@ fi
 if [ "${NAV_DEMO_PIECE:-}" = "1" ] && [ "$(tr -dc a-z <scripts/nav_piece.txt 2>/dev/null)" = "routes" ]; then
   adb shell am force-stop com.novadrive.app; app_up || true; sleep 3
   routes_ok=0; routes_n=0
-  for d in 珠海站 拱北口岸 珠海大剧院 九洲港 香洲港 珠海市人民医院 华发商都 横琴口岸; do
+  dests=(珠海站 拱北口岸 珠海大剧院 九洲港 香洲港 珠海市人民医院 华发商都 横琴口岸)
+  # Logged by index only (route 3/8), never the place name.
+  for d in "${dests[@]}"; do
     mark; tool nav_route "$d"; routes_n=$((routes_n + 1))
-    if wait_for "nav_calc_success" 60; then routes_ok=$((routes_ok + 1)); sleep 2; tool nav_route_info x; sleep 1; note "route $d: $(nova | grep 'debug_tool tool=nav_route_info ' | tail -1 | sed -E 's/.*result=//')"
-    else note "route $d: no route"; fi
+    if wait_for "nav_calc_success" 60; then routes_ok=$((routes_ok + 1)); sleep 2; tool nav_route_info x; sleep 1; note "route $routes_n/${#dests[@]}: $(nova | grep 'debug_tool tool=nav_route_info ' | tail -1 | sed -E 's/.*result=//')"
+    else note "route $routes_n/${#dests[@]}: no route"; fi
   done
   if [ "$routes_ok" = "$routes_n" ]; then res navpiece:routes PASS "routes=$routes_ok/$routes_n"
   else res navpiece:routes FAIL "routes=$routes_ok/$routes_n"; fi
   note "nav demo: done (routes piece)"
+  complete "routes piece"
   finish
 fi
 
@@ -135,6 +149,7 @@ if [ "${NAV_DEMO_PIECE:-}" = "1" ] && [ "$(tr -dc a-z <scripts/nav_piece.txt 2>/
     tool nav_stop x; sleep 2
   else note "NAV-OVERSPEED-001: no route"; res navpiece:NAV-OVERSPEED-001 FAIL "no route"; fi
   note "nav demo: done (speedoff piece)"
+  complete "speedoff piece"
   finish
 fi
 
@@ -257,4 +272,5 @@ tool voice stop
 tool provider clear
 tool guidance_relay off
 note "nav demo: done"
+complete "voice piece"
 finish

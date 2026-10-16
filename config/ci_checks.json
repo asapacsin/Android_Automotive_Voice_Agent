@@ -17,8 +17,8 @@
       "optional": ["device:CALL-NOSIM-001", "device:P59"]
     },
     "navpiece": {
-      "description": "Navigation demo pieces (scripts/github_nav_demo.sh): every recorded navpiece: check is required except the video.",
-      "required": ["navpiece:*"],
+      "description": "Navigation demo pieces (scripts/github_nav_demo.sh): navpiece:complete (a normal finish) and every recorded navpiece: check are required; the video is optional.",
+      "required": ["navpiece:complete", "navpiece:*"],
       "optional": ["navpiece:video"]
     }
   },
