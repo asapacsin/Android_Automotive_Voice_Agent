@@ -45,5 +45,16 @@ class OverspeedAlert(private val minGapMs: Long = MIN_GAP_MS) {
         const val MIN_GAP_MS = 10_000L
 
         fun sentence(limitKmh: Int): String = "您已超速，限速${limitKmh}公里"
+
+        /**
+         * Where a due warning goes. [hostNavigating] is the map host's own navigation state - not
+         * the legacy `NavigationState.navigating`, which a voice-session restart clears mid-drive.
+         */
+        fun target(hostNavigating: Boolean, relayOn: Boolean, alertQueueOn: Boolean): String = when {
+            !hostNavigating -> "dropped:not_navigating"
+            relayOn -> "relay"
+            alertQueueOn -> "amap"
+            else -> "dropped:no_queue"
+        }
     }
 }

@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-16T03:19:30",
+  "generated_at": "2026-10-16T03:41:27",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "0f2f972",
+    "commit": "9d3dbf4",
     "branch": "claude/10-15",
-    "subject": "Voice checks run 38835222165 recorded: live-info place_details 7/10, 「空调」 alone reached the model, wake not runnable in CI",
+    "subject": "P63 review fixes: the over-speed warning waits for Amap and gates the mic on the shipped path",
     "working_tree_clean": false,
-    "uncommitted_files": 6
+    "uncommitted_files": 8
   },
   "tests": {
     "available": false,

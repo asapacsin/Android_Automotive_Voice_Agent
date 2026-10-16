@@ -2220,6 +2220,22 @@ her audio) and the fallback count. Limit to state in the hand-over: the product 
 which does not declare `verbatimPromptSpeech` (SPEC-018 2026-10-10 note), so on Qwen guidance stays
 in Amap's own voice until that is solved.
 
+**Run 1, 2026-10-16 (nav demo run 38843628215 at e9f8535, relay on, 3000 ms measurement deadline,
+`ci/nav-demo runs/run_20261016_0326_e9f8535`):** she spoke no guidance. 242 `guidance_route` lines for
+about 24 real prompts: 1 SEND_FAILED (a driver turn was open at navigation start), then 61
+AMAP_SPEAKING and 197 `nav_guidance_fallback_tts accepted=true`, and after a Gemini close
+(`code=1008 reason_class=other`, ~3 min into the drive, while asleep, never reconnected) 180
+NOT_ACTIVE. Cause of the flood: with the inner voice off, each fallback `playTTS` came back through
+`onGetNavigationText` as new guidance, so the relay fed itself; each fallback is bracketed for the
+mic gate, so the driver's climate/music/ETA lines were dropped and she went to sleep. Measured on the
+way (GUIDANCE-EMU-001): G-1b+ - `playTTS` with the inner voice off fired no `TTSPlayListener`
+start (`nav_guidance_play_start` 0 in the whole run), so the relay's length-estimate bracket is the
+gate; G-1f - `onGetNavigationText` does fire with the inner voice off, including for our own
+`playTTS`. **Fix:** `GuidanceRelay` drops the echo of a sentence it handed to Amap within 10 s, once
+(`guidance_echo_dropped`; GuidanceRelayTest +2). Searched for Amap SDK reports of custom
+`playTTS` text reappearing in `onGetNavigationText`: no web search from this container, nothing
+found in the SDK's Javadoc copies under the scratchpad; the echo is inferred from the counts.
+
 ## P63 — No spoken warning when the car is over the speed limit
 
 **Status:** OPEN 2026-10-16. Owner test 10-16: "overspeed no voice warning".
@@ -2238,6 +2254,13 @@ cameras (多人被拍, 车道), with no limit. Where a limit camera exists (rout
 when it is on, else Amap's TTS); the demo drives a route with a limit camera. Limit to state: with
 no camera or limit sign ahead, the SDK knows no limit, so there is nothing to warn about.
 
+**Run 1 (38843628215, relay on):** the 十字门 route showed one 60 km/h limit (`limitKmh=60`), the HUD
+went over once (`over=1`), one warning was queued to the relay (16 Amap rings over the drive). That
+run's alert went the relay way; the shipped relay-off path is NAV-OVERSPEED-001. Two review rounds
+(REVISE, REVISE) changed the relay-off path: it goes through a `GuidanceRelay` with `enabled = false`
+(waits for Amap, mic bracketed, cleared at navigation end), the drop check uses the map host's own
+navigation state, and Amap starting inside the bracket cancels the estimate close.
+
 ## P64 — The emulator demo runs at about 6.5 frames per second
 
 **Status:** OPEN 2026-10-16. Owner test 10-16: "the simulation is laggy".
@@ -2252,3 +2275,8 @@ emulator the whole navigation engine and map renderer run under ARM translation;
 measured fps in the run summary. Limit to state: a phone or car head unit renders the same app on a
 GPU with native ARM code; the emulator cannot match that, so the demo frame rate is a test-rig
 limit, not the app's.
+
+
+**Run 1 (38843628215):** 4 cores / 4 GB and recording at 576x1248 raised the average from 6.5 to 8.4
+fps (4542 frames in 540 s). Better, still not smooth: the remaining cost is ARM translation and
+software rendering, which this rig cannot remove.

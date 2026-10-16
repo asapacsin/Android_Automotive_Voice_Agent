@@ -76,29 +76,30 @@ internal object AmapGuidanceVoice : TTSPlayListener {
      * The log says where it was queued, not that it was heard: the relay's `guidance_route`,
      * `guidance_claim` and `nav_guidance_fallback_tts` lines say what happened to it.
      */
-    fun speakAlert(text: String) {
+    fun speakAlert(text: String, hostNavigating: () -> Boolean) {
         mainHandler.post {
-            if (!com.novadrive.app.NavigationState.navigating) {
-                DebugVoiceLog.log("nav_alert_dropped reason=not_navigating")
-                return@post
-            }
             val active = relay
-            val queue = active ?: alertQueue
-            if (queue == null) {
-                DebugVoiceLog.log("nav_alert_dropped reason=no_queue")
+            val queue = alertQueue
+            val target = OverspeedAlert.target(hostNavigating(), active != null, queue != null)
+            if (target.startsWith("dropped:")) {
+                DebugVoiceLog.log("nav_alert_dropped reason=${target.removePrefix("dropped:")}")
                 return@post
             }
-            if (active != null) runCatching { textReceiver?.invoke(text) }
-            queue.onGuidanceText(text)
-            DebugVoiceLog.log("nav_alert_queued to=${if (active != null) "relay" else "amap"} chars=${text.length}")
+            if (active != null) {
+                runCatching { textReceiver?.invoke(text) }
+                active.onGuidanceText(text)
+            } else {
+                queue?.onGuidanceText(text)
+            }
+            DebugVoiceLog.log("nav_alert_queued to=$target chars=${text.length}")
         }
     }
 
     /** P63: every speed-HUD change; the over-speed warning is queued when [alert] says so (the limit only in the log). */
-    fun onSpeedHud(alert: OverspeedAlert, snap: DrivingSpeedHud.Snapshot) {
+    fun onSpeedHud(alert: OverspeedAlert, snap: DrivingSpeedHud.Snapshot, hostNavigating: () -> Boolean) {
         val sentence = alert.onSnapshot(snap, SystemClock.elapsedRealtime()) ?: return
         DebugVoiceLog.log("nav_overspeed_alert limitKmh=${snap.limitKmh}")
-        speakAlert(sentence)
+        speakAlert(sentence, hostNavigating)
     }
 
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }

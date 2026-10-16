@@ -3346,7 +3346,7 @@ tests:
     covers: [navigation.speed_hud]
     prerequisites: ["emulator with this build, relay toggle off (default)", "route with a speed-limit camera (十字门 from the emulator origin)"]
     procedure: ["nav_route 十字门, start the emulator drive", "nav_speed 90 once moving", "drive past the limit camera", "read the NovaVoice log"]
-    pass_criteria: ["nav_overspeed_alert limitKmh=<N> at the first over=1", "nav_alert_queued to=amap", "guidance_route to=amap reason=DISABLED, then nav_guidance_fallback_tts accepted=true", "nav_guidance_play_start for the alert, or the relay bracket, with session_diag guidanceGated=true while it plays", "no alert after nav_stopped", "no coordinate, address or transcript in the log"]
+    pass_criteria: ["nav_overspeed_alert limitKmh=<N> at the first over=1", "nav_alert_queued to=amap", "guidance_route to=amap reason=DISABLED, then nav_guidance_fallback_tts accepted=true", "nav_guidance_play_start for the alert, or the relay bracket, with session_diag guidanceGated=true while it plays", "no alert after nav_stopped", "no nav_alert_dropped reason=not_navigating while navigation is active", "Amap's own manoeuvre prompt right after an alert still plays (nav_guidance_play_start)", "no coordinate, address or transcript in the log"]
     evidence: ["2026-10-16: not covered by nav demo e9f8535/its fix - that run has the relay ON; the shipped relay-off path needs its own run (reviewer R4)"]
     related: [P63, SPEC-018, NAV-MID-ROUTE-001]
     last_run: {at: null, result: null}

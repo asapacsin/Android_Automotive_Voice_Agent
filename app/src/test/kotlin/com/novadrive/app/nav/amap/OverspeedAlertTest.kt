@@ -61,6 +61,15 @@ class OverspeedAlertTest {
     }
 
     @Test
+    fun theHostsNavigationStateDecidesNotTheLegacyFlag() {
+        // The host navigates though a session restart cleared NavigationState.navigating: still queued.
+        assertEquals("amap", OverspeedAlert.target(hostNavigating = true, relayOn = false, alertQueueOn = true))
+        assertEquals("relay", OverspeedAlert.target(hostNavigating = true, relayOn = true, alertQueueOn = false))
+        assertEquals("dropped:not_navigating", OverspeedAlert.target(hostNavigating = false, relayOn = false, alertQueueOn = true))
+        assertEquals("dropped:no_queue", OverspeedAlert.target(hostNavigating = true, relayOn = false, alertQueueOn = false))
+    }
+
+    @Test
     fun atTheLimitIsNotOver() {
         assertNull(OverspeedAlert().onSnapshot(hud(40, 40), 0))
     }

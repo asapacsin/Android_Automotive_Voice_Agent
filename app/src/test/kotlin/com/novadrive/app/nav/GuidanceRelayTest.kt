@@ -89,7 +89,8 @@ class GuidanceRelayTest {
             blocker = null; focusLoss = false; enabled = true
             amapEnds()
             setup()
-            relay.onGuidanceText("左转")
+            // A distinct sentence per case: the same words right after a fallback are its echo (10-16).
+            relay.onGuidanceText("左转$reason")
             assertTrue(lastRoute().contains("to=amap reason=$reason"), reason)
             amapEnds() // G-1b+: a fallback over Amap waits for its end
         }
@@ -503,6 +504,19 @@ class GuidanceRelayTest {
     }
 
     @Test
+    fun amapStartingInsideTheAlertBracketKeepsTheMicGatedPastTheEstimate() {
+        enabled = false
+        relay.onGuidanceText(alert)
+        assertEquals(listOf(true), brackets)
+        amapSpeaking = true
+        relay.onAmapSpeaking(true) // Amap's own camera/manoeuvre prompt starts before the estimate
+        advance(10_000)
+        assertFalse(brackets.contains(false), "the estimate must not open the mic over Amap's sentence")
+        amapEnds()
+        assertFalse(amapSpeaking)
+    }
+
+    @Test
     fun alertPendingAtNavigationEndIsNeverSpoken() {
         enabled = false
         amapSpeaking = true
@@ -510,5 +524,31 @@ class GuidanceRelayTest {
         relay.onNavigationEnded()
         amapEnds()
         assertTrue(spoken.isEmpty())
+    }
+
+    // ---- owner test 10-16: Amap's echo of the relay's own fallback is not new guidance ----
+
+    @Test
+    fun theEchoOfAFallbackIsDroppedOnceAndRealGuidanceStillFlows() {
+        blocker = "NOT_CONNECTED"
+        relay.onGuidanceText("前方左转")
+        assertEquals(listOf("前方左转"), spoken)
+        relay.onGuidanceText("前方左转") // onGetNavigationText reports the playTTS sentence back
+        assertTrue(logs.contains("guidance_echo_dropped chars=4"))
+        advance(2_000)
+        assertEquals(listOf("前方左转"), spoken, "the echo is not spoken again")
+        relay.onGuidanceText("前方左转") // the same words later, as real guidance
+        advance(2_000)
+        assertEquals(listOf("前方左转", "前方左转"), spoken)
+    }
+
+    @Test
+    fun anEchoOutsideTheWindowIsTreatedAsGuidance() {
+        blocker = "NOT_CONNECTED"
+        relay.onGuidanceText("前方左转")
+        advance(GuidanceRelay.ECHO_WINDOW_MS + 1)
+        relay.onGuidanceText("前方左转")
+        advance(2_000)
+        assertEquals(2, spoken.size)
     }
 }
