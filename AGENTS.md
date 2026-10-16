@@ -186,6 +186,9 @@ does not change architecture ownership, invariants, or who may certify work. Age
 
 ## Hard rules
 
+- **Production and test source is written by executors** (owner 2026-10-16): the main/planner agent may not edit `<module>/src/**` in the main checkout;
+  settings deny rules and the guard-source-writes hook enforce it, `scripts/delegation_check.py` audits the branch.
+  Planner keeps docs, state, scripts/tools and integration.
 - **Unsure which to pick: Opus 5.5 at xhigh effort first, then the owner** (owner, 2026-10-12). When you
   do not know which of two or more options to choose, and the documents do not settle it, do not guess
   and do not take the first plausible one. Send the question to a reasoning pass on Opus 5.5 at xhigh
