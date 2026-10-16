@@ -730,6 +730,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
 
     /** Debug diagnostics (P58); see [AmapDrivingPresentation.viewState]. */
     fun debugViewState(): String = AmapDrivingPresentation.viewState(naviView, isNavigating)
+    fun debugClearRoute(variant: String): String = AmapDrivingPresentation.debugClearRoute(navi, naviView, variant)
 
     fun resumeTracking(): Boolean {
         if (!isNavigating) return false

@@ -87,6 +87,21 @@ internal object AmapDrivingPresentation {
             "tilt=${camera?.tilt?.let { "%.0f".format(java.util.Locale.US, it) }} navigating=$navigating"
     }.getOrElse { "failed=${it.javaClass.simpleName}" }
 
+    /**
+     * Debug experiment for P59 (a cancelled route stays drawn): one way of removing the
+     * calculated route, chosen by name, so the emulator run can screenshot what each does. Not
+     * called from product code.
+     */
+    fun debugClearRoute(navi: AMapNavi?, naviView: AMapNaviView, variant: String): String = runCatching {
+        when (variant) {
+            "stopnavi" -> { navi?.stopNavi(); "stopNavi" }
+            "markers" -> { naviView.setRouteMarkerVisible(false, false, false); "markers hidden" }
+            "map_clear" -> { naviView.map?.clear(); "map cleared" }
+            "idle" -> { applyIdle(naviView); "idle options" }
+            else -> "unknown variant"
+        }
+    }.getOrElse { "failed=${it.javaClass.simpleName}" }
+
     fun listener(onExit: () -> Unit): AMapNaviViewListener = ExitForwardingListener(onExit)
 
     private fun enableLiveTraffic(navi: AMapNavi) {

@@ -136,6 +136,26 @@ note "NAV-MID-ROUTE-001 / NAV-UI-00x: maneuver=$(count 'nav_maneuver ') lane_sho
 note "NAV-E2E-ARRIVAL-001: proximity_arrival=$(count 'nav_proximity_arrival') stopped=$(nova | grep -oE 'nav_stopped reached=(true|false) reason=[a-z_]+' | tail -1)"
 note "NAV crash check: fatal=$(adb logcat -d | grep -cE 'FATAL EXCEPTION|Fatal signal' || true) anr=$(adb logcat -d | grep -cE 'ANR in com.novadrive' || true)"
 
+# ---- P59: does a cancelled route stay drawn, and which call removes it -------------------------
+# The voice flow, by dispatch: navigate_to -> candidates -> choose index 2 -> routes -> exit
+# (the cancel the model calls for 算了), then one removal variant per round, screenshot each.
+p59_round() { # variant
+  mark
+  tool dispatch "navigate_to:destination=珠海站"; sleep 8
+  tool dispatch "choose_navigation_option:index=2"; sleep 10
+  shot "p59_${1}_routes"
+  tool dispatch "exit_navigation_mode"; sleep 4
+  shot "p59_${1}_cancelled"
+  if [ "$1" != "none" ]; then tool nav_clear_try "$1"; sleep 3; shot "p59_${1}_after"; fi
+  note "P59 $1: candidates=$(count 'nav_resolve_candidates') calc=$(count 'nav_calc_success') cancelled=$(count 'nav_flow_cancelled') clear=$(nova | grep 'debug_tool tool=nav_clear_try' | tail -1 | grep -oE 'result=[a-zA-Z_ =]+' | head -1)"
+}
+if [ "${web_key:-0}" = 1 ]; then
+  adb shell am force-stop com.novadrive.app; app_up || true
+  for v in none stopnavi markers idle map_clear; do p59_round "$v"; done
+  # After map_clear the next route must still draw.
+  p59_round none2
+fi
+
 # ---- process death -------------------------------------------------------------------------
 mark
 app_up || true
