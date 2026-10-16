@@ -96,6 +96,21 @@ if [ "${NAV_DEMO_PIECE:-}" = "1" ] && [ "$(tr -dc a-z <scripts/nav_piece.txt 2>/
   exit 0
 fi
 
+# Piece "speedoff" (NAV-OVERSPEED-001): the shipped path - relay OFF, Amap's voice - at the real 60 km/h
+# camera on the 珠海站 route (routes piece 4d09b8b), 120 km/h, no voice model. Codes and counts only.
+if [ "${NAV_DEMO_PIECE:-}" = "1" ] && [ "$(tr -dc a-z <scripts/nav_piece.txt 2>/dev/null)" = "speedoff" ]; then
+  tool guidance_relay off; adb shell am force-stop com.novadrive.app; app_up || true; sleep 3; mark
+  tool nav_route 珠海站
+  if wait_for "nav_calc_success" 60; then
+    tool nav_start emulator:120; wait_for "nav_started" 30 || true
+    i=0; while [ "$i" -lt 60 ]; do nova | grep -q "nav_overspeed_alert" && { sleep 25; break; }; nova | grep -q "nav_stopped" && break; i=$((i + 1)); sleep 5; done
+    note "NAV-OVERSPEED-001: queue=$(count 'nav_alert_queue installed=true') limits=$(nova | grep -oE 'nav_speed kmh=[0-9]+ limitKmh=[1-9][0-9]*' | grep -oE 'limitKmh=[0-9]+' | sort -u | tr '\n' ' ')over=$(count 'nav_speed .*over=1') alerts=$(count 'nav_overspeed_alert') queued: $(nova | grep -oE 'nav_alert_(queued to=[a-z]+|dropped reason=[a-z_]+)' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')routes: $(nova | grep -oE 'guidance_route prompt=g[0-9]+ to=[a-z]+ reason=[A-Z_]+' | sed -E 's/prompt=g[0-9]+ //' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')fallback_tts: $(nova | grep -oE 'nav_guidance_fallback_tts accepted=[a-z]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')play_start=$(count 'nav_guidance_play_start') uplink_closed=$(count 'speech_arbiter out=uplink decision=CLOSED')"
+    tool nav_stop x; sleep 2
+  else note "NAV-OVERSPEED-001: no route"; fi
+  note "nav demo: done (speedoff piece)"
+  exit 0
+fi
+
 # P62 / GUIDANCE-EMU-001: guidance in her voice (SPEC-018 relay, ADR-014), Amap only as the fallback.
 # 3000 ms is a measurement deadline (SPEC-018's default 1200 ms is set from G-1, never measured).
 tool guidance_relay on:3000; sleep 1
