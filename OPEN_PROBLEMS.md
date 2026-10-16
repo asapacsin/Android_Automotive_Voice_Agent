@@ -2219,6 +2219,10 @@ said "not navigating" while the car still was. **Fix:** the guard reads `ToolCal
 found for the overspeed alert.) Open: the legacy reset on session stop also tells SpeechArbiter that
 navigation ended; whether that reset should follow the host instead is a separate item.
 
+**Piece check passed (device checks run 38863113123 at 3884acf):** with the voice session stopped
+mid-drive (legacy flag cleared), the nearby question through the real dispatcher -> `ok=false
+NEARBY_QUESTION_WHILE_NAVIGATING`, no route replaced, navigation not stopped.
+
 ## P62 — Turn-by-turn guidance is not spoken in her voice (demo used a male voice)
 
 **Status:** OPEN 2026-10-16. Owner test 10-16 ([docs/owner-tests/test-10-16.md](docs/owner-tests/test-10-16.md)):
@@ -2300,6 +2304,11 @@ navigation state, and Amap starting inside the bracket cancels the estimate clos
 **Run 2 (38847890114):** the 60 km/h limit was seen again, one warning queued to the relay (spoken in
 her voice as a guidance prompt; part of the 23 MATCH). The relay-off path (shipped) is still
 NAV-OVERSPEED-001, NOT_RUN.
+
+**Piece check passed (device checks run 38863113123 at 3884acf, relay off):** the warning through the
+real speak path was queued to Amap (`reason=DISABLED`), spoken by Amap's TTS (`accepted=true`) with the
+uplink gated, and dropped after navigation stopped. Remaining: the HUD trigger at a real camera with
+the relay off on the emulator, and audibility in a car (NAV-OVERSPEED-DEVICE-001).
 
 ## P64 — The emulator demo runs at about 6.5 frames per second
 
