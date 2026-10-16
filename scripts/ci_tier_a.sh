@@ -49,15 +49,17 @@ gates() {
   dc_out="$("$PY" scripts/delegation_check.py "${args[@]}" 2>&1)"
   dc_rc=$?
   printf '%s\n' "$dc_out"
+  # PASS only if delegation_check exited 0 AND exactly one GATE line for the gate says PASS.
+  local n
   for gate in delegation review-records; do
-    line="$(printf '%s\n' "$dc_out" | grep -E "^GATE $gate (PASS|FAIL)\$" | tail -1)"
-    st="${line##* }"
-    if [ -z "$line" ]; then
+    n="$(printf '%s\n' "$dc_out" | grep -cE "^GATE $gate( |\$)")"
+    line="$(printf '%s\n' "$dc_out" | grep -E "^GATE $gate( |\$)" | tail -1)"
+    if [ "$n" -eq 0 ]; then
       record "gate:$gate" FAIL "no GATE line (delegation_check exit $dc_rc)"
-    elif [ "$st" = PASS ]; then
-      record "gate:$gate" PASS "GATE $gate PASS"
+    elif [ "$dc_rc" -eq 0 ] && [ "$n" -eq 1 ] && [ "$line" = "GATE $gate PASS" ]; then
+      record "gate:$gate" PASS "GATE $gate PASS (exit 0, 1 line)"
     else
-      record "gate:$gate" FAIL "GATE $gate FAIL (delegation_check exit $dc_rc)"
+      record "gate:$gate" FAIL "GATE $gate not a clean PASS (delegation_check exit $dc_rc, $n line(s), last ${line##* })"
     fi
   done
 
@@ -73,11 +75,11 @@ gates() {
     mx_out="$("$PY" scripts/test_matrix.py --validate 2>&1)"
     mx_rc=$?
     printf '%s\n' "$mx_out" | tail -3
-    stale="$(printf '%s\n' "$mx_out" | grep -c 'STALE_BIND')"
+    stale="$(printf '%s\n' "$mx_out" | sed -n 's/^ *\([^ :]*\): STALE_BIND.*/\1/p' | sort -u | wc -l | tr -d ' ')"
     if [ "$mx_rc" -eq 0 ]; then
-      record matrix:evidence-current PASS "$stale stale binds"
+      record matrix:evidence-current PASS "$stale rows with stale binds"
     else
-      record matrix:evidence-current FAIL "$stale stale binds (exit $mx_rc)"
+      record matrix:evidence-current FAIL "$stale rows with stale binds (exit $mx_rc)"
     fi
   else
     record matrix:validate BLOCKED "PyYAML missing"
@@ -101,6 +103,14 @@ build_test() {
     return 0
   fi
 
+  # Never let a stale report pass: drop each module's test-results before anything runs.
+  local root="${NOVA_BUILD_DIR:-$HOME/nova-drive-build}" m
+  for m in "${MODULES[@]}"; do rm -rf "$root/$m/test-results"; done
+
+  # No Gradle build cache in CI: its entries can carry secret-derived outputs (local.properties,
+  # BuildConfig) and must never reach actions/cache. GRADLE_OPTS covers the shared build script.
+  export GRADLE_OPTS="${GRADLE_OPTS:-} -Dorg.gradle.caching=false"
+
   # shellcheck disable=SC2206
   local build_cmd=(${CI_BUILD_SCRIPT:-bash scripts/github_build_apk.sh})
   run_check build:assembleDebug "github_build_apk.sh" "${build_cmd[@]}"
@@ -111,9 +121,9 @@ build_test() {
   export ANDROID_HOME=/opt/android-sdk
   # shellcheck disable=SC2206
   local gradle_cmd=(${CI_GRADLE:-./gradlew})
-  run_check gradle:test "gradle test" "${gradle_cmd[@]}" test :behavior-test:test --continue
+  run_check gradle:test "gradle test" "${gradle_cmd[@]}" --no-build-cache test :behavior-test:test --continue
 
-  local root="${NOVA_BUILD_DIR:-$HOME/nova-drive-build}" margs=() m
+  local margs=()
   for m in "${MODULES[@]}"; do margs+=(--module "$m"); done
   "$PY" scripts/ci_verdict.py junit --root "$root" "${margs[@]}" --out "$JUNIT_OUT" \
     && cat "$JUNIT_OUT" >> "$OUT"

@@ -1,15 +1,21 @@
-# Tier A gate: the mandatory check on every pull request and every push to main (owner, 2026-10-16).
-# A green result means the specified verification actually passed: each job's exit code is the
-# verdict of scripts/ci_verdict.py over the check manifest (config/ci_checks.json, suites
-# tier-a-gates and tier-a-build), never "the script finished". A required failure fails the job;
-# a required check that cannot run (e.g. a secret is missing) is BLOCKED, never a pass.
+# Tier A gate (owner, 2026-10-16). A green result means the specified verification actually
+# passed: each job's exit code is the verdict of scripts/ci_verdict.py over config/ci_checks.json
+# (suites tier-a-gates and tier-a-build), never "the script finished". A required failure fails
+# the job; a required check that cannot run (e.g. a secret is missing) is BLOCKED, never a pass.
 # The logic lives in scripts/ci_tier_a.sh, which runs the same way locally.
 #
 # What Tier A proves: the debug APK builds, the JVM unit/architecture/secret-scan suites pass
 # (counts from the JUnit XML per module, not the Gradle summary), and the harness gates hold
-# (delegation and review records, review-hook selftest, test matrix validation, CI script tests).
-# What it does not prove: anything on a device or emulator, audio, the map, lifecycle, or the voice
-# model. It opens no voice-model session and calls no paid API.
+# (delegation and review records, review-hook selftest, test matrix structural validity, CI script
+# tests). What it does not prove: anything on a device or emulator, audio, the map, lifecycle, the
+# voice model, or evidence-bind currency (Tier C). It opens no voice-model session and calls no
+# paid API.
+#
+# main is gated by the pull-request checks: branch protection must require both "Tier A gates" and
+# "Tier A build and JVM tests". On push to main only the build job runs, as a post-merge
+# regression check (the delegation audit needs a PR base; main is never its own upstream).
+# workflow_dispatch audits against origin/main and skips the gates job when dispatched on main.
+# Pull requests from forks get no secrets, so their build job is BLOCKED (red) by design.
 
 name: Tier A gate
 
@@ -31,6 +37,7 @@ jobs:
     name: Tier A gates
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    if: github.event_name != 'push' && !(github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     steps:
       # The PR head, not the synthetic merge commit (whose first parent is the base branch and
       # would make the delegation audit walk the wrong history).
@@ -39,18 +46,17 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
 
+      # The upstream is the PR base, or origin/main for a dispatch on another branch; never the
+      # branch under test. fetch-depth 0 already fetched every branch into refs/remotes/origin.
       - name: Upstream ref for the delegation audit
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
-          if [ -n "$BASE_REF" ]; then
-            git fetch origin "$BASE_REF"
-            echo "CI_UPSTREAM_REF=origin/$BASE_REF" >> "$GITHUB_ENV"
-          else
-            git fetch origin main
-            echo "CI_UPSTREAM_REF=origin/main" >> "$GITHUB_ENV"
-          fi
+          upstream="origin/${BASE_REF:-main}"
+          git rev-parse --verify "$upstream^{commit}"
+          echo "CI_UPSTREAM_REF=$upstream" >> "$GITHUB_ENV"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -81,12 +87,15 @@ jobs:
         with:
           fetch-depth: 1
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
 
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
+          # Dependency downloads only. Never ~/.gradle/caches as a whole: the build cache
+          # (caches/build-cache-*) can hold secret-derived outputs; CI also runs --no-build-cache.
           path: |
-            ~/.gradle/caches
+            ~/.gradle/caches/modules-2
             ~/.gradle/wrapper
           key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle/libs.versions.toml') }}
           restore-keys: |

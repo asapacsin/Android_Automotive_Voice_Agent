@@ -683,7 +683,8 @@ def validate(doc=None, requirements=None, audit_protection=None, extra_unmapped=
     """Everything that would make the registry lie. Returns a list of problems.
 
     check_binds=False (--structural, Tier A) skips only evidence-bind currency, which every code
-    change invalidates by construction; Tier C (--release) still blocks on stale binds."""
+    change invalidates by construction; it also skips a missing evidence_bind or missing bound
+    artifact. Tier C (--release) still catches all of these."""
     _BIND_COMPUTE_CACHE.clear()
     doc = doc or load()
     found = []
