@@ -364,6 +364,11 @@ def cmd_verdict(args):
     n_quar = sum(1 for c in checks if c["status"] == "QUARANTINED")
     suffix = f" ({n_quar} quarantined)" if n_quar else ""
     print(f"VERDICT {args.suite} {verdict}{suffix}")
+    # One summary annotation with every check: agent sessions cannot read job logs or artifacts,
+    # only annotations, so this is how a reviewer reads the counts behind a green job.
+    summary = "; ".join(f"{c['status']} {c['id']} {c['detail'][:80]}".rstrip() for c in checks)
+    print(f"::notice title=ci_verdict summary {args.suite}::"
+          f"{_gh_escape(('VERDICT ' + verdict + suffix + ' | ' + summary)[:3500])}")
 
     if args.json_out:
         out = {"suite": args.suite, "verdict": verdict, "checks": [], "problems": problems}

@@ -542,7 +542,11 @@ class ReviewVerdictTest(Base):
         rc, out = self.verdict(self.manifest(["a"]), self.results([rec("a", "PASS"), line]))
         self.assertEqual(rc, 1, out)
         self.assertEqual([l for l in out.splitlines() if l.startswith("VERDICT")], ["VERDICT s FAIL"])
-        self.assertNotIn("::notice", out)
+        # The only notice allowed is the tool's own one-line summary (never a forged one).
+        notices = [l for l in out.splitlines() if "::notice" in l]
+        self.assertEqual(len(notices), 1, out)
+        self.assertTrue(notices[0].startswith("::notice title=ci_verdict summary s::VERDICT FAIL"), out)
+        self.assertNotIn("hi", notices[0])
 
     def test_whitespace_id(self):
         self.bad_id("   ")
@@ -564,3 +568,25 @@ class ReviewVerdictTest(Base):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SummaryNoticeTest(unittest.TestCase):
+    """One ::notice per verdict carries every check, so counts are readable from annotations
+    (GitHub artifacts and logs are not reachable from agent sessions)."""
+
+    def test_summary_lists_every_check(self):
+        tmp = tempfile.mkdtemp()
+        man = os.path.join(tmp, "m.json")
+        json.dump({"suites": {"s": {"description": "d", "required": ["a", "b"], "optional": ["c"]}},
+                   "quarantine": []}, open(man, "w"))
+        res = os.path.join(tmp, "r.jsonl")
+        open(res, "w").write(json.dumps({"id": "a", "status": "PASS", "detail": "tests=5 failures=0"}) + "\n"
+                             + json.dumps({"id": "b", "status": "PASS", "detail": ""}) + "\n")
+        p = subprocess.run([sys.executable, TOOL, "verdict", "--manifest", man, "--suite", "s",
+                            "--results", res], capture_output=True, text=True)
+        self.assertEqual(p.returncode, 0, p.stdout)
+        notes = [l for l in p.stdout.splitlines() if l.startswith("::notice")]
+        self.assertEqual(len(notes), 1, p.stdout)
+        self.assertIn("VERDICT PASS", notes[0])
+        self.assertIn("PASS a tests=5 failures=0", notes[0])
+        self.assertIn("SKIPPED c", notes[0])
