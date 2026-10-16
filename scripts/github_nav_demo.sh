@@ -116,7 +116,13 @@ clips="$S/nav_shizimen.pcm,$S/pick_first.pcm,$S/start_nav.pcm,$S/ctx_too_hot.pcm
 # P65 (decider 2026-10-16): the driver waits (<= 10 s) for the uplink to open and for her to be quiet.
 # Piece mode (NAV_DEMO_PIECE=1, owner rule 2026-10-16): the first six lines only, ~150 s, no arrival.
 duration=960
-if [ -n "${NAV_DEMO_PIECE:-}" ]; then
+# The running worker passes NAV_DEMO_PIECE=1; scripts/nav_piece.txt names which piece (default: lines).
+if [ "${NAV_DEMO_PIECE:-}" = "1" ] && [ -s scripts/nav_piece.txt ]; then NAV_DEMO_PIECE="$(tr -dc a-z <scripts/nav_piece.txt)"; fi
+if [ "${NAV_DEMO_PIECE:-}" = "gas" ]; then
+  # Piece P61 in the real order: navigate, pick, start, then the gas question while driving.
+  clips="$S/nav_shizimen.pcm,$S/pick_first.pcm,$S/start_nav.pcm,$S/gas_nearby.pcm"; duration=130
+  note "piece mode: gas question while navigating, ${duration} s"
+elif [ -n "${NAV_DEMO_PIECE:-}" ]; then
   clips="$(echo "$clips" | cut -d, -f1-6)"; duration=150
   note "piece mode: first 6 lines, ${duration} s"
 fi
@@ -134,6 +140,7 @@ note "relay claims: assistant_waited_ms=$(nova | grep -oE 'guidance_claim prompt
 # P63: limits seen, time over, warnings spoken, Amap rings.
 note "overspeed: limits=$(nova | grep -oE 'nav_speed kmh=[0-9]+ limitKmh=[0-9]+' | grep -oE 'limitKmh=[0-9]+' | sort -u | tr '\n' ' ')over_lines=$(count 'nav_speed .* over=1') alerts=$(count 'nav_overspeed_alert') queued: $(nova | grep -oE 'nav_alert_(queued to=[a-z]+|dropped reason=[a-z_]+)' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')rings=$(count 'nav_play_ring')"
 note "listening: $(nova | grep -oE 'listening [A-Z_]+->[A-Z_]+ reason=[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')uplink_closed=$(count 'speech_arbiter out=uplink decision=CLOSED') droppedGuidance=$(nova | grep -oE 'droppedGuidance=[0-9]+' | tail -1)"
+note "P61 guard: $(nova | grep -oE 'guard_nearby_nav decision=[a-z_]+ cur=[0-9]+ cap=[0-9]+' | tr '\n' ' ')refused=$(count 'NEARBY_QUESTION_WHILE_NAVIGATING') nav_stopped: $(nova | grep -oE 'nav_stopped reached=[a-z]+ reason=[a-z_]+' | tr '\n' ' ')tools_in_order: $(nova | grep -oE 'tool=(navigate_to|query_live_info|choose_navigation_option) args' | sed -E 's/ args//' | uniq | tr '\n' ' ')"
 note "gemini closes: $(nova | grep -oE 'gemini_closed code=[0-9]+ reason_class=[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')"
 sleep 8
 touch "$ev/stop_recording"

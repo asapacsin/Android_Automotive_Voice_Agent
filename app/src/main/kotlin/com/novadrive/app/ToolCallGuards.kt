@@ -163,14 +163,23 @@ object ToolCallGuards {
         navigating: Boolean = navigatingNow(),
     ): String? {
         if (call.name != "navigate_to" || !navigating || context == null) return null
-        if (context.currentEpoch() <= 0 || context.currentEpoch() < context.capabilityEpoch()) return null
+        // Codes and epochs only (run 38871517346: the route was replaced after an along-route answer).
+        fun decide(code: String, result: String?): String? {
+            com.novadrive.app.DebugVoiceLog.log(
+                "guard_nearby_nav decision=$code cur=${context.currentEpoch()} cap=${context.capabilityEpoch()}",
+            )
+            return result
+        }
+        if (context.currentEpoch() <= 0 || context.currentEpoch() < context.capabilityEpoch()) return decide("stale_words", null)
         val said = TranscriptText.normalize(context.currentRequestText())
         val destination = call.arguments["destination"].orEmpty()
         val nearby = com.novadrive.app.nav.DestinationQuery.isNearbyRequest(said) ||
             com.novadrive.app.nav.DestinationQuery.isNearbyRequest(destination) ||
             ON_THE_WAY.containsMatchIn(said)
-        if (!nearby || !QUESTION.containsMatchIn(said) || GO_INTENT.containsMatchIn(said)) return null
-        return NEARBY_QUESTION_WHILE_NAVIGATING
+        if (!nearby) return decide("not_nearby", null)
+        if (!QUESTION.containsMatchIn(said)) return decide("not_question", null)
+        if (GO_INTENT.containsMatchIn(said)) return decide("go_intent", null)
+        return decide("refused", NEARBY_QUESTION_WHILE_NAVIGATING)
     }
 
     /**
