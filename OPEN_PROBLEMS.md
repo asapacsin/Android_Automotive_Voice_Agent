@@ -2200,3 +2200,55 @@ other, none), never the text. Community reports of mid-session 1008 on the Live 
 arguments, unsupported operations and deadlines rather than the key (from memory of python-genai
 issue threads; not re-verified from this container, which has no web search). Whether 1008 after a
 completed setup should stay AUTH_FAILED is open until the next run shows the class.
+
+## P62 — Turn-by-turn guidance is not spoken in her voice (demo used a male voice)
+
+**Status:** OPEN 2026-10-16. Owner test 10-16 ([docs/owner-tests/test-10-16.md](docs/owner-tests/test-10-16.md)):
+"the amap voice is male and not the same as gemini".
+
+**Measured:** in the demo the guidance track is not Amap's audio at all. The emulator runs with
+`-no-audio`, so the host bridge re-voices each guidance sentence with edge-tts
+`zh-CN-YunxiNeural` (a male voice, chosen in `host_audio_bridge.py` "so it is not her"). In the app,
+`AmapGuidanceVoice` leaves Amap's inner voice on, because the SPEC-018 relay (ADR-014: guidance
+spoken by the assistant, Amap only as the fallback) is behind the developer toggle, off by default,
+and its step-0 measurements (`GUIDANCE-EMU-001`, G-1 … G-1f) have never run.
+
+**Plan:** run the demo with the relay on (Gemini declares `verbatimPromptSpeech`), which is
+ADR-014's decided design and doubles as `GUIDANCE-EMU-001`'s first run on the GitHub emulator; the
+host voices only what the relay hands to Amap's fallback, in a female voice; measure G-1 (time to
+her audio) and the fallback count. Limit to state in the hand-over: the product session is Qwen,
+which does not declare `verbatimPromptSpeech` (SPEC-018 2026-10-10 note), so on Qwen guidance stays
+in Amap's own voice until that is solved.
+
+## P63 — No spoken warning when the car is over the speed limit
+
+**Status:** OPEN 2026-10-16. Owner test 10-16: "overspeed no voice warning".
+
+**Measured:** in the demo the HUD shows 90 km/h and 「限速 –」 for the whole drive: no speed limit
+was known, so nothing could be over it. Amap Navi SDK 11.2.100 gives a limit only at speed cameras
+(`AMapNaviCameraInfo.getCameraSpeed`) and speed-limit facilities
+(`AMapNaviTrafficFacilityInfo.getLimitSpeed`); `javap` on the SDK jar shows no per-road limit in
+`NaviInfo` (only `getCurrentSpeed`). The cameras on the 珠海站 route are violation and pedestrian
+cameras (多人被拍, 车道), with no limit. Where a limit camera exists (route to 十字门, 2026-09-21:
+`nav_camera_ahead limitKmh=40`, `nav_speed over=1`) Amap's own alert is a ring
+(`onPlayRing`, `nav_play_ring`), not words, and the demo's host bridge does not voice rings.
+
+**Plan:** a deterministic spoken warning 「您已超速，限速N公里」 when the HUD's overspeed turns on
+(and again when the limit changes while still over), spoken through the guidance path (the relay
+when it is on, else Amap's TTS); the demo drives a route with a limit camera. Limit to state: with
+no camera or limit sign ahead, the SDK knows no limit, so there is nothing to warn about.
+
+## P64 — The emulator demo runs at about 6.5 frames per second
+
+**Status:** OPEN 2026-10-16. Owner test 10-16: "the simulation is laggy".
+
+**Measured:** `ffprobe` on the demo video: 2861 frames in 440 s, average 6.5 fps. The emulator has
+2 cores and 2 GB; the GitHub runner has no GPU, so the map is drawn by SwiftShader on the CPU; the
+Amap SDK ships ARM-only native libraries (`arm64-v8a`, `armeabi-v7a` in the AAR), so on the x86_64
+emulator the whole navigation engine and map renderer run under ARM translation; the in-guest
+`screenrecord` encodes 1080x2340 on the same CPUs.
+
+**Plan:** give the emulator the runner's 4 cores and 4 GB, record at half resolution, report the
+measured fps in the run summary. Limit to state: a phone or car head unit renders the same app on a
+GPU with native ARM code; the emulator cannot match that, so the demo frame rate is a test-rig
+limit, not the app's.
