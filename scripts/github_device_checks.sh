@@ -186,5 +186,25 @@ note "TRANSCRIPT-FADE-EMU-001: probe $(nova | grep -oE 'transcript_bubble_(shown
 # The probe activity must not stay on top of the app (run 38753002305: every later screenshot was the probe).
 adb shell am force-stop com.novadrive.app
 
+# ---- NAV-OVERSPEED-001 (P63): the spoken warning on the shipped path (relay toggle off) ----------
+# 十字门 from the emulator origin passes a 60 km/h limit (nav demo runs 38847890114, 38849988938).
+mark
+tool guidance_relay off
+adb shell am force-stop com.novadrive.app
+app_up || true
+tool nav_route 十字门
+if wait_for "nav_calc_success" 90; then
+  tool nav_start emulator:90
+  wait_for "nav_started" 30 || true
+  i=0
+  while [ "$i" -lt 72 ]; do # up to 6 min; stop 40 s after the first alert
+    if nova | grep -q "nav_overspeed_alert"; then sleep 40; break; fi
+    i=$((i + 1)); sleep 5
+  done
+  shot overspeed_after
+  tool nav_stop x; sleep 3
+fi
+note "NAV-OVERSPEED-001: queue_installed=$(count 'nav_alert_queue installed=true') limits=$(nova | grep -oE 'nav_speed kmh=[0-9]+ limitKmh=[0-9]+' | grep -oE 'limitKmh=[1-9][0-9]*' | sort -u | tr '\n' ' ')over=$(count 'nav_speed .*over=1') alerts=$(count 'nav_overspeed_alert') queued: $(nova | grep -oE 'nav_alert_(queued to=[a-z]+|dropped reason=[a-z_]+)' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')routes: $(nova | grep -oE 'guidance_route prompt=g[0-9]+ to=[a-z]+ reason=[A-Z_]+' | sed -E 's/prompt=g[0-9]+ //' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')fallback_tts: $(nova | grep -oE 'nav_guidance_fallback_tts accepted=[a-z]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')play_start=$(count 'nav_guidance_play_start') guidance_gated=$(count 'guidanceGated=true') after_stop=$(nova | sed -n '/nav_stopped/,$p' | grep -c 'nav_alert_queued' || true)"
+
 ls -1 "$ev" | tee -a "$summary" >/dev/null
 echo "device checks finished"
