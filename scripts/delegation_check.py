@@ -37,7 +37,7 @@ REVIEW_LOG = os.path.join(REPO, "state", "reviews.log")
 
 def review_status(repo=REPO, baseline=BASELINE, log_path=REVIEW_LOG):
     """(missing, pending): executor merges since the baseline with no review line / a PENDING one."""
-    out = git(repo, "log", "--first-parent", "--merges", "--format=%H %s", "%s..HEAD" % baseline)
+    out = git(repo, "log", "--first-parent", "--merges", "--format=%H %P|%s", "%s..HEAD" % baseline)
     entries = {}
     if os.path.exists(log_path):
         for line in open(log_path, encoding="utf-8"):
@@ -46,10 +46,13 @@ def review_status(repo=REPO, baseline=BASELINE, log_path=REVIEW_LOG):
                 entries[parts[0]] = parts[1]
     missing, pending = [], []
     for line in out.splitlines():
-        sha, _, subject = line.partition(" ")
+        shas, _, subject = line.partition("|")
+        sha, *parents = shas.split()
         if not subject.startswith("Merge exec/"):
             continue
-        status = next((v for k, v in entries.items() if sha.startswith(k)), None)
+        # The record is keyed by the reviewed branch tip (second parent) or by the merge commit.
+        keys = [sha] + parents[1:]
+        status = next((v for k, v in entries.items() for c in keys if len(k) >= 7 and c.startswith(k)), None)
         if status is None:
             missing.append("%s %s" % (sha[:12], subject))
         elif status == "PENDING":

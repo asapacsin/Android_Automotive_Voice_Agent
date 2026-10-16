@@ -40,3 +40,5 @@ app/src/main/jniLibs/
 app/libs/*.jar
 app/src/main/assets/ivw/
 app/src/main/res/raw/*.mp3
+# Review records are evidence, not a log file (owner 2026-10-16).
+!state/reviews.log

@@ -6,9 +6,7 @@
 name: Unit tests
 
 on:
-  push:
-    branches:
-      - claude/**
+  # One run per push to an open PR (push + pull_request on the same commit cancelled each other).
   pull_request:
   workflow_dispatch:
 
