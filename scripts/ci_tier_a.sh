@@ -1,0 +1,139 @@
+#!/bin/bash
+# Tier A gate, run the same way locally and on GitHub (.github/workflows/unit-tests.yml).
+#   bash scripts/ci_tier_a.sh gates       # harness gates: verdict selftest, script tests,
+#                                         # delegation/review audit, review-hook selftest, matrix
+#   bash scripts/ci_tier_a.sh build-test  # :app:assembleDebug, JVM tests, JUnit XML per module
+# Every check's exit code is captured and recorded PASS/FAIL/BLOCKED; the job's exit code is the
+# exit code of `ci_verdict.py verdict` (0 PASS, 1 FAIL, 3 BLOCKED), never "the script finished".
+# Results: ${CI_RESULTS_DIR:-evidence/ci}/tier-a-PHASE.jsonl and verdict-PHASE.json.
+# Test overrides (defaults are production): CI_PYTHON, CI_GRADLE, CI_BUILD_SCRIPT.
+set -u
+set +e
+cd "$(dirname "$0")/.."
+
+PHASE="${1:-}"
+case "$PHASE" in
+  gates) SUITE=tier-a-gates ;;
+  build-test) SUITE=tier-a-build ;;
+  *) echo "usage: $0 gates|build-test" >&2; exit 2 ;;
+esac
+
+PY="${CI_PYTHON:-python3}"
+RESULTS_DIR="${CI_RESULTS_DIR:-evidence/ci}"
+mkdir -p "$RESULTS_DIR"
+OUT="$RESULTS_DIR/tier-a-$PHASE.jsonl"
+: > "$OUT"
+JUNIT_OUT="$RESULTS_DIR/.tier-a-junit.jsonl"
+
+record() {  # id status detail
+  "$PY" scripts/ci_verdict.py record --out "$OUT" --id "$1" --status "$2" --detail "$3" >/dev/null
+}
+
+run_check() {  # id label cmd...  -> records PASS/FAIL by exit code
+  local id="$1" label="$2"; shift 2
+  local rc
+  echo "== $id: $*"
+  "$@"
+  rc=$?
+  if [ "$rc" -eq 0 ]; then record "$id" PASS "$label ok"; else record "$id" FAIL "$label exit $rc"; fi
+  return 0
+}
+
+gates() {
+  run_check ci:verdict-selftest "ci_verdict selftest" "$PY" scripts/ci_verdict.py --selftest
+  run_check ci:script-tests "script unittests" "$PY" -m unittest discover -s scripts/tests -t .
+
+  local args=(--ci) dc_out dc_rc line gate st
+  if [ -n "${CI_UPSTREAM_REF:-}" ]; then args+=(--upstream "$CI_UPSTREAM_REF"); fi
+  echo "== delegation_check ${args[*]}"
+  dc_out="$("$PY" scripts/delegation_check.py "${args[@]}" 2>&1)"
+  dc_rc=$?
+  printf '%s\n' "$dc_out"
+  # PASS only if delegation_check exited 0 AND exactly one GATE line for the gate says PASS.
+  local n
+  for gate in delegation review-records; do
+    n="$(printf '%s\n' "$dc_out" | grep -cE "^GATE $gate( |\$)")"
+    line="$(printf '%s\n' "$dc_out" | grep -E "^GATE $gate( |\$)" | tail -1)"
+    if [ "$n" -eq 0 ]; then
+      record "gate:$gate" FAIL "no GATE line (delegation_check exit $dc_rc)"
+    elif [ "$dc_rc" -eq 0 ] && [ "$n" -eq 1 ] && [ "$line" = "GATE $gate PASS" ]; then
+      record "gate:$gate" PASS "GATE $gate PASS (exit 0, 1 line)"
+    else
+      record "gate:$gate" FAIL "GATE $gate not a clean PASS (delegation_check exit $dc_rc, $n line(s), last ${line##* })"
+    fi
+  done
+
+  run_check gate:review-hook-selftest "review hook selftest" \
+    "$PY" .claude/hooks/require-review-before-merge.py --selftest
+
+  if "$PY" -c "import yaml" >/dev/null 2>&1; then
+    run_check matrix:validate "test_matrix validate --structural" \
+      "$PY" scripts/test_matrix.py --validate --structural
+    # Optional (warning only): evidence-bind currency is a Tier C (--release) requirement.
+    local mx_out mx_rc stale
+    echo "== matrix:evidence-current: test_matrix --validate"
+    mx_out="$("$PY" scripts/test_matrix.py --validate 2>&1)"
+    mx_rc=$?
+    printf '%s\n' "$mx_out" | tail -3
+    stale="$(printf '%s\n' "$mx_out" | sed -n 's/^ *\([^ :]*\): STALE_BIND.*/\1/p' | sort -u | wc -l | tr -d ' ')"
+    if [ "$mx_rc" -eq 0 ]; then
+      record matrix:evidence-current PASS "$stale rows with stale binds"
+    else
+      record matrix:evidence-current FAIL "$stale rows with stale binds (exit $mx_rc)"
+    fi
+  else
+    record matrix:validate BLOCKED "PyYAML missing"
+    record matrix:evidence-current BLOCKED "PyYAML missing"
+  fi
+}
+
+BUILD_IDS=(build:assembleDebug gradle:test junit:app junit:behavior-test junit:contracts
+           junit:evaluation junit:ingress junit:safety junit:simulator)
+MODULES=(app behavior-test contracts evaluation ingress safety simulator)
+
+build_test() {
+  local name missing=""
+  for name in AMAP_API_KEY NOVA_VENDOR_ZIP_URL NOVA_DEBUG_KEYSTORE_B64; do
+    if [ -z "${!name:-}" ]; then missing="$name"; break; fi
+  done
+  if [ -n "$missing" ]; then
+    echo "required secret $missing is not set; build and tests are BLOCKED"
+    local id
+    for id in "${BUILD_IDS[@]}"; do record "$id" BLOCKED "secret $missing not set"; done
+    return 0
+  fi
+
+  # Never let a stale report pass: drop each module's test-results before anything runs.
+  local root="${NOVA_BUILD_DIR:-$HOME/nova-drive-build}" m
+  for m in "${MODULES[@]}"; do rm -rf "$root/$m/test-results"; done
+
+  # No Gradle build cache in CI: its entries can carry secret-derived outputs (local.properties,
+  # BuildConfig) and must never reach actions/cache. GRADLE_OPTS covers the shared build script.
+  export GRADLE_OPTS="${GRADLE_OPTS:-} -Dorg.gradle.caching=false"
+
+  # shellcheck disable=SC2206
+  local build_cmd=(${CI_BUILD_SCRIPT:-bash scripts/github_build_apk.sh})
+  run_check build:assembleDebug "github_build_apk.sh" "${build_cmd[@]}"
+
+  # As scripts/github_build_apk.sh sets them. Tests run even if the build failed: test
+  # compilation shows the real breakage, and missing reports FAIL the junit records.
+  export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+  export ANDROID_HOME=/opt/android-sdk
+  # shellcheck disable=SC2206
+  local gradle_cmd=(${CI_GRADLE:-./gradlew})
+  run_check gradle:test "gradle test" "${gradle_cmd[@]}" --no-build-cache test :behavior-test:test --continue
+
+  local margs=()
+  for m in "${MODULES[@]}"; do margs+=(--module "$m"); done
+  "$PY" scripts/ci_verdict.py junit --root "$root" "${margs[@]}" --out "$JUNIT_OUT" \
+    && cat "$JUNIT_OUT" >> "$OUT"
+  rm -f "$JUNIT_OUT"
+}
+
+set +e  # every check captures its own exit code; the verdict decides
+if [ "$PHASE" = gates ]; then gates; else build_test; fi
+
+"$PY" scripts/ci_verdict.py verdict --manifest config/ci_checks.json --suite "$SUITE" \
+  --results "$OUT" --json-out "$RESULTS_DIR/verdict-$PHASE.json" \
+  --summary "${GITHUB_STEP_SUMMARY:-/dev/null}"
+exit $?

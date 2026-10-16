@@ -222,7 +222,7 @@ class VerdictTest(Base):
 
     def test_shipped_manifest_validates(self):
         r = self.results([rec("junit:app", "PASS")])
-        rc, out = run("verdict", "--manifest", SHIPPED, "--suite", "tier-a", "--today", TODAY, "--results", r)
+        rc, out = run("verdict", "--manifest", SHIPPED, "--suite", "tier-a-build", "--today", TODAY, "--results", r)
         self.assertEqual(rc, 1, out)  # missing required checks, but the manifest itself is valid
         self.assertNotIn("manifest invalid", out)
         for suite in ("voice", "device", "navpiece"):
@@ -230,7 +230,7 @@ class VerdictTest(Base):
             self.assertNotEqual(rc, 2, out)
 
     def test_absent_results_tier_a(self):
-        rc, _ = run("verdict", "--manifest", SHIPPED, "--suite", "tier-a", "--results",
+        rc, _ = run("verdict", "--manifest", SHIPPED, "--suite", "tier-a-build", "--results",
                     self.path("does-not-exist.jsonl"), "--today", TODAY)
         self.assertEqual(rc, 1)
 

@@ -1,9 +1,14 @@
 {
   "_doc": "CI check manifest read by scripts/ci_verdict.py. Each suite lists required and optional check ids (a trailing * is a prefix wildcard that must match at least one result). A required check passes only on PASS; FAIL, FLAKY, SKIPPED or a missing result fail the job, BLOCKED blocks it. Quarantine entries need all of id, suite, reason, owner, tracking, remove_when, expires (YYYY-MM-DD, at most 30 days ahead); they only cover measured FAIL/FLAKY results, and an expired entry makes the manifest invalid.",
   "suites": {
-    "tier-a": {
-      "description": "Tier A: JVM suites, debug build and harness gates on every push.",
-      "required": ["gradle:test", "junit:app", "junit:behavior-test", "junit:contracts", "junit:evaluation", "junit:ingress", "junit:safety", "junit:simulator", "build:assembleDebug", "ci:verdict-selftest", "ci:script-tests", "gate:delegation", "gate:review-records", "gate:review-hook-selftest", "matrix:validate"],
+    "tier-a-gates": {
+      "description": "Tier A gates: CI verdict selftest, script tests, delegation and review audit, review-hook selftest, test matrix structural validation (required); evidence-bind currency is optional here and enforced by Tier C --release.",
+      "required": ["ci:verdict-selftest", "ci:script-tests", "gate:delegation", "gate:review-records", "gate:review-hook-selftest", "matrix:validate"],
+      "optional": ["matrix:evidence-current"]
+    },
+    "tier-a-build": {
+      "description": "Tier A build: debug APK build, JVM test run and JUnit XML per module.",
+      "required": ["build:assembleDebug", "gradle:test", "junit:app", "junit:behavior-test", "junit:contracts", "junit:evaluation", "junit:ingress", "junit:safety", "junit:simulator"],
       "optional": []
     },
     "voice": {
