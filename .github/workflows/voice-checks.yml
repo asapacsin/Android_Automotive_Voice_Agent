@@ -121,7 +121,7 @@ jobs:
           profile: pixel_5
           cores: 2
           ram-size: 2048M
-          emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -no-snapshot -camera-back none
+          emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -no-snapshot -camera-back emulated
           disable-animations: true
           script: bash scripts/github_voice_checks.sh "$HOME/nova-drive-build/app/outputs/apk/debug/app-debug.apk"
 

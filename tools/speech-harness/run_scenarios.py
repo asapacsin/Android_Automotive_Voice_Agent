@@ -47,6 +47,7 @@ def log_since(marker):
     return lines
 
 
+SHOTS = None  # --shots DIR: screenshots for scenarios marked "shot": true
 PROVIDER = None  # --provider gemini: the debug-only in-memory override (decided by the decider, 2026-10-15)
 
 
@@ -142,6 +143,12 @@ def run_scenario(sc, wait):
     for clip in clips:
         broadcast("voice", "say:" + clip)
         time.sleep(wait)
+    if SHOTS and sc.get("shot"):
+        # The screen after the turn (FUZZY-DEVICE-001: the scenario chip). Map tiles only.
+        os.makedirs(SHOTS, exist_ok=True)
+        png = subprocess.run([ADB, "exec-out", "screencap", "-p"], capture_output=True, timeout=30).stdout
+        with open(os.path.join(SHOTS, sc["id"] + ".png"), "wb") as handle:
+            handle.write(png)
     lines = log_since(marker)
     if lines is None:
         return False, ["scenario marker never reached the log - the app may not be running"], []
@@ -167,9 +174,11 @@ def main():
     ap.add_argument("--wait", type=int, default=14)
     ap.add_argument("--file", default=os.path.join(HERE, "scenarios.json"))
     ap.add_argument("--provider", choices=["gemini"], help="debug builds: open Gemini sessions (quota guard on)")
+    ap.add_argument("--shots", help="save a screenshot after each scenario marked \"shot\": true")
     args = ap.parse_args()
-    global PROVIDER
+    global PROVIDER, SHOTS
     PROVIDER = args.provider
+    SHOTS = args.shots
 
     with open(args.file, encoding="utf-8") as handle:
         scenarios = json.load(handle)["scenarios"]

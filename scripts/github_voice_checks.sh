@@ -137,6 +137,33 @@ tool voice stop
 tool provider clear
 rm -f "$ev/scenarios_raw.txt"
 
+# ---- further suites: Cantonese (TRUTH-MEDIA-001), device rows (affordances, news, vision, fuzzy with
+# screenshots), live info x10 (LIVE-INFO-DEVICE-001). Ids + PASS/FAIL only, as above.
+suite() { # name, then runner args
+  local name="$1"; shift
+  python3 tools/speech-harness/run_scenarios.py --wait 14 --provider gemini "$@" >"$ev/${name}_raw.txt" 2>&1 || true
+  grep -E '^\s+(ok|FLAKY|FAIL)\s+[A-Z][A-Z0-9-]*\s+[0-9]+/[0-9]+' "$ev/${name}_raw.txt" | sed -E 's/^\s+//' | awk '{print $1, $2, $3}' >"$ev/${name}.txt" || true
+  grep -E '^\s+expected /|^\s+forbidden /' "$ev/${name}_raw.txt" | sed -E "s/ matched .*/ matched (text omitted)/" | sort | uniq -c >"$ev/${name}_failures.txt" || true
+  note "suite $name: $(tr '\n' ' ' <"$ev/${name}.txt") guard=$(grep -c 'QUOTA GUARD' "$ev/${name}_raw.txt" || true)"
+  rm -f "$ev/${name}_raw.txt"
+}
+suite cantonese --file tools/speech-harness/scenarios-cantonese.json
+suite device --file tools/speech-harness/scenarios-device.json --shots "$ev/shots"
+for f in "$ev"/shots/*.png; do [ -f "$f" ] && ffmpeg -v error -y -i "$f" -vf scale=540:-2 -q:v 4 "${f%.png}.jpg" && rm -f "$f"; done
+suite liveinfo --file tools/speech-harness/scenarios-liveinfo.json --repeat 10
+
+# ---- WAKE-SYNTH-001: a synthetic wake through the debug path ----------------------------------
+mark
+tool voice stop; sleep 3
+tool provider gemini
+tool wake on; sleep 2
+note "WAKE-SYNTH-001: wake on -> $(result_of wake) status: $(tool wake status; sleep 1; nova | grep 'debug_tool tool=wake arg=status' | tail -1 | grep -oE 'enabled=[a-z]+|credentials_complete=[a-z]+' | tr '\n' ' ')"
+adb push tools/speech-harness/speech/wake_phrase.pcm /sdcard/Android/data/com.novadrive.app/files/wake.pcm >/dev/null 2>&1 || true
+sleep 2
+tool wake inject; sleep 10
+note "WAKE-SYNTH-001: wake inject -> $(result_of wake) detection=$(count 'wake_detection') to_active=$(count 'DEEP_IDLE->ACTIVE|->ACTIVE reason=wake') provider=$(nova | grep -oE 'session_provider choice=[a-z_]+' | tail -1) wake_lines=$(nova | grep -oE 'wake_[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ';')"
+if nova | grep -q 'session_provider choice=qwen'; then tool voice stop; echo "::error title=quota guard::wake opened a non-Gemini session; stopped"; fi
+
 # ---- the review demo: the real app, driver audio over the host bridge, her replies recorded -----
 # Clips are the synthetic speech-harness lines. The bridge re-applies provider=gemini and stops if
 # the session is not gemini_live (quota guard). Its stdout carries transcripts: not kept.

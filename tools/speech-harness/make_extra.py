@@ -49,6 +49,14 @@ PHRASES = {
     # T08 — stop talking
     "stop_talking": "停止说话。",
     "can_you_talk": "你能说话吗？",
+    # FUZZY-DEVICE-001 (SPEC-015 FZ-01..FZ-05/FZ-09/FZ-10) - vague comfort requests
+    "fz_mosquito": "有蚊子。",
+    "fz_mosquito_done": "好了，关上吧。",
+    "fz_seat_high": "座位有点高。",
+    "fz_lower_more": "再低一点。",
+    "fz_drowsy": "好困啊。",
+    # WAKE-SYNTH-001 - the wake phrase, injected through the debug wake path
+    "wake_phrase": "你好小诺。",
 }
 
 
