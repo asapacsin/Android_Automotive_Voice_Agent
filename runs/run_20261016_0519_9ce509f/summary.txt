@@ -1,0 +1,14 @@
+app: map up
+secret AMAP_WEB_KEY: set, amap_web_setup -> result=applied 
+secret GEMINI_API_KEY: set, gemini_setup -> result=applied 
+guidance relay: result=relay=on 
+driver waits: line=1 ms=0 cap=0 line=2 ms=0 cap=0 line=3 ms=0 cap=0 line=4 ms=0 cap=0 line=5 ms=0 cap=0 line=6 ms=0 cap=0 line=7 ms=2778 cap=0 line=8 ms=0 cap=0 
+nav demo: provider=session_provider choice=gemini_live started=1 stopped= guidance=0 tools= 4 tool=choose_navigation_option  4 tool=control_climate  2 tool=navigate_to  errors=0
+relay: nav_guidance_relay deadline_ms=3000 nav_guidance_relay installed=true routes:  3 guidance_route to=amap reason=DEADLINE  1 guidance_route to=amap reason=DRIVER_SPEAKING  6 guidance_route to=amap reason=SEND_FAILED  54 guidance_route to=assistant reason=SENT 
+relay claims: assistant_waited_ms=784,902,716,829,732,743,828,832,838,1067,933,793,841,695,1154,775,980,808,760,724,1071,1513,753,802,968,1105,755,611,794,616,1008,692,741,1129,814,676,847,684,697,857,984,1235,1017,870,687,699,784,1006,727,859,743, amap=3 fidelity:  51 result=MATCH fallback_tts:  10 nav_guidance_fallback_tts accepted=true echo_dropped=10
+overspeed: limits=limitKmh=0 limitKmh=60 over_lines=1 alerts=1 queued:  1 nav_alert_queued to=relay rings=23
+listening:  1 listening ACTIVE->SLEEP reason=inactivity_timeout  1 listening DEEP_IDLE->ACTIVE reason=start uplink_closed=31 droppedGuidance=droppedGuidance=2134
+gemini closes:  1 gemini_closed code=1008 reason_class=other 
+nav demo: nav_demo.mp4 written (offset 0.0 s, guidance=yes)
+video: 576x1248 frames=5715 seconds=715 fps=8.0
+nav demo: done
