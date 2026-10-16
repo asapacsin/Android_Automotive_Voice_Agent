@@ -1,0 +1,6 @@
+app: map up
+secret AMAP_WEB_KEY: set, amap_web_setup -> result=applied 
+secret GEMINI_API_KEY: set, gemini_setup -> result=applied 
+NAV-OVERSPEED-001: queue=0 limits=limitKmh=70 over=1 alerts=1 queued:  1 nav_alert_queued to=amap routes:  1 guidance_route to=amap reason=DISABLED fallback_tts:  1 nav_guidance_fallback_tts accepted=true play_start=15 uplink_closed=1
+nav demo: done (speedoff piece)
+worker: piece=navpiece build_s=32 total_s=256
