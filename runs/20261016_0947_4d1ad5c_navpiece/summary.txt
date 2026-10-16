@@ -1,0 +1,17 @@
+app: map up
+secret AMAP_WEB_KEY: set, amap_web_setup -> result=applied 
+secret GEMINI_API_KEY: set, gemini_setup -> result=applied 
+guidance relay: result=relay=on 
+piece mode: 5-minute demo, 400 s
+driver waits: line=1 ms=0 cap=0 reason=none line=2 ms=0 cap=0 reason=none line=3 ms=2980 cap=0 reason=reply line=4 ms=0 cap=0 reason=none line=5 ms=0 cap=0 reason=none line=6 ms=0 cap=0 reason=none line=7 ms=0 cap=0 reason=none line=8 ms=2219 cap=0 reason=uplink line=9 ms=0 cap=0 reason=none line=10 ms=0 cap=0 reason=none line=11 ms=0 cap=0 reason=none line=12 ms=4919 cap=0 reason=uplink line=13 ms=0 cap=0 reason=none line=14 ms=0 cap=0 reason=none (the scripted driver reads the app's guidance log; a real driver cannot)
+nav demo: provider=session_provider choice=gemini_live started=1 stopped=nav_stopped reached=true reason=manual guidance=0 tools= 4 tool=choose_navigation_option  8 tool=control_climate  4 tool=control_music  2 tool=control_seat  2 tool=exit_navigation_mode  4 tool=navigate_to  2 tool=query_live_info  4 tool=run_scenario  errors=0
+relay: nav_guidance_relay deadline_ms=3000 nav_guidance_relay installed=true routes:  1 guidance_route to=amap reason=DRIVER_SPEAKING  4 guidance_route to=amap reason=RESPONSE_OPEN  2 guidance_route to=amap reason=SEND_FAILED  6 guidance_route to=assistant reason=SENT 
+relay claims: assistant_waited_ms=621,1213,936,633,708,804, amap=0 fidelity:  6 result=MATCH fallback_tts:  7 nav_guidance_fallback_tts accepted=true echo_dropped=7
+overspeed: limits=limitKmh=0 over_lines=0 alerts=0 queued: rings=4
+listening:  1 listening ACTIVE->SLEEP reason=inactivity_timeout  1 listening DEEP_IDLE->ACTIVE reason=start  1 listening SLEEP->DEEP_IDLE reason=connection_lost_in_sleep uplink_closed=12 droppedGuidance=droppedGuidance=4373
+P61 guard: guard_nearby_nav decision=refused cur=11 cap=11 refused=1 nav_stopped: nav_stopped reached=true reason=manual tools_in_order: tool=navigate_to tool=choose_navigation_option tool=navigate_to tool=query_live_info 
+gemini closes:  1 gemini_closed code=1008 reason_class=other 
+nav demo: nav_demo.mp4 written (offset 0.0 s, guidance=yes)
+video: 576x1248 frames=3153 seconds=414 fps=7.6
+nav demo: done
+worker: piece=navpiece build_s=27 total_s=526
