@@ -137,8 +137,9 @@ duration=960
 if [ "${NAV_DEMO_PIECE:-}" = "1" ] && [ -s scripts/nav_piece.txt ]; then NAV_DEMO_PIECE="$(tr -dc a-z <scripts/nav_piece.txt)"; fi
 if [ "${NAV_DEMO_PIECE:-}" = "demo" ]; then
   # The 5-minute demo (owner 2026-10-16): main driver functions and ambiguous commands, one drive.
+  # 珠海站: ~9.9 km, a 60 km/h camera on the recommended route (routes piece 4d09b8b), 120 km/h.
   clips="$S/nav_demo_dest.pcm,$S/pick_first.pcm,$S/start_nav.pcm,$S/ctx_too_hot.pcm,$S/ctx_cooler.pcm,$S/music_on.pcm,$S/fz_mosquito.pcm,$S/fz_mosquito_done.pcm,$S/fz_seat_high.pcm,$S/fz_lower_more.pcm,$S/gas_nearby.pcm,$S/cancel.pcm,$S/eta_q.pcm,$S/music_off.pcm"
-  duration=330; DEMO_GAP=12
+  duration=400; DEMO_GAP=12
   note "piece mode: 5-minute demo, ${duration} s"
 elif [ "${NAV_DEMO_PIECE:-}" = "gas" ]; then
   # Piece P61 in the real order: navigate, pick, start, then the gas question while driving.
@@ -155,7 +156,8 @@ note "driver waits: $(grep -oE 'wait_quiet line=[0-9]+ ms=[0-9]+ cap=[01] reason
 rm -f "$ev/bridge_out.txt"
 note "nav demo: provider=$(nova | grep -oE 'session_provider choice=[a-z_]+' | tail -1) started=$(count 'nav_started') stopped=$(nova | grep -oE 'nav_stopped reached=[a-z]+ reason=[a-z_]+' | tail -1) guidance=$(count 'nav_guidance_play_start') tools=$(nova | grep -oE '^tool=[a-z_]+|tool=[a-z_]+ args' | grep -oE 'tool=[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ') errors=$(count 'state=ERROR|_PROTOCOL_ERROR')"
 # Let the drive reach the destination if it has not yet.
-[ -n "${NAV_DEMO_PIECE:-}" ] || for _ in $(seq 1 24); do nova | grep -q "nav_stopped" && break; sleep 5; done
+# Pieces stop early; the full drives (and the 5-minute demo) wait for arrival.
+{ [ -z "${NAV_DEMO_PIECE:-}" ] || [ "${NAV_DEMO_PIECE:-}" = "demo" ]; } && for _ in $(seq 1 24); do nova | grep -q "nav_stopped" && break; sleep 5; done
 # P62 relay: who spoke each guidance sentence, and how long until her audio (codes and ms only).
 note "relay: $(nova | grep -oE 'nav_guidance_relay [a-z_]+=[a-z0-9_]+' | sort -u | tr '\n' ' ')routes: $(nova | grep -oE 'guidance_route prompt=g[0-9]+ to=[a-z]+ reason=[A-Z_]+' | sed -E 's/prompt=g[0-9]+ //' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')"
 note "relay claims: assistant_waited_ms=$(nova | grep -oE 'guidance_claim prompt=g[0-9]+ side=assistant waited_ms=[0-9]+' | grep -oE '[0-9]+$' | tr '\n' ',') amap=$(count 'guidance_claim .* side=amap') fidelity: $(nova | grep -oE 'guidance_fidelity prompt=g[0-9]+ result=[A-Z_]+' | grep -oE 'result=[A-Z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')fallback_tts: $(nova | grep -oE 'nav_guidance_fallback_tts accepted=[a-z]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ')echo_dropped=$(count 'guidance_echo_dropped')"
