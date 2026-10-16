@@ -3353,7 +3353,7 @@ tests:
       - {criterion: queued_to_amap_relay_off, required: true, observed: true, evidence: "log:NovaVoice/nav_alert_queued to=amap + guidance_route reason=DISABLED"}
       - {criterion: spoken_by_amap_fallback, required: true, observed: true, evidence: "log:NovaVoice/nav_guidance_fallback_tts accepted=true"}
       - {criterion: mic_gated_while_playing, required: true, observed: true, evidence: "log:NovaVoice/speech_arbiter out=uplink decision=CLOSED"}
-      - {criterion: no_alert_after_stop, required: true, observed: true, evidence: "run 38863113123: nav_alert_dropped reason=not_navigating"}
+      - {criterion: no_alert_after_stop, required: true, observed: true, evidence: "log:NovaVoice/nav_alert_dropped reason=not_navigating (device checks run 38863113123)"}
     ended_by: manual
     related: [P63, SPEC-018, NAV-MID-ROUTE-001]
     last_run: {at: 2026-10-16, result: PASS}

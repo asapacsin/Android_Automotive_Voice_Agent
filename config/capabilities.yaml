@@ -557,6 +557,7 @@ change_impact:
       - DrivingSpeedHud
       - DrivingSpeedHudView
       - OverspeedAlert
+      - RouteCameraSummary
       - NaviEngine
       - AmapPrivacyCompliance
       - NavigationVoiceOutput
