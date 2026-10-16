@@ -54,8 +54,12 @@ Gemini is claimed at device level until G-M1/G-M2 pass.
 
 ## Failure behaviour
 
-- Setup rejected (1007), key refused (1008/401/403), quota (1011 with "quota"): the session fails
-  with an honest error code; quota is not retried in a loop.
+- Setup rejected (1007), key refused (1008 before setup completes / 401 / 403), quota (1011 with
+  "quota"): the session fails with an honest error code; quota is not retried in a loop.
+- 1008 **after** setup completed (2026-10-16, OPEN_PROBLEMS P61 note, reviewer PASS): the key was
+  accepted, so unless the reason class is auth or quota it is a dropped session -
+  `GEMINI_LIVE_CONNECTION_CLOSED`, resumed by the reconnect owner (ReconnectPolicy, 5 attempts per
+  session start; see TECH_DEBT D-RECONNECT-BUDGET).
 - `goAway`: reported as reconnecting; the existing reconnect owner reopens the session.
 - `toolCallCancellation`: a call not yet executed is not executed; an executed one is not undone.
 - Thought parts, if any arrive, are dropped in the adapter and never logged or spoken.

@@ -324,3 +324,22 @@ confirmation's events had not yet reached the collector. Replaced with an awaite
 the other scenarios for their one `ResponseDone`. Assertions unchanged; no production change.
 Evidence: release class 10/10 green (10 tests each, 0 failures, JUnit XML) with 4× `yes` CPU load;
 full `./gradlew test` green, 3380 tests, 0 failures, 0 errors, 4 skipped (JUnit XML).
+
+## D-RECONNECT-BUDGET — reconnect attempts are counted per session start, not per drop (recorded 2026-10-16)
+
+`ReconnectPolicy.reset()` runs only in `VoiceSessionController.start()`. Since 1008-after-setup is
+resumed (fe8933e), a long drive with frequent benign Gemini closes (five in nav demo run
+38855381048) spends the 5-attempt budget; the 6th drop is terminal (已断开) and every resume plays
+「刚才网络断了一下」. Found by the reviewer (2026-10-16). Fix direction: reset the attempt count after a
+resumed session has stayed up for a while, keep the cap for drops in quick succession. Not fixed.
+
+## D-NAV-FLAG — the legacy NavigationState flag is cleared when the voice session stops mid-drive (recorded 2026-10-16)
+
+`VoiceSessionController.stop()`/`release()` call `NavigationState.reset()`, which also tells
+SpeechArbiter navigation ended (`onNavigating(false)`) and feeds `syncGuidanceSleep`, while the car is
+still guided. ToolCallGuards now reads the map host (`navigatingNow()`, P61 regression) and the
+overspeed alert reads the host too, so three notions of "navigating" exist (legacy flag,
+`EmbeddedNavigationController.isGuiding()`, host `isNavigating`). Found by the P63/P61 reviews
+(2026-10-16). Fix direction: one owner for "a route is being guided" (the host/controller), the legacy
+flag derived from it and never reset by the voice session. Not fixed.
+
