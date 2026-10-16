@@ -189,8 +189,9 @@ does not change architecture ownership, invariants, or who may certify work. Age
 - **Production and test source is written by executors** (owner 2026-10-16): the main/planner agent may not edit `<module>/src/**` in the main checkout;
   settings deny rules and the guard-source-writes hook enforce it, `scripts/delegation_check.py` audits the branch.
   Planner keeps docs, state, scripts/tools and integration.
-  Every executor merge also needs a review record in `state/reviews.log` (PASS from the `reviewer`, or WAIVED
-  with a reason); the Stop hook (`delegation_check.py --stop-hook`) blocks the end of a turn without one.
+  Review comes after the executor finishes and before its merge: `git merge exec/*` is refused until
+  `state/reviews.log` has PASS (the `reviewer`) or WAIVED (with a reason) for the branch tip; the Stop hook
+  (`delegation_check.py --stop-hook`) backs it up after the merge.
 - **Keep executing; the owner only chooses** (owner, 2026-10-16). Keep working without waiting for
   a go-ahead: everything you can do yourself is your task. Bring the owner only a real choice: give
   two or more distinct options, each with its consequence and its time cost, plus your
