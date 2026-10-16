@@ -16,3 +16,6 @@ b314591 PASS 2026-10-16 ToolCallGuards.navigatingNow (follow-up: legacy Navigati
 c378eb13b9f2 WAIVED 2026-10-16 TEST_MATRIX and generated state only (rebind of 36 rows to runs 38891890665/38891892916); validated by test_matrix.py --validate (95 -> 9 problems), no code
 20eba04 WAIVED 2026-10-16 Tier C release checklist is reporting-only (not a CI gate) and touches no module source; planner reran its 10 rule tests and --release (NOT_READY 38/96)
 f602106 PASS 2026-10-16 reviewer PASS after two REVISE rounds (false-green inputs closed; 95 tests, adversarial probes red)
+5dcb18c PASS 2026-10-16 reviewer PASS after three REVISE rounds (guard only during guidance; adjacency explicit-end rule); E2E on Gemini harness still unverified. Record written after the merge 7607122 by planner error (see commit), review itself preceded the merge
+b9c77df REVISED 2026-10-16 5dcb18c reviewer REVISE resolved by the vague-exit-r1 branch (R1-R3)
+9fab533 REVISED 2026-10-16 5dcb18c reviewer REVISE resolved by the vague-exit-r1 branch (structural explicit end)
