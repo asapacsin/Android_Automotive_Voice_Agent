@@ -65,9 +65,23 @@ gates() {
     "$PY" .claude/hooks/require-review-before-merge.py --selftest
 
   if "$PY" -c "import yaml" >/dev/null 2>&1; then
-    run_check matrix:validate "test_matrix validate" "$PY" scripts/test_matrix.py --validate
+    run_check matrix:validate "test_matrix validate --structural" \
+      "$PY" scripts/test_matrix.py --validate --structural
+    # Optional (warning only): evidence-bind currency is a Tier C (--release) requirement.
+    local mx_out mx_rc stale
+    echo "== matrix:evidence-current: test_matrix --validate"
+    mx_out="$("$PY" scripts/test_matrix.py --validate 2>&1)"
+    mx_rc=$?
+    printf '%s\n' "$mx_out" | tail -3
+    stale="$(printf '%s\n' "$mx_out" | grep -c 'STALE_BIND')"
+    if [ "$mx_rc" -eq 0 ]; then
+      record matrix:evidence-current PASS "$stale stale binds"
+    else
+      record matrix:evidence-current FAIL "$stale stale binds (exit $mx_rc)"
+    fi
   else
     record matrix:validate BLOCKED "PyYAML missing"
+    record matrix:evidence-current BLOCKED "PyYAML missing"
   fi
 }
 

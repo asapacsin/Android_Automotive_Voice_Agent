@@ -678,8 +678,12 @@ def protection_summary(doc=None):
 # ---- validation ------------------------------------------------------------------------------
 
 
-def validate(doc=None, requirements=None, audit_protection=None, extra_unmapped=None):
-    """Everything that would make the registry lie. Returns a list of problems."""
+def validate(doc=None, requirements=None, audit_protection=None, extra_unmapped=None,
+             check_binds=True):
+    """Everything that would make the registry lie. Returns a list of problems.
+
+    check_binds=False (--structural, Tier A) skips only evidence-bind currency, which every code
+    change invalidates by construction; Tier C (--release) still blocks on stale binds."""
     _BIND_COMPUTE_CACHE.clear()
     doc = doc or load()
     found = []
@@ -717,7 +721,7 @@ def validate(doc=None, requirements=None, audit_protection=None, extra_unmapped=
         if owner in HUMAN_OWNERS:
             found.extend(human_entry_problems(entry))
         found.extend(verdict_problems(entry, ids, requirements))
-        if need_runtime_bind(entry):
+        if check_binds and need_runtime_bind(entry):
             found.extend(bind_problems(entry))
     if audit_protection is None:
         audit_protection = requirements is None
@@ -1677,6 +1681,8 @@ def main():
     ap.add_argument("--record-pass", choices=["clean", "dirty"],
                     help="record a discovery/review pass result")
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--structural", action="store_true",
+                    help="with --validate, skip evidence-bind currency (Tier A)")
     ap.add_argument("--bind", metavar="ID", help="write evidence_bind for one runtime-bound row")
     ap.add_argument("--apply-stale", action="store_true",
                     help="requeue rows whose evidence_bind no longer matches")
@@ -1721,10 +1727,11 @@ def main():
         return 0
 
     if args.validate:
-        problems = validate(doc)
+        problems = validate(doc, check_binds=not args.structural)
         for problem in problems:
             print("  %s" % problem)
-        print("%d test(s), %d problem(s)" % (len(doc["tests"]), len(problems)))
+        print("%d test(s), %d problem(s)%s" % (len(doc["tests"]), len(problems),
+              " (structural: evidence binds not checked)" if args.structural else ""))
         return 1 if problems else 0
 
     if args.work:

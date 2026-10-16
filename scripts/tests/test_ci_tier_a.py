@@ -38,13 +38,20 @@ class TierATest(unittest.TestCase):
               "import unittest\nclass T(unittest.TestCase):\n    def test_ok(self):\n        pass\n")
         write(os.path.join(r, ".claude/hooks/require-review-before-merge.py"),
               "print('require-review selftest: ok')\n")
-        write(os.path.join(r, "scripts/test_matrix.py"), "print('valid')\n")
+        self.set_matrix(0)
         self.set_delegation("GATE delegation PASS\nGATE review-records PASS\n", 0)
         self.build_dir = os.path.join(self.tmp, "build")
         self.results = os.path.join(self.tmp, "results")
         self.bin = os.path.join(self.tmp, "bin")
         self.set_build(0)
         self.set_gradle(0, MODULES)
+
+    def set_matrix(self, stale):
+        """Stub: --structural always valid; the full --validate reports `stale` STALE_BIND lines."""
+        write(os.path.join(self.repo, "scripts/test_matrix.py"),
+              "import sys\nif '--structural' in sys.argv:\n    print('0 problem(s)')\n    sys.exit(0)\n"
+              "for i in range(%d):\n    print('  R%%d: STALE_BIND code_digest mismatch' %% i)\n"
+              "sys.exit(1 if %d else 0)\n" % (stale, stale))
 
     def set_delegation(self, out, rc):
         write(os.path.join(self.repo, "scripts/delegation_check.py"),
@@ -109,6 +116,17 @@ class TierATest(unittest.TestCase):
             self.assertEqual(rc, 3, out)
         else:
             self.assertEqual(rc, 0, out)
+
+    def test_stale_binds_are_optional_warning(self):
+        self.set_matrix(3)
+        rc, out = self.run_phase("gates")
+        recs = self.records("gates")
+        if recs["matrix:validate"]["status"] == "BLOCKED":
+            self.skipTest("PyYAML missing")
+        self.assertEqual(rc, 0, out)
+        self.assertEqual(recs["matrix:validate"]["status"], "PASS")
+        self.assertEqual(recs["matrix:evidence-current"]["status"], "FAIL")
+        self.assertIn("3 stale binds", recs["matrix:evidence-current"]["detail"])
 
     def test_build_all_pass(self):
         rc, out = self.run_phase("build-test")
