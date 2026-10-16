@@ -1,0 +1,16 @@
+-- S4b
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=12928 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   test_speech_start bytes=100608
+   debug_tool tool=voice arg=say:media_named_song
+   test_speech_end frames=330 elapsedMs=3318
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=13429 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=13922 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+-- S5
+   test_speech_start bytes=62976
+   debug_tool tool=voice arg=say:nav_zhuhai
+   test_speech_end frames=212 elapsedMs=2127
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=15936 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=16437 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=16939 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+-- S5b
+   debug_tool tool=voice arg=say:pick_second

@@ -1,0 +1,4 @@
+          expected /^tool=play_music/
+          expected /tool=navigate_to/
+          expected /nav_resolve_candidates count=/
+          expected /tool=choose_navigation_option/

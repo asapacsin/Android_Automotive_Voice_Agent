@@ -1,0 +1,17 @@
+app: map up
+secret AMAP_WEB_KEY: set, amap_web_setup -> result=applied 
+secret GEMINI_API_KEY: set, gemini_setup -> result=applied 
+voice: provider override -> result=override=gemini 
+voice: session_provider choice=gemini_live
+voice: session up
+voice: scenarios PASS S1 PASS S2 PASS S3 PASS S4 FAIL S4b FAIL S5 FAIL S5b PASS S6 PASS S7 PASS S8 PASS S9 PASS S11 PASS S10 PASS S12 PASS S13 PASS S14 PASS S15 PASS S16 PASS S17 PASS S18 PASS S19 PASS S20 PASS S21 ok S1 ok S2 ok S3 ok S4 FAIL S4b FAIL S5 FAIL S5b ok S6 ok S7 ok S8 ok S9 ok S11 ok S10 ok S12 ok S13 ok S14 ok S15 ok S16 ok S17 ok S18 ok S19 ok S20 ok S21 
+voice: session errors=1 provider_lines= 4 session_provider choice=gemini_live  quota_guard=0
+0
+suite cantonese: FAIL YUE-HOME 0/1 FAIL YUE-HOT 0/1 ok YUE-MUSIC 1/1  guard=0
+suite device: ok AFF-PAUSE 1/1 FAIL AFF-AC 0/1 ok AFF-RECENTER 1/1 ok NEWS 1/1 ok VISION 1/1 ok FZ-MOSQ 1/1 ok FZ-MOSQ-DONE 1/1 ok FZ-SEAT 1/1 ok FZ-LOWER 1/1 ok FZ-DROWSY 1/1  guard=0
+suite liveinfo: ok LI-WEATHER 10/10 FLAKY LI-PLACE 7/10 ok LI-TRAFFIC 10/10 ok LI-ALONG 10/10  guard=0
+WAKE-SYNTH-001: wake on -> result=wake  status: enabled=true credentials_complete=false 
+WAKE-SYNTH-001: wake inject -> result=injecting  detection=0 to_active=0 provider= wake_lines= 1 wake_capture_started; 10 wake_init_failure;
+demo: provider=session_provider choice=gemini_live tools= 2 tool=bridge  2 tool=choose_navigation_option  6 tool=control_climate  2 tool=control_music  2 tool=exit_navigation_mode  2 tool=navigate_to  1 tool=provider  1 tool=voice  errors=0
+demo: voice_demo.mp4 written (audio offset 0.0 s)
+voice: done, override cleared
