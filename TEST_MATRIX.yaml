@@ -274,17 +274,17 @@ tests:
     prerequisites: ["Amap web key configured"]
     procedure: ["dispatch save_place slot=home address=珠海站"]
     pass_criteria: ["ok=true with the RESOLVED place name", "saved_place_set slot=HOME"]
-    evidence: ["2026-09-19: place=珠海站", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator run 38766074866 at b293641 with the Amap web key from the AMAP_WEB_KEY secret (amap_web_setup applied): dispatch save_place slot=home -> ok=true, saved_place_set slot=HOME (ci/device-evidence runs/run_20261015_1632_b293641)", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): save_place home -> ok=true, saved_place_set_slot_home=1; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
+    evidence: ["2026-09-19: place=珠海站", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator run 38766074866 at b293641 with the Amap web key from the AMAP_WEB_KEY secret (amap_web_setup applied): dispatch save_place slot=home -> ok=true, saved_place_set slot=HOME (ci/device-evidence runs/run_20261015_1632_b293641)", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): save_place home -> ok=true, saved_place_set_slot_home=1; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): save_place home -> ok=true, saved_place_set slot=home x1"]
     evidence_bind:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:157ec0e4cef8d9960f1a42717963fe7b97c67f7bf11281a0ea6d1bc32d51c58a
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
       apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: c55a140
+      bound_commit: cd6d77c
     related: [B-010]
-    last_run: {at: 2026-10-16, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: PLACE-NAV-001
     capability: saved_places
@@ -322,17 +322,17 @@ tests:
     prerequisites: ["no home saved"]
     procedure: ["dispatch navigate_to destination=回家"]
     pass_criteria: ["ok=false HOME_NOT_SET, with wording that asks for the address"]
-    evidence: ["2026-09-19 device", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): dispatch navigate_to 回家 with no home -> ok=false HOME_NOT_SET, wording asks for the address", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): navigate_to 回家 with no home -> ok=false HOME_NOT_SET, asks_for_address=yes; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
+    evidence: ["2026-09-19 device", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): dispatch navigate_to 回家 with no home -> ok=false HOME_NOT_SET, wording asks for the address", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): navigate_to 回家 with no home -> ok=false HOME_NOT_SET, asks_for_address=yes; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): navigate_to 回家 with no home -> ok=false HOME_NOT_SET, asks_for_address=yes"]
     evidence_bind:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:d0604ec6bee49e6e45bfd056b8bdeb4a5f8b75b6f088b2c874919045fc4b9b14
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
       apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: c55a140
+      bound_commit: cd6d77c
     related: [B-010]
-    last_run: {at: 2026-10-16, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
 # ---- calling -------------------------------------------------------------------------------
 
@@ -641,14 +641,14 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:b74d385a2176eedd9ac924b3d3ba9234c478d1b894b21562c9a00310b465afed
       registry_digest: sha256:d94b10f6a164113d870829d82b2438290dceca906e8ffeb081a41712f055c939
-      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
       apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: c55a140
+      bound_commit: cd6d77c
     covers: [navigation.lock_car_tracking]
     related: [P26, SPEC-007]
-    last_run: {at: 2026-10-16, result: PASS}
-    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): emulator navi 50 km/h; nav_t10.jpg / nav_t20.jpg 10 s apart: vehicle lower-middle, map moved (614 m -> 465 m to 海燕桥), driving view not an overview", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): nav_route, nav_start emulator 50 km/h; nav_t10/nav_t20 10 s apart naviMode=car_up, map moved; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
+    last_run: {at: 2026-10-17, result: PASS}
+    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): emulator navi 50 km/h; nav_t10.jpg / nav_t20.jpg 10 s apart: vehicle lower-middle, map moved (614 m -> 465 m to 海燕桥), driving view not an overview", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): nav_route, nav_start emulator 50 km/h; nav_t10/nav_t20 10 s apart naviMode=car_up, map moved; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): P58 view samples t10..drive_150s naviMode=car_up throughout; nav_drive_60s.jpg shows the vehicle at lower-middle with the map tracking it (not an overview)"]
 
   - id: NAV-UI-003
     capability: navigation
@@ -672,14 +672,14 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:9462f47ca7654ba6780a4dc6b2ef4df6473611b4ac1977c85eedfcba6af5b107
       registry_digest: sha256:eff6f3ff2af443c9ab1a14e0b5df1b5ce4f9a12e85ed0bb94df04aacaf7a9fc4
-      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
       apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: c55a140
+      bound_commit: cd6d77c
     covers: [navigation.heading_up_map]
     related: [P26, SPEC-007]
-    last_run: {at: 2026-10-16, result: PASS}
-    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): nav_presentation mode=driving naviMode=car_up logged, but the map stayed north-up: car heading west-north-west at nav_drive_90s.jpg and south at the end with 北 at the top (OPEN_PROBLEMS P58)", "2026-10-15 correction, GitHub run 38762173178 at ca1374d with the nav_view_state debug sample: naviMode=car_up throughout and the camera bearing follows travel (357, 39, 40, 11, 354, 245, 27 degrees); the compass labels rotate with it (docs/evidence/gha-2026-10-15-r3/nav_drive_0s.jpg 北 upper-left at 39, nav_drive_120s.jpg 北 on the right at 245) and the car arrow stays up. The earlier FAIL read a frame taken mid-turn, where Amap's smoothed rotation lags. P58 closed: not a defect.", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): naviMode=car_up throughout, bearing follows travel (357, 360, 5, 0, 39, 24, 17, 277, 28); rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
+    last_run: {at: 2026-10-17, result: PASS}
+    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): nav_presentation mode=driving naviMode=car_up logged, but the map stayed north-up: car heading west-north-west at nav_drive_90s.jpg and south at the end with 北 at the top (OPEN_PROBLEMS P58)", "2026-10-15 correction, GitHub run 38762173178 at ca1374d with the nav_view_state debug sample: naviMode=car_up throughout and the camera bearing follows travel (357, 39, 40, 11, 354, 245, 27 degrees); the compass labels rotate with it (docs/evidence/gha-2026-10-15-r3/nav_drive_0s.jpg 北 upper-left at 39, nav_drive_120s.jpg 北 on the right at 245) and the car arrow stays up. The earlier FAIL read a frame taken mid-turn, where Amap's smoothed rotation lags. P58 closed: not a defect.", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): naviMode=car_up throughout, bearing follows travel (357, 360, 5, 0, 39, 24, 17, 277, 28); rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): P58 view bearing follows travel: 357, 360, 5, 0, 37, 36, 22, 283, 28 over the drive (not frozen north-up)"]
 
   - id: NAV-UI-004
     capability: navigation
@@ -704,14 +704,14 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:38f1c63118e647bbf397746839ad7302015ccd978b5751d8eca16f23131a0778
       registry_digest: sha256:a00a8c8f01e2fbd2ffde3ccfff4bf11aa1bb1cb2ccdf1110715c8f8c63edb1ee
-      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
       apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: c55a140
+      bound_commit: cd6d77c
     covers: [navigation.traffic_presentation]
     related: [P26, SPEC-007]
-    last_run: {at: 2026-10-16, result: PASS}
-    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): nav_traffic_status_update x6; route drawn in traffic colours with the traffic bar (nav_t10.jpg, nav_drive_90s.jpg)", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): traffic_update=6; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
+    last_run: {at: 2026-10-17, result: PASS}
+    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): nav_traffic_status_update x6; route drawn in traffic colours with the traffic bar (nav_t10.jpg, nav_drive_90s.jpg)", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): traffic_update=6; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): traffic_update=6; nav_drive_60s.jpg route drawn in more than one colour"]
 
   - id: NAV-MID-ROUTE-001
     capability: navigation
@@ -767,32 +767,32 @@ tests:
     terminal_observed: [arrival_callback, arrival_handling, automatic_session_end]
     failure_observed: []
     acceptance:
-      - {criterion: navigation_start, required: true, observed: true, evidence: "log:NovaVoice/nav_started (GitHub run 38756802061) + artifact:docs/evidence/gha-2026-10-15/nav_t10.jpg"}
-      - {criterion: route_resolved, required: true, observed: true, evidence: "log:NovaVoice/nav_calc_success + artifact:docs/evidence/gha-2026-10-15/nav_route_preview.jpg"}
-      - {criterion: guidance_progress, required: true, observed: true, evidence: "log:NovaVoice/nav_guidance_play_start x15, nav_maneuver x6 + artifact:docs/evidence/gha-2026-10-15/nav_drive_90s.jpg"}
+      - {criterion: navigation_start, required: true, observed: true, evidence: "log:NovaVoice/nav_started (GitHub run 38997655759) + artifact:docs/evidence/gha-2026-10-17/nav_t10.jpg"}
+      - {criterion: route_resolved, required: true, observed: true, evidence: "log:NovaVoice/nav_calc_success + artifact:docs/evidence/gha-2026-10-17/nav_route_preview.jpg"}
+      - {criterion: guidance_progress, required: true, observed: true, evidence: "log:NovaVoice/nav_guidance_play_start x15, nav_maneuver x6 + artifact:docs/evidence/gha-2026-10-17/nav_drive_90s.jpg"}
       - {criterion: near_destination, required: true, observed: true, evidence: "log:NovaVoice/nav_proximity_arrival x1"}
       - {criterion: arrival_callback, required: true, observed: true, evidence: "log:NovaVoice/nav_proximity_arrival x1"}
-      - {criterion: arrival_handling, required: true, observed: true, evidence: "log:NovaVoice/nav_stopped reached=true reason=emulator_end + artifact:docs/evidence/gha-2026-10-15/nav_end.jpg"}
-      - {criterion: automatic_session_end, required: true, observed: true, evidence: "log:NovaVoice/nav_stopped reason=emulator_end, no nav_stop broadcast sent + artifact:docs/evidence/gha-2026-10-15/nav_end.jpg"}
-      - {criterion: no_terminal_regression, required: true, observed: true, evidence: "log:logcat FATAL 0 and ANR 0 for the drive (GitHub run 38756802061) + artifact:docs/evidence/gha-2026-10-15/nav_end.jpg"}
+      - {criterion: arrival_handling, required: true, observed: true, evidence: "log:NovaVoice/nav_stopped reached=true reason=emulator_end + artifact:docs/evidence/gha-2026-10-17/nav_end.jpg"}
+      - {criterion: automatic_session_end, required: true, observed: true, evidence: "log:NovaVoice/nav_stopped reason=emulator_end, no nav_stop broadcast sent + artifact:docs/evidence/gha-2026-10-17/nav_end.jpg"}
+      - {criterion: no_terminal_regression, required: true, observed: true, evidence: "log:logcat FATAL 0 and ANR 0 for the drive (GitHub run 38997655759) + artifact:docs/evidence/gha-2026-10-17/nav_end.jpg"}
     ended_by: natural
     regressions: []
     evidence_bind:
-      code_digest: sha256:8c483964f961ffaa5c2cd73703fa25fb8b473f63ae4fddee55665724499552a2
+      code_digest: sha256:afccf2c1e5ecb56c65f3a450c5d050f154e871cf784db67844c2d9734ccebc3c
       procedure_digest: sha256:5e87199d84803a2726797c2880dbfdf6544778a1c8b3f483471bef673ac2e54b
       registry_digest: sha256:41ff97696d8d4af2099fcddb5825287316a6e2038e220dbba4762ce975e8a83a
-      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests:
-        "docs/evidence/gha-2026-10-15/nav_drive_90s.jpg": sha256:c300a017036832ebb096e5c97437eb29764e2cc2be82e3fc98eaf3efcfd5a422
-        "docs/evidence/gha-2026-10-15/nav_end.jpg": sha256:b9caea9b78a8059fb4307c8e46e50f6101269851fb3fdb13026f6d9cab4500bf
-        "docs/evidence/gha-2026-10-15/nav_route_preview.jpg": sha256:a27f8e2749342c1f00517809d19708dc9ba90f1d86d7c81467c54fb7e945e9be
-        "docs/evidence/gha-2026-10-15/nav_t10.jpg": sha256:43384110ee62d978ec5ead4e3fdf6b9ea3cd1c5b4171d1a9c6d9f71b7f773ca2
+        "docs/evidence/gha-2026-10-17/nav_drive_90s.jpg": sha256:dfbcc10336792d507d4dddd161336700b4df070f5ef46f073dac91f18e2938d6
+        "docs/evidence/gha-2026-10-17/nav_end.jpg": sha256:e4f1bc1cb2e73b5ae7e9a163cbcf0bb59009d178675022dba49150318ab5b625
+        "docs/evidence/gha-2026-10-17/nav_route_preview.jpg": sha256:259f2ff59d7a96583beb7949be1008cfa27bec7ea4599cbb72230f0530e53df2
+        "docs/evidence/gha-2026-10-17/nav_t10.jpg": sha256:4ab8e41c16d574187796c511249fb24001bea0e864c9dc658006620b2bf96f27
       apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: c55a140
+      bound_commit: cd6d77c
     covers: [navigation.arrival_lifecycle]
     related: [P26, P31, SPEC-007]
-    last_run: {at: 2026-10-16, result: PASS}
-    evidence: ["2026-10-16 GitHub device run 38832785831 at 02d9ab7: nav_proximity_arrival x1, nav_stopped reached=true reason=emulator_end, FATAL 0, ANR 0", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): proximity_arrival=1, nav_stopped reached=true reason=emulator_end, fatal=0 anr=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
+    last_run: {at: 2026-10-17, result: PASS}
+    evidence: ["2026-10-16 GitHub device run 38832785831 at 02d9ab7: nav_proximity_arrival x1, nav_stopped reached=true reason=emulator_end, FATAL 0, ANR 0", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): proximity_arrival=1, nav_stopped reached=true reason=emulator_end, fatal=0 anr=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): nav_calc_success, nav_started (emulator 50 km/h), guidance_play=15, maneuver=6, proximity_arrival=1, nav_stopped reached=true reason=emulator_end with no manual stop, FATAL 0, ANR 0"]
 
   - id: NAV-UI-005
     capability: navigation
@@ -816,14 +816,14 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:2bb18fc79e81fdc4d40f4148b4fea570f441428849f89d9e613055d92b176c0f
       registry_digest: sha256:9a6326285e1a1a5b20a0a8fdd2a4b9057a858c442645074355586f5306197f9d
-      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
       apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: c55a140
+      bound_commit: cd6d77c
     covers: [navigation.maneuver_guidance]
     related: [P26, SPEC-007]
-    last_run: {at: 2026-10-16, result: PASS}
-    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): nav_maneuver x6; turn card with distance and road (614米 进入 海燕桥, nav_t10.jpg; 788米 进入 无名道路, nav_drive_90s.jpg)", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): maneuver=6; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
+    last_run: {at: 2026-10-17, result: PASS}
+    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): nav_maneuver x6; turn card with distance and road (614米 进入 海燕桥, nav_t10.jpg; 788米 进入 无名道路, nav_drive_90s.jpg)", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): maneuver=6; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): maneuver=6 logged; nav_drive_60s.jpg shows the next maneuver with its distance (1.1 公里)"]
 
   - id: NAV-UI-006
     capability: navigation
@@ -848,14 +848,14 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:cb995940e078458c8253b79ece0c8ad57b90e13b3acfcd852483c4ea4727e43d
       registry_digest: sha256:c2e10bf1dc4a2c5d6b092b64517cded36a237d30737d11526646932e54037f74
-      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
       apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: c55a140
+      bound_commit: cd6d77c
     covers: [navigation.lane_junction_presentation]
     related: [P26, SPEC-007]
-    last_run: {at: 2026-10-16, result: PASS}
-    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): nav_lane_info shown=true x24; lane arrows and the junction enlarge view (nav_t35.jpg, nav_lock_restored.jpg)", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): lane_shown=24 junction_shown=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
+    last_run: {at: 2026-10-17, result: PASS}
+    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): nav_lane_info shown=true x24; lane arrows and the junction enlarge view (nav_t35.jpg, nav_lock_restored.jpg)", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): lane_shown=24 junction_shown=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): lane_shown=24; nav_lock_restored.jpg shows the lane panel and a junction enlarge view"]
 
   - id: NAV-UI-007
     capability: navigation
@@ -884,23 +884,23 @@ tests:
       - "log:NovaVoice/nav_presentation mode=driving recovered=true"
       - "2026-09-21 desk (Windows): overview_lock_clean.png, lock-car restored"
     acceptance:
-      - {criterion: overview_shown, required: true, observed: true, evidence: "log:NovaVoice/debug_tool nav_overview result=overview=true (GitHub run 38756802061) + artifact:docs/evidence/gha-2026-10-15/nav_overview.jpg"}
-      - {criterion: lock_restored, required: true, observed: true, evidence: "log:NovaVoice/debug_tool nav_lock result=lock=true (GitHub run 38756802061) + artifact:docs/evidence/gha-2026-10-15/nav_lock_restored.jpg"}
+      - {criterion: overview_shown, required: true, observed: true, evidence: "log:NovaVoice/debug_tool nav_overview result=overview=true (GitHub run 38997655759) + artifact:docs/evidence/gha-2026-10-17/nav_overview.jpg"}
+      - {criterion: lock_restored, required: true, observed: true, evidence: "log:NovaVoice/debug_tool nav_lock result=lock=true (GitHub run 38997655759) + artifact:docs/evidence/gha-2026-10-17/nav_lock_restored.jpg"}
     ended_by: manual
     evidence_bind:
-      code_digest: sha256:8c483964f961ffaa5c2cd73703fa25fb8b473f63ae4fddee55665724499552a2
+      code_digest: sha256:afccf2c1e5ecb56c65f3a450c5d050f154e871cf784db67844c2d9734ccebc3c
       procedure_digest: sha256:caa86bda4983aa479e911fc0789a5d30fa7917bae84e685a641cd7ce08f7e22b
       registry_digest: sha256:a3cac435bb6b4be3fd01ae91a95a3b27ca605231e1cb41ed73067eb329751d1b
-      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests:
-        "docs/evidence/gha-2026-10-15/nav_lock_restored.jpg": sha256:c32fbf35411918966f8a54b86672666a6c0cad87b8b92baf712ef4a148d4d91a
-        "docs/evidence/gha-2026-10-15/nav_overview.jpg": sha256:4d39790f22a0d2b14660257a2338ae197077d0c8bd3a972503c7b9b953cc71bd
+        "docs/evidence/gha-2026-10-17/nav_lock_restored.jpg": sha256:a89dcb849855fed495527b19a17483341beb11a464da4ddb7a1b2700d9ba5e54
+        "docs/evidence/gha-2026-10-17/nav_overview.jpg": sha256:d6404703a2c0ebe5b349e44409ba24444dd6fe74e5facf18e919f9c63df37f49
       apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: c55a140
+      bound_commit: cd6d77c
     covers: [navigation.return_to_tracking]
     related: [P26, SPEC-007]
-    last_run: {at: 2026-10-16, result: PASS}
-    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): nav_overview -> overview=true, whole remaining route shown (nav_overview.jpg); nav_lock -> lock=true, lock-car driving view restored (nav_lock_restored.jpg)", "2026-10-16 GitHub device run 38832785831 at 02d9ab7 (after the P59 debug hook): overview=true, lock=true", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): overview=true, lock=true; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
+    last_run: {at: 2026-10-17, result: PASS}
+    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): nav_overview -> overview=true, whole remaining route shown (nav_overview.jpg); nav_lock -> lock=true, lock-car driving view restored (nav_lock_restored.jpg)", "2026-10-16 GitHub device run 38832785831 at 02d9ab7 (after the P59 debug hook): overview=true, lock=true", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): overview=true, lock=true; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): overview -> result=overview=true (nav_overview.jpg: whole remaining route), lock -> result=lock=true (nav_lock_restored.jpg: lock-car restored)"]
 
   - id: NAV-UI-008
     capability: navigation
@@ -1898,13 +1898,13 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:ea0c12924c4dcb7bb99ef7c520b706ae719a292f9dcbb04ab614bb108e1fb2fc
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
       apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: c55a140
+      bound_commit: cd6d77c
     related: [I-1]
-    last_run: {at: 2026-10-16, result: PASS}
-    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): RECORD_AUDIO revoked, force-stop, relaunch, debug voice start -> MicPermissionMissing; listening=0, no FATAL; perm_denied.jpg", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): RECORD_AUDIO revoked, voice start -> MicPermissionMissing, mic_missing=1 listening=0 fatal=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
+    last_run: {at: 2026-10-17, result: PASS}
+    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): RECORD_AUDIO revoked, force-stop, relaunch, debug voice start -> MicPermissionMissing; listening=0, no FATAL; perm_denied.jpg", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): RECORD_AUDIO revoked, voice start -> MicPermissionMissing, mic_missing=1 listening=0 fatal=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): voice start with the microphone revoked -> MicPermissionMissing, mic_missing=1, listening=0, FATAL 0"]
 
   - id: PERM-CAMERA-001
     capability: permissions
@@ -2272,13 +2272,13 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:3b3d9198d887ad794bc41d3e8093ff77c03000d45dbb3855457b7b76ce450d24
       registry_digest: sha256:b349474b2e41e9f157fe3ca798484e86a054d41feffa45c38824560a3debac67
-      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
       apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: c55a140
+      bound_commit: cd6d77c
     related: []
-    last_run: {at: 2026-10-16, result: PASS}
-    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): open_app settings Accepted, maps Accepted; dispatch open_app app=music -> ok=false APP_NOT_ALLOWED", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): open_app settings Accepted, maps Accepted, music -> ok=false APP_NOT_ALLOWED; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
+    last_run: {at: 2026-10-17, result: PASS}
+    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): open_app settings Accepted, maps Accepted; dispatch open_app app=music -> ok=false APP_NOT_ALLOWED", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): open_app settings Accepted, maps Accepted, music -> ok=false APP_NOT_ALLOWED; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): open_app settings and maps Accepted (2/2); open_app music (outside the allow-list) -> ok=false APP_NOT_ALLOWED"]
 
   - id: UNSUPPORTED-001
     capability: unsupported
