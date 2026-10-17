@@ -1,8 +1,8 @@
 {
   "generated_by": "scripts/skill_metrics.py",
-  "events": 11,
+  "events": 12,
   "outcomes": {
-    "PASS": 10,
+    "PASS": 11,
     "PARTIAL": 1
   },
   "total_retries": 2,
@@ -12,7 +12,8 @@
     "verify": 4,
     "start": 2,
     "continue": 4,
-    "handoff": 8
+    "handoff": 8,
+    "review-packet": 1
   },
   "deviations": {},
   "missing_steps": {},
@@ -25,13 +26,11 @@
     "review-packet-assembly": 1
   },
   "failed_skill_assumptions": {},
-  "unused_skills": [
-    "review-packet"
-  ],
+  "unused_skills": [],
   "time_efficiency": {
-    "timed_tasks": 6,
-    "total_minutes": 860,
-    "total_attempts": 13,
+    "timed_tasks": 7,
+    "total_minutes": 868,
+    "total_attempts": 15,
     "inefficient": [
       {
         "task": "vendor-files-in-worktrees",
@@ -61,14 +60,28 @@
           "stopped-on-refusal"
         ],
         "improvement": "AGENTS.md rule 6: a blocker gets community research + alternatives until solved; archive.org mirror as the music fallback in cloud_setup.sh and new_worktree.sh"
+      },
+      {
+        "task": "disk-full-cleanup",
+        "minutes": 8,
+        "attempts": 2,
+        "waste": [
+          "disk-full-build-dirs"
+        ],
+        "improvement": "review-packet step 7: remove worktree and every NOVA_BUILD_DIR after merge"
       }
     ],
     "waste_causes": {
-      "manual-copy-refused": 1
+      "manual-copy-refused": 1,
+      "disk-full-build-dirs": 1
     }
   },
   "observed_sequences": {
-    "scripts/skill_metrics.py -> scripts/skill_event.py -> scripts/skill_observe.py": 1
+    "scripts/skill_metrics.py -> scripts/skill_event.py -> scripts/skill_observe.py": 1,
+    "git add -> git commit -> gradlew :app:testDebugUnitTest :behavior-test:test": 1,
+    "git commit -> git push -> gradlew :app:testDebugUnitTest :behavior-test:test": 1,
+    "scripts/delegation_check.py -> git add -> git commit": 1,
+    "scripts/review_packet.py -> git stash -> git merge": 1
   },
   "suggested_actions": [],
   "thresholds": {

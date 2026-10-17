@@ -34,6 +34,10 @@ report is never the evidence (AGENTS.md: an implementation agent may not certify
      ```
      Then merge in a separate command (`git merge --no-ff exec/<task>`), rerun the regression checks
      on the integrated result, and push.
+7. **Clean up after the merge.** Remove the worktree (`git worktree remove`, then `git branch -d`),
+   and delete every build directory used for the branch: the executor's and your own rerun's
+   `NOVA_BUILD_DIR`. Each one holds hundreds of MB. On 2026-10-17, leftover build directories filled
+   the session's disk allowance and an APK build failed with "No space left on device".
 
 ## Gotchas
 
