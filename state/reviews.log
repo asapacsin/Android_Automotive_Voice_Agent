@@ -35,3 +35,4 @@ b9c77df REVISED 2026-10-16 5dcb18c reviewer REVISE resolved by the vague-exit-r1
 f7fe086 PASS 2026-10-16 reviewer PASS after two REVISE rounds (bypasses closed; merge-tree re-merge check; no real merge flagged)
 5dcbff3 PASS 2026-10-16 reviewer PASS after two REVISE rounds (Tier B checks on real log tokens; aborts and missing secrets never pass); emulator and GitHub runs still unverified
 d0a504e PASS 2026-10-16 reviewer PASS after one REVISE round (gates fail closed; no build cache; stale XML cleared; push-to-main option b); GitHub run still unverified
+7442569 WAIVED 2026-10-17 docs-only (two SPEC acceptance-table state columns, no source); planner re-read the diff and spot-checked counts and the named case against the JUnit XML
