@@ -1,0 +1,179 @@
+{
+  "suite": "device",
+  "verdict": "FAIL",
+  "checks": [
+    {
+      "id": "device:app-up",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:PLACE-UNSET-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:PLACE-SAVE-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:APPS-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:NAV-ROUTE-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:NAV-START-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:NAV-UI-007",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:NAV-E2E-ARRIVAL-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:NAV-CRASH-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:PROCDEATH-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:PERM-DENY-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:TRANSCRIPT-FADE-EMU-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:PIECE-P61",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:PIECE-P63",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:CALL-NOSIM-001",
+      "required": false,
+      "status": "SKIPPED",
+      "detail": "not executed"
+    },
+    {
+      "id": "device:P59",
+      "required": false,
+      "status": "SKIPPED",
+      "detail": "not executed"
+    }
+  ],
+  "problems": [
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "results file empty: evidence/results.jsonl"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:app-up has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:PLACE-UNSET-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:PLACE-SAVE-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:APPS-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:NAV-ROUTE-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:NAV-START-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:NAV-UI-007 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:NAV-E2E-ARRIVAL-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:NAV-CRASH-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:PROCDEATH-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:PERM-DENY-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:TRANSCRIPT-FADE-EMU-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:PIECE-P61 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:PIECE-P63 has no result"
+    }
+  ]
+}
