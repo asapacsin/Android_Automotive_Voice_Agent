@@ -47,6 +47,7 @@ object ToolCallGuards {
     const val UNSUPPORTED_BODY_PART = "UNSUPPORTED_BODY_PART"
     const val NEARBY_QUESTION_WHILE_NAVIGATING = "NEARBY_QUESTION_WHILE_NAVIGATING"
     const val VAGUE_EXIT_WHILE_NAVIGATING = "VAGUE_EXIT_WHILE_NAVIGATING"
+    const val SPEECH_OUTPUT_NOT_REQUESTED = "SPEECH_OUTPUT_NOT_REQUESTED"
     /**
      * An end verb next to a navigation noun (R2, review 2026-10-16). The verb may follow the noun
      * within two characters (把导航取消, 导航可以结束了) or precede it with only 了/掉/吧 between
@@ -68,6 +69,26 @@ object ToolCallGuards {
         val simplified = text.map { TRADITIONAL[it] ?: it }.joinToString("")
         val said = NAV_SOUND.replace(CONTINUE_NAV.replace(NEGATED_END.replace(simplified, "#"), "#"), "#")
         return EXPLICIT_NO_NAV.containsMatchIn(said) || NOUN_REFUSED.containsMatchIn(said) || NEAR_END.containsMatchIn(said)
+    }
+
+    /**
+     * P66: a bounded stop/resume-talking grammar beside [com.novadrive.app.voice.ListeningIntent]'s
+     * SHUT_UP set. Stop: a stop or negation word shortly before a speaking verb, 闭嘴/安静/嘘, or
+     * the English forms. Resume: 继续/接着/可以/恢复 before 说/讲, or 说吧.
+     */
+    private val STOP_TALKING = Regex(
+        "(别|不要|不用|停止|停下|先别|少|甭).{0,2}(说|讲|出声|吵)|(别|不要|少).{0,2}(啰嗦|唠叨|叨叨|念)|(不许|不准).{0,2}(说|讲|出声)|闭嘴|住嘴|住口|闭上嘴|安静|嘘|shut\\s*up|stop\\s*talking|be\\s*quiet",
+        RegexOption.IGNORE_CASE,
+    )
+    private val RESUME_TALKING = Regex("(继续|接着|恢复).{0,2}(说|讲)|可以(说话|说了|讲了|出声)|说吧|说话吧")
+    private val SPEECH_TRADITIONAL = TRADITIONAL + mapOf('說' to '说', '講' to '讲', '靜' to '静', '聲' to '声', '復' to '复', '續' to '续', '噓' to '嘘')
+
+    internal fun isSpeechOutputRequest(text: String): Boolean {
+        val said = text.map { SPEECH_TRADITIONAL[it] ?: it }.joinToString("")
+        if (com.novadrive.app.voice.ListeningIntent.classify(said, com.novadrive.app.voice.ListeningIntent.Context()) ==
+            com.novadrive.app.voice.ListeningIntent.Decision.SHUT_UP
+        ) return true
+        return STOP_TALKING.containsMatchIn(said) || RESUME_TALKING.containsMatchIn(said)
     }
 
     /** Words that do ask to go somewhere (else) - only these may replace an active route. */
@@ -258,6 +279,25 @@ object ToolCallGuards {
         val said = TranscriptText.normalize(context.currentRequestText())
         if (isExplicitEnd(said)) return decide("explicit_end", null)
         return decide("refused", VAGUE_EXIT_WHILE_NAVIGATING)
+    }
+
+    /**
+     * P66: on the mumble 「嗯……那个……」 the model called `set_speech_output` and it ran, with a false
+     * ✓ chip. The call runs only when this turn's own words ask her to stop or resume talking; the
+     * direction is not checked. Stale or missing words (the call before its transcript) let it through.
+     */
+    fun speechOutputNotRequested(call: DomainVoiceEvent.ToolCall, context: DriverContext?): String? {
+        if (call.name != "set_speech_output" || context == null) return null
+        fun decide(code: String, result: String?): String? {
+            com.novadrive.app.DebugVoiceLog.log(
+                "guard_speech_output decision=$code cur=${context.currentEpoch()} cap=${context.capabilityEpoch()}",
+            )
+            return result
+        }
+        if (context.currentEpoch() <= 0 || context.currentEpoch() < context.capabilityEpoch()) return decide("stale_words", null)
+        val said = TranscriptText.normalize(context.currentRequestText())
+        if (isSpeechOutputRequest(said)) return decide("requested", null)
+        return decide("refused", SPEECH_OUTPUT_NOT_REQUESTED)
     }
 
     /**
