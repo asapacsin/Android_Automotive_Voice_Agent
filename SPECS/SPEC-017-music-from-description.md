@@ -80,7 +80,7 @@ artists or queries in the log (a query can name a person; treat as transcript, I
 | A2 | Readback rules: playing / unverified / not playing / mismatch; off the event loop, cancellable | functional | `NowPlayingVerifierTest`, `MediaServerPlayMusicTest` | built, unit tests pass |
 | A3 | Result JSON and `announce` never name a song that is not in `now_playing`; an unconfirmed hand-off never releases 「正在放…」 | negative | `MediaServerPlayMusicTest`, `FalseCapabilityClaimTest` | built, unit tests pass |
 | A4 | Capability flip in all three places | contract | `CapabilityContractTest` | built, passes |
-| A5 | Model maps descriptions to fields (≥ 8/10 on a description set) | TEXT_LIVE | `MUSIC-TEXT-LIVE-001` | not earned |
+| A5 | Model maps descriptions to fields (≥ 8/10 on a description set) | TEXT_LIVE | `MUSIC-TEXT-LIVE-001` | earned — MUSIC-TEXT-LIVE-001 PASS (TEST_MATRIX, last_run 2026-10-17: 10/10 play_music, 0 control_music) |
 | A6 | VLC on the emulator: hand-off plays a local file, readback names it | device (emulator) | `MUSIC-VLC-EMU-001` (autonomous) | not earned |
 | A7 | 网易云/QQ音乐: plays or honestly fails; split-tunnel note verified | device | `MUSIC-APP-DEVICE-001` (HUMAN) | not earned |
 | A8 | APK builds with the listener service declared | artifact | `:app:assembleDebug` | built |
