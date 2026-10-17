@@ -80,7 +80,10 @@ PHRASES = {
     "live_weather": "目的地现在天气怎么样",
     "live_route_traffic": "路上堵不堵",
     "live_along_route": "沿途有加油站吗",
-    "live_place_details": "万达广场几点关门",
+    # SPEC-011: place_details takes target=destination or a list position, not a free place name
+    # (the old line 万达广场几点关门 asked for an unsupported named lookup; 4/10 runs rightly made
+    # no call). A named-place lookup is a capability gap, recorded in LIVE-INFO-DEVICE-001.
+    "live_place_details": "目的地几点关门",
     # TRUTH-LIVEINFO-NEWS-001
     "news_today": "今天有什么新闻",
 }
