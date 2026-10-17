@@ -36,8 +36,9 @@ class EmbeddedNavigationController(
     /** Guarded by [lock]. */
     private val authority = NavigationChoiceAuthority(nowMs, phoneticProposer)
 
-    @Volatile
-    private var generation = 0L
+    @Volatile private var generation = 0L
+
+    @Volatile private var calcGeneration = -1L // generation of the pending calculation; older callbacks drop
 
     @Volatile
     private var selectedDestination: DestinationCandidate? = null
@@ -100,7 +101,7 @@ class EmbeddedNavigationController(
         val resolved = resolve()
         val resolveMs = (System.nanoTime() - resolveStarted) / 1_000_000
         val autoCalculate = synchronized(lock) {
-            if (seq != generation) return
+            if (seq != generation) return DebugVoiceLog.log("nav_flow_late_result_dropped kind=search")
             DebugVoiceLog.log("nav_resolve_candidates count=${resolved.size} ms=$resolveMs")
             when {
                 resolved.isEmpty() && restoreKeptLocked() -> null
@@ -319,9 +320,7 @@ class EmbeddedNavigationController(
                 stopNavigation()
                 VoiceEndResult.STOPPED_NAVIGATION
             }
-            NavigationPhase.AWAITING_DESTINATION_SELECTION,
-            NavigationPhase.AWAITING_ROUTE_SELECTION,
-            -> {
+            in CANCELLABLE_PHASES -> {
                 cancel()
                 VoiceEndResult.CANCELLED_SELECTION
             }
@@ -332,11 +331,7 @@ class EmbeddedNavigationController(
     fun cancel() {
         synchronized(lock) {
             val phase = store.phase.value
-            if (phase != NavigationPhase.AWAITING_DESTINATION_SELECTION &&
-                phase != NavigationPhase.AWAITING_ROUTE_SELECTION
-            ) {
-                return
-            }
+            if (phase !in CANCELLABLE_PHASES) return
             NavigationLocalPickGuard.invalidate()
             generation += 1
             clearCandidatesLocked()
@@ -350,6 +345,12 @@ class EmbeddedNavigationController(
             DebugVoiceLog.log("nav_flow_cancelled")
             onFlowEnded()
         }
+    }
+
+    private companion object { // a picker is open or a search / calculation is in flight (D-CANCEL-SEARCH)
+        val CANCELLABLE_PHASES = setOf(NavigationPhase.AWAITING_DESTINATION_SELECTION, NavigationPhase.AWAITING_ROUTE_SELECTION,
+            NavigationPhase.RESOLVING_DESTINATION, NavigationPhase.PLANNING_ROUTE, NavigationPhase.CALCULATING_ROUTE,
+            NavigationPhase.ROUTE_READY)
     }
 
     override suspend fun resolveDestination(query: String): DestinationResult {
@@ -439,6 +440,7 @@ class EmbeddedNavigationController(
     private fun prepareCalculationLocked(candidate: DestinationCandidate) {
         selectedDestination = candidate
         startNaviIssuedForSelection = false
+        calcGeneration = generation
         store.update(NavigationPhase.CALCULATING_ROUTE, candidate.toDestination())
         DebugVoiceLog.log("nav_route_calc_start")
     }
@@ -470,7 +472,7 @@ class EmbeddedNavigationController(
                 }
             }
         synchronized(lock) {
-            if (store.phase.value != NavigationPhase.CALCULATING_ROUTE) return
+            if (lateRouteResultLocked()) return
             if (built.isEmpty()) {
                 failLocked("no_routes")
                 return
@@ -489,10 +491,15 @@ class EmbeddedNavigationController(
 
     private fun onCalculateRouteFailure(errorCode: Int) {
         synchronized(lock) {
-            if (store.phase.value != NavigationPhase.CALCULATING_ROUTE) return
+            if (lateRouteResultLocked()) return
             failLocked("calc_failure_$errorCode")
         }
     }
+
+    /** True when a calculation callback must be ignored; one from a cancelled flow is logged. */
+    private fun lateRouteResultLocked(): Boolean = if (calcGeneration != generation) {
+        DebugVoiceLog.log("nav_flow_late_result_dropped kind=route"); true
+    } else store.phase.value != NavigationPhase.CALCULATING_ROUTE
 
     private fun failLocked(reason: String) {
         DebugVoiceLog.log("nav_flow_error reason=$reason")
