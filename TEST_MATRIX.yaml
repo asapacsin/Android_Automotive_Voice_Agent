@@ -1168,17 +1168,17 @@ tests:
     prerequisites: ["Gemini Live (default provider, ADR-013) text turns with the owner's key (never logged)", "a set of 10 music descriptions"]
     procedure: ["send each description as a text turn", "record the play_music arguments per description"]
     pass_criteria: [">= 8/10 descriptions produce play_music with a plausible title or artist/work", "0/10 produce control_music{play}"]
-    evidence: ["2026-10-01 re-run after the FZ-14 wording fix: GeminiTextLiveMappingTest MUSIC 10/10", "2026-10-01 cloud, gemini-3.8-live, GeminiTextLiveMappingTest (opt-in NOVA_GEMINI_TEXT_LIVE=1; fresh session per phrase, app client + RealtimeToolCatalog + default persona): 9/10 play_music, 0/10 control_music. M-01 梶浦/空之境界 -> play_music{artist,album_or_work,mood,query} (no title); M-02 提神 -> {mood,query}; M-03 晴天 -> {title,artist,query}; M-04 下雨天 -> MISS no call; M-05 十年 -> {title,artist}; M-06 进击的巨人 -> {album_or_work}; M-07 钢琴 -> {mood,query}; M-08 红豆 -> {title,artist}; M-09 千与千寻 -> {album_or_work,query}; M-10 八十年代粤语 -> {query}. Control: 放首歌 -> control_music{play}", "STALE_BIND code_digest mismatch", "2026-10-15 cloud, gemini-3.1-flash-live-preview, GeminiTextLiveMappingTest: MUSIC 10/10 play_music with title/artist/work or mood/query, 0/10 control_music{play}; MUSIC_CONTROL 1/1.", "2026-10-15 re-run at 8d05eb3 (after P60), gemini-3.1-flash-live-preview: MUSIC 10/10, MUSIC_CONTROL 1/1; FUZZY 17/19 again"]
+    evidence: ["2026-10-01 re-run after the FZ-14 wording fix: GeminiTextLiveMappingTest MUSIC 10/10", "2026-10-01 cloud, gemini-3.8-live, GeminiTextLiveMappingTest (opt-in NOVA_GEMINI_TEXT_LIVE=1; fresh session per phrase, app client + RealtimeToolCatalog + default persona): 9/10 play_music, 0/10 control_music. M-01 梶浦/空之境界 -> play_music{artist,album_or_work,mood,query} (no title); M-02 提神 -> {mood,query}; M-03 晴天 -> {title,artist,query}; M-04 下雨天 -> MISS no call; M-05 十年 -> {title,artist}; M-06 进击的巨人 -> {album_or_work}; M-07 钢琴 -> {mood,query}; M-08 红豆 -> {title,artist}; M-09 千与千寻 -> {album_or_work,query}; M-10 八十年代粤语 -> {query}. Control: 放首歌 -> control_music{play}", "STALE_BIND code_digest mismatch", "2026-10-15 cloud, gemini-3.1-flash-live-preview, GeminiTextLiveMappingTest: MUSIC 10/10 play_music with title/artist/work or mood/query, 0/10 control_music{play}; MUSIC_CONTROL 1/1.", "2026-10-15 re-run at 8d05eb3 (after P60), gemini-3.1-flash-live-preview: MUSIC 10/10, MUSIC_CONTROL 1/1; FUZZY 17/19 again", "2026-10-17 cloud, GeminiTextLiveMappingTest at 651f772 (app code = 87d5287), gemini-3.8-live (the test's default TEXT_LIVE model, as in the earlier evidence; free tier): MUSIC 10/10 play_music with a plausible title/artist/work or mood query, 0/10 control_music; MUSIC_CONTROL 1/1 control_music{play}; JUnit xml:TEST-com.novadrive.app.voice.GeminiTextLiveMappingTest.xml#tests=1,failures=0"]
     evidence_bind:
-      code_digest: sha256:1cd282056cacbf46e1194ac2b64979e11962fcccc46b8d7ee5fdd0d4e320d5fa
+      code_digest: sha256:a88c81cf21a87b3cfa9e284757df9892fe115018738bb546bc5e7d36dd3ffedd
       procedure_digest: sha256:f803e58b4943f7015563223448ac11f0c1c47350bad177b7f2682550c6bb0c81
       registry_digest: sha256:36f1bd13116237afa37238ca65b5f53baa0c1d44355cb505250764641df6e24f
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: 8d05eb3
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 651f772
     related: [SPEC-017]
-    last_run: {at: 2026-10-15, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: MUSIC-VLC-EMU-001
     capability: media
@@ -3084,17 +3084,17 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:382c31bd299d3f0b6b576db1aff7827fc5197e4f049f3352023f5665b3833779
       registry_digest: sha256:6ac5cdbd9df4d89a845e9b4284c40c70f61fe64a27100c9f1f75faf0c55ec82f
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: f5cdde4
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 651f772
     covers: [comfort.scenario, body.window, body.seat_height, speech.speaking_style]
     prerequisites: ["GEMINI_API_KEY in the environment (default provider, ADR-013)", "text turns through the app's own Gemini client"]
     procedure: ["send each FZ phrase as a text turn in its stated context", "record the first tool call and arguments"]
     pass_criteria: [">= 17/19 phrases produce the expected call (or the expected refusal/clarification)", "FZ-15…FZ-19 (styles) all correct"]
-    evidence: ["2026-10-01 cloud, gemini-3.8-live, after adding 傲娇/温柔/元气: FUZZY 18/19 — FZ-15 傲娇一点 and FZ-16 說話傲嬌一點 -> tsundere, FZ-17 gentle, FZ-18 lively, FZ-19 霸道 no call; FZ-14 still the only model-layer MISS (held at the dispatcher). MUSIC 10/10, MUSIC_CONTROL 1/1", "2026-10-01 re-run after the FZ-14 wording fix (refusal carries options): GeminiTextLiveMappingTest FUZZY 13/14, same calls as before; FZ-14 still MISS at the model layer (control_climate guess) and held at the dispatcher with AMBIGUOUS_REFERENT + options (ToolCallGuardBodyReferentTest, FalseCapabilityClaimTest)", "2026-10-01 cloud, gemini-3.8-live, GeminiTextLiveMappingTest (opt-in NOVA_GEMINI_TEXT_LIVE=1; fresh session per phrase; context rows send setup turns answered with simulated ok): 13/14. FZ-01 run_scenario{mosquito}; FZ-02 run_scenario{mosquito_done}; FZ-03 control_seat{adjust_height,-1}; FZ-04 {adjust_height,1}; FZ-05 {adjust_height,-1}; FZ-06 control_window{set,50} (window omitted = all); FZ-07 control_window{adjust,driver,20}; FZ-08 control_window{close,all}; FZ-09 run_scenario{stuffy}; FZ-10 run_scenario{drowsy}; FZ-11 set_speaking_style{sweet}; FZ-12 set_speaking_style{default}; FZ-13 no call; FZ-14 MISS - after seat and temperature changes 再低一点 -> control_climate{adjust_temperature,-1} instead of a clarifying question (model-layer result only)", "STALE_BIND apk_digest mismatch", "2026-10-15 cloud, gemini-3.1-flash-live-preview (oldest model first), GeminiTextLiveMappingTest NOVA_GEMINI_TEXT_LIVE=1 at b8fa1f0+: FUZZY 17/19, styles FZ-15..FZ-19 5/5. Misses are held by the dispatcher: FZ-13 打开天窗 -> control_window{open,all}, refused by ToolCallGuards.sunroofOnWindowTool (P56); FZ-14 再低一点 after seat+temperature -> control_climate guess, held by AMBIGUOUS_REFERENT. FZ-07 我这边 -> window=driver."]
+    evidence: ["2026-10-01 cloud, gemini-3.8-live, after adding 傲娇/温柔/元气: FUZZY 18/19 — FZ-15 傲娇一点 and FZ-16 說話傲嬌一點 -> tsundere, FZ-17 gentle, FZ-18 lively, FZ-19 霸道 no call; FZ-14 still the only model-layer MISS (held at the dispatcher). MUSIC 10/10, MUSIC_CONTROL 1/1", "2026-10-01 re-run after the FZ-14 wording fix (refusal carries options): GeminiTextLiveMappingTest FUZZY 13/14, same calls as before; FZ-14 still MISS at the model layer (control_climate guess) and held at the dispatcher with AMBIGUOUS_REFERENT + options (ToolCallGuardBodyReferentTest, FalseCapabilityClaimTest)", "2026-10-01 cloud, gemini-3.8-live, GeminiTextLiveMappingTest (opt-in NOVA_GEMINI_TEXT_LIVE=1; fresh session per phrase; context rows send setup turns answered with simulated ok): 13/14. FZ-01 run_scenario{mosquito}; FZ-02 run_scenario{mosquito_done}; FZ-03 control_seat{adjust_height,-1}; FZ-04 {adjust_height,1}; FZ-05 {adjust_height,-1}; FZ-06 control_window{set,50} (window omitted = all); FZ-07 control_window{adjust,driver,20}; FZ-08 control_window{close,all}; FZ-09 run_scenario{stuffy}; FZ-10 run_scenario{drowsy}; FZ-11 set_speaking_style{sweet}; FZ-12 set_speaking_style{default}; FZ-13 no call; FZ-14 MISS - after seat and temperature changes 再低一点 -> control_climate{adjust_temperature,-1} instead of a clarifying question (model-layer result only)", "STALE_BIND apk_digest mismatch", "2026-10-15 cloud, gemini-3.1-flash-live-preview (oldest model first), GeminiTextLiveMappingTest NOVA_GEMINI_TEXT_LIVE=1 at b8fa1f0+: FUZZY 17/19, styles FZ-15..FZ-19 5/5. Misses are held by the dispatcher: FZ-13 打开天窗 -> control_window{open,all}, refused by ToolCallGuards.sunroofOnWindowTool (P56); FZ-14 再低一点 after seat+temperature -> control_climate guess, held by AMBIGUOUS_REFERENT. FZ-07 我这边 -> window=driver.", "2026-10-17 cloud, GeminiTextLiveMappingTest at 651f772 (app code = 87d5287), gemini-3.8-live (the test's default TEXT_LIVE model, as in the earlier evidence; free tier), fresh session per phrase, app client + catalog + default persona: FUZZY 18/19 - FZ-14 the only MISS (control_climate adjust_temperature -1 instead of a clarification; held at the dispatcher as before), FZ-15..FZ-19 styles all correct; JUnit xml:TEST-com.novadrive.app.voice.GeminiTextLiveMappingTest.xml#tests=1,failures=0; table app/build/text-live/results.txt (ids, tool names, arguments only)"]
     related: [SPEC-015]
-    last_run: {at: 2026-10-15, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: FUZZY-DEVICE-001
     capability: comfort
@@ -3238,17 +3238,17 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:1ba5ea16295cee8cf04137c83cb3dbbef2a7730be916c0f8e720f95ae2e6642b
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: fe25791
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 651f772
     covers: []
     prerequisites: ["AMAP_WEB_KEY in the environment (free Amap Web API; no voice model)"]
     procedure: ["NOVA_LIVE_AMAP=1 ./gradlew :app:testDebugUnitTest --tests '*DemoCommuteAmapLiveTest'"]
     pass_criteria: ["LiveDestinationCandidateSource.resolve(横琴镇) at the origin: first result has 横琴 in its name and is >= 1700 m away (route >= straight line; c3-c5 need ~150 s = 1.7 km at 40 km/h)", "regeo + weatherNow at the origin both Ok"]
-    evidence: ["2026-10-12 cloud: with sortrule=distance FAIL (第一个 = 632 m, the origin 横琴澳门青年创业谷; Amap driving route 26 m); with sortrule=weight PASS 2/2 (横琴镇人民政府 2533 m from the WGS point)", "2026-10-12 after GCJ-SEARCH (GCJ origin) and the warm-up retry: PASS 2/2 in the full suite, 横琴镇人民政府 2045 m straight line (floor 1.7 km), route 2855 m = 257 s at 40 km/h; real warm-up district + weather ok", "2026-10-13 cloud at fe25791 (after P55/P56 app changes; rebind): DemoCommuteAmapLiveTest 2/0 (JUnit XML, not skipped)"]
+    evidence: ["2026-10-12 cloud: with sortrule=distance FAIL (第一个 = 632 m, the origin 横琴澳门青年创业谷; Amap driving route 26 m); with sortrule=weight PASS 2/2 (横琴镇人民政府 2533 m from the WGS point)", "2026-10-12 after GCJ-SEARCH (GCJ origin) and the warm-up retry: PASS 2/2 in the full suite, 横琴镇人民政府 2045 m straight line (floor 1.7 km), route 2855 m = 257 s at 40 km/h; real warm-up district + weather ok", "2026-10-13 cloud at fe25791 (after P55/P56 app changes; rebind): DemoCommuteAmapLiveTest 2/0 (JUnit XML, not skipped)", "2026-10-17 cloud, NOVA_LIVE_AMAP=1 DemoCommuteAmapLiveTest at 651f772 (app code = 87d5287), owner's Amap web key (never logged), no voice model: 2/2 PASS - 横琴镇 first result 横琴镇人民政府 2045 m (>= 1700 m), weather ok=true; JUnit xml:TEST-com.novadrive.app.livedemo.DemoCommuteAmapLiveTest.xml#tests=2,failures=0"]
     related: [P51, DEMO-COMMUTE-001, SPEC-005, SPEC-011]
-    last_run: {at: 2026-10-13, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: DEVUI-EMU-001
     capability: speech
