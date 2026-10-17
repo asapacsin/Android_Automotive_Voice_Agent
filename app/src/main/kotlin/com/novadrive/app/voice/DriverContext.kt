@@ -196,16 +196,34 @@ class DriverContext(private val clock: () -> Long = { System.currentTimeMillis()
     /**
      * SPEC-010 B4: one execution per turn per capability *across* the local affordance path and the
      * model. [claimDispatch] keys on exact arguments, so a local `value=-1` and a model `value=-1.0`
-     * would both run. Returns false only when the **other** source already claimed `tool`+`action`
-     * in this epoch; the same source claiming twice is left to [claimDispatch], so a model that
-     * really makes two different adjustments in one turn keeps doing so.
+     * would both run. Returns false only when the **other** source already claimed the same
+     * *control* of `tool` in this epoch; the same source claiming twice is left to [claimDispatch],
+     * so a model that really makes two different adjustments in one turn keeps doing so.
+     *
+     * The key is the control, not the action (P67): the local path ran `control_climate power_on`
+     * for 「空调」 and the model's `power_off` for the same utterance ran too, so opposite actions on
+     * one control must share a claim. See [controlGroup].
      */
     fun claimCapability(epoch: Long, tool: String, action: String?, source: ClaimSource): Boolean =
         synchronized(lock) {
-            val key = "$epoch|$tool|${action.orEmpty()}"
+            val key = "$epoch|$tool|${controlGroup(tool, action)}"
             val first = capabilities.getOrPut(key) { source }
             first == source
         }
+
+    /**
+     * The control an action operates (P67). `control_climate` power_on/power_off -> "power";
+     * `control_music` play/stop (its declared actions) -> "playback". Every other action, including
+     * the temperature actions, is its own control.
+     */
+    private fun controlGroup(tool: String, action: String?): String {
+        val a = action.orEmpty()
+        return when {
+            tool == "control_climate" && (a == "power_on" || a == "power_off") -> "power"
+            tool == "control_music" && (a == "play" || a == "stop") -> "playback"
+            else -> a
+        }
+    }
 
     // ---- reads -------------------------------------------------------------
 
