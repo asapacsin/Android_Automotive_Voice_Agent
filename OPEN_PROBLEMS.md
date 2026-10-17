@@ -2458,8 +2458,12 @@ CAPABILITIES.md:30, ARCHITECTURE.md:64, TEST_MATRIX DEMO-TRYOUT-001 `related`.
 
 ## P67 — 「空调」 can operate the AC twice: the local path and the model's call with a different action
 
-**Status:** OPEN 2026-10-17, fix designed, not built (executors are blocked by the vendor files; see
-the owner question). Found by voice checks run 39005653831 at aee3ff0 (app code 87d5287, Gemini
+**Status:** OPEN 2026-10-17. Fixed at JVM level, merged 2026-10-17: `claimCapability` keys on the
+control (`CapabilityClaimGroupTest` 7/7; app debug 1958/0, behavior-test 132/0 in the planner's
+rerun; reviewer PASS, unverified E2E). It closes after the AFF-AC re-measure on the next voice-checks
+run (AFFORDANCE-DEVICE-001). Reviewer note: the model call in run 39005653831 logged `args=[action]`
+with no `value`, so it was the opposite power action (or get_state), which is exactly what is now refused.
+Found by voice checks run 39005653831 at aee3ff0 (app code 87d5287, Gemini
 debug override), AFF-AC under the corrected oracle (AFFORDANCE-DEVICE-001).
 **Seen (text-free skeleton):** `gemini_tool_call tool=control_climate` (before the transcript), then
 `affordance_match id=climate` and `screen_action=voice_climate ok=true` (the local path ran), then

@@ -91,7 +91,11 @@ transcript can already be under way, and its tool call can arrive before or afte
 `DriverContext.claimDispatch` keys on exact arguments, so a local `value=-1` and a model
 `value=-1.0` would both run. Extend that owner with `claimCapability(epoch, tool, action)`: the
 local path and `ToolCallGuards.repeatedInTurn` both claim it; the second claimant gets
-`DUPLICATE_IN_TURN`. If the model's call ran first, the matcher does nothing.
+`DUPLICATE_IN_TURN`. If the model's call ran first, the matcher does nothing. The claim is on the
+**same control**, not the exact action: `control_climate` power_on/power_off share "power" and
+`control_music` play/stop share "playback", so the opposite action on the control the other side
+already operated is refused too; temperature actions stay separate (P67, merged 2026-10-17,
+`CapabilityClaimGroupTest`).
 
 B5. **Feedback.** Success: the effect is the feedback (music starts, the temperature label changes)
 plus the existing success chip; nothing is spoken. Failure: the result is sent to the model as
