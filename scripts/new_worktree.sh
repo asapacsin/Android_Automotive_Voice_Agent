@@ -58,7 +58,19 @@ if [ ! -s "$CACHE" ] && [ -z "${NOVA_VENDOR_ZIP_URL:-}" ]; then
     cp "$src" "$WT/$f"
     copied=$((copied + 1))
   done
-  echo "INFO NOVA_VENDOR_ZIP_URL not set: copied $copied vendor file(s) from local checkouts" >&2
+  if [ ! -s "$WT/$MUSIC_FILE" ]; then
+    # Nowhere local: download a public-domain recording (same sources as scripts/cloud_setup.sh).
+    mkdir -p "$(dirname "$WT/$MUSIC_FILE")"
+    for url in $(sed -n 's/^MUSIC_URL\(_FALLBACK\)\{0,1\}="\(.*\)"$/\2/p' "$ROOT/scripts/cloud_setup.sh"); do
+      if curl -sSfL --max-time 120 -o "$WT/$MUSIC_FILE.tmp" "$url" && head -c 3 "$WT/$MUSIC_FILE.tmp" | grep -q ID3; then
+        mv "$WT/$MUSIC_FILE.tmp" "$WT/$MUSIC_FILE"
+        copied=$((copied + 1))
+        break
+      fi
+      rm -f "$WT/$MUSIC_FILE.tmp"
+    done
+  fi
+  echo "INFO NOVA_VENDOR_ZIP_URL not set: provisioned $copied vendor file(s) from local checkouts or mirrors" >&2
   if [ ! -s "$WT/app/libs/Msc.jar" ] || [ ! -s "$WT/$MUSIC_FILE" ]; then
     echo "WARN $WT still lacks Msc.jar or the music track: :app will not compile" >&2
   fi

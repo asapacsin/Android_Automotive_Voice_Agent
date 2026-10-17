@@ -103,6 +103,16 @@ The rules are [harness/CONSTITUTION.md](harness/CONSTITUTION.md) 12 and 17–19;
    Overflow, Zhihu/CSDN for Chinese vendors). Record what you found and its source next to the
    fix (commit message, OPEN_PROBLEMS or the SPEC), including "searched, nothing found". Only then
    design your own solution.
+   **A blocker is a problem too, and it does not stop the work** (owner, 2026-10-17). A failed
+   download, a rate limit, a missing file, a refused command or a missing tool gets the same
+   treatment: search how others got past it (mirrors and alternative sources, other tools, the
+   vendor's documented workaround, the community's fixes), try those options, and keep solving
+   until it works. Do not wait for a new session, a setting or the owner while an option remains.
+   Then make the fix durable (a script or a fallback source, so it cannot block again) and record
+   the cause in the time record. Only a real choice, or something only the owner can grant, goes
+   to the owner, as one short question while other work continues. Example: Wikimedia answered
+   HTTP 429; an archive.org public-domain mirror of the same piece worked and is now the fallback
+   in `scripts/cloud_setup.sh` and `scripts/new_worktree.sh`.
 
 ## Two things that catch agents out
 

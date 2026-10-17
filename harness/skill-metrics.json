@@ -1,8 +1,8 @@
 {
   "generated_by": "scripts/skill_metrics.py",
-  "events": 9,
+  "events": 10,
   "outcomes": {
-    "PASS": 8,
+    "PASS": 9,
     "PARTIAL": 1
   },
   "total_retries": 2,
@@ -12,13 +12,14 @@
     "verify": 4,
     "start": 2,
     "continue": 3,
-    "handoff": 6
+    "handoff": 7
   },
   "deviations": {},
   "missing_steps": {},
   "human_reminders": {
     "do not treat duplicated capability truth as a bad keyword": 1,
-    "keep going; find a way when a file is missing": 1
+    "keep going; find a way when a file is missing": 2,
+    "download from another place": 1
   },
   "manual_repeated_work": {
     "build-install-harness-read-log": 2,
@@ -30,9 +31,9 @@
     "review-packet"
   ],
   "time_efficiency": {
-    "timed_tasks": 4,
-    "total_minutes": 835,
-    "total_attempts": 11,
+    "timed_tasks": 5,
+    "total_minutes": 850,
+    "total_attempts": 12,
     "inefficient": [
       {
         "task": "vendor-files-in-worktrees",
@@ -53,12 +54,21 @@
           "stopped-on-refusal"
         ],
         "improvement": "new_worktree.sh copies the gitignored vendor files from local checkouts when no zip URL is set; on a refusal, ask the owner one plain yes/no and keep the other paths running"
+      },
+      {
+        "task": "blocker-rule",
+        "minutes": 15,
+        "attempts": 1,
+        "waste": [
+          "stopped-on-refusal"
+        ],
+        "improvement": "AGENTS.md rule 6: a blocker gets community research + alternatives until solved; archive.org mirror as the music fallback in cloud_setup.sh and new_worktree.sh"
       }
     ],
     "waste_causes": {
       "vendor-files-missing-in-worktrees": 2,
       "manual-copy-refused": 1,
-      "stopped-on-refusal": 1
+      "stopped-on-refusal": 2
     }
   },
   "observed_sequences": {
@@ -66,8 +76,20 @@
   },
   "suggested_actions": [
     {
+      "action": "SKILL_MODIFICATION",
+      "subject": "keep going; find a way when a file is missing",
+      "seen": 2,
+      "why": "the human repeated the same instruction; the procedure is missing it"
+    },
+    {
       "action": "TIME_IMPROVEMENT",
       "subject": "vendor-files-missing-in-worktrees",
+      "seen": 2,
+      "why": "the same cause of lost time >= 2 times; script, skill or settings change due"
+    },
+    {
+      "action": "TIME_IMPROVEMENT",
+      "subject": "stopped-on-refusal",
       "seen": 2,
       "why": "the same cause of lost time >= 2 times; script, skill or settings change due"
     }
