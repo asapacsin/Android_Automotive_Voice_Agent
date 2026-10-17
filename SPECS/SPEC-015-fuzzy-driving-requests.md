@@ -119,11 +119,11 @@ transcript text.
 
 | # | Criterion | Kind | Proven by | State |
 | --- | --- | --- | --- | --- |
-| A1 | Port: window/seat limits, clamping, generic result; climate unchanged | functional | `SimulatedVehicleControlTest`, `ClimateToolHandlerTest` | not built |
-| A2 | Handlers and declarations for window/seat; results read back state + `announce` | functional | `WindowToolHandlerTest`, `SeatToolHandlerTest`, `ActionAnnouncementTest` | not built |
-| A3 | Scenarios: order, dependencies, partial failure, per-step context | functional | `ComfortScenariosTest` | not built |
+| A1 | Port: window/seat limits, clamping, generic result; climate unchanged | functional | `SimulatedVehicleControlTest`, `ClimateToolHandlerTest` | built — SimulatedVehicleControlTest 23/23 green, ClimateToolHandlerTest 10/10 green (full JVM suite at 87d5287, 2026-10-17) |
+| A2 | Handlers and declarations for window/seat; results read back state + `announce` | functional | `WindowToolHandlerTest`, `SeatToolHandlerTest`, `ActionAnnouncementTest` | built — WindowToolHandlerTest 22/22 green, SeatToolHandlerTest 12/12 green, ActionAnnouncementTest 8/8 green (full JVM suite at 87d5287, 2026-10-17) |
+| A3 | Scenarios: order, dependencies, partial failure, per-step context | functional | `ComfortScenariosTest` | built — ComfortScenariosTest 32/32 green (full JVM suite at 87d5287, 2026-10-17) |
 | A4 | Capability flip in all three places; sunroof etc. still refused | contract | `CapabilityContractTest`, `FalseCapabilityClaimTest`, `TRUTH-BAIT-001` | not built |
-| A5 | 「已把车窗打开一半」 with no call is not released | negative | `FalseCapabilityClaimTest` (+case) | not built |
+| A5 | 「已把车窗打开一半」 with no call is not released | negative | `FalseCapabilityClaimTest` (+case) | built — FalseCapabilityClaimTest 80/80 green, case `aWindowClaimWithNoToolCallIsNotReleased` (full JVM suite at 87d5287, 2026-10-17) |
 | A6 | Style: compose replaces the tone paragraph; persists; both clients use it | functional | `PersonaProfilesTest`, `SpeakingStyleStoreTest` | not built |
 | A7 | Context follow-ups FZ-05, FZ-14 | functional | `ContextResolverTest` (+rows) | not built |
 | A8 | The model maps FZ-01…FZ-14 correctly (≥ 12/14 on Gemini) | TEXT_LIVE | new `TEST_MATRIX.yaml` row `FUZZY-TEXT-LIVE-001` | not earned |
