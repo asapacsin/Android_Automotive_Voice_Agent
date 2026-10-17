@@ -1,26 +1,51 @@
 {
   "generated_by": "scripts/skill_metrics.py",
-  "events": 3,
+  "events": 6,
   "outcomes": {
-    "PASS": 3
+    "PASS": 5,
+    "PARTIAL": 1
   },
   "total_retries": 2,
   "skill_usage": {
     "reproduce": 1,
-    "fix": 3,
-    "verify": 2,
-    "start": 1
+    "fix": 4,
+    "verify": 4,
+    "start": 2,
+    "continue": 3,
+    "handoff": 3
   },
   "deviations": {},
   "missing_steps": {},
-  "human_reminders": {},
+  "human_reminders": {
+    "do not treat duplicated capability truth as a bad keyword": 1
+  },
   "manual_repeated_work": {
-    "build-install-harness-read-log": 2
+    "build-install-harness-read-log": 2,
+    "provision-worktree-vendor-files": 1
   },
   "failed_skill_assumptions": {},
-  "unused_skills": [
-    "handoff"
-  ],
+  "unused_skills": [],
+  "time_efficiency": {
+    "timed_tasks": 1,
+    "total_minutes": 775,
+    "total_attempts": 4,
+    "inefficient": [
+      {
+        "task": "vendor-files-in-worktrees",
+        "minutes": 775,
+        "attempts": 4,
+        "waste": [
+          "vendor-files-missing-in-worktrees",
+          "manual-copy-refused"
+        ],
+        "improvement": "scripts/new_worktree.sh creates the worktree and unpacks the owner's vendor zip (NOVA_VENDOR_ZIP_URL, set 2026-10-17); planner recipe and AGENTS.md point at it"
+      }
+    ],
+    "waste_causes": {
+      "vendor-files-missing-in-worktrees": 1,
+      "manual-copy-refused": 1
+    }
+  },
   "suggested_actions": [],
   "thresholds": {
     "new_skill": 3,

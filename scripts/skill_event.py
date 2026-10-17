@@ -75,7 +75,21 @@ def main():
     p.add_argument("--stale-assumptions", default="", help="comma-separated: stale paths/commands hit")
     p.add_argument("--retries", type=int, default=0, help="attempts before the change was right")
     p.add_argument("--note", default="", help="one line of context")
+    # Time efficiency (owner, 2026-10-17): every finished piece of work records what it cost and
+    # whether that was a time-efficient way to do it; an inefficient one names its improvement.
+    p.add_argument("--minutes", type=int, required=True,
+                   help="wall-clock minutes from starting the task to its verified push")
+    p.add_argument("--attempts", type=int, required=True,
+                   help="rounds needed: dispatches, builds or runs repeated before it was right")
+    p.add_argument("--efficient", required=True, choices=["yes", "no"],
+                   help="was this a time-efficient approach, judged against the cheapest one in hindsight")
+    p.add_argument("--waste", default="",
+                   help="comma-separated causes of lost time, short and reusable (e.g. vendor-files-missing)")
+    p.add_argument("--improvement", default="",
+                   help="what was changed (or proposed) so the waste does not recur; required when --efficient no")
     args = p.parse_args()
+    if args.efficient == "no" and not args.improvement.strip():
+        p.error("--efficient no needs --improvement: find a way to do it faster next time")
 
     record = {
         "task_id": args.task,
@@ -88,6 +102,11 @@ def main():
         "manual_repeated_work": split(args.manual_work),
         "failed_skill_assumptions": split(args.stale_assumptions),
         "retries": args.retries,
+        "minutes": args.minutes,
+        "attempts": args.attempts,
+        "efficient": args.efficient == "yes",
+        "waste": split(args.waste),
+        "improvement": args.improvement,
         "task_outcome": args.outcome,
         "tests": tests_from_state(),
         "candidate_action": args.candidate,
@@ -98,7 +117,9 @@ def main():
     with open(EVENTS, "a", encoding="utf-8", newline="\n") as handle:
         handle.write(json.dumps(record, ensure_ascii=False) + "\n")
     print("appended to %s" % os.path.relpath(EVENTS, REPO))
-    print("  %s  %s  candidate=%s" % (record["task_id"], record["task_outcome"], record["candidate_action"]))
+    print("  %s  %s  candidate=%s  %d min  %d attempts  efficient=%s" % (
+        record["task_id"], record["task_outcome"], record["candidate_action"],
+        args.minutes, args.attempts, args.efficient))
     if args.candidate != "NONE":
         print("  -> thresholds and next step: harness/SKILL_POLICY.md")
     return 0

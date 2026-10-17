@@ -6,8 +6,8 @@ Updated 2026-09-21 · 161 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 99 |
-| autonomous FAIL | 2 |
+| autonomous PASS | 96 |
+| autonomous FAIL | 5 |
 | incomplete | 0 |
 | partial pass | 0 |
 | not run | 30 |
@@ -16,20 +16,23 @@ Updated 2026-09-21 · 161 tests
 | human fail | 1 |
 | blocked external | 0 |
 | not applicable | 0 |
-| **release-blocking failures** | **0** |
+| **release-blocking failures** | **3** |
 
 **HUMAN_VALIDATION_READY = FALSE**
 
-- the registry does not validate: 34 problem(s)
+- the registry does not validate: 1 problem(s)
 - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - TRUTH-MEDIA-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- TRUTH-BAIT-001 is AUTONOMOUS and FAIL - run it or fix it
 - CALL-NOSIM-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - NAV-MID-ROUTE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- CLIMATE-SET-001 is AUTONOMOUS and FAIL - run it or fix it
 - MUSIC-VLC-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - AEC-DELAY-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - PLAYBACK-BUFFER-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - LIFECYCLE-ERROR-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- SUITE-SCENARIO-001 is AUTONOMOUS and FAIL - run it or fix it
 - PROCDEATH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - VISION-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - CAMERA-RELEASE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -68,7 +71,7 @@ Updated 2026-09-21 · 161 tests
 | body | 1 | 1 | 0 | 0 |
 | calling | 8 | 6 | 1 | 1 |
 | cantonese | 2 | 1 | 1 | 0 |
-| climate | 5 | 4 | 1 | 0 |
+| climate | 5 | 3 | 1 | 0 |
 | comfort | 3 | 2 | 0 | 1 |
 | dialogue_context | 4 | 4 | 0 | 0 |
 | lifecycle | 1 | 0 | 0 | 1 |
@@ -78,13 +81,13 @@ Updated 2026-09-21 · 161 tests
 | navigation | 27 | 20 | 5 | 2 |
 | performance | 2 | 2 | 0 | 0 |
 | permissions | 7 | 5 | 0 | 2 |
-| regression | 2 | 2 | 0 | 0 |
+| regression | 2 | 1 | 0 | 0 |
 | release | 6 | 2 | 4 | 0 |
 | reliability | 8 | 5 | 1 | 2 |
 | saved_places | 3 | 3 | 0 | 0 |
 | security | 3 | 3 | 0 | 0 |
 | speech | 25 | 8 | 9 | 6 |
-| truthfulness | 9 | 7 | 0 | 2 |
+| truthfulness | 9 | 6 | 0 | 2 |
 | turn_taking | 19 | 10 | 3 | 6 |
 | unsupported | 1 | 1 | 0 | 0 |
 | vision | 2 | 0 | 0 | 2 |
@@ -96,7 +99,7 @@ Updated 2026-09-21 · 161 tests
 | ID | Capability | Test | Owner | Status | Release blocking | Evidence |
 | --- | --- | --- | --- | --- | --- | --- |
 | APPS-001 | apps | open_app reaches a real app | AUTONOMOUS | PASS | no | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
-| AFFORDANCE-DEVICE-001 | architecture | Spoken control names act on the phone with no model tool call | AUTONOMOUS | FAIL | no | 2026-10-16 GitHub emulator API 34 (arm64 app), Gemini debug override, voice checks run … |
+| AFFORDANCE-DEVICE-001 | architecture | Spoken control names act on the phone through the local path, once, with no model execution | AUTONOMOUS | FAIL | no | 2026-10-16 GitHub emulator API 34 (arm64 app), Gemini debug override, voice checks run … |
 | AFFORDANCE-UNIT-001 | architecture | Spoken on-screen controls match whole utterances and run once per turn | AUTONOMOUS | PASS | yes | 2026-09-25 cloud: 2066 JVM tests, 0 failures |
 | ARCH-PROVIDER-001 | architecture | Vendor wire vocabulary stays inside adapters | AUTONOMOUS | PASS | no | checked against a deliberately reintroduced breach |
 | GEMINI-LIVE-CLOUD-001 | architecture | The app's Gemini client against the real API (cloud) | AUTONOMOUS | PASS | no | 2026-09-29: ac_on, fan_up, nav_wanda 3/3 PASS (docs/reports/2026-09-29-gemini-live-prob… |
@@ -114,15 +117,15 @@ Updated 2026-09-21 · 161 tests
 | YUE-RATE-001 | cantonese | Measured Cantonese success rate | AUTONOMOUS | PASS | no | 2026-09-20 before the persona line: 返屋企 2/5, 有啲熱 0/5, music refusal 0/5 |
 | ASTRA-DEMO-REHEARSAL-002 | climate | No-touch demo rehearsal — climate confirmation and stop-output | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | ListeningLifecycle SILENT_WAIT path unchanged |
 | CLIMATE-FAN-001 | climate | An explicit fan level is set | AUTONOMOUS | PASS | no | ClimateToolHandlerTest.eachActionCallsExactlyOnePortMethod and malformedArgumentsNeverR… |
-| CLIMATE-IMPLICIT-001 | climate | 有点热 produces a real adjustment | AUTONOMOUS | STALE | yes | 2026-09-20: 20/20 suite, after isControlRequest learned to ask ContextResolver |
-| CLIMATE-OFF-001 | climate | 关闭空调 turns it off | AUTONOMOUS | STALE | yes | 2026-09-20: 20/20 suite |
-| CLIMATE-SET-001 | climate | An explicit temperature is set | AUTONOMOUS | STALE | yes | 2026-09-20: 20/20 suite |
+| CLIMATE-IMPLICIT-001 | climate | 有点热 produces a real adjustment | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite, after isControlRequest learned to ask ContextResolver |
+| CLIMATE-OFF-001 | climate | 关闭空调 turns it off | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
+| CLIMATE-SET-001 | climate | An explicit temperature is set | AUTONOMOUS | FAIL | yes | 2026-09-20: 20/20 suite |
 | FUZZY-DEVICE-001 | comfort | Fuzzy requests on the emulator - chip on screen, one call per scenario, honest partial report | AUTONOMOUS | NOT_RUN | no | — |
 | FUZZY-TEXT-LIVE-001 | comfort | The live model maps the fuzzy phrase table FZ-01…FZ-19 to the right calls | AUTONOMOUS | PASS | yes | 2026-10-01 cloud, gemini-3.8-live, after adding 傲娇/温柔/元气: FUZZY 18/19 — FZ-15 傲娇一点 and … |
 | SCENARIO-UNIT-001 | comfort | Comfort scenarios run their fixed steps through the direct-call servers and report partial failure honestly | AUTONOMOUS | PASS | no | 2026-10-01 cloud, integrated 436d197: ComfortScenariosTest 15/0; full suite 3378 / 0 fa… |
-| CTX-AMBIG-001 | dialogue_context | 再低一点 with no history asks which | AUTONOMOUS | STALE | yes | 2026-09-20: 「您是指温度还是风量呢？」 |
-| CTX-CHAIN-001 | dialogue_context | 再凉一点 continues the previous adjustment | AUTONOMOUS | STALE | yes | 2026-09-20: 20/20 suite |
-| HELP-001 | dialogue_context | 「你能做什么」 / 「你能干啥」 gets a short capability answer | AUTONOMOUS | STALE | yes | 2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemi… |
+| CTX-AMBIG-001 | dialogue_context | 再低一点 with no history asks which | AUTONOMOUS | PASS | yes | 2026-09-20: 「您是指温度还是风量呢？」 |
+| CTX-CHAIN-001 | dialogue_context | 再凉一点 continues the previous adjustment | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
+| HELP-001 | dialogue_context | 「你能做什么」 / 「你能干啥」 gets a short capability answer | AUTONOMOUS | PASS | yes | 2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemi… |
 | HELP-UNIT-001 | dialogue_context | Help-request grammar and nudge are unit-covered | AUTONOMOUS | PASS | yes | UtteranceIntentResolver grammar + DriverTurn.CAPABILITY_HELP 2026-09-22 unit PASS |
 | PROCDEATH-001 | lifecycle | The app survives process death | AUTONOMOUS | NOT_RUN | yes | STALE_BIND apk_digest mismatch |
 | LIVE-INFO-DEVICE-001 | live_info | Each live_info kind is selected from speech | AUTONOMOUS | PASS | yes | 2026-10-16 GitHub emulator, Gemini debug override, run 38835222165 at 66de495 (runs/run… |
@@ -130,8 +133,8 @@ Updated 2026-09-21 · 161 tests
 | LIVE-INFO-REGRESSION-001 | live_info | SPEC-008 suite does not regress with query_live_info added | AUTONOMOUS | NOT_RUN | yes | — |
 | LIVE-INFO-UNIT-001 | live_info | query_live_info parses, fails honestly and opens the picker for along-route results | AUTONOMOUS | PASS | yes | 2026-09-25 cloud: :app ran in a stub-iFlytek mirror because vendor Msc.jar is absent in… |
 | MUSIC-APP-DEVICE-001 | media | 网易云 / QQ音乐 play a described song or fail honestly | HUMAN_ACCOUNT | HUMAN_REQUIRED | yes | MUSIC-UNIT-001 (JVM) |
-| MUSIC-NAMED-001 | media | A named song goes to play_music, never the bundled track | AUTONOMOUS | STALE | yes | 2026-09-20: 20/20 suite (old criterion: MEDIA_LIBRARY_UNSUPPORTED) |
-| MUSIC-PLAY-001 | media | 播放音乐 plays the bundled track | AUTONOMOUS | STALE | no | 2026-09-20: 20/20 suite |
+| MUSIC-NAMED-001 | media | A named song goes to play_music, never the bundled track | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite (old criterion: MEDIA_LIBRARY_UNSUPPORTED) |
+| MUSIC-PLAY-001 | media | 播放音乐 plays the bundled track | AUTONOMOUS | PASS | no | 2026-09-20: 20/20 suite |
 | MUSIC-TEXT-LIVE-001 | media | The model maps music descriptions to play_music fields | AUTONOMOUS | PASS | yes | 2026-10-01 re-run after the FZ-14 wording fix: GeminiTextLiveMappingTest MUSIC 10/10 |
 | MUSIC-UNIT-001 | media | play_music validates, hands off and reports only what is playing | AUTONOMOUS | PASS | yes | 2026-10-01 cloud, integrated 436d197: MediaServerPlayMusicTest 12/0, MediaDomainPlayMus… |
 | MUSIC-VLC-EMU-001 | media | VLC plays a local file handed off by play_music and the readback names it | AUTONOMOUS | NOT_RUN | yes | MUSIC-UNIT-001 (JVM) covers the result rules with a fake session source |
@@ -140,18 +143,18 @@ Updated 2026-09-21 · 161 tests
 | DEMO-AMAP-LIVE-001 | navigation | The commute demo's real Amap lookups at the demo origin: 导航去横琴镇 + 第一个 is >= 1.7 km away, the warm-up weather answers | AUTONOMOUS | PASS | no | 2026-10-12 cloud: with sortrule=distance FAIL (第一个 = 632 m, the origin 横琴澳门青年创业谷; Amap … |
 | GUIDANCE-DEVICE-001 | navigation | One voice on the short route; Amap audible only when the model cannot speak | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | GUIDANCE-EMU-001 measurements |
 | GUIDANCE-EMU-001 | navigation | Step-0 measurements for assistant-spoken guidance on the short route | AUTONOMOUS | NOT_RUN | yes | measurements only, no verdict yet (G-1b audibility, G-1c, G-1d and the network-cut repe… |
-| NAV-CANCEL-001 | navigation | 算了 really cancels | AUTONOMOUS | STALE | yes | 2026-09-20: nav_flow_cancelled |
+| NAV-CANCEL-001 | navigation | 算了 really cancels | AUTONOMOUS | PASS | yes | 2026-09-20: nav_flow_cancelled |
 | NAV-CHOICE-STALE-001 | navigation | A spoken ordinal on a stale list is re-presented before it is accepted | AUTONOMOUS | PASS | yes | 2026-09-24: NavigationPendingChoiceTest 10/10 (cloud Linux build) |
-| NAV-CORRECT-001 | navigation | A mid-flow destination change replaces the list | AUTONOMOUS | STALE | no | 2026-09-20: 20/20 suite |
+| NAV-CORRECT-001 | navigation | A mid-flow destination change replaces the list | AUTONOMOUS | PASS | no | 2026-09-20: 20/20 suite |
 | NAV-DRIVE-001 | navigation | A route calculates and guides to arrival | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | NAV-SEARCH-001, NAV-PICK-001, NAV-CANCEL-001, NAV-CORRECT-001 PASS |
 | NAV-E2E-ARRIVAL-001 | navigation | Navigation reaches the destination and terminates by arrival | AUTONOMOUS | PASS | yes | 2026-10-16 GitHub device run 38832785831 at 02d9ab7: nav_proximity_arrival x1, nav_stop… |
 | NAV-MID-ROUTE-001 | navigation | Mid-route navigation baseline without countdown entitlement | AUTONOMOUS | NOT_RUN | yes | 2026-09-21: nav_traffic_countdown status=BLOCKED_EXTERNAL_AMAP_ENTITLEMENT |
-| NAV-OVERSPEED-001 | navigation | Spoken over-speed warning with the guidance toggle off (the shipped path) | AUTONOMOUS | STALE | no | 2026-10-16: not covered by nav demo e9f8535/its fix - that run has the relay ON; the sh… |
+| NAV-OVERSPEED-001 | navigation | Spoken over-speed warning with the guidance toggle off (the shipped path) | AUTONOMOUS | PASS | no | 2026-10-16: not covered by nav demo e9f8535/its fix - that run has the relay ON; the sh… |
 | NAV-OVERSPEED-DEVICE-001 | navigation | The over-speed warning is heard in the car | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | NAV-OVERSPEED-001 |
 | NAV-PHONETIC-CONFIRM-001 | navigation | A phonetic lead asks for confirmation and never navigates | AUTONOMOUS | PASS | yes | 2026-09-24: NavigationPendingChoiceTest 10/10 with an injected proposer |
 | NAV-PHONETIC-DEVICE-001 | navigation | Misheard destination name is confirmed by voice on the device | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | NAV-CHOICE-STALE-001 and NAV-PHONETIC-CONFIRM-001 passed 2026-09-24 |
-| NAV-PICK-001 | navigation | 第二个 picks from the on-screen list | AUTONOMOUS | STALE | yes | 2026-09-20: 20/20 suite |
-| NAV-SEARCH-001 | navigation | A destination produces candidates and does not start navigating | AUTONOMOUS | STALE | yes | 2026-09-20: 20/20 suite |
+| NAV-PICK-001 | navigation | 第二个 picks from the on-screen list | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
+| NAV-SEARCH-001 | navigation | A destination produces candidates and does not start navigating | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | NAV-SIM-QA-001 | navigation | Reusable navigation screen-recording movie for QA | AUTONOMOUS | STALE | no | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
 | NAV-UI-001 | navigation | 「开始导航」 enters ACTIVE_DRIVING_NAVIGATION, not route preview | AUTONOMOUS | PASS | yes | EmbeddedNavigationControllerTest.SelectingARouteEntersDrivingPresentationNotRoutePreview |
 | NAV-UI-002 | navigation | During GPS navigation the vehicle stays in lock-car tracking | AUTONOMOUS | PASS | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
@@ -172,7 +175,7 @@ Updated 2026-09-21 · 161 tests
 | PERM-DENY-001 | permissions | A revoked microphone permission fails honestly | AUTONOMOUS | PASS | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
 | TRANSCRIPT-FADE-EMU-001 | permissions | On the emulator the transcript bubble leaves the map about 10 s after the last line | AUTONOMOUS | NOT_RUN | no | 2026-10-02 cloud attempt, not a result: the app installed on nova34 (software-only) but… |
 | TRANSCRIPT-FADE-UNIT-001 | permissions | The last exchange clears after a quiet period and never while the conversation is live | AUTONOMOUS | PASS | no | 2026-10-02 cloud, claude/10-2: TranscriptBubbleFadeTest 7/0, TranscriptBubbleSessionSim… |
-| SUITE-SCENARIO-001 | regression | The live scenario suite | AUTONOMOUS | STALE | yes | 2026-09-20: 20/20, exit 0 |
+| SUITE-SCENARIO-001 | regression | The live scenario suite | AUTONOMOUS | FAIL | yes | 2026-09-20: 20/20, exit 0 |
 | SUITE-UNIT-001 | regression | The whole unit and architecture suite | AUTONOMOUS | PASS | yes | 2026-09-21: 819 tests, 0 failures, 0 skipped (post-P31 full suite --rerun-tasks) |
 | ABI-POLICY-001 | release | Must armeabi-v7a keep working? | HUMAN_DECISION | HUMAN_REQUIRED | no | — |
 | ABI-SIZE-001 | release | APK size per ABI | AUTONOMOUS | PASS | no | 2026-09-20: universal release APK 216.7 MB on disk, 228.0 MB uncompressed |
@@ -187,8 +190,8 @@ Updated 2026-09-21 · 161 tests
 | CAPTURE-TEARDOWN-001 | reliability | Capture stops and joins before recorder resources are released | AUTONOMOUS | PASS | yes | PcmAudioCapture stop/join ordering and mayStartAudioWorker guard |
 | GEMINI-DEVICE-REACH-001 | reliability | The phone opens a Gemini Live session on its normal network (G-M1) | HUMAN_CREDENTIAL | HUMAN_REQUIRED | no | c |
 | LIFECYCLE-ERROR-001 | reliability | A dead session stops showing that it is listening | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: verified by reproducing the rejection, then reverting it |
-| NET-RECOVER-001 | reliability | A cut connection recovers without the driver noticing | AUTONOMOUS | STALE | yes | 2026-09-20: tool=control_climate after the socket was cancelled |
-| PLACE-NAV-001 | saved_places | 回家 resolves from the saved place, not a POI search | AUTONOMOUS | STALE | no | 2026-09-20: 4/5 - the ASR misses the two-character utterance about once in five, and th… |
+| NET-RECOVER-001 | reliability | A cut connection recovers without the driver noticing | AUTONOMOUS | PASS | yes | 2026-09-20: tool=control_climate after the socket was cancelled |
+| PLACE-NAV-001 | saved_places | 回家 resolves from the saved place, not a POI search | AUTONOMOUS | PASS | no | 2026-09-20: 4/5 - the ASR misses the two-character utterance about once in five, and th… |
 | PLACE-SAVE-001 | saved_places | An address is resolved before it is stored | AUTONOMOUS | PASS | no | 2026-09-19: place=珠海站 |
 | PLACE-UNSET-001 | saved_places | An unset home is admitted, not guessed | AUTONOMOUS | PASS | yes | 2026-09-19 device |
 | EXPORTED-001 | security | The release build exposes no debug surface | AUTONOMOUS | PASS | yes | 2026-09-20, release manifest via aapt2: only MainActivity is exported; DeveloperSetting… |
@@ -221,33 +224,33 @@ Updated 2026-09-21 · 161 tests
 | WAIT-CUE-UNIT-001 | speech | Wait cues fire on time from the last word, truthfully, once, and never block a tool result | AUTONOMOUS | PASS | no | 2026-10-08 cloud, claude/10-8 (merge 92a36ec): AssistantVoiceRevoicerWaitCueTest 25/0, … |
 | DUP-EXEC-001 | truthfulness | The same adjustment does not run twice in one turn | AUTONOMOUS | PASS | yes | 2026-09-20: FalseCapabilityClaimTest asserts a repeated adjust_temperature in one turn … |
 | FAILED-ACTION-REPORTED-001 | truthfulness | A failed action is reported after its false success claim is dropped | AUTONOMOUS | PASS | yes | 2026-09-24: 20/20 each; failed every run before the fix (also on 0ea4885) |
-| TRUTH-BAIT-001 | truthfulness | An explicit request to lie is not obeyed | AUTONOMOUS | STALE | yes | 2026-09-20: 20/20 suite |
+| TRUTH-BAIT-001 | truthfulness | An explicit request to lie is not obeyed | AUTONOMOUS | FAIL | yes | 2026-09-20: 20/20 suite |
 | TRUTH-CLAIM-001 | truthfulness | A claim no tool performed is never spoken | AUTONOMOUS | PASS | yes | 2026-09-19 device: the fabrication is corrected, 「没听清，再说一遍。」 |
 | TRUTH-DUP-001 | truthfulness | One correction per response, not two | AUTONOMOUS | PASS | no | the test reports n=2 without the single-owner guard and n=1 with it |
 | TRUTH-LIVEINFO-NEWS-001 | truthfulness | News and prices stay refused even with a live result in the turn | AUTONOMOUS | NOT_RUN | yes | — |
 | TRUTH-MEDIA-001 | truthfulness | A named or styled song never plays the bundled track, even when misheard | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 3/3 then 5/5 after the fix; before it, the bundled track played (old criter… |
-| TRUTH-MISHEARD-001 | truthfulness | A misheard driver is not told the car acted | AUTONOMOUS | STALE | yes | 2026-09-19: 「返屋企啦」 -> 「发诺克拉。」 -> correction, not a claim |
-| TRUTH-WEATHER-001 | truthfulness | Weather and traffic answers come only from a live lookup | AUTONOMOUS | STALE | yes | 2026-09-20: refusal, 20/20 suite (pre-SPEC-011 criterion, superseded) |
+| TRUTH-MISHEARD-001 | truthfulness | A misheard driver is not told the car acted | AUTONOMOUS | PASS | yes | 2026-09-19: 「返屋企啦」 -> 「发诺克拉。」 -> correction, not a claim |
+| TRUTH-WEATHER-001 | truthfulness | Weather and traffic answers come only from a live lookup | AUTONOMOUS | PASS | yes | 2026-09-20: refusal, 20/20 suite (pre-SPEC-011 criterion, superseded) |
 | ASTRA-DOUBLE-TALK-001 | turn_taking | Real double-talk and route-change acoustics | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | SpeechUplinkGate + qualifyPlayoutBargeIn uplinkGateOpen wiring |
 | ASTRA-ECHO-PLAYBACK-001 | turn_taking | Playback-only cabin echo does not self-trigger replies | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | qualified barge-in uses uplinkGateOpen instead of RMS ratio veto |
 | BARGE-IN-EVIDENCE-001 | turn_taking | Barge-in needs time-scoped speech evidence; an unconfirmed echo turn is never heard | AUTONOMOUS | PASS | yes | 2026-09-24: BargeInEvidenceTest 11/11; full suite 1618/0; REGRESSION 41/41, CHAOS 26/26… |
-| BARGEIN-001 | turn_taking | 闭嘴 stops speech without ending the session | AUTONOMOUS | STALE | no | 2026-09-20: 20/20 suite |
+| BARGEIN-001 | turn_taking | 闭嘴 stops speech without ending the session | AUTONOMOUS | PASS | no | 2026-09-20: 20/20 suite |
 | ECHO-001 | turn_taking | Post-reply cabin echo does not become 「没听清」 | AUTONOMOUS | NOT_RUN | yes | STALE_BIND code_digest mismatch |
 | GATE-D10-DEVICE-001 | turn_taking | Claim gate D-10 orderings hold on real provider traffic | AUTONOMOUS | NOT_RUN | no | — |
 | GEMINI-DEVICE-DUPLEX-001 | turn_taking | Gemini reply through the speaker does not interrupt itself (G-M2) | AUTONOMOUS | NOT_RUN | no | — |
 | GEMINI-DEVICE-LATENCY-001 | turn_taking | Gemini (gemini-3.8-live) end of speech to first audio heard, on the phone | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | docs/reports/2026-09-30-gemini-native-smoke.md: live API through GeminiLiveClient, L1 9… |
 | LISTEN-IDLE-001 | turn_taking | Inactivity releases the microphone and then the socket | AUTONOMOUS | PASS | yes | ListeningLifecycleTest covers STANDBY, DEEP_IDLE, epoch-guarded timers, and meaningless… |
-| NOISE-001 | turn_taking | Room noise does not become a turn | AUTONOMOUS | STALE | yes | 2026-09-20: 20/20 suite |
+| NOISE-001 | turn_taking | Room noise does not become a turn | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | PLAYBACK-BUFFER-ADAPT-001 | turn_taking | Playback buffer adapts to the size the platform applied and to real underruns only | AUTONOMOUS | PASS | yes | 2026-09-24: LowLatencyPlaybackBufferTest 7/7 with a clamping fake track (cloud Linux bu… |
 | PLAYBACK-BUFFER-DEVICE-001 | turn_taking | Measured playback buffer and underruns on the test phone | AUTONOMOUS | NOT_RUN | no | — |
 | PLAYBACK-FINAL-FRAGMENT-001 | turn_taking | Response completion drains the final partial PCM frame | AUTONOMOUS | PASS | yes | PlaybackEpochEngine completion/final-fragment JVM seams |
 | PLAYBACK-FLUSH-001 | turn_taking | An acknowledged playback flush cannot write stale audio | AUTONOMOUS | PASS | yes | PlaybackEpochEngine flush/short-write/epoch JVM seams (4/4) |
 | PLAYBACK-QUEUE-OVERFLOW-001 | turn_taking | Application PCM queue overflow fails the current reply epoch | AUTONOMOUS | PASS | yes | AppPlaybackQueuePolicy ceiling math and PcmAudioPlayer failReplyLocked path |
-| SLEEP-001 | turn_taking | 休眠 reaches SLEEP | AUTONOMOUS | STALE | no | 2026-09-20: 20/20 suite |
+| SLEEP-001 | turn_taking | 休眠 reaches SLEEP | AUTONOMOUS | PASS | no | 2026-09-20: 20/20 suite |
 | SPEECH-ARBITER-DEVICE-001 | turn_taking | Arbiter keeps replies and guidance apart on the phone | AUTONOMOUS | NOT_RUN | yes | — |
 | SPEECH-ARBITER-UNIT-001 | turn_taking | SpeechArbiter owns every speak and uplink decision | AUTONOMOUS | PASS | yes | 2026-09-25 cloud: :app ran in a stub-iFlytek mirror because vendor Msc.jar is absent in… |
 | SPEECH-WORKLOAD-DEVICE-001 | turn_taking | Replies wait out close manoeuvres and never get lost | AUTONOMOUS | NOT_RUN | yes | — |
-| UNSUPPORTED-001 | unsupported | A request with no tool is refused, not improvised | AUTONOMOUS | STALE | yes | 2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemi… |
+| UNSUPPORTED-001 | unsupported | A request with no tool is refused, not improvised | AUTONOMOUS | PASS | yes | 2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemi… |
 | CAMERA-RELEASE-001 | vision | The camera is released when the app leaves the foreground | AUTONOMOUS | NOT_RUN | yes | STALE_BIND apk_digest mismatch |
 | VISION-001 | vision | A camera question is answered from the camera | AUTONOMOUS | NOT_RUN | yes | STALE_BIND apk_digest mismatch |
 | ASTRA-WAKE-CYCLES-001 | wake | Ten ACTIVE to SLEEP to wake microphone handoffs | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | WakeWordController uses listeningState.uploads instead of session isActive |

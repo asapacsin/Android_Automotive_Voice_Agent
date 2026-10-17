@@ -6,14 +6,14 @@ Every case below **requires a physical Android device** (and usually a real cabi
 
 > Autonomous work may still be open. Prefer finishing cloud-verifiable work first; this file is still the device queue.
 >
-> - the registry does not validate: 34 problem(s)
+> - the registry does not validate: 1 problem(s)
 > - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - TRUTH-MEDIA-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - TRUTH-BAIT-001 is AUTONOMOUS and FAIL - run it or fix it
 > - CALL-NOSIM-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - NAV-MID-ROUTE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
-> - MUSIC-VLC-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
-> - AEC-DELAY-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - CLIMATE-SET-001 is AUTONOMOUS and FAIL - run it or fix it
 
 **23 LOCAL_DEVICE_REQUIRED item(s).**
 

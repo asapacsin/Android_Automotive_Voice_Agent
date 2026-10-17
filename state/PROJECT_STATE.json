@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-17T04:41:24",
+  "generated_at": "2026-10-17T16:12:02",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "3713ee2",
+    "commit": "ae99d54",
     "branch": "claude/10-15",
-    "subject": "state: regenerate TEST_STATUS, HUMAN_VALIDATION and LOCAL_DEVICE_REQUIRED from the registry",
-    "working_tree_clean": true,
-    "uncommitted_files": 0
+    "subject": "Voice run 39005653831 under the corrected oracles: AFF-AC is a real double execution (P67); S1/S14 pass again",
+    "working_tree_clean": false,
+    "uncommitted_files": 13
   },
   "tests": {
     "available": true,
@@ -143,6 +143,11 @@
       "id": "P66",
       "title": "A mumble right after a barge-in and a music stop called `set_speech_output`",
       "status": "OPEN 2026-10-17. Found by the tryout re-run (cloud JVM harness at 323fc29, app code ="
+    },
+    {
+      "id": "P67",
+      "title": "「空调」 can operate the AC twice: the local path and the model's call with a different action",
+      "status": "OPEN 2026-10-17, fix designed, not built (executors are blocked by the vendor files; see"
     }
   ],
   "tech_debt": [
@@ -212,8 +217,8 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "AFFORDANCE-DEVICE-001: FAIL: Spoken control names act on the phone with no model tool call",
-    "actionable_count": 120,
+    "NEXT_ACTION": "AFFORDANCE-DEVICE-001: FAIL: Spoken control names act on the phone through the local path, once, with no model execution",
+    "actionable_count": 91,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 29,
@@ -230,42 +235,7 @@
         "priority": 2,
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
-        "item": "BARGEIN-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "CLIMATE-IMPLICIT-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "CLIMATE-OFF-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
         "item": "CLIMATE-SET-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "CTX-AMBIG-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "CTX-CHAIN-001",
         "blocked_by": null
       },
       {
@@ -279,91 +249,7 @@
         "priority": 2,
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
-        "item": "HELP-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "MUSIC-NAMED-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "MUSIC-PLAY-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-CANCEL-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-CORRECT-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-OVERSPEED-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-PICK-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-SEARCH-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
         "item": "NAV-SIM-QA-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NET-RECOVER-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NOISE-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "PLACE-NAV-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "SLEEP-001",
         "blocked_by": null
       },
       {
@@ -381,27 +267,6 @@
         "blocked_by": null
       },
       {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "TRUTH-MISHEARD-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "TRUTH-WEATHER-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "UNSUPPORTED-001",
-        "blocked_by": null
-      },
-      {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-018-guidance-in-assistant-voice.md",
@@ -412,42 +277,7 @@
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-015-fuzzy-driving-requests.md",
-        "item": "A1",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-018-guidance-in-assistant-voice.md",
-        "item": "A1",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-015-fuzzy-driving-requests.md",
         "item": "A10",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-015-fuzzy-driving-requests.md",
-        "item": "A2",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-018-guidance-in-assistant-voice.md",
-        "item": "A2",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-015-fuzzy-driving-requests.md",
-        "item": "A3",
         "blocked_by": null
       },
       {
@@ -482,27 +312,6 @@
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-015-fuzzy-driving-requests.md",
-        "item": "A5",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-017-music-from-description.md",
-        "item": "A5",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-018-guidance-in-assistant-voice.md",
-        "item": "A5",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-015-fuzzy-driving-requests.md",
         "item": "A6",
         "blocked_by": null
       },
@@ -510,13 +319,6 @@
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-017-music-from-description.md",
-        "item": "A6",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-018-guidance-in-assistant-voice.md",
         "item": "A6",
         "blocked_by": null
       },
@@ -552,13 +354,6 @@
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-013-gemini-live-provider.md",
-        "item": "A8",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-015-fuzzy-driving-requests.md",
         "item": "A8",
         "blocked_by": null
       },
@@ -980,6 +775,13 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P66",
+        "blocked_by": null
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P67",
         "blocked_by": null
       },
       {

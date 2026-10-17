@@ -83,8 +83,8 @@ must touch one file, serialise them or fix the shared interface first.
 Every write-capable worker gets its **own branch and worktree created from `BASE_COMMIT`**:
 
 ```bash
-git worktree add -b <task-branch> ../nova-wt/<TASK_ID> <BASE_COMMIT>
-git -C ../nova-wt/<TASK_ID> rev-parse HEAD   # must equal BASE_COMMIT before dispatch
+scripts/new_worktree.sh <TASK_ID> <task-branch> <BASE_COMMIT>
+# = git worktree add + HEAD == BASE_COMMIT check + local.properties + gitignored vendor files
 ```
 
 - Do **not** use the Agent tool's `isolation: "worktree"` for writers: in this repository it has

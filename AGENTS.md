@@ -178,7 +178,7 @@ does not change architecture ownership, invariants, or who may certify work. Age
 - `reviewer` (Opus 5.5, high effort, read-only) is used selectively; its policy is
   [`agent/REVIEWER.md`](agent/REVIEWER.md). Verdicts: PASS / REVISE / ARCHITECTURE_REVIEW_REQUIRED.
 - At most 4 concurrent executors. Writers get worktrees the planner creates from the exact feature
-  commit (`git worktree add -b <branch> ../nova-wt/<task> <BASE_COMMIT>`), not the Agent tool's
+  commit (`scripts/new_worktree.sh <task> <branch> <BASE_COMMIT>`, which also unpacks the gitignored vendor files so `:app` builds), not the Agent tool's
   worktree isolation, which has based worktrees on an older commit here.
 - `decider` (Opus 5.5, xhigh effort, read-only) breaks ties: any choice the planner does not know how
   to make goes there first, and only its `OWNER_DECISION_REQUIRED` goes to the owner (hard rule below).
@@ -210,6 +210,13 @@ does not change architecture ownership, invariants, or who may certify work. Age
   This does not replace `ARCHITECTURE_REVIEW_REQUIRED`: changing an ADR, an invariant or a contract
   still goes to the owner through `agent/INTAKE.md`.
 
+- **Measure the time every piece of work took, and make the slow parts faster** (owner, 2026-10-17).
+  When a task, fix or test finishes, record its wall-clock minutes and attempts with the
+  efficiency verdict in the handoff record (`scripts/skill_event.py --minutes --attempts
+  --efficient`, [skills/handoff.md](skills/handoff.md) step 5). If it was not a time-efficient way
+  to do it, name what lost the time and change the process now (a script, a skill step, a settings
+  or environment change) or, when only the owner can change it, bring that as a choice. A cause
+  seen twice (`scripts/skill_metrics.py` `TIME_IMPROVEMENT`) is due work.
 - Never commit, print, log or package credentials. No coordinate, address or transcript in a log.
 - **Commit and push each implemented function as soon as it is verified** (owner, 2026-10-11; this
   replaces "commit locally, never push unless told"): one verified unit, one commit, pushed to the

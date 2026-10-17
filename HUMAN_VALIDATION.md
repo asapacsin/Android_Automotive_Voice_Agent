@@ -4,14 +4,14 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 
 > **Not ready yet.** This is a preview of the queue; autonomous work remains:
 >
-> - the registry does not validate: 34 problem(s)
+> - the registry does not validate: 1 problem(s)
 > - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - TRUTH-MEDIA-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - TRUTH-BAIT-001 is AUTONOMOUS and FAIL - run it or fix it
 > - CALL-NOSIM-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - NAV-MID-ROUTE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
-> - MUSIC-VLC-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
-> - AEC-DELAY-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - CLIMATE-SET-001 is AUTONOMOUS and FAIL - run it or fix it
 
 29 item(s) queued.
 
@@ -1126,6 +1126,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 - the transcriber rejects any language but zh: `Invalid value: 'yue'. Value must be null or 'zh'` - the vendor's own words
 - after a persona sentence: 返屋企 4/5, 有啲熱 1/5, style-of-song refusal 5/5
 - Mandarin unaffected: 20/20
+- 2026-10-17: the YUE-HOT success definition now also counts the stuffy comfort scenario (cooling); see YUE-RATE-001. Recent GitHub runs (Gemini): YUE-HOT PASS at 2db208c, 87d5287 (control_climate) and cd6d77c (stuffy); YUE-HOME 0/1 in each (exit_navigation_mode or no navigate_to), quarantined pending this decision
 - the implicit-comfort phrasing has no keyword for a Mandarin transcriber to anchor on; no further wording will move it
 - option C means a new provider integration; the provider-neutral contract (SPEC-007) exists, so it is an adapter, not a rewrite
 
