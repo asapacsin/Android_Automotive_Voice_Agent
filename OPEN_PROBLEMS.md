@@ -1724,6 +1724,18 @@ For each one, Gemini logged `ACTIVITY_START` and `ACTIVITY_END` (1.6–1.8 s apa
 
 This is not the start-sensitivity change: the server did detect the activity. The driver experiences it as a short command that does nothing until the next sentence. The next step is to log `serverContent` for those turns: is there an empty `turnComplete`, or nothing at all? Then decide whether the client should nudge the turn (for example with `audioStreamEnd`, or a text turn carrying the input transcription) when `ACTIVITY_END` is followed by nothing within ~3 s.
 
+### P45 addendum 3, 2026-10-17: recurred in the tryout, after `audioStreamEnd`
+
+Cloud JVM harness tryout at 323fc29 (app code = 87d5287), gemini-3.1-flash-live-preview, clean
+synthetic uplink. Line u_temp 「空调调到二十二度」 (2.26 s segment): `ACTIVITY_START`, the uplink
+segment, `gemini_audio_stream_end` (the client already sends it), `ACTIVITY_END`, then two
+`resumption_update`s and nothing else for 19 s, with no `gemini_turn_open`, no transcript and no reply.
+So `audioStreamEnd` alone does not nudge the server; the remaining candidate from addendum 2 is a
+client-side nudge (a text turn carrying the input transcription) when `ACTIVITY_END` is followed by
+nothing within ~3 s. There is no input transcription to send when none arrives, which leaves a
+spoken "I didn't catch that" as the only client-side answer. Nothing chosen yet; this line is one of
+the four tryout failures (DEMO-TRYOUT-001).
+
 ## P46 — Assistant-spoken guidance (SPEC-018) gives up on the first prompt and never comes back
 
 **Status:** OPEN, found 2026-10-03 while recording the demo video. PC emulator nova_api34, build 9696ce5 (`claude/10-3`), Azure voice on, 助手播报导航 on. Short drive to 长隆海洋王国 started by voice, emulator speed 60 km/h. **Owner 2026-10-15:** offered A/B options (P46 wait ~1.2 s for her reply; D-9 drop an unchecked reply; P48 code-written confirmations) and chose to leave this alone for now - current behaviour stays; not to be reopened without the owner.
@@ -2387,3 +2399,20 @@ full demo (owner rule 2026-10-16).
 navigation started; climate, music and ETA all answered with their tools while she spoke 7 guidance
 prompts (7/7 MATCH); no line cut. The deterministic 95.8 s collision did not recur (the session-ready
 wait shifted the timeline), so the in-flight wait is proved offline (`--selftest`), not yet live.
+
+## P66 — A mumble right after a barge-in and a music stop called `set_speech_output`
+
+**Status:** OPEN 2026-10-17. Found by the tryout re-run (cloud JVM harness at 323fc29, app code =
+87d5287, gemini-3.1-flash-live-preview, simulated car; DEMO-TRYOUT-001). Line u_mumble 「嗯……那个……」
+(890 ms), which by docs/DEMO_TRYOUT.md should produce no tool and no claim. It came 11 s after
+u_barge 「等一下」 and u_mstop. Log (timings only): `TURN_HOLD reason=UNCLASSIFIED_CLAIM
+kind=CONVERSATION`, then `gemini_tool_call tool=set_speech_output args=valid`, dispatched `result=✓`,
+then she spoke (spoke=true, 1.9 s). The log keeps argument keys only, so the mode is not known. The
+19/19 takes of 2026-10-14..16 had u_mumble PASS.
+**Reading:** the model acted on a non-request, probably carrying over the barge-in context. Nothing
+in the dispatcher asks whether the driver's own words asked for a speech-output change. This is
+the I-1 / "model's words are not evidence" family: a tool that changes how she talks runs on a line
+with no request. **Next:** a JVM characterisation of what `set_speech_output` does on a
+CONVERSATION-classified turn, and whether its guard should, like other repeat-sensitive tools,
+require a request in the transcript. Not decided; no re-run to chase variance.
+
