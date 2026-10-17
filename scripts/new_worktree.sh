@@ -36,6 +36,25 @@ else
 fi
 [ -f "$ROOT/local.properties" ] && install -m 600 "$ROOT/local.properties" "$WT/local.properties"
 
+# WebRTC AEC3 sources (gitignored, needed by :app's CMake build) at the pin scripts/cloud_setup.sh
+# uses. Taken from the main checkout's copy when it has that commit (no network), else from GitHub.
+# The D-CANCEL-HOST-OVERVIEW executor's assembleDebug failed without them (2026-10-17).
+AEC3_PIN="$(sed -n 's/^WEBRTC_AEC3_PIN=//p' "$ROOT/scripts/cloud_setup.sh")"
+AEC3_DIR=app/src/main/cpp/third_party/webrtc-aec3
+if [ -n "$AEC3_PIN" ] && [ "$(git -C "$WT/$AEC3_DIR" rev-parse HEAD 2>/dev/null)" != "$AEC3_PIN" ]; then
+  rm -rf "${WT:?}/$AEC3_DIR"
+  mkdir -p "$WT/$AEC3_DIR"
+  git -C "$WT/$AEC3_DIR" init -q
+  if git -C "$ROOT/$AEC3_DIR" cat-file -e "$AEC3_PIN^{commit}" 2>/dev/null; then
+    git -C "$WT/$AEC3_DIR" fetch -q --depth 1 "$ROOT/$AEC3_DIR" "$AEC3_PIN"
+  else
+    git -C "$WT/$AEC3_DIR" fetch -q --depth 1 https://github.com/Enaium/webrtc-aec3.git "$AEC3_PIN" || \
+      echo "WARN WebRTC AEC3 fetch failed: :app native build will fail in $WT" >&2
+  fi
+  git -C "$WT/$AEC3_DIR" checkout -q --detach FETCH_HEAD 2>/dev/null || true
+  rm -rf "$WT/app/.cxx"
+fi
+
 VENDOR_FILES=(
   app/libs/Msc.jar
   app/src/main/jniLibs/arm64-v8a/libmsc.so app/src/main/jniLibs/arm64-v8a/libw_ivw.so
