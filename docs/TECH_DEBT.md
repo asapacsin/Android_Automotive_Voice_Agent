@@ -344,7 +344,42 @@ overspeed alert reads the host too, so three notions of "navigating" exist (lega
 flag derived from it and never reset by the voice session. Not fixed.
 
 
-## D-CANCEL-SEARCH — 「算了」 during a destination search cancels nothing (recorded 2026-10-16)
+## D-CANCEL-SEARCH — 「算了」 during a destination search cancels nothing (recorded 2026-10-16) — **RESOLVED 2026-10-17** (merge of `6ae63f1`)
+
+Resolved in the controller: `CANCELLABLE_PHASES` covers the four in-flight phases, the cancel bumps
+`generation`, and late search / route success / route failure / calc-not-accepted results are
+dropped under the lock (`calcGeneration`, `lateRouteResultLocked`), logged as
+`nav_flow_late_result_dropped kind=…` with no place names. `EmbeddedNavigationCancelInFlightTest`
+7/7; reviewer PASS (unverified on a device). Research (AGENTS rule 6): the Amap drive-route-plan
+guide (lbs.amap.com/api/android-navi-sdk/guide/route-plan/drive-route-plan, fetched 2026-10-17)
+documents only `onCalculateRouteSuccess`; it says nothing on whether a new `calculateDriveRoute`
+aborts an earlier one, and `AMapCalcRouteResult` carries no request token. Follow-ups found by the
+review: D-CANCEL-HOST-OVERVIEW, D-CANCEL-STALE-REPLY, D-CALC-SUPERSEDE below.
+
+## D-CANCEL-HOST-OVERVIEW — a late route result after a cancel still draws the route overview (recorded 2026-10-17)
+
+`AmapNaviViewHost.onRouteReady` (~:766-769) sets `lastRouteIds` and calls
+`AmapDrivingPresentation.applyRoutePreview` (overview) before the controller decides, and nothing
+calls `applyIdle` on a cancel. A calculation that finishes after 「算了」 puts the map into the
+cancelled destination's overview while the controller is IDLE; the same was already true after
+cancelling a route picker. Owner: the host follows the controller's phase. Next step: an executor
+packet (presentation driven by the controller's phase / a cancel event) plus an emulator check.
+
+## D-CANCEL-STALE-REPLY — the pending navigate_to result still resolves after a cancel (recorded 2026-10-17)
+
+`NavigationVoiceOutput` (~:38) / `NavigationServer` (~:89-92): after the cancel the pending
+`navigate_to` result still resolves `ok=true status=awaiting_route_selection_on_screen screen=none`,
+which can prompt a stale 「请选择」 — the failure SPEC-006 CVC-36 lists ("a stale reply is spoken").
+Next step: map a cancelled flow to an explicit cancelled result, with a scripted-server check.
+
+## D-CALC-SUPERSEDE — an old route calculation can land in a newer one (recorded 2026-10-17)
+
+Cancel → new search → new calculation: an old calculation's callback arriving after the new one
+starts passes `calcGeneration == generation` and the phase check, so it could show the old
+destination's routes under the new name (the new one's real callback is then dropped). Pre-existing
+for a search that supersedes another; needs the old calculation to be slower than the new POI lookup.
+The Amap result carries no request id (see research above), so the fix needs vendor evidence first
+(does a new `calculateDriveRoute` abort the old one?), e.g. an emulator log of two overlapping calls.
 
 Found by the independent review of the vague-exit fix (merge `7607122`). Since that fix the guard lets a
 vague exit through before guidance starts, as SPEC-006 CVC-36 intends. But
