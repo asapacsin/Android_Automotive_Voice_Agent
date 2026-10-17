@@ -1,0 +1,25 @@
+{
+  "suite": "navpiece",
+  "verdict": "PASS",
+  "checks": [
+    {
+      "id": "navpiece:complete",
+      "required": true,
+      "status": "PASS",
+      "detail": "speedoff piece"
+    },
+    {
+      "id": "navpiece:NAV-OVERSPEED-001",
+      "required": true,
+      "status": "PASS",
+      "detail": "limits=limitKmh=60 alerts=1 queued_to_amap=1"
+    },
+    {
+      "id": "navpiece:video",
+      "required": false,
+      "status": "SKIPPED",
+      "detail": "not executed"
+    }
+  ],
+  "problems": []
+}
