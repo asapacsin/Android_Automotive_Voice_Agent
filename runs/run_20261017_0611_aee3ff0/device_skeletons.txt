@@ -1,0 +1,47 @@
+-- AFF-AC
+   test_speech_start bytes=59904
+   debug_tool tool=voice arg=say:aff_ac
+   gemini_voice_activity type=ACTIVITY_START
+   gemini_driver_turn_fallback source=voice_activity
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=6448 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   test_speech_end frames=203 elapsedMs=2038
+   gemini_voice_activity type=ACTIVITY_END
+   ctx_hint epoch=3 referents=none pending=0
+   TURN_HOLD epoch=3 reason=AWAITING_EXECUTION_PROOF kind=ACTION durationMs=-1
+   gemini_turn_open
+   gemini_tool_call id=fc_8375537630250455147 tool=control_climate args=valid
+   affordance_match id=climate verb=false
+   screen_action=voice_climate ok=true error=-
+   state=LISTENING err=-
+   state=LISTENING err=-
+   gemini_client_cancel local_only=true
+   state=LISTENING err=-
+   tool=control_climate args=[action] result=✓
+   state=LISTENING err=-
+   gemini_tool_response id=fc_8375537630250455147 chars=180
+   transcript_bubble_shown
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   transcript_bubble_shown
+   gemini_turn_done status=completed calls=1 spoke=true dur_ms=3752 first_audio_ms=688 first_text_ms=688 gen_ms=1615 msgs=28 max_gap_ms=448
+   state=LISTENING err=-
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=6953 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=7454 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8

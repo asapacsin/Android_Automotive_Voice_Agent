@@ -1,0 +1,33 @@
+-- YUE-HOME
+   test_speech_start bytes=66048
+   debug_tool tool=voice arg=say:yue_home
+   gemini_voice_activity type=ACTIVITY_START
+   gemini_driver_turn_fallback source=voice_activity
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=936 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   test_speech_end frames=222 elapsedMs=2220
+   gemini_voice_activity type=ACTIVITY_END
+   ctx_hint epoch=1 referents=none pending=0
+   TURN_HOLD epoch=1 reason=UNCLASSIFIED_CLAIM kind=CONVERSATION durationMs=-1
+   gemini_turn_open
+   gemini_tool_call id=fc_5597304083651703644 tool=exit_navigation_mode args=valid
+   state=LISTENING err=-
+   state=LISTENING err=-
+   tool=exit_navigation_mode args=[] result=✓ exit_navigation_mode
+   state=LISTENING err=-
+   gemini_tool_response id=fc_5597304083651703644 chars=73
+   transcript_bubble_shown
+   state=SPEAKING err=-
+   playback_buffer_ms=101 action=grow underrun_count=1 counted=1 increases=1
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   transcript_bubble_shown
+   gemini_turn_done status=completed calls=1 spoke=true dur_ms=2084 first_audio_ms=776 first_text_ms=776 gen_ms=1466 msgs=14 max_gap_ms=387
+   state=LISTENING err=-
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=1435 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=1939 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8

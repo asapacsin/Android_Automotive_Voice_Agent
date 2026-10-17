@@ -1,0 +1,314 @@
+{
+  "suite": "voice",
+  "verdict": "FAIL",
+  "checks": [
+    {
+      "id": "voice:runner",
+      "required": true,
+      "status": "PASS",
+      "detail": "23 scenario results"
+    },
+    {
+      "id": "voice:S1",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S2",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S3",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S4",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S4b",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S5",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S5b",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S6",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S7",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S8",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S9",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S11",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S10",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S12",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S13",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S14",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S15",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S16",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S17",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S18",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S19",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S20",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S21",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "devrows:runner",
+      "required": true,
+      "status": "PASS",
+      "detail": "runner exit 1: scenario failures judged per scenario"
+    },
+    {
+      "id": "devrows:AFF-PAUSE",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "devrows:AFF-AC",
+      "required": true,
+      "status": "FAIL",
+      "detail": "0/1 runs passed"
+    },
+    {
+      "id": "devrows:AFF-RECENTER",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "devrows:NEWS",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "devrows:VISION",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "devrows:FZ-MOSQ",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "devrows:FZ-MOSQ-DONE",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "devrows:FZ-SEAT",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "devrows:FZ-LOWER",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "devrows:FZ-DROWSY",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "liveinfo:runner",
+      "required": true,
+      "status": "PASS",
+      "detail": "4 scenario results"
+    },
+    {
+      "id": "liveinfo:LI-WEATHER",
+      "required": true,
+      "status": "PASS",
+      "detail": "10/10 runs passed"
+    },
+    {
+      "id": "liveinfo:LI-PLACE",
+      "required": true,
+      "status": "PASS",
+      "detail": "10/10 runs passed"
+    },
+    {
+      "id": "liveinfo:LI-TRAFFIC",
+      "required": true,
+      "status": "PASS",
+      "detail": "10/10 runs passed"
+    },
+    {
+      "id": "liveinfo:LI-ALONG",
+      "required": true,
+      "status": "PASS",
+      "detail": "10/10 runs passed"
+    },
+    {
+      "id": "cantonese:runner",
+      "required": true,
+      "status": "PASS",
+      "detail": "runner exit 1: scenario failures judged per scenario"
+    },
+    {
+      "id": "cantonese:YUE-HOME",
+      "required": true,
+      "status": "QUARANTINED",
+      "detail": "0/1 runs passed",
+      "quarantine": {
+        "id": "cantonese:YUE-HOME",
+        "suite": "voice",
+        "reason": "expected behaviour for an ambiguous Cantonese home request is undefined until the owner decides (YUE-POLICY-001), so a failure cannot be judged a regression",
+        "owner": "product owner (decision YUE-POLICY-001); planner maintains the entry",
+        "tracking": "TEST_MATRIX YUE-POLICY-001 (owner decision on ambiguous Cantonese requests, queued 2026-10-16); release still blocked via the Tier C checklist",
+        "remove_when": "owner decides the expected behaviour and the scenario passes 1/1",
+        "expires": "2026-10-30"
+      }
+    },
+    {
+      "id": "cantonese:YUE-HOT",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "cantonese:YUE-MUSIC",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:quota-guard",
+      "required": true,
+      "status": "PASS",
+      "detail": "gemini_live, no qwen session"
+    },
+    {
+      "id": "voice:demo-recording",
+      "required": false,
+      "status": "PASS",
+      "detail": "voice_demo.mp4 written"
+    },
+    {
+      "id": "wake:WAKE-SYNTH-001",
+      "required": false,
+      "status": "FAIL",
+      "detail": "detection=0 to_active=0"
+    }
+  ],
+  "problems": [
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required devrows:AFF-AC is FAIL"
+    },
+    {
+      "level": "warning",
+      "kind": null,
+      "text": "cantonese:YUE-HOME FAIL quarantined: expected behaviour for an ambiguous Cantonese home request is undefined until the owner decides (YUE-POLICY-001), so a failure cannot be judged a regression (owner product owner (decision YUE-POLICY-001); planner maintains the entry, expires 2026-10-30)"
+    },
+    {
+      "level": "warning",
+      "kind": null,
+      "text": "optional wake:WAKE-SYNTH-001 is FAIL"
+    }
+  ]
+}
