@@ -77,11 +77,11 @@ object ToolCallGuards {
      * the English forms. Resume: 继续/接着/可以/恢复 before 说/讲, or 说吧.
      */
     private val STOP_TALKING = Regex(
-        "(别|不要|不用|停止|停下|先别|少|甭).{0,2}(说|讲|出声|吵)|闭嘴|安静|嘘|shut\\s*up|stop\\s*talking|be\\s*quiet",
+        "(别|不要|不用|停止|停下|先别|少|甭).{0,2}(说|讲|出声|吵)|(别|不要|少).{0,2}(啰嗦|唠叨|叨叨|念)|(不许|不准).{0,2}(说|讲|出声)|闭嘴|住嘴|住口|闭上嘴|安静|嘘|shut\\s*up|stop\\s*talking|be\\s*quiet",
         RegexOption.IGNORE_CASE,
     )
-    private val RESUME_TALKING = Regex("(继续|接着|可以|恢复).{0,2}(说|讲)|说吧")
-    private val SPEECH_TRADITIONAL = TRADITIONAL + mapOf('說' to '说', '講' to '讲', '靜' to '静', '聲' to '声', '復' to '复', '續' to '续')
+    private val RESUME_TALKING = Regex("(继续|接着|恢复).{0,2}(说|讲)|可以(说话|说了|讲了|出声)|说吧|说话吧")
+    private val SPEECH_TRADITIONAL = TRADITIONAL + mapOf('說' to '说', '講' to '讲', '靜' to '静', '聲' to '声', '復' to '复', '續' to '续', '噓' to '嘘')
 
     internal fun isSpeechOutputRequest(text: String): Boolean {
         val said = text.map { SPEECH_TRADITIONAL[it] ?: it }.joinToString("")

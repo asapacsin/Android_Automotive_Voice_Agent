@@ -38,19 +38,22 @@ class ToolCallGuardSpeechOutputTest {
         val executor = CountingExecutor()
         val car = SimulatedVehicleControl()
         val dispatcher = AndroidToolDispatcher(executor, ClimateToolHandler(car), noCamera(), cabin = car) { context(mumble) }
-        val result = dispatcher.dispatch(speech("silent"))
-        val output = JSONObject(result.output!!)
-        assertFalse(output.getBoolean("ok"))
-        assertEquals(ToolCallGuards.SPEECH_OUTPUT_NOT_REQUESTED, output.getString("error"))
-        assertTrue(output.has("next") && output.getString("next").isNotBlank(), output.toString())
-        assertNull(result.successChip)
-        assertEquals(ToolCallGuards.SPEECH_OUTPUT_NOT_REQUESTED, result.blockedReason)
-        assertTrue(executor.silentRequests.isEmpty())
+        listOf("silent", "spoken").forEach { mode ->
+            val result = dispatcher.dispatch(speech(mode))
+            val output = JSONObject(result.output!!)
+            assertFalse(output.getBoolean("ok"), mode)
+            assertEquals(ToolCallGuards.SPEECH_OUTPUT_NOT_REQUESTED, output.getString("error"), mode)
+            assertTrue(output.has("next") && output.getString("next").isNotBlank(), "$mode $output")
+            assertNull(result.successChip, mode)
+            assertEquals(ToolCallGuards.SPEECH_OUTPUT_NOT_REQUESTED, result.blockedReason, mode)
+            assertTrue(executor.silentRequests.isEmpty(), mode)
+        }
     }
 
     @Test
     fun `lines that do not ask about talking are refused`() {
-        listOf("嗯", "那个", "等一下", "音乐先关了吧", "你好，你叫什么名字", "还要开多久", "好了，谢谢", "说话能不能嗲一点").forEach {
+        listOf("嗯", "那个", "等一下", "音乐先关了吧", "你好，你叫什么名字", "还要开多久", "好了，谢谢", "说话能不能嗲一点",
+            "你可以再说一遍吗", "你可以说慢一点吗", "说话能不能慢一点").forEach {
             assertEquals(ToolCallGuards.SPEECH_OUTPUT_NOT_REQUESTED, ToolCallGuards.speechOutputNotRequested(speech("silent"), context(it)), it)
         }
     }
@@ -59,12 +62,13 @@ class ToolCallGuardSpeechOutputTest {
     fun `stop requests run silent mode`() {
         listOf("闭嘴", "小诺闭嘴", "别说了", "不要说了", "你先别说了", "别说话", "停止说话", "停止說話", "安静", "安静点",
             "别出声", "别吵了", "少说两句", "别讲了", "shut up", "stop talking",
+            "住嘴", "住口", "闭上嘴", "别啰嗦了", "别唠叨了", "别念了", "不许说话", "不准说话", "噓",
         ).forEach { assertEquals(listOf(true), runThrough(it, "silent"), it) }
     }
 
     @Test
     fun `resume requests run spoken mode`() {
-        listOf("继续说", "接着说", "可以说话了", "你可以说了", "繼續說").forEach {
+        listOf("继续说", "接着说", "可以说话了", "你可以说了", "繼續說", "说话吧").forEach {
             assertEquals(listOf(false), runThrough(it, "spoken"), it)
         }
     }
