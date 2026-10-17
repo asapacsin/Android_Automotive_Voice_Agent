@@ -31,12 +31,42 @@ if [ "$head" != "$base_full" ]; then
 fi
 [ -f "$ROOT/local.properties" ] && install -m 600 "$ROOT/local.properties" "$WT/local.properties"
 
-if [ ! -s "$CACHE" ]; then
-  if [ -z "${NOVA_VENDOR_ZIP_URL:-}" ]; then
-    echo "WARN NOVA_VENDOR_ZIP_URL not set: $WT has no vendor files, :app will not compile" >&2
-    echo "$WT"
-    exit 0
+VENDOR_FILES=(
+  app/libs/Msc.jar
+  app/src/main/jniLibs/arm64-v8a/libmsc.so app/src/main/jniLibs/arm64-v8a/libw_ivw.so
+  app/src/main/jniLibs/armeabi-v7a/libmsc.so app/src/main/jniLibs/armeabi-v7a/libw_ivw.so
+  app/src/main/assets/ivw/wakeword.jet
+  app/src/main/res/raw/bach_air_usaf.mp3
+)
+MUSIC_FILE=app/src/main/res/raw/bach_air_usaf.mp3
+
+if [ ! -s "$CACHE" ] && [ -z "${NOVA_VENDOR_ZIP_URL:-}" ]; then
+  # No zip: copy the gitignored vendor files the main checkout (or, for the music track, another
+  # worktree) already has. Owner, 2026-10-17: "if you lack music you just find a way to handle".
+  # Read-only on the main checkout.
+  copied=0
+  for f in "${VENDOR_FILES[@]}"; do
+    src="$ROOT/$f"
+    if [ ! -s "$src" ] && [ "$f" = "$MUSIC_FILE" ]; then
+      for other in "$(dirname "$WT")"/*/"$MUSIC_FILE"; do
+        [ -s "$other" ] && { src="$other"; break; }
+      done
+    fi
+    [ -s "$src" ] || continue
+    git -C "$WT" check-ignore -q --no-index "$f" || { echo "ERROR $f is not gitignored" >&2; exit 1; }
+    mkdir -p "$(dirname "$WT/$f")"
+    cp "$src" "$WT/$f"
+    copied=$((copied + 1))
+  done
+  echo "INFO NOVA_VENDOR_ZIP_URL not set: copied $copied vendor file(s) from local checkouts" >&2
+  if [ ! -s "$WT/app/libs/Msc.jar" ] || [ ! -s "$WT/$MUSIC_FILE" ]; then
+    echo "WARN $WT still lacks Msc.jar or the music track: :app will not compile" >&2
   fi
+  echo "$WT"
+  exit 0
+fi
+
+if [ ! -s "$CACHE" ]; then
   mkdir -p "$(dirname "$CACHE")"
   tmp="$(mktemp --suffix=.zip)"
   auth=()
