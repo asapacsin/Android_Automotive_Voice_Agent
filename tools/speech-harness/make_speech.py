@@ -72,7 +72,7 @@ PHRASES = {
     # scenarios-cantonese.json
     "yue_hot": ("有啲熱，幫我舒服啲", "zh-HK-HiuGaaiNeural"),
     "yue_music": ("播啲精神啲嘅歌", "zh-HK-HiuGaaiNeural"),
-    # AFFORDANCE-DEVICE-001 (SPEC-010 A7): spoken control names, no model tool call
+    # AFFORDANCE-DEVICE-001 (SPEC-010 A7): spoken control names, no model execution
     "aff_pause": "暂停",
     "aff_ac": "空调",
     "aff_recenter": "回到当前位置",

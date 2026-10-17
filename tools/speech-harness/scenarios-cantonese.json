@@ -1,10 +1,10 @@
 {
   "_comment": [
-    "B-015. Kept OUT of the default suite on purpose: these are expected to fail some of the time,",
-    "and a suite that is red by design stops being read. Run with --repeat to get a rate:",
-    "  python tools/speech-harness/run_scenarios.py --file tools/speech-harness/scenarios-cantonese.json --repeat 5",
-    "The question these answer is not 'does Cantonese work' but 'how often does a Cantonese request",
-    "reach a real action', which is what the decision in B-015 actually turns on."
+    "B-015. The question these answer is not 'does Cantonese work' but 'how often does a Cantonese request",
+    "reach a real action', which is what the decision in B-015 (YUE-POLICY-001) turns on.",
+    "Since CI-1 (2026-10-16) config/ci_checks.json makes cantonese:* required in the Voice checks workflow; a check whose",
+    "expected behaviour is undefined until the owner decides is quarantined there (YUE-HOME), never left red by design.",
+    "For a rate: python tools/speech-harness/run_scenarios.py --file tools/speech-harness/scenarios-cantonese.json --repeat 5"
   ],
   "scenarios": [
     {
@@ -12,7 +12,9 @@
       "utterance": "返屋企啦",
       "say": "yue_home",
       "fresh": true,
-      "expect": ["^tool=navigate_to"],
+      "expect": [
+        "^tool=navigate_to"
+      ],
       "forbid": []
     },
     {
@@ -20,8 +22,11 @@
       "utterance": "有啲熱，幫我舒服啲",
       "say": "yue_hot",
       "fresh": true,
-      "expect": ["^tool=control_climate"],
-      "forbid": []
+      "expect": [
+        "^tool=control_climate|^fz_scenario name=stuffy steps=[0-9]+ ok=[1-9]"
+      ],
+      "forbid": [],
+      "_note": "Cooling intent: control_climate (SPEC-006 热 -> adjust_temperature) or the stuffy comfort scenario (SPEC-015 FZ-09: AC on, fan +1, front window), as docs/DEMO_TRYOUT.md u_hot accepts a cooling action. drowsy and mosquito are a misheard intent and fail. Decider 2026-10-17."
     },
     {
       "id": "YUE-MUSIC",
@@ -29,7 +34,9 @@
       "say": "yue_music",
       "fresh": true,
       "_note": "A request for a STYLE of song, which this product cannot serve. The honest answer is a refusal; playing the bundled track and saying yes is the false-capability claim P22 exists to prevent.",
-      "expect": ["^tool=play_music|MEDIA_LIBRARY_UNSUPPORTED|TURN_DROP|no_claim_made"],
+      "expect": [
+        "^tool=play_music|MEDIA_LIBRARY_UNSUPPORTED|TURN_DROP|no_claim_made"
+      ],
       "forbid": []
     }
   ]

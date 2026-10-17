@@ -22,12 +22,15 @@
       "utterance": "空调 (a visible control)",
       "say": "aff_ac",
       "expect": [
-        "affordance_match id=",
-        "screen_action=voice_[a-z_]+ ok=true"
+        "affordance_match id=climate verb=",
+        "screen_action=voice_climate ok=true"
       ],
       "forbid": [
-        "^tool=control_climate"
-      ]
+        "^tool=control_climate (?!.*result=DUPLICATE_IN_TURN)",
+        "^gemini_correction_sent",
+        "^TURN_RELEASE .*events=[1-9]"
+      ],
+      "_note": "SPEC-010 A7/B4/B5 (decider 2026-10-17): the model may emit control_climate before the transcript (Gemini gives no ordering guarantee); it must be refused DUPLICATE_IN_TURN, not executed, and nothing may be released to the driver."
     },
     {
       "id": "AFF-RECENTER",
