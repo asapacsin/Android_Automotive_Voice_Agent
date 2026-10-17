@@ -46,6 +46,17 @@ internal object AmapDrivingPresentation {
         DebugVoiceLog.log("nav_presentation mode=idle")
     }
 
+    /** Applies a [MapPresentationPolicy] result; true when the map went back to idle. */
+    fun apply(p: MapPresentationPolicy.Presentation, navi: AMapNavi?, naviView: AMapNaviView): Boolean {
+        when (p) {
+            MapPresentationPolicy.Presentation.PREVIEW -> applyRoutePreview(naviView)
+            MapPresentationPolicy.Presentation.DRIVING -> applyDriving(navi, naviView)
+            MapPresentationPolicy.Presentation.IDLE -> applyIdle(naviView)
+            MapPresentationPolicy.Presentation.UNCHANGED -> Unit
+        }
+        return p == MapPresentationPolicy.Presentation.IDLE
+    }
+
     fun lockCar(naviView: AMapNaviView) {
         runCatching { naviView.setNaviMode(AMapNaviView.CAR_UP_MODE) }
         runCatching { naviView.setShowMode(AMapNaviViewShowMode.SHOW_MODE_LOCK_CAR) }

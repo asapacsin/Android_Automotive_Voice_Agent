@@ -125,17 +125,18 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         // Speed chip is attached by AssistantNavigationScreen above the assistant overlay.
     }
 
-    /**
-     * Called by the screen with the controller's state, so the text panel (only where
-     * `TranslatedAbi.amapNativeSafe` is false)
-     * shows the same flow the choice overlay does. No-op on a device that draws the map.
-     */
+    /** The controller's state, from the screen: the map presentation follows its phase (a dropped late route gets no overview), and the text panel shows the same flow. */
+    private var shownPhase = NavigationPhase.IDLE
     fun showNavigationState(
         phase: NavigationPhase,
         destinations: List<DestinationCandidate>,
         routes: List<RouteCandidate>,
         destinationName: String?,
-    ) = textPanel?.onState(phase, destinations, routes, destinationName)
+    ) {
+        val p = MapPresentationPolicy.onPhase(shownPhase, phase, isNavigating).also { shownPhase = phase }
+        if (AmapDrivingPresentation.apply(p, navi, naviView)) lastRouteIds = IntArray(0)
+        textPanel?.onState(phase, destinations, routes, destinationName)
+    }
 
     /** True once FINE location is held; the SDK cannot use GNSS without it. */
     private fun hasFineLocation(): Boolean =
@@ -764,8 +765,8 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         if (traceListener != null) return
         val listener = NavigationTraceListener(
             onRouteReady = { ids ->
-                lastRouteIds = ids
-                AmapDrivingPresentation.applyRoutePreview(naviView)
+                if (MapPresentationPolicy.keepsRouteIds(shownPhase, isNavigating)) lastRouteIds = ids // not a cancelled flow's
+                if (MapPresentationPolicy.onRouteReady(isNavigating) == MapPresentationPolicy.Presentation.PREVIEW) AmapDrivingPresentation.applyRoutePreview(naviView)
                 onRoutesCalculated?.invoke(ids)
             },
             // Completion -> the SAME stop path as the manual nav_stop fallback.
