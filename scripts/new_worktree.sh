@@ -13,21 +13,26 @@
 # them by hand was refused. A worktree that cannot compile :app is not ready for an executor.
 set -euo pipefail
 
-if [ $# -ne 3 ]; then
-  echo "usage: $0 <TASK_ID> <branch> <BASE_COMMIT>" >&2
-  exit 2
-fi
-task="$1" branch="$2" base="$3"
+#   scripts/new_worktree.sh --provision <TASK_ID>   # only add the vendor files to an existing worktree
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-WT="$(cd "$ROOT/.." && pwd)/nova-wt/$task"
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/nova-drive/vendor.zip"
 
-base_full="$(git -C "$ROOT" rev-parse --verify "$base^{commit}")"
-git -C "$ROOT" worktree add -q -b "$branch" "$WT" "$base_full"
-head="$(git -C "$WT" rev-parse HEAD)"
-if [ "$head" != "$base_full" ]; then
-  echo "worktree HEAD $head != BASE_COMMIT $base_full" >&2
-  exit 1
+if [ $# -eq 2 ] && [ "$1" = "--provision" ]; then
+  WT="$(cd "$ROOT/.." && pwd)/nova-wt/$2"
+  [ -d "$WT" ] || { echo "no worktree at $WT" >&2; exit 2; }
+elif [ $# -eq 3 ]; then
+  task="$1" branch="$2" base="$3"
+  WT="$(cd "$ROOT/.." && pwd)/nova-wt/$task"
+  base_full="$(git -C "$ROOT" rev-parse --verify "$base^{commit}")"
+  git -C "$ROOT" worktree add -q -b "$branch" "$WT" "$base_full"
+  head="$(git -C "$WT" rev-parse HEAD)"
+  if [ "$head" != "$base_full" ]; then
+    echo "worktree HEAD $head != BASE_COMMIT $base_full" >&2
+    exit 1
+  fi
+else
+  echo "usage: $0 <TASK_ID> <branch> <BASE_COMMIT>  |  $0 --provision <TASK_ID>" >&2
+  exit 2
 fi
 [ -f "$ROOT/local.properties" ] && install -m 600 "$ROOT/local.properties" "$WT/local.properties"
 
