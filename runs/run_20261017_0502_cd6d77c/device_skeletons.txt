@@ -1,0 +1,27 @@
+-- AFF-AC
+   test_speech_start bytes=59904
+   debug_tool tool=voice arg=say:aff_ac
+   gemini_voice_activity type=ACTIVITY_START
+   gemini_driver_turn_fallback source=voice_activity
+   test_speech_end frames=203 elapsedMs=2031
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=6460 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   gemini_voice_activity type=ACTIVITY_END
+   ctx_hint epoch=3 referents=none pending=0
+   TURN_HOLD epoch=3 reason=AWAITING_EXECUTION_PROOF kind=ACTION durationMs=-1
+   gemini_turn_open
+   gemini_tool_call id=fc_10666751287327112107 tool=control_climate args=valid
+   affordance_match id=climate verb=false
+   screen_action=voice_climate ok=true error=-
+   state=LISTENING err=-
+   state=LISTENING err=-
+   gemini_client_cancel local_only=true
+   state=LISTENING err=-
+   tool=control_climate args=[action] result=DUPLICATE_IN_TURN
+   state=LISTENING err=-
+   gemini_tool_response id=fc_10666751287327112107 chars=118
+   transcript_bubble_shown
+   TURN_DROP epoch=3 reason=unproven_action_claim kind=ACTION proven=false events=9 replyChars=7 ability_modal=false ability_groups=1
+   gemini_turn_done status=completed calls=1 spoke=true dur_ms=2002 first_audio_ms=805 first_text_ms=805 gen_ms=1121 msgs=14 max_gap_ms=376
+   state=LISTENING err=-
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=6961 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=7460 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8

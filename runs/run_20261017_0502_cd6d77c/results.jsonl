@@ -1,0 +1,47 @@
+{"id": "voice:S1", "status": "FAIL", "detail": "0/1 runs passed", "passes": 0, "runs": 1}
+{"id": "voice:S2", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S3", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S4", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S4b", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S5", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S5b", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S6", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S7", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S8", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S9", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S11", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S10", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S12", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S13", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S14", "status": "FAIL", "detail": "0/1 runs passed", "passes": 0, "runs": 1}
+{"id": "voice:S15", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S16", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S17", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S18", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S19", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S20", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S21", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:runner", "status": "PASS", "detail": "runner exit 1: scenario failures judged per scenario"}
+{"id": "cantonese:YUE-HOME", "status": "FAIL", "detail": "0/1 runs passed", "passes": 0, "runs": 1}
+{"id": "cantonese:YUE-HOT", "status": "FAIL", "detail": "0/1 runs passed", "passes": 0, "runs": 1}
+{"id": "cantonese:YUE-MUSIC", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "cantonese:runner", "status": "PASS", "detail": "runner exit 1: scenario failures judged per scenario"}
+{"id": "devrows:AFF-PAUSE", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "devrows:AFF-AC", "status": "FAIL", "detail": "0/1 runs passed", "passes": 0, "runs": 1}
+{"id": "devrows:AFF-RECENTER", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "devrows:NEWS", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "devrows:VISION", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "devrows:FZ-MOSQ", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "devrows:FZ-MOSQ-DONE", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "devrows:FZ-SEAT", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "devrows:FZ-LOWER", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "devrows:FZ-DROWSY", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "devrows:runner", "status": "PASS", "detail": "runner exit 1: scenario failures judged per scenario"}
+{"id": "liveinfo:LI-WEATHER", "status": "PASS", "detail": "10/10 runs passed", "passes": 10, "runs": 10}
+{"id": "liveinfo:LI-PLACE", "status": "PASS", "detail": "10/10 runs passed", "passes": 10, "runs": 10}
+{"id": "liveinfo:LI-TRAFFIC", "status": "PASS", "detail": "10/10 runs passed", "passes": 10, "runs": 10}
+{"id": "liveinfo:LI-ALONG", "status": "PASS", "detail": "10/10 runs passed", "passes": 10, "runs": 10}
+{"id": "liveinfo:runner", "status": "PASS", "detail": "4 scenario results"}
+{"id": "wake:WAKE-SYNTH-001", "status": "FAIL", "detail": "detection=0 to_active=0"}
+{"id": "voice:demo-recording", "status": "PASS", "detail": "voice_demo.mp4 written"}
+{"id": "voice:quota-guard", "status": "PASS", "detail": "gemini_live, no qwen session"}

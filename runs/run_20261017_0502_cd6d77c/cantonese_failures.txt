@@ -1,0 +1,2 @@
+      1           expected /^tool=control_climate/
+      1           expected /^tool=navigate_to/

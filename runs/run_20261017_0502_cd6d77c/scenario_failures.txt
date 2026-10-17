@@ -1,0 +1,2 @@
+          expected /tool=control_climate/
+          expected /TURN_DROP|flex_user_text|no_claim_made|tool=control_climate/

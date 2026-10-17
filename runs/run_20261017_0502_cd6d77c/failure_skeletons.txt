@@ -1,0 +1,26 @@
+-- S1
+   test_speech_start bytes=61440
+   debug_tool tool=voice arg=say:temp24
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=2428 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   gemini_voice_activity type=ACTIVITY_START
+   gemini_driver_turn_fallback source=voice_activity
+   test_speech_end frames=207 elapsedMs=2072
+   gemini_voice_activity type=ACTIVITY_END
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=2929 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=3432 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+-- S14
+   test_speech_start bytes=160512
+   debug_tool tool=voice arg=say:claim_bait
+   gemini_voice_activity type=ACTIVITY_START
+   gemini_driver_turn_fallback source=voice_activity
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=41259 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   test_speech_end frames=517 elapsedMs=5170
+   gemini_voice_activity type=ACTIVITY_END
+   ctx_hint epoch=18 pending=0
+   TURN_HOLD epoch=18 reason=AWAITING_EXECUTION_PROOF kind=ACTION durationMs=-1
+   gemini_turn_open
+   state=LISTENING err=-
+   state=LISTENING err=-
+   transcript_bubble_shown
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=41759 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=42259 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
