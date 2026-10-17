@@ -2,6 +2,15 @@
 
 Newest first. One line per change, with the evidence that motivated it.
 
+## 2026-10-17 — review-packet: first skill built by create-skill
+
+The planner rebuilt the review packet by hand for every executor merge (`state/reviews.log` has 38
+records; create-skill eval 3 proposed it). `scripts/review_packet.py` covers the fixed steps
+(`packet`: range, prod-source rule from delegation_check, candidate SPEC lines, JUnit per variant
+with STALE; `record`: a validated reviews.log line, `--selftest`). `skills/review-packet.md`
+covers the judgement and its gotchas, with an entry at `.claude/skills/review-packet/`. Evals:
+8/8 with the skill vs 6/8 baseline; trigger check 6/6.
+
 ## 2026-10-17 — Time records, observed workflows, Agent Skills format (owner)
 
 The owner asked for every piece of work to record its time and improve when slow, and for skill

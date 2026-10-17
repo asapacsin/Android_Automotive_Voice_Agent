@@ -82,7 +82,7 @@ The rules are [harness/CONSTITUTION.md](harness/CONSTITUTION.md) 12 and 17–19;
 | **Current state** — commit, tests, open issues (generated) | [state/PROJECT_STATE.json](state/PROJECT_STATE.json) |
 | **Capability truth**, machine-readable, with verification level | [config/capabilities.yaml](config/capabilities.yaml) |
 | How work is done here, and the agent harness | [harness/README.md](harness/README.md) |
-| Reusable procedures | [skills/](skills/) — start, **continue**, reproduce, fix, verify, handoff (Claude Code entries in `.claude/skills/`; new ones via `.claude/skills/create-skill/`) |
+| Reusable procedures | [skills/](skills/) — start, **continue**, reproduce, fix, verify, handoff, review-packet (Claude Code entries in `.claude/skills/`; new ones via `.claude/skills/create-skill/`) |
 | Cursor hybrid routing (hard gate; Composer default; Grok on GROK_REQUIRED / termination) | [`.cursor/rules/hybrid-model-routing.mdc`](.cursor/rules/hybrid-model-routing.mdc), [`scripts/model_route.py`](scripts/model_route.py), [`.cursor/agents/`](.cursor/agents/) |
 
 ## How to change things here
