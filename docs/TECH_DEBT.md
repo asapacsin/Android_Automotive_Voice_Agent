@@ -365,6 +365,18 @@ cancelled destination's overview while the controller is IDLE; the same was alre
 cancelling a route picker. Owner: the host follows the controller's phase. Next step: an executor
 packet (presentation driven by the controller's phase / a cancel event) plus an emulator check.
 
+Note from its review (2026-10-17): "no overview" covers the camera and view options only; the SDK
+still auto-draws the late route's line and flag (P59: no SDK 11.2.100 call removes it).
+
+## D-REROUTE-PREVIEW — a reroute during guidance applies the route-preview options (recorded 2026-10-17)
+
+Pre-existing, found by the D-CANCEL-HOST-OVERVIEW review. If the SDK reports a reroute through
+`onCalculateRouteSuccess(int[])`, the host calls `AmapDrivingPresentation.applyRoutePreview`
+mid-drive: driving=false options, layout hidden, north-up, auto-lock off (AmapDrivingPresentation.kt
+~28-32, ~112-142). `MapPresentationPolicyTest.rerouteWhileNavigatingIsUnchanged` pins today's
+behaviour. Next step: confirm from a device or emulator log (`nav_recalc_yaw` followed by
+`nav_presentation mode=preview`) before changing it.
+
 ## D-CANCEL-STALE-REPLY — the pending navigate_to result still resolves after a cancel (recorded 2026-10-17)
 
 `NavigationVoiceOutput` (~:38) / `NavigationServer` (~:89-92): after the cancel the pending
