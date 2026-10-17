@@ -19,7 +19,7 @@ audible word to her first audible reply (as `check_req.py` measures them).
 | 2 | u_can | 你能帮我做什么 | chat (ability answer): reply, no tool, ≤ 3.0 s |
 | 3 | u_hot | 车里好热啊 | a cooling action: control_climate or run_scenario ✓, ≤ 3.5 s |
 | 4 | u_temp | 空调调到二十二度 | control_climate ✓; simulated climate target 22 at the end of the turn |
-| 5 | u_window | 把我这边的窗户开一点 | control_window ✓; the driver's window (FRONT_LEFT) opened |
+| 5 | u_window | 把我这边的窗户开一点 | control_window ✓; the driver's window (FRONT_LEFT) opened and no other window moved |
 | 6 | u_sunroof | 帮我把天窗打开 | honest refusal: no ✓ tool, a reply, no done-claim (a claim-gate drop is a WARN, "caught") |
 | 7 | u_gas | 附近有加油站吗 | navigate_to or query_live_info, ✓ or honest; reply ≤ 3.5 s |
 | 8 | u_cancel | 算了，不去了 | flow cancelled: exit_navigation_mode ✓ or navigation phase IDLE/STOPPED; a reply |

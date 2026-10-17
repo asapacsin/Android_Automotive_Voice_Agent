@@ -71,6 +71,37 @@ internal object AmapDrivingPresentation {
             true
         }.getOrDefault(false)
 
+    /**
+     * Debug diagnostics (P58): the view's navigation mode and the map camera, numbers only - no
+     * position. "car_up" with a bearing that follows the road is heading-up; bearing 0 while the
+     * car turns is north-up.
+     */
+    fun viewState(naviView: AMapNaviView, navigating: Boolean): String = runCatching {
+        val mode = when (naviView.naviMode) {
+            AMapNaviView.CAR_UP_MODE -> "car_up"
+            AMapNaviView.NORTH_UP_MODE -> "north_up"
+            else -> "other_${naviView.naviMode}"
+        }
+        val camera = naviView.map?.cameraPosition
+        "naviMode=$mode bearing=${camera?.bearing?.let { "%.0f".format(java.util.Locale.US, it) }} " +
+            "tilt=${camera?.tilt?.let { "%.0f".format(java.util.Locale.US, it) }} navigating=$navigating"
+    }.getOrElse { "failed=${it.javaClass.simpleName}" }
+
+    /**
+     * Debug experiment for P59 (a cancelled route stays drawn): one way of removing the
+     * calculated route, chosen by name, so the emulator run can screenshot what each does. Not
+     * called from product code.
+     */
+    fun debugClearRoute(navi: AMapNavi?, naviView: AMapNaviView, variant: String): String = runCatching {
+        when (variant) {
+            "stopnavi" -> { navi?.stopNavi(); "stopNavi" }
+            "markers" -> { naviView.setRouteMarkerVisible(false, false, false); "markers hidden" }
+            "map_clear" -> { naviView.map?.clear(); "map cleared" }
+            "idle" -> { applyIdle(naviView); "idle options" }
+            else -> "unknown variant"
+        }
+    }.getOrElse { "failed=${it.javaClass.simpleName}" }
+
     fun listener(onExit: () -> Unit): AMapNaviViewListener = ExitForwardingListener(onExit)
 
     private fun enableLiveTraffic(navi: AMapNavi) {

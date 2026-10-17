@@ -46,10 +46,11 @@ class GuidanceRelayTest {
             override fun amapSpeaking() = amapSpeaking
             override fun transientFocusLoss() = focusLoss
             override fun abandon(promptId: String) { abandoned += promptId }
+            // Mirrors production (round-3 review): the relay's own bracket reaches the arbiter's
+            // speaking state only; the relay hears Amap solely through the SDK listener (amapEnds()).
             override fun bracket(speaking: Boolean) {
                 brackets += speaking
                 amapSpeaking = speaking
-                if (!speaking) relay.onAmapSpeaking(false)
             }
         },
         enabled = { enabled },
@@ -89,7 +90,8 @@ class GuidanceRelayTest {
             blocker = null; focusLoss = false; enabled = true
             amapEnds()
             setup()
-            relay.onGuidanceText("左转")
+            // A distinct sentence per case: the same words right after a fallback are its echo (10-16).
+            relay.onGuidanceText("左转$reason")
             assertTrue(lastRoute().contains("to=amap reason=$reason"), reason)
             amapEnds() // G-1b+: a fallback over Amap waits for its end
         }
@@ -472,5 +474,95 @@ class GuidanceRelayTest {
         relay.onGuidanceText("再右转")
         assertEquals("g2", sent.last().first)
         assertEquals(1, spoken.size)
+    }
+
+    // ---- P63: the over-speed warning with the toggle off (an alert queue: enabled = false) ----
+
+    private val alert = "您已超速，限速40公里"
+
+    @Test
+    fun alertQueueWaitsForAmapToFinishThenSpeaks() {
+        enabled = false
+        amapSpeaking = true
+        relay.onGuidanceText(alert)
+        assertTrue(spoken.isEmpty(), "never over Amap's own sentence")
+        assertTrue(sent.isEmpty(), "an alert queue never sends to the assistant")
+        amapEnds()
+        assertEquals(listOf(alert), spoken)
+    }
+
+    @Test
+    fun alertQueueGatesTheMicUntilTheEstimateWithNoListenerCallback() {
+        enabled = false
+        relay.onGuidanceText(alert)
+        assertEquals(listOf(alert), spoken)
+        assertEquals(listOf(true), brackets, "bracketed for the arbiter at playTTS")
+        val estimate = maxOf(GuidanceRelay.BRACKET_MIN_MS, GuidanceRelay.BRACKET_MS_PER_CHAR * alert.length)
+        advance(estimate - 1)
+        assertEquals(listOf(true), brackets, "still gated before the estimate")
+        advance(1)
+        assertEquals(listOf(true, false), brackets, "closed by the estimate though no listener end came")
+    }
+
+    @Test
+    fun amapStartingInsideTheAlertBracketKeepsTheMicGatedPastTheEstimate() {
+        enabled = false
+        relay.onGuidanceText(alert)
+        assertEquals(listOf(true), brackets)
+        amapSpeaking = true
+        relay.onAmapSpeaking(true) // Amap's own camera/manoeuvre prompt starts before the estimate
+        advance(10_000)
+        assertFalse(brackets.contains(false), "the estimate must not open the mic over Amap's sentence")
+        amapEnds()
+        assertFalse(amapSpeaking)
+    }
+
+    @Test
+    fun alertPendingAtNavigationEndIsNeverSpoken() {
+        enabled = false
+        amapSpeaking = true
+        relay.onGuidanceText(alert)
+        relay.onNavigationEnded()
+        amapEnds()
+        assertTrue(spoken.isEmpty())
+    }
+
+    // ---- owner test 10-16: Amap's echo of the relay's own fallback is not new guidance ----
+
+    @Test
+    fun theEchoOfAFallbackIsDroppedOnceAndRealGuidanceStillFlows() {
+        blocker = "NOT_CONNECTED"
+        relay.onGuidanceText("前方左转")
+        assertEquals(listOf("前方左转"), spoken)
+        relay.onGuidanceText("前方左转") // onGetNavigationText reports the playTTS sentence back
+        assertTrue(logs.contains("guidance_echo_dropped chars=4"))
+        advance(2_000)
+        assertEquals(listOf("前方左转"), spoken, "the echo is not spoken again")
+        relay.onGuidanceText("前方左转") // the same words later, as real guidance
+        advance(2_000)
+        assertEquals(listOf("前方左转", "前方左转"), spoken)
+    }
+
+    @Test
+    fun anEchoOutsideTheWindowIsTreatedAsGuidance() {
+        blocker = "NOT_CONNECTED"
+        relay.onGuidanceText("前方左转")
+        advance(GuidanceRelay.ECHO_WINDOW_MS + 1)
+        relay.onGuidanceText("前方左转")
+        advance(2_000)
+        assertEquals(2, spoken.size)
+    }
+
+    @Test
+    fun relayDeadlineFallbackWithNoListenerClosesAtTheEstimateAndTheBacklogDrains() {
+        relay.onGuidanceText("前方左转")
+        assertEquals("g1", sent.last().first)
+        advance(1_200) // DEADLINE: Amap speaks it
+        assertEquals(listOf("前方左转"), spoken)
+        relay.onGuidanceText("再右转") // waits: Amap (the relay's bracket) is speaking
+        assertEquals(1, spoken.size)
+        advance(maxOf(GuidanceRelay.BRACKET_MIN_MS, GuidanceRelay.BRACKET_MS_PER_CHAR * 4))
+        assertEquals(listOf(true, false), brackets.take(2), "closed by the estimate, no listener callback")
+        assertEquals(listOf("前方左转", "再右转"), spoken, "the backlog sentence is spoken once the bracket closes")
     }
 }

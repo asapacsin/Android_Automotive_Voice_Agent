@@ -382,7 +382,7 @@ class GeminiLiveClient(
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
             if (generation.get() != current) return
-            DebugVoiceLog.log("gemini_closed code=$code")
+            DebugVoiceLog.log("gemini_closed code=$code reason_class=${GeminiLiveProtocol.closeReasonClass(reason)}")
             Telemetry.record(EventType.SOCKET_DISCONNECTED, detail = "server_closed code=$code")
             // An expired handle rejected at setup must not make a reconnect terminal (MALFORMED).
             val resumeRejected = setupResumed && code == 1007 && !pending.isCompleted
@@ -390,7 +390,7 @@ class GeminiLiveClient(
                 resumptionHandle = null
                 DebugVoiceLog.log("gemini_resume_rejected handle_cleared=true")
             }
-            fail(pending, GeminiLiveProtocol.closeFailure(code, reason, resumeRejected), "socket_closed", closed = true)
+            fail(pending, GeminiLiveProtocol.closeFailure(code, reason, resumeRejected, afterSetup = pending.isCompleted), "socket_closed", closed = true)
         }
     }
 

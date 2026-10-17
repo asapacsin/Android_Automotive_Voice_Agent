@@ -40,6 +40,10 @@ The zip URL must serve the zip itself. A private link that answers with a sign-i
 detected (`unzip -t`) and skipped with a warning. Anything reachable without authentication is
 readable by anyone holding the URL; prefer an authenticated URL with `NOVA_VENDOR_ZIP_AUTH`.
 
+Executor worktrees get the same files from `scripts/new_worktree.sh <task> <branch> <BASE_COMMIT>`,
+which downloads the zip once per container (cached under `~/.cache/nova-drive/`), unpacks it into
+the new worktree and refuses any path git would not ignore.
+
 The Amap key checks the APK signature: a cloud APK authorises only when it is signed with the
 keystore whose SHA1 is registered on the key, which is why the owner's debug keystore is used.
 

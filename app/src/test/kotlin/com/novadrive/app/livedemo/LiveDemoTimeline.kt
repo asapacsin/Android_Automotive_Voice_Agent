@@ -61,7 +61,31 @@ class LiveDemoTimeline(private val out: File, private val clips: File) {
             pending.reset()
             pendingPos = 0
         }
+        mixNoise(frame)
         frame
+    }
+
+    /**
+     * P47: NOVA_LIVE_NOISE_PCM, a 16 kHz mono s16le loop (a steady cabin/fan bed, already at its
+     * level), under every frame of the session - the noise does not stop when the driver does.
+     * Clip timings and driver.wav's clip track are unchanged, so the graders measure as before.
+     */
+    private val noise: ShortArray? = System.getenv("NOVA_LIVE_NOISE_PCM")?.takeIf { it.isNotBlank() }?.let { path ->
+        val b = File(path).readBytes()
+        ShortArray(b.size / 2) { i -> ((b[2 * i].toInt() and 0xff) or (b[2 * i + 1].toInt() shl 8)).toShort() }
+    }
+    private var noisePos = 0
+
+    private fun mixNoise(frame: ByteArray) {
+        val bed = noise ?: return
+        if (bed.isEmpty()) return
+        for (i in 0 until frame.size / 2) {
+            val v = ((frame[2 * i].toInt() and 0xff) or (frame[2 * i + 1].toInt() shl 8)).toShort() + bed[noisePos]
+            noisePos = (noisePos + 1) % bed.size
+            val c = v.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+            frame[2 * i] = (c and 0xff).toByte()
+            frame[2 * i + 1] = (c shr 8).toByte()
+        }
     }
 
     /** Queues [key]; returns its start on the timeline (where the queue is now). */

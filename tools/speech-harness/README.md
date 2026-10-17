@@ -31,6 +31,24 @@ emulators attached, pick one with `ANDROID_SERIAL=emulator-5556` — adb itself 
 flag is needed. Run `make_speech.py`, `make_extra.py`, `make_context.py` and `make_noise.py` once;
 clips land in `speech/` (gitignored).
 
+## Run the debug app on Gemini (free; decided 2026-10-15)
+
+Debug builds only; the override lives in memory, so an app restart is Qwen again. The voice is
+Gemini's own, not Ayano.
+
+```sh
+adb push gemini_key.txt /data/local/tmp/gemini_setup.txt && adb shell chmod 644 /data/local/tmp/gemini_setup.txt
+adb shell run-as com.novadrive.app cp /data/local/tmp/gemini_setup.txt files/gemini_setup.txt
+adb shell rm /data/local/tmp/gemini_setup.txt; rm gemini_key.txt
+adb shell am broadcast -n com.novadrive.app/.DebugToolReceiver --es tool gemini_setup   # result=applied|rejected|missing|invalid|failed|GEMINI_*, never the key
+adb shell am broadcast -n com.novadrive.app/.DebugToolReceiver --es tool provider --es arg gemini   # `clear` turns it off
+```
+
+`gemini_setup` stores the key and the cross-border consent and deletes the file. The override
+takes effect at the next session start. **Before injecting any audio, check logcat for
+`session_provider choice=gemini_live`**; a missing key or consent fails the start with its
+`GEMINI_*` code and never opens Qwen.
+
 ## What it established (2026-09-17)
 
 - Baidu server VAD ignores speech peaking below ~2700 and hears ~3800 → `MicInputGain` (3x).

@@ -1,0 +1,14 @@
+{
+  "skill_name": "review-packet",
+  "date": "2026-10-17",
+  "method": "two fresh read-only reviewer subagents per prompt (with skill / told not to read it); planner graded the returned plans; separate trigger check over all 8 skill descriptions",
+  "results": [
+    {"eval": 1, "with_skill": "5/5", "baseline": "3/5", "with_s": 25, "baseline_s": 21, "with_tokens": 22142, "baseline_tokens": 23005,
+     "note": "both found exec/p67-claim-group empty (no executor work committed yet); only the skill run kept the record as its own command and warned against summed variant counts"},
+    {"eval": 2, "with_skill": "3/3", "baseline": "3/3", "with_s": 25, "baseline_s": 24, "with_tokens": 24247, "baseline_tokens": 32158,
+     "note": "the baseline found scripts/review_packet.py on its own; the skill run used fewer tokens"}
+  ],
+  "trigger_check": "6/6 (executor DONE -> review-packet; refused merge -> review-packet; repeated commands -> create-skill; 'review my last commit' -> none; failed voice check -> reproduce; 'is it working' -> verify)",
+  "total": {"with_skill": "8/8", "baseline": "6/8", "tokens": "-17%"},
+  "verdict": "lands"
+}

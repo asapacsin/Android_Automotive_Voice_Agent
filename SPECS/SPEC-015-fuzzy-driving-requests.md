@@ -97,6 +97,11 @@ Rules:
   「才不帮你开」 after the window opened is forbidden. A style that is not offered is declined, never
   mapped to the nearest one.
 - **B8.** `control_window`, `control_seat`, `run_scenario`, `set_speaking_style` are repeat-sensitive.
+- **B9.** (P57, 2026-10-13) 「我这边」「我这侧」「我这一侧」「我这半边」, when this turn names no other
+  window, is the driver window. `ToolCallGuards.driverSideWindow` rewrites a `control_window` target of
+  `all` (or none) to `driver` before the handler runs; a window the model named (rear, passenger) is
+  never rewritten (review 2026-10-15). A transcript that still belongs to the previous turn
+  is not used. A scenario step is not rewritten.
 
 ## Failure behaviour
 
@@ -114,14 +119,14 @@ transcript text.
 
 | # | Criterion | Kind | Proven by | State |
 | --- | --- | --- | --- | --- |
-| A1 | Port: window/seat limits, clamping, generic result; climate unchanged | functional | `SimulatedVehicleControlTest`, `ClimateToolHandlerTest` | not built |
-| A2 | Handlers and declarations for window/seat; results read back state + `announce` | functional | `WindowToolHandlerTest`, `SeatToolHandlerTest`, `ActionAnnouncementTest` | not built |
-| A3 | Scenarios: order, dependencies, partial failure, per-step context | functional | `ComfortScenariosTest` | not built |
+| A1 | Port: window/seat limits, clamping, generic result; climate unchanged | functional | `SimulatedVehicleControlTest`, `ClimateToolHandlerTest` | built — SimulatedVehicleControlTest 23/23 green, ClimateToolHandlerTest 10/10 green (counts sum the debug and release unit-test runs; full JVM suite at 87d5287, 2026-10-17) |
+| A2 | Handlers and declarations for window/seat; results read back state + `announce` | functional | `WindowToolHandlerTest`, `SeatToolHandlerTest`, `ActionAnnouncementTest` | built — WindowToolHandlerTest 22/22 green, SeatToolHandlerTest 12/12 green, ActionAnnouncementTest 8/8 green (counts sum the debug and release unit-test runs; full JVM suite at 87d5287, 2026-10-17) |
+| A3 | Scenarios: order, dependencies, partial failure, per-step context | functional | `ComfortScenariosTest` | built — ComfortScenariosTest 32/32 green (counts sum the debug and release unit-test runs; full JVM suite at 87d5287, 2026-10-17) |
 | A4 | Capability flip in all three places; sunroof etc. still refused | contract | `CapabilityContractTest`, `FalseCapabilityClaimTest`, `TRUTH-BAIT-001` | not built |
-| A5 | 「已把车窗打开一半」 with no call is not released | negative | `FalseCapabilityClaimTest` (+case) | not built |
+| A5 | 「已把车窗打开一半」 with no call is not released | negative | `FalseCapabilityClaimTest` (+case) | built — FalseCapabilityClaimTest 80/80 green, case `aWindowClaimWithNoToolCallIsNotReleased` (counts sum the debug and release unit-test runs; full JVM suite at 87d5287, 2026-10-17) |
 | A6 | Style: compose replaces the tone paragraph; persists; both clients use it | functional | `PersonaProfilesTest`, `SpeakingStyleStoreTest` | not built |
 | A7 | Context follow-ups FZ-05, FZ-14 | functional | `ContextResolverTest` (+rows) | not built |
-| A8 | The model maps FZ-01…FZ-14 correctly (≥ 12/14 on Gemini) | TEXT_LIVE | new `TEST_MATRIX.yaml` row `FUZZY-TEXT-LIVE-001` | not earned |
+| A8 | The model maps FZ-01…FZ-14 correctly (≥ 12/14 on Gemini) | TEXT_LIVE | new `TEST_MATRIX.yaml` row `FUZZY-TEXT-LIVE-001` | earned — FUZZY-TEXT-LIVE-001 PASS (TEST_MATRIX, last_run 2026-10-17: 18/19 on the 19-phrase table, gemini-3.8-live) |
 | A9 | Chip visible, scenario latency one call, style audible and appropriate | device | `FUZZY-DEVICE-001` (emulator), `STYLE-EAR-001` (HUMAN) | not earned |
 | A10 | APK builds; harness coherent | artifact | `:app:assembleDebug`, `harness_check.py` | not built |
 

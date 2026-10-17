@@ -365,6 +365,21 @@ phrasing that has no keyword in it at all is the one the transcriber destroys mo
 The third row was never a recognition problem: it was [P25](OPEN_PROBLEMS.md), the app *acting* on
 a mis-transcription, and it is now refused honestly whatever the transcript says.
 
+### Re-measured 2026-10-15 on Gemini (the current test provider), same three clips, 5 runs each
+
+`tools/gemini-live-probe/latency_probe.py` with the app's tools and persona (`PROMPT=app`),
+gemini-3.1-flash-live-preview, free tier:
+
+| Said | Must reach | Result |
+| --- | --- | --- |
+| 「返屋企啦」 | `navigate_to` | **0/5** - and every run called a *different, wrong* tool: play_music, run_scenario, control_climate, control_music x2 |
+| 「有啲熱，幫我舒服啲」 | a cooling action | **5/5** (control_climate x3, run_scenario x2) |
+| 「播啲精神啲嘅歌」 | `play_music` (a described style is supported since SPEC-016 media hand-off) | **5/5** |
+
+The navigation case is now the dangerous one: a confident wrong action, not a refusal. These
+numbers are Gemini's; the product session is Qwen-Omni (ADR-017), whose Cantonese has not been
+measured (that waits for the Ayano stage). The owner question below stands, with this data.
+
 BLOCKED_BY: the owner choosing between three options that are not comparable on technical grounds
 — accept Mandarin-only and say so in ADR-002 and the capability registry; keep the current partial
 support and document the measured rates as the expected behaviour; or reopen ADR-008 and evaluate a

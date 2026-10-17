@@ -142,6 +142,10 @@ Timeouts, all in `ListeningTimeouts` (app/voice/ListeningLifecycle.kt):
 - Routing: `VoiceCommandRouter` → `ListeningIntent` (decisions `SHUT_UP`, `GO_TO_SLEEP`,
   `PASS_TO_MODEL`; precedence unchanged). Model paraphrases: `set_speech_output` (silent →
   SILENT_WAIT, spoken → ACTIVE) and `end_conversation` (→ SLEEP after the goodbye).
+  `set_speech_output` runs only when this turn's words ask her to stop or resume talking
+  (`ToolCallGuards.speechOutputNotRequested`: `ListeningIntent` SHUT_UP or a bounded stop/resume
+  grammar); otherwise `ok=false SPEECH_OUTPUT_NOT_REQUESTED` and nothing changes. A call that
+  arrives before its transcript passes (P66, 2026-10-17).
 - 「可以说话了」 is no longer a special phrase: in SILENT_WAIT it is simply the next command.
 - The status row shows 🎙 聆听中 / 🤫 静默中，仍在听 / 💤 休眠中 / 💤 休眠中（已断开）; a tap sleeps from
   ACTIVE and wakes from every other state.

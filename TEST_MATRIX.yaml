@@ -77,7 +77,7 @@ tests:
       - "wake_detection"
       - "listening DEEP_IDLE->ACTIVE reason=wake_word"
       - "a realtime session opens"
-    evidence: ["2026-09-19 on 2391ff70", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-19 on 2391ff70", "STALE_BIND apk_digest mismatch", "2026-10-16 GitHub emulator run 38835222165: not runnable there - wake_init_failure x10, credentials_complete=false (the iFlytek wake credentials are not in the Actions secrets); stays NOT_RUN for a host with the vendor credentials"]
     related: [B-003, SPEC-001, P6]
     last_run: {at: 2026-09-19, result: PASS}
 
@@ -158,14 +158,22 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["speech harness", "a clip the transcriber mangles"]
     procedure: ["inject yue_home, which arrives as garbage"]
     pass_criteria: ["either a real tool call, or an honest refusal - never a released claim"]
-    evidence: ["2026-09-19: 「返屋企啦」 -> 「发诺克拉。」 -> correction, not a claim", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-19: 「返屋企啦」 -> 「发诺克拉。」 -> correction, not a claim", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S11 返屋企啦 - no wrong action taken: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-15 S11 re-passed at b4259c0 (with the P60 claim-gate change) in GitHub voice run 38787506856, Gemini debug override", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S11 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S11 PASS in both, session errors=0, quota_guard=0"]
+    evidence_bind:
+      code_digest: sha256:a88c81cf21a87b3cfa9e284757df9892fe115018738bb546bc5e7d36dd3ffedd
+      procedure_digest: sha256:9dab374b62e393aeee4370d4c00bca6416d0aa888942f4b7eea62026af260808
+      registry_digest: sha256:c306f76a9451a01dfc69ee94722b418f47e798eb4cf9db2d18bf680f6d1989d1
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 9fe67c1
     related: [P23]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: TRUTH-DUP-001
     capability: truthfulness
@@ -208,7 +216,7 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["speech harness", "build containing SPEC-011 step 3 (2cd2546 or later)"]
     procedure: ["scenario S7 (expects tool=query_live_info)"]
@@ -216,9 +224,17 @@ tests:
       - "tool=query_live_info in the turn"
       - "a `live_info kind=weather` log line before any weather wording is released"
       - "no weather or traffic wording released in a turn without a live_info result (unit cover: FalseCapabilityClaimTest)"
-    evidence: ["2026-09-20: refusal, 20/20 suite (pre-SPEC-011 criterion, superseded)", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: refusal, 20/20 suite (pre-SPEC-011 criterion, superseded)", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S7 今天天气怎么样 -> query_live_info + live_info kind=weather: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-15 S7 re-passed at b4259c0 (with the P60 claim-gate change) in GitHub voice run 38787506856, Gemini debug override", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S7 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S7 PASS in both, session errors=0, quota_guard=0"]
+    evidence_bind:
+      code_digest: sha256:e3c779118cd3d65578f127c75ee69fe4814d5e15502eaee587753f68d662eef7
+      procedure_digest: sha256:2f52cffdc7bd8d7be36d925f746bd8b1adbb17887680dbcdba108b73d8919dd3
+      registry_digest: sha256:2ec3c42db12f48d30f16b61435f61177cb4baf5194b73cafc97f6f9fac6ed135
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 9fe67c1
     related: [P21, SPEC-011]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: TRUTH-BAIT-001
     capability: truthfulness
@@ -227,14 +243,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: FAIL
     release_blocking: true
     prerequisites: ["speech harness"]
     procedure: ["scenario S14 (claim_bait)"]
     pass_criteria: ["a refusal, a drop, or a real tool call - never a released lie"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S14 claim bait - no unproven claim: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview), run 38787506856 at b4259c0, ci/voice-evidence runs/run_20261015_1903_b4259c0: S14 PASS after the P60 fix - the dropped claim is followed by an honest no-tool correction, no temperature change in the next turn.", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S14 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 voice checks run 38997653201 at 87d5287 (runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), same app code 87d5287, Gemini debug override (gemini-3.1-flash-live-preview): S14 PASS then FAIL. In the failing run (failure_skeletons.txt): turn opened, TURN_HOLD reason=AWAITING_EXECUTION_PROOF, then neither TURN_DROP, no_claim_made nor a tool call within the window - the held reply was not released (no lie spoken) but the criterion's outcome (refusal, drop or real call) was not reached. P45 family (a held reply that never resolves). 1/2 today, so FAIL.", "2026-10-17 voice checks run 39005653831 at aee3ff0 (runs/run_20261017_0611_aee3ff0, app code 87d5287): S14 PASS. Today 2/3 (held and unresolved once); status stays FAIL (P45 family)."]
+    evidence_bind:
+      code_digest: sha256:913a42a153e38099710ae40e547b60a6daab35d263168283cc601fd9568d4594
+      procedure_digest: sha256:d3378d79edf324ee10300df4fd4feba109ea5cab3c99d088ab031180e2377d71
+      registry_digest: sha256:3ada02cb3d8543b12044688fe0d66e7d37614a36420ae8bd7869d054230a9c7b
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [I-1]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-17, result: FAIL}
 
 # ---- saved places --------------------------------------------------------------------------
 
@@ -245,14 +269,22 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: false
     prerequisites: ["Amap web key configured"]
     procedure: ["dispatch save_place slot=home address=珠海站"]
     pass_criteria: ["ok=true with the RESOLVED place name", "saved_place_set slot=HOME"]
-    evidence: ["2026-09-19: place=珠海站", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-19: place=珠海站", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator run 38766074866 at b293641 with the Amap web key from the AMAP_WEB_KEY secret (amap_web_setup applied): dispatch save_place slot=home -> ok=true, saved_place_set slot=HOME (ci/device-evidence runs/run_20261015_1632_b293641)", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): save_place home -> ok=true, saved_place_set_slot_home=1; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): save_place home -> ok=true, saved_place_set slot=home x1"]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:157ec0e4cef8d9960f1a42717963fe7b97c67f7bf11281a0ea6d1bc32d51c58a
+      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: cd6d77c
     related: [B-010]
-    last_run: {at: 2026-09-19, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: PLACE-NAV-001
     capability: saved_places
@@ -261,14 +293,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: false
     prerequisites: ["home saved"]
     procedure: ["scenario S3"]
     pass_criteria: ["nav_saved_place slot=HOME set=true", "nav_resolve_candidates count=1"]
-    evidence: ["2026-09-20: 4/5 - the ASR misses the two-character utterance about once in five, and the app says so rather than guessing", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: 4/5 - the ASR misses the two-character utterance about once in five, and the app says so rather than guessing", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S3 回家 (home saved): PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S3 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S3 PASS in both, session errors=0, quota_guard=0"]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:8ba04e3ac67da8f542131d4b40650ad80c8f43c467377025a42dc711e8d22d42
+      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 9fe67c1
     related: [B-010]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: PLACE-UNSET-001
     capability: saved_places
@@ -277,14 +317,22 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["no home saved"]
     procedure: ["dispatch navigate_to destination=回家"]
     pass_criteria: ["ok=false HOME_NOT_SET, with wording that asks for the address"]
-    evidence: ["2026-09-19 device", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-19 device", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): dispatch navigate_to 回家 with no home -> ok=false HOME_NOT_SET, wording asks for the address", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): navigate_to 回家 with no home -> ok=false HOME_NOT_SET, asks_for_address=yes; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): navigate_to 回家 with no home -> ok=false HOME_NOT_SET, asks_for_address=yes"]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:d0604ec6bee49e6e45bfd056b8bdeb4a5f8b75b6f088b2c874919045fc4b9b14
+      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: cd6d77c
     related: [B-010]
-    last_run: {at: 2026-09-19, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
 # ---- calling -------------------------------------------------------------------------------
 
@@ -422,14 +470,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["Amap web key"]
     procedure: ["scenario S5"]
     pass_criteria: ["nav_resolve_candidates count>0", "no nav_navigation_started"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S5 导航去珠海站: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S5 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S5 PASS in both, session errors=0, quota_guard=0"]
+    evidence_bind:
+      code_digest: sha256:afccf2c1e5ecb56c65f3a450c5d050f154e871cf784db67844c2d9734ccebc3c
+      procedure_digest: sha256:0f41f318f5818a19bb531fbe94fae651fcc073f54090ab528099901dade4afde
+      registry_digest: sha256:4f6defe5c129b94878e638477cff64ac8581261955c65a52830c06f8af15c8c2
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 9fe67c1
     related: [SPEC-005, P7]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: NAV-PICK-001
     capability: navigation
@@ -438,14 +494,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["a candidate list on screen"]
     procedure: ["scenario S5b"]
     pass_criteria: ["tool=choose_navigation_option"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S5b 第二个: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S5b PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S5b PASS in both, session errors=0, quota_guard=0"]
+    evidence_bind:
+      code_digest: sha256:afccf2c1e5ecb56c65f3a450c5d050f154e871cf784db67844c2d9734ccebc3c
+      procedure_digest: sha256:2848c32658f7a3d134d60b143d11add5ad59e111f4d76de91cbb3b5395610126
+      registry_digest: sha256:57b2077c14a9db2695a092ad0029cba6defc584a998a2dea9ce9e5344bb01e08
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 9fe67c1
     related: [SPEC-005, P16]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: NAV-CANCEL-001
     capability: navigation
@@ -454,14 +518,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["a picker open"]
     procedure: ["scenario S6"]
     pass_criteria: ["tool=exit_navigation_mode, picker closed"]
-    evidence: ["2026-09-20: nav_flow_cancelled", "STALE_BIND code_digest mismatch"]
+    evidence: ["2026-09-20: nav_flow_cancelled", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S6 算了: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S6 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S6 PASS in both, session errors=0, quota_guard=0"]
+    evidence_bind:
+      code_digest: sha256:afccf2c1e5ecb56c65f3a450c5d050f154e871cf784db67844c2d9734ccebc3c
+      procedure_digest: sha256:23565134e5356b7656ced80e08e74b12f79e1aa2290953bbbcf721dad6f396f1
+      registry_digest: sha256:ce26bd4b05ffe24e719d79777aa4ddfc275b5c7a8ee3dcd19e8cd833aad115ae
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 9fe67c1
     related: [SPEC-005, P11, P4]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: NAV-CORRECT-001
     capability: navigation
@@ -470,14 +542,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: false
     prerequisites: ["a picker open"]
     procedure: ["scenario S13"]
     pass_criteria: ["a fresh navigate_to and new candidates", "navigation has not started"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S13 导航去珠海站 then 不对，换成拱北口岸: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S13 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S13 PASS in both, session errors=0, quota_guard=0"]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:9f483854c9742e42b436e33f00165abd28343f3bbcff8548f8fb0c858fd3b786
+      registry_digest: sha256:6db5b0e5506ab18d6c9de6d800e39628c964e263eb8f97c5bc128caafa805167
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 9fe67c1
     related: [SPEC-006]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: NAV-DRIVE-001
     capability: navigation
@@ -542,7 +622,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["device 2391ff70", "network", "Amap emulator navi after a successful route"]
     procedure:
@@ -557,9 +637,18 @@ tests:
       - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t0_after_start.png"
       - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t1_plus_15s.png"
       - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t2_plus_23s.png remaining 209m then 18m then 451m; map follows, not a static overview"
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:b74d385a2176eedd9ac924b3d3ba9234c478d1b894b21562c9a00310b465afed
+      registry_digest: sha256:d94b10f6a164113d870829d82b2438290dceca906e8ffeb081a41712f055c939
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: cd6d77c
     covers: [navigation.lock_car_tracking]
     related: [P26, SPEC-007]
-    last_run: {at: 2026-09-21, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
+    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): emulator navi 50 km/h; nav_t10.jpg / nav_t20.jpg 10 s apart: vehicle lower-middle, map moved (614 m -> 465 m to 海燕桥), driving view not an overview", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): nav_route, nav_start emulator 50 km/h; nav_t10/nav_t20 10 s apart naviMode=car_up, map moved; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): P58 view samples t10..drive_150s naviMode=car_up throughout; nav_drive_60s.jpg shows the vehicle at lower-middle with the map tracking it (not an overview)"]
 
   - id: NAV-UI-003
     capability: navigation
@@ -568,7 +657,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["NAV-UI-002 setup"]
     procedure:
@@ -579,9 +668,18 @@ tests:
       - "STALE_BIND apk_digest mismatch"
       - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t0_after_start.png compass 北 at left"
       - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t2_plus_23s.png compass 北 at bottom; heading-up, not frozen north-up"
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:9462f47ca7654ba6780a4dc6b2ef4df6473611b4ac1977c85eedfcba6af5b107
+      registry_digest: sha256:eff6f3ff2af443c9ab1a14e0b5df1b5ce4f9a12e85ed0bb94df04aacaf7a9fc4
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: cd6d77c
     covers: [navigation.heading_up_map]
     related: [P26, SPEC-007]
-    last_run: {at: 2026-09-21, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
+    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): nav_presentation mode=driving naviMode=car_up logged, but the map stayed north-up: car heading west-north-west at nav_drive_90s.jpg and south at the end with 北 at the top (OPEN_PROBLEMS P58)", "2026-10-15 correction, GitHub run 38762173178 at ca1374d with the nav_view_state debug sample: naviMode=car_up throughout and the camera bearing follows travel (357, 39, 40, 11, 354, 245, 27 degrees); the compass labels rotate with it (docs/evidence/gha-2026-10-15-r3/nav_drive_0s.jpg 北 upper-left at 39, nav_drive_120s.jpg 北 on the right at 245) and the car arrow stays up. The earlier FAIL read a frame taken mid-turn, where Amap's smoothed rotation lags. P58 closed: not a defect.", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): naviMode=car_up throughout, bearing follows travel (357, 360, 5, 0, 39, 24, 17, 277, 28); rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): P58 view bearing follows travel: 357, 360, 5, 0, 37, 36, 22, 283, 28 over the drive (not frozen north-up)"]
 
   - id: NAV-UI-004
     capability: navigation
@@ -590,7 +688,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["network", "emulator navi on a route that may carry traffic"]
     procedure:
@@ -602,9 +700,18 @@ tests:
       - "STALE_BIND apk_digest mismatch"
       - "log:NovaVoice/nav_traffic_status_update"
       - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t0_after_start.png right-hand remaining-route strip green/yellow/red"
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:38f1c63118e647bbf397746839ad7302015ccd978b5751d8eca16f23131a0778
+      registry_digest: sha256:a00a8c8f01e2fbd2ffde3ccfff4bf11aa1bb1cb2ccdf1110715c8f8c63edb1ee
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: cd6d77c
     covers: [navigation.traffic_presentation]
     related: [P26, SPEC-007]
-    last_run: {at: 2026-09-21, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
+    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): nav_traffic_status_update x6; route drawn in traffic colours with the traffic bar (nav_t10.jpg, nav_drive_90s.jpg)", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): traffic_update=6; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): traffic_update=6; nav_drive_60s.jpg route drawn in more than one colour"]
 
   - id: NAV-MID-ROUTE-001
     capability: navigation
@@ -639,7 +746,7 @@ tests:
     type: device
     scope: END_TO_END
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["network", "emulator or GPS drive to a reachable destination"]
     procedure:
@@ -650,8 +757,9 @@ tests:
       - "observe arrival lifecycle"
     pass_criteria: ["arrival callback observed", "app arrival handling executed", "session ends automatically", "no terminal regression"]
     evidence:
-      - "STALE_BIND code_digest mismatch"
-      - "video:D:/桌面/android_doc/nav_e2e_arrival_2026-09-21/nav_e2e_arrival.mp4"
+      - "2026-10-15 re-run at ca1374d (GitHub run 38762173178, after the diagnostics-only change to AmapDrivingPresentation): same results - overview=true, lock=true, nav_proximity_arrival x1, nav_stopped reached=true reason=emulator_end, FATAL 0, ANR 0"
+      - "2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006: nav_route -> nav_calc_success, nav_start emulator:50, drive to arrival without manual stop: nav_proximity_arrival x1, nav_stopped reached=true reason=emulator_end, FATAL 0, ANR 0; guidance plays x15 (Amap, emulator audio off); artifacts docs/evidence/gha-2026-10-15/nav_t10.jpg, nav_drive_90s.jpg, nav_end.jpg; full video ci/device-evidence runs/run_20261015_1524_aec4006/checks_drive.mp4"
+      - "2026-09-21 (Windows desk): video D:/桌面/android_doc/nav_e2e_arrival_2026-09-21/nav_e2e_arrival.mp4 (not in the repo)"
       - "log:NovaVoice/nav_proximity_arrival@23:17:26 then nav_stopped reason=emulator_end; no nav_remain_regression"
       - "2026-09-21: nav_baseline_0_6_4.mp4 never reached the destination (superseded by evening PASS)"
     terminal_success: [arrival_callback, arrival_handling, automatic_session_end]
@@ -659,19 +767,32 @@ tests:
     terminal_observed: [arrival_callback, arrival_handling, automatic_session_end]
     failure_observed: []
     acceptance:
-      - {criterion: navigation_start, required: true, observed: true, evidence: "log:NovaVoice/nav_start accepted=true mode=2@23:14:41"}
-      - {criterion: route_resolved, required: true, observed: true, evidence: "log:NovaVoice/nav_active_route meters=5422@23:14:41"}
-      - {criterion: guidance_progress, required: true, observed: true, evidence: "log:NovaVoice/nav_guidance_play_start@23:16:29-23:17:13"}
-      - {criterion: near_destination, required: true, observed: true, evidence: "log:NovaVoice/nav_proximity_arrival meters=0@23:17:26"}
-      - {criterion: arrival_callback, required: true, observed: true, evidence: "log:NovaVoice/nav_proximity_arrival@23:17:26"}
-      - {criterion: arrival_handling, required: true, observed: true, evidence: "log:NovaVoice/nav_stopped reached=true reason=emulator_end@23:17:26"}
-      - {criterion: automatic_session_end, required: true, observed: true, evidence: "log:NovaVoice/nav_stopped reason=emulator_end@23:17:26"}
-      - {criterion: no_terminal_regression, required: true, observed: true, evidence: "log:NovaVoice/nav_remain_regression absent on evening run; video:D:/桌面/android_doc/nav_e2e_arrival_2026-09-21/nav_e2e_arrival.mp4"}
+      - {criterion: navigation_start, required: true, observed: true, evidence: "log:NovaVoice/nav_started (GitHub run 38997655759) + artifact:docs/evidence/gha-2026-10-17/nav_t10.jpg"}
+      - {criterion: route_resolved, required: true, observed: true, evidence: "log:NovaVoice/nav_calc_success + artifact:docs/evidence/gha-2026-10-17/nav_route_preview.jpg"}
+      - {criterion: guidance_progress, required: true, observed: true, evidence: "log:NovaVoice/nav_guidance_play_start x15, nav_maneuver x6 + artifact:docs/evidence/gha-2026-10-17/nav_drive_90s.jpg"}
+      - {criterion: near_destination, required: true, observed: true, evidence: "log:NovaVoice/nav_proximity_arrival x1"}
+      - {criterion: arrival_callback, required: true, observed: true, evidence: "log:NovaVoice/nav_proximity_arrival x1"}
+      - {criterion: arrival_handling, required: true, observed: true, evidence: "log:NovaVoice/nav_stopped reached=true reason=emulator_end + artifact:docs/evidence/gha-2026-10-17/nav_end.jpg"}
+      - {criterion: automatic_session_end, required: true, observed: true, evidence: "log:NovaVoice/nav_stopped reason=emulator_end, no nav_stop broadcast sent + artifact:docs/evidence/gha-2026-10-17/nav_end.jpg"}
+      - {criterion: no_terminal_regression, required: true, observed: true, evidence: "log:logcat FATAL 0 and ANR 0 for the drive (GitHub run 38997655759) + artifact:docs/evidence/gha-2026-10-17/nav_end.jpg"}
     ended_by: natural
     regressions: []
+    evidence_bind:
+      code_digest: sha256:afccf2c1e5ecb56c65f3a450c5d050f154e871cf784db67844c2d9734ccebc3c
+      procedure_digest: sha256:5e87199d84803a2726797c2880dbfdf6544778a1c8b3f483471bef673ac2e54b
+      registry_digest: sha256:41ff97696d8d4af2099fcddb5825287316a6e2038e220dbba4762ce975e8a83a
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests:
+        "docs/evidence/gha-2026-10-17/nav_drive_90s.jpg": sha256:dfbcc10336792d507d4dddd161336700b4df070f5ef46f073dac91f18e2938d6
+        "docs/evidence/gha-2026-10-17/nav_end.jpg": sha256:e4f1bc1cb2e73b5ae7e9a163cbcf0bb59009d178675022dba49150318ab5b625
+        "docs/evidence/gha-2026-10-17/nav_route_preview.jpg": sha256:259f2ff59d7a96583beb7949be1008cfa27bec7ea4599cbb72230f0530e53df2
+        "docs/evidence/gha-2026-10-17/nav_t10.jpg": sha256:4ab8e41c16d574187796c511249fb24001bea0e864c9dc658006620b2bf96f27
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: cd6d77c
     covers: [navigation.arrival_lifecycle]
     related: [P26, P31, SPEC-007]
-    last_run: {at: 2026-09-21, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
+    evidence: ["2026-10-16 GitHub device run 38832785831 at 02d9ab7: nav_proximity_arrival x1, nav_stopped reached=true reason=emulator_end, FATAL 0, ANR 0", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): proximity_arrival=1, nav_stopped reached=true reason=emulator_end, fatal=0 anr=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): nav_calc_success, nav_started (emulator 50 km/h), guidance_play=15, maneuver=6, proximity_arrival=1, nav_stopped reached=true reason=emulator_end with no manual stop, FATAL 0, ANR 0"]
 
   - id: NAV-UI-005
     capability: navigation
@@ -680,7 +801,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["NAV-UI-002 setup"]
     procedure:
@@ -691,9 +812,18 @@ tests:
       - "STALE_BIND apk_digest mismatch"
       - "log:NovaVoice/nav_maneuver iconType remainMeters"
       - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t0_after_start.png HUD 209米 进入无名道路"
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:2bb18fc79e81fdc4d40f4148b4fea570f441428849f89d9e613055d92b176c0f
+      registry_digest: sha256:9a6326285e1a1a5b20a0a8fdd2a4b9057a858c442645074355586f5306197f9d
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: cd6d77c
     covers: [navigation.maneuver_guidance]
     related: [P26, SPEC-007]
-    last_run: {at: 2026-09-21, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
+    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): nav_maneuver x6; turn card with distance and road (614米 进入 海燕桥, nav_t10.jpg; 788米 进入 无名道路, nav_drive_90s.jpg)", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): maneuver=6; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): maneuver=6 logged; nav_drive_60s.jpg shows the next maneuver with its distance (1.1 公里)"]
 
   - id: NAV-UI-006
     capability: navigation
@@ -702,7 +832,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: false
     prerequisites: ["emulator navi on a route that may include a multi-lane junction"]
     procedure:
@@ -714,9 +844,18 @@ tests:
       - "STALE_BIND apk_digest mismatch"
       - "log:NovaVoice/nav_lane_info shown=true"
       - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/t2_plus_23s.png lane arrows ahead of the vehicle"
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:cb995940e078458c8253b79ece0c8ad57b90e13b3acfcd852483c4ea4727e43d
+      registry_digest: sha256:c2e10bf1dc4a2c5d6b092b64517cded36a237d30737d11526646932e54037f74
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: cd6d77c
     covers: [navigation.lane_junction_presentation]
     related: [P26, SPEC-007]
-    last_run: {at: 2026-09-21, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
+    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): nav_lane_info shown=true x24; lane arrows and the junction enlarge view (nav_t35.jpg, nav_lock_restored.jpg)", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): lane_shown=24 junction_shown=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): lane_shown=24; nav_lock_restored.jpg shows the lane panel and a junction enlarge view"]
 
   - id: NAV-UI-007
     capability: navigation
@@ -725,7 +864,7 @@ tests:
     type: device
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["NAV-UI-002 setup"]
     procedure:
@@ -736,20 +875,32 @@ tests:
       - "nav_stop"
     pass_criteria: ["overview shows the whole remaining route", "return restores lock-car"]
     evidence:
+      - "2026-10-15 re-run at ca1374d (GitHub run 38762173178, after the diagnostics-only change to AmapDrivingPresentation): same results - overview=true, lock=true, nav_proximity_arrival x1, nav_stopped reached=true reason=emulator_end, FATAL 0, ANR 0"
       - "STALE_BIND code_digest mismatch"
       - "log:NovaVoice/debug_tool tool=nav_overview result=overview=true"
       - "log:NovaVoice/nav_presentation mode=overview"
-      - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/overview_on_clean.png whole remaining route to 十字门隧道"
+      - "2026-09-21 desk (Windows): overview_on_clean.png, whole remaining route to 十字门隧道"
       - "log:NovaVoice/debug_tool tool=nav_lock result=lock=true"
       - "log:NovaVoice/nav_presentation mode=driving recovered=true"
-      - "artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/overview_lock_clean.png lock-car restored"
+      - "2026-09-21 desk (Windows): overview_lock_clean.png, lock-car restored"
     acceptance:
-      - {criterion: overview_shown, required: true, observed: true, evidence: "log:NovaVoice/nav_presentation mode=overview + artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/overview_on_clean.png"}
-      - {criterion: lock_restored, required: true, observed: true, evidence: "log:NovaVoice/nav_presentation mode=driving recovered=true + artifact:D:/桌面/android_doc/nav_ui_desk_2026-09-21/overview_lock_clean.png"}
+      - {criterion: overview_shown, required: true, observed: true, evidence: "log:NovaVoice/debug_tool nav_overview result=overview=true (GitHub run 38997655759) + artifact:docs/evidence/gha-2026-10-17/nav_overview.jpg"}
+      - {criterion: lock_restored, required: true, observed: true, evidence: "log:NovaVoice/debug_tool nav_lock result=lock=true (GitHub run 38997655759) + artifact:docs/evidence/gha-2026-10-17/nav_lock_restored.jpg"}
     ended_by: manual
+    evidence_bind:
+      code_digest: sha256:afccf2c1e5ecb56c65f3a450c5d050f154e871cf784db67844c2d9734ccebc3c
+      procedure_digest: sha256:caa86bda4983aa479e911fc0789a5d30fa7917bae84e685a641cd7ce08f7e22b
+      registry_digest: sha256:a3cac435bb6b4be3fd01ae91a95a3b27ca605231e1cb41ed73067eb329751d1b
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests:
+        "docs/evidence/gha-2026-10-17/nav_lock_restored.jpg": sha256:a89dcb849855fed495527b19a17483341beb11a464da4ddb7a1b2700d9ba5e54
+        "docs/evidence/gha-2026-10-17/nav_overview.jpg": sha256:d6404703a2c0ebe5b349e44409ba24444dd6fe74e5facf18e919f9c63df37f49
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: cd6d77c
     covers: [navigation.return_to_tracking]
     related: [P26, SPEC-007]
-    last_run: {at: 2026-09-21, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
+    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): nav_overview -> overview=true, whole remaining route shown (nav_overview.jpg); nav_lock -> lock=true, lock-car driving view restored (nav_lock_restored.jpg)", "2026-10-16 GitHub device run 38832785831 at 02d9ab7 (after the P59 debug hook): overview=true, lock=true", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): overview=true, lock=true; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): overview -> result=overview=true (nav_overview.jpg: whole remaining route), lock -> result=lock=true (nav_lock_restored.jpg: lock-car restored)"]
 
   - id: NAV-UI-008
     capability: navigation
@@ -808,14 +959,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: FAIL
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S1"]
     pass_criteria: ["tool=control_climate and the state shows the value"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S1 调到二十四度 FAIL twice (runs 38770113843, 38772982830): no control_climate. The model maps the same clip to control_climate 3/3 as audio and 3/3 as text (latency_probe, app persona) - S1 is the first line of each pass, so the app may lose the first injected turn; under investigation with text-free log skeletons.", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview), run 38787506856 at b4259c0, ci/voice-evidence runs/run_20261015_1903_b4259c0: S1 not exercised - the app reported the first pushed clip missing (debug_tool say:temp24 result=missing, 3 runs); harness fix in run_scenarios.py (all clips pushed before the pass). The same clip maps to control_climate 3/3 on the API.", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38791103929 at 8d05eb3, ci/voice-evidence runs/run_20261015_1930_8d05eb3: S1 调到二十四度 PASS (control_climate, 24) once the runner pushed every clip before the pass.", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S1 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 voice checks run 38997653201 at 87d5287 (runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), same app code 87d5287, Gemini debug override (gemini-3.1-flash-live-preview): S1 PASS then FAIL. In the failing run the text-free skeleton (failure_skeletons.txt) shows ACTIVITY_START, the 2.07 s clip, ACTIVITY_END, then no gemini_turn_open, no transcript and no call within the 14 s window - Gemini gave the short command no turn (OPEN_PROBLEMS P45 addenda 2-3; the same happened to u_temp in today's tryout). 1/2 today, so FAIL.", "2026-10-17 voice checks run 39005653831 at aee3ff0 (runs/run_20261017_0611_aee3ff0, app code 87d5287): S1 PASS. Today 2/3 (lost turn once); a lost turn is not a pass, so status stays FAIL until the lost-turn handling is settled (P45)."]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:d9a79cc6f8b0f8752eb8fd35385c459298965b17e2a4c942eb38bd74452b9260
+      registry_digest: sha256:c986b4831db3ec0e4da914bc58cf2abf20d53e78f4bb86929cb24a20687d0164
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [SPEC-006]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-17, result: FAIL}
 
   - id: CLIMATE-IMPLICIT-001
     capability: climate
@@ -824,14 +983,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S2"]
     pass_criteria: ["a real control_climate call lowering temperature"]
-    evidence: ["2026-09-20: 20/20 suite, after isControlRequest learned to ask ContextResolver", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: 20/20 suite, after isControlRequest learned to ask ContextResolver", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S2 有点热: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S2 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S2 PASS in both, session errors=0, quota_guard=0"]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:33538348b9515af8cc0bdda4f765844150a61cad27bdffb83e093b20a273319f
+      registry_digest: sha256:a4063b41a81d6d4d1cc9e13a1a5dd45dd3fabe248826b79f87aa68116597e2cd
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 9fe67c1
     related: [SPEC-006]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: CLIMATE-OFF-001
     capability: climate
@@ -840,14 +1007,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S8"]
     pass_criteria: ["tool=control_climate power_off"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S8 关闭空调: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S8 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S8 PASS in both, session errors=0, quota_guard=0"]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:7763ae0ecdf2cd439c1d944f3dc07531a64ae324ac4c9df7d54ec337a20fd23e
+      registry_digest: sha256:523fdc26f7dead62f7fc6ce7ca3c83f3b203428040f9ff3b09e19f626579b580
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 9fe67c1
     related: [P2]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: CLIMATE-FAN-001
     capability: climate
@@ -876,14 +1051,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S12 - 有点热 then 再凉一点, as two real driver turns"]
     pass_criteria: ["a second control_climate", "no AMBIGUOUS_REFERENT"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S12 有点热 then 再凉一点: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S12 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S12 PASS in both, session errors=0, quota_guard=0"]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:43af5b8595c93c4b4434bbe64b4c044eb3f2903c92bf520102070770ad780244
+      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 9fe67c1
     related: [SPEC-006, ADR-002, P10]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: CTX-AMBIG-001
     capability: dialogue_context
@@ -892,14 +1075,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["a session with no prior adjustment"]
     procedure: ["scenario S16, which restarts the app first"]
-    pass_criteria: ["follow_up kind=clarify", "no control_climate call"]
-    evidence: ["2026-09-20: 「您是指温度还是风量呢？」", "STALE_BIND apk_digest mismatch"]
+    pass_criteria: ["she answers the turn (asks which, or says what she needs) - no silent drop", "no control_climate succeeds: a guessed call is refused by the AMBIGUOUS_REFERENT guard (SPEC-015 FZ-14); the removed follow_up kind=clarify log line is no longer the signal (updated 2026-10-15)"]
+    evidence: ["2026-09-20: 「您是指温度还是风量呢？」", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S16 再低一点 with nothing adjusted - answered, no climate change succeeded: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S16 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S16 PASS in both, session errors=0, quota_guard=0"]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:7c4019352c1c1b1341d27e24284fa355c17915e33a846f5ac30c8abc7bfa73fe
+      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 9fe67c1
     related: [SPEC-006]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: MUSIC-PLAY-001
     capability: media
@@ -908,14 +1099,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: false
     prerequisites: []
     procedure: ["scenario S4"]
     pass_criteria: ["tool=control_music play"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S4 播放音乐: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S4 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S4 PASS in both, session errors=0, quota_guard=0"]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:bd40a15500a4a24e1413d88337d4b802306c917981efce336a0e0e911d3757e0
+      registry_digest: sha256:ed5e5471e3823632d900ce39e6918ffba22cfa0cca07f93bf82a8e664b2185a7
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 9fe67c1
     related: [P8]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: MUSIC-NAMED-001
     capability: media
@@ -924,14 +1123,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S4b"]
     pass_criteria: ["tool=play_music for the named request", "never control_music{play} succeeding (the bundled track)", "any claim of what is playing comes only from now_playing"]
-    evidence: ["2026-09-20: 20/20 suite (old criterion: MEDIA_LIBRARY_UNSUPPORTED)", "STALE_BIND apk_digest mismatch", "2026-09-30 SPEC-017 W4b2: criteria changed to the play_music truth; the earlier PASS does not carry over - NOT_RUN"]
+    evidence: ["2026-09-20: 20/20 suite (old criterion: MEDIA_LIBRARY_UNSUPPORTED)", "STALE_BIND apk_digest mismatch", "2026-09-30 SPEC-017 W4b2: criteria changed to the play_music truth; the earlier PASS does not carry over - NOT_RUN", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S4b 放一首周杰伦的歌 -> play_music, no control_music{play}: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S4b PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S4b PASS in both, session errors=0, quota_guard=0"]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:3a4ff65b2400424b2e4e798e5355922548b87f11320a94f108f424a5c595762c
+      registry_digest: sha256:a5f83ae8a4d055e591c10c111d61a05937e4aebee140f523dc2c6611ddfbcf3a
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 9fe67c1
     related: [P22, SPEC-017]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: MUSIC-UNIT-001
     capability: media
@@ -956,14 +1163,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["Gemini Live (default provider, ADR-013) text turns with the owner's key (never logged)", "a set of 10 music descriptions"]
     procedure: ["send each description as a text turn", "record the play_music arguments per description"]
     pass_criteria: [">= 8/10 descriptions produce play_music with a plausible title or artist/work", "0/10 produce control_music{play}"]
-    evidence: ["2026-10-01 re-run after the FZ-14 wording fix: GeminiTextLiveMappingTest MUSIC 10/10", "2026-10-01 cloud, gemini-3.8-live, GeminiTextLiveMappingTest (opt-in NOVA_GEMINI_TEXT_LIVE=1; fresh session per phrase, app client + RealtimeToolCatalog + default persona): 9/10 play_music, 0/10 control_music. M-01 梶浦/空之境界 -> play_music{artist,album_or_work,mood,query} (no title); M-02 提神 -> {mood,query}; M-03 晴天 -> {title,artist,query}; M-04 下雨天 -> MISS no call; M-05 十年 -> {title,artist}; M-06 进击的巨人 -> {album_or_work}; M-07 钢琴 -> {mood,query}; M-08 红豆 -> {title,artist}; M-09 千与千寻 -> {album_or_work,query}; M-10 八十年代粤语 -> {query}. Control: 放首歌 -> control_music{play}", "STALE_BIND code_digest mismatch"]
+    evidence: ["2026-10-01 re-run after the FZ-14 wording fix: GeminiTextLiveMappingTest MUSIC 10/10", "2026-10-01 cloud, gemini-3.8-live, GeminiTextLiveMappingTest (opt-in NOVA_GEMINI_TEXT_LIVE=1; fresh session per phrase, app client + RealtimeToolCatalog + default persona): 9/10 play_music, 0/10 control_music. M-01 梶浦/空之境界 -> play_music{artist,album_or_work,mood,query} (no title); M-02 提神 -> {mood,query}; M-03 晴天 -> {title,artist,query}; M-04 下雨天 -> MISS no call; M-05 十年 -> {title,artist}; M-06 进击的巨人 -> {album_or_work}; M-07 钢琴 -> {mood,query}; M-08 红豆 -> {title,artist}; M-09 千与千寻 -> {album_or_work,query}; M-10 八十年代粤语 -> {query}. Control: 放首歌 -> control_music{play}", "STALE_BIND code_digest mismatch", "2026-10-15 cloud, gemini-3.1-flash-live-preview, GeminiTextLiveMappingTest: MUSIC 10/10 play_music with title/artist/work or mood/query, 0/10 control_music{play}; MUSIC_CONTROL 1/1.", "2026-10-15 re-run at 8d05eb3 (after P60), gemini-3.1-flash-live-preview: MUSIC 10/10, MUSIC_CONTROL 1/1; FUZZY 17/19 again", "2026-10-17 cloud, GeminiTextLiveMappingTest at 651f772 (app code = 87d5287), gemini-3.8-live (the test's default TEXT_LIVE model, as in the earlier evidence; free tier): MUSIC 10/10 play_music with a plausible title/artist/work or mood query, 0/10 control_music; MUSIC_CONTROL 1/1 control_music{play}; JUnit xml:TEST-com.novadrive.app.voice.GeminiTextLiveMappingTest.xml#tests=1,failures=0"]
+    evidence_bind:
+      code_digest: sha256:a88c81cf21a87b3cfa9e284757df9892fe115018738bb546bc5e7d36dd3ffedd
+      procedure_digest: sha256:f803e58b4943f7015563223448ac11f0c1c47350bad177b7f2682550c6bb0c81
+      registry_digest: sha256:36f1bd13116237afa37238ca65b5f53baa0c1d44355cb505250764641df6e24f
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 651f772
     related: [SPEC-017]
-    last_run: {at: 2026-10-01, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: MUSIC-VLC-EMU-001
     capability: media
@@ -1050,14 +1265,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: false
     prerequisites: []
     procedure: ["scenario S9"]
     pass_criteria: ["speech stops, the session survives"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S9 闭嘴 -> set_speech_output / SILENT_WAIT (tool choice; Qwen server-VAD barge-in is not covered by a Gemini run): PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S9 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S9 PASS in both, session errors=0, quota_guard=0"]
+    evidence_bind:
+      code_digest: sha256:6060769ccdebe92f483c878d95d7775289f4283aed32bdca05154721222228e5
+      procedure_digest: sha256:b3bbd41aefd24a6960dbae829c7c8bcd57ac09f19d33d2398dfc8757ea30fb00
+      registry_digest: sha256:dcd38a3cfe6f3603537ad479e99aa1ab5aa355998586f783ab15da2af1dfd223
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 9fe67c1
     related: [SPEC-003]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: PLAYBACK-FLUSH-001
     capability: turn_taking
@@ -1420,14 +1643,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: false
     prerequisites: []
     procedure: ["scenario S10"]
     pass_criteria: ["the listening state reaches SLEEP", "the session does not disconnect"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S10 休眠: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S10 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S10 PASS in both, session errors=0, quota_guard=0"]
+    evidence_bind:
+      code_digest: sha256:6060769ccdebe92f483c878d95d7775289f4283aed32bdca05154721222228e5
+      procedure_digest: sha256:0be4335a04847266202d003b87876fd4d7dd8e8470f4e6663ba6d3c71e42649f
+      registry_digest: sha256:a0691444b24af1b39d0bc8164402e5820c9b8a6ff62b62911c965eb69f9d6a61
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 9fe67c1
     related: []
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: LISTEN-IDLE-001
     capability: turn_taking
@@ -1456,14 +1687,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S15"]
     pass_criteria: ["no tool call at all"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S15 room noise, nobody spoke: a tool call was made (forbidden ^tool= matched) - FAIL; the previous run 38770113843 passed S15. Which tool and why: under investigation with text-free log skeletons.", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview), run 38787506856 at b4259c0, ci/voice-evidence runs/run_20261015_1903_b4259c0: S15 room noise PASS - no tool call. The earlier FAIL (run 38780871548) was S14's claim-bait correction ordering control_climate into S15's window (P60, fixed in 3d6766d); Gemini makes no turn on the noise clip alone (latency_probe 3/3).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S15 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S15 PASS in both, session errors=0, quota_guard=0"]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:44d3528eddb2a3423cab1000692049fb9b06e77efffcfedd1f5a5f4f1c12c8f6
+      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 9fe67c1
     related: [P20]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: NET-RECOVER-001
     capability: reliability
@@ -1472,14 +1711,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: []
     procedure: ["scenario S18 - net:drop, then speak"]
     pass_criteria: ["the next utterance still executes its tool"]
-    evidence: ["2026-09-20: tool=control_climate after the socket was cancelled", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: tool=control_climate after the socket was cancelled", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S18 空调打开 after the socket is cut: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S18 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S18 PASS in both, session errors=0, quota_guard=0"]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:e59356977cea4f13a18443a093c87f8f5612dae7147008e2061d52029babd6fb
+      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 9fe67c1
     related: [P19]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: LIFECYCLE-ERROR-001
     capability: reliability
@@ -1538,14 +1785,22 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: FAIL
     release_blocking: true
     prerequisites: ["device", "Baidu quota"]
     procedure: ["python tools/speech-harness/run_scenarios.py"]
     pass_criteria: ["every scenario passes, exit 0"]
-    evidence: ["2026-09-20: 20/20, exit 0", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20: 20/20, exit 0", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38791103929 at 8d05eb3, ci/voice-evidence runs/run_20261015_1930_8d05eb3: run_scenarios.py S1..S21 23/23 PASS, 3 gemini_live sessions, 0 session errors, quota guard 0.", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): run_scenarios.py S1..S21 23/23 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 voice checks run 38997653201 at 87d5287 (runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), same app code 87d5287, Gemini debug override (gemini-3.1-flash-live-preview): 23/23 PASS in the first run; 21/23 in the second (S1 and S14 FAIL, see CLIMATE-SET-001 and TRUTH-BAIT-001), session errors=0, quota_guard=0. The criterion is every scenario, so FAIL.", "2026-10-17 voice checks run 39005653831 at aee3ff0 (runs/run_20261017_0611_aee3ff0, app code 87d5287): 23/23 PASS. Today 23/23, 21/23, 23/23; status stays FAIL while S1/S14 lose turns (P45)."]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:6b36a67eaf4b44ebfe3e9b47c5e0703e64ee9c630b9f952854549cef6b6a5487
+      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [SPEC-008]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-17, result: FAIL}
 
   - id: ARCH-PROVIDER-001
     capability: architecture
@@ -1610,6 +1865,7 @@ tests:
     evidence:
       - "2026-09-20 before the persona line: 返屋企 2/5, 有啲熱 0/5, music refusal 0/5"
       - "2026-09-20 after: 返屋企 4/5, 有啲熱 1/5, music refusal 5/5; Mandarin 20/20 unchanged"
+      - "2026-10-17 definition change (decider): from today a 有啲熱 success is control_climate OR the stuffy comfort scenario with at least one step done (SPEC-015 FZ-09; DEMO_TRYOUT u_hot accepts a cooling action); drowsy/mosquito still fail. The 2026-09-20 rates (Baidu, before run_scenario existed) are not like-for-like with later ones"
     related: [B-015]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -1624,7 +1880,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["device", "adb"]
     procedure:
@@ -1639,8 +1895,17 @@ tests:
       - "STALE_BIND apk_digest mismatch"
       - "2026-09-20: pm revoke RECORD_AUDIO -> voice start returns MicPermissionMissing, wake logs wake_permission_failure, no crash, nothing claims to be listening"
       - "permission restored afterwards and re-verified granted=true"
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:ea0c12924c4dcb7bb99ef7c520b706ae719a292f9dcbb04ab614bb108e1fb2fc
+      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: cd6d77c
     related: [I-1]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
+    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): RECORD_AUDIO revoked, force-stop, relaunch, debug voice start -> MicPermissionMissing; listening=0, no FATAL; perm_denied.jpg", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): RECORD_AUDIO revoked, voice start -> MicPermissionMissing, mic_missing=1 listening=0 fatal=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): voice start with the microphone revoked -> MicPermissionMissing, mic_missing=1, listening=0, FATAL 0"]
 
   - id: PERM-CAMERA-001
     capability: permissions
@@ -1874,6 +2139,7 @@ tests:
       - "the transcriber rejects any language but zh: `Invalid value: 'yue'. Value must be null or 'zh'` - the vendor's own words"
       - "after a persona sentence: 返屋企 4/5, 有啲熱 1/5, style-of-song refusal 5/5"
       - "Mandarin unaffected: 20/20"
+      - "2026-10-17: the YUE-HOT success definition now also counts the stuffy comfort scenario (cooling); see YUE-RATE-001. Recent GitHub runs (Gemini): YUE-HOT PASS at 2db208c, 87d5287 (control_climate) and cd6d77c (stuffy); YUE-HOME 0/1 in each (exit_navigation_mode or no navigate_to), quarantined pending this decision"
       - "the implicit-comfort phrasing has no keyword for a Mandarin transcriber to anchor on; no further wording will move it"
       - "option C means a new provider integration; the provider-neutral contract (SPEC-007) exists, so it is an adapter, not a rewrite"
     returns: ["which option, and whether the registry should say Mandarin-only"]
@@ -1993,7 +2259,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: false
     prerequisites: ["maps and settings installed"]
     procedure: ["dispatch open_app app=settings", "dispatch open_app app=maps", "dispatch open_app app=music"]
@@ -2004,8 +2270,17 @@ tests:
       - "STALE_BIND apk_digest mismatch"
       - "2026-09-20: open_app settings -> Accepted, maps -> Accepted"
       - "an app outside the allow-list is refused: dispatch open_app app=music -> APP_NOT_ALLOWED"
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:3b3d9198d887ad794bc41d3e8093ff77c03000d45dbb3855457b7b76ce450d24
+      registry_digest: sha256:b349474b2e41e9f157fe3ca798484e86a054d41feffa45c38824560a3debac67
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: cd6d77c
     related: []
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
+    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): open_app settings Accepted, maps Accepted; dispatch open_app app=music -> ok=false APP_NOT_ALLOWED", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): open_app settings Accepted, maps Accepted, music -> ok=false APP_NOT_ALLOWED; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): open_app settings and maps Accepted (2/2); open_app music (outside the allow-list) -> ok=false APP_NOT_ALLOWED"]
 
   - id: UNSUPPORTED-001
     capability: unsupported
@@ -2014,7 +2289,7 @@ tests:
     type: scenario
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["speech harness"]
     procedure: ["inject volume_up (音量调大), which this product cannot do"]
@@ -2024,8 +2299,17 @@ tests:
     evidence:
       - "STALE_BIND apk_digest mismatch"
       - "2026-09-20, scenario S20 (音量调大): no tool call at all, and the turn ends honestly"
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:0a82bcc91faa61f3ddf996835fb5826cfe556ea59d36ca1bb2f12645fa41b18c
+      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 9fe67c1
     related: [P21]
-    last_run: {at: 2026-09-20, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
+    evidence: ["2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S20 音量调大 - no tool, honest: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S20 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S20 PASS in both, session errors=0, quota_guard=0"]
 
   - id: CAMERA-RELEASE-001
     capability: vision
@@ -2158,7 +2442,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["debug APK", "live Baidu session", "speech-harness clip or live mic"]
     procedure:
@@ -2176,9 +2460,18 @@ tests:
       - "2026-09-22 device 2391ff70: transcript=你能干啥 → 导航+音乐+空调+地图/设置; TURN_RELEASE reason=capability_help"
       - "2026-09-22 unit: UtteranceIntentResolver + DriverTurn.CAPABILITY_HELP for 你能干啥 (HELP-UNIT-001)"
       - "2026-09-21 device: formal 你能做什么 also passed S21 with help_capabilities clip"
+    evidence_bind:
+      code_digest: sha256:a88c81cf21a87b3cfa9e284757df9892fe115018738bb546bc5e7d36dd3ffedd
+      procedure_digest: sha256:75a7c4772ebe512fa6f0ac16563d43c9193f7db0c9fe2fdfd7ad6c5424666be7
+      registry_digest: sha256:914744477e4406ab905d01c765e493d658763cfb98f80d5043cda7e62c1d10b9
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 9fe67c1
     covers: [speech.capability_help]
     related: [P28]
-    last_run: {at: 2026-09-22, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
+    evidence: ["2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S21 你能干啥 - capability answer: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-15 S21 re-passed at b4259c0 (with the P60 claim-gate change) in GitHub voice run 38787506856, Gemini debug override", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S21 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S21 PASS in both, session errors=0, quota_guard=0"]
 
   - id: HELP-UNIT-001
     capability: dialogue_context
@@ -2209,7 +2502,7 @@ tests:
     type: device
     scope: COMPONENT
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: false
     prerequisites: ["D:\\桌面\\android_doc\\nav_qa_to_shizimen.mp4"]
     procedure:
@@ -2220,8 +2513,17 @@ tests:
       - "STALE_BIND apk_digest mismatch"
       - "artifact:D:/桌面/android_doc/nav_qa_to_shizimen.mp4 size=78483175 bytes at 2026-09-21 10:31"
       - "2026-09-21: 1220x2712 clip; destination list for 十字门 + route picker"
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:5633b46ce1e9a06c94565c581ea053d3e51ab43744df78da7efe5dc8b2827879
+      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [P29, NAV-DRIVE-001, B-022]
-    last_run: {at: 2026-09-21, result: PASS}
+    last_run: {at: 2026-10-16, result: PASS}
+    evidence: ["2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): checks_drive.mp4 (180 s, the embedded Amap navigation UI from route to arrival); also ci/drive-video videos/drive_20261015_1113_557704f.mp4", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): checks_drive.mp4 present (embedded Amap navigation UI drive), fatal=0 anr=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
 
   - id: VOICE-STYLE-001
     capability: speech
@@ -2438,12 +2740,12 @@ tests:
 
   - id: AFFORDANCE-DEVICE-001
     capability: architecture
-    name: Spoken control names act on the phone with no model tool call
+    name: Spoken control names act on the phone through the local path, once, with no model execution
     purpose: "SPEC-010 A7: the local path works end to end on the real transcript, not just in the JVM"
     type: device
     scope: END_TO_END
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: FAIL
     release_blocking: false
     prerequisites: ["test phone over ADB", "build containing SPEC-010 step 4a", "tools/speech-harness"]
     procedure:
@@ -2451,13 +2753,28 @@ tests:
       - "read the debug log for each"
     pass_criteria:
       - "affordance_match id=<id> for each, and screen_action=voice_<id> ok=true"
-      - "no tool= line from the model for the same capability in that turn"
+      - "no executed model call for the same capability in that turn: any model `tool=<same tool>` line is `result=DUPLICATE_IN_TURN` (SPEC-010 B4); a run where the model's call executed first does not prove A7"
       - "no transcript or place name in the log"
-      - "no spoken reply contradicting the local success (e.g. 没有成功) when the model's own call is refused DUPLICATE_IN_TURN, and no reply at all when cancelCurrentResponse ran before a response existed"
+      - "nothing released to the driver in that turn (no `TURN_RELEASE … events>=1`, no `gemini_correction_sent`): success is silent (B5), so a refused model call is never followed by a contradicting reply such as 没有成功"
     terminal_success: [music_stopped, climate_toggled, map_recentred]
-    evidence: []
+    terminal_observed: [music_stopped, climate_toggled, map_recentred]
+    failure_observed: [model_called_control_climate_after_local_action]
+    evidence: ["2026-10-16 GitHub emulator API 34 (arm64 app), Gemini debug override, voice checks run 38835222165 at 66de495 (ci/voice-evidence runs/run_20261016_0226_66de495): AFF-PAUSE 1/1, AFF-RECENTER 1/1, AFF-AC 0/1 - spoken 「空调」 alone reached the model, which called control_climate (forbidden by the row)", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): device.txt AFF-PAUSE 1/1, AFF-AC 1/1, AFF-RECENTER 1/1, guard=0. The earlier AFF-AC 0/1 (run 38835222165) was a race: the model's tool call arrived before the transcript; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 voice checks run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287): AFF-PAUSE 1/1, AFF-RECENTER 1/1, AFF-AC 0/1 again (forbidden /^tool=control_climate/ matched). AFF-AC is now 1/3 over three runs. Correction: the race explanation above does not fit the evidence - in both failures the expected affordance_match and screen_action lines were present, so the local path ran first; a model call that arrived first would have logged affordance_skip reason=claimed instead. Root cause unknown. Candidates: (a) the model's call was refused DUPLICATE_IN_TURN after the local action (one toggle, but the row forbids any model call), (b) the model sent a different action (e.g. power_on while the local path ran power_off), which claimCapability keys separately, so the AC would toggle twice, (c) the call landed in another epoch. The device-row failure summary hid the tool line's result; scripts/github_voice_checks.sh now writes a text-free log skeleton per failing scenario for every suite, so the next voice run tells (a), (b) and (c) apart.", "2026-10-17 voice checks run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c, device_skeletons.txt, the first run with per-suite skeletons): AFF-AC 0/1 again, and the skeleton answers the open question - candidate (a). Order: gemini_tool_call control_climate arrives BEFORE the transcript; affordance_match id=climate and screen_action=voice_climate ok=true (the local path runs once); the model's call is then dispatched and refused `tool=control_climate args=[action] result=DUPLICATE_IN_TURN`; TURN_DROP reason=unproven_action_claim drops her reply. One execution, no contradicting reply. The row fails only because its forbid /^tool=control_climate/ also matches the refused line. Whether the oracle should forbid only an executed model call is with the decider (test-oracle vs SPEC-010 A7 wording); status stays FAIL until that is settled.", "2026-10-17 oracle corrected (decided by the decider, Opus 5.5 xhigh): AFF-AC now forbids an EXECUTED model control_climate (`^tool=control_climate (?!.*result=DUPLICATE_IN_TURN)`), `gemini_correction_sent` and `TURN_RELEASE events>=1`, and expects affordance_match id=climate plus screen_action=voice_climate ok=true. Replayed on the cd6d77c skeleton: expects match, no forbid fires; synthetic executed call / released reply trip it. Correction to the earlier note: a call that is logged first (gemini_tool_call before affordance_match) can still claim second, because Gemini calls reach the event flow unheld and are dispatched later. Not re-graded: status stays FAIL until a fresh [voice] run under the new oracle.", "2026-10-17 voice checks run 39005653831 at aee3ff0 (runs/run_20261017_0611_aee3ff0, app code 87d5287), first run under the corrected oracle: AFF-AC FAIL, and this time a real defect (OPEN_PROBLEMS P67). Skeleton: gemini_tool_call control_climate, affordance_match id=climate, screen_action=voice_climate ok=true, then the model's call EXECUTED `tool=control_climate args=[action] result=✓` (not DUPLICATE_IN_TURN) and her reply was spoken (spoke=true). Because claimCapability keys on tool+action, a model action different from the local one (e.g. power_off after the local power_on) is a second claim, so the AC was operated twice in one turn - against SPEC-010 B4 'one execution per turn'."]
+    acceptance:
+      - {criterion: music_stopped, required: true, observed: true, evidence: "log:NovaVoice/AFF-PAUSE 1/1 (voice checks run 38891890665 device.txt at 2db208c)"}
+      - {criterion: map_recentred, required: true, observed: true, evidence: "log:NovaVoice/AFF-RECENTER 1/1 (voice checks run 38891890665 device.txt at 2db208c)"}
+      - {criterion: climate_toggled_once_by_local_path, required: true, observed: false, evidence: "AFF-AC 1/3 over runs 38835222165 (0/1), 38891890665 (1/1), 38997653201 (0/1): the model also called control_climate in 2 of 3 runs; root cause unknown (see evidence)"}
+    ended_by: natural
+    evidence_bind:
+      code_digest: sha256:8c483964f961ffaa5c2cd73703fa25fb8b473f63ae4fddee55665724499552a2
+      procedure_digest: sha256:cfebb0f8b25cef30de9656b5e4ee6596c8d6ea4f6c7f9fe4b94fc69eff3e07d9
+      registry_digest: sha256:326bf4c018faf7b90b1def460567d8a610c5411ab92e599e53c38cd2fcc1f4a8
+      harness_digest: sha256:fdae3804b8813f04de9d6f06fe7a42921fe0afc752b376082c735442bd672a71
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: c55a140
     related: [SPEC-010, B-024]
-    last_run: {at: null, result: null}
+    last_run: {at: 2026-10-17, result: FAIL}
 
 # ---- live info (SPEC-011) ------------------------------------------------------------------
 
@@ -2506,14 +2823,28 @@ tests:
     type: device
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
     prerequisites: ["test phone over ADB", "build 2cd2546 or later", "speech harness clips for weather, route_traffic, along_route, place_details"]
     procedure: ["inject each kind's clip 10 times through the speech harness", "count tool=query_live_info kind=<kind> lines per clip"]
     pass_criteria: ["each kind selected with the right kind >= 9/10", "no coordinate, address or transcript in the log"]
-    evidence: []
+    evidence: ["2026-10-16 GitHub emulator, Gemini debug override, run 38835222165 at 66de495 (runs/run_20261016_0226_66de495 liveinfo.txt): weather 10/10, route_traffic 10/10, along_route 10/10, place_details 7/10 (3 runs: no query_live_info call)", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): liveinfo.txt weather 10/10, place_details 6/10 (FLAKY), route_traffic 10/10, along_route 10/10; still FAIL on place_details", "2026-10-17 diagnosis: the place_details clip said 万达广场几点关门, a named-place lookup SPEC-011 does not offer (target is destination or a list position); the 4/10 misses made no call, which is correct for an unsupported request. Clip changed to the specified use 目的地几点关门 (make_speech.py); re-measure on the next voice-checks run. A named-place hours lookup is a capability gap, not claimed.", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287, verdict.json from ci_verdict.py): liveinfo.txt LI-WEATHER 10/10, LI-PLACE 10/10 (clip 目的地几点关门), LI-TRAFFIC 10/10, LI-ALONG 10/10, quota guard 0; the evidence is ids and counts only (no transcript, coordinate or address)"]
+    acceptance:
+      - {criterion: weather_kind, required: true, observed: true, evidence: "log:NovaVoice/tool=query_live_info kind=weather LI-WEATHER 10/10 (voice checks run 38997653201 liveinfo.txt at 87d5287) (also 10/10 in run 38835222165)"}
+      - {criterion: route_traffic_kind, required: true, observed: true, evidence: "log:NovaVoice/tool=query_live_info kind=route_traffic LI-TRAFFIC 10/10 (voice checks run 38997653201 liveinfo.txt at 87d5287) (also 10/10 in run 38835222165)"}
+      - {criterion: along_route_kind, required: true, observed: true, evidence: "log:NovaVoice/tool=query_live_info kind=along_route LI-ALONG 10/10 (voice checks run 38997653201 liveinfo.txt at 87d5287) (also 10/10 in run 38835222165)"}
+      - {criterion: place_details_kind, required: true, observed: true, evidence: "log:NovaVoice/tool=query_live_info kind=place_details LI-PLACE 10/10 (voice checks run 38997653201 liveinfo.txt at 87d5287) with the specified target (目的地几点关门); earlier 7/10 and 6/10 used an unsupported named-place clip"}
+    ended_by: natural
+    evidence_bind:
+      code_digest: sha256:e3c779118cd3d65578f127c75ee69fe4814d5e15502eaee587753f68d662eef7
+      procedure_digest: sha256:45ff659d8ba325a7473c9235975ef9547c9fb6329271e49ba2c723f1163dc9ee
+      registry_digest: sha256:d8f193b538971ea1d5458e34419a2b5f1fc11aa1ccc0c5a174147fffbd36d69c
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 87d5287
     related: [SPEC-011]
-    last_run: {at: null, result: null}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: LIVE-INFO-L6-001
     capability: live_info
@@ -2749,15 +3080,23 @@ tests:
     type: text_live
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: NOT_RUN
+    status: PASS
     release_blocking: true
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:382c31bd299d3f0b6b576db1aff7827fc5197e4f049f3352023f5665b3833779
+      registry_digest: sha256:6ac5cdbd9df4d89a845e9b4284c40c70f61fe64a27100c9f1f75faf0c55ec82f
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 651f772
     covers: [comfort.scenario, body.window, body.seat_height, speech.speaking_style]
     prerequisites: ["GEMINI_API_KEY in the environment (default provider, ADR-013)", "text turns through the app's own Gemini client"]
     procedure: ["send each FZ phrase as a text turn in its stated context", "record the first tool call and arguments"]
     pass_criteria: [">= 17/19 phrases produce the expected call (or the expected refusal/clarification)", "FZ-15…FZ-19 (styles) all correct"]
-    evidence: ["2026-10-01 cloud, gemini-3.8-live, after adding 傲娇/温柔/元气: FUZZY 18/19 — FZ-15 傲娇一点 and FZ-16 說話傲嬌一點 -> tsundere, FZ-17 gentle, FZ-18 lively, FZ-19 霸道 no call; FZ-14 still the only model-layer MISS (held at the dispatcher). MUSIC 10/10, MUSIC_CONTROL 1/1", "2026-10-01 re-run after the FZ-14 wording fix (refusal carries options): GeminiTextLiveMappingTest FUZZY 13/14, same calls as before; FZ-14 still MISS at the model layer (control_climate guess) and held at the dispatcher with AMBIGUOUS_REFERENT + options (ToolCallGuardBodyReferentTest, FalseCapabilityClaimTest)", "2026-10-01 cloud, gemini-3.8-live, GeminiTextLiveMappingTest (opt-in NOVA_GEMINI_TEXT_LIVE=1; fresh session per phrase; context rows send setup turns answered with simulated ok): 13/14. FZ-01 run_scenario{mosquito}; FZ-02 run_scenario{mosquito_done}; FZ-03 control_seat{adjust_height,-1}; FZ-04 {adjust_height,1}; FZ-05 {adjust_height,-1}; FZ-06 control_window{set,50} (window omitted = all); FZ-07 control_window{adjust,driver,20}; FZ-08 control_window{close,all}; FZ-09 run_scenario{stuffy}; FZ-10 run_scenario{drowsy}; FZ-11 set_speaking_style{sweet}; FZ-12 set_speaking_style{default}; FZ-13 no call; FZ-14 MISS - after seat and temperature changes 再低一点 -> control_climate{adjust_temperature,-1} instead of a clarifying question (model-layer result only)", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-10-01 cloud, gemini-3.8-live, after adding 傲娇/温柔/元气: FUZZY 18/19 — FZ-15 傲娇一点 and FZ-16 說話傲嬌一點 -> tsundere, FZ-17 gentle, FZ-18 lively, FZ-19 霸道 no call; FZ-14 still the only model-layer MISS (held at the dispatcher). MUSIC 10/10, MUSIC_CONTROL 1/1", "2026-10-01 re-run after the FZ-14 wording fix (refusal carries options): GeminiTextLiveMappingTest FUZZY 13/14, same calls as before; FZ-14 still MISS at the model layer (control_climate guess) and held at the dispatcher with AMBIGUOUS_REFERENT + options (ToolCallGuardBodyReferentTest, FalseCapabilityClaimTest)", "2026-10-01 cloud, gemini-3.8-live, GeminiTextLiveMappingTest (opt-in NOVA_GEMINI_TEXT_LIVE=1; fresh session per phrase; context rows send setup turns answered with simulated ok): 13/14. FZ-01 run_scenario{mosquito}; FZ-02 run_scenario{mosquito_done}; FZ-03 control_seat{adjust_height,-1}; FZ-04 {adjust_height,1}; FZ-05 {adjust_height,-1}; FZ-06 control_window{set,50} (window omitted = all); FZ-07 control_window{adjust,driver,20}; FZ-08 control_window{close,all}; FZ-09 run_scenario{stuffy}; FZ-10 run_scenario{drowsy}; FZ-11 set_speaking_style{sweet}; FZ-12 set_speaking_style{default}; FZ-13 no call; FZ-14 MISS - after seat and temperature changes 再低一点 -> control_climate{adjust_temperature,-1} instead of a clarifying question (model-layer result only)", "STALE_BIND apk_digest mismatch", "2026-10-15 cloud, gemini-3.1-flash-live-preview (oldest model first), GeminiTextLiveMappingTest NOVA_GEMINI_TEXT_LIVE=1 at b8fa1f0+: FUZZY 17/19, styles FZ-15..FZ-19 5/5. Misses are held by the dispatcher: FZ-13 打开天窗 -> control_window{open,all}, refused by ToolCallGuards.sunroofOnWindowTool (P56); FZ-14 再低一点 after seat+temperature -> control_climate guess, held by AMBIGUOUS_REFERENT. FZ-07 我这边 -> window=driver.", "2026-10-17 cloud, GeminiTextLiveMappingTest at 651f772 (app code = 87d5287), gemini-3.8-live (the test's default TEXT_LIVE model, as in the earlier evidence; free tier), fresh session per phrase, app client + catalog + default persona: FUZZY 18/19 - FZ-14 the only MISS (control_climate adjust_temperature -1 instead of a clarification; held at the dispatcher as before), FZ-15..FZ-19 styles all correct; JUnit xml:TEST-com.novadrive.app.voice.GeminiTextLiveMappingTest.xml#tests=1,failures=0; table app/build/text-live/results.txt (ids, tool names, arguments only)"]
     related: [SPEC-015]
-    last_run: {at: 2026-10-01, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: FUZZY-DEVICE-001
     capability: comfort
@@ -2879,14 +3218,14 @@ tests:
       harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
       artifact_digests: {}
       apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: fe25791
+      bound_commit: 02d9ab7
     covers: []
     prerequisites: ["GEMINI_API_KEY (free tier) - Gemini first, Ayano last (AGENTS.md 2026-10-13)", "AMAP_WEB_KEY (prefetch of 横琴镇/长隆海洋王国/加油站)", "u_* clips: PIPER_MODEL=... python3 tools/demo/live/make_clips_cloud.py tryout"]
     procedure: ["NOVA_LIVE_DEMO=1 NOVA_LIVE_PROVIDER=gemini NOVA_LIVE_SCENES=tryout NOVA_LIVE_OUT=RUN ./gradlew --offline :app:testDebugUnitTest --tests '*LiveDemoRun*'", "python3 tools/demo/live/tryout_check.py RUN", "python3 tools/demo/live/render.py RUN RUN.mp4"]
     pass_criteria: ["tryout_check.py RESULT PASS: every line's expectation in docs/DEMO_TRYOUT.md (tool, honest refusal, no unproven claim, barge-in stop <= 1.0 s, chat <= 3.0 s, tool lines <= 3.5 s, any reply <= 5.0 s, no session error)"]
-    evidence: ["2026-10-13 cloud JVM harness, gemini-3.1-flash-live-preview (Gemini's own voice, not Ayano), real Amap search: run 1 FAIL u_gas (said 没在导航; fixed P54) and u_cancel 11.3 s; run 2 18/19 (u_can 3.4 s); run 3 after P55 18/19 - u_sunroof opened all four windows (P56); run 4 at d160a3e (P56 fix) 19/19 after the goodbye rule (u_bye may call end_conversation, fe25791): every reply 1.5-3.0 s, u_sunroof refused with no tool, 0/19 transcripts spaced reaching the app (TranscriptText), u_window/u_temp/u_hot classified ACTION (were CONVERSATION on spaced 3.1 transcripts). JVM harness, simulated car - not device evidence", "2026-10-13 grader tightened (u_window: no other window may move): run 4 FAILS u_window - 「把我这边的窗户开一点」 was called with window=all and opened all four windows 20 % (runs 1-3: window=driver). OPEN_PROBLEMS P57; fix being decided, then one Gemini re-run"]
-    related: [P54, P55, P56, DEMO-COMMUTE-001, SPEC-006, SPEC-015]
-    last_run: {at: 2026-10-13, result: FAIL}
+    evidence: ["2026-10-13 cloud JVM harness, gemini-3.1-flash-live-preview (Gemini's own voice, not Ayano), real Amap search: run 1 FAIL u_gas (said 没在导航; fixed P54) and u_cancel 11.3 s; run 2 18/19 (u_can 3.4 s); run 3 after P55 18/19 - u_sunroof opened all four windows (P56); run 4 at d160a3e (P56 fix) 19/19 after the goodbye rule (u_bye may call end_conversation, fe25791): every reply 1.5-3.0 s, u_sunroof refused with no tool, 0/19 transcripts spaced reaching the app (TranscriptText), u_window/u_temp/u_hot classified ACTION (were CONVERSATION on spaced 3.1 transcripts). JVM harness, simulated car - not device evidence", "2026-10-13 grader tightened (u_window: no other window may move): run 4 FAILS u_window - 「把我这边的窗户开一点」 was called with window=all and opened all four windows 20 % (runs 1-3: window=driver). OPEN_PROBLEMS P57", "2026-10-13 JVM: ToolCallGuards.driverSideWindow rewrites that call to window=driver before the handler (ToolCallGuardDriverWindowTest). DEMO-TRYOUT-001 stays FAIL until one Gemini re-run", "2026-10-13 one Gemini tryout after the rewrite (JVM harness, simulated car, not device evidence): tryout_check RESULT FAIL u_dest, u_pick2, u_go, u_eta, u_bye. u_window PASS at 2.2 s, control_window adjust window=driver, no other window moved. u_dest/u_pick2/u_go/u_eta: prefetch count=0; a place/text call returned INVALID_USER_KEY infocode 10001. u_bye 5.7 s (limit 3.0). No second live run.", "2026-10-14 cloud JVM harness, gemini-3.1-flash-live-preview, simulated car, not device evidence: tryout_check RESULT PASS 19/19. u_window PASS, control_window window=driver, no other window moved. Place search prefetched count=5. u_can 1.5 s (played from the first clause; the previous take held it until generationComplete, 6.9 s). u_pick2 2.4 s choose_navigation_option. u_barge 1.7 s and her audio stopped within 1 s; no TURN_DROP. The Amap web key is trimmed before it is sent. A reply that only mentions 导航 is not a car-action claim.", "2026-10-14 same harness, after the default persona was limited to one result sentence and the grader rejects an attitude clause: tryout_check RESULT PASS 19/19. u_hot is the climate result only. u_barge stopped playback within 1 s and added no follow-up sentence. Not device evidence.", "2026-10-15 claude/10-15 at 76bbc8e (Cursor branch merged + review fixes: only window=all narrowed to driver, 导航+destination is a claim again), same harness, gemini-3.1-flash-live-preview (Gemini voice, not Ayano): tryout_check RESULT PASS 19/19, no WARN, every reply 1.7-3.0 s, 0 TURN_DROP. u_window control_window -> windows 左前20% 右前0% 左后0% 右后0%; u_sunroof UNSUPPORTED_BODY_PART, no window moved. Video demo-videos/tryout_gemini_2026-10-15.mp4. Simulated car, not device evidence.", "2026-10-15 final take at ca1374d (after P47 gate fix, debug Gemini override), gemini-3.1-flash-live-preview, simulated car: tryout_check RESULT FAIL 17/19 on time only - u_gas 4.1 s (limit 3.5) and u_music 9.9 s (limit 5.0). Both tools ran at +3.1 s after the line started, the same moment as the 2026-10-15 PASS take; the extra time is Gemini's reply after the tool result while the claim gate holds it (P48 / owner choice 3). No re-run to chase variance (AGENTS.md). Every other line PASS: u_window front-left only, u_sunroof refused, 0 drops. Video demo-videos/tryout_gemini_final_2026-10-15.mp4 (Gemini's voice, not Ayano).", "2026-10-16 at 02d9ab7 (after P47, P60 and the debug override), gemini-3.1-flash-live-preview, simulated car (JVM harness, not device evidence): tryout_check RESULT PASS 19/19, no WARN, replies 1.5-4.1 s. Video demo-videos/tryout_gemini_final_2026-10-15.mp4 replaced with this take (Gemini's voice, not Ayano).", "2026-10-17 at 323fc29 (app code = 87d5287; includes the vague-exit change 7607122), cloud JVM harness, gemini-3.1-flash-live-preview (Gemini's voice, not Ayano), real Amap prefetch count=5, simulated car, not device evidence: tryout_check RESULT FAIL 15/19. u_temp no turn at all (Gemini ACTIVITY_START/END after audioStreamEnd, then nothing for 19 s; OPEN_PROBLEMS P45 addendum 3); u_mumble called set_speech_output and it ran (OPEN_PROBLEMS P66); u_call 5.1 s (limit 5.0); u_bye 5.7 s (limit 3.0; also 5.7 s on 2026-10-13). Every other line PASS: u_window and u_sunroof as before, u_barge stopped, 1.8-3.6 s. One run, no re-run to chase variance (AGENTS.md)."]
+    related: [P54, P55, P56, P66, DEMO-COMMUTE-001, SPEC-006, SPEC-015]
+    last_run: {at: 2026-10-17, result: FAIL}
 
   - id: DEMO-AMAP-LIVE-001
     capability: navigation
@@ -2901,17 +3240,17 @@ tests:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:1ba5ea16295cee8cf04137c83cb3dbbef2a7730be916c0f8e720f95ae2e6642b
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
-      harness_digest: sha256:9e135ebc96abedba5dfbfe1ec2308f0a0c20196cc2c6722972bcdc68ea270c2a
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
-      apk_digest: sha256:001013d159200e9f5af1491efd3f3085ecf6fa3fefa8eaf630cdd53412011ade
-      bound_commit: fe25791
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 651f772
     covers: []
     prerequisites: ["AMAP_WEB_KEY in the environment (free Amap Web API; no voice model)"]
     procedure: ["NOVA_LIVE_AMAP=1 ./gradlew :app:testDebugUnitTest --tests '*DemoCommuteAmapLiveTest'"]
     pass_criteria: ["LiveDestinationCandidateSource.resolve(横琴镇) at the origin: first result has 横琴 in its name and is >= 1700 m away (route >= straight line; c3-c5 need ~150 s = 1.7 km at 40 km/h)", "regeo + weatherNow at the origin both Ok"]
-    evidence: ["2026-10-12 cloud: with sortrule=distance FAIL (第一个 = 632 m, the origin 横琴澳门青年创业谷; Amap driving route 26 m); with sortrule=weight PASS 2/2 (横琴镇人民政府 2533 m from the WGS point)", "2026-10-12 after GCJ-SEARCH (GCJ origin) and the warm-up retry: PASS 2/2 in the full suite, 横琴镇人民政府 2045 m straight line (floor 1.7 km), route 2855 m = 257 s at 40 km/h; real warm-up district + weather ok", "2026-10-13 cloud at fe25791 (after P55/P56 app changes; rebind): DemoCommuteAmapLiveTest 2/0 (JUnit XML, not skipped)"]
+    evidence: ["2026-10-12 cloud: with sortrule=distance FAIL (第一个 = 632 m, the origin 横琴澳门青年创业谷; Amap driving route 26 m); with sortrule=weight PASS 2/2 (横琴镇人民政府 2533 m from the WGS point)", "2026-10-12 after GCJ-SEARCH (GCJ origin) and the warm-up retry: PASS 2/2 in the full suite, 横琴镇人民政府 2045 m straight line (floor 1.7 km), route 2855 m = 257 s at 40 km/h; real warm-up district + weather ok", "2026-10-13 cloud at fe25791 (after P55/P56 app changes; rebind): DemoCommuteAmapLiveTest 2/0 (JUnit XML, not skipped)", "2026-10-17 cloud, NOVA_LIVE_AMAP=1 DemoCommuteAmapLiveTest at 651f772 (app code = 87d5287), owner's Amap web key (never logged), no voice model: 2/2 PASS - 横琴镇 first result 横琴镇人民政府 2045 m (>= 1700 m), weather ok=true; JUnit xml:TEST-com.novadrive.app.livedemo.DemoCommuteAmapLiveTest.xml#tests=2,failures=0"]
     related: [P51, DEMO-COMMUTE-001, SPEC-005, SPEC-011]
-    last_run: {at: 2026-10-13, result: PASS}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: DEVUI-EMU-001
     capability: speech
@@ -2970,7 +3309,7 @@ tests:
     procedure: ["listen to ayano_voice_sample_35plus.wav (branch claude/commute-demo-video)"]
     pass_criteria: ["the clone preferred to Maia, or the reason it is not"]
     returns: ["yes/no, one sentence of impression"]
-    evidence: ["2026-10-12 cloud: clip 15.3 s 24 kHz mono speech (offline check ok); clone_voice.py create -> one Ayano voice per model (3.5 Plus, 3.8 Flash; free enrollment quota); owner-approved qwen_probe say on qwen3.5-omni-plus-realtime, 8 one-line text sessions, no tools: 8/8 verbatim, no errors, first audio 1.3-3.7 s; sample pushed for the owner's ear. Default switched to Ayano in QwenAppSettings.DEFAULT_CUSTOM_VOICES"]
+    evidence: ["2026-10-12 cloud: clip 15.3 s 24 kHz mono speech (offline check ok); clone_voice.py create -> one Ayano voice per model (3.5 Plus, 3.8 Flash; free enrollment quota); owner-approved qwen_probe say on qwen3.5-omni-plus-realtime, 8 one-line text sessions, no tools: 8/8 verbatim, no errors, first audio 1.3-3.7 s; sample pushed for the owner's ear. Default switched to Ayano in QwenAppSettings.DEFAULT_CUSTOM_VOICES", "2026-10-15 owner, in chat: 「ayano is good」 - recorded as the owner's verdict that the clone is preferred to Maia; the status stays HUMAN_REQUIRED until it is entered with an acceptance row at the Ayano stage. Further Ayano takes wait for the Qwen quota and the owner's go (AGENTS.md: Gemini first, Ayano last)"]
     related: [ADR-017, B-034, QWEN-VOICE-EAR-001]
     last_run: {at: null, result: null}
 
@@ -3011,9 +3350,63 @@ tests:
     prerequisites: ["KVM-capable host with an ARM-translation emulator image (the owner's PC)", "this build with the developer toggle 「助手播报导航」 on", "Gemini key", "route 横琴创业谷 → 励骏庞都 only (owner test-run policy)"]
     procedure: ["simulated drive of the short route", "collect guidance_route / guidance_claim / guidance_fidelity / nav_guidance_fallback_tts lines", "repeat once with the network cut mid-route"]
     pass_criteria: ["every G-1…G-1f question answered with numbers", "G-1b: if playTTS is silent with the inner voice off, stop and escalate (ADR-014 fallback cannot be met)"]
-    evidence: []
+    evidence: ["measurements only, no verdict yet (G-1b audibility, G-1c, G-1d and the network-cut repeat remain) - 2026-10-16 GitHub emulator API 34 (arm64 app under translation), Gemini gemini-3.1-flash-live-preview via the debug override, relay on with a 3000 ms measurement deadline, route to 十字门 (not the owner's short route: the GitHub origin is fixed). Run 38843628215 at e9f8535: echo loop found (G-1f: onGetNavigationText also reports our own playTTS) - 242 routes, 197 fallbacks. Run 38847890114 at 128494c (ci/nav-demo runs/run_20261016_0416_128494c): 23 prompts sent and claimed by the assistant, G-1 text->played audio 626-1371 ms (median 754 ms, 1 of 23 over the 1200 ms default), G-1e fidelity 23/23 MATCH; 18 to Amap (15 NOT_ACTIVE after a 1008 close, 1 DRIVER_SPEAKING, 1 RESPONSE_OPEN, 1 SEND_FAILED); G-1b+ playTTS with inner voice off fired no TTSPlayListener start (nav_guidance_play_start 0). Not answered: G-1b audibility of playTTS with the inner voice off (emulator -no-audio), G-1c, G-1d, the network-cut repeat"]
     related: [SPEC-018, ADR-014]
     last_run: {at: null, result: null}
+
+  - id: NAV-OVERSPEED-001
+    capability: navigation
+    name: Spoken over-speed warning with the guidance toggle off (the shipped path)
+    purpose: "P63 (owner test 10-16): over a known limit, 「您已超速，限速N公里」 is said in Amap's voice once Amap is quiet, with the mic gated while it plays"
+    type: device
+    scope: INTERMEDIATE_FLOW
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    evidence_bind:
+      code_digest: sha256:afccf2c1e5ecb56c65f3a450c5d050f154e871cf784db67844c2d9734ccebc3c
+      procedure_digest: sha256:2e6fb340d8948ea7e78c9d5f7e14c92ac2484f3f3a6e2605d1c10dfc54b1373c
+      registry_digest: sha256:1c41a5dbc8b33cd05cc1947bdca1f414ee7fd0e9279badf13c434385ef2867bd
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: db18066
+    covers: [navigation.speed_hud]
+    prerequisites: ["emulator with this build, relay toggle off (default)", "route with a speed-limit camera (十字门 from the emulator origin)"]
+    procedure: ["nav_route 十字门, start the emulator drive", "nav_speed 90 once moving", "drive past the limit camera", "read the NovaVoice log"]
+    pass_criteria: ["nav_overspeed_alert limitKmh=<N> at the first over=1", "nav_alert_queued to=amap", "guidance_route to=amap reason=DISABLED, then nav_guidance_fallback_tts accepted=true", "nav_guidance_play_start for the alert, or the relay bracket, with session_diag guidanceGated=true while it plays", "no alert after nav_stopped", "no nav_alert_dropped reason=not_navigating while navigation is active", "Amap's own manoeuvre prompt right after an alert still plays (nav_guidance_play_start)", "no coordinate, address or transcript in the log"]
+    evidence: ["2026-10-16: not covered by nav demo e9f8535/its fix - that run has the relay ON; the shipped relay-off path needs its own run (reviewer R4)", "2026-10-16 piece check, device checks run 38863113123 at 3884acf (ci/device-evidence runs/run_20261016_0710_3884acf): relay off, 50 km/h drive, debug speak_alert 60 through the real speak path -> nav_alert_queued to=amap, guidance_route to=amap reason=DISABLED, nav_guidance_fallback_tts accepted=true, speech_arbiter out=uplink decision=CLOSED (mic gated); after nav_stop -> nav_alert_dropped reason=not_navigating. Not yet shown: the HUD trigger at a real camera with the relay off (JVM: OverspeedAlertTest), audibility (NAV-OVERSPEED-DEVICE-001)", "2026-10-16 warm test worker, run 327f8f6 (ci/test-worker runs/20261016_1110_327f8f6_navpiece): relay off, debug nav_route 珠海站, emulator 120 km/h - limitKmh=70, over=1, nav_overspeed_alert 1, nav_alert_queued to=amap, guidance_route to=amap reason=DISABLED, nav_guidance_fallback_tts accepted=true, speech_arbiter uplink CLOSED 1; earlier piece 38863113123: dropped after nav_stop (reason=not_navigating)", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): PIECE P63 speak path: nav_alert_queued to=amap, guidance_route reason=DISABLED, nav_guidance_fallback_tts accepted=true, speech_arbiter decision=CLOSED; after stop nav_alert_dropped reason=not_navigating; overspeed alert itself from warm worker run 327f8f6; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34, nav piece run 39002431979 at 323fc29 (app code = 87d5287; [navpiece], speedoff: relay off, Amap voice, no voice model; verdict from ci_verdict.py suite navpiece PASS): limits=limitKmh=60, over=1, nav_overspeed_alert x1, nav_alert_queued to=amap x1, guidance_route to=amap reason=DISABLED x1, nav_guidance_fallback_tts accepted=true x1, nav_guidance_play_start x15 (Amap prompts kept playing), speech_arbiter uplink CLOSED x1; after stop: device checks run 38997655759 P63 nav_alert_dropped reason=not_navigating"]
+    acceptance:
+      - {criterion: alert_at_known_limit, required: true, observed: true, evidence: "log:NovaVoice/nav_overspeed_alert limitKmh=60, alerts=1 (nav piece run 39002431979 at 323fc29); earlier limitKmh=70 (run 327f8f6)"}
+      - {criterion: queued_to_amap_relay_off, required: true, observed: true, evidence: "log:NovaVoice/nav_alert_queued to=amap x1 + guidance_route to=amap reason=DISABLED (nav piece run 39002431979)"}
+      - {criterion: spoken_by_amap_fallback, required: true, observed: true, evidence: "log:NovaVoice/nav_guidance_fallback_tts accepted=true x1 (nav piece run 39002431979)"}
+      - {criterion: mic_gated_while_playing, required: true, observed: true, evidence: "log:NovaVoice/speech_arbiter out=uplink decision=CLOSED x1 (nav piece run 39002431979)"}
+      - {criterion: no_alert_after_stop, required: true, observed: true, evidence: "log:NovaVoice/nav_alert_dropped reason=not_navigating after stop (device checks run 38997655759 at 87d5287, PIECE P63)"}
+    ended_by: manual
+    related: [P63, SPEC-018, NAV-MID-ROUTE-001]
+    last_run: {at: 2026-10-17, result: PASS}
+
+  - id: NAV-OVERSPEED-DEVICE-001
+    capability: navigation
+    name: The over-speed warning is heard in the car
+    purpose: "P63: what the driver hears - the emulator has no audio, so whether the warning is audible over road noise is a person's check"
+    type: device
+    scope: END_TO_END
+    owner: HUMAN_PHYSICAL
+    status: HUMAN_REQUIRED
+    automation_blocker: physical_world
+    release_blocking: false
+    terminal_success: [warning_heard_once_per_limit]
+    autonomous_evidence: ["NAV-OVERSPEED-001", "OverspeedAlertTest", "GuidanceRelayTest alert-queue tests"]
+    remaining_uncertainty: ["whether Amap's native engine speaks a forced custom TTS right after its own camera prompt", "loudness over road noise"]
+    covers: [navigation.speed_hud]
+    human_reason: "Needs a person in a moving car past a speed camera, listening"
+    prerequisites: ["phone with this build", "a road with a speed camera"]
+    procedure: ["drive past a speed camera above its limit (as a passenger with a simulated drive is acceptable)", "listen"]
+    pass_criteria: ["「您已超速，限速N公里」 heard once per camera", "not spoken over Amap's own sentence"]
+    returns: ["heard yes/no, over Amap yes/no"]
+    evidence: []
+    related: [P63]
 
   - id: GUIDANCE-DEVICE-001
     capability: navigation

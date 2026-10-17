@@ -64,6 +64,7 @@ Qwen-Omni Realtime, from Alibaba Model Studio, is end to end. It hears the drive
   - navigation guidance is spoken by Maia through a verbatim prompt once Qwen is shown to accept text (Q-1).
 - **Until the guidance prompt exists**, Amap's voice speaks guidance (ADR-014's fallback). That is the one remaining second voice, and it is tracked in SPEC-021.
 - Deleting the Gemini + Azure path still waits for Q-5 and the owner's confirmation (ADR-008).
+- **2026-10-15, decided by the decider, implementing the owner's 2026-10-13 "Gemini first, Ayano last":** debug builds may select Gemini through an in-memory `DebugToolReceiver` override (`DebugProviderOverride`, read by `VoiceProviderChoice.resolveForSession` only when the app is debuggable) for tests and demos; release and the product session are unchanged; removed with the Gemini stack at Q-5.
 
 **Correction (2026-10-09, from the official docs, before Q-1):**
 - `qwen3.8-omni-flash-realtime` is served only from the *workspace* endpoint: `wss://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/api-ws/v1/realtime`. `dashscope-intl.aliyuncs.com` does not serve it.

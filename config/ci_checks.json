@@ -1,0 +1,41 @@
+{
+  "_doc": "CI check manifest read by scripts/ci_verdict.py. Each suite lists required and optional check ids (a trailing * is a prefix wildcard that must match at least one result). A required check passes only on PASS; FAIL, FLAKY, SKIPPED or a missing result fail the job, BLOCKED blocks it. Quarantine entries need all of id, suite, reason, owner, tracking, remove_when, expires (YYYY-MM-DD, at most 30 days ahead); they only cover measured FAIL/FLAKY results, and an expired entry makes the manifest invalid.",
+  "suites": {
+    "tier-a-gates": {
+      "description": "Tier A gates: CI verdict selftest, script tests, delegation and review audit, review-hook selftest, test matrix structural validation (required); evidence-bind currency is optional here and enforced by Tier C --release.",
+      "required": ["ci:verdict-selftest", "ci:script-tests", "gate:delegation", "gate:review-records", "gate:review-hook-selftest", "matrix:validate"],
+      "optional": ["matrix:evidence-current"]
+    },
+    "tier-a-build": {
+      "description": "Tier A build: debug APK build, JVM test run and JUnit XML per module.",
+      "required": ["build:assembleDebug", "gradle:test", "junit:app", "junit:behavior-test", "junit:contracts", "junit:evaluation", "junit:ingress", "junit:safety", "junit:simulator"],
+      "optional": []
+    },
+    "voice": {
+      "description": "Voice checks on the emulator against the Gemini live harness (free tier, not deterministic). devrows: is the scenarios-device.json runner.",
+      "required": ["voice:runner", "voice:S*", "devrows:runner", "devrows:*", "liveinfo:runner", "liveinfo:*", "cantonese:runner", "cantonese:*", "voice:quota-guard"],
+      "optional": ["voice:demo-recording", "wake:WAKE-SYNTH-001"]
+    },
+    "device": {
+      "description": "Device rows on the emulator without a voice model session (scripts/github_device_checks.sh).",
+      "required": ["device:app-up", "device:PLACE-UNSET-001", "device:PLACE-SAVE-001", "device:APPS-001", "device:NAV-ROUTE-001", "device:NAV-START-001", "device:NAV-UI-007", "device:NAV-E2E-ARRIVAL-001", "device:NAV-CRASH-001", "device:PROCDEATH-001", "device:PERM-DENY-001", "device:TRANSCRIPT-FADE-EMU-001", "device:PIECE-P61", "device:PIECE-P63"],
+      "optional": ["device:CALL-NOSIM-001", "device:P59"]
+    },
+    "navpiece": {
+      "description": "Navigation demo pieces (scripts/github_nav_demo.sh): navpiece:complete (a normal finish) and every recorded navpiece: check are required; the video is optional.",
+      "required": ["navpiece:complete", "navpiece:*"],
+      "optional": ["navpiece:video"]
+    }
+  },
+  "quarantine": [
+    {
+      "id": "cantonese:YUE-HOME",
+      "suite": "voice",
+      "reason": "expected behaviour for an ambiguous Cantonese home request is undefined until the owner decides (YUE-POLICY-001), so a failure cannot be judged a regression",
+      "owner": "product owner (decision YUE-POLICY-001); planner maintains the entry",
+      "tracking": "TEST_MATRIX YUE-POLICY-001 (owner decision on ambiguous Cantonese requests, queued 2026-10-16); release still blocked via the Tier C checklist",
+      "remove_when": "owner decides the expected behaviour and the scenario passes 1/1",
+      "expires": "2026-10-30"
+    }
+  ]
+}

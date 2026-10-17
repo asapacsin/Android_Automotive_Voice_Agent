@@ -465,6 +465,137 @@ class EmbeddedNavigationControllerTest {
         )
     }
 
+    // ---- Owner test 10-16: an along-route list while driving keeps the drive until a pick ----
+
+    private fun drivingTo(engine: FakeNaviEngine): EmbeddedNavigationController = runBlocking {
+        engine.routes = threeRoutes()
+        val controller = controller(engine, listOf(candidate("a", 22.20, 113.54, name = "十字门")))
+        controller.requestDestination("十字门")
+        engine.emitSuccess(intArrayOf(10, 20, 30))
+        controller.selectRoute(10)
+        assertEquals(NavigationPhase.NAVIGATING, controller.state().value)
+        controller
+    }
+
+    private fun stations() = listOf(
+        candidate("s1", 22.21, 113.55, name = "加油站一"),
+        candidate("s2", 22.22, 113.56, name = "加油站二"),
+    )
+
+    @Test
+    fun alongRouteListWhileDrivingDoesNotStopTheDrive() = runBlocking {
+        val engine = FakeNaviEngine()
+        val controller = drivingTo(engine)
+        controller.requestCandidates(stations())
+        assertEquals(0, engine.stopNaviCount, "a question about the route must not end it")
+        assertEquals(NavigationPhase.AWAITING_DESTINATION_SELECTION, controller.state().value)
+        assertEquals(2, controller.destinationCandidates.value.size)
+    }
+
+    @Test
+    fun cancellingTheAlongRouteListReturnsToTheDrive() = runBlocking {
+        val engine = FakeNaviEngine()
+        val controller = drivingTo(engine)
+        controller.requestCandidates(stations())
+        controller.cancel()
+        assertEquals(NavigationPhase.NAVIGATING, controller.state().value)
+        assertEquals("十字门", controller.destination.value?.name)
+        assertEquals(0, engine.stopNaviCount)
+        assertTrue(controller.destinationCandidates.value.isEmpty())
+    }
+
+    @Test
+    fun pickingAStationEndsTheOldRouteThenCalculatesTheNewOne() = runBlocking {
+        val engine = FakeNaviEngine()
+        val controller = drivingTo(engine)
+        controller.requestCandidates(stations())
+        controller.selectDestination("s2")
+        assertEquals(1, engine.stopNaviCount)
+        assertEquals(NavigationPhase.CALCULATING_ROUTE, controller.state().value)
+        assertEquals("加油站二", engine.calculateCalls.last().endName)
+    }
+
+    @Test
+    fun aSingleStationIsStillOfferedNotRoutedTo() = runBlocking {
+        val engine = FakeNaviEngine()
+        val controller = drivingTo(engine)
+        val calcs = engine.calculateCalls.size
+        controller.requestCandidates(stations().take(1))
+        assertEquals(NavigationPhase.AWAITING_DESTINATION_SELECTION, controller.state().value)
+        assertEquals(calcs, engine.calculateCalls.size)
+        assertEquals(0, engine.stopNaviCount)
+    }
+
+    @Test
+    fun arrivalWhileTheListIsOpenEndsTheDriveAndClosesTheList() = runBlocking {
+        val engine = FakeNaviEngine()
+        val controller = drivingTo(engine)
+        val destinationBefore = controller.destination.value?.name
+        assertTrue(destinationBefore != null)
+        controller.requestCandidates(stations())
+        engine.emitNavigationEnded("arrived")
+        assertEquals(NavigationPhase.ARRIVED, controller.state().value)
+        assertTrue(controller.destinationCandidates.value.isEmpty())
+        assertEquals(destinationBefore, controller.destination.value?.name, "ARRIVED carries the kept destination")
+    }
+
+    @Test
+    fun endNavigationWhileTheListIsOpenClosesOnlyTheList() = runBlocking {
+        val engine = FakeNaviEngine()
+        val controller = drivingTo(engine)
+        val destinationBefore = controller.destination.value?.name
+        controller.requestCandidates(stations())
+        assertEquals(EmbeddedNavigationController.VoiceEndResult.CANCELLED_SELECTION, controller.endByVoice())
+        assertEquals(NavigationPhase.NAVIGATING, controller.state().value)
+        assertEquals(destinationBefore, controller.destination.value?.name)
+        assertEquals(0, engine.stopNaviCount)
+        assertEquals(EmbeddedNavigationController.VoiceEndResult.STOPPED_NAVIGATION, controller.endByVoice())
+        assertEquals(1, engine.stopNaviCount)
+    }
+
+    @Test
+    fun arrivalBeforeTheListOpensKeepsNothing() = runBlocking {
+        val engine = FakeNaviEngine()
+        val controller = drivingTo(engine)
+        engine.emitNavigationEnded("arrived")
+        controller.requestCandidates(stations())
+        assertEquals(NavigationPhase.AWAITING_DESTINATION_SELECTION, controller.state().value)
+        assertTrue(!controller.isGuiding())
+        controller.cancel()
+        assertEquals(NavigationPhase.IDLE, controller.state().value)
+    }
+
+    @Test
+    fun unknownPickWhileTheListIsOpenKeepsTheDrive() = runBlocking {
+        val engine = FakeNaviEngine()
+        val controller = drivingTo(engine)
+        controller.requestCandidates(stations())
+        controller.selectDestination("no-such-id")
+        assertEquals(NavigationPhase.NAVIGATING, controller.state().value)
+        assertEquals(0, engine.stopNaviCount)
+    }
+
+    @Test
+    fun stopNavigationForgetsAKeptDrive() = runBlocking {
+        val engine = FakeNaviEngine()
+        val controller = drivingTo(engine)
+        controller.requestCandidates(stations())
+        controller.stopNavigation()
+        assertTrue(!controller.isGuiding())
+    }
+
+    @Test
+    fun aNewDestinationWhileTheListIsOpenEndsTheKeptDrive() = runBlocking {
+        val engine = FakeNaviEngine()
+        val controller = drivingTo(engine)
+        controller.requestCandidates(stations())
+        engine.results = threeCandidates()
+        controller.requestDestination("万达")
+        assertEquals(1, engine.stopNaviCount)
+        controller.cancel()
+        assertEquals(NavigationPhase.IDLE, controller.state().value, "nothing kept once the route was replaced")
+    }
+
     private fun controller(
         engine: FakeNaviEngine,
         results: List<DestinationCandidate>,

@@ -33,6 +33,10 @@ PHRASES = {
     "fan_up": "风量调大",
     "ac_off": "关闭空调",
     "nav_zhuhai": "导航去珠海站",
+    "nav_shizimen": "导航去十字门",
+    # The 5-minute demo's destination (owner 2026-10-16), set from the routes piece.
+    "nav_demo_dest": "导航去珠海站",
+    "pick_first": "第一个",
     "nav_fix": "不对，换成拱北口岸",
     "nav_wanda": "导航到万达",
     "cancel": "算了",
@@ -68,7 +72,7 @@ PHRASES = {
     # scenarios-cantonese.json
     "yue_hot": ("有啲熱，幫我舒服啲", "zh-HK-HiuGaaiNeural"),
     "yue_music": ("播啲精神啲嘅歌", "zh-HK-HiuGaaiNeural"),
-    # AFFORDANCE-DEVICE-001 (SPEC-010 A7): spoken control names, no model tool call
+    # AFFORDANCE-DEVICE-001 (SPEC-010 A7): spoken control names, no model execution
     "aff_pause": "暂停",
     "aff_ac": "空调",
     "aff_recenter": "回到当前位置",
@@ -76,7 +80,10 @@ PHRASES = {
     "live_weather": "目的地现在天气怎么样",
     "live_route_traffic": "路上堵不堵",
     "live_along_route": "沿途有加油站吗",
-    "live_place_details": "万达广场几点关门",
+    # SPEC-011: place_details takes target=destination or a list position, not a free place name
+    # (the old line 万达广场几点关门 asked for an unsupported named lookup; 4/10 runs rightly made
+    # no call). A named-place lookup is a capability gap, recorded in LIVE-INFO-DEVICE-001.
+    "live_place_details": "目的地几点关门",
     # TRUTH-LIVEINFO-NEWS-001
     "news_today": "今天有什么新闻",
 }

@@ -46,6 +46,9 @@ def main():
     stale = collections.Counter()
     outcomes = collections.Counter()
     retries = 0
+    waste = collections.Counter()
+    sequences = collections.Counter()  # in how many records a repeated sequence was observed
+    timed = []
 
     for e in events:
         outcomes[e.get("task_outcome", "UNKNOWN")] += 1
@@ -62,6 +65,17 @@ def main():
             manual[w] += 1
         for a in e.get("failed_skill_assumptions", []):
             stale[a] += 1
+        for seq in (e.get("observed_sequences") or {}):
+            sequences[seq] += 1
+        if "minutes" in e:
+            timed.append(e)
+            for w in e.get("waste", []):
+                waste[w] += 1
+        # A record that names a cause in `resolves` starts its count again: only a repeat after
+        # the fix is evidence that the fix did not work.
+        for done in e.get("resolves", []):
+            reminders.pop(done, None)
+            waste.pop(done, None)
 
     # What the evidence now justifies, per the policy thresholds.
     actions = []
@@ -97,6 +111,38 @@ def main():
                 "why": "the human repeated the same instruction; the procedure is missing it",
             })
 
+    # Observed by scripts/skill_observe.py, not remembered: the same command sequence repeated in
+    # >= NEW_SKILL_THRESHOLD records is a candidate for a script (deterministic) or a skill
+    # (judgement); .claude/skills/create-skill/SKILL.md is the procedure.
+    for item, n in sequences.items():
+        if n >= NEW_SKILL_THRESHOLD:
+            actions.append({
+                "action": "NEW_SKILL or SCRIPT (observed)",
+                "subject": item,
+                "seen": n,
+                "why": "the same command sequence in >= %d handoff records" % NEW_SKILL_THRESHOLD,
+            })
+
+    # Time efficiency (owner, 2026-10-17): a cause of lost time seen twice is a process defect.
+    for item, n in waste.items():
+        if n >= MODIFY_THRESHOLD:
+            actions.append({
+                "action": "TIME_IMPROVEMENT",
+                "subject": item,
+                "seen": n,
+                "why": "the same cause of lost time >= %d times; script, skill or settings change due"
+                       % MODIFY_THRESHOLD,
+            })
+    time_summary = {
+        "timed_tasks": len(timed),
+        "total_minutes": sum(e["minutes"] for e in timed),
+        "total_attempts": sum(e.get("attempts", 0) for e in timed),
+        "inefficient": [{"task": e["task_id"], "minutes": e["minutes"], "attempts": e.get("attempts"),
+                         "waste": e.get("waste", []), "improvement": e.get("improvement", "")}
+                        for e in timed if not e.get("efficient", True)],
+        "waste_causes": dict(waste),
+    }
+
     metrics = {
         "generated_by": "scripts/skill_metrics.py",
         "events": len(events),
@@ -113,6 +159,8 @@ def main():
             for name in os.listdir(os.path.join(REPO, "skills"))
             if name.endswith(".md") and name.replace(".md", "") not in usage
         ),
+        "time_efficiency": time_summary,
+        "observed_sequences": dict(sequences),
         "suggested_actions": actions,
         "thresholds": {"new_skill": NEW_SKILL_THRESHOLD, "modify": MODIFY_THRESHOLD},
     }
@@ -123,6 +171,10 @@ def main():
 
     print("wrote %s" % os.path.relpath(METRICS, REPO))
     print("  events %d  outcomes %s  retries %d" % (len(events), dict(outcomes), retries))
+    if timed:
+        print("  time: %d timed tasks, %d min, %d attempts, %d not efficient" % (
+            len(timed), time_summary["total_minutes"], time_summary["total_attempts"],
+            len(time_summary["inefficient"])))
     if metrics["unused_skills"]:
         print("  never used: %s  (candidates for deletion once there is enough evidence)"
               % ", ".join(metrics["unused_skills"]))

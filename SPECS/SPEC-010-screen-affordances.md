@@ -91,7 +91,11 @@ transcript can already be under way, and its tool call can arrive before or afte
 `DriverContext.claimDispatch` keys on exact arguments, so a local `value=-1` and a model
 `value=-1.0` would both run. Extend that owner with `claimCapability(epoch, tool, action)`: the
 local path and `ToolCallGuards.repeatedInTurn` both claim it; the second claimant gets
-`DUPLICATE_IN_TURN`. If the model's call ran first, the matcher does nothing.
+`DUPLICATE_IN_TURN`. If the model's call ran first, the matcher does nothing. The claim is on the
+**same control**, not the exact action: `control_climate` power_on/power_off share "power" and
+`control_music` play/stop share "playback", so the opposite action on the control the other side
+already operated is refused too; temperature actions stay separate (P67, merged 2026-10-17,
+`CapabilityClaimGroupTest`).
 
 B5. **Feedback.** Success: the effect is the feedback (music starts, the temperature label changes)
 plus the existing success chip; nothing is spoken. Failure: the result is sent to the model as
@@ -129,7 +133,7 @@ Never the transcript or a place name (I-8): picker row ids are opaque (`i2`, POI
 | A4 | Recentre and camera go through `ScreenControls` for both tap and voice | architectural | `ArchitectureRulesTest.uiDoesNotReachIntoExecution` + `ScreenRouteParityTest` | **built** |
 | A5 | Picker selection uses the registry; `tryLocalNavigationPick` is gone | production wiring | `FeaturePresenceRegressionTest` + existing picker tests green | not built — **deferred on purpose** to go with A7 on the phone (step 4b: the picker path is device-verified and its fuzzy/phonetic matching must be re-verified there) |
 | A6 | `VoiceContextHints` lists the affordances on screen | functional | `VoiceContextHintsTest` | **built** |
-| A7 | Spoken 「暂停」「空调」「回到当前位置」 act on the phone with no tool call from the model | device | `AFFORDANCE-DEVICE-001` (speech harness, LOCAL_DEVICE) | queued, NOT_RUN |
+| A7 | Spoken 「暂停」「空调」「回到当前位置」 act on the phone through the local path with no execution by the model: a model call for the same capability in that turn is refused `DUPLICATE_IN_TURN` (B4) and nothing is spoken (B5). The app cannot stop the model emitting the call, only its execution (clarified by the decider 2026-10-17; B1–B6 unchanged) | device | `AFFORDANCE-DEVICE-001` (speech harness on the GitHub emulator, Gemini override) | AFF-AC behaviour as specified in run 39001567838 (cd6d77c); re-measure under the corrected oracle pending |
 | A8 | Registry, capabilities, TEST_MATRIX rows agree | reconciliation | `harness_check.py`, `test_matrix.py --validate` | **built** 2026-09-25 — `AFFORDANCE-UNIT-001` + `AFFORDANCE-DEVICE-001` referenced from the affordance capabilities; `--validate` 0 problems |
 
 ## Open product decisions
@@ -145,6 +149,11 @@ Never the transcript or a place name (I-8): picker row ids are opaque (`i2`, POI
   advances at speech start, so a model call that precedes `transcription.completed` still blocks
   the local path for that utterance (`AffordanceTurnClaimTest`). Whether a refused model call
   then says something contradictory is checked on the phone (AFFORDANCE-DEVICE-001).
+  Observed 2026-10-17 (voice checks run 39001567838 at cd6d77c, Gemini): `gemini_tool_call control_climate`
+  was logged before `affordance_match`, yet the local path claimed first (Gemini calls reach the event
+  flow unheld; the dispatch comes later), the model's call was refused `DUPLICATE_IN_TURN`, and the held
+  reply was dropped with no correction (`responseCancelledByClient`). Gemini's Live API reference says
+  input transcription has "no guaranteed ordering" with other server messages (ai.google.dev/api/live).
 
 ## Implementation status
 

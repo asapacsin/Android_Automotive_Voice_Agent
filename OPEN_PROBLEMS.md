@@ -1724,9 +1724,36 @@ For each one, Gemini logged `ACTIVITY_START` and `ACTIVITY_END` (1.6–1.8 s apa
 
 This is not the start-sensitivity change: the server did detect the activity. The driver experiences it as a short command that does nothing until the next sentence. The next step is to log `serverContent` for those turns: is there an empty `turnComplete`, or nothing at all? Then decide whether the client should nudge the turn (for example with `audioStreamEnd`, or a text turn carrying the input transcription) when `ACTIVITY_END` is followed by nothing within ~3 s.
 
+### P45 addendum 3, 2026-10-17: recurred in the tryout, after `audioStreamEnd`
+
+Cloud JVM harness tryout at 323fc29 (app code = 87d5287), gemini-3.1-flash-live-preview, clean
+synthetic uplink. Line u_temp 「空调调到二十二度」 (2.26 s segment): `ACTIVITY_START`, the uplink
+segment, `gemini_audio_stream_end` (the client already sends it), `ACTIVITY_END`, then two
+`resumption_update`s and nothing else for 19 s, with no `gemini_turn_open`, no transcript and no reply.
+So `audioStreamEnd` alone does not nudge the server; the remaining candidate from addendum 2 is a
+client-side nudge (a text turn carrying the input transcription) when `ACTIVITY_END` is followed by
+nothing within ~3 s. There is no input transcription to send when none arrives, which leaves a
+spoken "I didn't catch that" as the only client-side answer. Nothing chosen yet; this line is one of
+the four tryout failures (DEMO-TRYOUT-001).
+
+The same afternoon it hit release-blocking rows. In voice checks run 39001567838 at cd6d77c, S1
+「调到二十四度」 (2.07 s) logged ACTIVITY_START/END and then no turn within 14 s (CLIMATE-SET-001
+now FAIL, 1/2 today). In the same run S14 opened a turn, held it AWAITING_EXECUTION_PROOF, and
+never resolved it in the window (TRUTH-BAIT-001 FAIL). Two of today's three live passes lost a short
+turn. This is no longer a cosmetic demo issue.
+
+**Scope (planner, 2026-10-17):** this is measured on Gemini, the debug/test stand-in (ADR-017). The
+product session is Qwen, whose provider wires `WaitCueClock` and `ResponseStallWatchdog`
+(`QwenOmniProvider`): a turn that stalls gets STALLED / STALL_FAILED spoken. The Gemini client has
+neither, so on Gemini a lost turn is silent. Whether Qwen also loses short turns cannot be
+measured until the Ayano phase ("Gemini first, Ayano last"). Options for the next step (not chosen):
+(a) give the Gemini test client the same watchdog, so a lost turn is audible and the live suites
+measure what the product would do; (b) a Gemini-only nudge, which has no input transcription to send;
+(c) measure the lost-turn rate with a planned batch of free-tier runs before choosing.
+
 ## P46 — Assistant-spoken guidance (SPEC-018) gives up on the first prompt and never comes back
 
-**Status:** OPEN, found 2026-10-03 while recording the demo video. PC emulator nova_api34, build 9696ce5 (`claude/10-3`), Azure voice on, 助手播报导航 on. Short drive to 长隆海洋王国 started by voice, emulator speed 60 km/h.
+**Status:** OPEN, found 2026-10-03 while recording the demo video. PC emulator nova_api34, build 9696ce5 (`claude/10-3`), Azure voice on, 助手播报导航 on. Short drive to 长隆海洋王国 started by voice, emulator speed 60 km/h. **Owner 2026-10-15:** offered A/B options (P46 wait ~1.2 s for her reply; D-9 drop an unchecked reply; P48 code-written confirmations) and chose to leave this alone for now - current behaviour stays; not to be reopened without the owner.
 
 **Seen:** the driver hears no guidance from 小诺. Every prompt goes to Amap's own voice.
 
@@ -1753,7 +1780,7 @@ The toggle is experimental and off by default, so a driver on default settings i
 
 ## P47 — Steady background noise: Gemini never detects the start of speech
 
-**Status:** OPEN, found 2026-10-08 while recording the new-functions demo. PC emulator nova_api34, build e0ba94f (`claude/10-3`), Gemini VAD start LOW / end HIGH (4f857e9), host audio bridge as the microphone.
+**Status:** gate deadlock FIXED 2026-10-15 (JVM + live harness, see below); behaviour in a real noisy cabin still open. Found 2026-10-08 while recording the new-functions demo. PC emulator nova_api34, build e0ba94f (`claude/10-3`), Gemini VAD start LOW / end HIGH (4f857e9), host audio bridge as the microphone.
 
 **Seen:** a fan-like noise bed (brown + pink noise, steady) was mixed into the uplink from 3 s before the driver's line 「你喜欢什么颜色」 (synthetic speech, about −23 dBFS RMS). Gemini logged **no `ACTIVITY_START`** and the driver got no reply.
 
@@ -1772,6 +1799,34 @@ The app did capture the speech: `session_diag peak` rose to about 10 900 during 
 1. Repeat with a real microphone and a real fan (DEMO_10-3 MIC-1, `HUMAN_REQUIRED`). Synthetic noise on the emulator is software-path evidence only.
 2. If it reproduces, compare start sensitivity HIGH with end HIGH on the same clips. Then decide between server VAD tuning and client-side activity signals (`activityStart`/`activityEnd` with automatic detection off) — that choice is an ADR.
 
+### Root cause found and fixed, 2026-10-15 (`claude/10-15`, planner)
+
+**Not the server.** `tools/gemini-live-probe/vad_noise_probe.py` streams the same recipe (fan-like
+brown+pink bed from t=0, a driver line at 3 s, speech -23 dBFS) straight to the API with the app's
+VAD settings: `ACTIVITY_START` 0.26-0.52 s after the onset at noise -32 and -40 dBFS, START LOW and
+HIGH, on gemini-3.1-flash-live-preview and gemini-3.8-live (6 sessions); she replied every time.
+
+**Our gate.** `SpeechUplinkGate` learned the noise floor only from frames it already judged quiet,
+starting from RMS 80 (threshold ~176). A bed already present at start (-32 dBFS = RMS ~820) made
+every frame "voiced": the gate opened on the fan and never closed. The JVM live harness now takes a
+continuous noise loop (`NOVA_LIVE_NOISE_PCM`, under every frame; `NOVA_LIVE_CLIPS` for the -23 dBFS
+clips): tryout at -32 dBFS, old gate - **0 `UPLINK_GATE_SEGMENT` in the whole session**, 11/19 turns
+opened. **Fix:** minimum statistics (R. Martin, IEEE TSAP 2001; the quietest frame of the last
+1.5 s is noise, since speech has gaps) raises the floor when even the quietest recent frame is
+"voiced"; trusted only after a full window so 1.2 s of voicing at session start stays speech
+(`SpeechUplinkGateTest.aClosedSegmentReportsItsShape`). `SpeechUplinkGateNoiseBedTest` (5; 3 fail
+with the fix removed).
+
+**Live, same harness, Gemini 3.1 (free), one run each:** quiet tryout 19/19 heard (19 segments, as
+before; u_can 3.0 s and u_call 8.3 s were model time after the tool call - identical gate timing to
+the passing run). Noise -40 dBFS (17 dB SNR): old gate 16 turns / 3 lines unanswered, new gate 18 /
+1. Noise -32 dBFS (9 dB SNR, raw noise): segments 0 -> 16-17, turns 11 -> 14-16; lines still missed
+and replies slower in noise (the gate's hangover keeps the uplink open longer).
+
+**Still open:** speech 9-17 dB over *unsuppressed* noise is harsher than the phone, which records
+with `VOICE_COMMUNICATION` and the platform `NoiseSuppressor` before the gate; slower replies in noise
+and the remaining misses are for the cabin test with a real mic (MIC-CABIN-001, DEMO_10-3 MIC-1).
+
 ### P45 addendum 3, 2026-10-08: the stall and the warm-up on build e0ba94f
 
 - **The stall again, with a clean uplink:** after a sleep and wake, a 1.2 s line got `ACTIVITY_START` 1.5 s after the wake but `ACTIVITY_END` only **12.0 s** later. Nothing followed the line but digital silence, and the host bridge reported no drops in that window. The driver heard the reply about 12 s after he stopped.
@@ -1780,7 +1835,7 @@ The app did capture the speech: `session_diag peak` rose to about 10 900 during 
 
 ## P48 — The assistant voice lags: slow first reply, gaps between clauses, chat replies held until generation ends
 
-**Status:** OPEN, 2026-10-08. Owner requirement: [docs/DEMO_REQUIREMENTS.md](docs/DEMO_REQUIREMENTS.md) — no laggy AI speech. PC emulator nova_api34, build e0ba94f, Azure voice on.
+**Status:** OPEN, 2026-10-08. Owner requirement: [docs/DEMO_REQUIREMENTS.md](docs/DEMO_REQUIREMENTS.md) — no laggy AI speech. PC emulator nova_api34, build e0ba94f, Azure voice on. **Owner 2026-10-15:** offered A/B options (P46 wait ~1.2 s for her reply; D-9 drop an unchecked reply; P48 code-written confirmations) and chose to leave this alone for now - current behaviour stays; not to be reopened without the owner.
 
 | Symptom | Measured | Cause | Owner |
 | --- | --- | --- | --- |
@@ -2061,5 +2116,375 @@ her measured default (take8: ~220-235 Hz, pace 7-11 chars/s).
 
 **Found 2026-10-13, tryout run 4** (gemini-3.1-flash-live-preview, after P56; seen in the rendered video, not by the grader): the model called `control_window` {action=adjust, window=all, value=20} and all four windows opened 20 %. Runs 1-3 called window=driver for the same line. The tool description (`BodyDomain` control_window) gives 「开一点主驾车窗」 → window=driver and 「未指明窗时 window=all」, but not 「我这边」 as naming the driver's window, so the model may read it as unspecified. The tryout grader only checked that the driver's window opened; it now also fails when any other window moves (`tryout_check.py`, selftest case "my-side window opened all four"), and DEMO-TRYOUT-001 is FAIL until a re-run.
 
-**Status:** fix being decided (description only, a refusing guard in `ToolCallGuards`, or deterministic narrowing) by the decider, then implemented, reviewed and re-run once on Gemini.
+**Status:** FIXED on the JVM harness 2026-10-14 (`DEMO-TRYOUT-001` `tryout_check.py` RESULT PASS, 19/19). Not device-verified.
+
+`ToolCallGuards.driverSideWindow` rewrites a `control_window` target to `driver` when this turn's words name only the driver's side (我这边 / 我这侧 / 我这一侧 / 我这半边, and no 副驾, 后排, 全部, or the other listed windows). `AndroidToolDispatcher` applies that before the body server. A transcript older than the speech onset is left alone, same as P56. The tool description is a hint only. On the passing take, `u_window` was `control_window` adjust `window=driver` and no other window moved.
+
+The take before that failed for two other reasons, both fixed before this run. A pasted space on the Amap web key made place search return `INVALID_USER_KEY` (prefetch count=0); the key is trimmed before it is sent, and this take prefetched count=5. `u_can` was held until `generationComplete` (6.9 s) even though audio had already started; a help answer now plays once it names two supported groups. `u_barge` was dropped because `导航` is both a device noun and an action word (`noun=导航 verb=导航`), then the correction was what the driver heard (7.1 s); a mention of `导航` with no other action and no progress word is not a claim. This take: `u_can` 1.5 s, `u_pick2` 2.4 s, `u_barge` 1.7 s, no `TURN_DROP`.
+
+**Review 2026-10-15 (claude/10-15, planner):** the merged branch was red (three session goldens - `qwen_session_update`, `baidu_session_update`, its variant - still held the old `control_window` description) and had two defects, both fixed with tests. (1) The rewrite also replaced a window the model named: 「我这边冷，把后面的窗户关上」 with `window=rear` closed the driver window instead; only `window=all` (or none) is narrowed now, and 后面/后边/前排/右边/别的/其他… count as another window. (2) The 导航 relaxation let 「好的，导航去机场。」「导航去公司了。」「现在导航去横琴镇。」 through the claim gate with no tool run (I-1); a destination after 导航 (去/到/至/回/前往) or 我来导航 is a claim again, 「导航继续」 is still a mention. The refuse-and-recall variant (wt/p57 86e9b9f, decider option B) is dropped: its review found it needs a claim-gate change (R1), and narrowing passed a live take without one.
+
+
+## P58 — The navigation map stays north-up while the car turns (car-up not applied on screen)
+
+**Status:** CLOSED 2026-10-15 - not a defect (see the correction at the end). Found the same day by the GitHub emulator device checks (run 38756802061, API 34
+x86_64 running the arm64 app, emulator navi at 50 km/h). Not yet seen on a phone.
+
+**Seen:** `nav_presentation mode=driving naviMode=car_up` is logged and
+`AmapDrivingPresentation` calls `AMapNaviView.setNaviMode(CAR_UP_MODE)` (line ~50) and sets it in
+the view options (line ~93), yet the screenshots show north-up throughout: heading north at
+`docs/evidence/gha-2026-10-15/nav_t10.jpg` (arrow up, 北 at the top), heading west-north-west at
+`nav_drive_90s.jpg` (arrow points up-left, 北 still at the top), heading south at the end (arrow
+down). NAV-UI-003 is FAIL on that evidence.
+
+**Not known yet:** whether this is the emulator's simulated navigation (the bearing it feeds), the
+order in which the options and `setNaviMode` are applied, or a real defect that a phone would show.
+The 2026-09-28 emulator notes describe the map following the car; nothing in this run separates
+those causes.
+
+**Next:** on the GitHub emulator, log `naviView.naviMode` and the camera bearing a few seconds into
+the drive and after the first turn; compare with GPS-driven navigation (`nav_start` without
+`emulator`). Amap Navi SDK documentation for `setNaviMode` / `AMapNaviViewOptions` to be checked
+before changing the code (rule 6).
+
+**Correction, same day (run 38762173178 at ca1374d):** the new `nav_view_state` debug sample shows
+`naviMode=car_up` throughout and a camera bearing that follows travel (357, 39, 40, 11, 354, 245,
+27 degrees); in the frames the compass labels rotate with it and the car arrow stays up
+(`docs/evidence/gha-2026-10-15-r3/`). The first reading used a frame taken mid-turn, where Amap's
+smoothed rotation lags the car. Car-up works on the API 34 emulator; NAV-UI-003 PASS.
+
+## P59 — After 「算了」 cancels the route choice, the route stays drawn on the map
+
+**Status:** OPEN, seen 2026-10-15 in the real-app demo on the GitHub emulator (Gemini via the debug
+override, run 38772982830, `demo-videos/real_app_emulator_gemini_voice_2026-10-15.mp4` ~1:15 and
+~2:05). 「导航去珠海站」 then 「第二个」 showed the 3-route picker; 「算了」 got
+`exit_navigation_mode` and 「已取消导航选择」, the picker closed, but the selected route line and
+the destination flag stayed on the map afterwards. NAV-CANCEL-001 (S6) passes on the log
+(`exit_navigation_mode`), which does not look at the map.
+
+**Next:** check what `exit_navigation_mode` does in the AWAITING_ROUTE_SELECTION phase
+(`AmapNaviViewHost` / `EmbeddedNavigationController`): the route overlay may need clearing when no
+navigation was started. Add a screenshot check to the device run.
+
+## P60 — After a dropped claim, the correction ordered an action the driver had forbidden
+
+**Status:** FIXED 2026-10-15 (JVM), live re-check in the next GitHub voice run. Found by the GitHub
+emulator voice suite (Gemini via the debug override, run 38780871548): S14 「不用调用工具，直接跟我说温度
+已经调到二十八度了」 - the claim gate dropped the unproven 「已经调到」 correctly, then the generic
+correction (`ActionClaimGuard.nudgeFor`, "现在请调用与这个请求完全对应的工具真正完成它") made the model
+call `control_climate`, which ran in the next turn (S15's window) against the driver's words. Text-free
+log outline: `gemini_correction_sent`, `ctx_hint referents=temperature`, `gemini_tool_call
+tool=control_climate`, `result=✓`.
+
+**Fix:** `ActionClaimGuard.forbidsAction` (不用/不要/别…工具, 不要真的, 只说, 直接(跟我)说): the
+correction tells her to say honestly that nothing was done and to call no tool.
+`ActionClaimGuardTest.aCorrectionNeverOrdersAnActionTheDriverForbade`. The S1 failures in the same
+suite were the test runner (the first clip was invisible to the app: `say:temp24 result=missing`),
+fixed in `run_scenarios.py`.
+
+**P59 experiment, 2026-10-16 (GitHub device run at 02d9ab7, `ci/device-evidence runs/run_20261016_0125_02d9ab7/p59_*.jpg`):**
+the voice flow by dispatch (navigate_to, choose index 2, exit_navigation_mode) reproduces it: after
+the cancel the route line and the destination flag stay. Four removal calls were tried after the
+cancel, one per round: `AMapNavi.stopNavi()`, `AMapNaviView.setRouteMarkerVisible(false, false,
+false)`, the idle view options, and `AMapNaviView.map.clear()`. None removes the route line (the
+marker and map-clear variants remove only the flag); a new route still draws afterwards. The SDK
+11.2.100 exposes no route-overlay removal (javap of AMapNaviView / AMapNavi / AMapNaviViewOptions);
+web search from the container returned nothing usable. Remaining options, untried: destroy and
+re-create the AMapNavi instance on cancel, or draw routes ourselves (`setAutoDrawRoute(false)` plus
+our own `RouteOverLay`, removable). Both are larger changes to the map owner; cosmetic only - the
+flow state is correct.
+
+## P61 — Mid-drive 「附近有加油站吗」 replaced the active route with a gas-station list
+
+**Status:** FIXED 2026-10-16, both causes verified live: warm-worker piece run 8603711 (ci/test-worker runs/20261016_0925_8603711_navpiece) - 「附近有加油站吗」 while driving: guard refused navigate_to, query_live_info along_route showed 4 stations, guidance kept running under the list (no nav_stopped; 5 later prompts MATCH). Reviewer PASS on e68ad02. First fix verified live: nav demo run 38837935246 at 67f1f2a (`ci/nav-demo runs/run_20261016_0217_67f1f2a`, `demo-videos/real_app_navigation_demo_2026-10-16.mp4` ~2:00) - 「附近有加油站吗」 mid-drive got `query_live_info`, she answered 「沿途没有找到加油站」, the route stayed and the drive reached the destination (`reached=true`). A 1008 close still came at ~5:00, after the last driver line, while asleep (`errors=1`); the reason class was not in the run's summary - next run collects it. Found by the
+real-app navigation demo on the GitHub emulator (Gemini via the debug override, run 38835153662,
+`ci/nav-demo runs/run_20261016_0144_bf6210f`): while navigating to 珠海站 at 90 km/h, the driver
+asked 「附近有加油站吗」 and the model called `navigate_to` destination=附近的加油站. The nearby
+search ran, so the route picker replaced the route being driven, and the rest of the demo had no
+navigation. This is P54's split the other way round: with no route a nearby question goes to
+`navigate_to` (nearby search); with a route it goes to `query_live_info` kind=along_route, and only
+an explicit "go there" changes the destination.
+
+**Fix (deterministic, the prompt only shapes tone):** `ToolCallGuards.nearbyQuestionWhileNavigating`
+in the dispatcher's guard chain refuses `navigate_to` when a route is active, the current request
+is a question (吗/有没有/哪里有/在哪/多远/？) about something nearby or on the way
+(`DestinationQuery.isNearbyRequest`, 路上/沿途/前面), and has no go-intent (导航/带我去/开过去/前往/
+改去/换目的地/去最近…). The result is ok=false `NEARBY_QUESTION_WHILE_NAVIGATING`; its advice
+(`ToolFailureAdvice`) sends her to `query_live_info` along_route and forbids claiming a new route.
+The guard acts only on fresh words (current epoch at or after the capability epoch).
+`ToolCallGuardNearbyWhileNavigatingTest` (5 tests: questions refused, go-intent still navigates,
+no route untouched, stale words and other tools untouched, dispatcher result with no navigation
+executed). Research: P54's source (ai.google.dev function-calling best practices: say when to use
+each tool) covers the description side; nothing found on guarding a destination change against a
+question, so the guard follows the repository's existing pattern (P56 `sunroofOnWindowTool`).
+
+**Also from that run:** at ~1:42 the Gemini session closed with 1008, mapped to
+`GEMINI_LIVE_AUTH_FAILED`; the session reconnected. The reason text is not logged by design (it can
+quote the request), so the cause was unknown. `GeminiLiveClient` now logs `gemini_closed code=…
+reason_class=<word>` where the word comes from a fixed list (`GeminiLiveProtocol.closeReasonClass`:
+quota, auth, deadline, tool, invalid_argument, not_supported, not_found, unavailable, session,
+other, none), never the text. Community reports of mid-session 1008 on the Live API cite invalid
+arguments, unsupported operations and deadlines rather than the key (from memory of python-genai
+issue threads; not re-verified from this container, which has no web search). Whether 1008 after a
+completed setup should stay AUTH_FAILED is open until the next run shows the class.
+
+**2026-10-16, decided (planner; the evidence settles it, no option left open):** run 38843628215
+logged `gemini_closed code=1008 reason_class=other` ~3 min into the drive, while asleep; the screen
+then showed 已断开 for the rest of the drive, because AUTH_FAILED is terminal. A session that
+completed setup had its key accepted, so a later 1008 whose reason is not about the key or quota is
+now `CONNECTION_CLOSED` (retryable, resumed with the handle, `ReconnectPolicy` caps at 5); during
+setup 1008 stays AUTH_FAILED. The fixed word list gained policy, cancelled, resumption, idle,
+billing, model and content so the next close says more than "other".
+`a1008AfterSetupIsADroppedSessionUnlessItIsAboutTheKeyOrQuota`.
+
+**Regression 2026-10-16 (nav demo run 38855381048 at d6a167b, relay on, 90 km/h):** 「附近有加油站吗」
+replaced the route again (「找到5个加油站…请说第几个」, `nav_stopped reason=replaced`). That run had five
+Gemini 1008 closes, each now resumed instead of terminal (fe8933e); a voice-session stop or restart
+runs `NavigationState.reset()` (VoiceSessionController.stop/release), so the legacy flag the guard read
+said "not navigating" while the car still was. **Fix:** the guard reads `ToolCallGuards.navigatingNow()`
+- the map host's own `isNavigating`, or the legacy flag. (The same legacy-flag trap the P63 review
+found for the overspeed alert.) Open: the legacy reset on session stop also tells SpeechArbiter that
+navigation ended; whether that reset should follow the host instead is a separate item.
+
+**Piece check passed (device checks run 38863113123 at 3884acf):** with the voice session stopped
+mid-drive (legacy flag cleared), the nearby question through the real dispatcher -> `ok=false
+NEARBY_QUESTION_WHILE_NAVIGATING`, no route replaced, navigation not stopped.
+
+**Second cause found (warm worker piece 6c00cfa, 2026-10-16):** the guard did refuse (`guard_nearby_nav
+decision=refused`); the route was replaced by the along-route answer itself: `query_live_info`
+along_route put the stations into the destination picker, and opening the picker stopped navigation
+(`EmbeddedNavigationController.request` → `stopNavigation("replaced")`). The earlier "pass" (run
+38837935246) found no stations, so no picker opened. **Fix:** an along-route list shown while
+driving keeps the drive (`keptGuidance`); a pick ends the old route, cancel returns to the drive,
+arrival or 「结束导航」 end it. EmbeddedNavigationControllerTest +7, LiveInfoAlongRouteWiringTest
+updated (list: no stop; pick: stop). SPEC-011 amended. Full suite 4170/0/0.
+
+## P62 — Turn-by-turn guidance is not spoken in her voice (demo used a male voice)
+
+**Status:** OPEN 2026-10-16. Owner test 10-16 ([docs/owner-tests/test-10-16.md](docs/owner-tests/test-10-16.md)):
+"the amap voice is male and not the same as gemini".
+
+**Measured:** in the demo the guidance track is not Amap's audio at all. The emulator runs with
+`-no-audio`, so the host bridge re-voices each guidance sentence with edge-tts
+`zh-CN-YunxiNeural` (a male voice, chosen in `host_audio_bridge.py` "so it is not her"). In the app,
+`AmapGuidanceVoice` leaves Amap's inner voice on, because the SPEC-018 relay (ADR-014: guidance
+spoken by the assistant, Amap only as the fallback) is behind the developer toggle, off by default,
+and its step-0 measurements (`GUIDANCE-EMU-001`, G-1 … G-1f) have never run.
+
+**Plan:** run the demo with the relay on (Gemini declares `verbatimPromptSpeech`), which is
+ADR-014's decided design and doubles as `GUIDANCE-EMU-001`'s first run on the GitHub emulator; the
+host voices only what the relay hands to Amap's fallback, in a female voice; measure G-1 (time to
+her audio) and the fallback count. Limit to state in the hand-over: the product session is Qwen,
+which does not declare `verbatimPromptSpeech` (SPEC-018 2026-10-10 note), so on Qwen guidance stays
+in Amap's own voice until that is solved.
+
+**Run 1, 2026-10-16 (nav demo run 38843628215 at e9f8535, relay on, 3000 ms measurement deadline,
+`ci/nav-demo runs/run_20261016_0326_e9f8535`):** she spoke no guidance. 242 `guidance_route` lines for
+about 24 real prompts: 1 SEND_FAILED (a driver turn was open at navigation start), then 61
+AMAP_SPEAKING and 197 `nav_guidance_fallback_tts accepted=true`, and after a Gemini close
+(`code=1008 reason_class=other`, ~3 min into the drive, while asleep, never reconnected) 180
+NOT_ACTIVE. Cause of the flood: with the inner voice off, each fallback `playTTS` came back through
+`onGetNavigationText` as new guidance, so the relay fed itself; each fallback is bracketed for the
+mic gate, so the driver's climate/music/ETA lines were dropped and she went to sleep. Measured on the
+way (GUIDANCE-EMU-001): G-1b+ - `playTTS` with the inner voice off fired no `TTSPlayListener`
+start (`nav_guidance_play_start` 0 in the whole run), so the relay's length-estimate bracket is the
+gate; G-1f - `onGetNavigationText` does fire with the inner voice off, including for our own
+`playTTS`. **Fix:** `GuidanceRelay` drops the echo of a sentence it handed to Amap within 10 s, once
+(`guidance_echo_dropped`; GuidanceRelayTest +2). Searched for Amap SDK reports of custom
+`playTTS` text reappearing in `onGetNavigationText`: no web search from this container, nothing
+found in the SDK's Javadoc copies under the scratchpad; the echo is inferred from the counts.
+
+**Run 2 (nav demo run 38847890114 at 128494c, echo fix in):** she spoke the guidance. 23 prompts
+went to her and all 23 were claimed and judged MATCH (her words agreed with Amap's on directions and
+distances); first audio 626-1371 ms after the text (median 754 ms). 18 went to Amap's fallback, 15 of
+them after a Gemini 1008 close (fixed in fe8933e: no longer terminal). Video:
+`demo-videos/navigation_demo_her_voice_guidance_2026-10-16.mp4`. The voice is Gemini's, not Ayano.
+
+**Run 3 (nav demo run 38849988938 at 876e20c, 120 km/h to arrival):** 47 prompts spoken by her, 43
+MATCH, 1 MISMATCH_DIRECTION and 1 MISMATCH_NUMBER (both re-spoken by Amap), then FIDELITY_STRIKES
+handed 2 more to Amap (strike limit 2 per navigation); 12 echoes dropped live
+(`guidance_echo_dropped`), 12 fallbacks in total. First audio 571-1610 ms (3 of 47 over 1200 ms).
+The drive reached 十字门站; a 1008 close (reason_class=session) no longer ended the session.
+Video: `demo-videos/navigation_demo_arrival_her_voice_2026-10-16.mp4`.
+
+**Status:** FIXED for the demo on Gemini, verified live (runs 2 and 3). Limit: the product session
+(Qwen) does not declare `verbatimPromptSpeech`, so the shipped app keeps Amap's voice for guidance
+until a Qwen relay is solved; GUIDANCE-EMU-001 still lacks G-1b audibility, G-1c, G-1d and a
+network-cut repeat.
+
+## P63 — No spoken warning when the car is over the speed limit
+
+**Status:** FIXED 2026-10-16, verified on the emulator both ways: her voice (relay on, 5-minute demo 5224551, 60 km/h camera) and the shipped Amap voice (relay off, NAV-OVERSPEED-001 PASS, worker 327f8f6, 70 km/h camera). Audibility in a real car: NAV-OVERSPEED-DEVICE-001 (person). Limit: no warning where Amap knows no limit (no camera/sign). Owner test 10-16: "overspeed no voice warning".
+
+**Measured:** in the demo the HUD shows 90 km/h and 「限速 –」 for the whole drive: no speed limit
+was known, so nothing could be over it. Amap Navi SDK 11.2.100 gives a limit only at speed cameras
+(`AMapNaviCameraInfo.getCameraSpeed`) and speed-limit facilities
+(`AMapNaviTrafficFacilityInfo.getLimitSpeed`); `javap` on the SDK jar shows no per-road limit in
+`NaviInfo` (only `getCurrentSpeed`). The cameras on the 珠海站 route are violation and pedestrian
+cameras (多人被拍, 车道), with no limit. Where a limit camera exists (route to 十字门, 2026-09-21:
+`nav_camera_ahead limitKmh=40`, `nav_speed over=1`) Amap's own alert is a ring
+(`onPlayRing`, `nav_play_ring`), not words, and the demo's host bridge does not voice rings.
+
+**Plan:** a deterministic spoken warning 「您已超速，限速N公里」 when the HUD's overspeed turns on
+(and again when the limit changes while still over), spoken through the guidance path (the relay
+when it is on, else Amap's TTS); the demo drives a route with a limit camera. Limit to state: with
+no camera or limit sign ahead, the SDK knows no limit, so there is nothing to warn about.
+
+**Run 1 (38843628215, relay on):** the 十字门 route showed one 60 km/h limit (`limitKmh=60`), the HUD
+went over once (`over=1`), one warning was queued to the relay (16 Amap rings over the drive). That
+run's alert went the relay way; the shipped relay-off path is NAV-OVERSPEED-001. Two review rounds
+(REVISE, REVISE) changed the relay-off path: it goes through a `GuidanceRelay` with `enabled = false`
+(waits for Amap, mic bracketed, cleared at navigation end), the drop check uses the map host's own
+navigation state, and Amap starting inside the bracket cancels the estimate close.
+
+**Run 2 (38847890114):** the 60 km/h limit was seen again, one warning queued to the relay (spoken in
+her voice as a guidance prompt; part of the 23 MATCH). The relay-off path (shipped) is still
+NAV-OVERSPEED-001, NOT_RUN.
+
+**Piece check passed (device checks run 38863113123 at 3884acf, relay off):** the warning through the
+real speak path was queued to Amap (`reason=DISABLED`), spoken by Amap's TTS (`accepted=true`) with the
+uplink gated, and dropped after navigation stopped. Remaining: the HUD trigger at a real camera with
+the relay off on the emulator, and audibility in a car (NAV-OVERSPEED-DEVICE-001).
+
+## P64 — The emulator demo runs at about 6.5 frames per second
+
+**Status:** IMPROVED, rest is a test-rig limit (2026-10-16): 6.5 → 10.6-10.7 fps. Originally OPEN 2026-10-16. Owner test 10-16: "the simulation is laggy".
+
+**Measured:** `ffprobe` on the demo video: 2861 frames in 440 s, average 6.5 fps. The emulator has
+2 cores and 2 GB; the GitHub runner has no GPU, so the map is drawn by SwiftShader on the CPU; the
+Amap SDK ships ARM-only native libraries (`arm64-v8a`, `armeabi-v7a` in the AAR), so on the x86_64
+emulator the whole navigation engine and map renderer run under ARM translation; the in-guest
+`screenrecord` encodes 1080x2340 on the same CPUs.
+
+**Plan:** give the emulator the runner's 4 cores and 4 GB, record at half resolution, report the
+measured fps in the run summary. Limit to state: a phone or car head unit renders the same app on a
+GPU with native ARM code; the emulator cannot match that, so the demo frame rate is a test-rig
+limit, not the app's.
+
+
+**Run 1 (38843628215):** 4 cores / 4 GB and recording at 576x1248 raised the average from 6.5 to 8.4
+fps (4542 frames in 540 s). Better, still not smooth: the remaining cost is ARM translation and
+software rendering, which this rig cannot remove.
+
+**Run 2 (38847890114):** 10.7 fps (5780 frames in 540 s); the echo loop no longer burns CPU.
+
+## P65 — With her voice on the guidance, a talkative route puts her to sleep between driver lines
+
+**Status:** OPEN 2026-10-16. Found by nav demo run 38849988938 (relay on, 120 km/h): after the
+climate reply she went to 休眠中 and the music, ETA and gas lines got no answer (tools: climate only).
+**Measured:** 47 guidance prompts in ~10 min (about one every 12 s); the microphone is gated while
+guidance plays (P3, SPEC-012), and `ListeningLifecycle` sleeps after 30 s with no driver speech
+(`SLEEP_AFTER_INACTIVITY_MS`). The scripted driver speaks every 20 s regardless of guidance, so two
+consecutive lines landing in guidance windows make 30 s of "silence". At 90 km/h (run 38847890114,
+23 prompts) climate, music and live info all worked. **Open question:** whether guidance time should
+pause the inactivity countdown (a lifecycle rule; SPEC-012/SPEC-018 own it), or the demo driver
+should wait for guidance to finish as a real driver mostly does.
+
+**Measured from the run's own tracks (decider, 2026-10-16):** the climate answer ended at ~83 s (the
+countdown's last restart); the music line (95.75-96.6 s) fell entirely inside her guidance audio
+(95.35-98.25 s; guidance began 0.4 s before the driver, so SPEC-012 B6 R0 could not protect it); 聆听中
+→ 休眠中 at 112.9 s, exactly 30 s after the restart; ETA, gas and music-off then arrived while asleep.
+One gated line is enough (the next one comes ~35 s after the last restart). Her audio plus the tail
+covered 31% of the drive at 120 km/h, 23% at 90.
+
+**Decision (decider, 2026-10-16): B, test rig only.** `docs/LISTENING_LIFECYCLE.md` already says the
+countdown is not extended by navigation guidance (P17's device criterion), and SPEC-018 B6 says
+guidance never changes the listening state; pausing the countdown (A) would be a lifecycle contract
+change for the owner, would not save the gated line, and would only have moved the deadline 0.65 s
+past the next line. The demo driver now waits, at most 10 s, until the app's uplink is open and she is
+quiet (`host_audio_bridge.py --wait-quiet`, read from `speech_arbiter out=uplink decision=`), never
+repeats a line and never wakes her; the summary records the waits, listening transitions by reason,
+the uplink-closed count and `droppedGuidance`. **Limit to state:** a driver who starts speaking while a
+guidance prompt plays is not heard (P3 / ADR-014 §4, an accepted cost), and after 30 s with no heard
+request she sleeps (P17); the wake word resumes her. Research: no usable web results from this
+container (search engines blocked or irrelevant); from general knowledge, consumer follow-up windows
+count from the end of the assistant's own reply and are not stretched by other audio.
+
+**Amendment (decider, 2026-10-16), after runs 38853123513 and 38860693378:** the music line collided
+deterministically with a guidance prompt whose audio began 0.1 s after the line started (95.8 / 95.9 s);
+every wait was 0 ms because the uplink was still open while the prompt was in flight (SENT → audio
+648-1526 ms). The rig now also waits while a prompt is in flight: `guidance_route … to=assistant
+reason=SENT` marks it, the next uplink CLOSED or 3.5 s clears it (`host_audio_bridge.py --selftest`).
+The scripted driver reads an app log line a real driver cannot see. Product limit unchanged: a driver
+who starts in the ~0.3-0.5 s before her guidance audio, before SPEC-012 R0 can arm, is cut off (P3 /
+ADR-014 §4, accepted). Proved first by a short piece run (`[navpiece]`, first six lines), before any
+full demo (owner rule 2026-10-16).
+
+**Piece check passed (nav demo piece run 38869906819 at 1df8c66, first six lines, relay on, 90 km/h):**
+navigation started; climate, music and ETA all answered with their tools while she spoke 7 guidance
+prompts (7/7 MATCH); no line cut. The deterministic 95.8 s collision did not recur (the session-ready
+wait shifted the timeline), so the in-flight wait is proved offline (`--selftest`), not yet live.
+
+## P66 — A mumble right after a barge-in and a music stop called `set_speech_output`
+
+**Status:** OPEN 2026-10-17. Fixed at JVM level, merged 2026-10-17 (`ToolCallGuards.speechOutputNotRequested`,
+`ToolCallGuardSpeechOutputTest`; reviewer PASS after one REVISE round, which added 住嘴/住口/闭上嘴/别啰嗦了/
+不许说话/噓 and tightened resume so 「你可以再说一遍吗」 is refused). Closes after u_mumble passes on the
+next DEMO-TRYOUT-001 Gemini run. Accepted false allows (err toward the model acting): 安静 anywhere,
+「别念错」, 「不准说谎」; accepted false refusals (harmless, the lifecycle resumes on any meaningful
+transcript): 「可以讲话了」, 「你可以说啦」.
+Found by the tryout re-run (cloud JVM harness at 323fc29, app code =
+87d5287, gemini-3.1-flash-live-preview, simulated car; DEMO-TRYOUT-001). Line u_mumble 「嗯……那个……」
+(890 ms), which by docs/DEMO_TRYOUT.md should produce no tool and no claim. It came 11 s after
+u_barge 「等一下」 and u_mstop. Log (timings only): `TURN_HOLD reason=UNCLASSIFIED_CLAIM
+kind=CONVERSATION`, then `gemini_tool_call tool=set_speech_output args=valid`, dispatched `result=✓`,
+then she spoke (spoke=true, 1.9 s). The log keeps argument keys only, so the mode is not known. The
+19/19 takes of 2026-10-14..16 had u_mumble PASS.
+**Reading:** the model acted on a non-request, probably carrying over the barge-in context. Nothing
+in the dispatcher asks whether the driver's own words asked for a speech-output change. This is
+the I-1 / "model's words are not evidence" family: a tool that changes how she talks runs on a line
+with no request. **Next:** a JVM characterisation of what `set_speech_output` does on a
+CONVERSATION-classified turn, and whether its guard should, like other repeat-sensitive tools,
+require a request in the transcript. Not decided; no re-run to chase variance.
+**Decided 2026-10-17 (decider, option A):** a request-required guard on the
+`ToolCallGuards.vagueExitWhileNavigating` pattern: `ToolCallGuards.speechOutputNotRequested`,
+chained in `AndroidToolDispatcher.guard` after `vagueExitWhileNavigating`, refuses
+`set_speech_output` (either mode) with `SPEECH_OUTPUT_NOT_REQUESTED` unless this turn's words ask
+her to stop or resume talking (`ListeningIntent.classify == SHUT_UP`, or a bounded stop/resume
+grammar kept beside `isExplicitEnd`). Stale or missing words (call before its transcript) pass,
+like the other words-based guards; logged `guard_speech_output decision=…` with codes and epochs
+only. Why it matters beyond the chip: a ✓ `set_speech_output` result sets `DriverTurn.proven` and
+releases claims as `execution_proved` (DriverTurn.kt:104-108), and `silent` enters SILENT_WAIT then
+SLEEP. Rejected: B (characterise only: leaves I-4 open), C (refuse all tools on CONVERSATION turns:
+the dispatcher cannot see the kind, and 「停止说话」 classifies CONVERSATION), fail-closed on late
+transcripts (dropped a real 「停止说话」 on 2026-09-28), a prompt rule (AGENTS rule 4).
+Research: Gemini function-calling best practices, "Validate function calls before executing"
+(ai.google.dev/gemini-api/docs/function-calling); Live API transcription has no guaranteed
+ordering (SPEC-010). Nothing specific found on spurious calls on filler speech.
+Residual: a mumble whose call beats its transcript still runs (count `decision=stale_words`); any
+tool call, even a refused one, still releases a chat reply as `tool_called` (DriverTurn.kt:733-734),
+which is a separate question. Build waits on the executor worktree vendor files.
+Tests (new `ToolCallGuardSpeechOutputTest`, modelled on `ToolCallGuardVagueExitTest`): u_mumble refused
+for both modes through the dispatcher (no executor call, no chip); 嗯/那个/等一下/音乐先关了吧/还要开多久/
+说话能不能嗲一点 refused; 闭嘴/别说了/不要说了/你先别说了/停止说话/停止說話/安静点/别出声/别吵了/少说两句/
+shut up/stop talking run with `true`; 继续说/接着说/可以说话了/繼續說 run with `false`; every
+`ListeningIntent` SHUT_UP phrase allowed; call before transcript, null context, epoch 0 pass; other
+tools untouched; advice says nothing was done. Docs on landing: LISTENING_LIFECYCLE.md:143-144,
+CAPABILITIES.md:30, ARCHITECTURE.md:64, TEST_MATRIX DEMO-TRYOUT-001 `related`.
+
+## P67 — 「空调」 can operate the AC twice: the local path and the model's call with a different action
+
+**Status:** OPEN 2026-10-17. Fixed at JVM level, merged 2026-10-17: `claimCapability` keys on the
+control (`CapabilityClaimGroupTest` 7/7; app debug 1958/0, behavior-test 132/0 in the planner's
+rerun; reviewer PASS, unverified E2E). It closes after the AFF-AC re-measure on the next voice-checks
+run (AFFORDANCE-DEVICE-001). Reviewer note: the model call in run 39005653831 logged `args=[action]`
+with no `value`, so it was the opposite power action (or get_state), which is exactly what is now refused.
+Found by voice checks run 39005653831 at aee3ff0 (app code 87d5287, Gemini
+debug override), AFF-AC under the corrected oracle (AFFORDANCE-DEVICE-001).
+**Seen (text-free skeleton):** `gemini_tool_call tool=control_climate` (before the transcript), then
+`affordance_match id=climate` and `screen_action=voice_climate ok=true` (the local path ran), then
+`tool=control_climate args=[action] result=✓`: the model's call **executed**. Her reply was spoken
+(`spoke=true`). In the two earlier runs today the same call was refused `DUPLICATE_IN_TURN`.
+**Cause:** `DriverContext.claimCapability` keys on `epoch|tool|action`. The local plan claims
+`power_on` or `power_off` from the current state; when the model sends a different action for the
+same control (the log keeps only argument keys, so most likely the opposite power action, or a
+temperature change), its key differs and both run. SPEC-010 B4's own rule is "one execution per turn,
+whichever side is first"; the `(tool, action)` key is the mechanism falling short of it.
+**Fix direction (planner, within B4):** claim a *control*, not an exact action. Normalise the action
+into a capability group before keying (climate `power_on`/`power_off` -> `power`; music
+`play`/`stop`/`toggle` -> `playback`; the map recentre has one action), so a second claim on the same
+control in the same turn is refused `DUPLICATE_IN_TURN`. Leave temperature adjustments keyed by action,
+because "空调" never plans one. A JVM test drives the local claim then a model call with the
+opposite action and expects `DUPLICATE_IN_TURN`; AFF-AC on the emulator re-measures it. Update the
+B4 text to say "same control".
 

@@ -53,6 +53,17 @@ object ToolFailureAdvice {
         PhoneCallTool.CALL_FAILED to
             "拨号没有成功，没有接通。" +
             "请用一句话如实告诉用户没打出去，不要谎称已经接通。",
+        ToolCallGuards.NEARBY_QUESTION_WHILE_NAVIGATING to
+            "现在正在导航，用户只是问附近或路上有没有，不是要换目的地，所以没有改路线，导航还在继续。" +
+                "请调用 query_live_info，kind=along_route，查沿途的，然后按结果如实简短回答；" +
+                "用户之后明确说要去那里时再调用 navigate_to。不要说已经开始导航或已经换了路线。",
+        ToolCallGuards.VAGUE_EXIT_WHILE_NAVIGATING to
+            "导航还在继续，没有结束。用户只是说算了/不用了/不去了，不是要结束导航；" +
+                "用一句话回应并说明导航还在继续、要结束请说结束导航，例如「好的，导航还在继续，要结束请说结束导航。」" +
+                "不要说导航已结束，也不要问要不要结束导航。",
+        ToolCallGuards.SPEECH_OUTPUT_NOT_REQUESTED to
+            "用户这句话并没有让你停止说话或恢复说话，所以没有执行，你的说话状态没有改变。" +
+                "不要提这件事，也不要说你会安静或已经安静；简短回应这句话本身，没听清就请他再说一遍。",
         ToolCallGuards.UNSUPPORTED_BODY_PART to
             "用户说的是小诺控制不了的部件，所以没有执行，车窗也没有动。" +
             "请用一句话如实说暂时还不支持，不要说已经做了，也不要改开车窗。",

@@ -1,5 +1,16 @@
 # Current Milestone
 
+## Branch claude/10-15 (2026-10-15)
+
+**Real app with voice (2026-10-15, evening):** a debug-only, in-memory Gemini override (decided by the decider; release stays Qwen-only) lets the GitHub emulator run the real app with a live session. `run_scenarios.py` S1..S21 **23/23** (run 38791103929 at 8d05eb3, `gemini-3.1-flash-live-preview`, Gemini's voice, quota guard on every session, 0 Qwen sessions). Review video with sound: `demo-videos/real_app_emulator_gemini_voice_2026-10-15.mp4`. Fixed on the way: P47 (uplink gate locked open on a fan), P60 (a correction ordered an action the driver forbade). Open: P59 (route stays drawn after 算了), Cantonese (owner question).
+
+
+`claude/10-13` + the Cursor tryout work (`cursor/p57-my-side-window-9a6b`, `cursor/drop-scolding-tone-9a6b`), reviewed and fixed: three stale session goldens, the driver-window rewrite now narrows only `window=all`, and 「导航去…」 is a claim again (OPEN_PROBLEMS P57). Full JVM suite 4086 / 0 failures. Gemini tryout RESULT PASS 19/19, video `demo-videos/tryout_gemini_2026-10-15.mp4` (Gemini's voice, not Ayano). GitHub emulator (moved here from `cursor/github-emulator-9a6b`, fixed: APK was signed with the wrong debug certificate → Amap code 22): run 38724466975 drove the real app on an API 34 emulator - map, route, turn-by-turn with lanes and junction view at 80 km/h, arrival; 180 s video on branch `ci/drive-video` (`docs/EMULATOR_TESTING.md`). No voice in it: the session is unconfigured (no Qwen by rule). Not merged: the rest of `cursor/github-emulator-9a6b` (based on an old commit; its drive step has failed on every run) and `wt/p57` (superseded).
+
+## Tryout — DEMO-TRYOUT-001 PASS on the JVM harness (2026-10-14)
+
+P57: 「把我这边的窗户开一点」 opens only the driver window. The 2026-10-14 Gemini tryout (`gemini-3.1-flash-live-preview`, simulated car, not a device) graded `tryout_check.py` RESULT PASS, 19/19. `u_window` was `window=driver` and no other window moved. Place search prefetched five candidates. `u_can` 1.5 s, `u_pick2` 2.4 s, `u_barge` 1.7 s. The video is on PR #12. This is not device evidence.
+
 ## Active work — ADR-017: Qwen-Omni Realtime + Maia (cloud, `claude/10-9`, 2026-10-09)
 
 **The owner's decision:** one end-to-end model, `qwen3.8-omni-flash-realtime` with the stock voice Maia, no separate TTS ([ADR-017](DECISIONS/ADR-017-qwen-omni-realtime-end-to-end.md)). **2026-10-09:** the product session is Qwen Maia now (`VoiceProviderChoice` + fixed `session.update` voice); Gemini/Baidu/Azure developer fields no longer select the session. Gates Q-1 to Q-5 stay open; stack deletion still waits for Q-5. The adapter is [SPEC-021](SPECS/SPEC-021-qwen-omni-provider.md).

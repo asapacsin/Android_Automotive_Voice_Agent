@@ -1,0 +1,47 @@
+{
+  "_comment": [
+    "LIVE-INFO-DEVICE-001: each live_info kind selected from speech; run with --repeat 10."
+  ],
+  "scenarios": [
+    {
+      "id": "LI-WEATHER",
+      "utterance": "weather",
+      "say": "live_weather",
+      "expect": [
+        "tool=query_live_info",
+        "kind=weather"
+      ],
+      "forbid": []
+    },
+    {
+      "id": "LI-PLACE",
+      "utterance": "place details",
+      "say": "live_place_details",
+      "expect": [
+        "tool=query_live_info",
+        "kind=place_details"
+      ],
+      "forbid": []
+    },
+    {
+      "id": "LI-TRAFFIC",
+      "utterance": "route traffic",
+      "say": "live_route_traffic",
+      "expect": [
+        "tool=query_live_info",
+        "kind=route_traffic"
+      ],
+      "forbid": []
+    },
+    {
+      "id": "LI-ALONG",
+      "utterance": "along route",
+      "say": "live_along_route",
+      "expect": [
+        "tool=query_live_info",
+        "kind=along_route"
+      ],
+      "forbid": []
+    }
+  ]
+}

@@ -56,6 +56,17 @@ class VoiceContextHintsTest {
     }
 
     @Test
+    fun vagueNeverMindMidDriveKeepsNavigating() {
+        // Decider 2026-10-16, option B: 「不去了」 mid-drive does not end navigation.
+        val hint = VoiceContextHints.compose(NavigationPhase.NAVIGATING, cameraOpen = false)!!
+        assertTrue(hint.contains("只有用户明确要结束导航"))
+        assertTrue(hint.contains("「算了」「不用了」「不去了」「没事了」不是结束导航"))
+        assertTrue(hint.contains("想结束可以说「结束导航」"))
+        assertTrue(hint.contains("不要问\"要结束导航吗\""))
+        assertFalse(hint.contains("「不去了」时调用"))
+    }
+
+    @Test
     fun openCameraPointsAtTheVisionTool() {
         val hint = VoiceContextHints.compose(null, cameraOpen = true)!!
         assertTrue(hint.contains("describe_camera_view"))

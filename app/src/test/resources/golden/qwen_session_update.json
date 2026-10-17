@@ -69,7 +69,7 @@
       {
         "function": {
           "name": "exit_navigation_mode",
-          "description": "真正停止屏幕导航或关闭候选列表：「结束导航」「取消导航」「不去了」，或导航/选择时说「算了」「返回」。只口头答应不调用则屏幕不变。按 status 答：navigation_stopped=已结束，navigation_selection_cancelled=已取消选择，no_navigation_active=当前没有导航。",
+          "description": "真正停止屏幕导航或关闭候选列表：「结束导航」「取消导航」「退出导航」；候选列表显示时「算了」「不用了」「不去了」「返回」关闭列表。导航中只说「算了」「不去了」不会结束导航。只口头答应不调用则屏幕不变。按 status 答：navigation_stopped=已结束，navigation_selection_cancelled=已取消选择，no_navigation_active=当前没有导航。",
           "parameters": {
             "additionalProperties": false,
             "type": "object",
@@ -222,7 +222,7 @@
       {
         "function": {
           "name": "control_window",
-          "description": "控制车窗（模拟）。「打开车窗」open；「关窗」close；「车窗开一半」set,value=50；「开一点主驾车窗」adjust,window=driver,value=20；「副驾关小一点」adjust,window=passenger,value=-20；「车窗开了多少」get_state。未指明窗时 window=all。只按返回的 windows/announce 确认；ok=false 如实说没成功。",
+          "description": "控制车窗（模拟）。「打开车窗」open；「关窗」close；「车窗开一半」set,value=50；「开一点主驾车窗」「我这边的窗户开一点」adjust,window=driver,value=20；「副驾关小一点」adjust,window=passenger,value=-20；「车窗开了多少」get_state。我这边、我这侧是主驾，不是未指明。未指明窗时 window=all。只按返回的 windows/announce 确认；ok=false 如实说没成功。",
           "parameters": {
             "additionalProperties": false,
             "type": "object",

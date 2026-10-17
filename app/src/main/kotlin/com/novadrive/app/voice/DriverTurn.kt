@@ -559,13 +559,8 @@ class DriverTurn(
                     clauseVerdict(text, ::chatClaimPredicate)
                 }
             HoldReason.CAPABILITY_HELP ->
-                if (toolCalled || executionFailed || musicUnconfirmed ||
-                    !ActionClaimGuard.answersCapabilityHelp(text.substring(0, text.indexOfLast { it in CLAUSE_ENDS } + 1))
-                ) {
-                    Verdict.Wait
-                } else {
-                    clauseVerdict(text, ::chatClaimPredicate)
-                }
+                if (toolCalled || executionFailed || musicUnconfirmed) Verdict.Wait
+                else helpAnswerVerdict(text)
             // A live-info question with no answer from its source: the end drops only invented
             // data (realtimeVerdict), and that is judged clause by clause the same way.
             HoldReason.NO_TOOL_REQUEST ->
@@ -579,6 +574,32 @@ class DriverTurn(
             HoldReason.AWAITING_TOOL_RESULT,
             -> Verdict.Wait
         }
+    }
+
+    /**
+     * A capability answer may play once it already names two supported groups.
+     *
+     * Providers with clause release do that at a clause boundary. Gemini does not
+     * (ADR-011): the tryout held 「你能帮我做什么」 until `generationComplete`, 5.0 s after
+     * the first audio, even though the first clause already named four groups. The end
+     * rule is unchanged — two groups pass it, and a claim still closes early release.
+     */
+    private fun helpAnswerVerdict(text: String): Verdict {
+        if (clauseGateClosed) return Verdict.Wait
+        val clauseEnd = text.indexOfLast { it in CLAUSE_ENDS } + 1
+        val upToClause = if (clauseEnd > 0) text.substring(0, clauseEnd) else ""
+        if (clauseRelease && ActionClaimGuard.answersCapabilityHelp(upToClause)) {
+            return clauseVerdict(text, ::chatClaimPredicate)
+        }
+        if (!ActionClaimGuard.answersCapabilityHelp(text)) return Verdict.Wait
+        val claim = chatClaimPredicate(text)
+        if (claim != null) {
+            clauseGateClosed = true
+            return Verdict.CloseClauseGate(claim)
+        }
+        if (text.length < MIN_FIRST_CLAUSE_CHARS || text.length <= clauseCheckedChars) return Verdict.Wait
+        clauseCheckedChars = text.length
+        return Verdict.ReleaseClauses(text.length)
     }
 
     /** SPEC-014: the first clause that failed the check closed early release for this response. */

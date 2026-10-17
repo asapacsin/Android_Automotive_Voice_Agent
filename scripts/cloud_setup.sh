@@ -32,6 +32,10 @@ SDK_PACKAGES=("platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;
 WEBRTC_AEC3_PIN=2cec2f52e26646f93bd2d5498bbabf59cba18da9
 MUSIC=app/src/main/res/raw/bach_air_usaf.mp3
 MUSIC_URL="https://upload.wikimedia.org/wikipedia/commons/e/ec/Air_-_Air_Force_Strings_-_United_States_Air_Force_Band.mp3"
+# Wikimedia answers shared cloud addresses with HTTP 429 (2026-09-24, 2026-10-17). Fallback: another
+# public-domain recording of the same piece on archive.org (item Bach-airOnTheGString, licence
+# creativecommons.org/licenses/publicdomain). Nothing in the app names the performer.
+MUSIC_URL_FALLBACK="https://archive.org/download/Bach-airOnTheGString/LaMusicaClasicaMasRelajanteDelMundo-Bach-AirOnTheGString.mp3"
 
 log() { echo "[cloud_setup] $*" >&2; }
 warn() { echo "[cloud_setup] WARNING: $*" >&2; }
@@ -134,8 +138,15 @@ fetch_music() {
   mkdir -p "$(dirname "$file")"
   local tmp
   tmp="$(mktemp)"
-  if retry curl -sSfL -A "NovaDriveBuild/1.0 (https://github.com/asapacsin/Android_Automotive_Voice_Agent)" \
-      -o "$tmp" "$MUSIC_URL" && head -c 3 "$tmp" | grep -q ID3; then
+  local url ok=no
+  for url in "$MUSIC_URL" "$MUSIC_URL_FALLBACK"; do
+    if retry curl -sSfL -A "NovaDriveBuild/1.0 (https://github.com/asapacsin/Android_Automotive_Voice_Agent)" \
+        -o "$tmp" "$url" && head -c 3 "$tmp" | grep -q ID3; then
+      ok=yes
+      break
+    fi
+  done
+  if [ "$ok" = yes ]; then
     mv "$tmp" "$file"
   else
     rm -f "$tmp"
@@ -145,8 +156,10 @@ fetch_music() {
 
 install_keystore() {
   [ -n "${NOVA_DEBUG_KEYSTORE_B64:-}" ] || return 0
-  mkdir -p "$HOME/.android"
-  local target="$HOME/.android/debug.keystore"
+  # AGP reads ANDROID_USER_HOME before ~/.android (GitHub run 38719315653 signed with another key).
+  local dir="${ANDROID_USER_HOME:-$HOME/.android}"
+  mkdir -p "$dir"
+  local target="$dir/debug.keystore"
   local tmp
   tmp="$(mktemp)"
   if echo "$NOVA_DEBUG_KEYSTORE_B64" | base64 -d >"$tmp" 2>/dev/null && [ -s "$tmp" ]; then

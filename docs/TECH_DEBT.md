@@ -229,6 +229,8 @@ drive shows it often.
 
 ## D-9 — The hold budget releases a reply whose words were never judged — **OPEN** (found 2026-09-29)
 
+**Owner 2026-10-15:** offered A/B options (P46 wait ~1.2 s for her reply; D-9 drop an unchecked reply; P48 code-written confirmations) and chose to leave this alone for now - current behaviour stays; not to be reopened without the owner.
+
 **Problem.** `DriverTurnPipeline` releases everything held once a turn holds more than 120 events
 (`DriverTurn.onHoldBudgetExceeded`), whatever the hold reason. That includes
 `AWAITING_EXECUTION_PROOF` and `UNCLASSIFIED_CLAIM`, whose words are only judged at the end of the
@@ -322,3 +324,79 @@ confirmation's events had not yet reached the collector. Replaced with an awaite
 the other scenarios for their one `ResponseDone`. Assertions unchanged; no production change.
 Evidence: release class 10/10 green (10 tests each, 0 failures, JUnit XML) with 4× `yes` CPU load;
 full `./gradlew test` green, 3380 tests, 0 failures, 0 errors, 4 skipped (JUnit XML).
+
+## D-RECONNECT-BUDGET — reconnect attempts are counted per session start, not per drop (recorded 2026-10-16)
+
+`ReconnectPolicy.reset()` runs only in `VoiceSessionController.start()`. Since 1008-after-setup is
+resumed (fe8933e), a long drive with frequent benign Gemini closes (five in nav demo run
+38855381048) spends the 5-attempt budget; the 6th drop is terminal (已断开) and every resume plays
+「刚才网络断了一下」. Found by the reviewer (2026-10-16). Fix direction: reset the attempt count after a
+resumed session has stayed up for a while, keep the cap for drops in quick succession. Not fixed.
+
+## D-NAV-FLAG — the legacy NavigationState flag is cleared when the voice session stops mid-drive (recorded 2026-10-16)
+
+`VoiceSessionController.stop()`/`release()` call `NavigationState.reset()`, which also tells
+SpeechArbiter navigation ended (`onNavigating(false)`) and feeds `syncGuidanceSleep`, while the car is
+still guided. ToolCallGuards now reads the map host (`navigatingNow()`, P61 regression) and the
+overspeed alert reads the host too, so three notions of "navigating" exist (legacy flag,
+`EmbeddedNavigationController.isGuiding()`, host `isNavigating`). Found by the P63/P61 reviews
+(2026-10-16). Fix direction: one owner for "a route is being guided" (the host/controller), the legacy
+flag derived from it and never reset by the voice session. Not fixed.
+
+
+## D-CANCEL-SEARCH — 「算了」 during a destination search cancels nothing (recorded 2026-10-16) — **RESOLVED 2026-10-17** (merge of `6ae63f1`)
+
+Resolved in the controller: `CANCELLABLE_PHASES` covers the four in-flight phases, the cancel bumps
+`generation`, and late search / route success / route failure / calc-not-accepted results are
+dropped under the lock (`calcGeneration`, `lateRouteResultLocked`), logged as
+`nav_flow_late_result_dropped kind=…` with no place names. `EmbeddedNavigationCancelInFlightTest`
+7/7; reviewer PASS (unverified on a device). Research (AGENTS rule 6): the Amap drive-route-plan
+guide (lbs.amap.com/api/android-navi-sdk/guide/route-plan/drive-route-plan, fetched 2026-10-17)
+documents only `onCalculateRouteSuccess`; it says nothing on whether a new `calculateDriveRoute`
+aborts an earlier one, and `AMapCalcRouteResult` carries no request token. Follow-ups found by the
+review: D-CANCEL-HOST-OVERVIEW, D-CANCEL-STALE-REPLY, D-CALC-SUPERSEDE below.
+
+## D-CANCEL-HOST-OVERVIEW — a late route result after a cancel still draws the route overview (recorded 2026-10-17)
+
+`AmapNaviViewHost.onRouteReady` (~:766-769) sets `lastRouteIds` and calls
+`AmapDrivingPresentation.applyRoutePreview` (overview) before the controller decides, and nothing
+calls `applyIdle` on a cancel. A calculation that finishes after 「算了」 puts the map into the
+cancelled destination's overview while the controller is IDLE; the same was already true after
+cancelling a route picker. Owner: the host follows the controller's phase. Next step: an executor
+packet (presentation driven by the controller's phase / a cancel event) plus an emulator check.
+
+Note from its review (2026-10-17): "no overview" covers the camera and view options only; the SDK
+still auto-draws the late route's line and flag (P59: no SDK 11.2.100 call removes it).
+
+## D-REROUTE-PREVIEW — a reroute during guidance applies the route-preview options (recorded 2026-10-17)
+
+Pre-existing, found by the D-CANCEL-HOST-OVERVIEW review. If the SDK reports a reroute through
+`onCalculateRouteSuccess(int[])`, the host calls `AmapDrivingPresentation.applyRoutePreview`
+mid-drive: driving=false options, layout hidden, north-up, auto-lock off (AmapDrivingPresentation.kt
+~28-32, ~112-142). `MapPresentationPolicyTest.rerouteWhileNavigatingIsUnchanged` pins today's
+behaviour. Next step: confirm from a device or emulator log (`nav_recalc_yaw` followed by
+`nav_presentation mode=preview`) before changing it.
+
+## D-CANCEL-STALE-REPLY — the pending navigate_to result still resolves after a cancel (recorded 2026-10-17)
+
+`NavigationVoiceOutput` (~:38) / `NavigationServer` (~:89-92): after the cancel the pending
+`navigate_to` result still resolves `ok=true status=awaiting_route_selection_on_screen screen=none`,
+which can prompt a stale 「请选择」 — the failure SPEC-006 CVC-36 lists ("a stale reply is spoken").
+Next step: map a cancelled flow to an explicit cancelled result, with a scripted-server check.
+
+## D-CALC-SUPERSEDE — an old route calculation can land in a newer one (recorded 2026-10-17)
+
+Cancel → new search → new calculation: an old calculation's callback arriving after the new one
+starts passes `calcGeneration == generation` and the phase check, so it could show the old
+destination's routes under the new name (the new one's real callback is then dropped). Pre-existing
+for a search that supersedes another; needs the old calculation to be slower than the new POI lookup.
+The Amap result carries no request id (see research above), so the fix needs vendor evidence first
+(does a new `calculateDriveRoute` abort the old one?), e.g. an emulator log of two overlapping calls.
+
+Found by the independent review of the vague-exit fix (merge `7607122`). Since that fix the guard lets a
+vague exit through before guidance starts, as SPEC-006 CVC-36 intends. But
+`EmbeddedNavigationController.endByVoice` returns `NOTHING_ACTIVE` in RESOLVING_DESTINATION,
+PLANNING_ROUTE, CALCULATING_ROUTE and ROUTE_READY without cancelling the search or discarding its late
+result (EmbeddedNavigationController.kt ~312-330). Effect: the driver says 「算了，不去了」 while the
+search runs, and the result still arrives and shows candidates. Owner: EmbeddedNavigationController.
+Next step: an executor packet (cancel the in-flight flow, drop the late result, test each phase).

@@ -1,26 +1,88 @@
 {
   "generated_by": "scripts/skill_metrics.py",
-  "events": 3,
+  "events": 12,
   "outcomes": {
-    "PASS": 3
+    "PASS": 11,
+    "PARTIAL": 1
   },
   "total_retries": 2,
   "skill_usage": {
     "reproduce": 1,
-    "fix": 3,
-    "verify": 2,
-    "start": 1
+    "fix": 4,
+    "verify": 4,
+    "start": 2,
+    "continue": 4,
+    "handoff": 8,
+    "review-packet": 1
   },
   "deviations": {},
   "missing_steps": {},
-  "human_reminders": {},
+  "human_reminders": {
+    "do not treat duplicated capability truth as a bad keyword": 1
+  },
   "manual_repeated_work": {
-    "build-install-harness-read-log": 2
+    "build-install-harness-read-log": 2,
+    "provision-worktree-vendor-files": 1,
+    "review-packet-assembly": 1
   },
   "failed_skill_assumptions": {},
-  "unused_skills": [
-    "handoff"
-  ],
+  "unused_skills": [],
+  "time_efficiency": {
+    "timed_tasks": 7,
+    "total_minutes": 868,
+    "total_attempts": 15,
+    "inefficient": [
+      {
+        "task": "vendor-files-in-worktrees",
+        "minutes": 775,
+        "attempts": 4,
+        "waste": [
+          "vendor-files-missing-in-worktrees",
+          "manual-copy-refused"
+        ],
+        "improvement": "scripts/new_worktree.sh creates the worktree and unpacks the owner's vendor zip (NOVA_VENDOR_ZIP_URL, set 2026-10-17); planner recipe and AGENTS.md point at it"
+      },
+      {
+        "task": "vendor-files-fallback",
+        "minutes": 10,
+        "attempts": 2,
+        "waste": [
+          "vendor-files-missing-in-worktrees",
+          "stopped-on-refusal"
+        ],
+        "improvement": "new_worktree.sh copies the gitignored vendor files from local checkouts when no zip URL is set; on a refusal, ask the owner one plain yes/no and keep the other paths running"
+      },
+      {
+        "task": "blocker-rule",
+        "minutes": 15,
+        "attempts": 1,
+        "waste": [
+          "stopped-on-refusal"
+        ],
+        "improvement": "AGENTS.md rule 6: a blocker gets community research + alternatives until solved; archive.org mirror as the music fallback in cloud_setup.sh and new_worktree.sh"
+      },
+      {
+        "task": "disk-full-cleanup",
+        "minutes": 8,
+        "attempts": 2,
+        "waste": [
+          "disk-full-build-dirs"
+        ],
+        "improvement": "review-packet step 7: remove worktree and every NOVA_BUILD_DIR after merge"
+      }
+    ],
+    "waste_causes": {
+      "manual-copy-refused": 1,
+      "disk-full-build-dirs": 1
+    }
+  },
+  "observed_sequences": {
+    "scripts/skill_metrics.py -> scripts/skill_event.py -> scripts/skill_observe.py": 1,
+    "git add -> git commit -> gradlew :app:testDebugUnitTest :behavior-test:test": 1,
+    "git commit -> git push -> gradlew :app:testDebugUnitTest :behavior-test:test": 1,
+    "scripts/delegation_check.py -> git add -> git commit": 1,
+    "scripts/review_packet.py -> git stash -> git merge": 1
+  },
   "suggested_actions": [],
   "thresholds": {
     "new_skill": 3,

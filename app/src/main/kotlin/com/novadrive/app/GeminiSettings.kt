@@ -116,6 +116,24 @@ object GeminiSettingsValidator {
         return null
     }
 
+    /**
+     * The settings a debug-override Gemini session uses: the stored ones with the harness model
+     * (`VoiceCatalog.geminiExperimentOrder.first()`, as LiveDemoRun). See [DebugProviderOverride].
+     */
+    fun debugOverrideSettings(settings: GeminiAppSettings): GeminiAppSettings =
+        settings.copy(model = VoiceCatalog.geminiExperimentOrder.first())
+
+    /**
+     * The config code a debug-override Gemini start fails with, or null. Unlike [configProblem] it
+     * ignores the stored preference, so the override never inherits its silent pass (fails closed).
+     */
+    fun debugOverrideProblem(settings: GeminiAppSettings, keyPresent: Boolean): String? {
+        validateSettings(debugOverrideSettings(settings))?.let { return it }
+        if (!keyPresent) return "GEMINI_API_KEY_MISSING"
+        if (!settings.consentAccepted) return "GEMINI_CONSENT_MISSING"
+        return null
+    }
+
     /** The one honest on-screen sentence for a voice-provider config code; null for non-Gemini codes. */
     fun screenMessage(code: String): String? = when {
         code == "GEMINI_API_KEY_MISSING" -> "语音服务未配置：请在开发者设置里填写 Gemini 密钥。"
@@ -134,6 +152,18 @@ object GeminiSettingsValidator {
 object VoiceProviderChoice {
     @Suppress("UNUSED_PARAMETER")
     fun resolve(settings: GeminiAppSettings, keyPresent: Boolean): VoiceProviderId = VoiceProviderId.QWEN
+
+    /**
+     * The session's provider: [resolve], except that a debuggable app with the in-memory
+     * [DebugProviderOverride] on gets GEMINI_LIVE (2026-10-15). A release app ignores the override.
+     */
+    fun resolveForSession(
+        settings: GeminiAppSettings,
+        keyPresent: Boolean,
+        debuggable: Boolean,
+        geminiOverride: Boolean,
+    ): VoiceProviderId =
+        if (debuggable && geminiOverride) VoiceProviderId.GEMINI_LIVE else resolve(settings, keyPresent)
 
     /**
      * Config problem for a start, following [choice] only. QWEN runs [qwen]; GEMINI_LIVE runs
@@ -177,6 +207,7 @@ class GeminiSettingsRepository(
     context: Context,
     private val credentials: CredentialStore = AndroidKeystoreCredentialStore(context.applicationContext),
 ) {
+    private val appContext = context.applicationContext
     private val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     fun loadSettings(): GeminiAppSettings {
@@ -244,7 +275,19 @@ class GeminiSettingsRepository(
     /** See [GeminiSettingsValidator.configProblem]. */
     fun configProblem(): String? = GeminiSettingsValidator.configProblem(loadSettings(), keyPresent())
 
-    fun choice(): VoiceProviderId = VoiceProviderChoice.resolve(loadSettings(), keyPresent())
+    fun choice(): VoiceProviderId = VoiceProviderChoice.resolveForSession(
+        loadSettings(), keyPresent(), DebugProviderOverride.isDebuggable(appContext), DebugProviderOverride.geminiRequested,
+    )
+
+    /** Problem for a debug-override Gemini start; see [GeminiSettingsValidator.debugOverrideProblem]. */
+    fun debugOverrideProblem(): String? = GeminiSettingsValidator.debugOverrideProblem(loadSettings(), keyPresent())
+
+    /** The debug-override Gemini config: harness model, no assistant (Azure) voice; throws its GEMINI_* code. */
+    fun debugOverrideConfig(instructions: String): GeminiApiConfig {
+        val settings = GeminiSettingsValidator.debugOverrideSettings(loadSettings())
+        val key = credentials.read(CRED_API_KEY).orEmpty()
+        return GeminiSettingsValidator.configOrThrow(settings, key, instructions).copy(assistantVoice = null)
+    }
 
     companion object {
         const val CRED_API_KEY = "gemini_api_key"

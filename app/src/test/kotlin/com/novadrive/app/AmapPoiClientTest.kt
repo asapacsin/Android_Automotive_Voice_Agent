@@ -32,6 +32,17 @@ class AmapPoiClientTest {
     }
 
     @Test
+    fun aKeyPastedWithSurroundingSpaceIsSentTrimmed() {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"status":"1","pois":[{"name":"天安门广场","location":"116.397500,39.908740"}]}""",
+            ),
+        )
+        assertEquals(PoiResult("天安门广场", 39.908740, 116.397500), client().resolve("天安门广场", " test-key\n"))
+        assertEquals("test-key", server.takeRequest().requestUrl?.queryParameter("key"))
+    }
+
+    @Test
     fun http500ReturnsNullWithoutThrowing() {
         server.enqueue(MockResponse().setResponseCode(500))
         assertNull(client().resolve("天安门广场", "test-key"))

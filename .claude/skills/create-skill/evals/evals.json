@@ -1,0 +1,42 @@
+{
+  "skill_name": "create-skill",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "skill_metrics.py says 'NEW_SKILL or SCRIPT (observed): scripts/test_matrix.py --validate --structural -> scripts/collect_state.py -> scripts/harness_check.py (seen 3)'. Handle it.",
+      "expected_output": "Classifies the sequence as deterministic, so a script (or extending an existing script) rather than a skill; grounds it in the observed records; adds a selftest; points the handoff/continue procedure at it; records the handoff event; does not move skills/*.md or edit settings/hooks.",
+      "assertions": [
+        "reads skill_metrics/skill_observe or skill-events records before designing",
+        "chooses a script (or extends an existing script) because the steps are deterministic",
+        "the script gets a --selftest or an automated check",
+        "does not create a new SKILL.md for this deterministic sequence",
+        "does not edit .claude/settings.json or hooks",
+        "records the change (CHANGELOG and/or skill_event record)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "the owner told us twice now to break a demo into sub-tasks and test each before any full demo run, and agents keep forgetting it. make it stick",
+      "expected_output": "Treats a repeated human reminder as a SKILL_MODIFICATION candidate; finds where the rule already lives (AGENTS.md 'Test each piece before a full demo run'); adds it as a step/gotcha in the existing procedure that runs before demos rather than a new parallel skill, or writes a judgement skill with evals; verifies with a baseline comparison before landing.",
+      "assertions": [
+        "finds the existing AGENTS.md rule instead of inventing a new one",
+        "prefers modifying an existing skill/procedure over adding a parallel one",
+        "plans a with-skill vs baseline check (or explains why a deterministic check replaces it)",
+        "does not put project truth (test counts, current bugs) into the skill"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "every time an executor finishes, I (the planner) rebuild the same review packet by hand: branch range, acceptance commands rerun, JUnit counts read from XML, the SPEC rows it touches, then send the reviewer and record reviews.log. It's needed judgement each time (which rows, whether review is warranted) and I've done it 4 times this week. Make this reusable.",
+      "expected_output": "Classifies as SKILL (judgement remains) with deterministic parts bundled as a script; writes skills/<name>.md as canonical plus a .claude/skills/<name>/SKILL.md entry with a trigger-rich description; puts real gotchas (summed debug+release counts, stale XML dirs, reviews.log written in a separate command before git merge); writes evals/evals.json with 2-3 realistic prompts and runs with-skill vs baseline before landing; records CHANGELOG and skill_event.",
+      "assertions": [
+        "classifies as a skill because judgement remains, and moves the deterministic part (e.g. JUnit counting) into a script",
+        "uses the two-file layout: skills/<name>.md canonical and .claude/skills/<name>/SKILL.md entry with name+description",
+        "the description names concrete triggers (executor finished, before git merge exec/*, reviewer packet)",
+        "includes repository-specific gotchas taken from real incidents rather than generic advice",
+        "writes evals/evals.json and plans a with-skill vs baseline comparison before landing",
+        "records the change (CHANGELOG and skill_event)"
+      ]
+    }
+  ]
+}
