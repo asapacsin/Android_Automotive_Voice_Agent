@@ -468,6 +468,20 @@ def time_records():
     for e in timed:
         for w in e.get("waste", []):
             causes[w] = causes.get(w, 0) + 1
+    # Whatever the skill metrics say is now justified (new skill or script, skill change, time
+    # improvement) is due work too, so the loop cannot go quiet again.
+    metrics_path = os.path.join(REPO, "harness", "skill-metrics.json")
+    if os.path.isfile(metrics_path):
+        try:
+            for a in json.load(open(metrics_path, encoding="utf-8")).get("suggested_actions", []):
+                if a.get("action") == "TIME_IMPROVEMENT":
+                    continue  # reported below from the records themselves
+                out.append(candidate(P_HARNESS, "harness/skill-metrics.json",
+                                     "skill-" + re.sub(r"[^\w.-]+", "-", a.get("subject", ""))[:60],
+                                     "%s: %s (seen %s) - follow .claude/skills/create-skill/SKILL.md"
+                                     % (a.get("action"), a.get("subject"), a.get("seen"))))
+        except (OSError, ValueError):
+            pass
     for cause, n in sorted(causes.items()):
         if n >= 2:
             out.append(candidate(P_HARNESS, "harness/skill-events.jsonl", "time-" + cause,

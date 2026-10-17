@@ -47,6 +47,7 @@ def main():
     outcomes = collections.Counter()
     retries = 0
     waste = collections.Counter()
+    sequences = collections.Counter()  # in how many records a repeated sequence was observed
     timed = []
 
     for e in events:
@@ -64,6 +65,8 @@ def main():
             manual[w] += 1
         for a in e.get("failed_skill_assumptions", []):
             stale[a] += 1
+        for seq in (e.get("observed_sequences") or {}):
+            sequences[seq] += 1
         if "minutes" in e:
             timed.append(e)
             for w in e.get("waste", []):
@@ -103,6 +106,18 @@ def main():
                 "why": "the human repeated the same instruction; the procedure is missing it",
             })
 
+    # Observed by scripts/skill_observe.py, not remembered: the same command sequence repeated in
+    # >= NEW_SKILL_THRESHOLD records is a candidate for a script (deterministic) or a skill
+    # (judgement); .claude/skills/create-skill/SKILL.md is the procedure.
+    for item, n in sequences.items():
+        if n >= NEW_SKILL_THRESHOLD:
+            actions.append({
+                "action": "NEW_SKILL or SCRIPT (observed)",
+                "subject": item,
+                "seen": n,
+                "why": "the same command sequence in >= %d handoff records" % NEW_SKILL_THRESHOLD,
+            })
+
     # Time efficiency (owner, 2026-10-17): a cause of lost time seen twice is a process defect.
     for item, n in waste.items():
         if n >= MODIFY_THRESHOLD:
@@ -140,6 +155,7 @@ def main():
             if name.endswith(".md") and name.replace(".md", "") not in usage
         ),
         "time_efficiency": time_summary,
+        "observed_sequences": dict(sequences),
         "suggested_actions": actions,
         "thresholds": {"new_skill": NEW_SKILL_THRESHOLD, "modify": MODIFY_THRESHOLD},
     }

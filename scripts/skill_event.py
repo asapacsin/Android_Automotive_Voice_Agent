@@ -20,6 +20,9 @@ import os
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import skill_observe  # noqa: E402
+
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EVENTS = os.path.join(REPO, "harness", "skill-events.jsonl")
 STATE = os.path.join(REPO, "state", "PROJECT_STATE.json")
@@ -91,6 +94,14 @@ def main():
     if args.efficient == "no" and not args.improvement.strip():
         p.error("--efficient no needs --improvement: find a way to do it faster next time")
 
+    # Observed, not remembered: repeated command sequences since the previous record, read from the
+    # agent transcripts (scripts/skill_observe.py). Names only, never arguments.
+    try:
+        observed = skill_observe.repeated_sequences(
+            skill_observe.commands_since(skill_observe.last_record_time()))
+    except Exception:
+        observed = {}
+
     record = {
         "task_id": args.task,
         "timestamp": datetime.datetime.now().isoformat(timespec="seconds"),
@@ -107,6 +118,7 @@ def main():
         "efficient": args.efficient == "yes",
         "waste": split(args.waste),
         "improvement": args.improvement,
+        "observed_sequences": observed,
         "task_outcome": args.outcome,
         "tests": tests_from_state(),
         "candidate_action": args.candidate,
@@ -120,8 +132,13 @@ def main():
     print("  %s  %s  candidate=%s  %d min  %d attempts  efficient=%s" % (
         record["task_id"], record["task_outcome"], record["candidate_action"],
         args.minutes, args.attempts, args.efficient))
+    for seq, n in observed.items():
+        print("  observed %dx  %s" % (n, seq))
     if args.candidate != "NONE":
         print("  -> thresholds and next step: harness/SKILL_POLICY.md")
+    # Keep harness/skill-metrics.json current, so discover_work.py sees a due candidate at once.
+    subprocess.run([sys.executable, os.path.join(REPO, "scripts", "skill_metrics.py")],
+                   cwd=REPO, capture_output=True)
     return 0
 
 

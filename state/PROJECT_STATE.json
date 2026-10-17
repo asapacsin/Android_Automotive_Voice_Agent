@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-10-17T16:12:02",
+  "generated_at": "2026-10-17T16:42:57",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "ae99d54",
+    "commit": "91eb409",
     "branch": "claude/10-15",
-    "subject": "Voice run 39005653831 under the corrected oracles: AFF-AC is a real double execution (P67); S1/S14 pass again",
+    "subject": "Owner time rule: record minutes and attempts per piece of work; worktrees provision vendor files",
     "working_tree_clean": false,
     "uncommitted_files": 13
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-10-17T04:41:11",
+    "collected_at": "2026-10-17T16:31:12",
     "total": {
       "tests": 2264,
       "failures": 0,
@@ -218,7 +218,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "AFFORDANCE-DEVICE-001: FAIL: Spoken control names act on the phone through the local path, once, with no model execution",
-    "actionable_count": 91,
+    "actionable_count": 90,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 29,
@@ -782,13 +782,6 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P67",
-        "blocked_by": null
-      },
-      {
-        "priority": 10,
-        "class": "stale state or harness defect",
-        "source": "state",
-        "item": "PROJECT_STATE.json",
         "blocked_by": null
       },
       {

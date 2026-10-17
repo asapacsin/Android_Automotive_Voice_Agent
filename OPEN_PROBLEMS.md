@@ -2430,6 +2430,31 @@ the I-1 / "model's words are not evidence" family: a tool that changes how she t
 with no request. **Next:** a JVM characterisation of what `set_speech_output` does on a
 CONVERSATION-classified turn, and whether its guard should, like other repeat-sensitive tools,
 require a request in the transcript. Not decided; no re-run to chase variance.
+**Decided 2026-10-17 (decider, option A):** a request-required guard on the
+`ToolCallGuards.vagueExitWhileNavigating` pattern: `ToolCallGuards.speechOutputNotRequested`,
+chained in `AndroidToolDispatcher.guard` after `vagueExitWhileNavigating`, refuses
+`set_speech_output` (either mode) with `SPEECH_OUTPUT_NOT_REQUESTED` unless this turn's words ask
+her to stop or resume talking (`ListeningIntent.classify == SHUT_UP`, or a bounded stop/resume
+grammar kept beside `isExplicitEnd`). Stale or missing words (call before its transcript) pass,
+like the other words-based guards; logged `guard_speech_output decision=…` with codes and epochs
+only. Why it matters beyond the chip: a ✓ `set_speech_output` result sets `DriverTurn.proven` and
+releases claims as `execution_proved` (DriverTurn.kt:104-108), and `silent` enters SILENT_WAIT then
+SLEEP. Rejected: B (characterise only: leaves I-4 open), C (refuse all tools on CONVERSATION turns:
+the dispatcher cannot see the kind, and 「停止说话」 classifies CONVERSATION), fail-closed on late
+transcripts (dropped a real 「停止说话」 on 2026-09-28), a prompt rule (AGENTS rule 4).
+Research: Gemini function-calling best practices, "Validate function calls before executing"
+(ai.google.dev/gemini-api/docs/function-calling); Live API transcription has no guaranteed
+ordering (SPEC-010). Nothing specific found on spurious calls on filler speech.
+Residual: a mumble whose call beats its transcript still runs (count `decision=stale_words`); any
+tool call, even a refused one, still releases a chat reply as `tool_called` (DriverTurn.kt:733-734),
+which is a separate question. Build waits on the executor worktree vendor files.
+Tests (new `ToolCallGuardSpeechOutputTest`, modelled on `ToolCallGuardVagueExitTest`): u_mumble refused
+for both modes through the dispatcher (no executor call, no chip); 嗯/那个/等一下/音乐先关了吧/还要开多久/
+说话能不能嗲一点 refused; 闭嘴/别说了/不要说了/你先别说了/停止说话/停止說話/安静点/别出声/别吵了/少说两句/
+shut up/stop talking run with `true`; 继续说/接着说/可以说话了/繼續說 run with `false`; every
+`ListeningIntent` SHUT_UP phrase allowed; call before transcript, null context, epoch 0 pass; other
+tools untouched; advice says nothing was done. Docs on landing: LISTENING_LIFECYCLE.md:143-144,
+CAPABILITIES.md:30, ARCHITECTURE.md:64, TEST_MATRIX DEMO-TRYOUT-001 `related`.
 
 ## P67 — 「空调」 can operate the AC twice: the local path and the model's call with a different action
 

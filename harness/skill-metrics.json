@@ -1,8 +1,8 @@
 {
   "generated_by": "scripts/skill_metrics.py",
-  "events": 6,
+  "events": 7,
   "outcomes": {
-    "PASS": 5,
+    "PASS": 6,
     "PARTIAL": 1
   },
   "total_retries": 2,
@@ -12,7 +12,7 @@
     "verify": 4,
     "start": 2,
     "continue": 3,
-    "handoff": 3
+    "handoff": 4
   },
   "deviations": {},
   "missing_steps": {},
@@ -21,14 +21,15 @@
   },
   "manual_repeated_work": {
     "build-install-harness-read-log": 2,
-    "provision-worktree-vendor-files": 1
+    "provision-worktree-vendor-files": 1,
+    "review-packet-assembly": 1
   },
   "failed_skill_assumptions": {},
   "unused_skills": [],
   "time_efficiency": {
-    "timed_tasks": 1,
-    "total_minutes": 775,
-    "total_attempts": 4,
+    "timed_tasks": 2,
+    "total_minutes": 805,
+    "total_attempts": 7,
     "inefficient": [
       {
         "task": "vendor-files-in-worktrees",
@@ -45,6 +46,9 @@
       "vendor-files-missing-in-worktrees": 1,
       "manual-copy-refused": 1
     }
+  },
+  "observed_sequences": {
+    "scripts/skill_metrics.py -> scripts/skill_event.py -> scripts/skill_observe.py": 1
   },
   "suggested_actions": [],
   "thresholds": {
