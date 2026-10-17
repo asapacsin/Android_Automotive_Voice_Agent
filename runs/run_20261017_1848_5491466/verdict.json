@@ -1,0 +1,124 @@
+{
+  "suite": "voice",
+  "verdict": "FAIL",
+  "checks": [
+    {
+      "id": "voice:runner",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "voice:S*",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "devrows:runner",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "devrows:*",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "liveinfo:runner",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "liveinfo:*",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "cantonese:runner",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "cantonese:*",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "voice:quota-guard",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "voice:demo-recording",
+      "required": false,
+      "status": "SKIPPED",
+      "detail": "not executed"
+    },
+    {
+      "id": "wake:WAKE-SYNTH-001",
+      "required": false,
+      "status": "SKIPPED",
+      "detail": "not executed"
+    }
+  ],
+  "problems": [
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "results file missing or unreadable: evidence/results.jsonl"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:runner has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:S* has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required devrows:runner has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required devrows:* has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required liveinfo:runner has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required liveinfo:* has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required cantonese:runner has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required cantonese:* has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:quota-guard has no result"
+    }
+  ]
+}
