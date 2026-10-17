@@ -468,6 +468,8 @@ def time_records():
     for e in timed:
         for w in e.get("waste", []):
             causes[w] = causes.get(w, 0) + 1
+        for done in e.get("resolves", []):  # a landed fix restarts the count (skill_event --resolves)
+            causes.pop(done, None)
     # Whatever the skill metrics say is now justified (new skill or script, skill change, time
     # improvement) is due work too, so the loop cannot go quiet again.
     metrics_path = os.path.join(REPO, "harness", "skill-metrics.json")
