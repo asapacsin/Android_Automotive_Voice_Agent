@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-17T16:46:26",
+  "generated_at": "2026-10-17T17:47:24",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "421f769",
+    "commit": "07095b3",
     "branch": "claude/10-15",
-    "subject": "Skill creation from evidence: Agent Skills entries, observed workflows, create-skill with baseline evals; P66 decided",
-    "working_tree_clean": false,
-    "uncommitted_files": 7
+    "subject": "D-CANCEL-SEARCH resolved; three follow-ups from its review recorded (host overview, stale navigate_to reply, calc supersede)",
+    "working_tree_clean": true,
+    "uncommitted_files": 0
   },
   "tests": {
     "available": true,
@@ -138,16 +138,6 @@
       "id": "P65",
       "title": "With her voice on the guidance, a talkative route puts her to sleep between driver lines",
       "status": "OPEN 2026-10-16. Found by nav demo run 38849988938 (relay on, 120 km/h): after the"
-    },
-    {
-      "id": "P66",
-      "title": "A mumble right after a barge-in and a music stop called `set_speech_output`",
-      "status": "OPEN 2026-10-17. Found by the tryout re-run (cloud JVM harness at 323fc29, app code ="
-    },
-    {
-      "id": "P67",
-      "title": "「空调」 can operate the AC twice: the local path and the model's call with a different action",
-      "status": "OPEN 2026-10-17, fix designed, not built (executors are blocked by the vendor files; see"
     }
   ],
   "tech_debt": [
@@ -218,7 +208,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "AFFORDANCE-DEVICE-001: FAIL: Spoken control names act on the phone through the local path, once, with no model execution",
-    "actionable_count": 90,
+    "actionable_count": 103,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 29,
@@ -249,7 +239,70 @@
         "priority": 2,
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
+        "item": "HELP-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "LIVE-INFO-DEVICE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "MUSIC-TEXT-LIVE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-CANCEL-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-E2E-ARRIVAL-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-OVERSPEED-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-PICK-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-SEARCH-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
         "item": "NAV-SIM-QA-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-UI-007",
         "blocked_by": null
       },
       {
@@ -264,6 +317,20 @@
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
         "item": "TRUTH-BAIT-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "TRUTH-MISHEARD-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "TRUTH-WEATHER-001",
         "blocked_by": null
       },
       {
@@ -782,6 +849,20 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P67",
+        "blocked_by": null
+      },
+      {
+        "priority": 10,
+        "class": "stale state or harness defect",
+        "source": "state",
+        "item": "PROJECT_STATE.json",
+        "blocked_by": null
+      },
+      {
+        "priority": 10,
+        "class": "stale state or harness defect",
+        "source": "harness/skill-events.jsonl",
+        "item": "time-record",
         "blocked_by": null
       },
       {
