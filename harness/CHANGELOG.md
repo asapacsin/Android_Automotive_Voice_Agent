@@ -2,6 +2,15 @@
 
 Newest first. One line per change, with the evidence that motivated it.
 
+## 2026-10-17 — Blockers: research the alternatives, keep solving
+
+The owner had to tell us twice to keep going when a file was missing (`human_reminders` x2), and
+`skill_metrics` flagged `vendor-files-missing-in-worktrees` and `stopped-on-refusal` twice each.
+Fixes: AGENTS.md rule 6 covers blockers; `skills/continue.md` "Declaring a blocker" now starts by
+trying alternatives (backup in `skills/.history/continue.20261017.md`); the music track falls back
+to an archive.org public-domain mirror; `new_worktree.sh` provisions vendor files from local
+checkouts or the mirrors. `skill_event.py --resolves` restarts a cause's count once its fix lands.
+
 ## 2026-10-17 — review-packet: first skill built by create-skill
 
 The planner rebuilt the review packet by hand for every executor merge (`state/reviews.log` has 38

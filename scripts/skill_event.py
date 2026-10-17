@@ -90,6 +90,8 @@ def main():
                    help="comma-separated causes of lost time, short and reusable (e.g. vendor-files-missing)")
     p.add_argument("--improvement", default="",
                    help="what was changed (or proposed) so the waste does not recur; required when --efficient no")
+    p.add_argument("--resolves", default="",
+                   help="comma-separated waste causes or human reminders this change fixes; their count restarts")
     args = p.parse_args()
     if args.efficient == "no" and not args.improvement.strip():
         p.error("--efficient no needs --improvement: find a way to do it faster next time")
@@ -119,6 +121,7 @@ def main():
         "waste": split(args.waste),
         "improvement": args.improvement,
         "observed_sequences": observed,
+        "resolves": split(args.resolves),
         "task_outcome": args.outcome,
         "tests": tests_from_state(),
         "candidate_action": args.candidate,

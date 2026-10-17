@@ -123,7 +123,15 @@ A test existing is not the feature existing. A green build is not behaviour. The
 
 ## Declaring a blocker
 
-Three one-line markers, read from the item's own section in its canonical document:
+**First, try to get past it** (AGENTS.md rule 6, owner 2026-10-17). Most blockers are not a
+person's to remove: a rate-limited download, a missing file, a refused command, a missing tool.
+Search how others got past the same thing: mirrors and alternative sources, another tool, the
+vendor's documented workaround. Try each option, and make the one that works durable (a script or
+a fallback source) so it cannot block the next run. Record the cause in the time record. Only
+what is left after that is a blocker. If only the owner can grant it, ask one short question and
+keep every other path running. Never wait for a new session or a setting while an option remains.
+
+Declaring one uses three one-line markers, read from the item's own section in its canonical document:
 
 ```
 BLOCKED_BY: the concrete thing a person must supply

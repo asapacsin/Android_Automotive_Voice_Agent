@@ -71,6 +71,11 @@ def main():
             timed.append(e)
             for w in e.get("waste", []):
                 waste[w] += 1
+        # A record that names a cause in `resolves` starts its count again: only a repeat after
+        # the fix is evidence that the fix did not work.
+        for done in e.get("resolves", []):
+            reminders.pop(done, None)
+            waste.pop(done, None)
 
     # What the evidence now justifies, per the policy thresholds.
     actions = []

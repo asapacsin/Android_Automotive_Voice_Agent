@@ -1,8 +1,8 @@
 {
   "generated_by": "scripts/skill_metrics.py",
-  "events": 10,
+  "events": 11,
   "outcomes": {
-    "PASS": 9,
+    "PASS": 10,
     "PARTIAL": 1
   },
   "total_retries": 2,
@@ -11,15 +11,13 @@
     "fix": 4,
     "verify": 4,
     "start": 2,
-    "continue": 3,
-    "handoff": 7
+    "continue": 4,
+    "handoff": 8
   },
   "deviations": {},
   "missing_steps": {},
   "human_reminders": {
-    "do not treat duplicated capability truth as a bad keyword": 1,
-    "keep going; find a way when a file is missing": 2,
-    "download from another place": 1
+    "do not treat duplicated capability truth as a bad keyword": 1
   },
   "manual_repeated_work": {
     "build-install-harness-read-log": 2,
@@ -31,9 +29,9 @@
     "review-packet"
   ],
   "time_efficiency": {
-    "timed_tasks": 5,
-    "total_minutes": 850,
-    "total_attempts": 12,
+    "timed_tasks": 6,
+    "total_minutes": 860,
+    "total_attempts": 13,
     "inefficient": [
       {
         "task": "vendor-files-in-worktrees",
@@ -66,34 +64,13 @@
       }
     ],
     "waste_causes": {
-      "vendor-files-missing-in-worktrees": 2,
-      "manual-copy-refused": 1,
-      "stopped-on-refusal": 2
+      "manual-copy-refused": 1
     }
   },
   "observed_sequences": {
     "scripts/skill_metrics.py -> scripts/skill_event.py -> scripts/skill_observe.py": 1
   },
-  "suggested_actions": [
-    {
-      "action": "SKILL_MODIFICATION",
-      "subject": "keep going; find a way when a file is missing",
-      "seen": 2,
-      "why": "the human repeated the same instruction; the procedure is missing it"
-    },
-    {
-      "action": "TIME_IMPROVEMENT",
-      "subject": "vendor-files-missing-in-worktrees",
-      "seen": 2,
-      "why": "the same cause of lost time >= 2 times; script, skill or settings change due"
-    },
-    {
-      "action": "TIME_IMPROVEMENT",
-      "subject": "stopped-on-refusal",
-      "seen": 2,
-      "why": "the same cause of lost time >= 2 times; script, skill or settings change due"
-    }
-  ],
+  "suggested_actions": [],
   "thresholds": {
     "new_skill": 3,
     "modify": 2
