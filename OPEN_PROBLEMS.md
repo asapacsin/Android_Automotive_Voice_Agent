@@ -2417,7 +2417,13 @@ wait shifted the timeline), so the in-flight wait is proved offline (`--selftest
 
 ## P66 — A mumble right after a barge-in and a music stop called `set_speech_output`
 
-**Status:** OPEN 2026-10-17. Found by the tryout re-run (cloud JVM harness at 323fc29, app code =
+**Status:** OPEN 2026-10-17. Fixed at JVM level, merged 2026-10-17 (`ToolCallGuards.speechOutputNotRequested`,
+`ToolCallGuardSpeechOutputTest`; reviewer PASS after one REVISE round, which added 住嘴/住口/闭上嘴/别啰嗦了/
+不许说话/噓 and tightened resume so 「你可以再说一遍吗」 is refused). Closes after u_mumble passes on the
+next DEMO-TRYOUT-001 Gemini run. Accepted false allows (err toward the model acting): 安静 anywhere,
+「别念错」, 「不准说谎」; accepted false refusals (harmless, the lifecycle resumes on any meaningful
+transcript): 「可以讲话了」, 「你可以说啦」.
+Found by the tryout re-run (cloud JVM harness at 323fc29, app code =
 87d5287, gemini-3.1-flash-live-preview, simulated car; DEMO-TRYOUT-001). Line u_mumble 「嗯……那个……」
 (890 ms), which by docs/DEMO_TRYOUT.md should produce no tool and no claim. It came 11 s after
 u_barge 「等一下」 and u_mstop. Log (timings only): `TURN_HOLD reason=UNCLASSIFIED_CLAIM
