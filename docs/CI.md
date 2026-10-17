@@ -81,6 +81,13 @@ and GitHub counts a skipped job as passing. Add CODEOWNERS (or a ruleset) for `s
 that judges it and the review log is self-attested. None of this is applied by the repository;
 check it in the UI.
 
+**Applied 2026-10-17 (owner, in the web UI; agent sessions cannot write repository settings - the
+GitHub proxy refuses it):** ruleset `CI gate` (id 25288309), Active, targets the default branch
+(`main`) and `claude/10-13`; rules: restrict deletions, block force pushes, require status checks
+`Tier A gates` and `Tier A build and JVM tests` (GitHub Actions). Verified read-only through
+`gh api repos/<owner>/<repo>/rules/branches/<branch>`. CODEOWNERS is not set yet.
+Retarget the ruleset when the PR base branch changes.
+
 Secrets used: `AMAP_API_KEY`, `NOVA_VENDOR_ZIP_URL`, `NOVA_VENDOR_ZIP_AUTH` (optional),
 `NOVA_DEBUG_KEYSTORE_B64` (Tier A build and all emulator workflows), `AMAP_WEB_KEY`,
 `GEMINI_API_KEY` (emulator workflows). Without them the dependent checks are BLOCKED and the job is
