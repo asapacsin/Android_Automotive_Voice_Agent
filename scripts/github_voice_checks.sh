@@ -128,9 +128,13 @@ note "voice: runner rc=$rc"
 scen "$ev/scenarios_raw.txt" voice: "$rc"
 grep -E '^\s+(PASS|FAIL)\s+S[0-9]+b?\b|^\s+(ok|FLAKY|FAIL)\s+S[0-9]+' "$ev/scenarios_raw.txt" | sed -E 's/^\s+//' | awk '{print $1, $2}' >"$ev/scenarios.txt" || true
 grep -E '^\s+expected /|^\s+forbidden /' "$ev/scenarios_raw.txt" | sed -E "s/ matched .*/ matched (text omitted)/" >"$ev/scenario_failures.txt" || true
-# Text-free skeleton of each failing scenario's log tail: event names and ASCII key=value codes
+# skeleton RAW OUT: text-free skeleton of each failing scenario's log tail: event names and ASCII key=value codes
 # only; any token with CJK text (transcripts, replies, place names) or digits-with-dots is dropped.
-python3 - "$ev/scenarios_raw.txt" >"$ev/failure_skeletons.txt" <<'PY' || true
+# Every suite gets one (2026-10-17): without it a device-row failure such as AFF-AC showed only that
+# a forbidden tool line matched, not the line's result= code that tells a refused duplicate from a
+# second execution.
+skeleton() {
+python3 - "$1" >"$2" <<'PY' || true
 import re, sys
 text = open(sys.argv[1], encoding="utf-8", errors="replace").read()
 part = text.split("=== last failing log per scenario ===", 1)
@@ -147,6 +151,8 @@ if len(part) == 2:
         if keep:
             print("   " + " ".join(keep[:12]))
 PY
+}
+skeleton "$ev/scenarios_raw.txt" "$ev/failure_skeletons.txt"
 note "voice: scenarios $(tr '\n' ' ' <"$ev/scenarios.txt")"
 if [ ! -s "$ev/scenarios.txt" ]; then
   # The runner printed no result: keep its last lines without any CJK text (tracebacks, adb errors).
@@ -174,6 +180,7 @@ suite() { # name, result prefix, then runner args
   scen "$ev/${name}_raw.txt" "$prefix" "$rc"
   grep -E '^\s+(ok|FLAKY|FAIL)\s+[A-Z][A-Z0-9-]*\s+[0-9]+/[0-9]+' "$ev/${name}_raw.txt" | sed -E 's/^\s+//' | awk '{print $1, $2, $3}' >"$ev/${name}.txt" || true
   grep -E '^\s+expected /|^\s+forbidden /' "$ev/${name}_raw.txt" | sed -E "s/ matched .*/ matched (text omitted)/" | sort | uniq -c >"$ev/${name}_failures.txt" || true
+  skeleton "$ev/${name}_raw.txt" "$ev/${name}_skeletons.txt"
   note "suite $name: $(tr '\n' ' ' <"$ev/${name}.txt") guard=$(grep -c 'QUOTA GUARD' "$ev/${name}_raw.txt" || true)"
   rm -f "$ev/${name}_raw.txt"
 }

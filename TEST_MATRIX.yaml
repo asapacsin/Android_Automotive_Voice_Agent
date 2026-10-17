@@ -2743,7 +2743,7 @@ tests:
     type: device
     scope: END_TO_END
     owner: AUTONOMOUS
-    status: PASS
+    status: FAIL
     release_blocking: false
     prerequisites: ["test phone over ADB", "build containing SPEC-010 step 4a", "tools/speech-harness"]
     procedure:
@@ -2756,12 +2756,12 @@ tests:
       - "no spoken reply contradicting the local success (e.g. 没有成功) when the model's own call is refused DUPLICATE_IN_TURN, and no reply at all when cancelCurrentResponse ran before a response existed"
     terminal_success: [music_stopped, climate_toggled, map_recentred]
     terminal_observed: [music_stopped, climate_toggled, map_recentred]
-    failure_observed: []
-    evidence: ["2026-10-16 GitHub emulator API 34 (arm64 app), Gemini debug override, voice checks run 38835222165 at 66de495 (ci/voice-evidence runs/run_20261016_0226_66de495): AFF-PAUSE 1/1, AFF-RECENTER 1/1, AFF-AC 0/1 - spoken 「空调」 alone reached the model, which called control_climate (forbidden by the row)", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): device.txt AFF-PAUSE 1/1, AFF-AC 1/1, AFF-RECENTER 1/1, guard=0. The earlier AFF-AC 0/1 (run 38835222165) was a race: the model's tool call arrived before the transcript; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)"]
+    failure_observed: [model_called_control_climate_after_local_action]
+    evidence: ["2026-10-16 GitHub emulator API 34 (arm64 app), Gemini debug override, voice checks run 38835222165 at 66de495 (ci/voice-evidence runs/run_20261016_0226_66de495): AFF-PAUSE 1/1, AFF-RECENTER 1/1, AFF-AC 0/1 - spoken 「空调」 alone reached the model, which called control_climate (forbidden by the row)", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): device.txt AFF-PAUSE 1/1, AFF-AC 1/1, AFF-RECENTER 1/1, guard=0. The earlier AFF-AC 0/1 (run 38835222165) was a race: the model's tool call arrived before the transcript; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 voice checks run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287): AFF-PAUSE 1/1, AFF-RECENTER 1/1, AFF-AC 0/1 again (forbidden /^tool=control_climate/ matched). AFF-AC is now 1/3 over three runs. Correction: the race explanation above does not fit the evidence - in both failures the expected affordance_match and screen_action lines were present, so the local path ran first; a model call that arrived first would have logged affordance_skip reason=claimed instead. Root cause unknown. Candidates: (a) the model's call was refused DUPLICATE_IN_TURN after the local action (one toggle, but the row forbids any model call), (b) the model sent a different action (e.g. power_on while the local path ran power_off), which claimCapability keys separately, so the AC would toggle twice, (c) the call landed in another epoch. The device-row failure summary hid the tool line's result; scripts/github_voice_checks.sh now writes a text-free log skeleton per failing scenario for every suite, so the next voice run tells (a), (b) and (c) apart."]
     acceptance:
       - {criterion: music_stopped, required: true, observed: true, evidence: "log:NovaVoice/AFF-PAUSE 1/1 (voice checks run 38891890665 device.txt at 2db208c)"}
       - {criterion: map_recentred, required: true, observed: true, evidence: "log:NovaVoice/AFF-RECENTER 1/1 (voice checks run 38891890665 device.txt at 2db208c)"}
-      - {criterion: climate_toggled_without_model_call, required: true, observed: true, evidence: "log:NovaVoice/AFF-AC 1/1, no tool=control_climate (voice checks run 38891890665 device.txt at 2db208c); earlier 0/1 in run 38835222165 was a race - the model tool call arrived before the transcript"}
+      - {criterion: climate_toggled_without_model_call, required: true, observed: false, evidence: "AFF-AC 1/3 over runs 38835222165 (0/1), 38891890665 (1/1), 38997653201 (0/1): the model also called control_climate in 2 of 3 runs; root cause unknown (see evidence)"}
     ended_by: natural
     evidence_bind:
       code_digest: sha256:8c483964f961ffaa5c2cd73703fa25fb8b473f63ae4fddee55665724499552a2
@@ -2772,7 +2772,7 @@ tests:
       apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
       bound_commit: c55a140
     related: [SPEC-010, B-024]
-    last_run: {at: 2026-10-16, result: PASS}
+    last_run: {at: 2026-10-17, result: FAIL}
 
 # ---- live info (SPEC-011) ------------------------------------------------------------------
 
@@ -2821,20 +2821,28 @@ tests:
     type: device
     scope: INTERMEDIATE_FLOW
     owner: AUTONOMOUS
-    status: FAIL
+    status: PASS
     release_blocking: true
     prerequisites: ["test phone over ADB", "build 2cd2546 or later", "speech harness clips for weather, route_traffic, along_route, place_details"]
     procedure: ["inject each kind's clip 10 times through the speech harness", "count tool=query_live_info kind=<kind> lines per clip"]
     pass_criteria: ["each kind selected with the right kind >= 9/10", "no coordinate, address or transcript in the log"]
-    evidence: ["2026-10-16 GitHub emulator, Gemini debug override, run 38835222165 at 66de495 (runs/run_20261016_0226_66de495 liveinfo.txt): weather 10/10, route_traffic 10/10, along_route 10/10, place_details 7/10 (3 runs: no query_live_info call)", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): liveinfo.txt weather 10/10, place_details 6/10 (FLAKY), route_traffic 10/10, along_route 10/10; still FAIL on place_details", "2026-10-17 diagnosis: the place_details clip said 万达广场几点关门, a named-place lookup SPEC-011 does not offer (target is destination or a list position); the 4/10 misses made no call, which is correct for an unsupported request. Clip changed to the specified use 目的地几点关门 (make_speech.py); re-measure on the next voice-checks run. A named-place hours lookup is a capability gap, not claimed."]
+    evidence: ["2026-10-16 GitHub emulator, Gemini debug override, run 38835222165 at 66de495 (runs/run_20261016_0226_66de495 liveinfo.txt): weather 10/10, route_traffic 10/10, along_route 10/10, place_details 7/10 (3 runs: no query_live_info call)", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): liveinfo.txt weather 10/10, place_details 6/10 (FLAKY), route_traffic 10/10, along_route 10/10; still FAIL on place_details", "2026-10-17 diagnosis: the place_details clip said 万达广场几点关门, a named-place lookup SPEC-011 does not offer (target is destination or a list position); the 4/10 misses made no call, which is correct for an unsupported request. Clip changed to the specified use 目的地几点关门 (make_speech.py); re-measure on the next voice-checks run. A named-place hours lookup is a capability gap, not claimed.", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287, verdict.json from ci_verdict.py): liveinfo.txt LI-WEATHER 10/10, LI-PLACE 10/10 (clip 目的地几点关门), LI-TRAFFIC 10/10, LI-ALONG 10/10, quota guard 0; the evidence is ids and counts only (no transcript, coordinate or address)"]
     acceptance:
-      - {criterion: weather_kind, required: true, observed: true, evidence: "run 38835222165 liveinfo.txt LI-WEATHER 10/10"}
-      - {criterion: route_traffic_kind, required: true, observed: true, evidence: "run 38835222165 liveinfo.txt LI-TRAFFIC 10/10"}
-      - {criterion: along_route_kind, required: true, observed: true, evidence: "run 38835222165 liveinfo.txt LI-ALONG 10/10"}
-      - {criterion: place_details_kind, required: true, observed: false, evidence: "run 38835222165 liveinfo.txt LI-PLACE 7/10 (needs >= 9/10)"}
+      - {criterion: weather_kind, required: true, observed: true, evidence: "log:NovaVoice/tool=query_live_info kind=weather LI-WEATHER 10/10 (voice checks run 38997653201 liveinfo.txt at 87d5287) (also 10/10 in run 38835222165)"}
+      - {criterion: route_traffic_kind, required: true, observed: true, evidence: "log:NovaVoice/tool=query_live_info kind=route_traffic LI-TRAFFIC 10/10 (voice checks run 38997653201 liveinfo.txt at 87d5287) (also 10/10 in run 38835222165)"}
+      - {criterion: along_route_kind, required: true, observed: true, evidence: "log:NovaVoice/tool=query_live_info kind=along_route LI-ALONG 10/10 (voice checks run 38997653201 liveinfo.txt at 87d5287) (also 10/10 in run 38835222165)"}
+      - {criterion: place_details_kind, required: true, observed: true, evidence: "log:NovaVoice/tool=query_live_info kind=place_details LI-PLACE 10/10 (voice checks run 38997653201 liveinfo.txt at 87d5287) with the specified target (目的地几点关门); earlier 7/10 and 6/10 used an unsupported named-place clip"}
     ended_by: natural
+    evidence_bind:
+      code_digest: sha256:e3c779118cd3d65578f127c75ee69fe4814d5e15502eaee587753f68d662eef7
+      procedure_digest: sha256:45ff659d8ba325a7473c9235975ef9547c9fb6329271e49ba2c723f1163dc9ee
+      registry_digest: sha256:d8f193b538971ea1d5458e34419a2b5f1fc11aa1ccc0c5a174147fffbd36d69c
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
+      bound_commit: 87d5287
     related: [SPEC-011]
-    last_run: {at: 2026-10-16, result: FAIL}
+    last_run: {at: 2026-10-17, result: PASS}
 
   - id: LIVE-INFO-L6-001
     capability: live_info
