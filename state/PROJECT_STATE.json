@@ -1,16 +1,67 @@
 {
-  "generated_at": "2026-10-16T17:04:25",
+  "generated_at": "2026-10-17T04:41:24",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "741fdd3",
+    "commit": "3713ee2",
     "branch": "claude/10-15",
-    "subject": "ci_verdict: one summary annotation per verdict with every check",
+    "subject": "state: regenerate TEST_STATUS, HUMAN_VALIDATION and LOCAL_DEVICE_REQUIRED from the registry",
     "working_tree_clean": true,
     "uncommitted_files": 0
   },
   "tests": {
-    "available": false,
-    "reason": "no JUnit XML found; run gradlew test"
+    "available": true,
+    "collected_at": "2026-10-17T04:41:11",
+    "total": {
+      "tests": 2264,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 5
+    },
+    "by_module": {
+      "evaluation": {
+        "tests": 27,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "app": {
+        "tests": 1951,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 5
+      },
+      "simulator": {
+        "tests": 25,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "safety": {
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "behavior-test": {
+        "tests": 132,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "contracts": {
+        "tests": 7,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "ingress": {
+        "tests": 120,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    "passing": true
   },
   "apk": {
     "built": true,
@@ -87,6 +138,11 @@
       "id": "P65",
       "title": "With her voice on the guidance, a talkative route puts her to sleep between driver lines",
       "status": "OPEN 2026-10-16. Found by nav demo run 38849988938 (relay on, 120 km/h): after the"
+    },
+    {
+      "id": "P66",
+      "title": "A mumble right after a barge-in and a music stop called `set_speech_output`",
+      "status": "OPEN 2026-10-17. Found by the tryout re-run (cloud JVM harness at 323fc29, app code ="
     }
   ],
   "tech_debt": [
@@ -156,8 +212,8 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "AFFORDANCE-DEVICE-001: STALE_BIND: Spoken control names act on the phone with no model tool call",
-    "actionable_count": 134,
+    "NEXT_ACTION": "AFFORDANCE-DEVICE-001: FAIL: Spoken control names act on the phone with no model tool call",
+    "actionable_count": 120,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 29,
@@ -168,13 +224,6 @@
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
         "item": "AFFORDANCE-DEVICE-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "APPS-001",
         "blocked_by": null
       },
       {
@@ -223,13 +272,6 @@
         "priority": 2,
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
-        "item": "DEMO-AMAP-LIVE-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
         "item": "DEMO-TRYOUT-001",
         "blocked_by": null
       },
@@ -237,21 +279,7 @@
         "priority": 2,
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
-        "item": "FUZZY-TEXT-LIVE-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
         "item": "HELP-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "LIVE-INFO-DEVICE-001",
         "blocked_by": null
       },
       {
@@ -272,13 +300,6 @@
         "priority": 2,
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
-        "item": "MUSIC-TEXT-LIVE-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
         "item": "NAV-CANCEL-001",
         "blocked_by": null
       },
@@ -287,13 +308,6 @@
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
         "item": "NAV-CORRECT-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-E2E-ARRIVAL-001",
         "blocked_by": null
       },
       {
@@ -328,48 +342,6 @@
         "priority": 2,
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
-        "item": "NAV-UI-002",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-UI-003",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-UI-004",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-UI-005",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-UI-006",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-UI-007",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
         "item": "NET-RECOVER-001",
         "blocked_by": null
       },
@@ -384,28 +356,7 @@
         "priority": 2,
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
-        "item": "PERM-DENY-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
         "item": "PLACE-NAV-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "PLACE-SAVE-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "PLACE-UNSET-001",
         "blocked_by": null
       },
       {
@@ -1022,6 +973,13 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P65",
+        "blocked_by": null
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P66",
         "blocked_by": null
       },
       {
