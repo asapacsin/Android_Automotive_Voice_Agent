@@ -1742,6 +1742,15 @@ now FAIL, 1/2 today). In the same run S14 opened a turn, held it AWAITING_EXECUT
 never resolved it in the window (TRUTH-BAIT-001 FAIL). Two of today's three live passes lost a short
 turn. This is no longer a cosmetic demo issue.
 
+**Scope (planner, 2026-10-17):** this is measured on Gemini, the debug/test stand-in (ADR-017). The
+product session is Qwen, whose provider wires `WaitCueClock` and `ResponseStallWatchdog`
+(`QwenOmniProvider`): a turn that stalls gets STALLED / STALL_FAILED spoken. The Gemini client has
+neither, so on Gemini a lost turn is silent. Whether Qwen also loses short turns cannot be
+measured until the Ayano phase ("Gemini first, Ayano last"). Options for the next step (not chosen):
+(a) give the Gemini test client the same watchdog, so a lost turn is audible and the live suites
+measure what the product would do; (b) a Gemini-only nudge, which has no input transcription to send;
+(c) measure the lost-turn rate with a planned batch of free-tier runs before choosing.
+
 ## P46 — Assistant-spoken guidance (SPEC-018) gives up on the first prompt and never comes back
 
 **Status:** OPEN, found 2026-10-03 while recording the demo video. PC emulator nova_api34, build 9696ce5 (`claude/10-3`), Azure voice on, 助手播报导航 on. Short drive to 长隆海洋王国 started by voice, emulator speed 60 km/h. **Owner 2026-10-15:** offered A/B options (P46 wait ~1.2 s for her reply; D-9 drop an unchecked reply; P48 code-written confirmations) and chose to leave this alone for now - current behaviour stays; not to be reopened without the owner.
