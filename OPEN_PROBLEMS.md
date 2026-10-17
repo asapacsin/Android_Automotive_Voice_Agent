@@ -2431,3 +2431,25 @@ with no request. **Next:** a JVM characterisation of what `set_speech_output` do
 CONVERSATION-classified turn, and whether its guard should, like other repeat-sensitive tools,
 require a request in the transcript. Not decided; no re-run to chase variance.
 
+## P67 — 「空调」 can operate the AC twice: the local path and the model's call with a different action
+
+**Status:** OPEN 2026-10-17, fix designed, not built (executors are blocked by the vendor files; see
+the owner question). Found by voice checks run 39005653831 at aee3ff0 (app code 87d5287, Gemini
+debug override), AFF-AC under the corrected oracle (AFFORDANCE-DEVICE-001).
+**Seen (text-free skeleton):** `gemini_tool_call tool=control_climate` (before the transcript), then
+`affordance_match id=climate` and `screen_action=voice_climate ok=true` (the local path ran), then
+`tool=control_climate args=[action] result=✓`: the model's call **executed**. Her reply was spoken
+(`spoke=true`). In the two earlier runs today the same call was refused `DUPLICATE_IN_TURN`.
+**Cause:** `DriverContext.claimCapability` keys on `epoch|tool|action`. The local plan claims
+`power_on` or `power_off` from the current state; when the model sends a different action for the
+same control (the log keeps only argument keys, so most likely the opposite power action, or a
+temperature change), its key differs and both run. SPEC-010 B4's own rule is "one execution per turn,
+whichever side is first"; the `(tool, action)` key is the mechanism falling short of it.
+**Fix direction (planner, within B4):** claim a *control*, not an exact action. Normalise the action
+into a capability group before keying (climate `power_on`/`power_off` -> `power`; music
+`play`/`stop`/`toggle` -> `playback`; the map recentre has one action), so a second claim on the same
+control in the same turn is refused `DUPLICATE_IN_TURN`. Leave temperature adjustments keyed by action,
+because "空调" never plans one. A JVM test drives the local claim then a model call with the
+opposite action and expects `DUPLICATE_IN_TURN`; AFF-AC on the emulator re-measures it. Update the
+B4 text to say "same control".
+
