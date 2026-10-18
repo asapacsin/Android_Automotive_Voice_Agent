@@ -185,7 +185,7 @@ class NoAnswerReaskQwenTest {
         send(started, stopped)
         awaitUntil({ "$lines" }) { log("qwen_event type=input_audio_buffer.speech_stopped").isNotEmpty() }
         client.disconnect()
-        Thread.sleep(700)
+        awaitUntil({ "$lines" }) { log("qwen_reask_dropped reason=socket").isNotEmpty() }
         assertEquals(0, creates())
     }
 
