@@ -56,7 +56,7 @@ if [ -n "$AEC3_PIN" ] && [ "$(git -C "$WT/$AEC3_DIR" rev-parse HEAD 2>/dev/null)
 fi
 
 VENDOR_FILES=(
-  app/libs/Msc.jar
+  app/libs/Msc.jar app/libs/Msc.jar.STUB
   app/src/main/jniLibs/arm64-v8a/libmsc.so app/src/main/jniLibs/arm64-v8a/libw_ivw.so
   app/src/main/jniLibs/armeabi-v7a/libmsc.so app/src/main/jniLibs/armeabi-v7a/libw_ivw.so
   app/src/main/assets/ivw/wakeword.jet
@@ -95,6 +95,7 @@ if [ ! -s "$CACHE" ] && [ -z "${NOVA_VENDOR_ZIP_URL:-}" ]; then
     done
   fi
   echo "INFO NOVA_VENDOR_ZIP_URL not set: provisioned $copied vendor file(s) from local checkouts or mirrors" >&2
+  [ -s "$WT/app/libs/Msc.jar" ] || "$ROOT/scripts/make_msc_stub.sh" "$WT" || true
   if [ ! -s "$WT/app/libs/Msc.jar" ] || [ ! -s "$WT/$MUSIC_FILE" ]; then
     echo "WARN $WT still lacks Msc.jar or the music track: :app will not compile" >&2
   fi
@@ -115,6 +116,7 @@ if [ ! -s "$CACHE" ]; then
   if [ "$ok" != yes ] || ! unzip -tq "$tmp" >/dev/null 2>&1; then
     rm -f "$tmp"
     echo "WARN vendor zip download failed or is not a zip: $WT has no vendor files" >&2
+    "$ROOT/scripts/make_msc_stub.sh" "$WT" || true
     echo "$WT"
     exit 0
   fi

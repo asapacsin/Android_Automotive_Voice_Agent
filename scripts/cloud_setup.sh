@@ -175,6 +175,14 @@ vendor_fail() {
   return 0
 }
 
+# No real jar after the fetch: compile the stand-in so :app builds and its JVM tests run
+# (tools/vendor-stub/README.md). Not in GitHub Actions: a workflow build stays on the real SDK.
+stub_vendor() {
+  [ -f "$ROOT/app/libs/Msc.jar" ] && return
+  [ -n "${GITHUB_ACTIONS:-}" ] && return
+  "$ROOT/scripts/make_msc_stub.sh" "$ROOT" || warn "stand-in Msc.jar could not be built: :app will not compile"
+}
+
 fetch_music() {
   local file="$ROOT/$MUSIC"
   if [ -s "$file" ] && head -c 3 "$file" | grep -q ID3; then return; fi
@@ -229,6 +237,7 @@ install_gradle
 install_sdk
 fetch_webrtc
 fetch_vendor
+stub_vendor
 fetch_music
 install_keystore
 write_local_properties

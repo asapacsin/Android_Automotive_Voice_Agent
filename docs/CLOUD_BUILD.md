@@ -44,6 +44,11 @@ the repository's Actions secrets. `cloud_setup.sh` accepts a bare token, a `gith
 link and a zip with one top-level folder. A failed fetch now prints an `::error` annotation with
 the HTTP code and host, so a red run says why.
 
+**No zip, or a dead one:** `cloud_setup.sh` and `new_worktree.sh` then build a compile-only
+stand-in for `app/libs/Msc.jar` ([tools/vendor-stub/README.md](../tools/vendor-stub/README.md)), so
+`:app` compiles and its JVM tests run. Such a build is never device or wake-word evidence; the
+marker `app/libs/Msc.jar.STUB` says it is one. GitHub Actions builds never use it.
+
 The zip URL must serve the zip itself. A private link that answers with a sign-in page is
 detected (`unzip -t`) and skipped with a warning. Anything reachable without authentication is
 readable by anyone holding the URL; prefer an authenticated URL with `NOVA_VENDOR_ZIP_AUTH`.

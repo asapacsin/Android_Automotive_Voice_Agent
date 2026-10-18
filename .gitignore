@@ -38,6 +38,7 @@ app/src/main/cpp/third_party/webrtc-aec3-kmp-jni/
 # Large third-party binaries: kept locally, never pushed (see README "Local binaries")
 app/src/main/jniLibs/
 app/libs/*.jar
+app/libs/*.STUB
 app/src/main/assets/ivw/
 app/src/main/res/raw/*.mp3
 # Review records are evidence, not a log file (owner 2026-10-16).
