@@ -170,6 +170,16 @@ object GeminiLiveProtocol {
         val goAway: Boolean = false,
         /** [ACTIVITY_START] / [ACTIVITY_END] from `voiceActivity` (F19), else null. */
         val voiceActivity: String? = null,
+        /** P45 diagnostics: serverContent.waitingForInput, null when absent. */
+        val waitingForInput: Boolean? = null,
+        /** P45 diagnostics: non-thought text parts in modelTurn (count only; the text is dropped). */
+        val textParts: Int = 0,
+        /** P45 diagnostics: serverContent carried interimInputTranscription. */
+        val interimInput: Boolean = false,
+        /** P45 diagnostics: usageMetadata response tokens by modality (plus "TOTAL" when given). */
+        val responseTokens: Map<String, Int> = emptyMap(),
+        /** P45 diagnostics: the serverContent field names present, sorted (a skeleton, never values). */
+        val contentFields: List<String> = emptyList(),
     )
 
     /** Throws on a message that is not a JSON object. */
@@ -187,10 +197,12 @@ object GeminiLiveProtocol {
         raw.optJSONObject("serverContent")?.let { content ->
             val audio = mutableListOf<String>()
             var thoughts = 0
+            var textParts = 0
             content.optJSONObject("modelTurn")?.optJSONArray("parts")?.let { parts ->
                 for (i in 0 until parts.length()) {
                     val part = parts.optJSONObject(i) ?: continue
                     if (part.optBoolean("thought", false)) { thoughts++; continue }
+                    if (part.has("text")) textParts++
                     val inline = part.optJSONObject("inlineData") ?: continue
                     val data = inline.optString("data")
                     if (data.isNotEmpty() && inline.optString("mimeType").startsWith("audio/pcm")) audio += data
@@ -205,7 +217,22 @@ object GeminiLiveProtocol {
                 generationComplete = content.optBoolean("generationComplete", false),
                 turnComplete = content.optBoolean("turnComplete", false),
                 workPending = content.opt("interactionStatus")?.toString()?.let { isInProgress(it) },
+                waitingForInput = if (content.has("waitingForInput")) content.optBoolean("waitingForInput", false) else null,
+                textParts = textParts,
+                interimInput = content.has("interimInputTranscription"),
+                contentFields = content.keys().asSequence().map { k -> k.filter { it in 'A'..'Z' || it in 'a'..'z' || it in '0'..'9' || it == '_' } }.filter { it.isNotEmpty() }.toList().sorted(),
             )
+        }
+        raw.optJSONObject("usageMetadata")?.let { usage ->
+            val tokens = linkedMapOf<String, Int>()
+            if (usage.has("responseTokenCount")) tokens["TOTAL"] = usage.optInt("responseTokenCount")
+            usage.optJSONArray("responseTokensDetails")?.let { details ->
+                for (i in 0 until details.length()) {
+                    val d = details.optJSONObject(i) ?: continue
+                    tokens[d.optString("modality").ifEmpty { "UNKNOWN" }.filter { it in 'A'..'Z' || it in 'a'..'z' || it in '0'..'9' || it == '_' }] = d.optInt("tokenCount")
+                }
+            }
+            message = message.copy(responseTokens = tokens)
         }
         raw.optJSONObject("toolCall")?.optJSONArray("functionCalls")?.let { calls ->
             val list = mutableListOf<RawCall>()

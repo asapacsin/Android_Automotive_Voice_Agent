@@ -125,6 +125,7 @@ class GeminiLiveClient(
     ) // P55, B10
     private val speech = GeminiSpeechText(speechTextEvents, ::emit, pipeline::filter, prompt::suppressed)
     private val timing = GeminiTurnTiming()
+    internal val diagnostics = GeminiTurnDiagnostics(scope) // P45 U1: logs only, never a decision
 
     fun events(): Flow<RealtimeEvent> = eventFlow.asSharedFlow()
 
@@ -284,13 +285,13 @@ class GeminiLiveClient(
 
     private fun resetTurn() {
         clearTurnState()
-        inputText.setLength(0)
+        inputText.setLength(0); diagnostics.reset()
         strayOutput.setLength(0)
     }
 
     private fun clearTurnState() {
         prompt.clearOpen()
-        turnOpen = false
+        turnOpen = false; diagnostics.turnClosed()
         turnAudioSeen = false
         generationDone = false
         settledSuperseded = false
@@ -426,8 +427,6 @@ class GeminiLiveClient(
         }
         // The reconnect follows on the next close (a RETRYABLE code), reusing the handle.
         if (message.goAway) DebugVoiceLog.log("gemini_go_away")
-        if (message.thoughtParts > 0) DebugVoiceLog.log("gemini_thought_dropped parts=${message.thoughtParts}")
-        message.voiceActivity?.let { DebugVoiceLog.log("gemini_voice_activity type=$it") }
         synchronized(this) {
             if (generation.get() != current) return
             if (message.voiceActivity == GeminiLiveProtocol.ACTIVITY_START && !onsetSeen) {
@@ -436,7 +435,7 @@ class GeminiLiveClient(
                 beginDriverTurnLocked()
                 DebugVoiceLog.log("gemini_driver_turn_fallback source=voice_activity")
             }
-            onContent(message)
+            diagnostics.message(message, turnOpen); onContent(message)
         }
         message.workPending?.let { emit(DomainVoiceEvent.ProviderWorkState(it)) }
         if (message.cancelledCallIds.isNotEmpty()) {
@@ -500,7 +499,7 @@ class GeminiLiveClient(
         prompt.takeArmed(driverSpoke = inputText.isNotBlank())?.let { id ->
             // A GUIDANCE turn (SPEC-018 B5): no driver turn, no claim judgement, no hold.
             clearTurnState()
-            turnOpen = true; timing.open()
+            turnOpen = true; timing.open(); diagnostics.turnOpened()
             DebugVoiceLog.log("gemini_turn_open kind=guidance")
             emit(DomainVoiceEvent.ResponseStarted)
             prompt.markOpen(id)
@@ -520,7 +519,7 @@ class GeminiLiveClient(
         pipeline.clearCallsThisResponse()
         pipeline.onResponseCreated()
         clearTurnState()
-        turnOpen = true; timing.open()
+        turnOpen = true; timing.open(); diagnostics.turnOpened()
         Telemetry.record(EventType.AGENT_REQUEST_START)
         DebugVoiceLog.log("gemini_turn_open")
         emit(DomainVoiceEvent.ResponseStarted)
@@ -572,10 +571,10 @@ class GeminiLiveClient(
     }
 
     private fun closeTurn(status: String) {
-        val unanswered = !turnOpen && inputText.isNotBlank()  // P45: a question Gemini closed with no reply
+        val transcribed = !turnOpen && inputText.isNotBlank()  // P45: a question Gemini closed with no reply
         flushInput()
         strayOutput.setLength(0)
-        if (!turnOpen) return run { if (unanswered) DebugVoiceLog.log("gemini_turn_empty status=$status") }
+        if (!turnOpen) return run { DebugVoiceLog.log("gemini_turn_empty status=$status transcribed=$transcribed") }
         finishGeneration()  // the verdict was given there (at generationComplete, or now)
         if (prompt.open != null) {
             prompt.complete()

@@ -248,4 +248,24 @@ class GeminiLiveProtocolTest {
         assertNull(type("""{"voiceActivity":{"type":"SOMETHING_ELSE"}}"""))
         assertNull(type("""{"serverContent":{"turnComplete":true}}"""))
     }
+
+    @Test
+    fun parsesWaitingForInputTextPartsAndInterimTranscriptPresence() {
+        val m = GeminiLiveProtocol.parse(
+            """{"serverContent":{"waitingForInput":true,"interimInputTranscription":{"text":"x"},""" +
+                """"modelTurn":{"parts":[{"text":"a"},{"text":"b","thought":true},{"text":"c"}]}},""" +
+                """"usageMetadata":{"responseTokenCount":12,"responseTokensDetails":[{"modality":"AUDIO","tokenCount":10},{"modality":"TEXT","tokenCount":2}]}}""",
+        )
+        assertEquals(true, m.waitingForInput)
+        assertEquals(2, m.textParts)
+        assertEquals(1, m.thoughtParts)
+        assertTrue(m.interimInput)
+        assertEquals(mapOf("TOTAL" to 12, "AUDIO" to 10, "TEXT" to 2), m.responseTokens)
+        assertEquals(listOf("interimInputTranscription", "modelTurn", "waitingForInput"), m.contentFields)
+        val bare = GeminiLiveProtocol.parse("""{"serverContent":{"turnComplete":true}}""")
+        assertNull(bare.waitingForInput)
+        assertEquals(0, bare.textParts)
+        assertFalse(bare.interimInput)
+        assertTrue(bare.responseTokens.isEmpty())
+    }
 }
