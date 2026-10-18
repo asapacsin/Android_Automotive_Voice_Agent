@@ -43,14 +43,14 @@ object NavigationVoiceOutput {
 
     /** The driver cancelled while this call waited: no list, no 「请选择」 (D-CANCEL-STALE-REPLY, SPEC-006 CVC-36). */
     private fun cancelled(out: JSONObject, snapshot: EmbeddedNavigationController.OptionsSnapshot): JSONObject {
-        out.put("screen", "cancelled")
+        out.put("screen", "cancelled").put("status", "cancelled_by_driver")
         if (snapshot.phase == NavigationPhase.NAVIGATING) {
             return out.put("destination", snapshot.destinationName.orEmpty()).put(
                 "next",
-                "司机已取消这次查找，不要让他选择，不要念任何选项，也不要说有新的目的地。原来的导航继续进行，只简短说一句，例如：好的，已取消，继续按原路线导航。",
+                "用户已取消这次查找，不要让用户选择，不要念任何选项，也不要说有新的目的地。原来的导航继续进行，只简短说一句，例如：好的，已取消，继续按原路线导航。",
             )
         }
-        return out.put("next", "司机已取消，不要让他选择，不要念任何选项。只简短确认「好的，已取消」，或者不再多说。")
+        return out.put("next", "用户已取消，不要让用户选择，不要念任何选项。只简短确认「好的，已取消」，或者不再多说。")
     }
 
     /** 「，推荐的约29分钟」: the one number worth saying aloud. */

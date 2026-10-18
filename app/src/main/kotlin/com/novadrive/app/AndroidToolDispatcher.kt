@@ -63,8 +63,11 @@ interface AndroidActionExecutor {
     /** GO_TO_SLEEP chosen by the model: stop listening once the goodbye has played. */
     fun endConversation(): AndroidActionResult = AndroidActionResult.Rejected("LISTENING_CONTROL_UNAVAILABLE")
 
+    /** Cancel mark taken at dispatch; a later cancel makes the awaited snapshot `cancelled`. */
+    fun navigationCancelMark(): Long = 0L
+
     /** What the navigation screen shows once the latest request has settled (bounded wait). */
-    suspend fun awaitNavigationOptions(): EmbeddedNavigationController.OptionsSnapshot? = null
+    suspend fun awaitNavigationOptions(cancelsAtDispatch: Long): EmbeddedNavigationController.OptionsSnapshot? = null
 }
 
 /** Validates untrusted model output before calling the narrow Android executor. */
@@ -322,9 +325,11 @@ open class CoreActionExecutor(
     override fun chooseNavigationOption(choice: NavigationChoice): AndroidActionResult =
         navigationChoiceAction(navigationFlow, navigationFlow.chooseByVoice(choice))
 
-    override suspend fun awaitNavigationOptions(): EmbeddedNavigationController.OptionsSnapshot {
+    override fun navigationCancelMark(): Long = navigationFlow.cancelMark()
+
+    override suspend fun awaitNavigationOptions(cancelsAtDispatch: Long): EmbeddedNavigationController.OptionsSnapshot {
         lastRequest?.let { kotlinx.coroutines.withTimeoutOrNull(REQUEST_WAIT_MS) { it.await() } }
-        return navigationFlow.awaitOptions(OPTIONS_WAIT_MS)
+        return navigationFlow.awaitOptions(OPTIONS_WAIT_MS, cancelsAtDispatch)
     }
 
     private companion object {
