@@ -37,6 +37,7 @@ class EmbeddedNavigationController(
     private val authority = NavigationChoiceAuthority(nowMs, phoneticProposer)
 
     @Volatile private var generation = 0L
+    @Volatile private var cancels = 0L // counts cancel(): lets awaitOptions tell a cancelled flow from a slow one
 
     @Volatile private var calcGeneration = -1L // generation of the pending calculation; older callbacks drop
 
@@ -276,12 +277,8 @@ class EmbeddedNavigationController(
     /** The driver answered something other than yes. */
     fun withdrawConfirmation() = synchronized(lock) { authority.withdraw() }
 
-    data class OptionsSnapshot(
-        val phase: NavigationPhase,
-        val destinations: List<DestinationCandidate>,
-        val routes: List<RouteCandidate>,
-        val destinationName: String?,
-    )
+    /** [cancelled]: the driver cancelled the flow while this snapshot was awaited (D-CANCEL-STALE-REPLY). */
+    data class OptionsSnapshot(val phase: NavigationPhase, val destinations: List<DestinationCandidate>, val routes: List<RouteCandidate>, val destinationName: String?, val cancelled: Boolean = false)
 
     /** Stable identity for the list currently on screen. */
     fun currentListKey(): String =
@@ -291,16 +288,12 @@ class EmbeddedNavigationController(
 
     /** Waits (bounded) until destinations or routes are no longer being computed, then reports them. */
     suspend fun awaitOptions(timeoutMs: Long): OptionsSnapshot {
+        val cancelsAtStart = cancels
         kotlinx.coroutines.withTimeoutOrNull(timeoutMs) {
             store.phase.first { it != NavigationPhase.RESOLVING_DESTINATION && it != NavigationPhase.CALCULATING_ROUTE }
         }
         return synchronized(lock) {
-            OptionsSnapshot(
-                phase = store.phase.value,
-                destinations = _destinationCandidates.value,
-                routes = _routeCandidates.value,
-                destinationName = selectedDestination?.name,
-            )
+            OptionsSnapshot(store.phase.value, _destinationCandidates.value, _routeCandidates.value, selectedDestination?.name, cancels != cancelsAtStart)
         }
     }
 
@@ -333,7 +326,7 @@ class EmbeddedNavigationController(
             val phase = store.phase.value
             if (phase !in CANCELLABLE_PHASES) return
             NavigationLocalPickGuard.invalidate()
-            generation += 1
+            generation += 1; cancels += 1
             clearCandidatesLocked()
             startNaviIssuedForSelection = false
             if (restoreKeptLocked()) {
