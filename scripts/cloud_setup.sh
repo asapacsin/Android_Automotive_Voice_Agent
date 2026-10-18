@@ -113,22 +113,66 @@ fetch_vendor() {
     return
   fi
   log "fetching vendor files"
-  local zip
+  local zip url auth_value code host
   zip="$(mktemp --suffix=.zip)"
+  url="$(vendor_url "$NOVA_VENDOR_ZIP_URL")"
+  host="$(printf '%s' "$url" | sed -E 's#^[a-z]+://([^/]+).*#\1#')"
   local auth=()
-  [ -n "${NOVA_VENDOR_ZIP_AUTH:-}" ] && auth=(-H "Authorization: $NOVA_VENDOR_ZIP_AUTH")
-  if ! retry curl -sSfL "${auth[@]}" -o "$zip" "$NOVA_VENDOR_ZIP_URL"; then
-    warn "vendor zip download failed"
+  if [ -n "${NOVA_VENDOR_ZIP_AUTH:-}" ]; then
+    auth_value="$(vendor_auth "$NOVA_VENDOR_ZIP_AUTH")"
+    auth=(-H "Authorization: $auth_value")
+  fi
+  code=000
+  for _ in 1 2 3 4; do
+    code="$(curl -sSL "${auth[@]}" -o "$zip" -w '%{http_code}' "$url" 2>/dev/null || true)"
+    [ "$code" = 200 ] && break
+    sleep 2
+  done
+  if [ "$code" != 200 ]; then
+    vendor_fail "vendor zip download failed: HTTP $code from $host (check NOVA_VENDOR_ZIP_URL / NOVA_VENDOR_ZIP_AUTH)"
     rm -f "$zip"
     return
   fi
   if ! unzip -tq "$zip" >/dev/null 2>&1; then
-    warn "vendor download is not a zip (a sign-in page?): not extracted"
+    vendor_fail "vendor download from $host is not a zip (a sign-in or web page?): not extracted"
     rm -f "$zip"
     return
   fi
-  unzip -q -o "$zip" -d "$ROOT"
-  rm -f "$zip"
+  local tmpdir src
+  tmpdir="$(mktemp -d)"
+  unzip -q -o "$zip" -d "$tmpdir"
+  # Accept a zip laid out repo-relative (app/...) or with one top-level folder around it.
+  src="$tmpdir"
+  if [ ! -d "$tmpdir/app" ]; then
+    src="$(dirname "$(find "$tmpdir" -maxdepth 3 -path '*/app/libs' -type d | head -1)" 2>/dev/null)"
+    src="$(dirname "$src")"
+  fi
+  if [ -d "$src/app" ]; then
+    cp -R "$src/app/." "$ROOT/app/"
+  fi
+  rm -rf "$tmpdir" "$zip"
+  [ -f "$ROOT/app/libs/Msc.jar" ] || vendor_fail "vendor zip from $host has no app/libs/Msc.jar"
+}
+
+# A github.com page link (…/blob/<ref>/<path> or …/raw/<ref>/<path>) serves HTML or redirects; use
+# the raw file URL instead. Other URLs are left as they are.
+vendor_url() {
+  printf '%s' "$1" | sed -E 's#^https://github\.com/([^/]+)/([^/]+)/(blob|raw)/(.*)$#https://raw.githubusercontent.com/\1/\2/\4#'
+}
+
+# raw.githubusercontent.com needs "token <PAT>" (or "Bearer <PAT>"); a bare token gets a 404.
+vendor_auth() {
+  case "$1" in
+    *" "*) printf '%s' "$1" ;;
+    *) printf 'token %s' "$1" ;;
+  esac
+}
+
+# Visible without the job log: a GitHub annotation (code and host only, never the URL or token).
+vendor_fail() {
+  warn "$1"
+  [ -n "${GITHUB_ACTIONS:-}" ] && echo "::error title=vendor files::$1"
+  return 0
 }
 
 fetch_music() {
