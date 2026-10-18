@@ -1751,6 +1751,62 @@ measured until the Ayano phase ("Gemini first, Ayano last"). Options for the nex
 measure what the product would do; (b) a Gemini-only nudge, which has no input transcription to send;
 (c) measure the lost-turn rate with a planned batch of free-tier runs before choosing.
 
+**Decided 2026-10-18 (decider): none of (a)–(c) as framed; three units.**
+
+*Why not (a)–(c).*
+- (a) is the wrong tool. `ResponseStallWatchdog` starts only when a response begins
+  (OpenAiRealtimeClient.kt ~601), and the lost turn has none: the S1 skeleton shows ACTIVITY_START,
+  the clip, ACTIVITY_END, then nothing. The product (Qwen) path has the same hole. `WaitCueClock`
+  would say 「收到，正在处理。」 at 7 s and 「还在处理…」 at 12 s, then fall silent.
+- The owner that fits already exists. `EmptyResponseRetryPolicy` re-asks once per utterance
+  (SPEC-021:42), and F3 above ("nothing re-asks Gemini yet") is the open part of it.
+- (b) needs no transcription. Gemini clientContent `turnComplete:true` starts generation from the
+  accumulated prompt (ai.google.dev/api/live).
+- (c) is unnecessary: the existing evidence gives about 1–2 % of lines (about 1 suite run in 3).
+
+*Unit 1 – diagnostics (text-free, I-8).* Parse and log: `waitingForInput`, the number of text parts,
+whether an interim transcript is present, and the modality token counts. Also log:
+- server content with no turn open;
+- `gemini_turn_empty` even when nothing was transcribed;
+- the time from ACTIVITY_END to the first transcript;
+- `gemini_turn_quiet` after 5 s without a server message.
+
+*Unit 2 – one provider-neutral re-ask.* Extend `EmptyResponseRetryPolicy` (it may be renamed) with a
+deadline trigger, wired into both `GeminiLiveClient` and `OpenAiRealtimeClient`.
+
+When it re-asks:
+- 3.0 s after end-of-speech if neither output nor an input transcription arrived;
+- at once for an empty close of a transcribed turn;
+- once per utterance at most. Never after the driver's next onset, an app-handled utterance,
+  suspended or quiet listening, an open GUIDANCE prompt, a suspicious segment, or a dead socket.
+
+What it sends (the re-ask is silent):
+- Gemini: one clientContent turn 「请回应我刚才说的话。」 with turnComplete:true. A free-tier probe gates
+  it: after a finished relative action, a re-ask with nothing pending must not call a tool (3/3).
+- Qwen/Baidu: one `response.create`, dropped (not re-queued) if a response or the driver's speech got
+  there first.
+
+Giving up: with no answer 5.0 s after the re-ask → the existing `onStallNotice(final=true)` line.
+`WaitCueClock` must then stop, so no 12 s line follows. Tool calls that arrive late for a given-up
+turn are answered as not executed (P34/P35).
+
+*Unit 3 – conditional.* Wire `ResponseStallWatchdog` into `GeminiLiveClient` only if Unit 1 shows
+S14's open turn is a true no-message stall.
+
+*Rows.* A turn recovered by the re-ask that meets the oracle is a legitimate PASS. A give-up is a
+FAIL. The evidence states `reasked=N answered=M gave_up=K`. TRUTH-BAIT needs Unit 3. DEMO-TRYOUT's
+u_temp still misses its 3.5 s limit (honest).
+
+*Research.*
+- ai.google.dev/api/live: turnComplete semantics; `waitingForInput`; mixing clientContent with
+  realtime input has no guarantees.
+- Google AI forum:
+  - discuss.ai.google.dev/t/136670 – 3.1 flash live sometimes goes silent;
+  - t/110825 – the model sometimes doesn't answer;
+  - t/128155 – auto VAD alone doesn't reliably trigger; a 3.0 s fallback;
+  - t/142838 – activityEnd sent, never responds.
+- No vendor fix documented. GitHub issues were not searchable from this session.
+
 ## P46 — Assistant-spoken guidance (SPEC-018) gives up on the first prompt and never comes back
 
 **Status:** OPEN, found 2026-10-03 while recording the demo video. PC emulator nova_api34, build 9696ce5 (`claude/10-3`), Azure voice on, 助手播报导航 on. Short drive to 长隆海洋王国 started by voice, emulator speed 60 km/h. **Owner 2026-10-15:** offered A/B options (P46 wait ~1.2 s for her reply; D-9 drop an unchecked reply; P48 code-written confirmations) and chose to leave this alone for now - current behaviour stays; not to be reopened without the owner.
