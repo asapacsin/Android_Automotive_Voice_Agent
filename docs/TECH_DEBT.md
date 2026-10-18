@@ -356,7 +356,21 @@ documents only `onCalculateRouteSuccess`; it says nothing on whether a new `calc
 aborts an earlier one, and `AMapCalcRouteResult` carries no request token. Follow-ups found by the
 review: D-CANCEL-HOST-OVERVIEW, D-CANCEL-STALE-REPLY, D-CALC-SUPERSEDE below.
 
-## D-CANCEL-HOST-OVERVIEW — a late route result after a cancel still draws the route overview (recorded 2026-10-17)
+## D-CANCEL-HOST-OVERVIEW — a late route result after a cancel still draws the route overview (recorded 2026-10-17) — **fixed at JVM level 2026-10-18** (merge of `4369cbe`)
+
+Fix: the presentation follows the controller's phase through the existing `showNavigationState`.
+The pure `MapPresentationPolicy` has 9 JVM cases. `onRouteReady` previews only on a reroute while
+navigating, and the route ids are kept only during CALCULATING_ROUTE or while navigating. Reviewer
+PASS after one REVISE round. Still to show on an emulator, with a screenshot plus the
+`nav_presentation` log lines each:
+- a cancel during calculation, then a late success: no overview;
+- a cancel at the picker: idle;
+- a cancel of an along-route list during guidance: lock-car HUD;
+- a normal pick and start: lock-car driving.
+Open nits from the review:
+- a one-line test for entering STOPPED or ERROR from a non-idle phase;
+- FeaturePresenceRegressionTest:287's comment, since the literal call it pins is now the reroute path;
+- `AssistantNavigationScreen.lastRouteCount()` has no callers.
 
 `AmapNaviViewHost.onRouteReady` (~:766-769) sets `lastRouteIds` and calls
 `AmapDrivingPresentation.applyRoutePreview` (overview) before the controller decides, and nothing
