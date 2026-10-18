@@ -2086,6 +2086,35 @@ tests:
 
 # ---- human-required: credentials and decisions ------------------------------------------------
 
+  - id: CI-VENDOR-ZIP-001
+    capability: release
+    name: The emulator workflows and cloud sessions can fetch the vendor zip
+    purpose: "Every Device checks / Voice checks / Nav demo run builds the real app, which needs the gitignored iFlytek files from NOVA_VENDOR_ZIP_URL. While that URL is dead no emulator row can be re-earned, and cloud sessions cannot compile :app"
+    type: release
+    scope: INTERMEDIATE_FLOW
+    owner: HUMAN_CREDENTIAL
+    status: HUMAN_REQUIRED
+    automation_blocker: credential_permission
+    release_blocking: false
+    human_reason: "The zip holds the iFlytek SDK licensed to the owner's App ID; only the owner can host it and set the repository's Actions secrets and the cloud environment's variables. An agent cannot read or write secrets"
+    prerequisites: ["the vendor zip laid out as docs/CLOUD_BUILD.md 'What git does not carry' says", "a private GitHub repository (or other non-expiring host) and a read-only fine-grained token"]
+    procedure:
+      - "upload the zip to a private repository; copy its raw URL"
+      - "set the Actions secrets NOVA_VENDOR_ZIP_URL and NOVA_VENDOR_ZIP_AUTH (the token) in asapacsin/Android_Automotive_Voice_Agent"
+      - "set the same two variables in the Claude Code cloud environment (session title bar > environment > Edit)"
+      - "run Device checks by hand (Actions > Device checks > Run workflow, branch claude/10-19)"
+    pass_criteria:
+      - "the run's cloud_setup step no longer prints 'vendor zip download failed'"
+      - ":app:assembleDebug succeeds in the run and ci/device-evidence gets a verdict with results, not MISSING"
+    autonomous_evidence:
+      - "2026-10-18 Device checks run 39144117274: cloud_setup 'vendor zip download failed: HTTP 403 from filebin.net', then :app:desugarDebugFileDependencies failed on the missing app/libs/Msc.jar; every required check MISSING (log read through the GitHub API)"
+      - "2026-10-19 cloud session: app/libs/Msc.jar absent, no NOVA_VENDOR_ZIP_URL in the environment"
+      - "the workflows already list claude/10-19 (706b6d0)"
+    remaining_uncertainty:
+      - "whether the device and voice suites are green on the current code: they have not run to completion since 2026-10-17"
+    returns: ["the run id of the first Device checks run after the change", "whether its verdict has results"]
+    related: [docs/CLOUD_BUILD.md, docs/CI.md]
+
   - id: RELEASE-SIGN-001
     capability: release
     name: A signed release build installs and works

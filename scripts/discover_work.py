@@ -339,9 +339,9 @@ def item_section_blocker(text, item):
     return section_blocker(text, start.start(), end)
 
 
-def open_backlog():
+def open_backlog(text=None):
     out = []
-    text = read("BACKLOG.md")
+    text = read("BACKLOG.md") if text is None else text
     for match in re.finditer(r"^\| (B-\d+) \| (.+?) \| ([\d-]+) \| (.+?) \|", text, re.M):
         item, title, _, status = match.groups()
         if is_terminal(status):
@@ -359,7 +359,10 @@ def open_backlog():
         # eligible work, but the work is compiling it - not guessing what it asks for and editing
         # code (skills/continue.md, "Compile the demand first").
         section = text[bounds[0]:bounds[1]] if bounds else ""
-        compiled = "SPECS/SPEC-" in section or "SPECS/SPEC-" in match.group(0)
+        # The SPEC link sits in the row's last column, which the match above stops short of.
+        line_end = text.find("\n", match.start())
+        row = text[match.start():line_end if line_end >= 0 else len(text)]
+        compiled = "SPECS/SPEC-" in section or "SPECS/SPEC-" in row
         summary = "%s — %s" % (item, title[:80])
         if not compiled:
             summary = "%s — no SPEC yet: compile this demand into scenarios and acceptance criteria" % item
@@ -733,6 +736,13 @@ def selftest():
     check("A2 a compiled demand names the implementation instead",
           "compile this demand" not in decide([
               candidate(P_BACKLOG, "BACKLOG.md", "B-098", "B-098 — specced work")])["NEXT_ACTION"])
+    rows = ("| B-097 | demand | 2026-01-01 | **Specced** | [SPEC-099](SPECS/SPEC-099-x.md) |\n"
+            "| B-096 | demand | 2026-01-01 | Open | — |\n")
+    parsed = {c["item"]: c for c in open_backlog(rows)}
+    check("A2 a SPEC linked in the row's last column counts as compiled",
+          "no SPEC yet" not in parsed["B-097"]["summary"], parsed["B-097"]["summary"])
+    check("A2 a row with no SPEC link still needs compiling",
+          "no SPEC yet" in parsed["B-096"]["summary"], parsed["B-096"]["summary"])
     check("A3 a test existing is not completion",
           completion_stage({"implemented": True, "protected": True}) == "IMPLEMENTED",
           completion_stage({"implemented": True, "protected": True}))

@@ -505,6 +505,7 @@ change_impact:
       - TranscriptText
       - QwenSettings
       - GeminiTurnTiming
+      - GeminiTurnDiagnostics
       - GeminiCorrectionGrace
       - WaitCues
       - WaitCueClock
@@ -540,6 +541,7 @@ change_impact:
       - AmapNaviViewHost
       - AmapCoordinates
       - AmapDrivingPresentation
+      - MapPresentationPolicy
       - NavigationProgressTrace
       - NavigationStateStore
       - NavigationCandidates

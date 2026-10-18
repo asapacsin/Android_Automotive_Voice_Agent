@@ -4,7 +4,7 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 
 > **Not ready yet.** This is a preview of the queue; autonomous work remains:
 >
-> - the registry does not validate: 1 problem(s)
+> - the registry does not validate: 60 problem(s)
 > - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - TRUTH-MEDIA-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -13,7 +13,7 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 > - NAV-MID-ROUTE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - CLIMATE-SET-001 is AUTONOMOUS and FAIL - run it or fix it
 
-29 item(s) queued.
+30 item(s) queued.
 
 Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEVICE_REQUIRED.md).
 
@@ -818,6 +818,36 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 *Release-blocking.*
 
 ## C. Required credentials
+
+### CI-VENDOR-ZIP-001 — The emulator workflows and cloud sessions can fetch the vendor zip
+
+**Why this needs you.** The zip holds the iFlytek SDK licensed to the owner's App ID; only the owner can host it and set the repository's Actions secrets and the cloud environment's variables. An agent cannot read or write secrets
+
+**Automation blocker:** `credential_permission`
+
+**Already established without you:**
+
+- 2026-10-18 Device checks run 39144117274: cloud_setup 'vendor zip download failed: HTTP 403 from filebin.net', then :app:desugarDebugFileDependencies failed on the missing app/libs/Msc.jar; every required check MISSING (log read through the GitHub API)
+- 2026-10-19 cloud session: app/libs/Msc.jar absent, no NOVA_VENDOR_ZIP_URL in the environment
+- the workflows already list claude/10-19 (706b6d0)
+
+**You will need:** the vendor zip laid out as docs/CLOUD_BUILD.md 'What git does not carry' says; a private GitHub repository (or other non-expiring host) and a read-only fine-grained token
+
+**What to do:**
+
+1. upload the zip to a private repository; copy its raw URL
+2. set the Actions secrets NOVA_VENDOR_ZIP_URL and NOVA_VENDOR_ZIP_AUTH (the token) in asapacsin/Android_Automotive_Voice_Agent
+3. set the same two variables in the Claude Code cloud environment (session title bar > environment > Edit)
+4. run Device checks by hand (Actions > Device checks > Run workflow, branch claude/10-19)
+
+**It passes if:**
+
+- the run's cloud_setup step no longer prints 'vendor zip download failed'
+- :app:assembleDebug succeeds in the run and ci/device-evidence gets a verdict with results, not MISSING
+
+**Tell me back:** the run id of the first Device checks run after the change; whether its verdict has results
+
+**Still unknown until you do:** whether the device and voice suites are green on the current code: they have not run to completion since 2026-10-17
 
 ### RELEASE-SIGN-001 — A signed release build installs and works
 

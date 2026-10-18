@@ -1,16 +1,61 @@
 {
-  "generated_at": "2026-10-18T22:44:27",
+  "generated_at": "2026-10-18T22:54:01",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "54299de",
+    "commit": "706b6d0",
     "branch": "claude/10-19",
-    "subject": "P45: DashScope error carries no causing event_id (research) and the inherent re-ask race residual",
-    "working_tree_clean": true,
-    "uncommitted_files": 0
+    "subject": "CI: emulator workflows also run on pushes to claude/10-19",
+    "working_tree_clean": false,
+    "uncommitted_files": 6
   },
   "tests": {
-    "available": false,
-    "reason": "no JUnit XML found; run gradlew test"
+    "available": true,
+    "collected_at": "2026-10-18T22:50:40",
+    "total": {
+      "tests": 313,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0
+    },
+    "by_module": {
+      "evaluation": {
+        "tests": 27,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "simulator": {
+        "tests": 25,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "safety": {
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "behavior-test": {
+        "tests": 132,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0
+      },
+      "contracts": {
+        "tests": 7,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "ingress": {
+        "tests": 120,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    "passing": false
   },
   "apk": {
     "built": false
@@ -155,10 +200,10 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "app-debug.apk: no debug APK has been built from this tree",
-    "actionable_count": 127,
+    "actionable_count": 128,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
-    "QUEUED_FOR_HUMAN": 29,
+    "QUEUED_FOR_HUMAN": 30,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
       {
@@ -453,6 +498,13 @@
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
         "item": "UNSUPPORTED-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 3,
+        "class": "invariant violation",
+        "source": "test report",
+        "item": "com.novadrive.architecture.FeaturePresenceRegressionTest",
         "blocked_by": null
       },
       {
