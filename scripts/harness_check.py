@@ -212,6 +212,11 @@ def main():
             if not name.endswith(".md"):
                 continue
             text = open(os.path.join(skills_dir, name), encoding="utf-8").read()
+            if "DRAFT (scripts/skill_draft.py)" in text:
+                failures.append(
+                    "skills/%s is still an unfinished draft: fill it from the evidence and pass its "
+                    "with/without-skill evals (.claude/skills/create-skill), or delete it" % name
+                )
             for pattern in VOLATILE_IN_SKILL:
                 if pattern.search(text):
                     failures.append(

@@ -480,7 +480,7 @@ def time_records():
                     continue  # reported below from the records themselves
                 out.append(candidate(P_HARNESS, "harness/skill-metrics.json",
                                      "skill-" + re.sub(r"[^\w.-]+", "-", a.get("subject", ""))[:60],
-                                     "%s: %s (seen %s) - follow .claude/skills/create-skill/SKILL.md"
+                                     "%s: %s (seen %s) - build it now, no asking: scripts/skill_draft.py --from-metrics, then .claude/skills/create-skill/SKILL.md"
                                      % (a.get("action"), a.get("subject"), a.get("seen"))))
         except (OSError, ValueError):
             pass

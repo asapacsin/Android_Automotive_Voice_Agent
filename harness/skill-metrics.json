@@ -1,8 +1,8 @@
 {
   "generated_by": "scripts/skill_metrics.py",
-  "events": 14,
+  "events": 15,
   "outcomes": {
-    "PASS": 12,
+    "PASS": 13,
     "PARTIAL": 2
   },
   "total_retries": 2,
@@ -13,7 +13,8 @@
     "start": 2,
     "continue": 4,
     "handoff": 8,
-    "review-packet": 2
+    "review-packet": 2,
+    "create-skill": 1
   },
   "deviations": {},
   "missing_steps": {},
@@ -28,9 +29,9 @@
   "failed_skill_assumptions": {},
   "unused_skills": [],
   "time_efficiency": {
-    "timed_tasks": 9,
-    "total_minutes": 998,
-    "total_attempts": 19,
+    "timed_tasks": 10,
+    "total_minutes": 1013,
+    "total_attempts": 20,
     "inefficient": [
       {
         "task": "vendor-files-in-worktrees",

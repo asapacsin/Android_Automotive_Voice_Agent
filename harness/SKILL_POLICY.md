@@ -29,7 +29,7 @@ the loop cannot go quiet. The build procedure is
 [.claude/skills/create-skill/SKILL.md](../.claude/skills/create-skill/SKILL.md): script first; write
 in the Agent Skills format (`skills/<name>.md` canonical, `.claude/skills/<name>/SKILL.md` entry
 with a trigger-rich description); verify against a no-skill baseline with `evals/evals.json`
-before it lands. Sources: Anthropic skill-creator and Claude Code skills docs, agentskills.io,
+before it lands. The loop runs without asking (owner, 2026-10-18): `scripts/skill_draft.py` drafts each flagged candidate, the agent fills it and runs the evals, and only the baseline result decides whether it lands or is deleted. Sources: Anthropic skill-creator and Claude Code skills docs, agentskills.io,
 everything-claude-code continuous-learning-v2, Voyager (cited in that skill).
 
 ## Evidence thresholds

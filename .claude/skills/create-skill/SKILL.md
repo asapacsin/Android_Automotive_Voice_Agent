@@ -5,6 +5,17 @@ description: Turn a repeated Nova Drive workflow into a script or a skill, verif
 
 # Create (or change) a skill from evidence
 
+**Automatic, with the test as the gate** (owner, 2026-10-18). When `discover_work.py` lists a
+`skill-…` item, the agent that sees it runs this whole procedure at once, without asking anyone.
+It starts with `python scripts/skill_draft.py --from-metrics`, which writes the draft files. It
+ends in one of two ways:
+- the skill beats the no-skill baseline (step 4): it lands;
+- it does not, after two revisions: it is deleted, and the outcome is recorded with
+  `skill_event.py --resolves <subject>` so the same candidate is not drafted again.
+
+No person approves either outcome. The check `harness_check.py` fails while a skill still carries
+the draft marker, so an unfinished or untested draft cannot land.
+
 Adapted from Anthropic's skill-creator and the Agent Skills guides, with the community's
 observe-by-machine idea and Voyager's verify-before-adding rule (sources at the end). The
 repository's own thresholds and classification stay in
