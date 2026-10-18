@@ -391,7 +391,22 @@ mid-drive: driving=false options, layout hidden, north-up, auto-lock off (AmapDr
 behaviour. Next step: confirm from a device or emulator log (`nav_recalc_yaw` followed by
 `nav_presentation mode=preview`) before changing it.
 
-## D-CANCEL-STALE-REPLY — the pending navigate_to result still resolves after a cancel (recorded 2026-10-17)
+## D-CANCEL-STALE-REPLY — the pending navigate_to result still resolves after a cancel (recorded 2026-10-17) — **fixed at JVM level 2026-10-18** (merge of `ecab377`)
+
+Fix: `NavigationServer.navigationResult` takes the controller's cancel mark when the call is
+dispatched and passes it through `awaitNavigationOptions(cancelsAtDispatch)`. A cancel at any
+time after dispatch now gives `ok=true screen=cancelled status=cancelled_by_driver`, with a `next`
+that forbids prompting a choice. That includes a cancel during the search, which the first
+attempt missed. Two dispatch-path tests in `NavigationCancelledReplyTest` (cancel while resolving;
+A cancelled, then B) failed on the old timing and now pass. Reviewer PASS after one REVISE round.
+Remaining:
+- What the model actually says after 「算了」 during a search is unverified. Check it in the Gemini
+  harness (not Qwen).
+- Residual: a cancelled call can wait up to `REQUEST_WAIT_MS` (10 s) on its own late search before
+  replying. The reply is correct but can be late. It could be removed by ending the `lastRequest`
+  wait once the cancel mark moves. Measure first how often a search hangs.
+- EmbeddedNavigationController.kt is at its 545-line budget. The next change there must extract
+  code first.
 
 `NavigationVoiceOutput` (~:38) / `NavigationServer` (~:89-92): after the cancel the pending
 `navigate_to` result still resolves `ok=true status=awaiting_route_selection_on_screen screen=none`,
