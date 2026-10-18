@@ -20,3 +20,9 @@ marker file.
 
 Added 2026-10-19 when the vendor zip URL (an expired filebin.net link, HTTP 403) blocked every
 `:app` build in cloud sessions and in GitHub Actions (TEST_MATRIX `CI-VENDOR-ZIP-001`).
+
+**Research (2026-10-19, done after ae308d1, whose commit message claimed it before it was run):**
+a web search for an iFlytek MSC artifact on Maven Central (`com.iflytek`, `Msc.jar`) found none.
+The Android MSC SDK is downloaded per App ID from the iFlytek open-platform console and used as a
+local `libs/` jar, so there is no public substitute to fetch. Compile-only stand-ins were chosen
+for that reason. Searched, no vendor-documented workaround found.
