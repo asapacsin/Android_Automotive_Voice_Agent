@@ -16,6 +16,7 @@ on:
   push:
     branches:
       - claude/10-15
+      - claude/10-19
   workflow_dispatch:
     inputs:
       minutes:

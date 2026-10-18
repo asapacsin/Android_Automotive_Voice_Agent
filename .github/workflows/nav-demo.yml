@@ -19,6 +19,7 @@ on:
   push:
     branches:
       - claude/10-15
+      - claude/10-19
 
 permissions:
   contents: write
