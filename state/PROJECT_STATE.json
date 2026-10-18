@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-10-17T17:47:24",
+  "generated_at": "2026-10-18T07:26:13",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "07095b3",
+    "commit": "b53d6da",
     "branch": "claude/10-15",
-    "subject": "D-CANCEL-SEARCH resolved; three follow-ups from its review recorded (host overview, stale navigate_to reply, calc supersede)",
+    "subject": "D-CANCEL-STALE-REPLY fixed at JVM level; 10 s residual and the live check recorded",
     "working_tree_clean": true,
     "uncommitted_files": 0
   },
@@ -208,7 +208,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "AFFORDANCE-DEVICE-001: FAIL: Spoken control names act on the phone through the local path, once, with no model execution",
-    "actionable_count": 103,
+    "actionable_count": 102,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 29,
@@ -856,13 +856,6 @@
         "class": "stale state or harness defect",
         "source": "state",
         "item": "PROJECT_STATE.json",
-        "blocked_by": null
-      },
-      {
-        "priority": 10,
-        "class": "stale state or harness defect",
-        "source": "harness/skill-events.jsonl",
-        "item": "time-record",
         "blocked_by": null
       },
       {
