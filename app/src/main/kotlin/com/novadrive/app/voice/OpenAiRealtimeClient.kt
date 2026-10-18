@@ -65,13 +65,14 @@ open class OpenAiRealtimeClient<C : Any>(
     @Volatile private var playbackActive = false
     @Volatile private var navigatingListener: ((Boolean) -> Unit)? = null
     @Volatile private var textUnsupportedLogged = false
-    private val emptyRetry = EmptyResponseRetryPolicy()
     private val deliveredStyle = DeliveredStyle() // P55
     private val resetPolicy = ConversationResetPolicy()
     private val historyBudget = HistoryBudget()
     private val resetScope = kotlinx.coroutines.CoroutineScope(
         kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO,
     )
+    internal val emptyRetry = EmptyResponseRetryPolicy(resetScope, dialect.logPrefix, giveUp = { onStallNotice?.invoke(true) }, send = { trySend(dialect.responseCreate()) }, // also P45 U2's re-ask
+        blocked = { when { listeningSuspended -> "suspended"; lastAudioSegment()?.isSuspicious() == true -> "suspicious"; responseInProgress || cueHoldsGate -> "busy"; else -> null } })
     @Volatile private var lastConfig: C? = null
     @Volatile private var resetting = false
 
@@ -241,7 +242,7 @@ open class OpenAiRealtimeClient<C : Any>(
     }
 
     fun cancelResponse() {
-        if (cue.discardForClientCancel()) sendCancelOnce("client_cancel") else if (assistantSpeaking) sendCancelOnce("barge_in")
+        emptyRetry.appHandled(); if (cue.discardForClientCancel()) sendCancelOnce("client_cancel") else if (assistantSpeaking) sendCancelOnce("barge_in")
     }
 
     /**
@@ -249,7 +250,7 @@ open class OpenAiRealtimeClient<C : Any>(
      * arrived yet (cancelResponse only acts once audio plays, to keep barge-in behaviour as is).
      */
     fun cancelActiveResponse() {
-        if (cue.discardForClientCancel()) sendCancelOnce("client_cancel") else if (responseInProgress || assistantSpeaking) sendCancelOnce("active")
+        emptyRetry.appHandled(); if (cue.discardForClientCancel()) sendCancelOnce("client_cancel") else if (responseInProgress || assistantSpeaking) sendCancelOnce("active")
     }
 
     /**
@@ -273,9 +274,9 @@ open class OpenAiRealtimeClient<C : Any>(
 
     /** A call from a response this client cancelled: not executed, not answered, no new reply. */
     private fun dropCallFromCancelledResponse(event: DomainVoiceEvent): Boolean {
-        if (event !is DomainVoiceEvent.ToolCall || !cancelSentThisResponse) return false
+        if (event !is DomainVoiceEvent.ToolCall || !(cancelSentThisResponse || emptyRetry.gaveUp)) return false // P45 U2: a given-up turn's late call too
         val shape = if (event.arguments.containsKey("_validation_error")) "rejected" else "valid"
-        DebugVoiceLog.log("${dialect.logPrefix}_call_dropped reason=response_cancelled tool=${event.name} args=$shape")
+        DebugVoiceLog.log("${dialect.logPrefix}_call_dropped reason=${if (cancelSentThisResponse) "response_cancelled" else "reask_gave_up"} tool=${event.name} args=$shape")
         resetPolicy.onCallDropped(event.callId)
         return true
     }
@@ -518,12 +519,6 @@ open class OpenAiRealtimeClient<C : Any>(
         )
     }
 
-    /** One extra response.create for a turn the provider completed with no output (see EmptyResponseRetryPolicy). */
-    private fun requestReplyAfterEmptyResponse() {
-        DebugVoiceLog.log("${dialect.logPrefix}_empty_response_retry")
-        trySend(dialect.responseCreate())
-    }
-
     /** The wire translated for [ProviderCueCapture], which knows no vendor vocabulary (ADR-009). */
     private fun cueSignal(type: String, text: String): Signal = JSONObject(text).let { json ->
         val item = json.optJSONObject("item")
@@ -597,8 +592,8 @@ open class OpenAiRealtimeClient<C : Any>(
             if (type == "response.audio.delta") assistantSpeaking = true
             if (type == "response.audio.done" || type == "response.done") assistantSpeaking = false
             val alive = { generation.get() == current }
-            if (type in RESPONSE_PROGRESS_TYPES) stallWatchdog.onProgress()
-            if (type == "response.created") stallWatchdog.onResponseCreated(alive)
+            if (type in RESPONSE_PROGRESS_TYPES) { stallWatchdog.onProgress(); emptyRetry.onOutput() }
+            if (type == "response.created") { stallWatchdog.onResponseCreated(alive); emptyRetry.onHeard() }
             if (type !in NOISY_EVENT_TYPES) DebugVoiceLog.log("${dialect.logPrefix}_event type=$type")
             // Code only: a provider message can quote what the driver said.
             if (type == "error") DebugVoiceLog.log("${dialect.logPrefix}_error code=${dialect.errorCode(text)}")
@@ -609,7 +604,7 @@ open class OpenAiRealtimeClient<C : Any>(
                 pipeline.beginDriverTurn(playbackActive || assistantSpeaking, responseInProgress)
             }
             if (type == "input_audio_buffer.speech_stopped") {
-                turnGate.onSpeechStopped()
+                turnGate.onSpeechStopped(); emptyRetry.onEndOfSpeech()
                 // If the speech gets no reply (noise), queued turns must still go out.
                 resetScope.launch {
                     kotlinx.coroutines.delay(SPEECH_STOPPED_FLUSH_MS)
@@ -630,18 +625,18 @@ open class OpenAiRealtimeClient<C : Any>(
                 streamedWords.onDone(raw.optString("transcript").ifEmpty { raw.optString("text") })?.let(pipeline::appendAssistantText)
             }
             if (type == "conversation.item.input_audio_transcription.completed") pipeline.onUserTranscript(JSONObject(text).optString("transcript"))
-            if (type == "error" && dialect.isResponseAlreadyActive(text)) {
+            if (type == "error" && dialect.isResponseAlreadyActive(text) && !emptyRetry.onBusyError()) { // a busy re-ask is dropped, not re-queued
                 DebugVoiceLog.log("${dialect.logPrefix}_turn_rejected_busy retry=true")
                 turnGate.onBusyRejected(
                     ResponseTurnGate.Turn(listOf(dialect.responseCreate()), emptyList(), conversationEpoch),
                 )
             }
             if (type == "conversation.item.input_audio_transcription.completed" && emptyRetry.onUserTranscriptCompleted()) {
-                requestReplyAfterEmptyResponse()
+                emptyRetry.fire(EmptyResponseRetryPolicy.EMPTY_CLOSE)
             }
             if (type == "response.done") {
                 turnGate.onResponseDone()
-                if (onResponseDone(text)) requestReplyAfterEmptyResponse() else flushDeferredTurns()
+                if (!(onResponseDone(text) && emptyRetry.fire(EmptyResponseRetryPolicy.EMPTY_CLOSE))) flushDeferredTurns()
                 stallWatchdog.onResponseDone(alive) // after the flush: a released turn makes a retry unwanted
                 // Fail-safe: finishResponse clears the buffer on either verdict, so this only
                 // fires when the parse above returned early. Better a spoken reply than audio

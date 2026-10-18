@@ -126,6 +126,9 @@ class GeminiLiveClient(
     private val speech = GeminiSpeechText(speechTextEvents, ::emit, pipeline::filter, prompt::suppressed)
     private val timing = GeminiTurnTiming()
     internal val diagnostics = GeminiTurnDiagnostics(scope) // P45 U1: logs only, never a decision
+    @Volatile internal var onStallNotice: ((Boolean) -> Unit)? = null // P45 U2: true = the re-ask was given up; the wait-cue owner speaks
+    internal val noAnswer = EmptyResponseRetryPolicy(scope, "gemini", giveUp = { onStallNotice?.invoke(true) }, send = { trySend(GeminiLiveProtocol.textTurn("请回应我刚才说的话。")) },
+        blocked = { synchronized(this@GeminiLiveClient) { when { listeningSuspended -> "suspended"; prompt.busy -> "guidance"; lastAudioSegment()?.isSuspicious() == true -> "suspicious"; turnOpen -> "busy"; else -> null } } })
 
     fun events(): Flow<RealtimeEvent> = eventFlow.asSharedFlow()
 
@@ -222,7 +225,7 @@ class GeminiLiveClient(
      * so the current turn's held output is dropped and it draws no correction (Baidu P40 semantics).
      */
     fun markClientCancelled() {
-        clientCancelled = true
+        clientCancelled = true; noAnswer.appHandled()
         DebugVoiceLog.log("gemini_client_cancel local_only=true")
     }
 
@@ -238,7 +241,7 @@ class GeminiLiveClient(
      */
     private fun beginDriverTurnLocked() {
         prompt.void("driver_onset")
-        onsetSeen = true
+        onsetSeen = true; noAnswer.onSpeechStarted()
         callDispatchedThisDriverTurn = false
         strayOutput.setLength(0)
         if (turnOpen && !turnAudioSeen && turnCallIds.isEmpty()) {
@@ -285,7 +288,7 @@ class GeminiLiveClient(
 
     private fun resetTurn() {
         clearTurnState()
-        inputText.setLength(0); diagnostics.reset()
+        inputText.setLength(0); diagnostics.reset(); noAnswer.reset()
         strayOutput.setLength(0)
     }
 
@@ -377,9 +380,7 @@ class GeminiLiveClient(
             Telemetry.record(EventType.SOCKET_DISCONNECTED, detail = "failure")
         }
 
-        override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-            webSocket.close(1000, null)
-        }
+        override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(1000, null) }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
             if (generation.get() != current) return
@@ -436,6 +437,7 @@ class GeminiLiveClient(
                 DebugVoiceLog.log("gemini_driver_turn_fallback source=voice_activity")
             }
             diagnostics.message(message, turnOpen); onContent(message)
+            if (message.voiceActivity == GeminiLiveProtocol.ACTIVITY_END) noAnswer.onEndOfSpeech() // P45 U2: the no-answer deadline
         }
         message.workPending?.let { emit(DomainVoiceEvent.ProviderWorkState(it)) }
         if (message.cancelledCallIds.isNotEmpty()) {
@@ -446,7 +448,8 @@ class GeminiLiveClient(
     }
 
     private fun onContent(message: GeminiLiveProtocol.ServerMessage) {
-        message.inputTranscription?.let { inputText.append(it) }
+        message.inputTranscription?.let { inputText.append(it); noAnswer.onHeard() }
+        if (message.audio.isNotEmpty() || message.outputTranscription != null || message.toolCalls.isNotEmpty()) noAnswer.onOutput()
         // Only audio or a call opens a turn: a transcript alone (e.g. a stray chunk after
         // turnComplete) would open a response for the old driver turn and swallow the next reply.
         if (!turnOpen && (message.audio.isNotEmpty() || message.toolCalls.isNotEmpty())) {
@@ -574,7 +577,7 @@ class GeminiLiveClient(
         val transcribed = !turnOpen && inputText.isNotBlank()  // P45: a question Gemini closed with no reply
         flushInput()
         strayOutput.setLength(0)
-        if (!turnOpen) return run { DebugVoiceLog.log("gemini_turn_empty status=$status transcribed=$transcribed") }
+        if (!turnOpen) return run { DebugVoiceLog.log("gemini_turn_empty status=$status transcribed=$transcribed"); if (transcribed) noAnswer.fire(EmptyResponseRetryPolicy.EMPTY_CLOSE) }
         finishGeneration()  // the verdict was given there (at generationComplete, or now)
         if (prompt.open != null) {
             prompt.complete()
@@ -598,7 +601,7 @@ class GeminiLiveClient(
     }
 
     private fun onToolCall(raw: GeminiLiveProtocol.RawCall) {
-        val call = GeminiLiveProtocol.toolCall(raw)
+        val call = GeminiLiveProtocol.toolCall(raw)?.let { if (noAnswer.gaveUp) RealtimeToolCatalog.rejectedCall(it.callId, it.name, "REASK_GAVE_UP") else it } // P45 U2: not executed
         if (call == null) {
             DebugVoiceLog.log("gemini_call_dropped reason=invalid_id")
             return
@@ -639,8 +642,6 @@ class GeminiLiveClient(
     }
 
     companion object {
-        private fun defaultHttp() = OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.SECONDS).readTimeout(0, TimeUnit.MILLISECONDS)
-            .pingInterval(20, TimeUnit.SECONDS).build()
+        private fun defaultHttp() = OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(0, TimeUnit.MILLISECONDS).pingInterval(20, TimeUnit.SECONDS).build()
     }
 }
