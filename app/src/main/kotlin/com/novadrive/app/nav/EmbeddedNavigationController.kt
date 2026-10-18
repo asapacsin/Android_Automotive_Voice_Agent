@@ -37,14 +37,10 @@ class EmbeddedNavigationController(
     private val authority = NavigationChoiceAuthority(nowMs, phoneticProposer)
 
     @Volatile private var generation = 0L
-
+    @Volatile private var cancels = 0L // counts cancel(): lets awaitOptions tell a cancelled flow from a slow one
     @Volatile private var calcGeneration = -1L // generation of the pending calculation; older callbacks drop
-
-    @Volatile
-    private var selectedDestination: DestinationCandidate? = null
-
-    @Volatile
-    private var startNaviIssuedForSelection = false
+    @Volatile private var selectedDestination: DestinationCandidate? = null
+    @Volatile private var startNaviIssuedForSelection = false
 
     /**
      * Owner test 10-16 (nav demo runs 38871517346, worker 6c00cfa): an along-route list shown while
@@ -276,21 +272,23 @@ class EmbeddedNavigationController(
     /** The driver answered something other than yes. */
     fun withdrawConfirmation() = synchronized(lock) { authority.withdraw() }
 
+    /** [cancelled]: the driver cancelled after the tool call was dispatched (D-CANCEL-STALE-REPLY). */
     data class OptionsSnapshot(
         val phase: NavigationPhase,
         val destinations: List<DestinationCandidate>,
         val routes: List<RouteCandidate>,
         val destinationName: String?,
+        val cancelled: Boolean = false,
     )
 
     /** Stable identity for the list currently on screen. */
-    fun currentListKey(): String =
-        synchronized(lock) {
-            "${generation}_${store.phase.value}_${_destinationCandidates.value.size}_${_routeCandidates.value.size}"
-        }
+    fun currentListKey(): String = synchronized(lock) {
+        "${generation}_${store.phase.value}_${_destinationCandidates.value.size}_${_routeCandidates.value.size}"
+    }
 
+    fun cancelMark(): Long = cancels // taken when a navigation tool call is dispatched; see [awaitOptions]
     /** Waits (bounded) until destinations or routes are no longer being computed, then reports them. */
-    suspend fun awaitOptions(timeoutMs: Long): OptionsSnapshot {
+    suspend fun awaitOptions(timeoutMs: Long, cancelsAtDispatch: Long): OptionsSnapshot {
         kotlinx.coroutines.withTimeoutOrNull(timeoutMs) {
             store.phase.first { it != NavigationPhase.RESOLVING_DESTINATION && it != NavigationPhase.CALCULATING_ROUTE }
         }
@@ -300,6 +298,7 @@ class EmbeddedNavigationController(
                 destinations = _destinationCandidates.value,
                 routes = _routeCandidates.value,
                 destinationName = selectedDestination?.name,
+                cancelled = cancels != cancelsAtDispatch,
             )
         }
     }
@@ -334,6 +333,7 @@ class EmbeddedNavigationController(
             if (phase !in CANCELLABLE_PHASES) return
             NavigationLocalPickGuard.invalidate()
             generation += 1
+            cancels += 1
             clearCandidatesLocked()
             startNaviIssuedForSelection = false
             if (restoreKeptLocked()) {

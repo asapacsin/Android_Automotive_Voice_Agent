@@ -53,4 +53,11 @@ class NavigationVoiceOutputTest {
         assertFalse(failed.getBoolean("ok"))
         assertEquals("NAVIGATION_FAILED", failed.getString("error"))
     }
+
+    @Test
+    fun stillLoadingAndIdleAreUnchanged() {
+        assertEquals("still_loading", build(NavigationPhase.RESOLVING_DESTINATION).getString("screen"))
+        assertEquals("still_loading", build(NavigationPhase.CALCULATING_ROUTE).getString("screen"))
+        assertEquals("none", build(NavigationPhase.IDLE).getString("screen"))
+    }
 }

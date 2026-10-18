@@ -418,7 +418,7 @@ class EmbeddedNavigationControllerTest {
         engine.routes = threeRoutes()
         val controller = controller(engine, listOf(candidate("a", 22.20, 113.54)))
         controller.requestDestination("珠海站")
-        val pending = async(Dispatchers.Default) { controller.awaitOptions(3_000) }
+        val pending = async(Dispatchers.Default) { controller.awaitOptions(3_000, controller.cancelMark()) }
         Thread.sleep(100)
         engine.emitSuccess(intArrayOf(10, 20, 30))
         val snapshot = pending.await()
