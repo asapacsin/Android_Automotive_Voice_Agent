@@ -125,8 +125,8 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         // Speed chip is attached by AssistantNavigationScreen above the assistant overlay.
     }
 
-    /** The controller's state, from the screen: the map presentation follows its phase (a dropped late route gets no overview), and the text panel shows the same flow. */
     private var shownPhase = NavigationPhase.IDLE
+    /** Controller state from the screen: the map presentation follows its phase; the text panel shows the flow. */
     fun showNavigationState(
         phase: NavigationPhase,
         destinations: List<DestinationCandidate>,
@@ -765,8 +765,8 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         if (traceListener != null) return
         val listener = NavigationTraceListener(
             onRouteReady = { ids ->
-                if (MapPresentationPolicy.keepsRouteIds(shownPhase, isNavigating)) lastRouteIds = ids // not a cancelled flow's
-                if (MapPresentationPolicy.onRouteReady(isNavigating) == MapPresentationPolicy.Presentation.PREVIEW) AmapDrivingPresentation.applyRoutePreview(naviView)
+                if (MapPresentationPolicy.keepsRouteIds(shownPhase, isNavigating)) lastRouteIds = ids
+                if (MapPresentationPolicy.previewsOnRouteReady(isNavigating)) AmapDrivingPresentation.applyRoutePreview(naviView)
                 onRoutesCalculated?.invoke(ids)
             },
             // Completion -> the SAME stop path as the manual nav_stop fallback.

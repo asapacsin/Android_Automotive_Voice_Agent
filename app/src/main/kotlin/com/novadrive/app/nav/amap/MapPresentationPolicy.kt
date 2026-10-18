@@ -18,8 +18,7 @@ internal object MapPresentationPolicy {
      * A calculation succeeded. While guidance runs this is a reroute and keeps today's
      * behaviour; otherwise the preview waits for the controller to accept the result.
      */
-    fun onRouteReady(hostNavigating: Boolean): Presentation =
-        if (hostNavigating) Presentation.PREVIEW else Presentation.UNCHANGED
+    fun previewsOnRouteReady(hostNavigating: Boolean): Boolean = hostNavigating
 
     /** Route ids count as current only for a live calculation or a reroute, never a cancelled flow's. */
     fun keepsRouteIds(shownPhase: NavigationPhase, hostNavigating: Boolean): Boolean =
