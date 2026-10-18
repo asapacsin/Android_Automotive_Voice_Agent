@@ -106,8 +106,14 @@ fetch_webrtc() {
   rm -rf "$ROOT/app/.cxx"
 }
 
+# A stand-in jar (tools/vendor-stub) is not the SDK: with one in place the real zip is still fetched.
+real_jar() {
+  [ -f "$ROOT/app/libs/Msc.jar" ] && ! unzip -l "$ROOT/app/libs/Msc.jar" 2>/dev/null | grep -q 'META-INF/NOVA_VENDOR_STUB'
+}
+VENDOR_FAILURE="NOVA_VENDOR_ZIP_URL not set"
+
 fetch_vendor() {
-  if [ -f "$ROOT/app/libs/Msc.jar" ]; then return; fi
+  if real_jar; then return; fi
   if [ -z "${NOVA_VENDOR_ZIP_URL:-}" ]; then
     warn "NOVA_VENDOR_ZIP_URL not set: iFlytek files absent, :app will not compile"
     return
@@ -151,7 +157,7 @@ fetch_vendor() {
     cp -R "$src/app/." "$ROOT/app/"
   fi
   rm -rf "$tmpdir" "$zip"
-  [ -f "$ROOT/app/libs/Msc.jar" ] || vendor_fail "vendor zip from $host has no app/libs/Msc.jar"
+  if real_jar; then rm -f "$ROOT/app/libs/Msc.jar.STUB"; else vendor_fail "vendor zip from $host has no app/libs/Msc.jar"; fi
 }
 
 # A github.com page link (…/blob/<ref>/<path> or …/raw/<ref>/<path>) serves HTML or redirects; use
@@ -170,17 +176,24 @@ vendor_auth() {
 
 # Visible without the job log: a GitHub annotation (code and host only, never the URL or token).
 vendor_fail() {
+  VENDOR_FAILURE="$1"
   warn "$1"
   [ -n "${GITHUB_ACTIONS:-}" ] && echo "::error title=vendor files::$1"
   return 0
 }
 
 # No real jar after the fetch: compile the stand-in so :app builds and its JVM tests run
-# (tools/vendor-stub/README.md). Not in GitHub Actions: a workflow build stays on the real SDK.
+# (tools/vendor-stub/README.md). In GitHub Actions only when the workflow opts in with
+# NOVA_VENDOR_STUB_OK=yes (the Tier B emulator workflows; decided by the decider 2026-10-19): such a
+# run records build:vendor-real BLOCKED, so it is never green. Tier A never sets it.
 stub_vendor() {
-  [ -f "$ROOT/app/libs/Msc.jar" ] && return
-  [ -n "${GITHUB_ACTIONS:-}" ] && return
-  "$ROOT/scripts/make_msc_stub.sh" "$ROOT" || warn "stand-in Msc.jar could not be built: :app will not compile"
+  real_jar && return
+  if [ -n "${GITHUB_ACTIONS:-}" ]; then
+    [ "${NOVA_VENDOR_STUB_OK:-}" = yes ] || return
+    echo "::warning title=STUB_VENDOR::building on the compile-only iFlytek stand-in: $VENDOR_FAILURE"
+  fi
+  NOVA_STUB_REASON="$VENDOR_FAILURE" "$ROOT/scripts/make_msc_stub.sh" "$ROOT" \
+    || warn "stand-in Msc.jar could not be built: :app will not compile"
 }
 
 fetch_music() {

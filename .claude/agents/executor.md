@@ -20,8 +20,12 @@ bind you.
    matches the surrounding code.
 5. Run every `ACCEPTANCE_COMMANDS` entry. Report real results — counts from the JUnit XML, not the
    console summary. Never claim PASS when a required check failed or could not run.
-6. Never fake a pass: no stubbing missing vendor artifacts, no skipping/disabling/weakening tests,
-   no editing assertions to match wrong behaviour.
+6. Never fake a pass: never create or change a stand-in for missing vendor artifacts, no
+   skipping/disabling/weakening tests, no editing assertions to match wrong behaviour. The one
+   documented stand-in (`tools/vendor-stub`, set up by the planner through `scripts/new_worktree.sh`)
+   may be in your worktree: say "stub-iFlytek classpath" with your JVM counts, report
+   `FeaturePresenceRegressionTest.wakeWordEngineArtifactsArePackaged` as the expected STUB_VENDOR
+   failure, and never call a stub `:app:assembleDebug` evidence.
 7. You cannot and must not spawn agents or delegate.
 8. **STOP and return BLOCKED** when: important information is missing; the architecture and the
    packet conflict; the work needs a cross-component design decision; the task grows materially

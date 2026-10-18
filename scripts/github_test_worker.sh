@@ -48,6 +48,7 @@ while [ "$(date +%s)" -lt "$deadline" ]; do
   [ -n "$piece" ] || continue
   git -c advice.detachedHead=false checkout -q -f --detach "$sha"
   name="$(date -u +%Y%m%d_%H%M)_${sha:0:7}_${piece}"
+  [ -f app/libs/Msc.jar.STUB ] && name="${name}_stubvendor"  # tools/vendor-stub: not product evidence
   t0=$(date +%s)
   rm -rf evidence && mkdir -p evidence
   if ! ./gradlew -q :app:assembleDebug >evidence/build.log 2>&1; then

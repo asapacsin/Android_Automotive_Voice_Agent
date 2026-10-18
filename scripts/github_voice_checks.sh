@@ -19,6 +19,9 @@ summary="$ev/summary.txt"
 : >"$summary"
 R="$ev/results.jsonl"; : >"$R"
 res() { python3 scripts/ci_verdict.py record --out "$R" --id "$1" --status "$2" --detail "${3:-}"; }
+# build:vendor-real: BLOCKED STUB_VENDOR when the APK was built on the iFlytek stand-in, so a stub run
+# is never green; every other check still runs and is recorded (decided by the decider 2026-10-19).
+python3 scripts/ci_verdict.py vendor --apk "$apk" --out "$R"
 # Raw runner output holds transcripts: it never survives the script, even on an error exit.
 trap 'rm -f "$ev"/*_raw.txt "$ev"/bridge_err.txt' EXIT
 trap 'exit 130' INT TERM  # a signal exits through the EXIT trap above
@@ -191,19 +194,24 @@ for f in "$ev"/shots/*.png; do [ -f "$f" ] && ffmpeg -v error -y -i "$f" -vf sca
 suite liveinfo liveinfo: --file tools/speech-harness/scenarios-liveinfo.json --repeat 10
 
 # ---- WAKE-SYNTH-001: a synthetic wake through the debug path ----------------------------------
-mark
-tool voice stop; sleep 3
-tool provider gemini
-tool wake on; sleep 2
-note "WAKE-SYNTH-001: wake on -> $(result_of wake) status: $(tool wake status; sleep 1; nova | grep 'debug_tool tool=wake arg=status' | tail -1 | grep -oE 'enabled=[a-z]+|credentials_complete=[a-z]+' | tr '\n' ' ')"
-adb push tools/speech-harness/speech/wake_phrase.pcm /sdcard/Android/data/com.novadrive.app/files/wake.pcm >/dev/null 2>&1 || true
-sleep 2
-tool wake inject; sleep 10
-wake_det="$(count 'wake_detection')"; wake_act="$(count 'DEEP_IDLE->ACTIVE|->ACTIVE reason=wake')"
-if [ "$wake_det" -ge 1 ] && [ "$wake_act" -ge 1 ]; then res wake:WAKE-SYNTH-001 PASS "detection=$wake_det to_active=$wake_act"
-else res wake:WAKE-SYNTH-001 FAIL "detection=$wake_det to_active=$wake_act"; fi
-note "WAKE-SYNTH-001: wake inject -> $(result_of wake) detection=$wake_det to_active=$wake_act provider=$(nova | grep -oE 'session_provider choice=[a-z_]+' | tail -1) wake_lines=$(nova | grep -oE 'wake_[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ';')"
-if nova | grep -q 'session_provider choice=qwen'; then qg_fail="$qg_fail qwen_session_wake"; tool voice stop; echo "::error title=quota guard::wake opened a non-Gemini session; stopped"; fi
+# A stub build has no wake engine (tools/vendor-stub): the row is BLOCKED there, never run.
+if [ "$(python3 -c 'import json,sys; print(any(json.loads(l).get("id")=="build:vendor-real" and json.loads(l).get("status")!="PASS" for l in open(sys.argv[1]) if l.strip()))' "$R")" = True ]; then
+  res wake:WAKE-SYNTH-001 BLOCKED "STUB_VENDOR: no wake engine in a stub build"
+else
+  mark
+  tool voice stop; sleep 3
+  tool provider gemini
+  tool wake on; sleep 2
+  note "WAKE-SYNTH-001: wake on -> $(result_of wake) status: $(tool wake status; sleep 1; nova | grep 'debug_tool tool=wake arg=status' | tail -1 | grep -oE 'enabled=[a-z]+|credentials_complete=[a-z]+' | tr '\n' ' ')"
+  adb push tools/speech-harness/speech/wake_phrase.pcm /sdcard/Android/data/com.novadrive.app/files/wake.pcm >/dev/null 2>&1 || true
+  sleep 2
+  tool wake inject; sleep 10
+  wake_det="$(count 'wake_detection')"; wake_act="$(count 'DEEP_IDLE->ACTIVE|->ACTIVE reason=wake')"
+  if [ "$wake_det" -ge 1 ] && [ "$wake_act" -ge 1 ]; then res wake:WAKE-SYNTH-001 PASS "detection=$wake_det to_active=$wake_act"
+  else res wake:WAKE-SYNTH-001 FAIL "detection=$wake_det to_active=$wake_act"; fi
+  note "WAKE-SYNTH-001: wake inject -> $(result_of wake) detection=$wake_det to_active=$wake_act provider=$(nova | grep -oE 'session_provider choice=[a-z_]+' | tail -1) wake_lines=$(nova | grep -oE 'wake_[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ';')"
+  if nova | grep -q 'session_provider choice=qwen'; then qg_fail="$qg_fail qwen_session_wake"; tool voice stop; echo "::error title=quota guard::wake opened a non-Gemini session; stopped"; fi
+fi
 
 # ---- the review demo: the real app, driver audio over the host bridge, her replies recorded -----
 # Clips are the synthetic speech-harness lines. The bridge re-applies provider=gemini and stops if

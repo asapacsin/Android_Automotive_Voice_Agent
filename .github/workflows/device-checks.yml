@@ -107,6 +107,9 @@ jobs:
         env:
           AMAP_API_KEY: ${{ secrets.AMAP_API_KEY }}
           NOVA_VENDOR_ZIP_URL: ${{ secrets.NOVA_VENDOR_ZIP_URL }}
+          # Dead vendor zip: build on the iFlytek stand-in; build:vendor-real is then BLOCKED, so the
+          # run is never green (decided by the decider 2026-10-19; docs/CI.md, tools/vendor-stub).
+          NOVA_VENDOR_STUB_OK: "yes"
           NOVA_VENDOR_ZIP_AUTH: ${{ secrets.NOVA_VENDOR_ZIP_AUTH }}
           NOVA_DEBUG_KEYSTORE_B64: ${{ secrets.NOVA_DEBUG_KEYSTORE_B64 }}
         run: bash scripts/github_build_apk.sh
@@ -138,6 +141,7 @@ jobs:
         run: |
           test -d evidence || exit 0
           dir="run_$(date -u +%Y%m%d_%H%M)_${GITHUB_SHA::7}"
+          [ -f app/libs/Msc.jar.STUB ] && dir="${dir}_stubvendor"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           mv evidence "/tmp/$dir"

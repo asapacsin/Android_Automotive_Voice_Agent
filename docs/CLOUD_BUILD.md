@@ -47,7 +47,11 @@ the HTTP code and host, so a red run says why.
 **No zip, or a dead one:** `cloud_setup.sh` and `new_worktree.sh` then build a compile-only
 stand-in for `app/libs/Msc.jar` ([tools/vendor-stub/README.md](../tools/vendor-stub/README.md)), so
 `:app` compiles and its JVM tests run. Such a build is never device or wake-word evidence; the
-marker `app/libs/Msc.jar.STUB` says it is one. GitHub Actions builds never use it.
+entry `META-INF/NOVA_VENDOR_STUB` inside the jar (and the file `app/libs/Msc.jar.STUB`) says it is
+one. Never run `test_matrix.py --bind` on such a tree: a bind hashes the local APK, which would
+then be the stub's (not enforced in code - changing `test_matrix.py` invalidates every bind). In GitHub Actions only the Tier B emulator
+workflows may use it, by setting `NOVA_VENDOR_STUB_OK=yes`; their runs are then BLOCKED, never green
+([docs/CI.md](CI.md) "Stand-in vendor builds"). Tier A and the drive video never do.
 
 The zip URL must serve the zip itself. A private link that answers with a sign-in page is
 detected (`unzip -t`) and skipped with a warning. Anything reachable without authentication is

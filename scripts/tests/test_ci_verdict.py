@@ -448,7 +448,7 @@ class RunnerRcOneTest(ScenariosTest):
             self.assertEqual(by[f"cantonese:{sid}"]["status"], "FAIL")
             other = self.results([rec("voice:runner", "PASS"), rec("voice:S1", "PASS"), rec("devrows:runner", "PASS"),
                                   rec("devrows:D1", "PASS"), rec("liveinfo:runner", "PASS"), rec("liveinfo:L1", "PASS"),
-                                  rec("voice:quota-guard", "PASS")], "other.jsonl")
+                                  rec("voice:quota-guard", "PASS"), rec("build:vendor-real", "PASS")], "other.jsonl")
             rc, text = run("verdict", "--manifest", SHIPPED, "--suite", "voice", "--today", TODAY,
                            "--results", out, "--results", other)
             self.assertEqual(rc != 0, bool(want), text)
@@ -508,7 +508,7 @@ class ReviewVerdictTest(Base):
     def incident(self, li_status, li_passes):
         recs = [rec("voice:runner", "PASS"), rec("voice:S1", "PASS"), rec("devrows:runner", "PASS"),
                 rec("devrows:D1", "PASS"), rec("liveinfo:runner", "PASS"), rec("cantonese:runner", "PASS"),
-                rec("voice:quota-guard", "PASS"),
+                rec("voice:quota-guard", "PASS"), rec("build:vendor-real", "PASS"),
                 {"id": "cantonese:YUE-HOME", "status": "FAIL", "detail": "", "passes": 0, "runs": 1},
                 {"id": "liveinfo:LI-PLACE", "status": li_status, "detail": "", "passes": li_passes, "runs": 10}]
         return run("verdict", "--manifest", SHIPPED, "--suite", "voice", "--today", TODAY,
@@ -590,3 +590,80 @@ class SummaryNoticeTest(unittest.TestCase):
         self.assertIn("VERDICT PASS", notes[0])
         self.assertIn("PASS a tests=5 failures=0", notes[0])
         self.assertIn("SKIPPED c", notes[0])
+
+
+def make_apk(path, entries):
+    import zipfile
+    with zipfile.ZipFile(path, "w") as z:
+        for e in entries:
+            z.writestr(e, "x")
+    return path
+
+
+REAL_ENTRIES = ("classes.dex", "lib/arm64-v8a/libmsc.so", "lib/arm64-v8a/libw_ivw.so",
+                "assets/ivw/wakeword.jet")
+
+
+class VendorTest(Base):
+    """build:vendor-real: a stand-in (tools/vendor-stub) build is never green (decider 2026-10-19)."""
+
+    def vendor(self, apk, marker=None):
+        out = self.path("v.jsonl")
+        args = ["vendor", "--apk", apk, "--out", out, "--marker", marker or self.path("no-marker")]
+        rc, text = run(*args)
+        self.assertEqual(rc, 0, text)
+        with open(out) as fh:
+            return json.loads(fh.readline()), text
+
+    def test_real_vendor_apk_passes(self):
+        r, _ = self.vendor(make_apk(self.path("a.apk"), REAL_ENTRIES))
+        self.assertEqual((r["id"], r["status"]), ("build:vendor-real", "PASS"))
+
+    def test_stub_entry_blocks_even_with_the_libraries(self):
+        r, text = self.vendor(make_apk(self.path("a.apk"), REAL_ENTRIES + ("META-INF/NOVA_VENDOR_STUB",)))
+        self.assertEqual(r["status"], "BLOCKED")
+        self.assertTrue(r["detail"].startswith("STUB_VENDOR"))
+        self.assertIn("::warning title=STUB_VENDOR", text)
+
+    def test_missing_engine_files_block(self):
+        r, _ = self.vendor(make_apk(self.path("a.apk"), ("classes.dex",)))
+        self.assertEqual(r["status"], "BLOCKED")
+        self.assertIn("missing=lib/arm64-v8a/libmsc.so", r["detail"])
+
+    def test_marker_blocks_and_carries_the_reason(self):
+        marker = self.path("Msc.jar.STUB")
+        with open(marker, "w") as fh:
+            fh.write("STUB_VENDOR: vendor zip download failed: HTTP 403 from filebin.net\n")
+        r, _ = self.vendor(make_apk(self.path("a.apk"), REAL_ENTRIES), marker)
+        self.assertEqual(r["status"], "BLOCKED")
+        self.assertIn("HTTP 403 from filebin.net", r["detail"])
+
+    def test_unreadable_apk_blocks(self):
+        r, _ = self.vendor(self.path("missing.apk"))
+        self.assertEqual(r["status"], "BLOCKED")
+
+    def test_stub_run_with_every_other_check_passing_is_blocked_and_labelled(self):
+        m = self.manifest(required=["build:vendor-real", "a"])
+        stub = rec("build:vendor-real", "BLOCKED", "STUB_VENDOR: x")
+        rc, text = run("verdict", "--manifest", m, "--suite", "s", "--today", TODAY,
+                       "--results", self.results([stub, rec("a", "PASS")]),
+                       "--json-out", self.path("v.json"))
+        self.assertEqual(rc, 3, text)
+        self.assertIn("STUB_VENDOR build: not product evidence", text)
+        with open(self.path("v.json")) as fh:
+            out = json.load(fh)
+        self.assertEqual((out["verdict"], out["vendor"]), ("BLOCKED", "STUB"))
+        self.assertEqual([c["status"] for c in out["checks"] if c["id"] == "a"], ["PASS"])
+
+    def test_vendor_check_cannot_be_quarantined(self):
+        m = self.manifest(required=["build:vendor-real"], quarantine=[quar("build:vendor-real")])
+        rc, text = self.verdict(m, self.results([rec("build:vendor-real", "BLOCKED", "STUB_VENDOR")]))
+        self.assertNotEqual(rc, 0, text)
+
+    def test_shipped_emulator_suites_require_it_and_tier_a_does_not(self):
+        with open(SHIPPED) as fh:
+            suites = json.load(fh)["suites"]
+        for name in ("device", "voice", "navpiece"):
+            self.assertIn("build:vendor-real", suites[name]["required"], name)
+        for name in ("tier-a-gates", "tier-a-build"):
+            self.assertNotIn("build:vendor-real", suites[name]["required"] + suites[name]["optional"])

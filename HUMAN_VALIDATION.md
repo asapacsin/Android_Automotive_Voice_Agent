@@ -830,6 +830,7 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 - 2026-10-18 Device checks run 39144117274: cloud_setup 'vendor zip download failed: HTTP 403 from filebin.net', then :app:desugarDebugFileDependencies failed on the missing app/libs/Msc.jar; every required check MISSING (log read through the GitHub API)
 - 2026-10-19 cloud session: app/libs/Msc.jar absent, no NOVA_VENDOR_ZIP_URL in the environment
 - the workflows already list claude/10-19 (706b6d0)
+- 2026-10-19 decided by the decider: until this is fixed, cloud sessions and worktrees build :app on the compile-only stand-in (tools/vendor-stub; :app JVM 2005/0 on it), and the Tier B emulator workflows may build on it by opt-in with build:vendor-real BLOCKED, so their runs are never green and never write PASS or binds (docs/CI.md 'Stand-in vendor builds'). Tier A stays red, so no PR into a ruleset-protected branch can merge until this is fixed
 
 **You will need:** the vendor zip laid out as docs/CLOUD_BUILD.md 'What git does not carry' says; a private GitHub repository (or other non-expiring host) and a read-only fine-grained token
 
@@ -844,6 +845,8 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 
 - the run's cloud_setup step no longer prints 'vendor zip download failed'
 - :app:assembleDebug succeeds in the run and ci/device-evidence gets a verdict with results, not MISSING
+- build:vendor-real PASS (vendor REAL in verdict.json, no _stubvendor suffix)
+- the first real-vendor Device and Voice runs re-earn every row that has STUB_VENDOR evidence
 
 **Tell me back:** the run id of the first Device checks run after the change; whether its verdict has results
 

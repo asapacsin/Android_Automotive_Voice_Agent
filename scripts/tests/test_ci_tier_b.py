@@ -129,6 +129,8 @@ class ScriptTest(unittest.TestCase):
         ids = set(re.findall(r"\b(?:res|pf) \"?(device:[A-Za-z0-9_.\-]+)",
                              read("scripts/github_device_checks.sh"), re.M))
         self.assertTrue(ids)
+        # Recorded by `ci_verdict.py vendor`, not by res (StubVendorWorkflowTest checks the call).
+        ids.add("build:vendor-real")
         self.assertEqual(sorted(ids - listed), [])
         self.assertEqual(sorted(listed - ids), [])
 
@@ -175,6 +177,34 @@ def judge(check_id, **variables):
     proc = subprocess.run(["bash", "-c", 'if eval "$COND"; then echo PASS; else echo FAIL; fi'],
                           env={**env, "COND": condition(check_id)}, capture_output=True, text=True)
     return proc.stdout.strip()
+
+
+class StubVendorWorkflowTest(unittest.TestCase):
+    """Only the Tier B emulator workflows may build on the stand-in, and only by opting in."""
+
+    def test_tier_b_workflows_opt_in(self):
+        for wf in ("device-checks.yml", "voice-checks.yml", "nav-demo.yml", "test-worker.yml"):
+            with self.subTest(wf=wf):
+                self.assertIn('NOVA_VENDOR_STUB_OK: "yes"', read(".github/workflows/" + wf))
+
+    def test_tier_a_and_drive_video_never_opt_in(self):
+        for wf in ("unit-tests.yml", "emulator.yml"):
+            with self.subTest(wf=wf):
+                self.assertNotIn("NOVA_VENDOR_STUB_OK", read(".github/workflows/" + wf))
+        self.assertNotIn("NOVA_VENDOR_STUB_OK", read("scripts/ci_tier_a.sh"))
+
+    def test_cloud_setup_needs_the_opt_in_on_actions(self):
+        body = read("scripts/cloud_setup.sh")
+        self.assertIn('[ "${NOVA_VENDOR_STUB_OK:-}" = yes ] || return', body)
+
+    def test_each_suite_script_records_the_vendor_check(self):
+        for rel in ("scripts/github_device_checks.sh", "scripts/github_voice_checks.sh",
+                    "scripts/github_nav_demo.sh"):
+            with self.subTest(script=rel):
+                self.assertIn('ci_verdict.py vendor --apk "$apk" --out "$R"', read(rel))
+
+    def test_wake_row_is_blocked_on_a_stub_build(self):
+        self.assertIn('res wake:WAKE-SYNTH-001 BLOCKED "STUB_VENDOR', read("scripts/github_voice_checks.sh"))
 
 
 class DeviceConditionTest(unittest.TestCase):
@@ -316,6 +346,9 @@ def stub_tree(tmp):
                 "config/ci_checks.json"):
         os.makedirs(os.path.join(tmp, os.path.dirname(rel)), exist_ok=True)
         shutil.copy(os.path.join(ROOT, rel), os.path.join(tmp, rel))
+    # The demo's apk argument: packaged like a real-vendor build, so build:vendor-real passes here.
+    from scripts.tests.test_ci_verdict import REAL_ENTRIES, make_apk
+    make_apk(os.path.join(tmp, "app.apk"), REAL_ENTRIES)
     stub = os.path.join(tmp, "stub")
     os.makedirs(stub)
     for name, body in (("python3", STUB_PY), ("adb", STUB_ADB), ("sudo", "#!/bin/sh\nexit 0\n"),
@@ -360,7 +393,8 @@ class BlockedRunTest(Base):
     def test_session_and_complete_blocked_verdict(self):
         rc, text = run("verdict", "--manifest", os.path.join(ROOT, "config/ci_checks.json"),
                        "--suite", "navpiece", "--results",
-                       self.results([rec("navpiece:session", "BLOCKED", "secret AMAP_WEB_KEY not set"),
+                       self.results([rec("build:vendor-real", "PASS"),
+                                     rec("navpiece:session", "BLOCKED", "secret AMAP_WEB_KEY not set"),
                                      rec("navpiece:complete", "BLOCKED", "secret AMAP_WEB_KEY not set")]),
                        clock=False)
         self.assertEqual(rc, 3, text)

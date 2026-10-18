@@ -21,6 +21,30 @@ A results file that is missing, empty, or has one malformed line (bad JSON, unkn
 duplicate id) fails the verdict. Optional checks never fail a job; a missing optional check is
 reported as SKIPPED "not executed".
 
+### Stand-in vendor builds (STUB_VENDOR)
+
+Decided by the decider 2026-10-19, while the vendor zip URL is dead (TEST_MATRIX `CI-VENDOR-ZIP-001`).
+Device checks, Voice checks, Nav demo and Test worker set `NOVA_VENDOR_STUB_OK=yes`, so when the zip
+cannot be fetched they build on the compile-only stand-in (`tools/vendor-stub/README.md`) instead of
+not building at all. The required check `build:vendor-real` (device, voice and navpiece suites;
+`ci_verdict.py vendor`) passes only when the tested APK packages `lib/arm64-v8a/libmsc.so`,
+`lib/arm64-v8a/libw_ivw.so` and `assets/ivw/wakeword.jet` and carries no stub mark; otherwise it is
+BLOCKED `STUB_VENDOR: <why>`. A stub run's verdict is therefore BLOCKED (red), `verdict.json` says
+`"vendor": "STUB"`, the evidence directory ends in `_stubvendor`, `wake:*` rows are recorded BLOCKED
+and not run, and `build:*` cannot be quarantined. Every other check still runs and is recorded.
+
+What a stub run may and may not do for TEST_MATRIX rows:
+
+- **May:** verify a change that does not depend on the vendor files (P59 screenshots, nav pieces,
+  dispatch rows, process death, mic revoked, transcript fade, voice scenarios through the debug
+  Gemini override), cited as "STUB_VENDOR run <id>"; add it to a row's evidence marked "(stub build,
+  not product evidence; awaits real-vendor run)"; set a row to FAIL.
+- **May not:** set PASS, PARTIAL_PASS or HUMAN_PASS; write `evidence_bind`; justify or lift a
+  quarantine; count for Tier C; be cited for any `speech.wake_word` row, any claim about APK
+  contents, size or ABI, any L4 claim, a full demo run or a demo video.
+
+Tier A (`unit-tests.yml`, `ci_tier_a.sh`) and the Drive video never build on the stand-in.
+
 ### Quarantine
 
 Only in `config/ci_checks.json` `quarantine`, and only with all of: id, suite, reason, owner,

@@ -4,7 +4,7 @@
 A required failure, a missing result, an empty or malformed results file can never come out
 green. Python 3 stdlib only, so it runs on any runner.
 
-Subcommands: record, scenarios, junit, verdict; and --selftest.
+Subcommands: record, scenarios, junit, vendor, verdict; and --selftest.
 Exit codes of `verdict`: 0 PASS, 1 FAIL, 3 BLOCKED, 2 usage/manifest error.
 """
 from __future__ import annotations
@@ -16,6 +16,7 @@ import os
 import re
 import sys
 import xml.etree.ElementTree as ET
+import zipfile
 
 STATUSES = ("PASS", "FAIL", "SKIPPED", "BLOCKED", "FLAKY")
 DETAIL_MAX = 300
@@ -363,6 +364,9 @@ def cmd_verdict(args):
             print(f"::warning title=ci_verdict {args.suite}::{_gh_escape(p['text'])}")
     n_quar = sum(1 for c in checks if c["status"] == "QUARANTINED")
     suffix = f" ({n_quar} quarantined)" if n_quar else ""
+    vendor = vendor_of(records)
+    if vendor == "STUB":
+        suffix += " (STUB_VENDOR build: not product evidence)"
     print(f"VERDICT {args.suite} {verdict}{suffix}")
     # One summary annotation with every check: agent sessions cannot read job logs or artifacts,
     # only annotations, so this is how a reviewer reads the counts behind a green job.
@@ -371,7 +375,8 @@ def cmd_verdict(args):
           f"{_gh_escape(('VERDICT ' + verdict + suffix + ' | ' + summary)[:3500])}")
 
     if args.json_out:
-        out = {"suite": args.suite, "verdict": verdict, "checks": [], "problems": problems}
+        out = {"suite": args.suite, "verdict": verdict, "vendor": vendor, "checks": [],
+               "problems": problems}
         for c in checks:
             item = {"id": c["id"], "required": c["required"], "status": c["status"],
                     "detail": c["detail"]}
@@ -382,7 +387,7 @@ def cmd_verdict(args):
         with open(args.json_out, "w", encoding="utf-8") as fh:
             json.dump(out, fh, indent=2, ensure_ascii=True)
     if args.summary:
-        lines = [f"\n### CI verdict `{args.suite}`: **{verdict}**\n", "",
+        lines = [f"\n### CI verdict `{args.suite}`: **{verdict}** (vendor: {vendor})\n", "",
                  "| Status | Check | Required | Detail |", "| --- | --- | --- | --- |"]
         for c in checks:
             d = c["detail"].replace("|", "\\|")
@@ -410,6 +415,54 @@ def cmd_record(args):
     write_records(args.out, [make_record(args.id, args.status, args.detail or "",
                                          args.passes, args.runs)], append=True)
     return 0
+
+
+# ---------------------------------------------------------------- vendor
+
+VENDOR_ID = "build:vendor-real"
+# What only the real iFlytek vendor zip puts into the APK (docs/CLOUD_BUILD.md, tools/vendor-stub).
+VENDOR_ENTRIES = ("lib/arm64-v8a/libmsc.so", "lib/arm64-v8a/libw_ivw.so", "assets/ivw/wakeword.jet")
+STUB_ENTRY = "META-INF/NOVA_VENDOR_STUB"
+
+
+def vendor_record(apk, marker=None) -> dict:
+    """PASS only for an APK built on the real vendor files; anything else is BLOCKED STUB_VENDOR.
+
+    A stub run is never green and certifies nothing (decided by the decider 2026-10-19): this
+    required check holds the suite at BLOCKED while every other check is still recorded.
+    """
+    reason = ""
+    if marker and os.path.isfile(marker):
+        with open(marker, encoding="utf-8", errors="replace") as fh:
+            reason = fh.read().strip()
+    try:
+        with zipfile.ZipFile(apk) as z:
+            names = set(z.namelist())
+    except (OSError, zipfile.BadZipFile) as exc:
+        return make_record(VENDOR_ID, "BLOCKED", f"STUB_VENDOR? apk unreadable: {type(exc).__name__}")
+    missing = [e for e in VENDOR_ENTRIES if e not in names]
+    if STUB_ENTRY in names or missing or reason:
+        why = reason or "STUB_VENDOR"
+        if not why.startswith("STUB_VENDOR"):
+            why = "STUB_VENDOR: " + why
+        extra = f" missing={','.join(missing)}" if missing else ""
+        return make_record(VENDOR_ID, "BLOCKED", why + extra)
+    return make_record(VENDOR_ID, "PASS", "real vendor files packaged")
+
+
+def cmd_vendor(args):
+    rec = vendor_record(args.apk, args.marker)
+    write_records(args.out, [rec], append=True)
+    if rec["status"] != "PASS":
+        print(f"::warning title=STUB_VENDOR::{_gh_escape(rec['detail'])}")
+    return 0
+
+
+def vendor_of(records) -> str:
+    rec = next((r for r in records if r["id"] == VENDOR_ID), None)
+    if rec is None:
+        return "UNKNOWN"
+    return "REAL" if rec["status"] == "PASS" else "STUB"
 
 
 # ---------------------------------------------------------------- scenarios
@@ -599,6 +652,10 @@ def build_parser():
     s.add_argument("--out", required=True)
     s.add_argument("--prefix", default="")
     s.add_argument("--runner-rc", type=int)
+    w = sub.add_parser("vendor")
+    w.add_argument("--apk", required=True)
+    w.add_argument("--out", required=True)
+    w.add_argument("--marker", default="app/libs/Msc.jar.STUB")
     j = sub.add_parser("junit")
     j.add_argument("--root", required=True)
     j.add_argument("--module", action="append", required=True)
@@ -618,7 +675,7 @@ def main(argv=None):
     if args.selftest:
         return selftest()
     handler = {"record": cmd_record, "scenarios": cmd_scenarios, "junit": cmd_junit,
-               "verdict": cmd_verdict}.get(args.cmd)
+               "vendor": cmd_vendor, "verdict": cmd_verdict}.get(args.cmd)
     if handler is None:
         build_parser().print_usage(sys.stderr)
         return 2

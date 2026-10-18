@@ -125,6 +125,8 @@ if [ ! -s "$CACHE" ]; then
 fi
 
 unzip -q -o "$CACHE" -d "$WT"
+# A real jar replaced any stand-in (tools/vendor-stub): its mark must not outlive it.
+unzip -l "$WT/app/libs/Msc.jar" 2>/dev/null | grep -q META-INF/NOVA_VENDOR_STUB || rm -f "$WT/app/libs/Msc.jar.STUB"
 # Every provisioned path must be ignored by git, or it could be committed by accident.
 tracked_risk="$(unzip -Z1 "$CACHE" | grep -v '/$' | git -C "$WT" check-ignore --no-index -v --stdin -n \
   | awk '$1 == "::" {print $2}')"

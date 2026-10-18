@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-18T23:24:15",
+  "generated_at": "2026-10-18T23:46:49",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "99802df",
+    "commit": "17e2b46",
     "branch": "claude/10-19",
-    "subject": "vendor-stub README: record the jar search, and correct ae308d1",
+    "subject": "Install the architecture-designer skill; architecture selection runs through it (owner)",
     "working_tree_clean": false,
-    "uncommitted_files": 4
+    "uncommitted_files": 23
   },
   "tests": {
     "available": true,
@@ -1034,8 +1034,8 @@
       {
         "priority": 10,
         "class": "stale state or harness defect",
-        "source": "state",
-        "item": "PROJECT_STATE.json",
+        "source": "harness/skill-events.jsonl",
+        "item": "time-record",
         "blocked_by": null
       },
       {

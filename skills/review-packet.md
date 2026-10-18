@@ -51,4 +51,7 @@ report is never the evidence (AGENTS.md: an implementation agent may not certify
   `/root/nova-build-review`) hold old failures and passes. Read only the executor's `--build-dir`,
   and trust it only when it is not STALE.
 - **A worktree without the gitignored vendor files cannot compile `:app`.** Create worktrees with
-  `scripts/new_worktree.sh`. Never stub the files.
+  `scripts/new_worktree.sh`; with no vendor zip it installs the documented stand-in
+  (`tools/vendor-stub/README.md`, decided by the decider 2026-10-19). Never write another stub. On a
+  stand-in tree, JVM counts are valid as "stub-iFlytek classpath" evidence; the packaged
+  wake-engine check fails by design; no APK, bind or wake-word claim comes from it.

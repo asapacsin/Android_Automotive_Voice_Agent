@@ -32,8 +32,11 @@ invariant, an ownership row, a SPEC contract), stop that path and emit the escal
 - `git status --short`, `git branch --show-current`, `git log --oneline -10`, `git worktree list`
 - `python scripts/discover_work.py`, `python scripts/test_matrix.py --gate` (and `--work`)
 - Which toolchain/vendor artifacts exist in this environment (cloud containers may lack the
-  gitignored iFlytek files, so `:app` may not compile — record that as an external blocker, never
-  stub it into a "pass").
+  gitignored iFlytek files). Without them the planner sets up the one documented stand-in
+  (`tools/vendor-stub`, via `scripts/cloud_setup.sh` / `new_worktree.sh`; decided by the decider
+  2026-10-19) so `:app` compiles and its JVM tests count as "stub-iFlytek classpath" evidence.
+  Executors never create or change a stand-in. Nothing that the stand-in replaces may ever pass:
+  no APK claim, no `--bind`, no wake-word row, no demo from a stub tree.
 
 Fix `BASE_COMMIT` = the exact commit the requested work continues from — normally the current
 feature branch HEAD, **not** the repository default branch. If you cannot tell which commit is

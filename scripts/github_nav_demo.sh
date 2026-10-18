@@ -22,6 +22,9 @@ R="$ev/results.jsonl"; : >"$R"
 trap 'rm -f "$ev"/bridge_out.txt "$ev"/bridge_err.txt' EXIT
 trap 'exit 130' INT TERM  # a signal exits through the EXIT trap above
 res() { python3 scripts/ci_verdict.py record --out "$R" --id "$1" --status "$2" --detail "${3:-}"; }
+# build:vendor-real: BLOCKED STUB_VENDOR when the APK was built on the iFlytek stand-in, so a stub run
+# is never green; every other check still runs and is recorded (decided by the decider 2026-10-19).
+python3 scripts/ci_verdict.py vendor --apk "$apk" --out "$R"
 # The verdict for this run, written to evidence/verdict.json; the script exits with its code.
 # complete() is recorded only right before a normal finish: an abort can never come out PASS.
 complete() { res navpiece:complete PASS "${1:-run completed}"; }

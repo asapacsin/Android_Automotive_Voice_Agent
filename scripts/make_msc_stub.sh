@@ -4,8 +4,9 @@
 #
 #   scripts/make_msc_stub.sh [<repo-or-worktree root>]
 #
-# Never overwrites a real app/libs/Msc.jar. Marks its output with app/libs/Msc.jar.STUB (both are
-# gitignored). A stub build is not a product build: the wake word cannot work, and an APK built on
+# Never overwrites a real app/libs/Msc.jar. A stub jar carries the entry META-INF/NOVA_VENDOR_STUB,
+# so the mark cannot drift from the jar; app/libs/Msc.jar.STUB (gitignored) repeats it with the reason
+# (NOVA_STUB_REASON) for scripts that only look at files. A stub build is not a product build: the wake word cannot work, and an APK built on
 # it is evidence for nothing that touches the wake word (FeaturePresenceRegressionTest still fails
 # on the missing engine artifacts, on purpose).
 set -euo pipefail
@@ -16,7 +17,8 @@ SDK="${ANDROID_HOME:-/opt/android-sdk}"
 JAR="$ROOT/app/libs/Msc.jar"
 MARK="$JAR.STUB"
 
-if [ -f "$JAR" ] && [ ! -f "$MARK" ]; then
+if [ -f "$JAR" ] && ! unzip -l "$JAR" 2>/dev/null | grep -q 'META-INF/NOVA_VENDOR_STUB'; then
+  rm -f "$MARK"  # a real jar unpacked over a stub tree: the old mark no longer applies
   echo "[msc_stub] real app/libs/Msc.jar present: nothing to do" >&2
   exit 0
 fi
@@ -33,6 +35,8 @@ find "$SRC" -name '*.java' > "$work/sources"
 "$JAVAC" --release 8 -nowarn -cp "$ANDROID_JAR" -d "$work/classes" @"$work/sources" 2>/dev/null \
   || "$JAVAC" -source 8 -target 8 -nowarn -cp "$ANDROID_JAR" -d "$work/classes" @"$work/sources"
 mkdir -p "$ROOT/app/libs"
+mkdir -p "$work/classes/META-INF"
+echo "compile-only stand-in from tools/vendor-stub; not the iFlytek SDK" > "$work/classes/META-INF/NOVA_VENDOR_STUB"
 "$JARTOOL" cf "$JAR" -C "$work/classes" .
-echo "compile-only stand-in from tools/vendor-stub; not the iFlytek SDK" > "$MARK"
+echo "STUB_VENDOR: ${NOVA_STUB_REASON:-no vendor zip}" > "$MARK"
 echo "[msc_stub] wrote app/libs/Msc.jar (STUB: the wake word cannot work in this build)" >&2

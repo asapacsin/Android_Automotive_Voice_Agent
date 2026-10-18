@@ -21,6 +21,9 @@ summary="$ev/summary.txt"
 : >"$summary"
 R="$ev/results.jsonl"; : >"$R"
 res() { python3 scripts/ci_verdict.py record --out "$R" --id "$1" --status "$2" --detail "${3:-}"; }
+# build:vendor-real: BLOCKED STUB_VENDOR when the APK was built on the iFlytek stand-in, so a stub run
+# is never green; every other check still runs and is recorded (decided by the decider 2026-10-19).
+python3 scripts/ci_verdict.py vendor --apk "$apk" --out "$R"
 # PASS/FAIL from a condition (a shell expression, evaluated as one unit): pf ID DETAIL 'COND'
 # Conditions read only shell variables, so scripts/tests/test_ci_tier_b.py can replay them on real lines.
 pf() { if eval "$3"; then res "$1" PASS "$2"; else res "$1" FAIL "$2"; fi; }
