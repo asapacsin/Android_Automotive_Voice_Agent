@@ -1,72 +1,19 @@
 {
-  "generated_at": "2026-10-18T07:26:13",
+  "generated_at": "2026-10-18T22:44:27",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "b53d6da",
-    "branch": "claude/10-15",
-    "subject": "D-CANCEL-STALE-REPLY fixed at JVM level; 10 s residual and the live check recorded",
+    "commit": "54299de",
+    "branch": "claude/10-19",
+    "subject": "P45: DashScope error carries no causing event_id (research) and the inherent re-ask race residual",
     "working_tree_clean": true,
     "uncommitted_files": 0
   },
   "tests": {
-    "available": true,
-    "collected_at": "2026-10-17T16:31:12",
-    "total": {
-      "tests": 2264,
-      "failures": 0,
-      "errors": 0,
-      "skipped": 5
-    },
-    "by_module": {
-      "evaluation": {
-        "tests": 27,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "app": {
-        "tests": 1951,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 5
-      },
-      "simulator": {
-        "tests": 25,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "safety": {
-        "tests": 2,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "behavior-test": {
-        "tests": 132,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "contracts": {
-        "tests": 7,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "ingress": {
-        "tests": 120,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      }
-    },
-    "passing": true
+    "available": false,
+    "reason": "no JUnit XML found; run gradlew test"
   },
   "apk": {
-    "built": true,
-    "bytes": 224365879,
-    "built_at": "2026-10-16T12:07:12"
+    "built": false
   },
   "capabilities": {
     "available": true,
@@ -207,18 +154,53 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "AFFORDANCE-DEVICE-001: FAIL: Spoken control names act on the phone through the local path, once, with no model execution",
-    "actionable_count": 102,
+    "NEXT_ACTION": "app-debug.apk: no debug APK has been built from this tree",
+    "actionable_count": 127,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 29,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
       {
+        "priority": 1,
+        "class": "broken build or missing artifact",
+        "source": "build output",
+        "item": "app-debug.apk",
+        "blocked_by": null
+      },
+      {
         "priority": 2,
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
         "item": "AFFORDANCE-DEVICE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "APPS-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "BARGEIN-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "CLIMATE-IMPLICIT-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "CLIMATE-OFF-001",
         "blocked_by": null
       },
       {
@@ -232,7 +214,35 @@
         "priority": 2,
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
+        "item": "CTX-AMBIG-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "CTX-CHAIN-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "DEMO-AMAP-LIVE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
         "item": "DEMO-TRYOUT-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "FUZZY-TEXT-LIVE-001",
         "blocked_by": null
       },
       {
@@ -253,6 +263,20 @@
         "priority": 2,
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
+        "item": "MUSIC-NAMED-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "MUSIC-PLAY-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
         "item": "MUSIC-TEXT-LIVE-001",
         "blocked_by": null
       },
@@ -261,6 +285,13 @@
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
         "item": "NAV-CANCEL-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-CORRECT-001",
         "blocked_by": null
       },
       {
@@ -302,7 +333,91 @@
         "priority": 2,
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
+        "item": "NAV-UI-002",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-UI-003",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-UI-004",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-UI-005",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-UI-006",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
         "item": "NAV-UI-007",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NET-RECOVER-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NOISE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "PERM-DENY-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "PLACE-NAV-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "PLACE-SAVE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "PLACE-UNSET-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "SLEEP-001",
         "blocked_by": null
       },
       {
@@ -331,6 +446,13 @@
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
         "item": "TRUTH-WEATHER-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "UNSUPPORTED-001",
         "blocked_by": null
       },
       {
