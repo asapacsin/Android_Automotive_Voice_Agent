@@ -36,6 +36,14 @@ one only disables what needs it.
 Include the mp3 in the zip: its public-domain source (Wikimedia) rate-limits shared cloud
 addresses, and the script's fallback download failed with HTTP 429 on 2026-09-24.
 
+Do not use a temporary file host (filebin.net, transfer.sh, …): its links expire. On 2026-10-17 the
+GitHub Actions secret still pointed at a filebin.net link, which began answering HTTP 403, and every
+Tier A, device and voice run went red without building. Use a private GitHub repository's raw URL
+with a read-only fine-grained token, and put the same two values in both the cloud environment and
+the repository's Actions secrets. `cloud_setup.sh` accepts a bare token, a `github.com/…/blob/…`
+link and a zip with one top-level folder. A failed fetch now prints an `::error` annotation with
+the HTTP code and host, so a red run says why.
+
 The zip URL must serve the zip itself. A private link that answers with a sign-in page is
 detected (`unzip -t`) and skipped with a warning. Anything reachable without authentication is
 readable by anyone holding the URL; prefer an authenticated URL with `NOVA_VENDOR_ZIP_AUTH`.

@@ -1,13 +1,13 @@
 {
   "generated_by": "scripts/skill_metrics.py",
-  "events": 12,
+  "events": 13,
   "outcomes": {
     "PASS": 11,
-    "PARTIAL": 1
+    "PARTIAL": 2
   },
   "total_retries": 2,
   "skill_usage": {
-    "reproduce": 1,
+    "reproduce": 2,
     "fix": 4,
     "verify": 4,
     "start": 2,
@@ -28,9 +28,9 @@
   "failed_skill_assumptions": {},
   "unused_skills": [],
   "time_efficiency": {
-    "timed_tasks": 7,
-    "total_minutes": 868,
-    "total_attempts": 15,
+    "timed_tasks": 8,
+    "total_minutes": 903,
+    "total_attempts": 17,
     "inefficient": [
       {
         "task": "vendor-files-in-worktrees",
@@ -69,11 +69,23 @@
           "disk-full-build-dirs"
         ],
         "improvement": "review-packet step 7: remove worktree and every NOVA_BUILD_DIR after merge"
+      },
+      {
+        "task": "ci-vendor-403",
+        "minutes": 35,
+        "attempts": 2,
+        "waste": [
+          "ci-logs-unreadable",
+          "expiring-vendor-host"
+        ],
+        "improvement": "vendor fetch failures now print an ::error annotation (code + host), readable without job logs; CLOUD_BUILD.md forbids temporary hosts"
       }
     ],
     "waste_causes": {
       "manual-copy-refused": 1,
-      "disk-full-build-dirs": 1
+      "disk-full-build-dirs": 1,
+      "ci-logs-unreadable": 1,
+      "expiring-vendor-host": 1
     }
   },
   "observed_sequences": {
@@ -81,7 +93,9 @@
     "git add -> git commit -> gradlew :app:testDebugUnitTest :behavior-test:test": 1,
     "git commit -> git push -> gradlew :app:testDebugUnitTest :behavior-test:test": 1,
     "scripts/delegation_check.py -> git add -> git commit": 1,
-    "scripts/review_packet.py -> git stash -> git merge": 1
+    "scripts/review_packet.py -> git stash -> git merge": 1,
+    "gradlew :app:testDebugUnitTest -> gradlew :behavior-test:test -> bash": 1,
+    "bash -> git add -> git commit": 1
   },
   "suggested_actions": [],
   "thresholds": {
