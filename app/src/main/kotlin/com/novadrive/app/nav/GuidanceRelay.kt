@@ -45,7 +45,7 @@ class GuidanceRelay(
     private val amap: GuidanceSpeaker,
     private val arbiter: GuidanceArbiterView,
     private val enabled: () -> Boolean,
-    private val deadlineMs: Long = 1_200,
+    private val deadlineMs: Long = DEFAULT_DEADLINE_MS,
     private val cooldownMs: Long = 60_000,
     private val strikeLimit: Int = 2,
     private val log: (String) -> Unit = { com.novadrive.app.DebugVoiceLog.log(it) },
@@ -72,6 +72,8 @@ class GuidanceRelay(
     private var bracketOpen = false
     private var bracketTimer: Cancellable? = null
     private val effects = ArrayList<() -> Unit>()
+    /** Sentences given to Amap's `playTTS`, with when: their `onGetNavigationText` echo is not guidance. */
+    private val handedToAmap = ArrayDeque<Pair<String, Long>>()
 
     /**
      * Runs [block] under the lock, then the queued side effects outside it. Every entry is expected
@@ -91,9 +93,28 @@ class GuidanceRelay(
     fun onGuidanceText(text: String) {
         if (text.isBlank()) return
         locked {
+            if (isAmapEcho(text)) {
+                log("guidance_echo_dropped chars=${text.length}")
+                return@locked
+            }
             queue.addLast(Prompt("g${++nextId}", text, clock()))
             pump()
         }
+    }
+
+    /**
+     * Owner test 10-16 (nav demo run 38843628215): with the inner voice off, every fallback
+     * `playTTS` came back through `onGetNavigationText` as new guidance - 242 routes and 197
+     * fallbacks for ~24 real prompts, the mic gated almost the whole drive. A sentence the relay
+     * itself handed to Amap within [ECHO_WINDOW_MS] is that echo, consumed once.
+     */
+    private fun isAmapEcho(text: String): Boolean {
+        val now = clock()
+        while (handedToAmap.isNotEmpty() && now - handedToAmap.first().second > ECHO_WINDOW_MS) handedToAmap.removeFirst()
+        val i = handedToAmap.indexOfFirst { it.first == text }
+        if (i < 0) return false
+        handedToAmap.removeAt(i)
+        return true
     }
 
     /** The playback port is about to play the first chunk of [promptId]. */
@@ -161,9 +182,20 @@ class GuidanceRelay(
         settle(p)
     }
 
-    /** Amap's voice started or ended (its listener); an end closes the relay's bracket. */
+    /**
+     * Amap's player started or ended - the SDK's TTSPlayListener only, never the relay's own bracket
+     * (round-3 review). An end closes the relay's bracket. A start while
+     * the bracket is open (P63 re-review: Amap's own voice is on behind the alert queue) cancels the
+     * length estimate, so only the listener's end may close it; navigation end unsticks a lost end.
+     */
     fun onAmapSpeaking(speaking: Boolean) = locked {
-        if (speaking) return@locked
+        if (speaking) {
+            if (bracketOpen) {
+                bracketTimer?.cancel()
+                bracketTimer = null
+            }
+            return@locked
+        }
         closeBracket()
         speakAmapIfQuiet()
         pump()
@@ -172,7 +204,15 @@ class GuidanceRelay(
     private fun onBracketEstimate() = locked {
         if (!bracketOpen) return@locked
         closeBracket()
-        effects += { arbiter.bracket(false) }
+        effects += { try { arbiter.bracket(false) } finally { afterOwnBracketClosed() } }
+    }
+
+    /**
+     * The arbiter has been told our bracket ended, so Amap reads as quiet now: drain the backlog and
+     * the queue. (Before the round-3 fix this ran only because the relay heard its own bracket's
+     * end back through `NavigationGuidanceVoice`.)
+     */
+    private fun afterOwnBracketClosed() = locked {
         speakAmapIfQuiet()
         pump()
     }
@@ -277,6 +317,7 @@ class GuidanceRelay(
         if (bracketOpen || arbiter.amapSpeaking()) return
         val text = amapBacklog.removeFirstOrNull() ?: return
         bracketOpen = true
+        handedToAmap.addLast(text to clock())
         val timer = schedule(maxOf(BRACKET_MIN_MS, BRACKET_MS_PER_CHAR * text.length)) { onBracketEstimate() }
         bracketTimer = timer
         effects += {
@@ -284,16 +325,15 @@ class GuidanceRelay(
             val accepted = runCatching { amap.speak(text) }.getOrDefault(false)
             // Refused (the speaker logs `nav_guidance_fallback_tts accepted=false`): nothing is
             // speaking, so close this bracket now rather than hold it for the estimate.
-            if (!accepted) onSpeakRefused(timer)
+            if (!accepted) onSpeakRefused(timer, text)
         }
     }
 
-    private fun onSpeakRefused(timer: Cancellable) = locked {
+    private fun onSpeakRefused(timer: Cancellable, text: String) = locked {
+        handedToAmap.indexOfLast { it.first == text }.takeIf { it >= 0 }?.let { handedToAmap.removeAt(it) } // no echo comes
         if (!bracketOpen || bracketTimer !== timer) return@locked
         closeBracket()
-        effects += { arbiter.bracket(false) }
-        speakAmapIfQuiet()
-        pump()
+        effects += { try { arbiter.bracket(false) } finally { afterOwnBracketClosed() } }
     }
 
     private fun checkMainLooper() {
@@ -305,9 +345,13 @@ class GuidanceRelay(
     private fun waited(p: Prompt): Long = clock() - p.enqueuedAt
 
     companion object {
+        /** SPEC-018 B2 default, until G-1 (GUIDANCE-EMU-001) sets it from measurement. */
+        const val DEFAULT_DEADLINE_MS = 1_200L
         const val VERBATIM_PREFIX = "请一字不改地朗读下面这句导航提示，不要加任何别的话："
         const val BRACKET_MS_PER_CHAR = 300L
         const val BRACKET_MIN_MS = 1_500L
+        /** How long after a fallback `playTTS` its `onGetNavigationText` echo is still recognised. */
+        const val ECHO_WINDOW_MS = 10_000L
 
         /** The relay of the navigation in progress, or null (the toggle is off or nothing navigates). */
         @Volatile var active: GuidanceRelay? = null

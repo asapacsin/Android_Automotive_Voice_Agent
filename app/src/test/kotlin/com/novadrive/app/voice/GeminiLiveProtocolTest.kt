@@ -196,6 +196,41 @@ class GeminiLiveProtocolTest {
     }
 
     @Test
+    fun a1008AfterSetupIsADroppedSessionUnlessItIsAboutTheKeyOrQuota() {
+        assertEquals(GeminiLiveProtocol.AUTH_FAILED, GeminiLiveProtocol.closeFailure(1008, "anything").code, "during setup: the key")
+        assertEquals(GeminiLiveProtocol.CONNECTION_CLOSED, GeminiLiveProtocol.closeFailure(1008, "something else", afterSetup = true).code)
+        assertEquals(ErrorClass.RETRYABLE, classifyVoiceError(GeminiLiveProtocol.closeFailure(1008, null, afterSetup = true).code))
+        assertEquals(GeminiLiveProtocol.AUTH_FAILED, GeminiLiveProtocol.closeFailure(1008, "API key not valid", afterSetup = true).code)
+        assertEquals(GeminiLiveProtocol.AUTH_FAILED, GeminiLiveProtocol.closeFailure(1008, "quota exhausted", afterSetup = true).code)
+        assertEquals(GeminiLiveProtocol.MALFORMED_SETUP, GeminiLiveProtocol.closeFailure(1007, "x", afterSetup = true).code)
+    }
+
+    @Test
+    fun closeReasonIsLoggedOnlyAsAFixedWord() {
+        val words = setOf("none", "quota", "auth", "deadline", "tool", "invalid_argument", "not_supported", "not_found", "unavailable", "session", "policy", "cancelled", "resumption", "idle", "billing", "model", "content", "other")
+        val cases = mapOf(
+            null to "none", "" to "none",
+            "You exceeded your current quota" to "quota",
+            "API key not valid. Please pass a valid API key." to "auth",
+            "Deadline expired before operation could complete." to "deadline",
+            "Function call navigate_to failed" to "tool",
+            "Request contains an invalid argument." to "invalid_argument",
+            "Operation is not implemented, or supported, or enabled." to "not_supported",
+            "Requested entity was not found." to "not_found",
+            "The service is currently unavailable." to "unavailable",
+            "Request blocked by safety policy" to "policy",
+            "Session resumption handle expired" to "session",
+            "Client was idle too long" to "idle",
+            "导航到珠海 lat 22.27" to "other",
+        )
+        cases.forEach { (reason, expected) ->
+            val word = GeminiLiveProtocol.closeReasonClass(reason)
+            assertEquals(expected, word, reason.toString())
+            assertTrue(word in words, word)
+        }
+    }
+
+    @Test
     fun rejectedResumedSetupIsRetryableNotMalformed() {
         val resumed = GeminiLiveProtocol.closeFailure(1007, "invalid handle", resumeRejected = true)
         assertEquals(GeminiLiveProtocol.RESUME_UNAVAILABLE, resumed.code)
@@ -212,5 +247,25 @@ class GeminiLiveProtocolTest {
         assertEquals("ACTIVITY_START", type("""{"serverContent":{"voiceActivity":{"type":"ACTIVITY_START"}}}"""))
         assertNull(type("""{"voiceActivity":{"type":"SOMETHING_ELSE"}}"""))
         assertNull(type("""{"serverContent":{"turnComplete":true}}"""))
+    }
+
+    @Test
+    fun parsesWaitingForInputTextPartsAndInterimTranscriptPresence() {
+        val m = GeminiLiveProtocol.parse(
+            """{"serverContent":{"waitingForInput":true,"interimInputTranscription":{"text":"x"},""" +
+                """"modelTurn":{"parts":[{"text":"a"},{"text":"b","thought":true},{"text":"c"}]}},""" +
+                """"usageMetadata":{"responseTokenCount":12,"responseTokensDetails":[{"modality":"AUDIO","tokenCount":10},{"modality":"TEXT","tokenCount":2}]}}""",
+        )
+        assertEquals(true, m.waitingForInput)
+        assertEquals(2, m.textParts)
+        assertEquals(1, m.thoughtParts)
+        assertTrue(m.interimInput)
+        assertEquals(mapOf("TOTAL" to 12, "AUDIO" to 10, "TEXT" to 2), m.responseTokens)
+        assertEquals(listOf("interimInputTranscription", "modelTurn", "waitingForInput"), m.contentFields)
+        val bare = GeminiLiveProtocol.parse("""{"serverContent":{"turnComplete":true}}""")
+        assertNull(bare.waitingForInput)
+        assertEquals(0, bare.textParts)
+        assertFalse(bare.interimInput)
+        assertTrue(bare.responseTokens.isEmpty())
     }
 }

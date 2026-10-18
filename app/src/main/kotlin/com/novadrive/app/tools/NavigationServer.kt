@@ -81,17 +81,20 @@ class NavigationServer(
     }
 
     /** Waits for the list to load, so the model can read the options out. */
-    private fun navigationResult(call: DomainVoiceEvent.ToolCall, action: AndroidActionResult.Accepted) =
-        ToolDispatchResult(
+    private fun navigationResult(call: DomainVoiceEvent.ToolCall, action: AndroidActionResult.Accepted): ToolDispatchResult {
+        // Taken now, at dispatch: a cancel during the request wait below must still count (D-CANCEL-STALE-REPLY).
+        val cancelMark = executor.navigationCancelMark()
+        return ToolDispatchResult(
             null,
             null,
             successChip = "✓ ${call.name}",
             deferredOutput = {
-                val snapshot = executor.awaitNavigationOptions()
+                val snapshot = executor.awaitNavigationOptions(cancelMark)
                 com.novadrive.app.voice.SpeechAuthority.arbiter.onConfirmation()
                 NavigationVoiceOutput.build(call.name, action.status, snapshot)
             },
         )
+    }
 
     private fun parseChoice(args: Map<String, String>): NavigationChoice? {
         // Numbers arrive stringified by the assembler: "2", or "2.0" from some JSON encoders.

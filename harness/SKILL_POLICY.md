@@ -19,11 +19,24 @@ Is it a recurring workflow needing judgement? -> SKILL
 Is it volatile project truth?                 -> STATE or CONTRACT, never a skill
 ```
 
+## How candidates are found and built (owner, 2026-10-17)
+
+Observed, not remembered. At handoff `scripts/skill_event.py` stores the command sequences that
+`scripts/skill_observe.py` finds repeated in the agent transcripts (names only, never arguments),
+next to the agent's own judgement fields and the time record. `scripts/skill_metrics.py` applies the
+thresholds below, and `scripts/discover_work.py` lists each justified action as frontier work, so
+the loop cannot go quiet. The build procedure is
+[.claude/skills/create-skill/SKILL.md](../.claude/skills/create-skill/SKILL.md): script first; write
+in the Agent Skills format (`skills/<name>.md` canonical, `.claude/skills/<name>/SKILL.md` entry
+with a trigger-rich description); verify against a no-skill baseline with `evals/evals.json`
+before it lands. The loop runs without asking (owner, 2026-10-18): `scripts/skill_draft.py` drafts each flagged candidate, the agent fills it and runs the evals, and only the baseline result decides whether it lands or is deleted. Sources: Anthropic skill-creator and Claude Code skills docs, agentskills.io,
+everything-claude-code continuous-learning-v2, Voyager (cited in that skill).
+
 ## Evidence thresholds
 
 | Action | Threshold |
 | --- | --- |
-| **New skill** | the same meaningful workflow observed **≥ 3** times, sequence reasonably stable, judgement still required, and deterministic automation is insufficient |
+| **New skill** | the same meaningful workflow observed **≥ 3** times (a sequence in 3 handoff records counts), sequence reasonably stable, judgement still required, and deterministic automation is insufficient |
 | **Modify** | the same meaningful deviation **≥ 2** times. Immediate if a skill names an obsolete path or command, or a missing step caused a deterministic verification failure |
 | **Merge** | two skills substantially duplicate steps, or are nearly always invoked together |
 | **Delete** | repeated evidence that the model does it reliably unaided, or a script/invariant now covers it, or it costs more than it returns. Never on one good task |
@@ -42,6 +55,9 @@ Procedure for a self-applied change:
 4. compare the outcome against the previous behaviour;
 5. keep it only if correctness did not decrease — otherwise restore from `.history`;
 6. add one line to [CHANGELOG.md](CHANGELOG.md).
+
+A new skill, or a change to what a skill makes agents do, is kept only if it beats the no-skill
+(or previous-version) baseline on its `evals/evals.json` (create-skill step 4).
 
 ## What needs a proposal
 

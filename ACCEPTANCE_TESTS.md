@@ -17,6 +17,15 @@ Binding on every agent and every test procedure:
    (ADB, unit test, injected text) and does not open a Gemini session. Gemini is used only when
    the thing under test is the voice path itself.
 
+## CI verdicts (owner, 2026-10-16)
+
+A green GitHub check is evidence only for what its tier runs, and only through
+`scripts/ci_verdict.py` (PASS / FAIL / SKIPPED / BLOCKED / FLAKY; FLAKY and SKIPPED never pass a
+required check). Tier A (JVM + build + gates) is L2-L4; Tier B emulator runs are emulator evidence,
+never real cabin acoustics, echo cancellation, voice naturalness or hardware; Tier C
+(`test_matrix.py --release`) keeps device- and human-only rows UNVERIFIED until real evidence
+exists. Details: [docs/CI.md](docs/CI.md).
+
 ## Verification levels
 
 | Level | Name | What it actually proves |

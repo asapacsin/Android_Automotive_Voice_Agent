@@ -6,7 +6,7 @@ class AmapSettingsRepository(
     context: Context,
     private val credentials: CredentialStore = AndroidKeystoreCredentialStore(context.applicationContext),
 ) {
-    fun loadWebKey(): String? = credentials.read(CRED_WEB_KEY)?.takeIf { it.isNotBlank() }
+    fun loadWebKey(): String? = credentials.read(CRED_WEB_KEY)?.trim()?.takeIf { it.isNotBlank() }
 
     fun isConfigured(): Boolean = loadWebKey() != null
 

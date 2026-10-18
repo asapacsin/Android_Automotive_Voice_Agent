@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test
 
 class PersonaProfilesTest {
     private val rulesSentences = listOf(
-        "每次回复不超过两句话",
+        "每次只说一句话",
         "只有在工具返回成功后，才能说某个操作已完成",
         "驾驶安全优先",
     )
@@ -58,6 +58,20 @@ class PersonaProfilesTest {
             assertEquals(1, out.lines().count { it.startsWith("性格基调：") }, "$style")
             assertEquals(PersonaProfiles.DEFAULT_INSTRUCTIONS.lines().size, out.lines().size, "$style")
         }
+    }
+
+    @Test fun defaultPersonaDoesNotScoldTheDriver() {
+        val text = PersonaProfiles.DEFAULT_INSTRUCTIONS
+        assertFalse("这种事还要我说吗" in text)
+        assertFalse("自负" in text)
+        assertFalse("不耐烦" in text)
+        assertFalse("情绪只体现在语气" in text)
+        assertFalse("不超过两句话" in text)
+        assertTrue("每次只说一句话" in text)
+        assertTrue("不要第二句" in text)
+        assertTrue("不要把情绪说出来" in text)
+        assertTrue("用户提了要求就直接办" in text)
+        assertTrue("办完用一句话把结果说清楚" in text)
     }
 
     @Test fun anActedToneNeverLicensesRefusingOrMisreporting() {

@@ -128,6 +128,27 @@ class DriverTurnClauseReleaseTest {
     }
 
     @Test
+    fun geminiReleasesAHelpAnswerOnceTwoGroupsAreNamed() {
+        // clauseRelease is off for Gemini (ADR-011). The tryout still held the ability
+        // answer until generationComplete, 5 s after the first audio. Two groups are the
+        // end rule, so the prefix plays without waiting for the final period.
+        val p = pipeline(clauseRelease = false)
+        chatTurn(p, request = "你会干啥")
+        repeat(8) { assertTrue(p.filter(audio(300))) }
+        p.appendAssistantText("导航、音乐、空调都可以")
+        assertTrue(emittedAudioMs() > 0, "a help list plays before generationComplete")
+    }
+
+    @Test
+    fun geminiDoesNotReleaseAHelpAnswerThatPromisesAnAction() {
+        val p = pipeline(clauseRelease = false)
+        chatTurn(p, request = "你会干啥")
+        repeat(4) { p.filter(audio(300)) }
+        p.appendAssistantText("导航、音乐都给你打开吧。")
+        assertEquals(0, emittedAudioMs(), "a promise is not played as the ability answer")
+    }
+
+    @Test
     fun anAbilityAnswerIsReleasedOnlyOnceItPassesItsEndRule() {
         // Its end rule (answersCapabilityHelp) drops an incomplete list with a nudge: a released
         // 「我可以帮你导航，」 would be followed by a second, full answer. Two ability nouns pass it,

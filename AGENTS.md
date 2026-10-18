@@ -4,7 +4,7 @@ An Android voice assistant for driving. Speech goes to **Qwen-Omni Realtime with
 (the owner's own synthetic voice, cloned per model; stock Maia only as a typed-in fallback, owner
 2026-10-12), end-to-end speech-to-speech with function calling** (the product session since 2026-10-09,
 [ADR-017](DECISIONS/ADR-017-qwen-omni-realtime-end-to-end.md); the Gemini Live and Baidu stacks stay
-in the tree until ADR-017's gates pass, but no setting selects them) — there is no separate ASR or TTS. The map and turn-by-turn
+in the tree until ADR-017's gates pass, but no setting selects them (debug builds: an in-memory debug override for tests and demos, decided 2026-10-15)) — there is no separate ASR or TTS. The map and turn-by-turn
 navigation are the **Amap Navigation SDK embedded in our own Activity**. Locale `zh-CN`.
 
 ## Commands
@@ -75,13 +75,14 @@ The rules are [harness/CONSTITUTION.md](harness/CONSTITUTION.md) 12 and 17–19;
 | What is being worked on now | [CURRENT_MILESTONE.md](CURRENT_MILESTONE.md) |
 | Defects found in real use, and their root causes | [OPEN_PROBLEMS.md](OPEN_PROBLEMS.md) |
 | What "done" means per evidence level | [ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md) |
+| What a green CI check means (tiers A/B/C, verdicts, quarantine, review gate) | [docs/CI.md](docs/CI.md), [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) |
 | Settled decisions — read before reopening one | [DECISIONS/](DECISIONS/README.md) |
 | Periodic architecture clean-up | [docs/AGENT_MAINTENANCE.md](docs/AGENT_MAINTENANCE.md) |
 | Driving the test phone over ADB | [tools/speech-harness/README.md](tools/speech-harness/README.md) |
 | **Current state** — commit, tests, open issues (generated) | [state/PROJECT_STATE.json](state/PROJECT_STATE.json) |
 | **Capability truth**, machine-readable, with verification level | [config/capabilities.yaml](config/capabilities.yaml) |
 | How work is done here, and the agent harness | [harness/README.md](harness/README.md) |
-| Reusable procedures | [skills/](skills/) — start, **continue**, reproduce, fix, verify, handoff |
+| Reusable procedures | [skills/](skills/) — start, **continue**, reproduce, fix, verify, handoff, review-packet (Claude Code entries in `.claude/skills/`; new ones via `.claude/skills/create-skill/`) |
 | Cursor hybrid routing (hard gate; Composer default; Grok on GROK_REQUIRED / termination) | [`.cursor/rules/hybrid-model-routing.mdc`](.cursor/rules/hybrid-model-routing.mdc), [`scripts/model_route.py`](scripts/model_route.py), [`.cursor/agents/`](.cursor/agents/) |
 
 ## How to change things here
@@ -102,6 +103,16 @@ The rules are [harness/CONSTITUTION.md](harness/CONSTITUTION.md) 12 and 17–19;
    Overflow, Zhihu/CSDN for Chinese vendors). Record what you found and its source next to the
    fix (commit message, OPEN_PROBLEMS or the SPEC), including "searched, nothing found". Only then
    design your own solution.
+   **A blocker is a problem too, and it does not stop the work** (owner, 2026-10-17). A failed
+   download, a rate limit, a missing file, a refused command or a missing tool gets the same
+   treatment: search how others got past it (mirrors and alternative sources, other tools, the
+   vendor's documented workaround, the community's fixes), try those options, and keep solving
+   until it works. Do not wait for a new session, a setting or the owner while an option remains.
+   Then make the fix durable (a script or a fallback source, so it cannot block again) and record
+   the cause in the time record. Only a real choice, or something only the owner can grant, goes
+   to the owner, as one short question while other work continues. Example: Wikimedia answered
+   HTTP 429; an archive.org public-domain mirror of the same piece worked and is now the fallback
+   in `scripts/cloud_setup.sh` and `scripts/new_worktree.sh`.
 
 ## Two things that catch agents out
 
@@ -177,7 +188,7 @@ does not change architecture ownership, invariants, or who may certify work. Age
 - `reviewer` (Opus 5.5, high effort, read-only) is used selectively; its policy is
   [`agent/REVIEWER.md`](agent/REVIEWER.md). Verdicts: PASS / REVISE / ARCHITECTURE_REVIEW_REQUIRED.
 - At most 4 concurrent executors. Writers get worktrees the planner creates from the exact feature
-  commit (`git worktree add -b <branch> ../nova-wt/<task> <BASE_COMMIT>`), not the Agent tool's
+  commit (`scripts/new_worktree.sh <task> <branch> <BASE_COMMIT>`, which also unpacks the gitignored vendor files so `:app` builds), not the Agent tool's
   worktree isolation, which has based worktrees on an older commit here.
 - `decider` (Opus 5.5, xhigh effort, read-only) breaks ties: any choice the planner does not know how
   to make goes there first, and only its `OWNER_DECISION_REQUIRED` goes to the owner (hard rule below).
@@ -186,6 +197,17 @@ does not change architecture ownership, invariants, or who may certify work. Age
 
 ## Hard rules
 
+- **Production and test source is written by executors** (owner 2026-10-16): the main/planner agent may not edit `<module>/src/**` in the main checkout;
+  settings deny rules and the guard-source-writes hook enforce it, `scripts/delegation_check.py` audits the branch.
+  Planner keeps docs, state, scripts/tools and integration.
+  Review comes after the executor finishes and before its merge: `git merge exec/*` is refused until
+  `state/reviews.log` has PASS (the `reviewer`) or WAIVED (with a reason) for the branch tip; the Stop hook
+  (`delegation_check.py --stop-hook`) backs it up after the merge.
+- **Keep executing; the owner only chooses** (owner, 2026-10-16). Keep working without waiting for
+  a go-ahead: everything you can do yourself is your task. Bring the owner only a real choice: give
+  two or more distinct options, each with its consequence and its time cost, plus your
+  recommendation, so the owner can pick one. Never ask the owner to do something you can do yourself.
+  Never stop at a status report or an open question while autonomous work remains.
 - **Unsure which to pick: Opus 5.5 at xhigh effort first, then the owner** (owner, 2026-10-12). When you
   do not know which of two or more options to choose, and the documents do not settle it, do not guess
   and do not take the first plausible one. Send the question to a reasoning pass on Opus 5.5 at xhigh
@@ -198,6 +220,13 @@ does not change architecture ownership, invariants, or who may certify work. Age
   This does not replace `ARCHITECTURE_REVIEW_REQUIRED`: changing an ADR, an invariant or a contract
   still goes to the owner through `agent/INTAKE.md`.
 
+- **Measure the time every piece of work took, and make the slow parts faster** (owner, 2026-10-17).
+  When a task, fix or test finishes, record its wall-clock minutes and attempts with the
+  efficiency verdict in the handoff record (`scripts/skill_event.py --minutes --attempts
+  --efficient`, [skills/handoff.md](skills/handoff.md) step 5). If it was not a time-efficient way
+  to do it, name what lost the time and change the process now (a script, a skill step, a settings
+  or environment change) or, when only the owner can change it, bring that as a choice. A cause
+  seen twice (`scripts/skill_metrics.py` `TIME_IMPROVEMENT`) is due work.
 - Never commit, print, log or package credentials. No coordinate, address or transcript in a log.
 - **Commit and push each implemented function as soon as it is verified** (owner, 2026-10-11; this
   replaces "commit locally, never push unless told"): one verified unit, one commit, pushed to the
@@ -241,6 +270,14 @@ does not change architecture ownership, invariants, or who may certify work. Age
   Qwen voice can answer (a custom or cloned voice: how she sounds, reading the car lines) skips
   Gemini, whose voice is not ours, and goes straight to the cheapest Qwen model with the
   smallest input: text-only turns reading the lines, one short session, no full demo. (Until the owner says the work is done this waits: "Gemini first, Ayano last" above.)
+- **Test each piece before a full demo run** (owner, 2026-10-16). Before any full real-run demo (a
+  recorded end-to-end drive or session), break the demo into its sub-tasks, one per function it
+  shows. For a navigation demo these are: destination search and pick, route start, guidance voice,
+  each driver request, the over-speed warning, arrival and reconnect. Test each sub-task on its own
+  with the cheapest check that proves it (JVM suite, scripted or mock server, a short targeted
+  emulator check), and have it reviewed. Run the full demo only after every sub-task has passed. A
+  full run is the final proof, never the way to find bugs: when it fails, go back to the failing
+  sub-task, fix and verify it alone, then run the full demo again.
 - **Demo-oriented tests, no API the function does not need** (owner, 2026-10-11). Write test cases
   from the demo's user scenarios: the driver lines and expected outcomes of `docs/DEMO_COMMUTE.md`
   and `docs/DEMO_REQUIREMENTS.md` (say this, the car does that, she says this, within this time),

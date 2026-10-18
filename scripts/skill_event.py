@@ -20,6 +20,9 @@ import os
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import skill_observe  # noqa: E402
+
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EVENTS = os.path.join(REPO, "harness", "skill-events.jsonl")
 STATE = os.path.join(REPO, "state", "PROJECT_STATE.json")
@@ -75,7 +78,31 @@ def main():
     p.add_argument("--stale-assumptions", default="", help="comma-separated: stale paths/commands hit")
     p.add_argument("--retries", type=int, default=0, help="attempts before the change was right")
     p.add_argument("--note", default="", help="one line of context")
+    # Time efficiency (owner, 2026-10-17): every finished piece of work records what it cost and
+    # whether that was a time-efficient way to do it; an inefficient one names its improvement.
+    p.add_argument("--minutes", type=int, required=True,
+                   help="wall-clock minutes from starting the task to its verified push")
+    p.add_argument("--attempts", type=int, required=True,
+                   help="rounds needed: dispatches, builds or runs repeated before it was right")
+    p.add_argument("--efficient", required=True, choices=["yes", "no"],
+                   help="was this a time-efficient approach, judged against the cheapest one in hindsight")
+    p.add_argument("--waste", default="",
+                   help="comma-separated causes of lost time, short and reusable (e.g. vendor-files-missing)")
+    p.add_argument("--improvement", default="",
+                   help="what was changed (or proposed) so the waste does not recur; required when --efficient no")
+    p.add_argument("--resolves", default="",
+                   help="comma-separated waste causes or human reminders this change fixes; their count restarts")
     args = p.parse_args()
+    if args.efficient == "no" and not args.improvement.strip():
+        p.error("--efficient no needs --improvement: find a way to do it faster next time")
+
+    # Observed, not remembered: repeated command sequences since the previous record, read from the
+    # agent transcripts (scripts/skill_observe.py). Names only, never arguments.
+    try:
+        observed = skill_observe.repeated_sequences(
+            skill_observe.commands_since(skill_observe.last_record_time()))
+    except Exception:
+        observed = {}
 
     record = {
         "task_id": args.task,
@@ -88,6 +115,13 @@ def main():
         "manual_repeated_work": split(args.manual_work),
         "failed_skill_assumptions": split(args.stale_assumptions),
         "retries": args.retries,
+        "minutes": args.minutes,
+        "attempts": args.attempts,
+        "efficient": args.efficient == "yes",
+        "waste": split(args.waste),
+        "improvement": args.improvement,
+        "observed_sequences": observed,
+        "resolves": split(args.resolves),
         "task_outcome": args.outcome,
         "tests": tests_from_state(),
         "candidate_action": args.candidate,
@@ -98,9 +132,16 @@ def main():
     with open(EVENTS, "a", encoding="utf-8", newline="\n") as handle:
         handle.write(json.dumps(record, ensure_ascii=False) + "\n")
     print("appended to %s" % os.path.relpath(EVENTS, REPO))
-    print("  %s  %s  candidate=%s" % (record["task_id"], record["task_outcome"], record["candidate_action"]))
+    print("  %s  %s  candidate=%s  %d min  %d attempts  efficient=%s" % (
+        record["task_id"], record["task_outcome"], record["candidate_action"],
+        args.minutes, args.attempts, args.efficient))
+    for seq, n in observed.items():
+        print("  observed %dx  %s" % (n, seq))
     if args.candidate != "NONE":
         print("  -> thresholds and next step: harness/SKILL_POLICY.md")
+    # Keep harness/skill-metrics.json current, so discover_work.py sees a due candidate at once.
+    subprocess.run([sys.executable, os.path.join(REPO, "scripts", "skill_metrics.py")],
+                   cwd=REPO, capture_output=True)
     return 0
 
 

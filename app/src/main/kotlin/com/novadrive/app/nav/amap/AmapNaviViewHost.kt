@@ -69,6 +69,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
     private var cameraLimitKmh = 0
     private var facilityLimitKmh = 0
     private var lastSpeedHud: DrivingSpeedHud.Snapshot? = null
+    private val overspeedAlert = OverspeedAlert()
 
     /** Stand-in for the map where it cannot be drawn (`TranslatedAbi.amapNativeSafe`). */
     private val textPanel: TextNavigationPanel? = if (mapRenderable) null else TextNavigationPanel(context)
@@ -107,6 +108,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         AMapNavi.addTTSInitializeListener { code, _ -> DebugVoiceLog.log("nav_guidance_tts_init code=$code") }
         navi = AMapNavi.getInstance(context.applicationContext)
         AmapGuidanceVoice.assistantVoice = AmapGuidanceVoice.assistantVoiceEnabled(context)
+        AmapGuidanceVoice.debugDeadlineMs = AmapGuidanceVoice.debugDeadline(context)
         AmapGuidanceVoice.enable(navi)
         naviView = AMapNaviView(context)
         naviView.setAMapNaviViewListener(AmapDrivingPresentation.listener { stopNavigation("ui_exit") })
@@ -123,17 +125,18 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         // Speed chip is attached by AssistantNavigationScreen above the assistant overlay.
     }
 
-    /**
-     * Called by the screen with the controller's state, so the text panel (only where
-     * `TranslatedAbi.amapNativeSafe` is false)
-     * shows the same flow the choice overlay does. No-op on a device that draws the map.
-     */
+    private var shownPhase = NavigationPhase.IDLE
+    /** Controller state from the screen: the map presentation follows its phase; the text panel shows the flow. */
     fun showNavigationState(
         phase: NavigationPhase,
         destinations: List<DestinationCandidate>,
         routes: List<RouteCandidate>,
         destinationName: String?,
-    ) = textPanel?.onState(phase, destinations, routes, destinationName)
+    ) {
+        val p = MapPresentationPolicy.onPhase(shownPhase, phase, isNavigating).also { shownPhase = phase }
+        if (AmapDrivingPresentation.apply(p, navi, naviView)) lastRouteIds = IntArray(0)
+        textPanel?.onState(phase, destinations, routes, destinationName)
+    }
 
     /** True once FINE location is held; the SDK cannot use GNSS without it. */
     private fun hasFineLocation(): Boolean =
@@ -694,6 +697,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         facilityLimitKmh = 0
         reportedSpeedKmh = 0
         refreshSpeedHud()
+        overspeedAlert.reset()
         textPanel?.clearProgress()
         textPanel?.render()
         val navi = this.navi
@@ -728,6 +732,10 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         return AmapDrivingPresentation.showOverview(naviView)
     }
 
+    /** Debug diagnostics (P58); see [AmapDrivingPresentation.viewState]. */
+    fun debugViewState(): String = AmapDrivingPresentation.viewState(naviView, isNavigating)
+    fun debugClearRoute(variant: String): String = AmapDrivingPresentation.debugClearRoute(navi, naviView, variant)
+
     fun resumeTracking(): Boolean {
         if (!isNavigating) return false
         return AmapDrivingPresentation.resumeTracking(naviView)
@@ -757,8 +765,8 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         if (traceListener != null) return
         val listener = NavigationTraceListener(
             onRouteReady = { ids ->
-                lastRouteIds = ids
-                AmapDrivingPresentation.applyRoutePreview(naviView)
+                if (MapPresentationPolicy.keepsRouteIds(shownPhase, isNavigating)) lastRouteIds = ids
+                if (MapPresentationPolicy.previewsOnRouteReady(isNavigating)) AmapDrivingPresentation.applyRoutePreview(naviView)
                 onRoutesCalculated?.invoke(ids)
             },
             // Completion -> the SAME stop path as the manual nav_stop fallback.
@@ -801,6 +809,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         if (snap == lastSpeedHud) return
         lastSpeedHud = snap
         post { speedHud.bind(snap) }
+        AmapGuidanceVoice.onSpeedHud(overspeedAlert, snap) { isNavigating } // P63: overspeed said aloud
         if (snap.visible) {
             DebugVoiceLog.log(
                 "nav_speed kmh=${snap.speedKmh} limitKmh=${snap.limitKmh} over=${if (snap.overspeed) 1 else 0}",

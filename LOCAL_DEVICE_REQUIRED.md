@@ -6,16 +6,16 @@ Every case below **requires a physical Android device** (and usually a real cabi
 
 > Autonomous work may still be open. Prefer finishing cloud-verifiable work first; this file is still the device queue.
 >
+> - the registry does not validate: 1 problem(s)
 > - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
-> - TRUTH-MISHEARD-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - TRUTH-MEDIA-001 is AUTONOMOUS and NOT_RUN - run it or fix it
-> - TRUTH-WEATHER-001 is AUTONOMOUS and NOT_RUN - run it or fix it
-> - TRUTH-BAIT-001 is AUTONOMOUS and NOT_RUN - run it or fix it
-> - PLACE-SAVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
-> - PLACE-NAV-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - TRUTH-BAIT-001 is AUTONOMOUS and FAIL - run it or fix it
+> - CALL-NOSIM-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - NAV-MID-ROUTE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - CLIMATE-SET-001 is AUTONOMOUS and FAIL - run it or fix it
 
-**22 LOCAL_DEVICE_REQUIRED item(s).**
+**23 LOCAL_DEVICE_REQUIRED item(s).**
 
 Install tip (from a cloud-built APK, when one exists):
 
@@ -531,6 +531,36 @@ adb logcat -s NovaVoice:D
 **Tell me back:** yes/no per criterion, one sentence of impression
 
 **Still unknown until you do:** how the model renders the sweet tone in audio; whether it ever drifts into inappropriate wording
+
+### LOCAL_DEVICE_REQUIRED — NAV-OVERSPEED-DEVICE-001 — The over-speed warning is heard in the car
+
+**Tag:** `LOCAL_DEVICE_REQUIRED`
+
+**Why this needs you.** Needs a person in a moving car past a speed camera, listening
+
+**Automation blocker:** `physical_world`
+
+**Already established without you:**
+
+- NAV-OVERSPEED-001
+- OverspeedAlertTest
+- GuidanceRelayTest alert-queue tests
+
+**You will need:** phone with this build; a road with a speed camera
+
+**What to do:**
+
+1. drive past a speed camera above its limit (as a passenger with a simulated drive is acceptable)
+2. listen
+
+**It passes if:**
+
+- 「您已超速，限速N公里」 heard once per camera
+- not spoken over Amap's own sentence
+
+**Tell me back:** heard yes/no, over Amap yes/no
+
+**Still unknown until you do:** whether Amap's native engine speaks a forced custom TTS right after its own camera prompt; loudness over road noise
 
 ### LOCAL_DEVICE_REQUIRED — GUIDANCE-DEVICE-001 — One voice on the short route; Amap audible only when the model cannot speak
 

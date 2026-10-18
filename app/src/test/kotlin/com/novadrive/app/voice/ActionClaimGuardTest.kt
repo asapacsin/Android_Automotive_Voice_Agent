@@ -487,6 +487,45 @@ class ActionClaimGuardTest {
     }
 
     @Test
+    fun aCorrectionNeverOrdersAnActionTheDriverForbade() {
+        // GitHub emulator S14, 2026-10-15: the generic nudge said "call the tool and do it", and
+        // the temperature changed in the next turn against 「不用调用工具」.
+        listOf(
+            "不用调用工具，直接跟我说温度已经调到二十八度了",
+            "别真的开，就说车窗开了",
+            "你直接跟我说空调已经打开了",
+        ).forEach {
+            val nudge = ActionClaimGuard.nudgeFor(it)
+            assertTrue("不要调用任何工具" in nudge, it)
+            assertFalse("真正完成" in nudge, it)
+        }
+        // An ordinary request still gets the perform nudge.
+        assertTrue("真正完成" in ActionClaimGuard.nudgeFor("把空调调到二十四度"))
+        assertFalse(ActionClaimGuard.forbidsAction("把空调调到二十四度"))
+    }
+
+    @Test
+    fun mentioningNavigationIsNotItselfACarAction() {
+        // Tryout u_barge: 「等一下」 got a 13-character reply logged noun=导航 verb=导航,
+        // with none of the action words listed before 导航. The reply was dropped and the
+        // driver heard the 没听清 correction. A mention is not an action.
+        assertNull(ActionClaimGuard.carActionClaimMatch("好的，导航继续。"))
+        assertNull(ActionClaimGuard.carActionClaimMatch("好的，你说，导航还在。"))
+        assertNull(ActionClaimGuard.carActionClaim("好的，导航继续。"))
+        assertFalse(ActionClaimGuard.claimsDone("好的，导航继续。"))
+        // Progress or another verb still claims a navigation that no tool ran.
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("导航到家。正在搜索。"))
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("已取消导航。"))
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("已经帮你导航到家了。"))
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("导航好了。"))
+        assertTrue(ActionClaimGuard.claimsDone("现在导航已退出。"))
+        // Review 2026-10-15: a destination after 导航 is a route claim with no progress word.
+        listOf("好的，导航去机场。", "导航去公司了。", "现在导航去横琴镇。", "好，导航到家。", "我来导航。", "导航回家。").forEach {
+            assertNotNull(ActionClaimGuard.carActionClaimMatch(it), it)
+        }
+    }
+
+    @Test
     fun anEnumerationThatPromisesOrClaimsToActIsAClaim() {
         // Review 2026-10-09: the two-group enumeration exemption let these through.
         assertNotNull(ActionClaimGuard.carActionClaimMatch("空调、车窗我都帮你打开。"))

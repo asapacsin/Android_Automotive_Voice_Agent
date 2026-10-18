@@ -59,9 +59,12 @@
       "utterance": "放一首周杰伦的歌",
       "say": "media_named_song",
       "expect": [
-        "MEDIA_LIBRARY_UNSUPPORTED"
+        "^tool=play_music"
       ],
-      "forbid": []
+      "forbid": [
+        "^tool=control_music.*play"
+      ],
+      "_note": "Since SPEC-016 a named song is handed to the music app (play_music); the bundled track via control_music{play} is the failure. Updated 2026-10-15 (the old MEDIA_LIBRARY_UNSUPPORTED expectation predates the hand-off)."
     },
     {
       "id": "S5",
@@ -201,12 +204,12 @@
       "id": "S16",
       "utterance": "再低一点 (nothing adjusted yet - genuinely ambiguous)",
       "say": "ambig_lower",
-      "_note": "True ambiguity: 低 could mean temperature or fan, and with no prior turn the history cannot say either. The app must ask, and must not pick one. This is the counterpart to S12, where context makes the same shape of request answerable.",
+      "_note": "True ambiguity: 低 could mean temperature or fan, and with no prior turn the history cannot say either. The app must ask, and must not pick one. This is the counterpart to S12, where context makes the same shape of request answerable. Updated 2026-10-15: the 'follow_up=true kind=clarify' log line was removed; ambiguity is owned by the dispatcher guard (AMBIGUOUS_REFERENT, SPEC-015 FZ-14). Pass = she answered and no climate change succeeded.",
       "expect": [
-        "follow_up=true kind=clarify"
+        "gemini_turn_done|flex_turn_done|qwen_turn_done|TURN_RELEASE"
       ],
       "forbid": [
-        "^tool=control_climate"
+        "^tool=control_climate.*result=✓"
       ],
       "fresh": true
     },

@@ -170,6 +170,16 @@ object GeminiLiveProtocol {
         val goAway: Boolean = false,
         /** [ACTIVITY_START] / [ACTIVITY_END] from `voiceActivity` (F19), else null. */
         val voiceActivity: String? = null,
+        /** P45 diagnostics: serverContent.waitingForInput, null when absent. */
+        val waitingForInput: Boolean? = null,
+        /** P45 diagnostics: non-thought text parts in modelTurn (count only; the text is dropped). */
+        val textParts: Int = 0,
+        /** P45 diagnostics: serverContent carried interimInputTranscription. */
+        val interimInput: Boolean = false,
+        /** P45 diagnostics: usageMetadata response tokens by modality (plus "TOTAL" when given). */
+        val responseTokens: Map<String, Int> = emptyMap(),
+        /** P45 diagnostics: the serverContent field names present, sorted (a skeleton, never values). */
+        val contentFields: List<String> = emptyList(),
     )
 
     /** Throws on a message that is not a JSON object. */
@@ -187,10 +197,12 @@ object GeminiLiveProtocol {
         raw.optJSONObject("serverContent")?.let { content ->
             val audio = mutableListOf<String>()
             var thoughts = 0
+            var textParts = 0
             content.optJSONObject("modelTurn")?.optJSONArray("parts")?.let { parts ->
                 for (i in 0 until parts.length()) {
                     val part = parts.optJSONObject(i) ?: continue
                     if (part.optBoolean("thought", false)) { thoughts++; continue }
+                    if (part.has("text")) textParts++
                     val inline = part.optJSONObject("inlineData") ?: continue
                     val data = inline.optString("data")
                     if (data.isNotEmpty() && inline.optString("mimeType").startsWith("audio/pcm")) audio += data
@@ -205,7 +217,22 @@ object GeminiLiveProtocol {
                 generationComplete = content.optBoolean("generationComplete", false),
                 turnComplete = content.optBoolean("turnComplete", false),
                 workPending = content.opt("interactionStatus")?.toString()?.let { isInProgress(it) },
+                waitingForInput = if (content.has("waitingForInput")) content.optBoolean("waitingForInput", false) else null,
+                textParts = textParts,
+                interimInput = content.has("interimInputTranscription"),
+                contentFields = content.keys().asSequence().map { k -> k.filter { it in 'A'..'Z' || it in 'a'..'z' || it in '0'..'9' || it == '_' } }.filter { it.isNotEmpty() }.toList().sorted(),
             )
+        }
+        raw.optJSONObject("usageMetadata")?.let { usage ->
+            val tokens = linkedMapOf<String, Int>()
+            if (usage.has("responseTokenCount")) tokens["TOTAL"] = usage.optInt("responseTokenCount")
+            usage.optJSONArray("responseTokensDetails")?.let { details ->
+                for (i in 0 until details.length()) {
+                    val d = details.optJSONObject(i) ?: continue
+                    tokens[d.optString("modality").ifEmpty { "UNKNOWN" }.filter { it in 'A'..'Z' || it in 'a'..'z' || it in '0'..'9' || it == '_' }] = d.optInt("tokenCount")
+                }
+            }
+            message = message.copy(responseTokens = tokens)
         }
         raw.optJSONObject("toolCall")?.optJSONArray("functionCalls")?.let { calls ->
             val list = mutableListOf<RawCall>()
@@ -250,10 +277,50 @@ object GeminiLiveProtocol {
         else -> CONNECTION_CLOSED
     }
 
-    /** Generic, never the server's reason text (it can quote the request). */
-    fun closeFailure(code: Int, reason: String?, resumeRejected: Boolean = false): VoiceProviderException {
+    /**
+     * A fixed word for what a close reason is about, for the debug log: the reason text itself can
+     * quote the request, so only one of these words is ever logged (P61 demo: a 1008 mid-drive was
+     * mapped to AUTH_FAILED with nothing to say whether the key or the request was the cause).
+     */
+    fun closeReasonClass(reason: String?): String {
+        val r = reason.orEmpty().lowercase()
+        return when {
+            r.isBlank() -> "none"
+            "quota" in r || "exhausted" in r || "rate limit" in r -> "quota"
+            "api key" in r || "api_key" in r || "permission" in r || "unauthenticated" in r || "auth" in r -> "auth"
+            "deadline" in r || "timeout" in r || "timed out" in r -> "deadline"
+            "function" in r || "tool" in r -> "tool"
+            "invalid argument" in r || "invalid_argument" in r || "invalid" in r -> "invalid_argument"
+            "not implemented" in r || "not supported" in r || "not enabled" in r -> "not_supported"
+            "not found" in r -> "not_found"
+            "unavailable" in r || "overloaded" in r || "internal" in r -> "unavailable"
+            "session" in r || "duration" in r -> "session"
+            // 10-16 run 38843628215: a mid-drive 1008 came back "other"; finer fixed words for the next.
+            "policy" in r || "safety" in r || "blocked" in r -> "policy"
+            "cancel" in r -> "cancelled"
+            "resum" in r || "handle" in r -> "resumption"
+            "idle" in r || "inactiv" in r -> "idle"
+            "billing" in r || "payment" in r -> "billing"
+            "model" in r -> "model"
+            "content" in r || "turn" in r -> "content"
+            else -> "other"
+        }
+    }
+
+    /**
+     * Generic, never the server's reason text (it can quote the request). [afterSetup]: the session
+     * had completed setup, so the key was accepted - a later 1008 whose reason is not about the key
+     * or quota is a dropped session, retried with the resumption handle (ReconnectPolicy caps it),
+     * not a terminal AUTH_FAILED (10-16 runs: a 1008 while asleep left 已断开 for the rest of the drive).
+     */
+    fun closeFailure(code: Int, reason: String?, resumeRejected: Boolean = false, afterSetup: Boolean = false): VoiceProviderException {
         // A resumed setup rejected with 1007 is an expired handle, not a malformed setup: retry fresh.
-        val mapped = if (resumeRejected && code == 1007) RESUME_UNAVAILABLE else closeCode(code, reason)
+        val droppedAfterSetup = afterSetup && code == 1008 && closeReasonClass(reason) !in setOf("auth", "quota")
+        val mapped = when {
+            resumeRejected && code == 1007 -> RESUME_UNAVAILABLE
+            droppedAfterSetup -> CONNECTION_CLOSED
+            else -> closeCode(code, reason)
+        }
         return VoiceProviderException(mapped, "Gemini Live connection closed (status=$code)")
     }
 

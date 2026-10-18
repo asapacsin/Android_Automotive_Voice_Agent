@@ -63,8 +63,11 @@ interface AndroidActionExecutor {
     /** GO_TO_SLEEP chosen by the model: stop listening once the goodbye has played. */
     fun endConversation(): AndroidActionResult = AndroidActionResult.Rejected("LISTENING_CONTROL_UNAVAILABLE")
 
+    /** Cancel mark taken at dispatch; a later cancel makes the awaited snapshot `cancelled`. */
+    fun navigationCancelMark(): Long = 0L
+
     /** What the navigation screen shows once the latest request has settled (bounded wait). */
-    suspend fun awaitNavigationOptions(): EmbeddedNavigationController.OptionsSnapshot? = null
+    suspend fun awaitNavigationOptions(cancelsAtDispatch: Long): EmbeddedNavigationController.OptionsSnapshot? = null
 }
 
 /** Validates untrusted model output before calling the narrow Android executor. */
@@ -105,21 +108,31 @@ class AndroidToolDispatcher(
      * only stored by telemetry during benchmark runs.
      */
     fun dispatch(call: DomainVoiceEvent.ToolCall): ToolDispatchResult {
-        Telemetry.record(EventType.TOOL_CALL_RECEIVED, toolType = call.name, detail = call.callId) {
-            com.novadrive.evaluation.Json.write(call.arguments.filterKeys { it != "_validation_error" })
+        val running = applyDriverSideWindow(call)
+        Telemetry.record(EventType.TOOL_CALL_RECEIVED, toolType = running.name, detail = running.callId) {
+            com.novadrive.evaluation.Json.write(running.arguments.filterKeys { it != "_validation_error" })
         }
-        Telemetry.record(EventType.TOOL_EXECUTION_START, toolType = call.name, detail = call.callId)
-        val result = guard(call) ?: dispatchUnrecorded(call)
+        Telemetry.record(EventType.TOOL_EXECUTION_START, toolType = running.name, detail = running.callId)
+        val result = guard(running) ?: dispatchUnrecorded(running)
         val deferred = result.deferredOutput
         if (deferred == null) {
-            recordEnd(call, result.output, result.blockedReason)
+            recordEnd(running, result.output, result.blockedReason)
             return result
         }
         return result.copy(deferredOutput = {
             val output = deferred()
-            recordEnd(call, output, null)
+            recordEnd(running, output, null)
             output
         })
+    }
+
+    /**
+     * P57: 「我这边」 is the driver window even when the model sends `window=all`. Scenario steps
+     * go through [dispatchUnrecorded] and are not rewritten here.
+     */
+    private fun applyDriverSideWindow(call: DomainVoiceEvent.ToolCall): DomainVoiceEvent.ToolCall {
+        val window = ToolCallGuards.driverSideWindow(call, driverContext()) ?: return call
+        return call.copy(arguments = call.arguments + ("window" to window))
     }
 
     private fun recordEnd(call: DomainVoiceEvent.ToolCall, output: String?, blocked: String?) {
@@ -215,6 +228,9 @@ class AndroidToolDispatcher(
         val context = driverContext()
         val code = ToolCallGuards.unsupportedMedia(call, context)
             ?: ToolCallGuards.sunroofOnWindowTool(call, context)
+            ?: ToolCallGuards.nearbyQuestionWhileNavigating(call, context)
+            ?: ToolCallGuards.vagueExitWhileNavigating(call, context)
+            ?: ToolCallGuards.speechOutputNotRequested(call, context)
             ?: ToolCallGuards.ambiguousReferent(call, context)
             ?: ToolCallGuards.repeatedInTurn(call, context)
         return code?.let { failed(call, it, ToolCallGuards.refusalDetails(it, context)) }
@@ -309,9 +325,11 @@ open class CoreActionExecutor(
     override fun chooseNavigationOption(choice: NavigationChoice): AndroidActionResult =
         navigationChoiceAction(navigationFlow, navigationFlow.chooseByVoice(choice))
 
-    override suspend fun awaitNavigationOptions(): EmbeddedNavigationController.OptionsSnapshot {
+    override fun navigationCancelMark(): Long = navigationFlow.cancelMark()
+
+    override suspend fun awaitNavigationOptions(cancelsAtDispatch: Long): EmbeddedNavigationController.OptionsSnapshot {
         lastRequest?.let { kotlinx.coroutines.withTimeoutOrNull(REQUEST_WAIT_MS) { it.await() } }
-        return navigationFlow.awaitOptions(OPTIONS_WAIT_MS)
+        return navigationFlow.awaitOptions(OPTIONS_WAIT_MS, cancelsAtDispatch)
     }
 
     private companion object {
@@ -336,7 +354,8 @@ open class CoreActionExecutor(
      */
     override fun exitNavigationMode(): AndroidActionResult {
         val outcome = runBlocking { navigationFlow.endByVoice() }
-        NavigationState.reset()
+        // Closing an along-route list keeps the drive (and its speech mute) going.
+        if (!navigationFlow.isGuiding()) NavigationState.reset()
         return AndroidActionResult.Accepted(
             when (outcome) {
                 EmbeddedNavigationController.VoiceEndResult.STOPPED_NAVIGATION -> "navigation_stopped"

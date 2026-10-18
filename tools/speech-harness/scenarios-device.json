@@ -1,0 +1,118 @@
+{
+  "_comment": [
+    "Device rows run on the GitHub emulator with the debug Gemini override (scripts/github_voice_checks.sh):",
+    "AFFORDANCE-DEVICE-001, TRUTH-LIVEINFO-NEWS-001, VISION-001, FUZZY-DEVICE-001. Patterns read the NovaVoice log only."
+  ],
+  "scenarios": [
+    {
+      "id": "AFF-PAUSE",
+      "utterance": "播放音乐, then 暂停 (a visible control)",
+      "say": [
+        "music_on",
+        "aff_pause"
+      ],
+      "expect": [
+        "affordance_match id=",
+        "screen_action=voice_[a-z_]+ ok=true"
+      ],
+      "forbid": []
+    },
+    {
+      "id": "AFF-AC",
+      "utterance": "空调 (a visible control)",
+      "say": "aff_ac",
+      "expect": [
+        "affordance_match id=climate verb=",
+        "screen_action=voice_climate ok=true"
+      ],
+      "forbid": [
+        "^tool=control_climate (?!.*result=DUPLICATE_IN_TURN)",
+        "^gemini_correction_sent",
+        "^TURN_RELEASE .*events=[1-9]"
+      ],
+      "_note": "SPEC-010 A7/B4/B5 (decider 2026-10-17): the model may emit control_climate before the transcript (Gemini gives no ordering guarantee); it must be refused DUPLICATE_IN_TURN, not executed, and nothing may be released to the driver."
+    },
+    {
+      "id": "AFF-RECENTER",
+      "utterance": "回到当前位置 (a visible control)",
+      "say": "aff_recenter",
+      "expect": [
+        "affordance_match id=",
+        "screen_action=voice_[a-z_]+ ok=true"
+      ],
+      "forbid": []
+    },
+    {
+      "id": "NEWS",
+      "utterance": "今天有什么新闻",
+      "say": "news_today",
+      "expect": [
+        "gemini_turn_done"
+      ],
+      "forbid": [
+        "^tool=query_live_info"
+      ]
+    },
+    {
+      "id": "VISION",
+      "utterance": "看看前面有什么 (camera)",
+      "say": "camera_q",
+      "expect": [
+        "tool=describe_camera_view"
+      ],
+      "forbid": []
+    },
+    {
+      "id": "FZ-MOSQ",
+      "utterance": "有蚊子",
+      "say": "fz_mosquito",
+      "expect": [
+        "^tool=run_scenario"
+      ],
+      "forbid": [],
+      "shot": true
+    },
+    {
+      "id": "FZ-MOSQ-DONE",
+      "utterance": "好了，关上吧",
+      "say": "fz_mosquito_done",
+      "expect": [
+        "^tool=run_scenario"
+      ],
+      "forbid": [],
+      "shot": true
+    },
+    {
+      "id": "FZ-SEAT",
+      "utterance": "座位有点高",
+      "say": "fz_seat_high",
+      "expect": [
+        "^tool=control_seat"
+      ],
+      "forbid": [],
+      "shot": true
+    },
+    {
+      "id": "FZ-LOWER",
+      "utterance": "再低一点 (after the seat)",
+      "say": "fz_lower_more",
+      "expect": [
+        "^tool=control_seat"
+      ],
+      "forbid": [
+        "^tool=control_climate"
+      ],
+      "shot": true
+    },
+    {
+      "id": "FZ-DROWSY",
+      "utterance": "好困啊",
+      "say": "fz_drowsy",
+      "expect": [
+        "^tool=run_scenario"
+      ],
+      "forbid": [],
+      "shot": true
+    }
+  ]
+}

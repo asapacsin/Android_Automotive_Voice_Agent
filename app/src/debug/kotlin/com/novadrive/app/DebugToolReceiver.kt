@@ -6,6 +6,7 @@ import android.content.Intent
 import android.util.Log
 import com.novadrive.app.nav.NavigationHostGateway
 import com.novadrive.app.nav.amap.EmulatorNaviSpeed
+import com.novadrive.app.nav.amap.RouteCameraSummary
 
 class DebugToolReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -30,6 +31,18 @@ class DebugToolReceiver : BroadcastReceiver() {
                         .setEmulatorNaviSpeed(kmh)
                     "kmh=$kmh"
                 }
+                // Calculated routes: length, time, speed-camera limits (numbers only, no coordinates).
+                "nav_route_info" -> {
+                    val paths = com.amap.api.navi.AMapNavi.getInstance(context.applicationContext).naviPaths
+                    RouteCameraSummary.format(
+                        paths.orEmpty().map { (id, p) ->
+                            RouteCameraSummary.RouteInfo(
+                                id, p.allLength, p.allTime,
+                                p.allCameras.orEmpty().mapIndexed { i, c -> c.cameraSpeed to i },
+                            )
+                        },
+                    )
+                }
                 // The SDK speaks the current guidance now, through its own TTS path (onPlayStart/End):
                 // lets the harness start a prompt at a chosen moment in a driver utterance (SPEC-012 R0).
                 "nav_read" -> {
@@ -40,6 +53,9 @@ class DebugToolReceiver : BroadcastReceiver() {
                 }
                 "nav_overview" -> navOverview()
                 "nav_lock" -> navLock()
+                "nav_view_state" -> NavigationHostGateway.current()?.debugViewState() ?: "no live map host"
+                "nav_clear_try" -> NavigationHostGateway.current()?.debugClearRoute(arg) ?: "no live map host"
+                "amap_web_setup" -> applyAmapWebSetup(context)
                 "climate" -> climate(arg)
                 "wake" -> wake(context, arg)
                 // Cuts the realtime socket as a lost signal would, so recovery can be a scenario
@@ -53,6 +69,22 @@ class DebugToolReceiver : BroadcastReceiver() {
                 "voice" -> voice(context, arg)
                 // Reads filesDir/qwen_setup.txt (workspace, then key). The broadcast arg is never the secret.
                 "qwen_setup" -> applyQwenSetup(context)
+                // Reads filesDir/gemini_setup.txt (the key). The broadcast arg is never the secret.
+                "gemini_setup" -> applyGeminiSetup(context)
+                // In-memory, debug-only provider override (2026-10-15): `gemini` | `clear`; next session.
+                "provider" -> provider(arg)
+                // P62: SPEC-018's developer toggle 「助手播报导航（实验）」, read when the map host is
+                // created (restart the app after it): `on` | `on:<deadlineMs>` (measurement) | `off`.
+                "guidance_relay" -> guidanceRelay(context, arg)
+                // Piece check (owner rule 2026-10-16): the over-speed sentence through the real speak
+                // path (relay or alert queue), without waiting for a route that passes a camera.
+                "speak_alert" -> {
+                    val limit = arg.toIntOrNull() ?: 60
+                    com.novadrive.app.nav.amap.AmapGuidanceVoice.speakAlert(com.novadrive.app.nav.amap.OverspeedAlert.sentence(limit)) {
+                        NavigationHostGateway.current()?.isNavigating == true
+                    }
+                    "alert_posted limitKmh=$limit"
+                }
                 // Host audio bridge (PC mic in, PC speakers out): arg `on:<port>` | `off` | `status`.
                 "bridge" -> when {
                     arg.startsWith("on") -> {
@@ -354,6 +386,23 @@ class DebugToolReceiver : BroadcastReceiver() {
      * Debug-only. A two-line file in the app's files dir: workspace id, then the API key.
      * The broadcast never carries either value, and neither is logged. The file is deleted.
      */
+    /** Same pattern as qwen_setup: the Amap web-service key from a pushed file, which is deleted. */
+    private fun applyAmapWebSetup(context: Context): String {
+        val file = java.io.File(context.filesDir, "amap_web_setup.txt")
+        if (!file.isFile) return "missing"
+        return try {
+            val key = file.readLines().firstOrNull()?.trim().orEmpty()
+            if (key.isEmpty()) return "invalid"
+            val repo = AmapSettingsRepository(context.applicationContext)
+            repo.save(CredentialUpdate.Replace(key))
+            if (repo.isConfigured()) "applied" else "rejected"
+        } catch (_: Exception) {
+            "failed"
+        } finally {
+            file.delete()
+        }
+    }
+
     private fun applyQwenSetup(context: Context): String {
         val file = java.io.File(context.filesDir, "qwen_setup.txt")
         if (!file.isFile) return "missing"
@@ -376,13 +425,42 @@ class DebugToolReceiver : BroadcastReceiver() {
         }
     }
 
+    /**
+     * Debug-only. A one-line file in the app's files dir: the Gemini API key. Stored with consent
+     * through the Gemini settings repository; never in the broadcast, never logged; the file is deleted.
+     */
+    private fun applyGeminiSetup(context: Context): String {
+        val file = java.io.File(context.filesDir, "gemini_setup.txt")
+        if (!file.isFile) return "missing"
+        return try {
+            val key = file.readLines().firstOrNull()?.trim().orEmpty()
+            val repo = GeminiSettingsRepository(context.applicationContext)
+            repo.save(repo.loadSettings().copy(consentAccepted = true), CredentialUpdate.Replace(key))
+            if (repo.debugOverrideProblem() == null) "applied" else "rejected"
+        } catch (e: IllegalArgumentException) {
+            e.message?.takeIf { it.startsWith("GEMINI_") } ?: "invalid"
+        } catch (_: Exception) {
+            "failed"
+        } finally {
+            file.delete()
+        }
+    }
+
     companion object {
+        /** `provider` tool: sets or clears the in-memory override; anything else changes nothing. */
+        internal fun provider(arg: String): String = when (arg.trim().lowercase()) {
+            "gemini" -> { DebugProviderOverride.set(true); "override=gemini_live next_session" }
+            "clear" -> { DebugProviderOverride.set(false); "override=none next_session" }
+            else -> "usage: provider:gemini|clear"
+        }
+
         /** Broadcast arguments that must never reach the log. */
         internal fun safeDebugArg(tool: String?, arg: String): String = when {
-            tool == "qwen_setup" -> "<redacted>"
+            tool == "qwen_setup" || tool == "gemini_setup" || tool == "amap_web_setup" -> "<redacted>"
             tool == "preflight" -> "<query>" // a destination is close to an address: never in the log
             tool == "nav_desk_origin" || arg.startsWith("@") -> "<redacted>"
             tool == "dispatch" -> redactDispatchArg(arg)
+            tool == "turn" -> "<text>" // what the driver said: never in the log (AGENTS.md)
             else -> arg
         }
 
@@ -402,6 +480,17 @@ class DebugToolReceiver : BroadcastReceiver() {
                 .filter { json.has(it) }
                 .joinToString(" ") { "$it=${json.get(it)}" }
         }
+    }
+
+    private fun guidanceRelay(context: Context, arg: String): String {
+        val on = arg.startsWith("on")
+        val deadline = if (on) arg.substringAfter(':', "").toLongOrNull()?.coerceIn(500L, 8_000L) else null
+        val prefs = context.getSharedPreferences(com.novadrive.app.nav.amap.AmapGuidanceVoice.PREFS, Context.MODE_PRIVATE)
+        prefs.edit()
+            .putBoolean(com.novadrive.app.nav.amap.AmapGuidanceVoice.PREF_ASSISTANT_VOICE, on)
+            .putLong(com.novadrive.app.nav.amap.AmapGuidanceVoice.PREF_DEBUG_DEADLINE_MS, deadline ?: 0L)
+            .commit()
+        return "relay=${if (on) "on" else "off"} deadline_ms=${deadline ?: "default"} next_map_host"
     }
 
     /**

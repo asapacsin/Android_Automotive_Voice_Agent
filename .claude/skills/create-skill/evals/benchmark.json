@@ -1,0 +1,16 @@
+{
+  "skill_name": "create-skill",
+  "date": "2026-10-17",
+  "method": "each prompt planned by two fresh read-only reviewer subagents: with the skill (told to read it) and baseline (told not to read .claude/skills/); assertions graded by the planner from the returned plans",
+  "results": [
+    {"eval": 1, "with_skill": "5/6", "baseline": "6/6", "with_s": 51, "baseline_s": 67, "with_tokens": 34782, "baseline_tokens": 33516,
+     "note": "both chose to change existing owners, not a new skill; the baseline added a tested --refresh flag, the skill run a procedure edit with no test"},
+    {"eval": 2, "with_skill": "4/4", "baseline": "3/4", "with_s": 40, "baseline_s": 42, "with_tokens": 38447, "baseline_tokens": 31075,
+     "note": "the baseline invented a parallel config/demo_pieces.yaml + demo_gate.py; the skill run extended test_matrix.py"},
+    {"eval": 3, "with_skill": "6/6", "baseline": "5/6", "with_s": 30, "baseline_s": 34, "with_tokens": 32278, "baseline_tokens": 27368,
+     "note": "only the skill run put real incident gotchas in the new skill (summed debug+release counts 412fd74, reviews.log before merge, WAIVED wording)"}
+  ],
+  "total": {"with_skill": "15/16", "baseline": "14/16", "time": "faster in 3/3", "tokens": "+14% average"},
+  "verdict": "lands: small but consistent gain on the judgement path; the baseline is already strong because SKILL_POLICY and AGENTS.md carry the script-first rule",
+  "caveat": "baseline runs can see the AGENTS.md line naming .claude/skills/ (added in the same change), so the format assertion is not a clean contrast"
+}

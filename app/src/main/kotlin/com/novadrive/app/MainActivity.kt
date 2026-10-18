@@ -208,8 +208,9 @@ class MainActivity : Activity() {
         val code = VoiceProviderChoice.startProblem(
             geminiSettings.choice(),
             qwen = { QwenSettingsRepository(this).configProblem() },
-            gemini = { geminiSettings.configProblem() },
-            azure = { AzureSpeechSettingsRepository(this).configProblem() },
+            // GEMINI_LIVE is reachable only through the debug override: its own checks, no Azure voice.
+            gemini = { geminiSettings.debugOverrideProblem() },
+            azure = { null },
         )
         if (code == null) {
             if (::screen.isInitialized) screen.clearError(CONFIG_ERROR)
@@ -357,11 +358,11 @@ class MainActivity : Activity() {
         return try {
             sessionConfigFor(
                 choice,
+                // Only the debug override reaches this (2026-10-15): the JVM harness's config, the
+                // harness model and Gemini's own voice; a missing key/consent throws GEMINI_*, never Qwen.
                 gemini = {
-                    val voice = AzureSpeechSettingsRepository(this).config()
-                    DebugVoiceLog.log("assistant_voice enabled=${voice != null}")
-                    gemini.config(instructions = settingsRepository.loadSettings().instructions)
-                        .copy(assistantVoice = voice)
+                    DebugVoiceLog.log("assistant_voice enabled=false")
+                    gemini.debugOverrideConfig(instructions = settingsRepository.loadSettings().instructions)
                 },
                 baidu = { settingsRepository.config() },
                 qwen = {

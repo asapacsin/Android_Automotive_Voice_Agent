@@ -13,7 +13,7 @@ object BodyDomain : ToolDomain {
     override fun specs(): List<ToolSpec> {
         val controlWindow = spec(
             name = "control_window",
-            description = "控制车窗（模拟）。「打开车窗」open；「关窗」close；「车窗开一半」set,value=50；「开一点主驾车窗」adjust,window=driver,value=20；「副驾关小一点」adjust,window=passenger,value=-20；「车窗开了多少」get_state。未指明窗时 window=all。只按返回的 windows/announce 确认；ok=false 如实说没成功。",
+            description = "控制车窗（模拟）。「打开车窗」open；「关窗」close；「车窗开一半」set,value=50；「开一点主驾车窗」「我这边的窗户开一点」adjust,window=driver,value=20；「副驾关小一点」adjust,window=passenger,value=-20；「车窗开了多少」get_state。我这边、我这侧是主驾，不是未指明。未指明窗时 window=all。只按返回的 windows/announce 确认；ok=false 如实说没成功。",
             properties = JSONObject()
                 .put("action", JSONObject().put("type", "string").put("enum", JSONArray(WindowToolHandler.ACTIONS)))
                 .put("window", JSONObject().put("type", "string").put("enum", JSONArray(WindowToolHandler.WINDOWS)))
