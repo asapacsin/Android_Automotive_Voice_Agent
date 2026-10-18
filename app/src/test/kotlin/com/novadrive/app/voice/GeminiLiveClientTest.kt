@@ -1587,7 +1587,7 @@ class GeminiLiveClientTest {
             fake.send(content(""""waitingForInput":true,"modelTurn":{"parts":[{"text":"秘密文本"}]}"""))
             waitUntil { lines.snap().any { it.startsWith("gemini_content_no_turn") } }
             val line = lines.snap().first { it.startsWith("gemini_content_no_turn") }
-            assertEquals("gemini_content_no_turn kind=modelTurn+waitingForInput audio=0 text_parts=1 calls=0", line)
+            assertEquals("gemini_content_no_turn kind=modelTurn+waitingForInput audio=0 text_parts=1", line)
             assertTrue(lines.snap().any { it == "gemini_server_meta waiting_for_input=true text_parts=1" })
             assertTrue(lines.snap().none { "秘密文本" in it })
         }
@@ -1606,21 +1606,51 @@ class GeminiLiveClientTest {
     @Test
     fun anOpenTurnQuietFiveSecondsLogsTurnQuiet() = logged { lines ->
         runBlocking {
+            // Smoke only: the timing itself is GeminiTurnDiagnosticsTest's (virtual time).
             val fake = fake()
             val client = client()
-            client.diagnostics.quietMs = 200
+            client.diagnostics.quietMs = 300
             client.connect(config())
             fake.send(audio())
-            fake.send(output("你好"))
-            waitUntil { lines.snap().any { it.startsWith("gemini_turn_quiet") } }
-            Thread.sleep(500)
-            val quiet = lines.snap().filter { it.startsWith("gemini_turn_quiet") }
-            assertEquals(1, quiet.size, "once per quiet stretch: $quiet")
-            assertTrue(Regex("gemini_turn_quiet ms=\\d+ msgs=2").matches(quiet[0]), quiet[0])
+            waitUntil { lines.snap().any { it.startsWith("gemini_turn_quiet ") } }
+        }
+    }
+
+    @Test
+    fun audioWithNoTurnOpenOpensTheTurnAndIsNotContentWithoutATurn() = logged { lines ->
+        runBlocking {
+            val fake = fake()
+            client().connect(config())
+            fake.send(audio())
+            waitUntil { lines.snap().contains("gemini_turn_open") }
+            assertTrue(lines.snap().none { it.startsWith("gemini_content_no_turn") })
+        }
+    }
+
+    @Test
+    fun anInputTranscriptWithNoTurnOpenIsLoggedWithoutItsText() = logged { lines ->
+        runBlocking {
+            val fake = fake()
+            client().connect(config())
+            fake.send(input("别说出来"))
+            waitUntil { lines.snap().any { it.startsWith("gemini_content_no_turn") } }
+            assertEquals(listOf("gemini_content_no_turn kind=inputTranscription audio=0 text_parts=0"), lines.snap().filter { it.startsWith("gemini_content_no_turn") })
+            assertTrue(lines.snap().none { "别说出来" in it })
+        }
+    }
+
+    @Test
+    fun activityStartBeforeATranscriptLogsFirstTranscriptNone() = logged { lines ->
+        runBlocking {
+            val fake = fake()
+            client().connect(config())
+            fake.send(voiceActivity("ACTIVITY_END"))
+            fake.send(voiceActivity("ACTIVITY_START"))
+            fake.send(input("x"))
             fake.send(turnComplete)
-            waitUntil { lines.snap().any { it.startsWith("gemini_turn_done") } }
-            Thread.sleep(400)
-            assertEquals(1, lines.snap().count { it.startsWith("gemini_turn_quiet") })
+            waitUntil { lines.snap().any { it.startsWith("gemini_turn_empty") } }
+            val first = lines.snap().filter { it.startsWith("gemini_first_transcript") }
+            assertEquals(listOf("gemini_first_transcript ms=none"), first)
         }
     }
 
@@ -1650,22 +1680,26 @@ class GeminiLiveClientTest {
         runBlocking {
             val fake = fake()
             val client = client()
-            client.diagnostics.quietMs = 100
             client.connect(config())
             fake.send(voiceActivity("ACTIVITY_END"))
             fake.send(content(""""inputTranscription":{"text":"驾驶员原话"},"interimInputTranscription":{"text":"驾驶员中间"}"""))
-            fake.send(content(""""modelTurn":{"parts":[{"text":"模型文字"}]},"usageMetadata":{}"""))
+            fake.send(content(""""modelTurn":{"parts":[{"text":"模型文字"},{"text":"思考内容","thought":true}]}"""))
             fake.send(audio())
             fake.send(output("助手回复"))
-            waitUntil { lines.snap().any { it.startsWith("gemini_turn_quiet") } }
-            fake.send(turnComplete)
+            fake.send(
+                """{"serverContent":{"turnComplete":true},"usageMetadata":{"responseTokenCount":9,""" +
+                    """"responseTokensDetails":[{"modality":"AUDIO","tokenCount":7},{"modality":"TEXT","tokenCount":2}]}}""",
+            )
             fake.send(turnComplete)
             waitUntil { lines.snap().any { it.startsWith("gemini_turn_empty") } }
             val all = lines.snap()
             listOf("驾驶员原话", "驾驶员中间", "模型文字", "助手回复").forEach { word ->
                 assertTrue(all.none { word in it }, "$word leaked")
             }
+            listOf("思考内容").forEach { word -> assertTrue(all.none { word in it }, "$word leaked") }
             assertTrue(all.any { it.startsWith("gemini_server_meta") && "interim_input=true" in it })
+            assertTrue(all.any { it == "gemini_server_meta response_tokens=TOTAL:9,AUDIO:7,TEXT:2" }, all.toString())
+            assertTrue(all.contains("gemini_thought_dropped parts=1"))
         }
     }
 }

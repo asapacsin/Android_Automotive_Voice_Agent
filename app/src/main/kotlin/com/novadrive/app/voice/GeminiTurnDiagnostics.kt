@@ -21,12 +21,26 @@ internal class GeminiTurnDiagnostics(
     @Volatile private var lastMessageAt = 0L
     @Volatile private var turnMessages = 0
     @Volatile private var quietJob: Job? = null
+    @Volatile private var turnGenerationDone = false
+    @Volatile private var turnCalls = 0
     private var activityEndAt: Long? = null
+    /** The message being handled: when it opens a turn, its own call and generationComplete count. */
+    private var opening: GeminiLiveProtocol.ServerMessage? = null
+
+    /** A new connection or a dropped one: no utterance is pending a first transcript. */
+    fun reset() {
+        activityEndAt = null
+    }
 
     fun message(m: GeminiLiveProtocol.ServerMessage, turnOpen: Boolean) {
         val now = nowMs()
+        opening = m
         if (m.thoughtParts > 0) DebugVoiceLog.log("gemini_thought_dropped parts=${m.thoughtParts}")
         m.voiceActivity?.let { DebugVoiceLog.log("gemini_voice_activity type=$it") }
+        if (m.voiceActivity == GeminiLiveProtocol.ACTIVITY_START && activityEndAt != null) {
+            DebugVoiceLog.log("gemini_first_transcript ms=none")
+            activityEndAt = null
+        }
         if (m.voiceActivity == GeminiLiveProtocol.ACTIVITY_END) activityEndAt = now
         if (m.inputTranscription != null) {
             activityEndAt?.let { DebugVoiceLog.log("gemini_first_transcript ms=${now - it}") }
@@ -36,16 +50,16 @@ internal class GeminiTurnDiagnostics(
             m.waitingForInput?.let { add("waiting_for_input=$it") }
             if (m.textParts > 0) add("text_parts=${m.textParts}")
             if (m.interimInput) add("interim_input=true")
-            if (m.responseTokens.isNotEmpty()) add("response_tokens=" + m.responseTokens.entries.joinToString(",") { "${it.key}:${it.value}" })
+            if (m.responseTokens.isNotEmpty() && (m.turnComplete || m.generationComplete)) add("response_tokens=" + m.responseTokens.entries.joinToString(",") { "${it.key}:${it.value}" })
         }
         if (meta.isNotEmpty()) DebugVoiceLog.log("gemini_server_meta " + meta.joinToString(" "))
-        if (!turnOpen && m.contentFields.isNotEmpty()) {
-            DebugVoiceLog.log(
-                "gemini_content_no_turn kind=${m.contentFields.joinToString("+")} audio=${m.audio.size} " +
-                    "text_parts=${m.textParts} calls=${m.toolCalls.size}",
-            )
+        // A message with audio or a call opens the turn itself: that is not content without a turn.
+        if (!turnOpen && m.contentFields.isNotEmpty() && m.audio.isEmpty() && m.toolCalls.isEmpty()) {
+            DebugVoiceLog.log("gemini_content_no_turn kind=${m.contentFields.joinToString("+")} audio=${m.audio.size} text_parts=${m.textParts}")
         }
         if (turnOpen) {
+            if (m.generationComplete) turnGenerationDone = true
+            turnCalls += m.toolCalls.size
             turnMessages++
             lastMessageAt = now
             armQuiet()
@@ -54,6 +68,8 @@ internal class GeminiTurnDiagnostics(
 
     fun turnOpened() {
         turnMessages = 1
+        turnGenerationDone = opening?.generationComplete == true
+        turnCalls = opening?.toolCalls?.size ?: 0
         lastMessageAt = nowMs()
         armQuiet()
     }
@@ -68,7 +84,7 @@ internal class GeminiTurnDiagnostics(
         val wait = quietMs
         quietJob = scope.launch {
             delay(wait)
-            DebugVoiceLog.log("gemini_turn_quiet ms=${nowMs() - lastMessageAt} msgs=$turnMessages")
+            DebugVoiceLog.log("gemini_turn_quiet ms=${nowMs() - lastMessageAt} msgs=$turnMessages gen=$turnGenerationDone calls=$turnCalls")
         }
     }
 }

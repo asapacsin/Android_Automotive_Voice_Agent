@@ -220,7 +220,7 @@ object GeminiLiveProtocol {
                 waitingForInput = if (content.has("waitingForInput")) content.optBoolean("waitingForInput", false) else null,
                 textParts = textParts,
                 interimInput = content.has("interimInputTranscription"),
-                contentFields = content.keys().asSequence().toList().sorted(),
+                contentFields = content.keys().asSequence().map { k -> k.filter { it in 'A'..'Z' || it in 'a'..'z' || it in '0'..'9' || it == '_' } }.filter { it.isNotEmpty() }.toList().sorted(),
             )
         }
         raw.optJSONObject("usageMetadata")?.let { usage ->
@@ -229,7 +229,7 @@ object GeminiLiveProtocol {
             usage.optJSONArray("responseTokensDetails")?.let { details ->
                 for (i in 0 until details.length()) {
                     val d = details.optJSONObject(i) ?: continue
-                    tokens[d.optString("modality").ifEmpty { "UNKNOWN" }.filter { it.isLetterOrDigit() || it == '_' }] = d.optInt("tokenCount")
+                    tokens[d.optString("modality").ifEmpty { "UNKNOWN" }.filter { it in 'A'..'Z' || it in 'a'..'z' || it in '0'..'9' || it == '_' }] = d.optInt("tokenCount")
                 }
             }
             message = message.copy(responseTokens = tokens)

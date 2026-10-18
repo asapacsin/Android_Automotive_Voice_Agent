@@ -285,7 +285,7 @@ class GeminiLiveClient(
 
     private fun resetTurn() {
         clearTurnState()
-        inputText.setLength(0)
+        inputText.setLength(0); diagnostics.reset()
         strayOutput.setLength(0)
     }
 
