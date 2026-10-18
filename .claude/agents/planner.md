@@ -145,6 +145,10 @@ REQUIRED_RETURN_FORMAT: the executor return block (see .claude/agents/executor.m
 
 ## 8. Architecture escalation
 
+Any architecture selection (a new subsystem, a technology or SDK, a component pattern, an ADR)
+starts with the `architecture-designer` skill (owner, 2026-10-19; `AGENTS.md` hard rule); its
+output goes to the decider or this escalation, never straight into a wave.
+
 When evidence shows a constraint prevents correctness, is self-contradictory, or conflicts with
 the request, stop that path (other independent paths may continue) and report:
 

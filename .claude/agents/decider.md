@@ -22,6 +22,10 @@ only the owner can.
 3. Research how others solved it (`AGENTS.md` rule 6): vendor docs, changelogs, issues, community
    write-ups. Say what you found, or "searched, nothing found".
 4. Add an option the asker missed if the evidence points to it.
+5. When the choice is an architecture selection (subsystem, technology/SDK, component pattern, an
+   ADR), apply `.claude/skills/architecture-designer/SKILL.md` and its `references/` (owner,
+   2026-10-19): requirements with the NFR checklist, alternatives, trade-offs, failure modes and
+   operational cost, within this repository's ADRs and invariants.
 
 ## Decide
 

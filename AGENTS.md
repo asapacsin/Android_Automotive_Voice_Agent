@@ -220,6 +220,17 @@ does not change architecture ownership, invariants, or who may certify work. Age
   This does not replace `ARCHITECTURE_REVIEW_REQUIRED`: changing an ADR, an invariant or a contract
   still goes to the owner through `agent/INTAKE.md`.
 
+- **Architecture selection runs through the `architecture-designer` skill** (owner, 2026-10-19).
+  Every time work chooses an architecture - a new subsystem or foundation, a technology, SDK or
+  framework, a pattern between components, a new ADR, or a decider question of that kind - load
+  [`.claude/skills/architecture-designer/SKILL.md`](.claude/skills/architecture-designer/SKILL.md)
+  first and follow its workflow (requirements and the NFR checklist, patterns, trade-offs,
+  alternatives, risks). Claude Code invokes it as the skill; Codex and Cursor read the file. It is
+  the method, not a second authority: this repository's ADRs, INVARIANTS and SPECs bind its
+  options, a settled ADR is still reopened only with new evidence, its "review with stakeholders"
+  is the decider and then the owner as the rule above says, and an ADR it produces uses the
+  `DECISIONS/` format and goes through `agent/INTAKE.md` when it changes a contract. Source and
+  review: `.claude/skills/architecture-designer/SOURCE.md`.
 - **Measure the time every piece of work took, and make the slow parts faster** (owner, 2026-10-17).
   When a task, fix or test finishes, record its wall-clock minutes and attempts with the
   efficiency verdict in the handoff record (`scripts/skill_event.py --minutes --attempts

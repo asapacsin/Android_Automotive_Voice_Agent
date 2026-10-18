@@ -1,21 +1,21 @@
 {
-  "generated_at": "2026-10-18T22:54:01",
+  "generated_at": "2026-10-18T23:24:15",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "706b6d0",
+    "commit": "99802df",
     "branch": "claude/10-19",
-    "subject": "CI: emulator workflows also run on pushes to claude/10-19",
+    "subject": "vendor-stub README: record the jar search, and correct ae308d1",
     "working_tree_clean": false,
-    "uncommitted_files": 6
+    "uncommitted_files": 4
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-10-18T22:50:40",
+    "collected_at": "2026-10-18T23:16:39",
     "total": {
-      "tests": 313,
+      "tests": 2318,
       "failures": 1,
       "errors": 0,
-      "skipped": 0
+      "skipped": 5
     },
     "by_module": {
       "evaluation": {
@@ -23,6 +23,12 @@
         "failures": 0,
         "errors": 0,
         "skipped": 0
+      },
+      "app": {
+        "tests": 2005,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 5
       },
       "simulator": {
         "tests": 25,
