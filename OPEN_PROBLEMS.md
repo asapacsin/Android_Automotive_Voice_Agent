@@ -1806,6 +1806,13 @@ u_temp still misses its 3.5 s limit (honest).
   - t/128155 – auto VAD alone doesn't reliably trigger; a 3.0 s fallback;
   - t/142838 – activityEnd sent, never responds.
 - No vendor fix documented. GitHub issues were not searchable from this session.
+- DashScope / Model Studio server events (help.aliyun.com/zh/model-studio/server-events, read
+  2026-10-18): `error` carries its own event_id and error.{type,code,message,param}, and no field
+  names the client event that caused it. A busy rejection cannot be matched to the re-ask, so the
+  re-ask stays pending until its own busy error or a response.done (Unit 2a review R1).
+  Inherent residual: between sending the re-ask and its response.created, an app turn refused as
+  busy could be counted as the re-ask's rejection and dropped. The window is narrow, and the final
+  cue holds the gate.
 
 ## P46 — Assistant-spoken guidance (SPEC-018) gives up on the first prompt and never comes back
 
