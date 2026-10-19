@@ -1,3 +1,4 @@
 TC-1 0e25324d1ada289360ba0fd63914ec8c5893e66a3facce6e0bb341a29ef0b76d APPROVED 2026-10-19 architect TC-1 from token report, live trial of the contract flow
 P67-LOG 5cadcac3f3bb00e0109e594c535f2e7a480dc8d14039847d9a5834e2c5820e87 APPROVED 2026-10-19 planner P67 diagnosis log per OPEN_PROBLEMS next step
 GEM-1007 7105e7469b561bc7fbf3e9de471184fb24ca1d166cf5393e45bc6a09aeb05983 APPROVED 2026-10-19 planner voice checks run 39252810141 misreported an invalid key as malformed setup
+P67-FIX c882b473b459da65671cf65a94882906d8fe9a73e8bd6d20d83ce8212f15cdf7 APPROVED 2026-10-19 planner P67 cause from Voice checks run 39285245437 claim lines; SPEC-010 A7
