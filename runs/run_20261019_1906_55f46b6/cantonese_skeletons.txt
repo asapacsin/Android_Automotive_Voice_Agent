@@ -1,0 +1,35 @@
+-- YUE-HOME
+   test_speech_start bytes=66048
+   debug_tool tool=voice arg=say:yue_home
+   gemini_driver_turn_fallback source=voice_activity
+   gemini_voice_activity type=ACTIVITY_START
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=952 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   test_speech_end frames=222 elapsedMs=2255
+   gemini_content_no_turn kind=inputTranscription audio=0 text_parts=0
+   gemini_voice_activity type=ACTIVITY_END
+   ctx_hint epoch=1 referents=none pending=0
+   TURN_HOLD epoch=1 reason=UNCLASSIFIED_CLAIM kind=CONVERSATION durationMs=-1
+   gemini_turn_open
+   gemini_tool_call id=fc_9940688527303966965 tool=control_music args=valid
+   state=LISTENING err=-
+   state=LISTENING err=-
+   claim src=MODEL tool=control_music group=playback epoch=1 ctx=112477736 ok=true
+   tool=control_music args=[action] result=✓ control_music
+   state=LISTENING err=-
+   gemini_tool_response id=fc_9940688527303966965 chars=59
+   transcript_bubble_shown
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   transcript_bubble_shown
+   gemini_server_meta response_tokens=TOTAL:45,AUDIO:33
+   gemini_turn_done status=completed calls=1 spoke=true dur_ms=2102 first_audio_ms=867 first_text_ms=867 gen_ms=1117 msgs=13 max_gap_ms=567
+   state=LISTENING err=-
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=1451 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=1952 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
