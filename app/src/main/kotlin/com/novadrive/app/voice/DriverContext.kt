@@ -203,9 +203,19 @@ class DriverContext(private val clock: () -> Long = { System.currentTimeMillis()
      * The key is the control, not the action (P67): the local path ran `control_climate power_on`
      * for 「空调」 and the model's `power_off` for the same utterance ran too, so opposite actions on
      * one control must share a claim. See [controlGroup].
+     *
+     * A read (`get_state`) is not a control (P67, Voice checks run 39285245437 at c6b2790: LOCAL
+     * group=power, then MODEL group=get_state, same epoch and ctx, executed). A MODEL read is
+     * refused when LOCAL holds any claim on this epoch and tool, and a read is never recorded, so
+     * it cannot block a later LOCAL or MODEL claim.
      */
     fun claimCapability(epoch: Long, tool: String, action: String?, source: ClaimSource): Boolean =
         synchronized(lock) {
+            if (action == "get_state") {
+                if (source == ClaimSource.LOCAL) return@synchronized true
+                val prefix = "$epoch|$tool|"
+                return@synchronized capabilities.none { it.value == ClaimSource.LOCAL && it.key.startsWith(prefix) }
+            }
             val key = "$epoch|$tool|${controlGroup(tool, action)}"
             val first = capabilities.getOrPut(key) { source }
             first == source

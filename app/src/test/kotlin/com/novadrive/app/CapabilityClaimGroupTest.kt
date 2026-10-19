@@ -47,4 +47,18 @@ class CapabilityClaimGroupTest {
         assertTrue(ctx.claimCapability(1, climate, "power_on", MODEL))
         assertTrue(ctx.claimCapability(1, climate, "power_off", MODEL))
     }
+
+    @Test fun `model get_state after local power is refused`() {
+        assertTrue(ctx.claimCapability(1, climate, "power_on", LOCAL))
+        assertFalse(ctx.claimCapability(1, climate, "get_state", MODEL))
+    }
+
+    @Test fun `model get_state first never blocks local power`() {
+        assertTrue(ctx.claimCapability(1, climate, "get_state", MODEL))
+        assertTrue(ctx.claimCapability(1, climate, "power_on", LOCAL))
+    }
+
+    @Test fun `model get_state with no local claim is allowed`() {
+        assertTrue(ctx.claimCapability(1, climate, "get_state", MODEL))
+    }
 }
