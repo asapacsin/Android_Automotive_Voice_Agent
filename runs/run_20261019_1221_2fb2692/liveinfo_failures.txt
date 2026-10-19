@@ -1,0 +1,5 @@
+     10           expected /kind=along_route/
+     10           expected /kind=place_details/
+     10           expected /kind=route_traffic/
+     10           expected /kind=weather/
+     40           expected /tool=query_live_info/

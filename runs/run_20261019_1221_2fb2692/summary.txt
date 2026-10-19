@@ -1,0 +1,22 @@
+app: map up
+secret AMAP_WEB_KEY: set, amap_web_setup -> result=applied 
+secret GEMINI_API_KEY: set, gemini_setup -> result=applied 
+voice: provider override -> result=override=gemini 
+voice: session_provider choice=gemini_live
+voice: session did not report ready (state=DISCONNECTED state=DISCONNECTED )
+voice: runner rc=1
+voice: scenarios FAIL S1 FAIL S2 FAIL S3 FAIL S4 FAIL S4b FAIL S5 FAIL S5b FAIL S6 FAIL S7 FAIL S8 FAIL S9 PASS S11 FAIL S10 FAIL S12 FAIL S13 FAIL S14 PASS S15 FAIL S16 FAIL S17 FAIL S18 FAIL S19 PASS S20 FAIL S21 FAIL S1 FAIL S2 FAIL S3 FAIL S4 FAIL S4b FAIL S5 FAIL S5b FAIL S6 FAIL S7 FAIL S8 FAIL S9 ok S11 FAIL S10 FAIL S12 FAIL S13 FAIL S14 ok S15 FAIL S16 FAIL S17 FAIL S18 FAIL S19 ok S20 FAIL S21 
+voice: session errors=24 provider_lines= 24 session_provider choice=gemini_live  quota_guard=0
+0
+suite cantonese: runner rc=1
+suite cantonese:  guard=0
+suite device: runner rc=1
+suite device: FAIL AFF-PAUSE 0/1 FAIL AFF-AC 0/1 FAIL AFF-RECENTER 0/1 FAIL NEWS 0/1 FAIL VISION 0/1 FAIL FZ-MOSQ 0/1 FAIL FZ-MOSQ-DONE 0/1 FAIL FZ-SEAT 0/1 FAIL FZ-LOWER 0/1 FAIL FZ-DROWSY 0/1  guard=0
+suite liveinfo: runner rc=1
+suite liveinfo: FAIL LI-WEATHER 0/10 FAIL LI-PLACE 0/10 FAIL LI-TRAFFIC 0/10 FAIL LI-ALONG 0/10  guard=0
+WAKE-SYNTH-001: wake on -> result=wake  status: enabled=true credentials_complete=false 
+WAKE-SYNTH-001: wake inject -> result=injecting  detection=0 to_active=0 provider= wake_lines= 1 wake_capture_started; 10 wake_init_failure;
+demo: bridge rc=0
+demo: provider=session_provider choice=gemini_live tools= 2 tool=bridge  1 tool=provider  1 tool=voice  errors=1
+demo: voice_demo.mp4 written (audio offset 0.0 s)
+voice: done, override cleared

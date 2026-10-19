@@ -1,0 +1,42 @@
+-- S1
+   debug_tool tool=voice arg=say:temp24
+-- S2
+   debug_tool tool=voice arg=say:ctx_too_hot
+-- S3
+   debug_tool tool=voice arg=say:nav_home
+-- S4
+   debug_tool tool=voice arg=say:music_on
+-- S4b
+   debug_tool tool=voice arg=say:media_named_song
+-- S5
+   debug_tool tool=voice arg=say:nav_zhuhai
+-- S5b
+   debug_tool tool=voice arg=say:pick_second
+-- S6
+   debug_tool tool=voice arg=say:cancel
+-- S7
+   debug_tool tool=voice arg=say:chat_q
+-- S8
+   debug_tool tool=voice arg=say:ac_off
+-- S9
+   debug_tool tool=voice arg=say:shut_up_zh
+-- S10
+   debug_tool tool=voice arg=say:go_sleep_zh
+-- S12
+   debug_tool tool=voice arg=say:ctx_too_hot
+   debug_tool tool=voice arg=say:ctx_cooler
+-- S13
+   debug_tool tool=voice arg=say:nav_zhuhai
+   debug_tool tool=voice arg=say:nav_fix
+-- S14
+   debug_tool tool=voice arg=say:claim_bait
+-- S16
+   debug_tool tool=voice arg=say:ambig_lower
+-- S17
+   debug_tool tool=voice arg=say:multi_step
+-- S18
+   debug_tool tool=voice arg=say:ac_on
+-- S19
+   debug_tool tool=voice arg=say:camera_q
+-- S21
+   debug_tool tool=voice arg=say:help_gan_sha

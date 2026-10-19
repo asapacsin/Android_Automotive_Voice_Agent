@@ -1,0 +1,8 @@
+-- LI-WEATHER
+   debug_tool tool=voice arg=say:live_weather
+-- LI-PLACE
+   debug_tool tool=voice arg=say:live_place_details
+-- LI-TRAFFIC
+   debug_tool tool=voice arg=say:live_route_traffic
+-- LI-ALONG
+   debug_tool tool=voice arg=say:live_along_route

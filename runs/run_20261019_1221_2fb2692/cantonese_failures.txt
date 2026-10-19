@@ -1,0 +1,2 @@
+      1           expected /^tool=control_climate|^fz_scenario name=stuffy steps=[0-9]+ ok=[1-9]/
+      1           expected /^tool=navigate_to/
