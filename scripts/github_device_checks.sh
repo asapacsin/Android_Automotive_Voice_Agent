@@ -196,15 +196,18 @@ p59_round() { # variant
   if [ "$1" != "none" ]; then tool nav_clear_try "$1"; sleep 3; shot "p59_${1}_after"; fi
   local calc; calc="$(count 'nav_calc_success')"
   [ "$calc" -ge 1 ] || p59_bad=$((p59_bad + 1))
-  note "P59 $1: candidates=$(count 'nav_resolve_candidates') calc=$calc cancelled=$(count 'nav_flow_cancelled') clear=$(nova | grep 'debug_tool tool=nav_clear_try' | tail -1 | grep -oE 'result=[a-zA-Z_ =]+' | head -1)"
+  note "P59 $1: candidates=$(count 'nav_resolve_candidates') calc=$calc cancelled=$(count 'nav_flow_cancelled') clear=$(nova | grep 'debug_tool tool=nav_clear_try' | tail -1 | grep -oE 'result=[a-zA-Z0-9_ =,]+' | head -1)"
 }
 p59_bad=0
 if [ "${web_key:-0}" = 1 ]; then
   adb shell am force-stop com.novadrive.app; app_up || true
-  for v in none stopnavi markers idle map_clear; do p59_round "$v"; done
-  # After map_clear the next route must still draw.
+  # 2026-10-19 (real-vendor run 39177948610): the first four variants leave the route line. The
+  # next three are the untried ones (route drawing switched off; the view's own RouteOverLays).
+  for v in none stopnavi markers idle map_clear overlay_reflect autodraw_toggle autodraw_off; do p59_round "$v"; done
+  # autodraw_off persists in the view: switch drawing back on so the last round must draw again.
+  tool nav_clear_try autodraw_on; sleep 2
   p59_round none2
-  pf device:P59 "rounds_without_route=$p59_bad/6" '[ "$p59_bad" = 0 ]'
+  pf device:P59 "rounds_without_route=$p59_bad/9" '[ "$p59_bad" = 0 ]'
 else
   res device:P59 SKIPPED "secret AMAP_WEB_KEY not set"
 fi

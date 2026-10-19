@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-18T23:46:49",
+  "generated_at": "2026-10-19T00:22:17",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "17e2b46",
+    "commit": "4412db4",
     "branch": "claude/10-19",
-    "subject": "Install the architecture-designer skill; architecture selection runs through it (owner)",
+    "subject": "Stand-in vendor builds: the decider's boundaries, two bug fixes, Tier B opt-in",
     "working_tree_clean": false,
-    "uncommitted_files": 23
+    "uncommitted_files": 4
   },
   "tests": {
     "available": true,

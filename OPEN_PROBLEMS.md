@@ -2229,6 +2229,17 @@ the destination flag stayed on the map afterwards. NAV-CANCEL-001 (S6) passes on
 (`AmapNaviViewHost` / `EmbeddedNavigationController`): the route overlay may need clearing when no
 navigation was started. Add a screenshot check to the device run.
 
+**2026-10-19, real-vendor device run 39177948610 at 4412db4** (`ci/device-evidence
+runs/run_20261019_0013_4412db4/p59_*.jpg`): still reproduces - after `exit_navigation_mode` the green
+route line stays (`p59_none_cancelled.jpg`), and stopnavi / markers / idle / map_clear leave it too.
+Next experiment (exec/p59-x): `AMapNaviViewOptions.setAutoDrawRoute(false)` (off, and off-then-on),
+and removing the view's own `BaseRouteOverLay` objects found by reflection; the device script now runs
+those rounds and restores drawing before the last round. If none works, the remaining option is drawing
+routes ourselves (`setAutoDrawRoute(false)` plus our own removable `RouteOverLay`). Research
+2026-10-19: Amap's changelog names `setRouteOverlayVisible` on the view's RouteOverlay (no public
+handle in 11.2.100); a CSDN write-up removes a self-created `RouteOverLay` with `removeFromMap`;
+nothing found for removing the auto-drawn one.
+
 ## P60 — After a dropped claim, the correction ordered an action the driver had forbidden
 
 **Status:** FIXED 2026-10-15 (JVM), live re-check in the next GitHub voice run. Found by the GitHub

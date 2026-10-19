@@ -274,7 +274,7 @@ tests:
     prerequisites: ["Amap web key configured"]
     procedure: ["dispatch save_place slot=home address=珠海站"]
     pass_criteria: ["ok=true with the RESOLVED place name", "saved_place_set slot=HOME"]
-    evidence: ["2026-09-19: place=珠海站", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator run 38766074866 at b293641 with the Amap web key from the AMAP_WEB_KEY secret (amap_web_setup applied): dispatch save_place slot=home -> ok=true, saved_place_set slot=HOME (ci/device-evidence runs/run_20261015_1632_b293641)", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): save_place home -> ok=true, saved_place_set_slot_home=1; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): save_place home -> ok=true, saved_place_set slot=home x1"]
+    evidence: ["2026-09-19: place=珠海站", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator run 38766074866 at b293641 with the Amap web key from the AMAP_WEB_KEY secret (amap_web_setup applied): dispatch save_place slot=home -> ok=true, saved_place_set slot=HOME (ci/device-evidence runs/run_20261015_1632_b293641)", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): save_place home -> ok=true, saved_place_set_slot_home=1; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): save_place home -> ok=true, saved_place_set slot=home x1", "2026-10-19 real-vendor GitHub Device checks run 39177948610 at 4412db4 (ci/device-evidence runs/run_20261019_0013_4412db4, build:vendor-real PASS): saved_place_set_slot_home=1; device check PASS - not yet bound: this cloud session has only the stub jar, so --bind must wait for a real-vendor tree"]
     evidence_bind:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:157ec0e4cef8d9960f1a42717963fe7b97c67f7bf11281a0ea6d1bc32d51c58a
@@ -322,7 +322,7 @@ tests:
     prerequisites: ["no home saved"]
     procedure: ["dispatch navigate_to destination=回家"]
     pass_criteria: ["ok=false HOME_NOT_SET, with wording that asks for the address"]
-    evidence: ["2026-09-19 device", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): dispatch navigate_to 回家 with no home -> ok=false HOME_NOT_SET, wording asks for the address", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): navigate_to 回家 with no home -> ok=false HOME_NOT_SET, asks_for_address=yes; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): navigate_to 回家 with no home -> ok=false HOME_NOT_SET, asks_for_address=yes"]
+    evidence: ["2026-09-19 device", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artifacts branch ci/device-evidence runs/run_20261015_1524_aec4006 (copies: docs/evidence/gha-2026-10-15/): dispatch navigate_to 回家 with no home -> ok=false HOME_NOT_SET, wording asks for the address", "2026-10-16 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38891892916 at 2db208c (ci/device-evidence runs/run_20261016_1134_2db208c): navigate_to 回家 with no home -> ok=false HOME_NOT_SET, asks_for_address=yes; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 x86_64 (arm64 app), device checks run 38997655759 at 87d5287 (pull_request; ci/device-evidence runs/run_20261017_0332_3464373; verdict.json from ci_verdict.py, 16/16 PASS; copies of cited screenshots: docs/evidence/gha-2026-10-17/): navigate_to 回家 with no home -> ok=false HOME_NOT_SET, asks_for_address=yes", "2026-10-19 real-vendor GitHub Device checks run 39177948610 at 4412db4 (ci/device-evidence runs/run_20261019_0013_4412db4, build:vendor-real PASS): asks_for_address=yes; device check PASS - not yet bound: this cloud session has only the stub jar, so --bind must wait for a real-vendor tree"]
     evidence_bind:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:d0604ec6bee49e6e45bfd056b8bdeb4a5f8b75b6f088b2c874919045fc4b9b14
@@ -396,7 +396,7 @@ tests:
     prerequisites: ["a device with no SIM"]
     procedure: ["dispatch place_call contact=张三"]
     pass_criteria: ["ok=false NO_TELEPHONY, no dialler started"]
-    evidence: ["2026-09-20 on 2391ff70, gsm.sim.state=ABSENT,ABSENT", "STALE_BIND apk_digest mismatch"]
+    evidence: ["2026-09-20 on 2391ff70, gsm.sim.state=ABSENT,ABSENT", "STALE_BIND apk_digest mismatch", "2026-10-19 real-vendor GitHub Device checks run 39177948610 at 4412db4 (ci/device-evidence runs/run_20261019_0013_4412db4, build:vendor-real PASS): place_call -> CONTACT_NOT_FOUND, dialer not opened, fatal=0 (the emulator has a simulated SIM); device check PASS - not yet bound: this cloud session has only the stub jar, so --bind must wait for a real-vendor tree"]
     related: [B-018]
     last_run: {at: 2026-09-20, result: PASS}
 
@@ -762,6 +762,7 @@ tests:
       - "2026-09-21 (Windows desk): video D:/桌面/android_doc/nav_e2e_arrival_2026-09-21/nav_e2e_arrival.mp4 (not in the repo)"
       - "log:NovaVoice/nav_proximity_arrival@23:17:26 then nav_stopped reason=emulator_end; no nav_remain_regression"
       - "2026-09-21: nav_baseline_0_6_4.mp4 never reached the destination (superseded by evening PASS)"
+      - "2026-10-19 real-vendor GitHub Device checks run 39177948610 at 4412db4 (ci/device-evidence runs/run_20261019_0013_4412db4, build:vendor-real PASS): proximity_arrival=1 nav_stopped reached=true reason=emulator_end, FATAL 0 ANR 0; device check PASS - not yet bound: this cloud session has only the stub jar, so --bind must wait for a real-vendor tree"
     terminal_success: [arrival_callback, arrival_handling, automatic_session_end]
     terminal_failure: [terminal_regression, manual_stop_before_arrival, crash, wrong_destination]
     terminal_observed: [arrival_callback, arrival_handling, automatic_session_end]
@@ -883,6 +884,7 @@ tests:
       - "log:NovaVoice/debug_tool tool=nav_lock result=lock=true"
       - "log:NovaVoice/nav_presentation mode=driving recovered=true"
       - "2026-09-21 desk (Windows): overview_lock_clean.png, lock-car restored"
+      - "2026-10-19 real-vendor GitHub Device checks run 39177948610 at 4412db4 (ci/device-evidence runs/run_20261019_0013_4412db4, build:vendor-real PASS): overview=true lock=true; device check PASS - not yet bound: this cloud session has only the stub jar, so --bind must wait for a real-vendor tree"
     acceptance:
       - {criterion: overview_shown, required: true, observed: true, evidence: "log:NovaVoice/debug_tool nav_overview result=overview=true (GitHub run 38997655759) + artifact:docs/evidence/gha-2026-10-17/nav_overview.jpg"}
       - {criterion: lock_restored, required: true, observed: true, evidence: "log:NovaVoice/debug_tool nav_lock result=lock=true (GitHub run 38997655759) + artifact:docs/evidence/gha-2026-10-17/nav_lock_restored.jpg"}
@@ -1895,6 +1897,7 @@ tests:
       - "STALE_BIND apk_digest mismatch"
       - "2026-09-20: pm revoke RECORD_AUDIO -> voice start returns MicPermissionMissing, wake logs wake_permission_failure, no crash, nothing claims to be listening"
       - "permission restored afterwards and re-verified granted=true"
+      - "2026-10-19 real-vendor GitHub Device checks run 39177948610 at 4412db4 (ci/device-evidence runs/run_20261019_0013_4412db4, build:vendor-real PASS): mic_missing=1 listening=0 fatal=0; device check PASS - not yet bound: this cloud session has only the stub jar, so --bind must wait for a real-vendor tree"
     evidence_bind:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:ea0c12924c4dcb7bb99ef7c520b706ae719a292f9dcbb04ab614bb108e1fb2fc
@@ -1991,6 +1994,7 @@ tests:
       - "STALE_BIND apk_digest mismatch"
       - "2026-09-20: pid 13783 killed once the app was genuinely backgrounded (am kill only reaps cached processes; a top-sleeping app survives it)"
       - "relaunched as pid 14296 with wake_capture_started and nav_init_success, no crash, listeningState=DEEP_IDLE - no stale session"
+      - "2026-10-19 real-vendor GitHub Device checks run 39177948610 at 4412db4 (ci/device-evidence runs/run_20261019_0013_4412db4, build:vendor-real PASS): map_up=yes fatal=0 after process death; device check PASS - not yet bound: this cloud session has only the stub jar, so --bind must wait for a real-vendor tree"
     acceptance:
       - {criterion: relaunch_without_crash, required: true, observed: true, evidence: "log:logcat/pid 14296 relaunched, no FATAL"}
       - {criterion: wake_engine_rebinds, required: true, observed: true, evidence: "log:NovaVoice/wake_capture_started after relaunch"}
@@ -2112,6 +2116,7 @@ tests:
       - "2026-10-18 Device checks run 39144117274: cloud_setup 'vendor zip download failed: HTTP 403 from filebin.net', then :app:desugarDebugFileDependencies failed on the missing app/libs/Msc.jar; every required check MISSING (log read through the GitHub API)"
       - "2026-10-19 cloud session: app/libs/Msc.jar absent, no NOVA_VENDOR_ZIP_URL in the environment"
       - "the workflows already list claude/10-19 (706b6d0)"
+      - "2026-10-19 Device checks run 39177948610 at 4412db4 (dispatched on claude/10-19): NOVA_VENDOR_ZIP_AUTH now set, the vendor zip fetched with no failure, :app:assembleDebug built, build:vendor-real PASS (libmsc.so, libw_ivw.so, wakeword.jet packaged), verdict PASS 18/18 with results. The Actions half of this item is done; still open: the cloud environment variables (this session has no NOVA_VENDOR_ZIP_URL, so binds cannot be written here) and the first real-vendor Voice checks run"
       - "2026-10-19 decided by the decider: until this is fixed, cloud sessions and worktrees build :app on the compile-only stand-in (tools/vendor-stub; :app JVM 2005/0 on it), and the Tier B emulator workflows may build on it by opt-in with build:vendor-real BLOCKED, so their runs are never green and never write PASS or binds (docs/CI.md 'Stand-in vendor builds'). Tier A stays red, so no PR into a ruleset-protected branch can merge until this is fixed"
     remaining_uncertainty:
       - "whether the device and voice suites are green on the current code: they have not run to completion since 2026-10-17"
@@ -2302,6 +2307,7 @@ tests:
       - "STALE_BIND apk_digest mismatch"
       - "2026-09-20: open_app settings -> Accepted, maps -> Accepted"
       - "an app outside the allow-list is refused: dispatch open_app app=music -> APP_NOT_ALLOWED"
+      - "2026-10-19 real-vendor GitHub Device checks run 39177948610 at 4412db4 (ci/device-evidence runs/run_20261019_0013_4412db4, build:vendor-real PASS): allowed_ok=2/2 music_refused=yes; device check PASS - not yet bound: this cloud session has only the stub jar, so --bind must wait for a real-vendor tree"
     evidence_bind:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:3b3d9198d887ad794bc41d3e8093ff77c03000d45dbb3855457b7b76ce450d24
@@ -3638,7 +3644,7 @@ tests:
     prerequisites: ["emulator nova_api34 on the owner's PC (KVM/WHPX) with this debug build; the cloud container cannot run it (docs/CLOUD_BUILD.md, re-measured 2026-10-02)"]
     procedure: ["probe (the overlay alone): adb shell am start -n com.novadrive.app/.TranscriptFadeProbeActivity --el speaking_ms 5000 --el held_ms 15000; read logcat NovaVoice transcript_bubble_shown / transcript_bubble_faded since_line_ms", "full app: switch device location off so 📍 writes a transcript line (map_recenter_no_service); tap 📍; the bubble shows the line, then the placeholder ~10-11 s later (transcript_bubble_faded)", "with a Gemini key: one spoken exchange; the bubble clears ~10 s after 小诺 stops being audible, not while she speaks"]
     pass_criteria: ["probe: transcript_bubble_faded since_line_ms between 25000 and 27000 (held 15 s + 10 s quiet)", "full app: the line is shown, still there at ~5 s, replaced by the placeholder by ~12 s", "spoken exchange: never cleared while SPEAKING or audible"]
-    evidence: ["2026-10-02 cloud attempt, not a result: the app installed on nova34 (software-only) but the system starved (ANRs, system_server restarts); the probe could not attach within the process-start timeout. Run on the PC."]
+    evidence: ["2026-10-02 cloud attempt, not a result: the app installed on nova34 (software-only) but the system starved (ANRs, system_server restarts); the probe could not attach within the process-start timeout. Run on the PC.", "2026-10-19 real-vendor GitHub Device checks run 39177948610 at 4412db4 (ci/device-evidence runs/run_20261019_0013_4412db4, build:vendor-real PASS): bubble shown=2 faded=1; device check PASS - not yet bound: this cloud session has only the stub jar, so --bind must wait for a real-vendor tree"]
     related: [B-035, TRANSCRIPT-FADE-UNIT-001]
     last_run: {at: null, result: null}
 
