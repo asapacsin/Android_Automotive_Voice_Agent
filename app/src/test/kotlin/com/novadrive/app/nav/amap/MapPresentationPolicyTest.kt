@@ -77,4 +77,11 @@ class MapPresentationPolicyTest {
         assertTrue(MapPresentationPolicy.keepsRouteIds(NAVIGATING, hostNavigating = true))
         assertEquals(Presentation.UNCHANGED, MapPresentationPolicy.onPhase(NAVIGATING, NAVIGATING, true))
     }
+
+    @Test
+    fun routeIsDrawnOnlyForPreviewAndDriving() {
+        assertFalse(MapPresentationPolicy.drawsRoute(driving = false, preview = false))
+        assertTrue(MapPresentationPolicy.drawsRoute(driving = false, preview = true))
+        assertTrue(MapPresentationPolicy.drawsRoute(driving = true, preview = false))
+    }
 }

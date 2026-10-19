@@ -24,6 +24,13 @@ internal object MapPresentationPolicy {
     fun keepsRouteIds(shownPhase: NavigationPhase, hostNavigating: Boolean): Boolean =
         hostNavigating || shownPhase == NavigationPhase.CALCULATING_ROUTE
 
+    /**
+     * Whether the SDK may draw the calculated route (`AMapNaviViewOptions.setAutoDrawRoute`).
+     * P59: after a cancel the SDK keeps the route line drawn until auto-draw is switched off
+     * (device run 2026-10-19), so only the preview and guidance draw it; idle never does.
+     */
+    fun drawsRoute(driving: Boolean, preview: Boolean): Boolean = driving || preview
+
     /** The controller's phase moved from [previous] to [phase]. */
     fun onPhase(previous: NavigationPhase, phase: NavigationPhase, hostNavigating: Boolean): Presentation = when {
         phase == previous -> Presentation.UNCHANGED
