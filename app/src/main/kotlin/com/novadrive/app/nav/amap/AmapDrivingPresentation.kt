@@ -7,6 +7,7 @@ import com.amap.api.navi.AMapNaviViewOptions
 import com.amap.api.navi.AmapPageType
 import com.amap.api.navi.enums.AMapNaviViewShowMode
 import com.amap.api.navi.model.RouteOverlayOptions
+import com.amap.api.navi.view.BaseRouteOverLay
 import com.novadrive.app.DebugVoiceLog
 
 /**
@@ -109,9 +110,52 @@ internal object AmapDrivingPresentation {
             "markers" -> { naviView.setRouteMarkerVisible(false, false, false); "markers hidden" }
             "map_clear" -> { naviView.map?.clear(); "map cleared" }
             "idle" -> { applyIdle(naviView); "idle options" }
+            "autodraw_off" -> { setAutoDraw(naviView, false); "autodraw=false" }
+            "autodraw_on" -> { setAutoDraw(naviView, true); "autodraw=true" }
+            "autodraw_toggle" -> { setAutoDraw(naviView, false); setAutoDraw(naviView, true); "autodraw toggled" }
+            "overlay_reflect" -> removeRouteOverlays(naviView)
             else -> "unknown variant"
         }
     }.getOrElse { "failed=${it.javaClass.simpleName}" }
+
+    private fun setAutoDraw(naviView: AMapNaviView, on: Boolean) {
+        val options = naviView.viewOptions ?: AMapNaviViewOptions()
+        options.setAutoDrawRoute(on)
+        naviView.viewOptions = options
+    }
+
+    /** P59 debug only: finds the view's internal BaseRouteOverLay objects (depth 3) and removes them. */
+    private fun removeRouteOverlays(naviView: AMapNaviView): String {
+        val found = java.util.Collections.newSetFromMap(java.util.IdentityHashMap<Any, Boolean>())
+        collectOverlays(naviView, 0, java.util.Collections.newSetFromMap(java.util.IdentityHashMap()), found)
+        found.forEach { overlay ->
+            (overlay as BaseRouteOverLay).setRouteOverlayVisible(false)
+            overlay.removeFromMap()
+        }
+        val names = found.map { it.javaClass.simpleName }.distinct().take(5).joinToString(",")
+        return "overlays=${found.size} $names"
+    }
+
+    private fun collectOverlays(value: Any?, depth: Int, seen: MutableSet<Any>, found: MutableSet<Any>) {
+        if (value == null || !seen.add(value)) return
+        if (value is BaseRouteOverLay) found.add(value)
+        if (depth >= 3) return
+        when (value) {
+            is Collection<*> -> value.forEach { collectOverlays(it, depth + 1, seen, found) }
+            is Map<*, *> -> value.values.forEach { collectOverlays(it, depth + 1, seen, found) }
+            is Array<*> -> value.forEach { collectOverlays(it, depth + 1, seen, found) }
+            else -> if (value.javaClass.name.startsWith("com.amap.")) {
+                generateSequence(value.javaClass as Class<*>?) { it.superclass }.forEach { cls ->
+                    cls.declaredFields.forEach { field ->
+                        if (!java.lang.reflect.Modifier.isStatic(field.modifiers) && !field.type.isPrimitive) {
+                            runCatching { field.isAccessible = true; field.get(value) }.getOrNull()
+                                ?.let { collectOverlays(it, depth + 1, seen, found) }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     fun listener(onExit: () -> Unit): AMapNaviViewListener = ExitForwardingListener(onExit)
 
