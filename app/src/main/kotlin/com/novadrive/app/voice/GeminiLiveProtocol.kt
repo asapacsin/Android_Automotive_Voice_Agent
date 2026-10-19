@@ -269,9 +269,9 @@ object GeminiLiveProtocol {
         return RealtimeToolCatalog.toolCall(raw.id, raw.name, args)
     }
 
-    /** Close code (and reason, read for the word "quota" only) to a stable error code. */
+    /** Close code (and reason, read for the words "quota" and "API key" only) to a stable error code. */
     fun closeCode(code: Int, reason: String?): String = when (code) {
-        1007 -> MALFORMED_SETUP
+        1007 -> if (reason.orEmpty().contains("API key", ignoreCase = true)) AUTH_FAILED else MALFORMED_SETUP
         1008 -> AUTH_FAILED
         1011 -> if (reason.orEmpty().contains("quota", ignoreCase = true)) QUOTA_EXCEEDED else UNAVAILABLE
         else -> CONNECTION_CLOSED

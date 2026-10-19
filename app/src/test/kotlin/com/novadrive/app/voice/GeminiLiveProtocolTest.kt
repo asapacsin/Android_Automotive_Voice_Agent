@@ -173,6 +173,7 @@ class GeminiLiveProtocolTest {
     fun closeCodesMapToStableCodesAndErrorClasses() {
         val cases = listOf(
             GeminiLiveProtocol.closeCode(1007, "Unknown name") to ErrorClass.MALFORMED,
+            GeminiLiveProtocol.closeCode(1007, "API key not valid. Please pass a valid API key.") to ErrorClass.AUTH,
             GeminiLiveProtocol.closeCode(1008, null) to ErrorClass.AUTH,
             GeminiLiveProtocol.socketFailure(401, null).code to ErrorClass.AUTH,
             GeminiLiveProtocol.socketFailure(403, null).code to ErrorClass.AUTH,
@@ -184,7 +185,7 @@ class GeminiLiveProtocolTest {
         )
         assertEquals(
             listOf(
-                GeminiLiveProtocol.MALFORMED_SETUP, GeminiLiveProtocol.AUTH_FAILED, GeminiLiveProtocol.AUTH_FAILED,
+                GeminiLiveProtocol.MALFORMED_SETUP, GeminiLiveProtocol.AUTH_FAILED, GeminiLiveProtocol.AUTH_FAILED, GeminiLiveProtocol.AUTH_FAILED,
                 GeminiLiveProtocol.AUTH_FAILED, GeminiLiveProtocol.QUOTA_EXCEEDED, GeminiLiveProtocol.UNAVAILABLE,
                 GeminiLiveProtocol.CONNECTION_CLOSED, GeminiLiveProtocol.TIMEOUT, GeminiLiveProtocol.CONNECTION_FAILED,
             ),
