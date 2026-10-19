@@ -2273,6 +2273,17 @@ remaining option is drawing routes ourselves. Research 2026-10-19: Amap's change
 `setRouteOverlayVisible` on the view's RouteOverlay (no public handle in 11.2.100); a CSDN write-up
 removes a self-created `RouteOverLay` with `removeFromMap`; nothing found for the auto-drawn one.
 
+**Root cause found, 2026-10-19 (real-vendor device run at 7fccc78, `ci/device-evidence
+runs/run_20261019_0423_7fccc78`):** `eyrie_hide` reached the manager (`eyrie=1 visited=171`) and the
+line was gone (`p59_eyrie_hide_after.jpg`); `autodraw_off` - the public `AMapNaviViewOptions.setAutoDrawRoute(false)` -
+removed it too (`p59_autodraw_off_after.jpg`); off-then-on brought it back; after drawing was switched
+on again the next search drew a new route (`p59_none2_routes.jpg`). Cause: the view keeps drawing
+the last calculated route as long as autoDrawRoute is true, and nothing ever set it false. Fix
+(exec/p59-fix): route drawing follows the map presentation - `MapPresentationPolicy.drawsRoute`,
+applied in `AmapDrivingPresentation.applyOptions`: off for idle (cancel, stop), on for preview and
+driving; the experiment harness (`nav_clear_try`, `debugClearRoute`) is deleted. The device check
+now runs two cancel rounds; the second proves drawing comes back.
+
 ## P60 — After a dropped claim, the correction ordered an action the driver had forbidden
 
 **Status:** FIXED 2026-10-15 (JVM), live re-check in the next GitHub voice run. Found by the GitHub
