@@ -1,0 +1,1 @@
+      1           forbidden /^tool=control_climate (?!.*result=DUPLICATE_IN_TURN)/ matched (text omitted)

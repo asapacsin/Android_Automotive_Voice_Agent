@@ -1,0 +1,48 @@
+-- AFF-AC
+   test_speech_start bytes=59904
+   debug_tool tool=voice arg=say:aff_ac
+   gemini_driver_turn_fallback source=voice_activity
+   gemini_voice_activity type=ACTIVITY_START
+   gemini_first_transcript ms=none
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=6436 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   test_speech_end frames=203 elapsedMs=2032
+   gemini_content_no_turn kind=inputTranscription audio=0 text_parts=0
+   gemini_voice_activity type=ACTIVITY_END
+   ctx_hint epoch=3 referents=none pending=0
+   TURN_HOLD epoch=3 reason=AWAITING_EXECUTION_PROOF kind=ACTION durationMs=-1
+   gemini_turn_open
+   gemini_tool_call id=fc_17576211638160478480 tool=control_climate args=valid
+   affordance_match id=climate verb=false
+   screen_action=voice_climate ok=true error=-
+   state=LISTENING err=-
+   state=LISTENING err=-
+   gemini_client_cancel local_only=true
+   state=LISTENING err=-
+   tool=control_climate args=[action] result=✓
+   state=LISTENING err=-
+   gemini_tool_response id=fc_17576211638160478480 chars=180
+   transcript_bubble_shown
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   session_diag state=SPEAKING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=6947 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   transcript_bubble_shown
+   state=SPEAKING err=-
+   gemini_server_meta response_tokens=TOTAL:90,AUDIO:76
+   gemini_turn_done status=completed calls=1 spoke=true dur_ms=5258 first_audio_ms=2285 first_text_ms=2285 gen_ms=3694 msgs=24 max_gap_ms=1774
+   state=LISTENING err=-
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=7443 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8

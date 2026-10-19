@@ -1,0 +1,33 @@
+-- YUE-HOME
+   test_speech_start bytes=66048
+   debug_tool tool=voice arg=say:yue_home
+   gemini_driver_turn_fallback source=voice_activity
+   gemini_voice_activity type=ACTIVITY_START
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=932 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   test_speech_end frames=222 elapsedMs=2220
+   gemini_content_no_turn kind=inputTranscription audio=0 text_parts=0
+   gemini_voice_activity type=ACTIVITY_END
+   ctx_hint epoch=1 referents=none pending=0
+   TURN_HOLD epoch=1 reason=UNCLASSIFIED_CLAIM kind=CONVERSATION durationMs=-1
+   gemini_turn_open
+   state=LISTENING err=-
+   state=LISTENING err=-
+   transcript_bubble_shown
+   TURN_RELEASE epoch=1 reason=no_claim_made events=11
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   transcript_bubble_shown
+   gemini_server_meta response_tokens=TOTAL:35,AUDIO:35
+   gemini_turn_done status=completed calls=0 spoke=true dur_ms=1311 first_audio_ms=0 first_text_ms=0 gen_ms=120 msgs=14 max_gap_ms=385
+   state=LISTENING err=-
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=1428 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=1932 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
