@@ -51,3 +51,4 @@ e967a87 PASS 2026-10-19 reviewer PASS (unverified E2E): eyrie_hide/show reach AM
 6dd790c977aa PASS 2026-10-19 reviewer PASS: 68 sections byte-identical across both files, both readers' open sets unchanged, scope PASS, P57 kept for P56 status coupling; planner verify 3/3 exit 0 incl. 223 script tests
 3afd369505fd PASS 2026-10-19 P67-LOG reviewer (R1): behaviour unchanged, I-8 text-free, model+local claim lines asserted; verify app unit + behavior-test PASS
 59567f68afea PASS 2026-10-19 GEM-1007 reviewer: 1007 'API key' -> AUTH_FAILED, both terminal, no regression for real malformed setups, reason never logged; verify app unit + behavior-test PASS
+8e1e84f165fa PASS 2026-10-19 P67-FIX reviewer: model get_state refused only after a LOCAL claim on the same epoch+tool, reads never recorded, grouping/claimDispatch unchanged; verify app unit 2070/0 + behavior-test PASS
