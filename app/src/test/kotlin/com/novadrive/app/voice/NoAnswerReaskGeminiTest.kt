@@ -211,18 +211,83 @@ class NoAnswerReaskGeminiTest {
         val fake = fake()
         val client = client(deadlineMs = 200, giveUpMs = 300)
         val events = collect(client)
-        var gaveUp = 0
-        client.onStallNotice = { final -> if (final) gaveUp++ }
         client.connect(config())
         driverTurn(fake, client)
-        waitUntil { gaveUp == 1 }
+        waitUntil { log("gemini_reask_gave_up").isNotEmpty() }
         Thread.sleep(500)
-        assertEquals(1, gaveUp)
         assertEquals(1, log("gemini_reask_gave_up").size)
         fake.send("""{"toolCall":{"functionCalls":[{"id":"c1","name":"control_climate","args":{"action":"power_on"}}]}}""")
         waitUntil { events.toList().any { it is DomainVoiceEvent.ToolCall } }
         val call = events.toList().filterIsInstance<DomainVoiceEvent.ToolCall>().single()
         assertEquals("REASK_GAVE_UP", call.arguments["_validation_error"], "answered as not executed")
+    }
+
+    @Test
+    fun quietListeningBlocksTheDeadlineReask() = runBlocking {
+        val fake = fake()
+        val client = client()
+        client.noAnswer.repliesSpoken = { false }
+        client.connect(config())
+        driverTurn(fake, client)
+        waitUntil { log("gemini_reask_dropped reason=quiet").isNotEmpty() }
+        assertEquals(0, fake.reasks().size)
+    }
+
+    @Test
+    fun quietListeningBlocksTheEmptyCloseReask() = runBlocking {
+        val fake = fake()
+        val client = client(deadlineMs = 60_000)
+        client.noAnswer.repliesSpoken = { false }
+        client.connect(config())
+        driverTurn(fake, client)
+        fake.send(input("调到二十四度"))
+        fake.send(turnComplete)
+        waitUntil { log("gemini_reask_dropped reason=quiet trigger=empty_close").isNotEmpty() }
+        assertEquals(0, fake.reasks().size)
+    }
+
+    /** F19: the x86 emulator bypasses the uplink gate, so only the server reports the onsets. */
+    private val activityStart = """{"voiceActivity":{"type":"ACTIVITY_START","audioOffset":"0.100s"}}"""
+
+    @Test
+    fun aServerOnlyOnsetStartsANewUtteranceAfterAGiveUp() = runBlocking {
+        val fake = fake()
+        val client = client(deadlineMs = 200, giveUpMs = 300)
+        val events = collect(client)
+        client.connect(config())
+        fake.send(activityStart); fake.send(activityEnd)
+        waitUntil { log("gemini_reask_gave_up").isNotEmpty() }
+        fake.send(activityStart); fake.send(activityEnd)
+        fake.send("""{"toolCall":{"functionCalls":[{"id":"c2","name":"control_climate","args":{"action":"power_on"}}]}}""")
+        waitUntil { events.toList().any { it is DomainVoiceEvent.ToolCall } }
+        val call = events.toList().filterIsInstance<DomainVoiceEvent.ToolCall>().single()
+        assertEquals(null, call.arguments["_validation_error"], "the new utterance's call runs")
+    }
+
+    @Test
+    fun anUnansweredServerOnlySecondUtteranceGetsItsOwnReask() = runBlocking {
+        val fake = fake()
+        val client = client(deadlineMs = 200)
+        client.connect(config())
+        fake.send(activityStart); fake.send(activityEnd)
+        waitUntil { fake.reasks().size == 1 }
+        fake.send(activityStart); fake.send(activityEnd)
+        waitUntil { fake.reasks().size == 2 }
+    }
+
+    @Test
+    fun aNonClaimAnswerToTheReaskIsSpoken() = runBlocking {
+        val fake = fake()
+        val client = client(speechText = true)
+        val events = collect(client)
+        client.connect(config())
+        driverTurn(fake, client)
+        waitUntil { fake.reasks().size == 1 }
+        fake.send(audio())
+        fake.send(output("你好呀，我在听。"))
+        fake.send(generationComplete)
+        fake.send(turnComplete)
+        waitUntil { events.toList().any { it is DomainVoiceEvent.SpeechText } }
     }
 
     @Test

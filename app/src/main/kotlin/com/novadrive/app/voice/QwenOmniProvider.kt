@@ -63,6 +63,7 @@ class QwenOmniProvider(
 
     init {
         client.onStallNotice = { final -> cueClock.onStalled(final) }
+        client.emptyRetry.repliesSpoken = repliesSpoken // P45 U2: no re-ask in quiet listening
     }
 
     override fun events(): Flow<RealtimeEvent> = merge(

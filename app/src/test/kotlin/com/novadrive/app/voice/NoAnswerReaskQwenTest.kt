@@ -184,9 +184,10 @@ class NoAnswerReaskQwenTest {
         client.connect(config())
         send(started, stopped)
         awaitUntil({ "$lines" }) { log("qwen_event type=input_audio_buffer.speech_stopped").isNotEmpty() }
-        client.disconnect()
-        awaitUntil({ "$lines" }) { log("qwen_reask_dropped reason=socket").isNotEmpty() }
+        client.disconnect() // closeSocket cancels the deadline with the socket (review O2)
+        Thread.sleep(700)
         assertEquals(0, creates())
+        assertTrue(log("qwen_reask reason=").isEmpty(), "$lines")
     }
 
     @Test
@@ -243,5 +244,77 @@ class NoAnswerReaskQwenTest {
         // The unproven claim draws the claim gate's correction, as any reply would (I-1).
         awaitUntil({ "sent: $received; $lines" }) { received.map(::JSONObject).any { it.getString("type") == "conversation.item.create" } }
         client.disconnect()
+    }
+
+    @Test
+    fun quietListeningBlocksTheDeadlineReask() = runBlocking {
+        enqueueServer()
+        val client = client()
+        client.emptyRetry.repliesSpoken = { false }
+        client.connect(config())
+        send(started, stopped)
+        awaitUntil({ "$lines" }) { log("qwen_reask_dropped reason=quiet").isNotEmpty() }
+        assertEquals(0, creates())
+        client.disconnect()
+    }
+
+    @Test
+    fun quietListeningBlocksTheEmptyCloseReask() = runBlocking {
+        enqueueServer()
+        val client = client(deadlineMs = 60_000)
+        client.emptyRetry.repliesSpoken = { false }
+        client.connect(config())
+        send(started, stopped, transcript("调到二十四度"), """{"type":"response.created","response":{"id":"r1"}}""", emptyDone)
+        awaitUntil({ "$lines" }) { log("qwen_reask_dropped reason=quiet trigger=empty_close").isNotEmpty() }
+        assertEquals(0, creates())
+        client.disconnect()
+    }
+
+    @Test
+    fun aBargeInCancelDoesNotMakeTheNewUtteranceAppHandled() = runBlocking {
+        enqueueServer()
+        val client = client()
+        client.connect(config())
+        send("""{"type":"response.created","response":{"id":"r1"}}""", """{"type":"response.audio.delta","delta":"AAE="}""", started)
+        awaitUntil({ "$lines" }) { log("qwen_event type=input_audio_buffer.speech_started").isNotEmpty() }
+        client.cancelResponse() // VoiceSessionController.bargeIn -> cancelAssistantResponse
+        awaitUntil({ "sent: $received" }) { received.any { JSONObject(it).getString("type") == "response.cancel" } }
+        send("""{"type":"response.done","response":{"status":"cancelled","output":[{"type":"message"}]}}""", stopped)
+        awaitUntil({ "$lines" }) { log("qwen_reask reason=deadline").size == 1 }
+        Thread.sleep(400)
+        assertEquals(1, creates())
+        assertEquals(1, log("qwen_reask reason=deadline").size)
+        client.disconnect()
+    }
+
+    @Test
+    fun aResponseCreatedAfterTheReaskLeavesTheStallToTheWatchdog() = runBlocking {
+        enqueueServer()
+        val client = client(deadlineMs = 200, giveUpMs = 300)
+        var gaveUp = 0
+        client.onStallNotice = { final -> if (final) gaveUp++ }
+        client.connect(config())
+        send(started, stopped)
+        awaitUntil({ "sent: $received" }) { creates() == 1 }
+        send("""{"type":"response.created","response":{"id":"r1"}}""")
+        Thread.sleep(800)
+        assertTrue(log("qwen_reask_gave_up").isEmpty(), "$lines")
+        assertEquals(0, gaveUp)
+        client.disconnect()
+    }
+
+    @Test
+    fun noGiveUpFiresAfterTheSocketIsClosed() = runBlocking {
+        enqueueServer()
+        val client = client(deadlineMs = 200, giveUpMs = 300)
+        var gaveUp = 0
+        client.onStallNotice = { final -> if (final) gaveUp++ }
+        client.connect(config())
+        send(started, stopped)
+        awaitUntil({ "sent: $received" }) { creates() == 1 }
+        client.disconnect()
+        Thread.sleep(700)
+        assertTrue(log("qwen_reask_gave_up").isEmpty(), "$lines")
+        assertEquals(0, gaveUp)
     }
 }

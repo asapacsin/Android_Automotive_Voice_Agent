@@ -71,8 +71,9 @@ open class OpenAiRealtimeClient<C : Any>(
     private val resetScope = kotlinx.coroutines.CoroutineScope(
         kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO,
     )
-    internal val emptyRetry = EmptyResponseRetryPolicy(resetScope, dialect.logPrefix, giveUp = { onStallNotice?.invoke(true) }, send = { trySend(dialect.responseCreate()) }, // also P45 U2's re-ask
-        blocked = { when { listeningSuspended -> "suspended"; lastAudioSegment()?.isSuspicious() == true -> "suspicious"; responseInProgress || cueHoldsGate -> "busy"; else -> null } })
+    internal val emptyRetry = EmptyResponseRetryPolicy(resetScope, dialect.logPrefix, { trySend(dialect.responseCreate()) }, { onStallNotice?.invoke(true) }) {
+        noAnswerBlock(listeningSuspended, guidance = false, lastAudioSegment(), busy = responseInProgress || cueHoldsGate)
+    } // also P45 U2's no-answer re-ask (NoAnswerReask.kt)
     @Volatile private var lastConfig: C? = null
     @Volatile private var resetting = false
 
@@ -242,7 +243,7 @@ open class OpenAiRealtimeClient<C : Any>(
     }
 
     fun cancelResponse() {
-        emptyRetry.appHandled(); if (cue.discardForClientCancel()) sendCancelOnce("client_cancel") else if (assistantSpeaking) sendCancelOnce("barge_in")
+        if (cue.discardForClientCancel()) sendCancelOnce("client_cancel") else if (assistantSpeaking) sendCancelOnce("barge_in")
     }
 
     /**
@@ -250,7 +251,8 @@ open class OpenAiRealtimeClient<C : Any>(
      * arrived yet (cancelResponse only acts once audio plays, to keep barge-in behaviour as is).
      */
     fun cancelActiveResponse() {
-        emptyRetry.appHandled(); if (cue.discardForClientCancel()) sendCancelOnce("client_cancel") else if (responseInProgress || assistantSpeaking) sendCancelOnce("active")
+        emptyRetry.appHandled()
+        if (cue.discardForClientCancel()) sendCancelOnce("client_cancel") else if (responseInProgress || assistantSpeaking) sendCancelOnce("active")
     }
 
     /**
@@ -439,6 +441,7 @@ open class OpenAiRealtimeClient<C : Any>(
         responseInProgress = false
         cancelSentThisResponse = false
         cue.clear(); cueHoldsGate = false; stallRetryWaiting = false
+        emptyRetry.reset() // no re-ask or give-up outlives its socket
         turnGate.onConnectionReset()
         assembler.clear()
         val owned = navigatingListener
@@ -592,19 +595,21 @@ open class OpenAiRealtimeClient<C : Any>(
             if (type == "response.audio.delta") assistantSpeaking = true
             if (type == "response.audio.done" || type == "response.done") assistantSpeaking = false
             val alive = { generation.get() == current }
-            if (type in RESPONSE_PROGRESS_TYPES) { stallWatchdog.onProgress(); emptyRetry.onOutput() }
-            if (type == "response.created") { stallWatchdog.onResponseCreated(alive); emptyRetry.onHeard() }
+            if (type in RESPONSE_PROGRESS_TYPES) stallWatchdog.onProgress()
+            if (type == "response.created") stallWatchdog.onResponseCreated(alive)
+            emptyRetry.onRealtimeEvent(
+                started = type == "input_audio_buffer.speech_started", stopped = type == "input_audio_buffer.speech_stopped",
+                created = type == "response.created", progress = type in RESPONSE_PROGRESS_TYPES)
             if (type !in NOISY_EVENT_TYPES) DebugVoiceLog.log("${dialect.logPrefix}_event type=$type")
             // Code only: a provider message can quote what the driver said.
             if (type == "error") DebugVoiceLog.log("${dialect.logPrefix}_error code=${dialect.errorCode(text)}")
             if (type == "input_audio_buffer.speech_started") {
-                emptyRetry.onSpeechStarted()
                 turnGate.onSpeechStarted()
                 stallWatchdog.onDriverTurn()
                 pipeline.beginDriverTurn(playbackActive || assistantSpeaking, responseInProgress)
             }
             if (type == "input_audio_buffer.speech_stopped") {
-                turnGate.onSpeechStopped(); emptyRetry.onEndOfSpeech()
+                turnGate.onSpeechStopped()
                 // If the speech gets no reply (noise), queued turns must still go out.
                 resetScope.launch {
                     kotlinx.coroutines.delay(SPEECH_STOPPED_FLUSH_MS)

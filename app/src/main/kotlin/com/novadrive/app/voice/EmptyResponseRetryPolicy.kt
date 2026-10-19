@@ -29,10 +29,13 @@ import kotlinx.coroutines.launch
 class EmptyResponseRetryPolicy(
     private val scope: CoroutineScope? = null,
     private val prefix: String = "voice",
-    private val blocked: () -> String? = { null },
     private val send: () -> Boolean = { false },
     private val giveUp: () -> Unit = {},
+    private val blocked: () -> String? = { null },
 ) {
+    /** The provider's SPEC-020 `repliesSpoken`: false in quiet listening (SILENT_WAIT), which blocks a re-ask. */
+    @Volatile var repliesSpoken: () -> Boolean = { true }
+
     private var utterancePending = false
     private var emptyWithoutUtterance = false
     private var retriedThisUtterance = false
@@ -76,6 +79,16 @@ class EmptyResponseRetryPolicy(
         }
     }
 
+    /**
+     * A response was created after the re-ask: from here [ResponseStallWatchdog] alone owns a stall,
+     * so the give-up timer stops.
+     */
+    @Synchronized
+    fun onResponseCreated() {
+        onHeard()
+        answerJob?.cancel(); answerJob = null
+    }
+
     /** The server started answering or transcribed the driver: the deadline is not needed. */
     @Synchronized
     fun onHeard() {
@@ -108,10 +121,10 @@ class EmptyResponseRetryPolicy(
             if (handled) return dropped(reason, "app_handled")
             utterance
         }
-        blocked()?.let { return dropped(reason, it) }
+        (blocked() ?: "quiet".takeIf { !repliesSpoken() })?.let { return dropped(reason, it) }
         if (!send()) return dropped(reason, "socket")
         synchronized(this) {
-            if (mine != utterance) return false
+            if (mine != utterance) return dropped(reason, "superseded")
             reasked = true; busyMatchable = true
             if (reason == DEADLINE) deadlineReasked = true
             DebugVoiceLog.log("${prefix}_reask reason=$reason after_ms=$afterMs")
@@ -167,7 +180,7 @@ class EmptyResponseRetryPolicy(
     @Synchronized
     fun onResponseDone(status: String, outputCount: Int): Boolean {
         busyMatchable = false
-        if (outputCount > 0) onOutput()
+        if (outputCount > 0 && status == "completed") onOutput() // a cancelled reply answered nothing
         if (status != "completed" || outputCount > 0) {
             utterancePending = false
             emptyWithoutUtterance = false

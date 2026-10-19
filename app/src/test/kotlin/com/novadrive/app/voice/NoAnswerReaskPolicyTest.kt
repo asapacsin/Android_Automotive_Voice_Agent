@@ -146,4 +146,29 @@ class NoAnswerReaskPolicyTest {
         advanceTimeBy(20_000); runCurrent()
         assertEquals(listOf(WaitCues.PROGRESS, WaitCues.STALL_FAILED), spoken)
     }
+
+    @Test
+    fun aReaskSupersededBySpeechDuringSendIsLoggedAndNotArmed() = runTest {
+        val lines = mutableListOf<String>()
+        val previous = com.novadrive.app.DebugVoiceLog.sink
+        com.novadrive.app.DebugVoiceLog.sink = { lines += it }
+        try {
+            lateinit var p: EmptyResponseRetryPolicy
+            p = EmptyResponseRetryPolicy(backgroundScope, "t", send = { p.onSpeechStarted(); true }, giveUp = { gaveUp++ })
+            p.onSpeechStarted()
+            assertFalse(p.fire(EmptyResponseRetryPolicy.EMPTY_CLOSE))
+            assertTrue(lines.contains("t_reask_dropped reason=superseded trigger=empty_close"), "$lines")
+            advanceTimeBy(10_000); runCurrent()
+            assertEquals(0, gaveUp)
+        } finally { com.novadrive.app.DebugVoiceLog.sink = previous }
+    }
+
+    @Test
+    fun quietListeningDropsTheReask() = runTest {
+        val p = policy()
+        p.repliesSpoken = { false }
+        p.onSpeechStarted(); p.onEndOfSpeech()
+        advanceTimeBy(4_000); runCurrent()
+        assertEquals(0, sent)
+    }
 }
