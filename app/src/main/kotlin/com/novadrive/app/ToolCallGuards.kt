@@ -131,16 +131,25 @@ object ToolCallGuards {
         // visible action, and query_live_info costs daily quota (SPEC-011: DUPLICATE_IN_TURN). Pure
         // reads such as describe_camera_view are left out.
         if (call.name !in ToolRegistry.PRODUCT.repeatSensitiveNames) return null
-        if (context == null) return null
+        if (context == null) {
+            com.novadrive.app.DebugVoiceLog.log(
+                "claim src=MODEL tool=${call.name} group=${call.arguments["action"].orEmpty()} epoch=0 ctx=null ok=skipped",
+            )
+            return null
+        }
         val arguments = call.arguments.filterKeys { it != "_validation_error" }
         // SPEC-010 B4: the on-screen matcher may already have run this capability for this
         // utterance. Keyed on the utterance that started, since the call can precede its transcript.
         val capabilityEpoch = context.capabilityEpoch()
-        if (capabilityEpoch > 0 &&
-            !context.claimCapability(capabilityEpoch, call.name, arguments["action"], DriverContext.ClaimSource.MODEL)
-        ) {
-            return DUPLICATE_IN_TURN
-        }
+        val claimed = if (capabilityEpoch > 0) {
+            context.claimCapability(capabilityEpoch, call.name, arguments["action"], DriverContext.ClaimSource.MODEL)
+        } else null
+        // P67 diagnostics (I-8: tool and control group only).
+        com.novadrive.app.DebugVoiceLog.log(
+            "claim src=MODEL tool=${call.name} group=${context.controlGroup(call.name, arguments["action"])} " +
+                "epoch=$capabilityEpoch ctx=${System.identityHashCode(context)} ok=${claimed ?: "skipped"}",
+        )
+        if (claimed == false) return DUPLICATE_IN_TURN
         // Keyed on speech onset, which is the driver turn: the transcript epoch arrives after the
         // call under Gemini ordering, and until then still names the *previous* turn.
         if (capabilityEpoch <= 0) return null

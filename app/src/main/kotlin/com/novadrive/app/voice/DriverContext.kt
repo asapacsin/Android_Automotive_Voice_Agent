@@ -216,7 +216,7 @@ class DriverContext(private val clock: () -> Long = { System.currentTimeMillis()
      * `control_music` play/stop (its declared actions) -> "playback". Every other action, including
      * the temperature actions, is its own control.
      */
-    private fun controlGroup(tool: String, action: String?): String {
+    internal fun controlGroup(tool: String, action: String?): String {
         val a = action.orEmpty()
         return when {
             tool == "control_climate" && (a == "power_on" || a == "power_off") -> "power"

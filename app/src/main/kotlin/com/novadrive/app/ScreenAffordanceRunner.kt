@@ -47,11 +47,19 @@ class ScreenAffordanceRunner(
             ?: return false
         val driver = context()
         val epoch = driver?.capabilityEpoch() ?: 0
-        if (plan.tool != null && driver != null && epoch > 0 &&
-            !driver.claimCapability(epoch, plan.tool, plan.action, DriverContext.ClaimSource.LOCAL)
-        ) {
-            log("affordance_skip reason=claimed")
-            return false
+        if (plan.tool != null) {
+            val claimed = if (driver != null && epoch > 0) {
+                driver.claimCapability(epoch, plan.tool, plan.action, DriverContext.ClaimSource.LOCAL)
+            } else null
+            // P67 diagnostics (I-8: tool and control group only).
+            log(
+                "claim src=LOCAL tool=${plan.tool} group=${driver?.controlGroup(plan.tool, plan.action) ?: plan.action.orEmpty()} " +
+                    "epoch=$epoch ctx=${driver?.let { System.identityHashCode(it) } ?: "null"} ok=${claimed ?: "skipped"}",
+            )
+            if (claimed == false) {
+                log("affordance_skip reason=claimed")
+                return false
+            }
         }
         log("affordance_match id=${match.affordance.id} verb=${match.verb != null}")
         val id = match.affordance.id
