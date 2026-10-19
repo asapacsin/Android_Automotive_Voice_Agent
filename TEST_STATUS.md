@@ -20,7 +20,7 @@ Updated 2026-09-21 · 163 tests
 
 **HUMAN_VALIDATION_READY = FALSE**
 
-- the registry does not validate: 21 problem(s)
+- the registry does not validate: 15 problem(s)
 - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - TRUTH-MEDIA-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -97,7 +97,7 @@ Updated 2026-09-21 · 163 tests
 
 | ID | Capability | Test | Owner | Status | Release blocking | Evidence |
 | --- | --- | --- | --- | --- | --- | --- |
-| APPS-001 | apps | open_app reaches a real app | AUTONOMOUS | STALE | no | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
+| APPS-001 | apps | open_app reaches a real app | AUTONOMOUS | PASS | no | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
 | AFFORDANCE-DEVICE-001 | architecture | Spoken control names act on the phone through the local path, once, with no model execution | AUTONOMOUS | PASS | no | 2026-10-16 GitHub emulator API 34 (arm64 app), Gemini debug override, voice checks run … |
 | AFFORDANCE-UNIT-001 | architecture | Spoken on-screen controls match whole utterances and run once per turn | AUTONOMOUS | PASS | yes | 2026-09-25 cloud: 2066 JVM tests, 0 failures |
 | ARCH-PROVIDER-001 | architecture | Vendor wire vocabulary stays inside adapters | AUTONOMOUS | PASS | no | checked against a deliberately reintroduced breach |
@@ -146,7 +146,7 @@ Updated 2026-09-21 · 163 tests
 | NAV-CHOICE-STALE-001 | navigation | A spoken ordinal on a stale list is re-presented before it is accepted | AUTONOMOUS | PASS | yes | 2026-09-24: NavigationPendingChoiceTest 10/10 (cloud Linux build) |
 | NAV-CORRECT-001 | navigation | A mid-flow destination change replaces the list | AUTONOMOUS | PASS | no | 2026-09-20: 20/20 suite |
 | NAV-DRIVE-001 | navigation | A route calculates and guides to arrival | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | NAV-SEARCH-001, NAV-PICK-001, NAV-CANCEL-001, NAV-CORRECT-001 PASS |
-| NAV-E2E-ARRIVAL-001 | navigation | Navigation reaches the destination and terminates by arrival | AUTONOMOUS | STALE | yes | 2026-10-16 GitHub device run 38832785831 at 02d9ab7: nav_proximity_arrival x1, nav_stop… |
+| NAV-E2E-ARRIVAL-001 | navigation | Navigation reaches the destination and terminates by arrival | AUTONOMOUS | PASS | yes | 2026-10-16 GitHub device run 38832785831 at 02d9ab7: nav_proximity_arrival x1, nav_stop… |
 | NAV-MID-ROUTE-001 | navigation | Mid-route navigation baseline without countdown entitlement | AUTONOMOUS | NOT_RUN | yes | 2026-09-21: nav_traffic_countdown status=BLOCKED_EXTERNAL_AMAP_ENTITLEMENT |
 | NAV-OVERSPEED-001 | navigation | Spoken over-speed warning with the guidance toggle off (the shipped path) | AUTONOMOUS | STALE | no | 2026-10-16: not covered by nav demo e9f8535/its fix - that run has the relay ON; the sh… |
 | NAV-OVERSPEED-DEVICE-001 | navigation | The over-speed warning is heard in the car | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | NAV-OVERSPEED-001 |
@@ -161,7 +161,7 @@ Updated 2026-09-21 · 163 tests
 | NAV-UI-004 | navigation | Active route shows traffic-state colouring when Amap supplies it | AUTONOMOUS | STALE | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
 | NAV-UI-005 | navigation | Next-maneuver guidance is visible | AUTONOMOUS | STALE | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
 | NAV-UI-006 | navigation | Lane or junction enlarge appears when Amap supplies it | AUTONOMOUS | STALE | no | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
-| NAV-UI-007 | navigation | Overview then return restores vehicle tracking | AUTONOMOUS | STALE | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
+| NAV-UI-007 | navigation | Overview then return restores vehicle tracking | AUTONOMOUS | PASS | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
 | NAV-UI-008 | navigation | Spoken 「开始导航」 enters the same driving state as a route tap | AUTONOMOUS | PASS | yes | 2026-09-20 unit |
 | NAV-UI-009 | navigation | Arrival leaves ACTIVE_DRIVING_NAVIGATION | AUTONOMOUS | PASS | yes | 2026-09-20 unit plus existing arrival tests |
 | NAV-UI-010 | navigation | Route-selection voice commands are unchanged | AUTONOMOUS | PASS | yes | 2026-09-20 unit, pre-existing tests still green |
@@ -171,7 +171,7 @@ Updated 2026-09-21 · 163 tests
 | CONFIG-CARD-UNIT-001 | permissions | A fixed configuration problem removes its CONFIG card and nothing else | AUTONOMOUS | PASS | no | 2026-10-02 cloud, claude/10-1: ShownErrorCardTest 10/0 with the B-033 fade; full suite … |
 | PERM-CAMERA-001 | permissions | A camera question without permission fails honestly | AUTONOMOUS | PASS | yes | CameraQuestionHandlerTest.missingCameraPermissionFailsFastWithoutCaptureOrRequest |
 | PERM-CONTACTS-001 | permissions | Missing contacts permission is not reported as not-found | AUTONOMOUS | PASS | yes | 2026-09-20 TEST_REVIEW: AndroidContacts mapped READ_CONTACTS denial onto ContactMatchKi… |
-| PERM-DENY-001 | permissions | A revoked microphone permission fails honestly | AUTONOMOUS | STALE | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
+| PERM-DENY-001 | permissions | A revoked microphone permission fails honestly | AUTONOMOUS | PASS | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
 | TRANSCRIPT-FADE-EMU-001 | permissions | On the emulator the transcript bubble leaves the map about 10 s after the last line | AUTONOMOUS | NOT_RUN | no | 2026-10-02 cloud attempt, not a result: the app installed on nova34 (software-only) but… |
 | TRANSCRIPT-FADE-UNIT-001 | permissions | The last exchange clears after a quiet period and never while the conversation is live | AUTONOMOUS | PASS | no | 2026-10-02 cloud, claude/10-2: TranscriptBubbleFadeTest 7/0, TranscriptBubbleSessionSim… |
 | SUITE-SCENARIO-001 | regression | The live scenario suite | AUTONOMOUS | FAIL | yes | 2026-09-20: 20/20, exit 0 |
@@ -193,8 +193,8 @@ Updated 2026-09-21 · 163 tests
 | LIFECYCLE-ERROR-001 | reliability | A dead session stops showing that it is listening | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: verified by reproducing the rejection, then reverting it |
 | NET-RECOVER-001 | reliability | A cut connection recovers without the driver noticing | AUTONOMOUS | PASS | yes | 2026-09-20: tool=control_climate after the socket was cancelled |
 | PLACE-NAV-001 | saved_places | 回家 resolves from the saved place, not a POI search | AUTONOMOUS | PASS | no | 2026-09-20: 4/5 - the ASR misses the two-character utterance about once in five, and th… |
-| PLACE-SAVE-001 | saved_places | An address is resolved before it is stored | AUTONOMOUS | STALE | no | 2026-09-19: place=珠海站 |
-| PLACE-UNSET-001 | saved_places | An unset home is admitted, not guessed | AUTONOMOUS | STALE | yes | 2026-09-19 device |
+| PLACE-SAVE-001 | saved_places | An address is resolved before it is stored | AUTONOMOUS | PASS | no | 2026-09-19: place=珠海站 |
+| PLACE-UNSET-001 | saved_places | An unset home is admitted, not guessed | AUTONOMOUS | PASS | yes | 2026-09-19 device |
 | EXPORTED-001 | security | The release build exposes no debug surface | AUTONOMOUS | PASS | yes | 2026-09-20, release manifest via aapt2: only MainActivity is exported; DeveloperSetting… |
 | RELEASE-LOG-001 | security | A release build does not log what the driver said | AUTONOMOUS | PASS | yes | 2026-09-20: DebugVoiceLog is the only logger in app/src/main, ingress/src/main and cont… |
 | SECRET-SCAN-001 | security | No secret is tracked by git | AUTONOMOUS | PASS | yes | part of the 737 |
