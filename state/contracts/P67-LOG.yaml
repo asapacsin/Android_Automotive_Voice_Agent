@@ -1,0 +1,34 @@
+schema: nova-task-contract/1
+task_id: P67-LOG
+title: P67 diagnosis - text-free claim log at both capability claim points
+branch: exec/p67-log
+base_commit: 0a9f15ee0b400fa0faee865a440fb9c71d3dcfc7
+approved_paths:
+  - app/src/main/kotlin/com/novadrive/app/ScreenAffordanceRunner.kt
+  - app/src/main/kotlin/com/novadrive/app/ToolCallGuards.kt
+  - app/src/main/kotlin/com/novadrive/app/voice/DriverContext.kt
+  - app/src/test/kotlin/com/novadrive/app/CapabilityClaimLogTest.kt
+allowed_changes:
+  - Log one line "claim src=LOCAL|MODEL tool=<tool> group=<control group> epoch=<n> ctx=<identityHashCode or null> ok=<true|false|skipped>" at the local claim (ScreenAffordanceRunner.tryHandle) and the model claim (ToolCallGuards.repeatedInTurn), including the paths that skip claiming (no context, epoch 0)
+  - Make DriverContext.controlGroup internal so both sides log the same group
+  - A JVM test that the local path logs ok=skipped when it runs without a context or with epoch 0, and that both claim lines carry the same epoch and ctx in the observed P67 order
+architecture_constraints:
+  - Behaviour unchanged - the same calls are refused and the same calls run as at base_commit
+  - I-8 - logs carry codes, tools, groups, epochs and identity hashes only; never utterance text, arguments values, coordinates or addresses
+forbidden_changes:
+  - No change to claim keys, claim order, refusal codes or any other guard
+forbidden_paths:
+  - "scripts/**"
+  - TEST_MATRIX.yaml
+  - OPEN_PROBLEMS.md
+required_verification:
+  - id: app-unit
+    kind: regression
+    command: python3 scripts/compact_test.py -- ./gradlew --offline -q :app:testDebugUnitTest
+  - id: behavior-test
+    kind: regression
+    command: python3 scripts/compact_test.py -- ./gradlew --offline -q :behavior-test:test
+acceptance_criteria:
+  - Both claim points log the claim line in every branch (claimed, refused, skipped)
+  - CapabilityClaimLogTest passes; app debug and behavior-test suites have no new failures versus base_commit
+  - No behaviour change versus base_commit

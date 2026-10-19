@@ -111,18 +111,22 @@ def capability_status():
 
 
 def open_issues():
-    """Problems recorded as still open, read from the defect log rather than remembered."""
+    """Problems recorded as still open, read from the defect log rather than remembered. Same rule as
+    scripts/discover_work.py (section-bounded status, terminal word at its start), so the two never
+    disagree: a status such as "OPEN ... Fixed at JVM level" is open."""
     path = os.path.join(REPO, "OPEN_PROBLEMS.md")
     if not os.path.isfile(path):
         return []
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from discover_work import is_terminal
     text = open(path, encoding="utf-8").read()
+    headings = list(re.finditer(r"^## (P\d+) — (.+)$", text, re.M))
     issues = []
-    for match in re.finditer(r"^## (P\d+) — (.+)$", text, re.M):
-        section = text[match.end():]
-        status_line = re.search(r"\*\*Status:\*\*\s*(.+)", section)
+    for i, match in enumerate(headings):
+        end = headings[i + 1].start() if i + 1 < len(headings) else len(text)
+        status_line = re.search(r"\*\*Status:\*\*\s*(.+)", text[match.end():end])
         status = status_line.group(1).strip() if status_line else "unknown"
-        resolved = any(w in status.upper() for w in ("RESOLVED", "FIXED", "NOT A DEFECT", "IMPLEMENTED"))
-        if not resolved:
+        if not is_terminal(status_line.group(1) if status_line else ""):
             issues.append({"id": match.group(1), "title": match.group(2).strip(), "status": status[:120]})
     return issues
 

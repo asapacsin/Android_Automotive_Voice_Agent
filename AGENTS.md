@@ -205,8 +205,11 @@ does not change architecture ownership, invariants, or who may certify work. Age
   secret (model list HTTP 200; 3.6 Flash answers, 3.8 Flash was overloaded). Gemini CLI 0.64.0 answers
   headless (`GEMINI_CLI_TRUST_WORKSPACE=true GEMINI_API_KEY=injected-by-proxy gemini -m <model> -p ...`;
   the proxy supplies the real key, the placeholder is never a secret). Not installed by the setup
-  script, and an unattended `--yolo` run (it approves its own edits and commands) needs the owner's
-  explicit permission rule in Claude Code settings first. Until then the Claude executor is used. The contract gate
+  script. The owner allowed unattended `--yolo` runs in `.claude/settings.json` (2026-10-19). **Limit
+  found 2026-10-19:** the key is on the free tier, 20 requests per model per day, and one agent task
+  spends that in a single run (P67-LOG: 429 `generate_content_free_tier_requests` on both 3.8 and 3.6
+  Flash before the task finished). So Gemini executors only fit tiny packets on a fresh daily quota;
+  otherwise the Claude executor is used. A paid Gemini key would lift this. The contract gate
   (docs/AGENT_CONTRACT_WORKFLOW.md) applies to it unchanged: scope, verify and reviewer PASS are
   checked from git, never taken from its report. Respect the vendor-file rule: the licensed vendor
   files must not be sent to it.
