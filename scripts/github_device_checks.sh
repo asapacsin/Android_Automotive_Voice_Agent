@@ -187,8 +187,11 @@ pf device:NAV-CRASH-001 "fatal=$fatal anr=$anr" '[ "$fatal" = 0 ] && [ "$anr" = 
 # The voice flow, by dispatch: navigate_to -> candidates -> choose index 2 -> routes -> exit (the
 # cancel the model calls for 算了). Fixed 2026-10-19: route drawing follows the map presentation
 # (MapPresentationPolicy.drawsRoute; the experiment rounds of runs 39177948610 and run_20261019_0423
-# showed setAutoDrawRoute(false) removes the line). Screenshots p59_<round>_cancelled are the visual
-# proof; the check itself asserts that both rounds calculated a route and went idle.
+# showed setAutoDrawRoute(false) removes the line). The check asserts each round calculated a route,
+# previewed with autoDraw=true and went idle with autoDraw=false; the screenshots p59_<round>_routes
+# (route drawn) and p59_<round>_cancelled (no line) are the visual proof and are read by a person.
+# The debug nav_route path above calculates without the controller, so nav_route_preview shows no
+# route line since this fix (it never reaches the PREVIEW presentation).
 p59_round() { # round name
   mark
   tool dispatch "navigate_to:destination=珠海站"; sleep 8
@@ -198,8 +201,10 @@ p59_round() { # round name
   shot "p59_${1}_cancelled"
   local calc; calc="$(count 'nav_calc_success')"
   [ "$calc" -ge 1 ] || p59_bad=$((p59_bad + 1))
-  [ "$(count 'nav_presentation mode=idle')" -ge 1 ] || p59_bad=$((p59_bad + 1))
-  note "P59 $1: candidates=$(count 'nav_resolve_candidates') calc=$calc cancelled=$(count 'nav_flow_cancelled') idle=$(count 'nav_presentation mode=idle') preview=$(count 'nav_presentation mode=preview')"
+  # The fix's own log: the picker drew with autoDraw on, the cancel turned it off.
+  [ "$(count 'nav_presentation mode=preview.*autoDraw=true')" -ge 1 ] || p59_bad=$((p59_bad + 1))
+  [ "$(count 'nav_presentation mode=idle.*autoDraw=false')" -ge 1 ] || p59_bad=$((p59_bad + 1))
+  note "P59 $1: candidates=$(count 'nav_resolve_candidates') calc=$calc cancelled=$(count 'nav_flow_cancelled') idle_off=$(count 'nav_presentation mode=idle.*autoDraw=false') preview_on=$(count 'nav_presentation mode=preview.*autoDraw=true')"
 }
 p59_bad=0
 if [ "${web_key:-0}" = 1 ]; then

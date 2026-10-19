@@ -381,6 +381,9 @@ packet (presentation driven by the controller's phase / a cancel event) plus an 
 
 Note from its review (2026-10-17): "no overview" covers the camera and view options only; the SDK
 still auto-draws the late route's line and flag (P59: no SDK 11.2.100 call removes it).
+Update 2026-10-19 (P59 fix, exec/p59-fix): route drawing now follows the presentation
+(`MapPresentationPolicy.drawsRoute`, `setAutoDrawRoute` false while idle), so a late calculation
+after a cancel is no longer drawn at all. Device check: `device:P59` rounds.
 
 ## D-REROUTE-PREVIEW — a reroute during guidance applies the route-preview options (recorded 2026-10-17)
 
