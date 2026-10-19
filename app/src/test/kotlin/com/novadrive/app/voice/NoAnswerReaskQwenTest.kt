@@ -357,7 +357,8 @@ class NoAnswerReaskQwenTest {
         send("""{"type":"error","error":{"type":"invalid_request_error","code":"InvalidRequest","message":"Conversation already has an active response"}}""")
         awaitUntil({ "$lines" }) { log("qwen_reask_dropped reason=busy").isNotEmpty() }
         send(answerCreated)
-        Thread.sleep(400)
+        awaitUntil({ "$lines" }) { log("qwen_event type=response.created").size == 2 }
+        Thread.sleep(200)
         assertTrue(cancels("reask_voided").isEmpty(), "$lines")
         client.disconnect()
     }
@@ -370,7 +371,8 @@ class NoAnswerReaskQwenTest {
         voidedReask(client)
         client.sendUserText("请朗读这条提示")
         send(answerCreated)
-        Thread.sleep(400)
+        awaitUntil({ "$lines" }) { log("qwen_event type=response.created").size == 2 }
+        Thread.sleep(200)
         assertTrue(cancels("reask_voided").isEmpty(), "$lines")
         client.disconnect()
     }
