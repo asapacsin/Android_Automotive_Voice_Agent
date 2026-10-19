@@ -631,7 +631,7 @@ second call was `control_climate get_state`, a read: `claim src=LOCAL group=powe
 epoch is refused `DUPLICATE_IN_TURN` (SPEC-010 A7); a model-first read never blocks the local path.
 JVM: app unit 2070/0, behavior-test PASS, reviewer PASS. Closes after AFF-AC passes on the next Voice checks run.
 
-**Status:** OPEN 2026-10-17. Fixed at JVM level, merged 2026-10-17: `claimCapability` keys on the
+**Status:** FIXED 2026-10-19. Voice checks run 39300840860 at 55f46b6 (real vendor, Gemini; P67-FIX merge a7e09d5): AFF-AC re-measure 1/1 (`ok AFF-AC 1/1`; `devrows:AFF-AC` PASS in verdict.json and results.jsonl), i.e. the model's `control_climate` was refused DUPLICATE_IN_TURN or not executed. That run's device_skeletons.txt is empty (skeletons are written only for failing scenarios), so there are no AFF-AC skeleton lines to quote; the verdict is the AFF-AC oracle's. Evidence `ci/voice-evidence runs/run_20261019_1906_55f46b6`. Earlier status, OPEN 2026-10-17: Fixed at JVM level, merged 2026-10-17: `claimCapability` keys on the
 control (`CapabilityClaimGroupTest` 7/7; app debug 1958/0, behavior-test 132/0 in the planner's
 rerun; reviewer PASS, unverified E2E). It closes after the AFF-AC re-measure on the next voice-checks
 run (AFFORDANCE-DEVICE-001). Reviewer note: the model call in run 39005653831 logged `args=[action]`
