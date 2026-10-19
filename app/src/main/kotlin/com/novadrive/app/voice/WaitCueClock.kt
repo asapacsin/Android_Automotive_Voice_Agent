@@ -103,6 +103,7 @@ class WaitCueClock(
         if (!final) return notice(WaitCue("stalled", WaitCues.STALLED))
         val action = synchronized(lock) { awaitingReply = false; actionThisTurn }
         notice(if (action) WaitCue("stall_failed", WaitCues.RESULT_ON_SCREEN) else WaitCue("stall_failed", WaitCues.STALL_FAILED))
+        stop("stall_failed", turnScoped = true) // given up: no later progress line follows (P45 U2)
     }
 
     /**

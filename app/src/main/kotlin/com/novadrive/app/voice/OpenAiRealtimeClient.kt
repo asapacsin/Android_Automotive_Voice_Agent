@@ -65,13 +65,15 @@ open class OpenAiRealtimeClient<C : Any>(
     @Volatile private var playbackActive = false
     @Volatile private var navigatingListener: ((Boolean) -> Unit)? = null
     @Volatile private var textUnsupportedLogged = false
-    private val emptyRetry = EmptyResponseRetryPolicy()
     private val deliveredStyle = DeliveredStyle() // P55
     private val resetPolicy = ConversationResetPolicy()
     private val historyBudget = HistoryBudget()
     private val resetScope = kotlinx.coroutines.CoroutineScope(
         kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO,
     )
+    internal val emptyRetry = EmptyResponseRetryPolicy(resetScope, dialect.logPrefix, { trySend(dialect.responseCreate()) }, { onStallNotice?.invoke(true) }) {
+        noAnswerBlock(listeningSuspended, guidance = false, lastAudioSegment(), busy = responseInProgress || cueHoldsGate)
+    } // also P45 U2's no-answer re-ask (NoAnswerReask.kt)
     @Volatile private var lastConfig: C? = null
     @Volatile private var resetting = false
 
@@ -249,6 +251,7 @@ open class OpenAiRealtimeClient<C : Any>(
      * arrived yet (cancelResponse only acts once audio plays, to keep barge-in behaviour as is).
      */
     fun cancelActiveResponse() {
+        emptyRetry.appHandled(answerUnderway = responseInProgress)
         if (cue.discardForClientCancel()) sendCancelOnce("client_cancel") else if (responseInProgress || assistantSpeaking) sendCancelOnce("active")
     }
 
@@ -273,9 +276,9 @@ open class OpenAiRealtimeClient<C : Any>(
 
     /** A call from a response this client cancelled: not executed, not answered, no new reply. */
     private fun dropCallFromCancelledResponse(event: DomainVoiceEvent): Boolean {
-        if (event !is DomainVoiceEvent.ToolCall || !cancelSentThisResponse) return false
+        if (event !is DomainVoiceEvent.ToolCall || !(cancelSentThisResponse || emptyRetry.gaveUp)) return false // P45 U2: a given-up turn's late call too
         val shape = if (event.arguments.containsKey("_validation_error")) "rejected" else "valid"
-        DebugVoiceLog.log("${dialect.logPrefix}_call_dropped reason=response_cancelled tool=${event.name} args=$shape")
+        DebugVoiceLog.log("${dialect.logPrefix}_call_dropped reason=${if (cancelSentThisResponse) "response_cancelled" else "reask_gave_up"} tool=${event.name} args=$shape")
         resetPolicy.onCallDropped(event.callId)
         return true
     }
@@ -438,6 +441,7 @@ open class OpenAiRealtimeClient<C : Any>(
         responseInProgress = false
         cancelSentThisResponse = false
         cue.clear(); cueHoldsGate = false; stallRetryWaiting = false
+        emptyRetry.reset() // no re-ask or give-up outlives its socket
         turnGate.onConnectionReset()
         assembler.clear()
         val owned = navigatingListener
@@ -516,12 +520,6 @@ open class OpenAiRealtimeClient<C : Any>(
             toolCallIds = callIds,
             unidentifiedToolCalls = (calls - callIds.size).coerceAtLeast(0),
         )
-    }
-
-    /** One extra response.create for a turn the provider completed with no output (see EmptyResponseRetryPolicy). */
-    private fun requestReplyAfterEmptyResponse() {
-        DebugVoiceLog.log("${dialect.logPrefix}_empty_response_retry")
-        trySend(dialect.responseCreate())
     }
 
     /** The wire translated for [ProviderCueCapture], which knows no vendor vocabulary (ADR-009). */
@@ -603,7 +601,6 @@ open class OpenAiRealtimeClient<C : Any>(
             // Code only: a provider message can quote what the driver said.
             if (type == "error") DebugVoiceLog.log("${dialect.logPrefix}_error code=${dialect.errorCode(text)}")
             if (type == "input_audio_buffer.speech_started") {
-                emptyRetry.onSpeechStarted()
                 turnGate.onSpeechStarted()
                 stallWatchdog.onDriverTurn()
                 pipeline.beginDriverTurn(playbackActive || assistantSpeaking, responseInProgress)
@@ -622,6 +619,9 @@ open class OpenAiRealtimeClient<C : Any>(
                 streamedWords.reset()
                 pipeline.onResponseCreated()
             }
+            if (emptyRetry.onRealtimeEvent( // true: this response answers a re-ask the app already handled (Q5)
+                started = type == "input_audio_buffer.speech_started", stopped = type == "input_audio_buffer.speech_stopped",
+                created = type == "response.created", progress = type in RESPONSE_PROGRESS_TYPES)) sendCancelOnce("reask_voided")
             if (streamedReplyText && type == "response.audio_transcript.delta") {
                 streamedWords.onDelta(JSONObject(text).optString("delta"))?.let(pipeline::appendAssistantText)
             }
@@ -630,18 +630,18 @@ open class OpenAiRealtimeClient<C : Any>(
                 streamedWords.onDone(raw.optString("transcript").ifEmpty { raw.optString("text") })?.let(pipeline::appendAssistantText)
             }
             if (type == "conversation.item.input_audio_transcription.completed") pipeline.onUserTranscript(JSONObject(text).optString("transcript"))
-            if (type == "error" && dialect.isResponseAlreadyActive(text)) {
+            if (type == "error" && dialect.isResponseAlreadyActive(text) && !emptyRetry.onBusyError()) { // a busy re-ask is dropped, not re-queued
                 DebugVoiceLog.log("${dialect.logPrefix}_turn_rejected_busy retry=true")
                 turnGate.onBusyRejected(
                     ResponseTurnGate.Turn(listOf(dialect.responseCreate()), emptyList(), conversationEpoch),
                 )
             }
             if (type == "conversation.item.input_audio_transcription.completed" && emptyRetry.onUserTranscriptCompleted()) {
-                requestReplyAfterEmptyResponse()
+                emptyRetry.fire(EmptyResponseRetryPolicy.EMPTY_CLOSE)
             }
             if (type == "response.done") {
                 turnGate.onResponseDone()
-                if (onResponseDone(text)) requestReplyAfterEmptyResponse() else flushDeferredTurns()
+                if (!(onResponseDone(text) && emptyRetry.fire(EmptyResponseRetryPolicy.EMPTY_CLOSE))) flushDeferredTurns()
                 stallWatchdog.onResponseDone(alive) // after the flush: a released turn makes a retry unwanted
                 // Fail-safe: finishResponse clears the buffer on either verdict, so this only
                 // fires when the parse above returned early. Better a spoken reply than audio
@@ -752,7 +752,7 @@ open class OpenAiRealtimeClient<C : Any>(
         }
     }
 
-    private fun trySend(message: String): Boolean = socket?.send(message) == true
+    private fun trySend(message: String): Boolean = (socket?.send(message) == true).also { if (it) emptyRetry.onSent(dialect, message) } // Q5
 
     private fun sendControl(message: String) {
         if (!trySend(message)) throw dialect.notConnected()

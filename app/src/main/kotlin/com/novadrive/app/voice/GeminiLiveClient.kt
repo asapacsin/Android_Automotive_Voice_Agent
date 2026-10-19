@@ -31,7 +31,6 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import okio.ByteString
 import java.util.Base64
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
 /**
@@ -43,7 +42,7 @@ import java.util.concurrent.atomic.AtomicLong
  * arguments, the resumption handle or the instructions (I-8).
  */
 class GeminiLiveClient(
-    private val http: OkHttpClient = defaultHttp(),
+    private val http: OkHttpClient = OpenAiRealtimeClient.defaultHttp(), // the same socket settings
     private val readyTimeoutMs: Long = 10_000,
     private val requireTls: Boolean = true,
     private val contextHint: () -> String? = { VoiceContextHints.current() },
@@ -126,6 +125,9 @@ class GeminiLiveClient(
     private val speech = GeminiSpeechText(speechTextEvents, ::emit, pipeline::filter, prompt::suppressed)
     private val timing = GeminiTurnTiming()
     internal val diagnostics = GeminiTurnDiagnostics(scope) // P45 U1: logs only, never a decision
+    internal val noAnswer = EmptyResponseRetryPolicy(scope, "gemini", send = { trySend(GeminiLiveProtocol.textTurn(GEMINI_REASK_TEXT)) }) {
+        synchronized(this) { noAnswerBlock(listeningSuspended, prompt.busy, lastAudioSegment(), busy = turnOpen) }
+    } // P45 U2
 
     fun events(): Flow<RealtimeEvent> = eventFlow.asSharedFlow()
 
@@ -223,6 +225,7 @@ class GeminiLiveClient(
      */
     fun markClientCancelled() {
         clientCancelled = true
+        synchronized(this) { noAnswer.appHandled(answerUnderway = turnOpen) }
         DebugVoiceLog.log("gemini_client_cancel local_only=true")
     }
 
@@ -239,6 +242,7 @@ class GeminiLiveClient(
     private fun beginDriverTurnLocked() {
         prompt.void("driver_onset")
         onsetSeen = true
+        noAnswer.onSpeechStarted()
         callDispatchedThisDriverTurn = false
         strayOutput.setLength(0)
         if (turnOpen && !turnAudioSeen && turnCallIds.isEmpty()) {
@@ -287,6 +291,7 @@ class GeminiLiveClient(
         clearTurnState()
         inputText.setLength(0); diagnostics.reset()
         strayOutput.setLength(0)
+        noAnswer.reset()
     }
 
     private fun clearTurnState() {
@@ -436,6 +441,7 @@ class GeminiLiveClient(
                 DebugVoiceLog.log("gemini_driver_turn_fallback source=voice_activity")
             }
             diagnostics.message(message, turnOpen); onContent(message)
+            noAnswer.onGeminiMessage(message)
         }
         message.workPending?.let { emit(DomainVoiceEvent.ProviderWorkState(it)) }
         if (message.cancelledCallIds.isNotEmpty()) {
@@ -516,6 +522,7 @@ class GeminiLiveClient(
         }
         flushInput()
         clientCancelled = false
+        if (noAnswer.takeVoided()) clientCancelled = true // P45 U2 Q5: the answer to a re-ask the app already handled
         pipeline.clearCallsThisResponse()
         pipeline.onResponseCreated()
         clearTurnState()
@@ -574,7 +581,7 @@ class GeminiLiveClient(
         val transcribed = !turnOpen && inputText.isNotBlank()  // P45: a question Gemini closed with no reply
         flushInput()
         strayOutput.setLength(0)
-        if (!turnOpen) return run { DebugVoiceLog.log("gemini_turn_empty status=$status transcribed=$transcribed") }
+        if (!turnOpen) return noAnswer.onGeminiEmptyClose(status, transcribed)
         finishGeneration()  // the verdict was given there (at generationComplete, or now)
         if (prompt.open != null) {
             prompt.complete()
@@ -598,7 +605,7 @@ class GeminiLiveClient(
     }
 
     private fun onToolCall(raw: GeminiLiveProtocol.RawCall) {
-        val call = GeminiLiveProtocol.toolCall(raw)
+        val call = noAnswer.lateCall(GeminiLiveProtocol.toolCall(raw)) // P45 U2: a given-up turn's call is not executed
         if (call == null) {
             DebugVoiceLog.log("gemini_call_dropped reason=invalid_id")
             return
@@ -624,7 +631,7 @@ class GeminiLiveClient(
         emit(call)
     }
 
-    private fun trySend(message: String): Boolean = socket?.send(message) == true
+    private fun trySend(message: String): Boolean = (socket?.send(message) == true).also { if (it && !message.startsWith("{\"realtimeInput\"")) noAnswer.onClientTurnSent() } // Q5
 
     private fun sendControl(message: String) {
         if (!trySend(message)) {
@@ -636,11 +643,5 @@ class GeminiLiveClient(
         if (!eventFlow.tryEmit(RealtimeEvent(SystemSessionClock.nowMs(), event))) {
             DebugVoiceLog.log("gemini_event_dropped count=${droppedEvents.incrementAndGet()}")
         }
-    }
-
-    companion object {
-        private fun defaultHttp() = OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.SECONDS).readTimeout(0, TimeUnit.MILLISECONDS)
-            .pingInterval(20, TimeUnit.SECONDS).build()
     }
 }

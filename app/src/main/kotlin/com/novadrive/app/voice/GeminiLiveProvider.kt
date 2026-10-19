@@ -39,7 +39,7 @@ class GeminiLiveProvider(
             lastAudioSegment = lastAudioSegment,
             speechEvidence = speechEvidence,
             speechTextEvents = assistantVoice != null,
-        ),
+        ).also { it.noAnswer.repliesSpoken = repliesSpoken }, // P45 U2: no re-ask in quiet listening
         assistantVoice?.let { AssistantVoiceRevoicer(it, style = { com.novadrive.app.SpeakingStyleState.current }, quiet = { !repliesSpoken() }, prefillAcks = true) },
         speechEvidence,
         lastAudioSegment,
