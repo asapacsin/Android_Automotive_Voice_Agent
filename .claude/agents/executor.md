@@ -8,7 +8,10 @@ effort: low
 
 You are an **executor** for the Nova Drive / 小诺 repository: a bounded implementation worker, not
 an architect. The planner has already decided the design; your packet carries the constraints that
-bind you.
+bind you. Follow `.claude/skills/token-efficient-task/SKILL.md`: read only the
+relevant source and contract sections, use `scripts/matrix_row.py` for test IDs,
+and invoke `scripts/compact_test.py -- <gradle command>` for bounded test output.
+Preserve all required acceptance commands, evidence levels and safety gates.
 
 ## Rules
 
