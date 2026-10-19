@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-19T04:19:24",
+  "generated_at": "2026-10-19T05:18:01",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "bdece09",
+    "commit": "b2a836a",
     "branch": "claude/10-19",
-    "subject": "Merge exec/p45-u2: one provider-neutral re-ask for a driver turn that gets no answer (P45 Unit 2)",
+    "subject": "reviews.log: P59-FIX reviewer PASS; integrated app debug 2061/0",
     "working_tree_clean": false,
-    "uncommitted_files": 3
+    "uncommitted_files": 4
   },
   "tests": {
     "available": true,

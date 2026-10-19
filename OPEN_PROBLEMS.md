@@ -2582,6 +2582,15 @@ CAPABILITIES.md:30, ARCHITECTURE.md:64, TEST_MATRIX DEMO-TRYOUT-001 `related`.
 
 ## P67 — 「空调」 can operate the AC twice: the local path and the model's call with a different action
 
+**REOPENED 2026-10-19:** the AFF-AC re-measure failed on the real-vendor Voice checks run 39198920117
+at adfa384 (`ci/voice-evidence runs/run_20261019_0515_adfa384`, device_skeletons.txt): the model's
+`gemini_tool_call tool=control_climate` arrived before `affordance_match id=climate`, the local
+`screen_action=voice_climate ok=true` ran, and then the model's `tool=control_climate args=[action]
+result=✓` ran too - no DUPLICATE_IN_TURN. The onset was server-only (`gemini_driver_turn_fallback
+source=voice_activity`). Working hypothesis: the two sides claim under different epochs
+(`capabilityEpoch()` read at different moments, or from different counters), which the
+same-epoch `CapabilityClaimGroupTest` cannot catch. Reproduction and fix: exec/p67-r.
+
 **Status:** OPEN 2026-10-17. Fixed at JVM level, merged 2026-10-17: `claimCapability` keys on the
 control (`CapabilityClaimGroupTest` 7/7; app debug 1958/0, behavior-test 132/0 in the planner's
 rerun; reviewer PASS, unverified E2E). It closes after the AFF-AC re-measure on the next voice-checks

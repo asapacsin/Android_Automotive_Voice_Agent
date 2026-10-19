@@ -6,7 +6,7 @@ Every case below **requires a physical Android device** (and usually a real cabi
 
 > Autonomous work may still be open. Prefer finishing cloud-verifiable work first; this file is still the device queue.
 >
-> - the registry does not validate: 60 problem(s)
+> - the registry does not validate: 61 problem(s)
 > - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - TRUTH-MEDIA-001 is AUTONOMOUS and NOT_RUN - run it or fix it
