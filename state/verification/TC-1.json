@@ -1,0 +1,36 @@
+{
+ "task_id": "TC-1",
+ "contract_sha256": "0e25324d1ada289360ba0fd63914ec8c5893e66a3facce6e0bb341a29ef0b76d",
+ "tip": "6dd790c977aa649aa8b09de59d3853285f8ecf9a",
+ "verified_by": "planner",
+ "at": "2026-10-19T09:17:18+00:00",
+ "results": [
+  {
+   "id": "tc1-acceptance",
+   "kind": "integration",
+   "command": "python3 /tmp/claude-0/-home-user/1bd74f9c-9fd5-51e9-95f1-c0ec94aa3773/scratchpad/tc1_check.py 8c52aa369108c532a6877e6d52e84e7b2e75960e",
+   "exit_code": 0,
+   "seconds": 0.1,
+   "log": "/root/nova-drive-build/nova-verify/TC-1/6dd790c977aa-tc1-acceptance.log",
+   "log_sha256": "37e5d60dde88f02747c4dc97585dc8da442987c216c0dab49eeca5fb42928573"
+  },
+  {
+   "id": "discover-work",
+   "kind": "integration",
+   "command": "python3 scripts/discover_work.py",
+   "exit_code": 0,
+   "seconds": 58.6,
+   "log": "/root/nova-drive-build/nova-verify/TC-1/6dd790c977aa-discover-work.log",
+   "log_sha256": "6f0437b4847563d590973b00e64b121219348c67c6ab9f61f56522af63784eee"
+  },
+  {
+   "id": "script-tests",
+   "kind": "regression",
+   "command": "python3 -m unittest discover -s scripts/tests -t .",
+   "exit_code": 0,
+   "seconds": 227.0,
+   "log": "/root/nova-drive-build/nova-verify/TC-1/6dd790c977aa-script-tests.log",
+   "log_sha256": "ab4d3b9b38bd3a0856c62d3577e3e72636e7d857537d127e3e48349924ab950b"
+  }
+ ]
+}

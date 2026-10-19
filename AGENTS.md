@@ -197,6 +197,14 @@ does not change architecture ownership, invariants, or who may certify work. Age
   file and the documents under "Where things are", builds a dependency DAG, and runs waves.
 - `executor` (Opus 5.5, low effort) implements bounded task packets in its own worktree. It cannot
   spawn agents and must return BLOCKED rather than guess or redesign.
+  **Owner preference (2026-10-19):** when available, run executor packets on **Gemini 3.8 Flash**
+  instead of a Claude executor, to keep that work off the Claude plan. "Available" means a Gemini API
+  key reaches the session (an environment secret, never pasted in chat) *and* a tool-capable agent
+  runner exists for it. Neither was present in the cloud container on 2026-10-19 (the Gemini Live key
+  is a GitHub Actions secret only). Until then the Claude executor is used. The contract gate
+  (docs/AGENT_CONTRACT_WORKFLOW.md) applies to it unchanged: scope, verify and reviewer PASS are
+  checked from git, never taken from its report. Respect the vendor-file rule: the licensed vendor
+  files must not be sent to it.
 - `reviewer` (Opus 5.5, high effort, read-only) is used selectively; its policy is
   [`agent/REVIEWER.md`](agent/REVIEWER.md). Verdicts: PASS / REVISE / ARCHITECTURE_REVIEW_REQUIRED.
 - At most 4 concurrent executors. Writers get worktrees the planner creates from the exact feature
