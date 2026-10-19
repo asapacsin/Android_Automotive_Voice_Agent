@@ -1,0 +1,50 @@
+-- AFF-AC
+   test_speech_start bytes=59904
+   debug_tool tool=voice arg=say:aff_ac
+   gemini_driver_turn_fallback source=voice_activity
+   gemini_voice_activity type=ACTIVITY_START
+   gemini_first_transcript ms=none
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=6464 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   test_speech_end frames=203 elapsedMs=2030
+   gemini_content_no_turn kind=inputTranscription audio=0 text_parts=0
+   gemini_voice_activity type=ACTIVITY_END
+   ctx_hint epoch=3 referents=none pending=0
+   TURN_HOLD epoch=3 reason=AWAITING_EXECUTION_PROOF kind=ACTION durationMs=-1
+   gemini_turn_open
+   gemini_tool_call id=fc_11884238828530802317 tool=control_climate args=valid
+   claim src=LOCAL tool=control_climate group=power epoch=3 ctx=123103985 ok=true
+   affordance_match id=climate verb=false
+   screen_action=voice_climate ok=true error=-
+   state=LISTENING err=-
+   state=LISTENING err=-
+   gemini_client_cancel local_only=true
+   state=LISTENING err=-
+   claim src=MODEL tool=control_climate group=get_state epoch=3 ctx=123103985 ok=true
+   tool=control_climate args=[action] result=✓
+   state=LISTENING err=-
+   gemini_tool_response id=fc_11884238828530802317 chars=180
+   transcript_bubble_shown
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   transcript_bubble_shown
+   gemini_server_meta response_tokens=TOTAL:88,AUDIO:74
+   gemini_turn_done status=completed calls=1 spoke=true dur_ms=3549 first_audio_ms=947 first_text_ms=947 gen_ms=1758 msgs=26 max_gap_ms=424
+   state=LISTENING err=-
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=6965 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=7473 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8

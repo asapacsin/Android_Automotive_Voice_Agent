@@ -1,0 +1,2 @@
+          expected /导航/
+          expected /音乐|空调|电话|摄像头|地图/

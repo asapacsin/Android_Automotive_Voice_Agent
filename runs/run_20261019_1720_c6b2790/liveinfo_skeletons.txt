@@ -1,0 +1,12 @@
+-- LI-PLACE
+   test_speech_start bytes=67584
+   debug_tool tool=voice arg=say:live_place_details
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=4859 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   gemini_driver_turn_fallback source=voice_activity
+   gemini_voice_activity type=ACTIVITY_START
+   gemini_first_transcript ms=none
+   test_speech_end frames=227 elapsedMs=2270
+   gemini_content_no_turn kind=inputTranscription audio=0 text_parts=0
+   gemini_voice_activity type=ACTIVITY_END
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=5362 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=5855 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8

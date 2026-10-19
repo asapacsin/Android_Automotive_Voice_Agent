@@ -1,0 +1,2 @@
+      1           expected /kind=place_details/
+      1           expected /tool=query_live_info/

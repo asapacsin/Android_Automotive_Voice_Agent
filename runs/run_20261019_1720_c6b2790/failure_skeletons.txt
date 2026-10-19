@@ -1,0 +1,49 @@
+-- S21
+   test_speech_start bytes=59904
+   debug_tool tool=voice arg=say:help_gan_sha
+   gemini_driver_turn_fallback source=voice_activity
+   gemini_voice_activity type=ACTIVITY_START
+   gemini_first_transcript ms=none
+   test_speech_end frames=203 elapsedMs=2031
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=11460 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   gemini_content_no_turn kind=inputTranscription audio=0 text_parts=0
+   gemini_voice_activity type=ACTIVITY_END
+   ctx_hint epoch=5 referents=none pending=0
+   TURN_HOLD epoch=5 reason=CAPABILITY_HELP kind=CAPABILITY_HELP durationMs=-1
+   gemini_turn_open
+   state=LISTENING err=-
+   state=LISTENING err=-
+   transcript_bubble_shown
+   TURN_RELEASE epoch=5 reason=clause chars=12 audioMs=1800 events=11
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   TURN_RELEASE epoch=5 reason=clause chars=14 audioMs=2000 events=1
+   state=SPEAKING err=-
+   TURN_RELEASE epoch=5 reason=clause chars=17 audioMs=2320 events=2
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   TURN_RELEASE epoch=5 reason=clause chars=19 audioMs=2720 events=1
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   TURN_RELEASE epoch=5 reason=clause chars=23 audioMs=3440 events=3
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   TURN_RELEASE epoch=5 reason=clause chars=25 audioMs=3440 events=0
+   TURN_RELEASE epoch=5 reason=clause chars=28 audioMs=4080 events=2
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   session_diag state=SPEAKING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=11956 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   TURN_RELEASE epoch=5 reason=clause chars=31 audioMs=4600 events=2
+   TURN_RELEASE epoch=5 reason=clause chars=33 audioMs=4600 events=0
+   session_diag state=SPEAKING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=12460 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
