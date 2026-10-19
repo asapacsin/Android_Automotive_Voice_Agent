@@ -624,6 +624,13 @@ context being null or a different instance at one claim, or the model call bypas
 text-free `claim src=... epoch=... ctx=... ok=...` log at both claim points, then one AFF-AC
 re-measure on Gemini.
 
+**Cause found 2026-10-19 (P67-LOG claim lines, Voice checks run 39285245437 at c6b2790):** the model's
+second call was `control_climate get_state`, a read: `claim src=LOCAL group=power epoch=3` then
+`claim src=MODEL group=get_state epoch=3`, same context; the read ran because it is not the power group.
+**Fix merged 2026-10-19 (P67-FIX):** a model `get_state` on a tool the local path claimed in the same
+epoch is refused `DUPLICATE_IN_TURN` (SPEC-010 A7); a model-first read never blocks the local path.
+JVM: app unit 2070/0, behavior-test PASS, reviewer PASS. Closes after AFF-AC passes on the next Voice checks run.
+
 **Status:** OPEN 2026-10-17. Fixed at JVM level, merged 2026-10-17: `claimCapability` keys on the
 control (`CapabilityClaimGroupTest` 7/7; app debug 1958/0, behavior-test 132/0 in the planner's
 rerun; reviewer PASS, unverified E2E). It closes after the AFF-AC re-measure on the next voice-checks
