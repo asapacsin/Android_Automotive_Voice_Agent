@@ -201,10 +201,12 @@ p59_round() { # variant
 p59_bad=0
 if [ "${web_key:-0}" = 1 ]; then
   adb shell am force-stop com.novadrive.app; app_up || true
-  # 2026-10-19 (real-vendor run 39177948610): the first four variants leave the route line. The
-  # next three are the untried ones (route drawing switched off; the view's own RouteOverLays).
-  for v in none stopnavi markers idle map_clear overlay_reflect autodraw_toggle autodraw_off; do p59_round "$v"; done
-  # autodraw_off persists in the view: switch drawing back on so the last round must draw again.
+  # 2026-10-19 (real-vendor run 39177948610): the first four variants leave the route line. The SDK
+  # draws routes natively (AMapNaviCoreEyrieViewManager, reviewer javap 2026-10-19), so the untried
+  # ones are its setShowRoute(false) and the view option autoDrawRoute.
+  for v in none stopnavi markers idle map_clear eyrie_hide autodraw_toggle autodraw_off; do p59_round "$v"; done
+  # eyrie_hide and autodraw_off persist in the view: switch both back on so the last round must draw.
+  tool nav_clear_try eyrie_show; sleep 1
   tool nav_clear_try autodraw_on; sleep 2
   p59_round none2
   pf device:P59 "rounds_without_route=$p59_bad/9" '[ "$p59_bad" = 0 ]'
