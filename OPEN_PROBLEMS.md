@@ -1790,6 +1790,34 @@ Giving up: with no answer 5.0 s after the re-ask → the existing `onStallNotice
 `WaitCueClock` must then stop, so no 12 s line follows. Tool calls that arrive late for a given-up
 turn are answered as not executed (P34/P35).
 
+*Unit 2 – built 2026-10-19 (exec/p45-u2, JVM evidence only).* One provider-neutral re-ask in the
+existing owner `EmptyResponseRetryPolicy` (wiring in `NoAnswerReask.kt`): 3.0 s after end of speech
+with no output and no input transcription (Gemini from ACTIVITY_END, Qwen/Baidu from speech_stopped),
+or at once for an empty close of a transcribed turn; at most once per utterance; never after the next
+onset (every Gemini ACTIVITY_START starts a new utterance, so server-only onsets count), an
+app-handled utterance (barge-in does not count), quiet listening (`repliesSpoken`, reason=quiet),
+suspended listening, a GUIDANCE prompt, a suspicious segment or a dead socket. Give-up 5.0 s after
+the re-ask: Qwen speaks the existing stall_failed line once and WaitCueClock stops (this also follows
+the watchdog's give-up, correct under SPEC-020's amendment); late calls are not executed.
+Decided by the decider 2026-10-19:
+- Q4 (Gemini give-up): silent. GeminiLiveClient has no onStallNotice; a give-up logs
+  `gemini_reask_gave_up`, keeps gaveUp until the next utterance and rejects late calls REASK_GAVE_UP.
+  The Gemini+Azure revoicer path has no stall_failed line and its 12 s line can follow a give-up; no
+  running session builds that path today (SPEC-020 Known limits).
+- Q5 (re-ask sent before the app handled the utterance): its answer is voided through each
+  provider's existing cancel - Gemini openTurn turns the void into clientCancelled and rejects calls
+  REASK_VOIDED; Qwen cancels at response.created (`reask_voided`). Any other model-bound send, a
+  busy refusal or a new utterance clears the void (fail-open). Research: DashScope response.cancel
+  with no response in progress returns an error (help.aliyun.com/zh/model-studio/client-events), so
+  the void acts at response.created; Gemini Live has no client cancel.
+Residuals (reviewer, not blocking): a barge-in whose old audio arrives after speech_started can miss
+its re-ask (fails silent); a busy error between the re-ask's response.created and response.done can
+still be read as the re-ask's rejection; G6 (GUIDANCE turn with a pending void) holds by structure,
+untested. Tests: NoAnswerReaskPolicyTest 13, NoAnswerReaskGeminiTest 22, NoAnswerReaskQwenTest 20.
+Not run: the Gemini free-tier probe gate ("a re-ask with nothing pending must not call a tool, 3/3")
+and any live or device run - next: the Voice checks run on Gemini (TRUTH-BAIT-001, CLIMATE-SET-001,
+SUITE-SCENARIO-001 and DEMO-TRYOUT-001 report `reasked/answered/gave_up` from the log).
+
 *Unit 3 – conditional.* Wire `ResponseStallWatchdog` into `GeminiLiveClient` only if Unit 1 shows
 S14's open turn is a true no-message stall.
 

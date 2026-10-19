@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-19T00:22:17",
+  "generated_at": "2026-10-19T04:19:24",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "4412db4",
+    "commit": "bdece09",
     "branch": "claude/10-19",
-    "subject": "Stand-in vendor builds: the decider's boundaries, two bug fixes, Tier B opt-in",
+    "subject": "Merge exec/p45-u2: one provider-neutral re-ask for a driver turn that gets no answer (P45 Unit 2)",
     "working_tree_clean": false,
-    "uncommitted_files": 4
+    "uncommitted_files": 3
   },
   "tests": {
     "available": true,
@@ -206,7 +206,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "app-debug.apk: no debug APK has been built from this tree",
-    "actionable_count": 128,
+    "actionable_count": 129,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 30,
@@ -1029,6 +1029,13 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P67",
+        "blocked_by": null
+      },
+      {
+        "priority": 10,
+        "class": "stale state or harness defect",
+        "source": "state",
+        "item": "PROJECT_STATE.json",
         "blocked_by": null
       },
       {

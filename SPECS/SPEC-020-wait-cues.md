@@ -113,6 +113,13 @@ Known limits (accepted 2026-10-08; each fails silent, i.e. a missing cue, never 
 - The wake word said over her reply cancels it through the same app-side cancel. So the command that follows the wake word, which still goes to the model, gets no cue.
 - An app-side cancel that lands a few milliseconds after the driver's next onset ends that newer turn's cues.
 - A late tool result from an older turn can clear the current turn's outstanding tool, so `turn_done` may end its cues early.
+- **Not silent - a known false cue on a path no session selects today** (P45 Unit 2, decided by the
+  decider 2026-10-19): the Gemini+Azure revoicer cue path has no stall_failed line and is not stopped
+  by a no-answer give-up, so its 12 s delay line can follow a give-up. Today no running Gemini
+  configuration builds the revoicer (the debug override and the live harness strip the assistant
+  voice), so nothing is heard; it must be wired before that path is ever selected again. A give-up in
+  Gemini's own voice would need a Gemini cue path, which this SPEC excludes (owner decision, not
+  proposed).
 - `DebugVoiceLog` is a no-op on the JVM. The `wait_cue_*` log lines are proven by their effects in the tests, and A6 reads them on the emulator.
 
 Status: A1–A5 unit and in-process integration tests pass on the JVM (2026-10-08, cloud, claude/10-8). The independent review is recorded in the merge commit. A6 needs the emulator.
