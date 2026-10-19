@@ -25,6 +25,17 @@ python scripts/design_basis.py --validate # design-basis gate before difficult i
 Cloud (Linux) sessions: `./gradlew` with the same tasks; the session-start hook installs the
 toolchain — see [docs/CLOUD_BUILD.md](docs/CLOUD_BUILD.md).
 
+**Emulator tests run on GitHub Actions — use them yourself** (owner, 2026-10-19). A cloud container
+has no KVM, but the repository's workflows boot a real API 34 emulator with the real app. Any agent
+session may run them and record the result without asking: dispatch `device-checks.yml`,
+`voice-checks.yml` (Gemini free tier), `nav-demo.yml` or `emulator.yml` on the working branch
+(GitHub MCP `actions_run_trigger` → `run_workflow`, or a push whose message carries `[checks]`,
+`[voice]`, `[navdemo]`, `[drive]`). Read the result from `ci/device-evidence`, `ci/voice-evidence`,
+`ci/nav-demo` or `ci/drive-video` (`runs/<run>/verdict.json`, `summary.txt`, screenshots) and from the
+job log (`get_job_logs` works from agent sessions). Record it in TEST_MATRIX / OPEN_PROBLEMS with the
+run id. What a run may claim is [docs/CI.md](docs/CI.md) (a `_stubvendor` run is never PASS evidence).
+Do not treat "needs the emulator" as a blocker or an owner item.
+
 Before you consider a change complete: `.\gradlew.bat test --rerun-tasks :app:assembleDebug`, then
 device evidence for anything touching audio, the map or lifecycle (`ACCEPTANCE_TESTS.md` says what
 each level may claim). A green build is not evidence that anything works.

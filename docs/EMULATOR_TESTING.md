@@ -201,9 +201,10 @@ emulator (`reactivecircus/android-emulator-runner`), installs the arm64 build (A
 translator runs Amap, see above) and runs `scripts/github_drive.sh`: map → `nav_route` →
 `nav_start emulator:80`, recording the real screen for 180 s. It runs on `workflow_dispatch` or
 a push to `claude/10-15` whose message contains `[drive]`; the video is pushed to branch
-`ci/drive-video` (agents cannot download Actions logs or artifacts, so every stage, Amap auth
-token, route error code, crash and ANR count is reported as an annotation - never the key, a
-coordinate or a transcript). Secrets: `AMAP_API_KEY` (Android SDK key), `NOVA_DEBUG_KEYSTORE_B64`,
+`ci/drive-video` (every stage, Amap auth token, route error code, crash and ANR count is reported as
+an annotation - never the key, a coordinate or a transcript). Since 2026-10-19 agent sessions can
+also read job logs (GitHub MCP `get_job_logs`); agents dispatch and read these runs themselves
+(AGENTS.md "Emulator tests run on GitHub Actions"). Secrets: `AMAP_API_KEY` (Android SDK key), `NOVA_DEBUG_KEYSTORE_B64`,
 `NOVA_VENDOR_ZIP_URL` (+ optional `NOVA_VENDOR_ZIP_AUTH`).
 
 **Amap error 22 ("certificate not valid"), 2026-10-15.** Route planning failed with
