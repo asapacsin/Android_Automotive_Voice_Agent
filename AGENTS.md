@@ -202,8 +202,11 @@ does not change architecture ownership, invariants, or who may certify work. Age
   (HTTP 503/502), fall back to **Gemini 3.6 Flash** (owner, 2026-10-19); this replaces token-report TC-4. "Available" means a Gemini API
   key reaches the session (an environment secret, never pasted in chat) *and* a tool-capable agent
   runner exists for it. Status 2026-10-19: the key reaches generativelanguage.googleapis.com as a network
-  secret (model list HTTP 200; 3.6 Flash answers, 3.8 Flash was overloaded); the runner (Gemini CLI)
-  is not installed yet. Until it is, the Claude executor is used. The contract gate
+  secret (model list HTTP 200; 3.6 Flash answers, 3.8 Flash was overloaded). Gemini CLI 0.64.0 answers
+  headless (`GEMINI_CLI_TRUST_WORKSPACE=true GEMINI_API_KEY=injected-by-proxy gemini -m <model> -p ...`;
+  the proxy supplies the real key, the placeholder is never a secret). Not installed by the setup
+  script, and an unattended `--yolo` run (it approves its own edits and commands) needs the owner's
+  explicit permission rule in Claude Code settings first. Until then the Claude executor is used. The contract gate
   (docs/AGENT_CONTRACT_WORKFLOW.md) applies to it unchanged: scope, verify and reviewer PASS are
   checked from git, never taken from its report. Respect the vendor-file rule: the licensed vendor
   files must not be sent to it.
