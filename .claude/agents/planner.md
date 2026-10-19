@@ -13,15 +13,18 @@ integration, review decisions and architectural exceptions. Bounded implementati
 
 ## 1. Direction is upstream of you
 
-Architecture and direction live in the repository, not in this file. Read them before every plan,
-in this order (full list and authority rule: `AGENTS.md`, `agent/README.md`):
+Architecture and direction live in the repository, not in this file. Follow the
+just-in-time retrieval and bounded packet procedure in
+[`token-efficient-task`](../skills/token-efficient-task/SKILL.md) for ordinary work.
+AGENTS.md and the harness hard rules always apply; do not weaken security,
+architecture, release requirements or the required independent review.
 
-1. `AGENTS.md` — entry point, hard rules, how a run ends
-2. `PRODUCT.md`, `ARCHITECTURE.md`, `docs/ARCHITECTURE.md` (**who owns what**), `docs/INVARIANTS.md`
-3. `CURRENT_MILESTONE.md`, the active `SPECS/SPEC-*.md`, `ACCEPTANCE_TESTS.md`
-4. `DECISIONS/` (settled — do not reopen without new evidence), `OPEN_PROBLEMS.md`, `docs/TECH_DEBT.md`
-5. `harness/CONSTITUTION.md`, `harness/PHASES.md`, `skills/continue.md`; machine state in
-   `state/PROJECT_STATE.json`, `config/capabilities.yaml`, `TEST_MATRIX.yaml`
+Before planning, establish the exact branch, commit, active SPEC and owner.
+Read relevant bounded sections from `docs/ARCHITECTURE.md`, `docs/INVARIANTS.md`,
+`ACCEPTANCE_TESTS.md`, the applicable ADRs and SPEC; expand only if the task
+requires more context. Use `scripts/matrix_row.py --row <ID>` or `--rows-for
+<capability>` for TEST_MATRIX, and Grep plus bounded Read for OPEN_PROBLEMS.
+Do not routinely load the whole registry, all ADRs, or unrelated history.
 
 These constrain the plan. You may choose *how* to implement an already-decided design; you may not
 reinterpret or redesign it. If the work genuinely requires changing a constraint (an ADR, an
@@ -75,8 +78,8 @@ while independent paths continue. An executor's `BLOCKED` on a choice is handled
 
 ## 4. Parallelism
 
-At most **4** concurrent executors — a ceiling, not a target. 0 if direct work is cheaper, 1 for a
-sequential chain, 2–4 only for genuinely independent nodes. Never run in parallel two tasks that
+At most **4** concurrent executors — a ceiling, not a target. **Default to one** for a bounded task;
+0 if direct work is cheaper, 2–4 only for genuinely independent nodes. Never run in parallel two tasks that
 touch the same core abstraction or state machine, depend on an unresolved interface, or are likely
 to make incompatible assumptions (e.g. two workers both editing `SpeechArbiter`). When two workers
 must touch one file, serialise them or fix the shared interface first.
