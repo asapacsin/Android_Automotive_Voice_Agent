@@ -11,7 +11,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -20,6 +22,22 @@ class CapabilityClaimLogTest {
     private val registry = ScreenAffordances().apply { publish("bar", listOf(Affordance(CLIMATE, listOf("空调")))) }
     private val controls = FakeControls()
     private val logs = mutableListOf<String>()
+
+    private val modelLogs = mutableListOf<String>()
+
+    init {
+        DebugVoiceLog.sink = { modelLogs += it }
+    }
+
+    @AfterEach
+    fun restoreSink() {
+        DebugVoiceLog.sink = null
+    }
+
+    private fun modelCall(action: String) =
+        DomainVoiceEvent.ToolCall("m1", "control_climate", mapOf("action" to action))
+
+    private fun modelLines() = modelLogs.filter { it.startsWith("claim src=MODEL") }
 
     private fun runner(context: DriverContext?) = ScreenAffordanceRunner(
         registry, controls, { context }, CoroutineScope(Dispatchers.Unconfined), { logs += it }, { },
@@ -56,10 +74,37 @@ class CapabilityClaimLogTest {
         assertTrue(line.contains("ctx=${System.identityHashCode(context)}"), line)
         assertTrue(line.contains("tool=control_climate group=power"), line)
 
-        val model = DomainVoiceEvent.ToolCall(
-            "m1", "control_climate", mapOf("action" to ClimateToolActions.POWER_OFF),
-        )
-        assertEquals("DUPLICATE_IN_TURN", ToolCallGuards.repeatedInTurn(model, context))
+        assertEquals("DUPLICATE_IN_TURN", ToolCallGuards.repeatedInTurn(modelCall(ClimateToolActions.POWER_OFF), context))
+        val modelLine = modelLines().single()
+        assertTrue(modelLine.contains("ok=false"), modelLine)
+        assertTrue(modelLine.contains("epoch=7"), modelLine)
+        assertTrue(modelLine.contains("ctx=${System.identityHashCode(context)}"), modelLine)
+        assertTrue(modelLine.contains("group=power"), modelLine)
+    }
+
+    @Test
+    fun modelWithoutContextLogsSkipped() {
+        assertNull(ToolCallGuards.repeatedInTurn(modelCall(ClimateToolActions.POWER_OFF), null))
+        val line = modelLines().single()
+        assertTrue(line.contains("ok=skipped"), line)
+        assertTrue(line.contains("ctx=null"), line)
+    }
+
+    @Test
+    fun modelWithEpochZeroLogsSkipped() {
+        assertNull(ToolCallGuards.repeatedInTurn(modelCall(ClimateToolActions.POWER_OFF), DriverContext()))
+        val line = modelLines().single()
+        assertTrue(line.contains("ok=skipped"), line)
+        assertTrue(line.contains("epoch=0"), line)
+    }
+
+    @Test
+    fun modelClaimsFirstLogsTrue() {
+        val context = DriverContext().apply { onSpeechStarted(3) }
+        assertNull(ToolCallGuards.repeatedInTurn(modelCall(ClimateToolActions.POWER_OFF), context))
+        val line = modelLines().single()
+        assertTrue(line.contains("ok=true"), line)
+        assertTrue(line.contains("epoch=3"), line)
     }
 
     private class FakeControls : ScreenControls {
