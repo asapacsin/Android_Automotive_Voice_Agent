@@ -1,27 +1,27 @@
 {
  "task_id": "P67-LOG",
  "contract_sha256": "5cadcac3f3bb00e0109e594c535f2e7a480dc8d14039847d9a5834e2c5820e87",
- "tip": "6c3f4990917c44cb78867469873e736d3eab1a01",
+ "tip": "3afd369505fdcab8e2e172baae7f7aa9130d0e86",
  "verified_by": "planner",
- "at": "2026-10-19T10:55:10+00:00",
+ "at": "2026-10-19T11:01:27+00:00",
  "results": [
   {
    "id": "app-unit",
    "kind": "regression",
    "command": "python3 scripts/compact_test.py -- ./gradlew --offline -q :app:testDebugUnitTest",
    "exit_code": 0,
-   "seconds": 250.1,
-   "log": "/root/nova-drive-build/nova-verify/P67-LOG/6c3f4990917c-app-unit.log",
-   "log_sha256": "271a75a9cfc9b2204a64772d99f471480af53ffa3a2e82a592479ca83af3817b"
+   "seconds": 151.7,
+   "log": "/root/nova-drive-build/nova-verify/P67-LOG/3afd369505fd-app-unit.log",
+   "log_sha256": "437ef1bd2aa54bfeb79c9b88ff35977a13132c136d538fade84db1618b56fa92"
   },
   {
    "id": "behavior-test",
    "kind": "regression",
    "command": "python3 scripts/compact_test.py -- ./gradlew --offline -q :behavior-test:test",
    "exit_code": 0,
-   "seconds": 19.9,
-   "log": "/root/nova-drive-build/nova-verify/P67-LOG/6c3f4990917c-behavior-test.log",
-   "log_sha256": "e8ef08a22d2c0d1499b24b600e33fd5657f60b566ae525f257ca23245681f791"
+   "seconds": 19.6,
+   "log": "/root/nova-drive-build/nova-verify/P67-LOG/3afd369505fd-behavior-test.log",
+   "log_sha256": "6f1f11e33fd3bf2f881d4b9887cd5c85fe3a5c948158d5ba66bd5281ea08864a"
   }
  ]
 }
