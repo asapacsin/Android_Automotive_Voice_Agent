@@ -53,6 +53,24 @@ The discovery script answers the question from the documents; it does not replac
 the work. If it lists something already finished, the document it read is wrong — fixing that
 document is itself the next work item, not a reason to ignore the tool.
 
+## Session budget (token report TC-7, TC-8)
+
+Continuing means continuing the *work*, not one ever-growing transcript. Every model call re-reads
+the whole conversation, so in a long session that re-reading is most of the cost (measured
+2026-10-19: ~70-78% of a session's tokens were the main conversation re-reading ~300k tokens per
+call; executors were ~10-16%).
+
+- **One unit per session.** After a unit's `/handoff` (and `task_contract.py handoff` for a
+  contracted task), end the turn so the next unit starts from a fresh session or `/clear`, reading
+  `/start`, the handoff file and git, not the old transcript. Starting fresh is not stopping the run:
+  the frontier, stop rules and termination gate below still apply to the next session.
+- **No idle check-ins.** Schedule a self check-in only for an external wait nothing else reports
+  (a CI run, a deploy), at that wait's real duration, and at most one pending at a time. Background
+  agents and PR events wake the session themselves. Never re-arm a check-in that found nothing new;
+  cancel pending ones when the unit is done.
+- **Near a limit,** stop at the end of the current unit (commit, handoff, end the turn). Never
+  retry in a loop, re-run full suites to be sure, or let compaction run repeatedly on one session.
+
 ## Priority
 
 Lower first. Nothing cosmetic outranks something broken.
