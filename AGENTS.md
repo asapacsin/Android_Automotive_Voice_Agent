@@ -81,6 +81,7 @@ The rules are [harness/CONSTITUTION.md](harness/CONSTITUTION.md) 12 and 17–19;
 | --- | --- |
 | The architecture, and **who owns each behaviour** | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | Rules that must not be broken | [docs/INVARIANTS.md](docs/INVARIANTS.md) |
+| Task contracts, scope check, merge eligibility (architect → executor → reviewer) | [docs/AGENT_CONTRACT_WORKFLOW.md](docs/AGENT_CONTRACT_WORKFLOW.md) |
 | What the product can and cannot do | [docs/CAPABILITIES.md](docs/CAPABILITIES.md) |
 | Known problems, with the measurement behind each | [docs/TECH_DEBT.md](docs/TECH_DEBT.md) |
 | What is being worked on now | [CURRENT_MILESTONE.md](CURRENT_MILESTONE.md) |

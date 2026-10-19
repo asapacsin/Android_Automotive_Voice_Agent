@@ -9,6 +9,8 @@ exec/<name>` from a real remote is always refused: fetch, review the fetched tip
 Advisory only: `delegation_check.py --ci` is the enforcement. Reviews happen after the executor finishes and before
 integration - the Writer/Reviewer pattern and "add an adversarial review step before treating a
 task as done" from the official Claude Code best-practices guide. PENDING does not count.
+A branch named by a task contract (state/contracts/*.yaml, `branch: exec/<name>`) must also be
+ELIGIBLE per scripts/task_contract.py (approved contract, scope, verification record, reviewer PASS).
 Fails open on anything unexpected, so a broken hook never blocks all work.
 """
 import json
@@ -58,6 +60,32 @@ def _invocations(command):
         yield verb, operands
 
 
+def _contract_block(repo, ref, tip):
+    """Reason the contract for ref's branch blocks the merge, or None (no contract, or ELIGIBLE)."""
+    import glob
+    import importlib.util
+    branch = "exec/" + ref.split("exec/", 1)[1]
+    files = sorted(glob.glob(os.path.join(repo, "state", "contracts", "*.yaml")))
+    if not files:
+        return None
+    spec = importlib.util.spec_from_file_location(
+        "task_contract", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts",
+                                      "task_contract.py"))
+    tc = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tc)
+    for path in files:
+        try:
+            c, digest = tc.load(path)
+        except Exception:
+            continue
+        if isinstance(c, dict) and c.get("branch") == branch:
+            why = tc.eligibility(c, digest, repo, tip)
+            if why:
+                return "%s (tip %s) is NOT_ELIGIBLE under contract %s: %s" % (
+                    ref, tip[:12], c.get("task_id"), "; ".join(why[:4]))
+    return None
+
+
 def decide(command, repo, log_path):
     if not re.search(r"\bgit\b[^;&|]*\b(merge|pull)\b", command) or "exec/" not in command:
         return None
@@ -82,6 +110,12 @@ def decide(command, repo, log_path):
             return None
         rec, _ = dc.lookup(records, [tip], repo)  # last valid line wins; ambiguous keys refused
         status = rec[1] if rec else None
+        try:
+            block = _contract_block(repo, ref, tip)  # a contracted branch needs ELIGIBLE, never WAIVED
+        except Exception:
+            block = None
+        if block:
+            return block
         if status == "WAIVED":
             try:
                 mb = dc.git(repo, "merge-base", "HEAD", tip).strip()

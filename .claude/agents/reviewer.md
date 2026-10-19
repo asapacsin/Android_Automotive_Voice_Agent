@@ -40,7 +40,10 @@ or behavior. Never accept an executor's summary in place of direct evidence.
 1. Establish ground truth yourself: the actual diff for the commit range you were given, and every
    changed file in full plus enough surrounding code to judge lifecycle and error paths.
 2. Compare against the task packet: requirement coverage, scope (OWNED_SCOPE / DO_NOT_TOUCH), and
-   the architecture constraints it cited — and any it should have cited.
+   the architecture constraints it cited — and any it should have cited. With a contract, run
+   `python3 scripts/task_contract.py scope <contract> --ref <branch>` and judge against its
+   acceptance_criteria, architecture_constraints and forbidden_changes; read
+   `state/verification/<ID>.json` and check it names the tip you reviewed.
 3. Verify claims you can verify: re-run the acceptance commands where practical and read the JUnit
    XML. Report the real result even when it contradicts what you were told.
 4. Separate proof levels per `ACCEPTANCE_TESTS.md`: compilation, JVM tests, protocol-shape tests

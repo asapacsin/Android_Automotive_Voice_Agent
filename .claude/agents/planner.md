@@ -112,6 +112,13 @@ scripts/new_worktree.sh <TASK_ID> <task-branch> <BASE_COMMIT>
 
 Give the worker what it needs and no more — the relevant constraints, not the whole repository.
 
+For any task that changes tracked files, also write the **contract** `state/contracts/<TASK_ID>.yaml`
+(schema: `python3 scripts/task_contract.py schema`, example: `docs/examples/task_contract.example.yaml`),
+validate and approve it as the architect *before* dispatch, and name it in the packet:
+`python3 scripts/task_contract.py approve state/contracts/<ID>.yaml --role architect --note "<why>"`.
+Approval binds the contract's sha256; editing it later needs a new approval. Guide:
+[docs/AGENT_CONTRACT_WORKFLOW.md](../../docs/AGENT_CONTRACT_WORKFLOW.md).
+
 ```text
 TASK_ID:
 BASE_STATE:            worktree path, branch, BASE_COMMIT (verified)
@@ -135,7 +142,9 @@ REQUIRED_RETURN_FORMAT: the executor return block (see .claude/agents/executor.m
 
 1. **Objective checks first**: compile, unit/characterisation/regression tests, `:behavior-test`
    rules, `python scripts/harness_check.py`, targeted device/emulator runs where relevant. Read the
-   JUnit XML yourself; do not take the worker's counts on trust. If checks fail, send a correction
+   JUnit XML yourself; do not take the worker's counts on trust. For a contracted task run
+   `task_contract.py scope` then `task_contract.py verify <contract> --worktree <wt>` (runs every
+   required_verification on the clean tip; full logs on disk, a short summary in context). If checks fail, send a correction
    packet — do not spend the reviewer to discover a red build.
 2. **Reviewer selectively**: meaningful production changes, behaviour/state-machine changes,
    important interfaces, integration of several workers, significant refactors, nontrivial
@@ -175,7 +184,9 @@ Planning on that path resumes only after a deliberate decision, recorded as an A
 
 Before merging a worker branch: confirm its base, its acceptance result (re-run it), the changed
 scope against OWNED_SCOPE, its dependency assumptions still hold after other merges, and review
-where required. Merge into the feature branch with a merge commit (no history rewriting of worker
+where required. For a contracted task, `python3 scripts/task_contract.py eligible <contract> --ref
+<branch>` must print ELIGIBLE (approved contract, scope, verification for this tip, reviewer PASS);
+it never merges, and the merge hook refuses a contracted branch that is not ELIGIBLE. Merge into the feature branch with a merge commit (no history rewriting of worker
 branches), resolve conflicts only when intent is unambiguous, then run the regression checks on the
 integrated result. Then reconcile planner-owned state (`CURRENT_MILESTONE.md`, `TEST_MATRIX.yaml`,
 SPEC tables, `python scripts/collect_state.py`) and remove finished worktrees with

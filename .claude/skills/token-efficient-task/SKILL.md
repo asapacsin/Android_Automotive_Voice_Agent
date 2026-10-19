@@ -29,7 +29,9 @@ The canonical AGENTS.md, SPECS, ADRs and harness/CONSTITUTION.md remain binding.
 
 ## 2. Produce the executor contract BEFORE dispatch
 
-Use this small packet rather than forwarding the planning transcript:
+The enforceable form is a YAML contract in `state/contracts/<TASK_ID>.yaml`, validated and approved
+with `scripts/task_contract.py` (see docs/AGENT_CONTRACT_WORKFLOW.md). Dispatch with this small
+packet pointing at it rather than forwarding the planning transcript:
 
 TASK_ID:
 BASE_STATE: exact commit, branch, worktree
@@ -76,6 +78,12 @@ Output is intentionally not a substitute for source-level root-cause analysis.
   state. Continue to maintain those through their owning scripts.
 
 ## 5. Short handoff
+
+`python3 scripts/task_contract.py handoff <contract> --worktree <wt> --next "<step>"` writes
+state/handoff/<TASK_ID>.md (about ten lines: tip, changed files, scope, verification, review, next).
+If context or budget limits are near, stop at the end of the current unit: commit, write the
+handoff, and end the turn. Do not retry in a loop, re-run full suites to "be sure", or re-explore
+files already summarised; the next session resumes from git and the handoff file.
 
 Report: TASK_ID, changed files, test verdicts with commands and proof level,
 unverified behavior, blockers and the next specific step. Durable truth lives

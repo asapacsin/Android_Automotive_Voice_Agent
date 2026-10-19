@@ -43,3 +43,5 @@ app/src/main/assets/ivw/
 app/src/main/res/raw/*.mp3
 # Review records are evidence, not a log file (owner 2026-10-16).
 !state/reviews.log
+# Contract approvals are evidence too (scripts/task_contract.py).
+!state/contracts/approvals.log
