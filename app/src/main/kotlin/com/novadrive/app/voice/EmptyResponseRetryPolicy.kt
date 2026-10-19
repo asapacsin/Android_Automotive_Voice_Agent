@@ -54,6 +54,11 @@ class EmptyResponseRetryPolicy(
     private var answerJob: Job? = null
     @Volatile var gaveUp = false
         private set
+    private var answerStarted = false  // the re-ask's answer began (a response or output)
+    private var voided = false         // the re-ask's coming answer is void (Q5)
+    /** The turn that took the void is open: its late calls are rejected (Gemini). */
+    @Volatile var turnVoided = false
+        private set
 
     /**
      * New speech began. Any earlier empty response belonged to something before it (often VAD
@@ -86,6 +91,7 @@ class EmptyResponseRetryPolicy(
     @Synchronized
     fun onResponseCreated() {
         onHeard()
+        if (reasked) answerStarted = true
         answerJob?.cancel(); answerJob = null
     }
 
@@ -100,15 +106,38 @@ class EmptyResponseRetryPolicy(
     @Synchronized
     fun onOutput() {
         onHeard()
+        if (reasked) answerStarted = true
         answerJob?.cancel(); answerJob = null
     }
 
-    /** The app handled this utterance itself (a local pick, 「闭嘴」): no re-ask, no give-up. */
+    /**
+     * The app handled this utterance itself (a local pick, 「闭嘴」): no re-ask, no give-up. When
+     * this utterance's re-ask is already out and no answer has started ([answerUnderway] is the
+     * client's own view), its answer is voided (decider Q5, 2026-10-19): the client takes the void
+     * with [takeVoided] where that answer opens and treats it as cancelled. A barge-in is never this.
+     */
     @Synchronized
-    fun appHandled() {
+    fun appHandled(answerUnderway: Boolean = false) {
         handled = true
-        busyMatchable = false
         cancelJobs()
+        if (reasked && !answerStarted && !answerUnderway && !voided) {
+            voided = true
+            DebugVoiceLog.log("${prefix}_reask_voided reason=app_handled")
+        }
+    }
+
+    /** True once when the answer opening now belongs to a voided re-ask; [turnVoided] then holds for that turn. */
+    @Synchronized
+    fun takeVoided(): Boolean {
+        turnVoided = voided
+        voided = false
+        return turnVoided
+    }
+
+    /** The client sent another model-bound turn: the next answer may be that one, so the void clears (fail-open). */
+    @Synchronized
+    fun onClientTurnSent() {
+        voided = false
     }
 
     /**
@@ -148,6 +177,7 @@ class EmptyResponseRetryPolicy(
     fun onBusyError(): Boolean {
         if (!busyMatchable) return false
         busyMatchable = false
+        voided = false // the re-ask was refused: no answer of it will come
         answerJob?.cancel(); answerJob = null
         DebugVoiceLog.log("${prefix}_reask_dropped reason=busy")
         return true
@@ -208,6 +238,7 @@ class EmptyResponseRetryPolicy(
         utterance++
         heard = false; handled = false; reasked = false; deadlineReasked = false
         busyMatchable = false; gaveUp = false
+        answerStarted = false; voided = false; turnVoided = false
         cancelJobs()
     }
 

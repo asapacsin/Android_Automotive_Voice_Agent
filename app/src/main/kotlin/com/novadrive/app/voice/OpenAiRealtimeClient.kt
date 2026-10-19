@@ -251,7 +251,7 @@ open class OpenAiRealtimeClient<C : Any>(
      * arrived yet (cancelResponse only acts once audio plays, to keep barge-in behaviour as is).
      */
     fun cancelActiveResponse() {
-        emptyRetry.appHandled()
+        emptyRetry.appHandled(answerUnderway = responseInProgress)
         if (cue.discardForClientCancel()) sendCancelOnce("client_cancel") else if (responseInProgress || assistantSpeaking) sendCancelOnce("active")
     }
 
@@ -597,9 +597,6 @@ open class OpenAiRealtimeClient<C : Any>(
             val alive = { generation.get() == current }
             if (type in RESPONSE_PROGRESS_TYPES) stallWatchdog.onProgress()
             if (type == "response.created") stallWatchdog.onResponseCreated(alive)
-            emptyRetry.onRealtimeEvent(
-                started = type == "input_audio_buffer.speech_started", stopped = type == "input_audio_buffer.speech_stopped",
-                created = type == "response.created", progress = type in RESPONSE_PROGRESS_TYPES)
             if (type !in NOISY_EVENT_TYPES) DebugVoiceLog.log("${dialect.logPrefix}_event type=$type")
             // Code only: a provider message can quote what the driver said.
             if (type == "error") DebugVoiceLog.log("${dialect.logPrefix}_error code=${dialect.errorCode(text)}")
@@ -622,6 +619,9 @@ open class OpenAiRealtimeClient<C : Any>(
                 streamedWords.reset()
                 pipeline.onResponseCreated()
             }
+            if (emptyRetry.onRealtimeEvent( // true: this response answers a re-ask the app already handled (Q5)
+                started = type == "input_audio_buffer.speech_started", stopped = type == "input_audio_buffer.speech_stopped",
+                created = type == "response.created", progress = type in RESPONSE_PROGRESS_TYPES)) sendCancelOnce("reask_voided")
             if (streamedReplyText && type == "response.audio_transcript.delta") {
                 streamedWords.onDelta(JSONObject(text).optString("delta"))?.let(pipeline::appendAssistantText)
             }
@@ -752,7 +752,7 @@ open class OpenAiRealtimeClient<C : Any>(
         }
     }
 
-    private fun trySend(message: String): Boolean = socket?.send(message) == true
+    private fun trySend(message: String): Boolean = (socket?.send(message) == true).also { if (it) emptyRetry.onSent(dialect, message) } // Q5
 
     private fun sendControl(message: String) {
         if (!trySend(message)) throw dialect.notConnected()

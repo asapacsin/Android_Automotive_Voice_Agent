@@ -317,4 +317,76 @@ class NoAnswerReaskQwenTest {
         assertTrue(log("qwen_reask_gave_up").isEmpty(), "$lines")
         assertEquals(0, gaveUp)
     }
+
+    // ---- Q5 ----
+
+    private fun voidedReask(client: QwenOmniClient) {
+        send(started, stopped, transcript("第一个"), """{"type":"response.created","response":{"id":"r1"}}""", emptyDone)
+        awaitUntil({ "sent: $received" }) { creates() == 1 }
+        client.cancelActiveResponse() // the app handled the utterance before the re-ask's response began
+    }
+
+    private val answerCreated = """{"type":"response.created","response":{"id":"r2"}}"""
+    private val answerAudio = """{"type":"response.audio.delta","delta":"AAE="}"""
+    private val answerCall = """{"type":"response.function_call_arguments.done","call_id":"c9","name":"choose_navigation_option","arguments":"{\"index\":1}"}"""
+    private fun cancels(reason: String) = log("qwen_cancel_sent reason=$reason")
+
+    @Test
+    fun q1TheAnswerToAVoidedReaskIsCancelledSilentAndItsCallDropped() = runBlocking {
+        enqueueServer()
+        val client = client(deadlineMs = 60_000)
+        val seen = collect(client)
+        client.connect(config())
+        voidedReask(client)
+        send(answerCreated)
+        awaitUntil({ "$lines" }) { cancels("reask_voided").size == 1 }
+        send(answerAudio, answerCall)
+        awaitUntil({ "$lines" }) { log("qwen_call_dropped").isNotEmpty() }
+        Thread.sleep(200)
+        assertTrue(seen.none { it is DomainVoiceEvent.AudioDelta || it is DomainVoiceEvent.ToolCall }, "$seen")
+        assertEquals(1, creates(), "no extra response.create")
+        client.disconnect()
+    }
+
+    @Test
+    fun q2ABusyRefusedReaskClearsTheVoid() = runBlocking {
+        enqueueServer()
+        val client = client(deadlineMs = 60_000)
+        client.connect(config())
+        voidedReask(client)
+        send("""{"type":"error","error":{"type":"invalid_request_error","code":"InvalidRequest","message":"Conversation already has an active response"}}""")
+        awaitUntil({ "$lines" }) { log("qwen_reask_dropped reason=busy").isNotEmpty() }
+        send(answerCreated)
+        Thread.sleep(400)
+        assertTrue(cancels("reask_voided").isEmpty(), "$lines")
+        client.disconnect()
+    }
+
+    @Test
+    fun q3AnAppTextTurnAfterTheVoidClearsIt() = runBlocking {
+        enqueueServer()
+        val client = client(deadlineMs = 60_000)
+        client.connect(config())
+        voidedReask(client)
+        client.sendUserText("请朗读这条提示")
+        send(answerCreated)
+        Thread.sleep(400)
+        assertTrue(cancels("reask_voided").isEmpty(), "$lines")
+        client.disconnect()
+    }
+
+    @Test
+    fun q4AnAnswerAlreadyCreatedIsCancelledAtOnceAndLeavesNoVoid() = runBlocking {
+        enqueueServer()
+        val client = client(deadlineMs = 60_000)
+        client.connect(config())
+        send(started, stopped, transcript("第一个"), """{"type":"response.created","response":{"id":"r1"}}""", emptyDone)
+        awaitUntil({ "sent: $received" }) { creates() == 1 }
+        send(answerCreated)
+        awaitUntil({ "$lines" }) { log("qwen_event type=response.created").size == 2 }
+        client.cancelActiveResponse()
+        awaitUntil({ "$lines" }) { cancels("active").size == 1 }
+        assertTrue(log("qwen_reask_voided").isEmpty())
+        client.disconnect()
+    }
 }

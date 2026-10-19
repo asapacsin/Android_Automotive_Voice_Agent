@@ -225,7 +225,7 @@ class GeminiLiveClient(
      */
     fun markClientCancelled() {
         clientCancelled = true
-        noAnswer.appHandled()
+        synchronized(this) { noAnswer.appHandled(answerUnderway = turnOpen) }
         DebugVoiceLog.log("gemini_client_cancel local_only=true")
     }
 
@@ -522,6 +522,7 @@ class GeminiLiveClient(
         }
         flushInput()
         clientCancelled = false
+        if (noAnswer.takeVoided()) clientCancelled = true // P45 U2 Q5: the answer to a re-ask the app already handled
         pipeline.clearCallsThisResponse()
         pipeline.onResponseCreated()
         clearTurnState()
@@ -630,7 +631,7 @@ class GeminiLiveClient(
         emit(call)
     }
 
-    private fun trySend(message: String): Boolean = socket?.send(message) == true
+    private fun trySend(message: String): Boolean = (socket?.send(message) == true).also { if (it && !message.startsWith("{\"realtimeInput\"")) noAnswer.onClientTurnSent() } // Q5
 
     private fun sendControl(message: String) {
         if (!trySend(message)) {

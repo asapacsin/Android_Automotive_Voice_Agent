@@ -216,6 +216,7 @@ class NoAnswerReaskGeminiTest {
         waitUntil { log("gemini_reask_gave_up").isNotEmpty() }
         Thread.sleep(500)
         assertEquals(1, log("gemini_reask_gave_up").size)
+        assertTrue(client.noAnswer.gaveUp, "given up through the policy; Gemini speaks nothing (Q4)")
         fake.send("""{"toolCall":{"functionCalls":[{"id":"c1","name":"control_climate","args":{"action":"power_on"}}]}}""")
         waitUntil { events.toList().any { it is DomainVoiceEvent.ToolCall } }
         val call = events.toList().filterIsInstance<DomainVoiceEvent.ToolCall>().single()
@@ -305,6 +306,132 @@ class NoAnswerReaskGeminiTest {
         waitUntil { events.toList().any { it is DomainVoiceEvent.ResponseDone } }
         Thread.sleep(150)
         assertTrue(events.toList().none { it is DomainVoiceEvent.SpeechText }, "an unproven claim is never spoken (I-1)")
+    }
+
+    // ---- Q5: the answer to a re-ask the app already handled is voided ----
+
+    private fun pick(id: String) = """{"toolCall":{"functionCalls":[{"id":"$id","name":"choose_navigation_option","args":{"index":1}}]}}"""
+    private fun calls(events: List<DomainVoiceEvent>) = events.toList().filterIsInstance<DomainVoiceEvent.ToolCall>()
+    private fun clientTexts(fake: FakeGemini) = synchronized(fake.received) { fake.received.toList() }.map(::JSONObject).count { it.has("clientContent") }
+
+    /** A transcribed empty close: the re-ask goes out at once. */
+    private fun reaskedTurn(fake: FakeGemini, client: GeminiLiveClient) {
+        driverTurn(fake, client)
+        fake.send(input("第一个"))
+        fake.send(turnComplete)
+        waitUntil { fake.reasks().size == 1 }
+    }
+
+    private fun answer(fake: FakeGemini, id: String, words: String = "好的，已选择第一个") {
+        fake.send(audio())
+        fake.send(output(words))
+        fake.send(pick(id))
+        fake.send(generationComplete)
+        fake.send(turnComplete)
+    }
+
+    @Test
+    fun g1AnAppHandledReasksAnswerIsVoidedSilentAndItsCallIsNotExecuted() = runBlocking {
+        val fake = fake()
+        val client = client(deadlineMs = 60_000)
+        val events = collect(client)
+        client.connect(config())
+        reaskedTurn(fake, client)
+        client.markClientCancelled() // GeminiLiveProvider.cancelAssistantResponse: the app handled it
+        answer(fake, "v1")
+        waitUntil { events.toList().any { it is DomainVoiceEvent.ResponseDone } }
+        Thread.sleep(500) // past the correction grace
+        assertTrue(events.toList().none { it is DomainVoiceEvent.AudioDelta || it is DomainVoiceEvent.AssistantTranscript }, "$events")
+        assertEquals("REASK_VOIDED", calls(events).single().arguments["_validation_error"])
+        assertEquals(1, clientTexts(fake), "only the re-ask; no correction turn")
+        assertEquals(1, log("gemini_reask_voided reason=app_handled").size)
+    }
+
+    @Test
+    fun g1VoidedAnswerIsNotSpokenByTheAssistantVoice() = runBlocking {
+        val fake = fake()
+        val client = client(deadlineMs = 60_000, speechText = true)
+        val events = collect(client)
+        client.connect(config())
+        reaskedTurn(fake, client)
+        client.markClientCancelled()
+        answer(fake, "v1")
+        waitUntil { events.toList().any { it is DomainVoiceEvent.ResponseDone } }
+        Thread.sleep(500)
+        assertTrue(events.toList().none { it is DomainVoiceEvent.SpeechText }, "$events")
+    }
+
+    @Test
+    fun g2AnAnswerAlreadyOpenWhenTheAppHandlesItLeavesNoVoid() = runBlocking {
+        val fake = fake()
+        val client = client(deadlineMs = 60_000)
+        val events = collect(client)
+        client.connect(config())
+        reaskedTurn(fake, client)
+        fake.send(audio())
+        waitUntil { log("gemini_turn_open").isNotEmpty() }
+        client.markClientCancelled()
+        fake.send(turnComplete)
+        waitUntil { events.toList().any { it is DomainVoiceEvent.ResponseDone } }
+        assertTrue(log("gemini_reask_voided").isEmpty())
+        client.onLocalSpeechActivity(true)
+        fake.send(activityEnd)
+        answer(fake, "n2", words = "好的")
+        waitUntil { calls(events).isNotEmpty() }
+        assertEquals(null, calls(events).single().arguments["_validation_error"], "the next utterance's call runs")
+    }
+
+    @Test
+    fun g3TheVoidDoesNotLeakIntoTheNextUtterance() = runBlocking {
+        val fake = fake()
+        val client = client(deadlineMs = 60_000)
+        val events = collect(client)
+        client.connect(config())
+        reaskedTurn(fake, client)
+        client.markClientCancelled()
+        answer(fake, "v1")
+        waitUntil { events.toList().count { it is DomainVoiceEvent.ResponseDone } == 1 }
+        client.onLocalSpeechActivity(true)
+        fake.send(activityEnd)
+        answer(fake, "n2", words = "好的")
+        waitUntil { calls(events).size == 2 }
+        assertEquals(null, calls(events)[1].arguments["_validation_error"])
+        waitUntil { events.toList().any { it is DomainVoiceEvent.AudioDelta } }
+    }
+
+    @Test
+    fun g4AnAppTextTurnSentAfterTheVoidClearsIt() = runBlocking {
+        val fake = fake()
+        val client = client(deadlineMs = 60_000)
+        val events = collect(client)
+        client.connect(config())
+        reaskedTurn(fake, client)
+        client.markClientCancelled()
+        client.sendUserText("请朗读这条提示")
+        answer(fake, "t1", words = "好的")
+        waitUntil { calls(events).isNotEmpty() }
+        assertEquals(null, calls(events).single().arguments["_validation_error"], "fail-open: the app's own turn is never dropped")
+        waitUntil { events.toList().any { it is DomainVoiceEvent.AudioDelta } }
+    }
+
+    @Test
+    fun g5ADeadlineReaskThenTheAppHandlingItVoidsTheAnswer() = runBlocking {
+        val fake = fake()
+        val client = client(deadlineMs = 200)
+        val events = collect(client)
+        client.connect(config())
+        driverTurn(fake, client)
+        waitUntil { fake.reasks().size == 1 }
+        fake.send(input("第一个"))
+        fake.send(turnComplete)
+        waitUntil { log("gemini_turn_empty").isNotEmpty() }
+        client.markClientCancelled()
+        answer(fake, "v5")
+        waitUntil { calls(events).isNotEmpty() }
+        assertEquals("REASK_VOIDED", calls(events).single().arguments["_validation_error"])
+        Thread.sleep(300)
+        assertTrue(events.toList().none { it is DomainVoiceEvent.AudioDelta })
+        assertEquals(1, fake.reasks().size)
     }
 
     private companion object {
