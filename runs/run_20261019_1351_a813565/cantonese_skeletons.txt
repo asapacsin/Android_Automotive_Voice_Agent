@@ -1,0 +1,6 @@
+-- YUE-HOME
+   debug_tool tool=voice arg=say:yue_home
+-- YUE-HOT
+   debug_tool tool=voice arg=say:yue_hot
+-- YUE-MUSIC
+   debug_tool tool=voice arg=say:yue_music

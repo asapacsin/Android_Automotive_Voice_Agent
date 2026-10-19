@@ -1,0 +1,8 @@
+      2           expected /^tool=control_seat/
+      3           expected /^tool=run_scenario/
+      2           expected /affordance_match id=/
+      1           expected /affordance_match id=climate verb=/
+      1           expected /gemini_turn_done/
+      2           expected /screen_action=voice_[a-z_]+ ok=true/
+      1           expected /screen_action=voice_climate ok=true/
+      1           expected /tool=describe_camera_view/

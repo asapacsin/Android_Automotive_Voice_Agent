@@ -1,0 +1,21 @@
+-- AFF-PAUSE
+   debug_tool tool=voice arg=say:music_on
+   debug_tool tool=voice arg=say:aff_pause
+-- AFF-AC
+   debug_tool tool=voice arg=say:aff_ac
+-- AFF-RECENTER
+   debug_tool tool=voice arg=say:aff_recenter
+-- NEWS
+   debug_tool tool=voice arg=say:news_today
+-- VISION
+   debug_tool tool=voice arg=say:camera_q
+-- FZ-MOSQ
+   debug_tool tool=voice arg=say:fz_mosquito
+-- FZ-MOSQ-DONE
+   debug_tool tool=voice arg=say:fz_mosquito_done
+-- FZ-SEAT
+   debug_tool tool=voice arg=say:fz_seat_high
+-- FZ-LOWER
+   debug_tool tool=voice arg=say:fz_lower_more
+-- FZ-DROWSY
+   debug_tool tool=voice arg=say:fz_drowsy
