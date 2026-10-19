@@ -77,4 +77,18 @@ class MapPresentationPolicyTest {
         assertTrue(MapPresentationPolicy.keepsRouteIds(NAVIGATING, hostNavigating = true))
         assertEquals(Presentation.UNCHANGED, MapPresentationPolicy.onPhase(NAVIGATING, NAVIGATING, true))
     }
+
+    @Test
+    fun routeIsDrawnOnlyForPreviewAndDriving() {
+        assertFalse(MapPresentationPolicy.drawsRoute(driving = false, preview = false))
+        assertTrue(MapPresentationPolicy.drawsRoute(driving = false, preview = true))
+        assertTrue(MapPresentationPolicy.drawsRoute(driving = true, preview = false))
+    }
+
+    @Test
+    fun cancelFromRouteSelectionStopsDrawingTheRoute() {
+        // P59: 「算了」 at route selection -> IDLE, applied as applyIdle(driving=false, preview=false).
+        assertEquals(Presentation.IDLE, MapPresentationPolicy.onPhase(AWAITING_ROUTE_SELECTION, IDLE, false))
+        assertFalse(MapPresentationPolicy.drawsRoute(driving = false, preview = false))
+    }
 }

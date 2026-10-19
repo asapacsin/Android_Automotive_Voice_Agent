@@ -54,7 +54,6 @@ class DebugToolReceiver : BroadcastReceiver() {
                 "nav_overview" -> navOverview()
                 "nav_lock" -> navLock()
                 "nav_view_state" -> NavigationHostGateway.current()?.debugViewState() ?: "no live map host"
-                "nav_clear_try" -> NavigationHostGateway.current()?.debugClearRoute(arg) ?: "no live map host"
                 "amap_web_setup" -> applyAmapWebSetup(context)
                 "climate" -> climate(arg)
                 "wake" -> wake(context, arg)

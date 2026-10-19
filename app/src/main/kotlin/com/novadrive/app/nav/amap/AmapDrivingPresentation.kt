@@ -98,73 +98,6 @@ internal object AmapDrivingPresentation {
             "tilt=${camera?.tilt?.let { "%.0f".format(java.util.Locale.US, it) }} navigating=$navigating"
     }.getOrElse { "failed=${it.javaClass.simpleName}" }
 
-    /**
-     * Debug experiment for P59 (a cancelled route stays drawn): one way of removing the
-     * calculated route, chosen by name, so the emulator run can screenshot what each does. Not
-     * called from product code.
-     */
-    fun debugClearRoute(navi: AMapNavi?, naviView: AMapNaviView, variant: String): String = runCatching {
-        when (variant) {
-            "stopnavi" -> { navi?.stopNavi(); "stopNavi" }
-            "markers" -> { naviView.setRouteMarkerVisible(false, false, false); "markers hidden" }
-            "map_clear" -> { naviView.map?.clear(); "map cleared" }
-            "idle" -> { applyIdle(naviView); "idle options" }
-            "autodraw_off" -> { setAutoDraw(naviView, false); "autodraw=false" }
-            "autodraw_on" -> { setAutoDraw(naviView, true); "autodraw=true" }
-            "autodraw_toggle" -> { setAutoDraw(naviView, false); setAutoDraw(naviView, true); "autodraw toggled" }
-            "eyrie_hide" -> setEyrieShowRoute(naviView, false)
-            "eyrie_show" -> setEyrieShowRoute(naviView, true)
-            else -> "unknown variant"
-        }
-    }.getOrElse { "failed=${it.javaClass.simpleName}" }
-
-    private fun setAutoDraw(naviView: AMapNaviView, on: Boolean) {
-        val options = naviView.viewOptions ?: AMapNaviViewOptions()
-        options.setAutoDrawRoute(on)
-        naviView.viewOptions = options
-    }
-
-    /**
-     * P59 debug experiment only, not called from product code: walks naviView's object graph
-     * (depth <= 4, at most [EYRIE_NODE_CAP] objects) for the SDK's native route renderer
-     * (AMapNaviCoreEyrieViewManager, matched by name) and calls setShowRoute([show]) on each.
-     */
-    private fun setEyrieShowRoute(naviView: AMapNaviView, show: Boolean): String {
-        val seen = java.util.Collections.newSetFromMap(java.util.IdentityHashMap<Any, Boolean>())
-        val found = java.util.Collections.newSetFromMap(java.util.IdentityHashMap<Any, Boolean>())
-        val truncated = !collectEyrie(naviView, 0, seen, found)
-        found.forEach { it.javaClass.getMethod("setShowRoute", java.lang.Boolean.TYPE).invoke(it, show) }
-        val shown = if (show) " shown" else ""
-        return "eyrie=${found.size}$shown visited=${seen.size}" + if (truncated) " truncated=1" else ""
-    }
-
-    /** Returns false once the node cap is hit. */
-    private fun collectEyrie(value: Any?, depth: Int, seen: MutableSet<Any>, found: MutableSet<Any>): Boolean {
-        if (value == null || value in seen) return true
-        if (seen.size >= EYRIE_NODE_CAP) return false
-        seen.add(value)
-        if (value.javaClass.name == EYRIE_MANAGER) found.add(value)
-        if (depth >= 4) return true
-        val children: Sequence<Any?> = when (value) {
-            is Collection<*> -> value.asSequence()
-            is Map<*, *> -> value.values.asSequence()
-            is Array<*> -> value.asSequence()
-            else -> {
-                val n = value.javaClass.name
-                if (!n.startsWith("com.amap.") && !n.startsWith("com.autonavi.")) emptySequence()
-                else generateSequence(value.javaClass as Class<*>?) { it.superclass }
-                    .flatMap { it.declaredFields.asSequence() }
-                    .filter { !java.lang.reflect.Modifier.isStatic(it.modifiers) && !it.type.isPrimitive }
-                    .map { f -> runCatching { f.isAccessible = true; f.get(value) }.getOrNull() }
-            }
-        }
-        for (child in children) if (!collectEyrie(child, depth + 1, seen, found)) return false
-        return true
-    }
-
-    private const val EYRIE_MANAGER = "com.autonavi.amap.navicore.eyrie.AMapNaviCoreEyrieViewManager"
-    private const val EYRIE_NODE_CAP = 20000
-
     fun listener(onExit: () -> Unit): AMapNaviViewListener = ExitForwardingListener(onExit)
 
     private fun enableLiveTraffic(navi: AMapNavi) {
@@ -194,6 +127,7 @@ internal object AmapDrivingPresentation {
             options.setRealCrossDisplayShow(driving)
             options.setAutoChangeZoom(driving)
             options.setAutoDisplayOverview(preview)
+            options.setAutoDrawRoute(MapPresentationPolicy.drawsRoute(driving, preview))
             options.setCameraBubbleShow(driving)
             options.setShowCameraDistance(driving)
             options.setWidgetOverSpeedPulseEffective(driving)
