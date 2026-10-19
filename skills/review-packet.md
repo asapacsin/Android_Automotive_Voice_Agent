@@ -40,6 +40,11 @@ report is never the evidence (AGENTS.md: an implementation agent may not certify
    the session's disk allowance and an APK build failed with "No space left on device".
 
 ## Gotchas
+- **Never run your rerun while the reviewer builds in the same worktree.** A separate
+  `NOVA_BUILD_DIR` is not enough: on 2026-10-19 a planner rerun and a reviewer's Gradle run in
+  `../nova-wt/P45-U2` at the same time gave 161 `NoClassDefFoundError` failures (test classes
+  removed mid-run), a false red that cost a full rerun. Rerun first and then send the reviewer, or
+  tell the reviewer to read your JUnit XML instead of building.
 
 - **Never add debug and release counts together.** Report one variant (debug) and say which. The
   summed figure went into SPEC cells on 2026-10-17 and had to be reworded.
