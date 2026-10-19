@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-19T09:19:19",
+  "generated_at": "2026-10-19T09:59:09",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "43f11d8",
+    "commit": "b635b7f",
     "branch": "claude/10-19",
-    "subject": "Merge exec/tc-1: archive 50 closed problems out of OPEN_PROBLEMS.md (TC-1, ELIGIBLE)",
+    "subject": "AGENTS.md: Gemini 3.6 Flash fallback when 3.8 Flash is overloaded (owner); key reachable",
     "working_tree_clean": false,
-    "uncommitted_files": 1
+    "uncommitted_files": 2
   },
   "tests": {
     "available": true,
@@ -118,6 +118,11 @@
       "id": "P55",
       "title": "10-13 bug: 「嗲一点」 changes neither the style on screen nor how she speaks",
       "status": "open. The persistence design is with the decider (AGENTS.md hard rule); a style scene"
+    },
+    {
+      "id": "P56",
+      "title": "「帮我把天窗打开」 opened all four windows",
+      "status": "OPEN - live confirmation pending. The sunroof guard is in the code (JUnit `ToolCallGuardSunroofTest` 7/0, reviewer PASS "
     },
     {
       "id": "P62",

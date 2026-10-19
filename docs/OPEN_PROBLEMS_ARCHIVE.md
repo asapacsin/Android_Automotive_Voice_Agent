@@ -1772,6 +1772,19 @@ u_temp still misses its 3.5 s limit (honest).
 - The session-start warm-up now tries each lookup up to 3 times, 1 s apart (2026-10-12). Before, one slow Amap call left the cache empty and 「今天天气怎么样」 paid a cold lookup. From the cloud, single calls took 1.4–3.8 s and one weather call hit the 4 s limit in a full-suite run. `LiveInfoToolTest` covers both cases (a retried warm-up still answers from the cache; three failures give up). `DemoCommuteAmapLiveTest` runs the real warm-up at the demo origin.
 - Qwen's own variance: end-of-speech 0.9–1.5 s after the last word (`semantic_vad` 800 ms), first audio after a tool result 0.3–1.5 s, and occasionally a reply generated close to real time (underruns up to 259 ms).
 
+## P57 — 「把我这边的窗户开一点」 opened all four windows
+
+**Found 2026-10-13, tryout run 4** (gemini-3.1-flash-live-preview, after P56; seen in the rendered video, not by the grader): the model called `control_window` {action=adjust, window=all, value=20} and all four windows opened 20 %. Runs 1-3 called window=driver for the same line. The tool description (`BodyDomain` control_window) gives 「开一点主驾车窗」 → window=driver and 「未指明窗时 window=all」, but not 「我这边」 as naming the driver's window, so the model may read it as unspecified. The tryout grader only checked that the driver's window opened; it now also fails when any other window moves (`tryout_check.py`, selftest case "my-side window opened all four"), and DEMO-TRYOUT-001 is FAIL until a re-run.
+
+**Status:** FIXED on the JVM harness 2026-10-14 (`DEMO-TRYOUT-001` `tryout_check.py` RESULT PASS, 19/19). Not device-verified.
+
+`ToolCallGuards.driverSideWindow` rewrites a `control_window` target to `driver` when this turn's words name only the driver's side (我这边 / 我这侧 / 我这一侧 / 我这半边, and no 副驾, 后排, 全部, or the other listed windows). `AndroidToolDispatcher` applies that before the body server. A transcript older than the speech onset is left alone, same as P56. The tool description is a hint only. On the passing take, `u_window` was `control_window` adjust `window=driver` and no other window moved.
+
+The take before that failed for two other reasons, both fixed before this run. A pasted space on the Amap web key made place search return `INVALID_USER_KEY` (prefetch count=0); the key is trimmed before it is sent, and this take prefetched count=5. `u_can` was held until `generationComplete` (6.9 s) even though audio had already started; a help answer now plays once it names two supported groups. `u_barge` was dropped because `导航` is both a device noun and an action word (`noun=导航 verb=导航`), then the correction was what the driver heard (7.1 s); a mention of `导航` with no other action and no progress word is not a claim. This take: `u_can` 1.5 s, `u_pick2` 2.4 s, `u_barge` 1.7 s, no `TURN_DROP`.
+
+**Review 2026-10-15 (claude/10-15, planner):** the merged branch was red (three session goldens - `qwen_session_update`, `baidu_session_update`, its variant - still held the old `control_window` description) and had two defects, both fixed with tests. (1) The rewrite also replaced a window the model named: 「我这边冷，把后面的窗户关上」 with `window=rear` closed the driver window instead; only `window=all` (or none) is narrowed now, and 后面/后边/前排/右边/别的/其他… count as another window. (2) The 导航 relaxation let 「好的，导航去机场。」「导航去公司了。」「现在导航去横琴镇。」 through the claim gate with no tool run (I-1); a destination after 导航 (去/到/至/回/前往) or 我来导航 is a claim again, 「导航继续」 is still a mention. The refuse-and-recall variant (wt/p57 86e9b9f, decider option B) is dropped: its review found it needs a claim-gate change (R1), and narrowing passed a live take without one.
+
+
 ## P58 — The navigation map stays north-up while the car turns (car-up not applied on screen)
 
 **Status:** CLOSED 2026-10-15 - not a defect (see the correction at the end). Found the same day by the GitHub emulator device checks (run 38756802061, API 34

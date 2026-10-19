@@ -419,6 +419,8 @@ her measured default (take8: ~220-235 Hz, pace 7-11 chars/s).
 
 ## P56 — 「帮我把天窗打开」 opened all four windows
 
+**Status:** OPEN - live confirmation pending. The sunroof guard is in the code (JUnit `ToolCallGuardSunroofTest` 7/0, reviewer PASS 2026-10-13), but no live run has exercised it yet (tryout run 4: the model did not try a window).
+
 **Found 2026-10-13, third tryout run** (`NOVA_LIVE_SCENES=tryout`, gemini-3.1-flash-live-preview, after the P55 fix; docs/DEMO_TRYOUT.md): the model heard 「帮我把天窗打开」 correctly and called `control_window` {action=open, window=all}; the dispatcher ran it and all four windows went to 100 %. The two earlier tryout runs refused this line, so it is model variance — and a prompt rule (`FLEX_TOOL_RULE` 「没有对应工具的请求（例如调音量、开天窗）要用一句话说明暂时不支持」) is not enforcement (AGENTS.md rule 4). SPEC-006 F-7 already required "refuse; do not execute a *nearby* supported action", but only the music case (`MEDIA_LIBRARY_UNSUPPORTED`) was enforced.
 
 **Fix:** `ToolCallGuards.sunroofOnWindowTool`, in the dispatcher's existing guard chain **and** in the `ComfortServer` step route (so 「有蚊子，把天窗关上」 via `run_scenario{mosquito}` cannot open a window either): a `control_window` call whose driver words name one of `UtteranceIntentResolver`'s cues for `sunroof_doors_lights_wipers` (天窗/天幕/后备箱/车门/车灯/雨刷 - the resolver owns the vocabulary; 天幕 was added there) and, after removing those cues, no window cue and no other 窗 is refused `UNSUPPORTED_BODY_PART` before anything moves; the advice (`ToolFailureAdvice`) says it is a part 小诺 cannot control, nothing ran, the windows did not move, and asks for one honest sentence. It only judges words of the turn being answered (`currentEpoch >= capabilityEpoch`): when the call arrives before this turn's transcript, the text is the previous turn's, and the call is let through rather than guessed at. On Gemini the input transcript is flushed when the turn opens, before the call is dispatched (`GeminiLiveClient.openTurn`). Research: no web search tool in this session; followed the repository's own precedent for the same failure class (SPEC-006 F-7 / SPEC-017 `unsupportedMedia`).
@@ -432,19 +434,6 @@ her measured default (take8: ~220-235 Hz, pace 7-11 chars/s).
 **Review:** first version REVISE (spaced transcripts, second vocabulary, scenario path); revision PASS (independent reviewer, 2026-10-13). One run of `aSunroofNamedWithAScenarioNeverOpensAWindow` failed once right after the executor reverted its own mutation of the scenario-route guard (same assertion the mutation breaks); not reproduced in 10 further runs in two separate build directories (planner 5× `--rerun-tasks`, reviewer 4× plus a full run); the code path is synchronous with no shared state (reviewer). Read as stale build output, not a flake in the guard.
 
 **Live (DEMO-TRYOUT-001, run 4, gemini-3.1-flash-live-preview at d160a3e):** 19/19 after the goodbye rule; u_sunroof refused with no tool call (the model did not try a window this time, so the guard was not exercised live - its proof is the JVM tests); none of the 19 heard lines reached the app spaced; u_hot, u_temp and u_window held as `kind=ACTION` (they were `CONVERSATION` while transcripts were spaced), u_can as `CAPABILITY_HELP`.
-
-## P57 — 「把我这边的窗户开一点」 opened all four windows
-
-**Found 2026-10-13, tryout run 4** (gemini-3.1-flash-live-preview, after P56; seen in the rendered video, not by the grader): the model called `control_window` {action=adjust, window=all, value=20} and all four windows opened 20 %. Runs 1-3 called window=driver for the same line. The tool description (`BodyDomain` control_window) gives 「开一点主驾车窗」 → window=driver and 「未指明窗时 window=all」, but not 「我这边」 as naming the driver's window, so the model may read it as unspecified. The tryout grader only checked that the driver's window opened; it now also fails when any other window moves (`tryout_check.py`, selftest case "my-side window opened all four"), and DEMO-TRYOUT-001 is FAIL until a re-run.
-
-**Status:** FIXED on the JVM harness 2026-10-14 (`DEMO-TRYOUT-001` `tryout_check.py` RESULT PASS, 19/19). Not device-verified.
-
-`ToolCallGuards.driverSideWindow` rewrites a `control_window` target to `driver` when this turn's words name only the driver's side (我这边 / 我这侧 / 我这一侧 / 我这半边, and no 副驾, 后排, 全部, or the other listed windows). `AndroidToolDispatcher` applies that before the body server. A transcript older than the speech onset is left alone, same as P56. The tool description is a hint only. On the passing take, `u_window` was `control_window` adjust `window=driver` and no other window moved.
-
-The take before that failed for two other reasons, both fixed before this run. A pasted space on the Amap web key made place search return `INVALID_USER_KEY` (prefetch count=0); the key is trimmed before it is sent, and this take prefetched count=5. `u_can` was held until `generationComplete` (6.9 s) even though audio had already started; a help answer now plays once it names two supported groups. `u_barge` was dropped because `导航` is both a device noun and an action word (`noun=导航 verb=导航`), then the correction was what the driver heard (7.1 s); a mention of `导航` with no other action and no progress word is not a claim. This take: `u_can` 1.5 s, `u_pick2` 2.4 s, `u_barge` 1.7 s, no `TURN_DROP`.
-
-**Review 2026-10-15 (claude/10-15, planner):** the merged branch was red (three session goldens - `qwen_session_update`, `baidu_session_update`, its variant - still held the old `control_window` description) and had two defects, both fixed with tests. (1) The rewrite also replaced a window the model named: 「我这边冷，把后面的窗户关上」 with `window=rear` closed the driver window instead; only `window=all` (or none) is narrowed now, and 后面/后边/前排/右边/别的/其他… count as another window. (2) The 导航 relaxation let 「好的，导航去机场。」「导航去公司了。」「现在导航去横琴镇。」 through the claim gate with no tool run (I-1); a destination after 导航 (去/到/至/回/前往) or 我来导航 is a claim again, 「导航继续」 is still a mention. The refuse-and-recall variant (wt/p57 86e9b9f, decider option B) is dropped: its review found it needs a claim-gate change (R1), and narrowing passed a live take without one.
-
 
 ## P62 — Turn-by-turn guidance is not spoken in her voice (demo used a male voice)
 
@@ -706,6 +695,7 @@ B4 text to say "same control".
 - P45 — A conversation reply was held for 9.4 s and never spoken; the next question got no reply — FIXED at L1 2026-10-02 → docs/OPEN_PROBLEMS_ARCHIVE.md
 - P49 — With the local gate on, Gemini never ends the turn, and the emulator never ran the gate — FIXED on the emulator → docs/OPEN_PROBLEMS_ARCHIVE.md
 - P50 — Qwen Maia on the emulator: replies held whole, a reset after every tool turn, stalls, and false claims about heard sentences — FIXED on the emulator → docs/OPEN_PROBLEMS_ARCHIVE.md
+- P57 — 「把我这边的窗户开一点」 opened all four windows — FIXED on the JVM → docs/OPEN_PROBLEMS_ARCHIVE.md
 - P58 — The navigation map stays north-up while the car turns (car-up not applied on screen) — CLOSED 2026-10-15 - not → docs/OPEN_PROBLEMS_ARCHIVE.md
 - P59 — After 「算了」 cancels the route choice, the route stays drawn on the map — FIXED 2026-10-19 (device-confirmed, run → docs/OPEN_PROBLEMS_ARCHIVE.md
 - P60 — After a dropped claim, the correction ordered an action the driver had forbidden — FIXED 2026-10-15 (JVM), live → docs/OPEN_PROBLEMS_ARCHIVE.md
