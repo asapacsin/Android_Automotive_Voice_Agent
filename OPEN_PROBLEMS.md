@@ -2246,7 +2246,7 @@ smoothed rotation lags the car. Car-up works on the API 34 emulator; NAV-UI-003 
 
 ## P59 — After 「算了」 cancels the route choice, the route stays drawn on the map
 
-**Status:** OPEN, seen 2026-10-15 in the real-app demo on the GitHub emulator (Gemini via the debug
+**Status:** FIXED 2026-10-19 (device-confirmed, run 39203201006 at b2a836a; see the last entry). Seen 2026-10-15 in the real-app demo on the GitHub emulator (Gemini via the debug
 override, run 38772982830, `demo-videos/real_app_emulator_gemini_voice_2026-10-15.mp4` ~1:15 and
 ~2:05). 「导航去珠海站」 then 「第二个」 showed the 3-route picker; 「算了」 got
 `exit_navigation_mode` and 「已取消导航选择」, the picker closed, but the selected route line and
@@ -2283,6 +2283,12 @@ the last calculated route as long as autoDrawRoute is true, and nothing ever set
 applied in `AmapDrivingPresentation.applyOptions`: off for idle (cancel, stop), on for preview and
 driving; the experiment harness (`nav_clear_try`, `debugClearRoute`) is deleted. The device check
 now runs two cancel rounds; the second proves drawing comes back.
+
+**Confirmed fixed, 2026-10-19 (real-vendor device checks run 39203201006 at b2a836a, `ci/device-evidence
+runs/run_20261019_0534_b2a836a`, verdict PASS, `build:vendor-real` PASS):** `device:P59 rounds_failed=0/2`.
+In both rounds the route is drawn in the picker (`p59_first_routes.jpg`, `p59_second_routes.jpg`,
+`nav_presentation mode=preview autoDraw=true`) and gone after the cancel (`p59_first_cancelled.jpg`,
+`p59_second_cancelled.jpg`, `mode=idle autoDraw=false`); the second round proves drawing comes back.
 
 ## P60 — After a dropped claim, the correction ordered an action the driver had forbidden
 
