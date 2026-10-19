@@ -4,7 +4,7 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 
 > **Not ready yet.** This is a preview of the queue; autonomous work remains:
 >
-> - the registry does not validate: 50 problem(s)
+> - the registry does not validate: 19 problem(s)
 > - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - TRUTH-MEDIA-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -13,7 +13,7 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 > - NAV-MID-ROUTE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - CLIMATE-SET-001 is AUTONOMOUS and FAIL - run it or fix it
 
-31 item(s) queued.
+30 item(s) queued.
 
 Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEVICE_REQUIRED.md).
 
@@ -852,32 +852,6 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 **Tell me back:** the run id of the first Device checks run after the change; whether its verdict has results
 
 **Still unknown until you do:** whether the device and voice suites are green on the current code: they have not run to completion since 2026-10-17
-
-### CI-GEMINI-KEY-001 — The Voice checks workflow's Gemini key is valid
-
-**Why this needs you.** Only the owner can create a Gemini API key and set the repository's Actions secrets; an agent cannot read or write secrets and must never be given a key in chat
-
-**Automation blocker:** `credential_permission`
-
-**Already established without you:**
-
-- 2026-10-19 Voice checks run 39198920117 at adfa384 (05:15 UTC): session up, every scenario PASS
-- 2026-10-19 Voice checks runs 39241752142 at 2fb2692 and 39252810141 at a813565: session never ready, codes= 72 GEMINI_LIVE_MALFORMED_SETUP. The app maps every WebSocket close 1007 to that code, and Gemini closes 1007 'API key not valid' for a bad key (seen from a cloud session the same day); the only app changes since 05:15 are route drawing and a log line. Most likely the key shown in an owner screenshot that morning was deleted, as advised, and the secret still holds it
-
-**You will need:** a valid Gemini API key from aistudio.google.com (preferably its own project, so agent CLI tests and voice checks do not share one free-tier quota)
-
-**What to do:**
-
-1. set the Actions secret GEMINI_API_KEY in asapacsin/Android_Automotive_Voice_Agent to the new key
-2. run Voice checks by hand (Actions > Voice checks > Run workflow, branch claude/10-19)
-
-**It passes if:**
-
-- summary.txt says 'voice: session up' and codes= no longer lists GEMINI_LIVE_MALFORMED_SETUP or GEMINI_LIVE_AUTH_FAILED
-
-**Tell me back:** the run id of the first Voice checks run after the change
-
-**Still unknown until you do:** the close reason is not logged (I-8), so the bad-key reading is an inference until GEM-1007 (1007 'API key' -> GEMINI_LIVE_AUTH_FAILED) is in a run or the new key makes the session come up
 
 ### RELEASE-SIGN-001 — A signed release build installs and works
 

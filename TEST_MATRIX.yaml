@@ -163,15 +163,15 @@ tests:
     prerequisites: ["speech harness", "a clip the transcriber mangles"]
     procedure: ["inject yue_home, which arrives as garbage"]
     pass_criteria: ["either a real tool call, or an honest refusal - never a released claim"]
-    evidence: ["2026-09-19: 「返屋企啦」 -> 「发诺克拉。」 -> correction, not a claim", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S11 返屋企啦 - no wrong action taken: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-15 S11 re-passed at b4259c0 (with the P60 claim-gate change) in GitHub voice run 38787506856, Gemini debug override", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S11 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S11 PASS in both, session errors=0, quota_guard=0"]
+    evidence: ["2026-09-19: 「返屋企啦」 -> 「发诺克拉。」 -> correction, not a claim", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S11 返屋企啦 - no wrong action taken: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-15 S11 re-passed at b4259c0 (with the P60 claim-gate change) in GitHub voice run 38787506856, Gemini debug override", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S11 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S11 PASS in both, session errors=0, quota_guard=0", "2026-10-19 real-vendor GitHub Voice checks run 39285245437 at c6b2790 (ci/voice-evidence runs/run_20261019_1720_c6b2790; verdict.json voice:S11 PASS 1/1, build:vendor-real PASS; Gemini gemini-3.1-flash-live-preview, new GEMINI_API_KEY, summary 'voice: session up', session errors=0, quota_guard=0); rebound at b414b14 (app code identical to c6b2790, later commits touch only state/)"]
     evidence_bind:
-      code_digest: sha256:a88c81cf21a87b3cfa9e284757df9892fe115018738bb546bc5e7d36dd3ffedd
+      code_digest: sha256:f754669495766b70143ec0b11a4f709786284c7c230b24810f4daa36ea851eef
       procedure_digest: sha256:9dab374b62e393aeee4370d4c00bca6416d0aa888942f4b7eea62026af260808
       registry_digest: sha256:c306f76a9451a01dfc69ee94722b418f47e798eb4cf9db2d18bf680f6d1989d1
       harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
-      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: 9fe67c1
+      apk_digest: sha256:be9de89339982b0be433b5620f41e04d0685f2ee958b496a8d0c9bc4a71b9596
+      bound_commit: b414b14
     related: [P23]
     last_run: {at: 2026-10-17, result: PASS}
 
@@ -224,15 +224,15 @@ tests:
       - "tool=query_live_info in the turn"
       - "a `live_info kind=weather` log line before any weather wording is released"
       - "no weather or traffic wording released in a turn without a live_info result (unit cover: FalseCapabilityClaimTest)"
-    evidence: ["2026-09-20: refusal, 20/20 suite (pre-SPEC-011 criterion, superseded)", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S7 今天天气怎么样 -> query_live_info + live_info kind=weather: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-15 S7 re-passed at b4259c0 (with the P60 claim-gate change) in GitHub voice run 38787506856, Gemini debug override", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S7 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S7 PASS in both, session errors=0, quota_guard=0"]
+    evidence: ["2026-09-20: refusal, 20/20 suite (pre-SPEC-011 criterion, superseded)", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S7 今天天气怎么样 -> query_live_info + live_info kind=weather: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-15 S7 re-passed at b4259c0 (with the P60 claim-gate change) in GitHub voice run 38787506856, Gemini debug override", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S7 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S7 PASS in both, session errors=0, quota_guard=0", "2026-10-19 real-vendor GitHub Voice checks run 39285245437 at c6b2790 (ci/voice-evidence runs/run_20261019_1720_c6b2790; verdict.json voice:S7 PASS 1/1, build:vendor-real PASS; Gemini gemini-3.1-flash-live-preview, new GEMINI_API_KEY, summary 'voice: session up', session errors=0, quota_guard=0); rebound at b414b14 (app code identical to c6b2790, later commits touch only state/)"]
     evidence_bind:
-      code_digest: sha256:e3c779118cd3d65578f127c75ee69fe4814d5e15502eaee587753f68d662eef7
+      code_digest: sha256:5e1e9c9f57d3cc3315304cc9bc5e081b8923357a49efffc8e9196f86408ce159
       procedure_digest: sha256:2f52cffdc7bd8d7be36d925f746bd8b1adbb17887680dbcdba108b73d8919dd3
-      registry_digest: sha256:2ec3c42db12f48d30f16b61435f61177cb4baf5194b73cafc97f6f9fac6ed135
+      registry_digest: sha256:9c4b12ea79bf579e5a00c837a59c9ddb3290771568bc3e333b0868548a769ef5
       harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
-      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: 9fe67c1
+      apk_digest: sha256:be9de89339982b0be433b5620f41e04d0685f2ee958b496a8d0c9bc4a71b9596
+      bound_commit: b414b14
     related: [P21, SPEC-011]
     last_run: {at: 2026-10-17, result: PASS}
 
@@ -298,15 +298,15 @@ tests:
     prerequisites: ["home saved"]
     procedure: ["scenario S3"]
     pass_criteria: ["nav_saved_place slot=HOME set=true", "nav_resolve_candidates count=1"]
-    evidence: ["2026-09-20: 4/5 - the ASR misses the two-character utterance about once in five, and the app says so rather than guessing", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S3 回家 (home saved): PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S3 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S3 PASS in both, session errors=0, quota_guard=0"]
+    evidence: ["2026-09-20: 4/5 - the ASR misses the two-character utterance about once in five, and the app says so rather than guessing", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S3 回家 (home saved): PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S3 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S3 PASS in both, session errors=0, quota_guard=0", "2026-10-19 real-vendor GitHub Voice checks run 39285245437 at c6b2790 (ci/voice-evidence runs/run_20261019_1720_c6b2790; verdict.json voice:S3 PASS 1/1, build:vendor-real PASS; Gemini gemini-3.1-flash-live-preview, new GEMINI_API_KEY, summary 'voice: session up', session errors=0, quota_guard=0); rebound at b414b14 (app code identical to c6b2790, later commits touch only state/)"]
     evidence_bind:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:8ba04e3ac67da8f542131d4b40650ad80c8f43c467377025a42dc711e8d22d42
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
       harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
-      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: 9fe67c1
+      apk_digest: sha256:be9de89339982b0be433b5620f41e04d0685f2ee958b496a8d0c9bc4a71b9596
+      bound_commit: b414b14
     related: [B-010]
     last_run: {at: 2026-10-17, result: PASS}
 
@@ -475,15 +475,15 @@ tests:
     prerequisites: ["Amap web key"]
     procedure: ["scenario S5"]
     pass_criteria: ["nav_resolve_candidates count>0", "no nav_navigation_started"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S5 导航去珠海站: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S5 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S5 PASS in both, session errors=0, quota_guard=0"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S5 导航去珠海站: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S5 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S5 PASS in both, session errors=0, quota_guard=0", "2026-10-19 real-vendor GitHub Voice checks run 39285245437 at c6b2790 (ci/voice-evidence runs/run_20261019_1720_c6b2790; verdict.json voice:S5 PASS 1/1, build:vendor-real PASS; Gemini gemini-3.1-flash-live-preview, new GEMINI_API_KEY, summary 'voice: session up', session errors=0, quota_guard=0); rebound at b414b14 (app code identical to c6b2790, later commits touch only state/)"]
     evidence_bind:
-      code_digest: sha256:afccf2c1e5ecb56c65f3a450c5d050f154e871cf784db67844c2d9734ccebc3c
+      code_digest: sha256:fe6a2682ba462e867b944de329e6d558d0c042dea79280f787c2b8465f43fa64
       procedure_digest: sha256:0f41f318f5818a19bb531fbe94fae651fcc073f54090ab528099901dade4afde
-      registry_digest: sha256:4f6defe5c129b94878e638477cff64ac8581261955c65a52830c06f8af15c8c2
+      registry_digest: sha256:74c0610af85c6fb722e190076b3f71ba836dac87e46630896aed729af20e1a41
       harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
-      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: 9fe67c1
+      apk_digest: sha256:be9de89339982b0be433b5620f41e04d0685f2ee958b496a8d0c9bc4a71b9596
+      bound_commit: b414b14
     related: [SPEC-005, P7]
     last_run: {at: 2026-10-17, result: PASS}
 
@@ -499,15 +499,15 @@ tests:
     prerequisites: ["a candidate list on screen"]
     procedure: ["scenario S5b"]
     pass_criteria: ["tool=choose_navigation_option"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S5b 第二个: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S5b PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S5b PASS in both, session errors=0, quota_guard=0"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S5b 第二个: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S5b PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S5b PASS in both, session errors=0, quota_guard=0", "2026-10-19 real-vendor GitHub Voice checks run 39285245437 at c6b2790 (ci/voice-evidence runs/run_20261019_1720_c6b2790; verdict.json voice:S5b PASS 1/1, build:vendor-real PASS; Gemini gemini-3.1-flash-live-preview, new GEMINI_API_KEY, summary 'voice: session up', session errors=0, quota_guard=0); rebound at b414b14 (app code identical to c6b2790, later commits touch only state/)"]
     evidence_bind:
-      code_digest: sha256:afccf2c1e5ecb56c65f3a450c5d050f154e871cf784db67844c2d9734ccebc3c
+      code_digest: sha256:fe6a2682ba462e867b944de329e6d558d0c042dea79280f787c2b8465f43fa64
       procedure_digest: sha256:2848c32658f7a3d134d60b143d11add5ad59e111f4d76de91cbb3b5395610126
-      registry_digest: sha256:57b2077c14a9db2695a092ad0029cba6defc584a998a2dea9ce9e5344bb01e08
+      registry_digest: sha256:46b3ba9ef93a26c5b3d78b507a472379c9b8bb361eca460818d5d185425e84eb
       harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
-      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: 9fe67c1
+      apk_digest: sha256:be9de89339982b0be433b5620f41e04d0685f2ee958b496a8d0c9bc4a71b9596
+      bound_commit: b414b14
     related: [SPEC-005, P16]
     last_run: {at: 2026-10-17, result: PASS}
 
@@ -523,15 +523,15 @@ tests:
     prerequisites: ["a picker open"]
     procedure: ["scenario S6"]
     pass_criteria: ["tool=exit_navigation_mode, picker closed"]
-    evidence: ["2026-09-20: nav_flow_cancelled", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S6 算了: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S6 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S6 PASS in both, session errors=0, quota_guard=0", "2026-10-19 GitHub emulator API 34, real vendor (build:vendor-real PASS), device checks run 39203201006 at b2a836a (ci/device-evidence runs/run_20261019_0534_b2a836a, verdict PASS): P59 map check, two cancel rounds rounds_failed=0/2 - route drawn in the picker (p59_first_routes.jpg, p59_second_routes.jpg), gone after the cancel (p59_first_cancelled.jpg, p59_second_cancelled.jpg); the map now matches the exit_navigation_mode log"]
+    evidence: ["2026-09-20: nav_flow_cancelled", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S6 算了: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S6 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S6 PASS in both, session errors=0, quota_guard=0", "2026-10-19 GitHub emulator API 34, real vendor (build:vendor-real PASS), device checks run 39203201006 at b2a836a (ci/device-evidence runs/run_20261019_0534_b2a836a, verdict PASS): P59 map check, two cancel rounds rounds_failed=0/2 - route drawn in the picker (p59_first_routes.jpg, p59_second_routes.jpg), gone after the cancel (p59_first_cancelled.jpg, p59_second_cancelled.jpg); the map now matches the exit_navigation_mode log", "2026-10-19 real-vendor GitHub Voice checks run 39285245437 at c6b2790 (ci/voice-evidence runs/run_20261019_1720_c6b2790; verdict.json voice:S6 PASS 1/1, build:vendor-real PASS; Gemini gemini-3.1-flash-live-preview, new GEMINI_API_KEY, summary 'voice: session up', session errors=0, quota_guard=0); rebound at b414b14 (app code identical to c6b2790, later commits touch only state/)"]
     evidence_bind:
-      code_digest: sha256:afccf2c1e5ecb56c65f3a450c5d050f154e871cf784db67844c2d9734ccebc3c
+      code_digest: sha256:fe6a2682ba462e867b944de329e6d558d0c042dea79280f787c2b8465f43fa64
       procedure_digest: sha256:23565134e5356b7656ced80e08e74b12f79e1aa2290953bbbcf721dad6f396f1
-      registry_digest: sha256:ce26bd4b05ffe24e719d79777aa4ddfc275b5c7a8ee3dcd19e8cd833aad115ae
+      registry_digest: sha256:0cf48a3b18a8bd89674a7689f5df1a7a5cbeca064c995dfb749e08ffb781756d
       harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
-      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: 9fe67c1
+      apk_digest: sha256:be9de89339982b0be433b5620f41e04d0685f2ee958b496a8d0c9bc4a71b9596
+      bound_commit: b414b14
     related: [SPEC-005, P11, P4]
     last_run: {at: 2026-10-17, result: PASS}
 
@@ -547,15 +547,15 @@ tests:
     prerequisites: ["a picker open"]
     procedure: ["scenario S13"]
     pass_criteria: ["a fresh navigate_to and new candidates", "navigation has not started"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S13 导航去珠海站 then 不对，换成拱北口岸: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S13 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S13 PASS in both, session errors=0, quota_guard=0"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S13 导航去珠海站 then 不对，换成拱北口岸: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S13 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S13 PASS in both, session errors=0, quota_guard=0", "2026-10-19 real-vendor GitHub Voice checks run 39285245437 at c6b2790 (ci/voice-evidence runs/run_20261019_1720_c6b2790; verdict.json voice:S13 PASS 1/1, build:vendor-real PASS; Gemini gemini-3.1-flash-live-preview, new GEMINI_API_KEY, summary 'voice: session up', session errors=0, quota_guard=0); rebound at b414b14 (app code identical to c6b2790, later commits touch only state/)"]
     evidence_bind:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:9f483854c9742e42b436e33f00165abd28343f3bbcff8548f8fb0c858fd3b786
       registry_digest: sha256:6db5b0e5506ab18d6c9de6d800e39628c964e263eb8f97c5bc128caafa805167
       harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
-      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: 9fe67c1
+      apk_digest: sha256:be9de89339982b0be433b5620f41e04d0685f2ee958b496a8d0c9bc4a71b9596
+      bound_commit: b414b14
     related: [SPEC-006]
     last_run: {at: 2026-10-17, result: PASS}
 
@@ -988,15 +988,15 @@ tests:
     prerequisites: []
     procedure: ["scenario S2"]
     pass_criteria: ["a real control_climate call lowering temperature"]
-    evidence: ["2026-09-20: 20/20 suite, after isControlRequest learned to ask ContextResolver", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S2 有点热: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S2 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S2 PASS in both, session errors=0, quota_guard=0"]
+    evidence: ["2026-09-20: 20/20 suite, after isControlRequest learned to ask ContextResolver", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S2 有点热: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S2 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S2 PASS in both, session errors=0, quota_guard=0", "2026-10-19 real-vendor GitHub Voice checks run 39285245437 at c6b2790 (ci/voice-evidence runs/run_20261019_1720_c6b2790; verdict.json voice:S2 PASS 1/1, build:vendor-real PASS; Gemini gemini-3.1-flash-live-preview, new GEMINI_API_KEY, summary 'voice: session up', session errors=0, quota_guard=0); rebound at b414b14 (app code identical to c6b2790, later commits touch only state/)"]
     evidence_bind:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:33538348b9515af8cc0bdda4f765844150a61cad27bdffb83e093b20a273319f
       registry_digest: sha256:a4063b41a81d6d4d1cc9e13a1a5dd45dd3fabe248826b79f87aa68116597e2cd
       harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
-      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: 9fe67c1
+      apk_digest: sha256:be9de89339982b0be433b5620f41e04d0685f2ee958b496a8d0c9bc4a71b9596
+      bound_commit: b414b14
     related: [SPEC-006]
     last_run: {at: 2026-10-17, result: PASS}
 
@@ -1012,15 +1012,15 @@ tests:
     prerequisites: []
     procedure: ["scenario S8"]
     pass_criteria: ["tool=control_climate power_off"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S8 关闭空调: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S8 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S8 PASS in both, session errors=0, quota_guard=0"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S8 关闭空调: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S8 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S8 PASS in both, session errors=0, quota_guard=0", "2026-10-19 real-vendor GitHub Voice checks run 39285245437 at c6b2790 (ci/voice-evidence runs/run_20261019_1720_c6b2790; verdict.json voice:S8 PASS 1/1, build:vendor-real PASS; Gemini gemini-3.1-flash-live-preview, new GEMINI_API_KEY, summary 'voice: session up', session errors=0, quota_guard=0); rebound at b414b14 (app code identical to c6b2790, later commits touch only state/)"]
     evidence_bind:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:7763ae0ecdf2cd439c1d944f3dc07531a64ae324ac4c9df7d54ec337a20fd23e
       registry_digest: sha256:523fdc26f7dead62f7fc6ce7ca3c83f3b203428040f9ff3b09e19f626579b580
       harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
-      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: 9fe67c1
+      apk_digest: sha256:be9de89339982b0be433b5620f41e04d0685f2ee958b496a8d0c9bc4a71b9596
+      bound_commit: b414b14
     related: [P2]
     last_run: {at: 2026-10-17, result: PASS}
 
@@ -1056,15 +1056,15 @@ tests:
     prerequisites: []
     procedure: ["scenario S12 - 有点热 then 再凉一点, as two real driver turns"]
     pass_criteria: ["a second control_climate", "no AMBIGUOUS_REFERENT"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S12 有点热 then 再凉一点: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S12 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S12 PASS in both, session errors=0, quota_guard=0"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S12 有点热 then 再凉一点: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S12 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S12 PASS in both, session errors=0, quota_guard=0", "2026-10-19 real-vendor GitHub Voice checks run 39285245437 at c6b2790 (ci/voice-evidence runs/run_20261019_1720_c6b2790; verdict.json voice:S12 PASS 1/1, build:vendor-real PASS; Gemini gemini-3.1-flash-live-preview, new GEMINI_API_KEY, summary 'voice: session up', session errors=0, quota_guard=0); rebound at b414b14 (app code identical to c6b2790, later commits touch only state/)"]
     evidence_bind:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:43af5b8595c93c4b4434bbe64b4c044eb3f2903c92bf520102070770ad780244
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
       harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
-      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: 9fe67c1
+      apk_digest: sha256:be9de89339982b0be433b5620f41e04d0685f2ee958b496a8d0c9bc4a71b9596
+      bound_commit: b414b14
     related: [SPEC-006, ADR-002, P10]
     last_run: {at: 2026-10-17, result: PASS}
 
@@ -1080,15 +1080,15 @@ tests:
     prerequisites: ["a session with no prior adjustment"]
     procedure: ["scenario S16, which restarts the app first"]
     pass_criteria: ["she answers the turn (asks which, or says what she needs) - no silent drop", "no control_climate succeeds: a guessed call is refused by the AMBIGUOUS_REFERENT guard (SPEC-015 FZ-14); the removed follow_up kind=clarify log line is no longer the signal (updated 2026-10-15)"]
-    evidence: ["2026-09-20: 「您是指温度还是风量呢？」", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S16 再低一点 with nothing adjusted - answered, no climate change succeeded: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S16 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S16 PASS in both, session errors=0, quota_guard=0"]
+    evidence: ["2026-09-20: 「您是指温度还是风量呢？」", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S16 再低一点 with nothing adjusted - answered, no climate change succeeded: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S16 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S16 PASS in both, session errors=0, quota_guard=0", "2026-10-19 real-vendor GitHub Voice checks run 39285245437 at c6b2790 (ci/voice-evidence runs/run_20261019_1720_c6b2790; verdict.json voice:S16 PASS 1/1, build:vendor-real PASS; Gemini gemini-3.1-flash-live-preview, new GEMINI_API_KEY, summary 'voice: session up', session errors=0, quota_guard=0); rebound at b414b14 (app code identical to c6b2790, later commits touch only state/)"]
     evidence_bind:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:7c4019352c1c1b1341d27e24284fa355c17915e33a846f5ac30c8abc7bfa73fe
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
       harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
-      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: 9fe67c1
+      apk_digest: sha256:be9de89339982b0be433b5620f41e04d0685f2ee958b496a8d0c9bc4a71b9596
+      bound_commit: b414b14
     related: [SPEC-006]
     last_run: {at: 2026-10-17, result: PASS}
 
@@ -1104,15 +1104,15 @@ tests:
     prerequisites: []
     procedure: ["scenario S4"]
     pass_criteria: ["tool=control_music play"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S4 播放音乐: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S4 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S4 PASS in both, session errors=0, quota_guard=0"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S4 播放音乐: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S4 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S4 PASS in both, session errors=0, quota_guard=0", "2026-10-19 real-vendor GitHub Voice checks run 39285245437 at c6b2790 (ci/voice-evidence runs/run_20261019_1720_c6b2790; verdict.json voice:S4 PASS 1/1, build:vendor-real PASS; Gemini gemini-3.1-flash-live-preview, new GEMINI_API_KEY, summary 'voice: session up', session errors=0, quota_guard=0); rebound at b414b14 (app code identical to c6b2790, later commits touch only state/)"]
     evidence_bind:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:bd40a15500a4a24e1413d88337d4b802306c917981efce336a0e0e911d3757e0
       registry_digest: sha256:ed5e5471e3823632d900ce39e6918ffba22cfa0cca07f93bf82a8e664b2185a7
       harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
-      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: 9fe67c1
+      apk_digest: sha256:be9de89339982b0be433b5620f41e04d0685f2ee958b496a8d0c9bc4a71b9596
+      bound_commit: b414b14
     related: [P8]
     last_run: {at: 2026-10-17, result: PASS}
 
@@ -1128,15 +1128,15 @@ tests:
     prerequisites: []
     procedure: ["scenario S4b"]
     pass_criteria: ["tool=play_music for the named request", "never control_music{play} succeeding (the bundled track)", "any claim of what is playing comes only from now_playing"]
-    evidence: ["2026-09-20: 20/20 suite (old criterion: MEDIA_LIBRARY_UNSUPPORTED)", "STALE_BIND apk_digest mismatch", "2026-09-30 SPEC-017 W4b2: criteria changed to the play_music truth; the earlier PASS does not carry over - NOT_RUN", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S4b 放一首周杰伦的歌 -> play_music, no control_music{play}: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S4b PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S4b PASS in both, session errors=0, quota_guard=0"]
+    evidence: ["2026-09-20: 20/20 suite (old criterion: MEDIA_LIBRARY_UNSUPPORTED)", "STALE_BIND apk_digest mismatch", "2026-09-30 SPEC-017 W4b2: criteria changed to the play_music truth; the earlier PASS does not carry over - NOT_RUN", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S4b 放一首周杰伦的歌 -> play_music, no control_music{play}: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S4b PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S4b PASS in both, session errors=0, quota_guard=0", "2026-10-19 real-vendor GitHub Voice checks run 39285245437 at c6b2790 (ci/voice-evidence runs/run_20261019_1720_c6b2790; verdict.json voice:S4b PASS 1/1, build:vendor-real PASS; Gemini gemini-3.1-flash-live-preview, new GEMINI_API_KEY, summary 'voice: session up', session errors=0, quota_guard=0); rebound at b414b14 (app code identical to c6b2790, later commits touch only state/)"]
     evidence_bind:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:3a4ff65b2400424b2e4e798e5355922548b87f11320a94f108f424a5c595762c
       registry_digest: sha256:a5f83ae8a4d055e591c10c111d61a05937e4aebee140f523dc2c6611ddfbcf3a
       harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
-      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: 9fe67c1
+      apk_digest: sha256:be9de89339982b0be433b5620f41e04d0685f2ee958b496a8d0c9bc4a71b9596
+      bound_commit: b414b14
     related: [P22, SPEC-017]
     last_run: {at: 2026-10-17, result: PASS}
 
@@ -1270,15 +1270,15 @@ tests:
     prerequisites: []
     procedure: ["scenario S9"]
     pass_criteria: ["speech stops, the session survives"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S9 闭嘴 -> set_speech_output / SILENT_WAIT (tool choice; Qwen server-VAD barge-in is not covered by a Gemini run): PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S9 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S9 PASS in both, session errors=0, quota_guard=0"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S9 闭嘴 -> set_speech_output / SILENT_WAIT (tool choice; Qwen server-VAD barge-in is not covered by a Gemini run): PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S9 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S9 PASS in both, session errors=0, quota_guard=0", "2026-10-19 real-vendor GitHub Voice checks run 39285245437 at c6b2790 (ci/voice-evidence runs/run_20261019_1720_c6b2790; verdict.json voice:S9 PASS 1/1, build:vendor-real PASS; Gemini gemini-3.1-flash-live-preview, new GEMINI_API_KEY, summary 'voice: session up', session errors=0, quota_guard=0); rebound at b414b14 (app code identical to c6b2790, later commits touch only state/)"]
     evidence_bind:
-      code_digest: sha256:6060769ccdebe92f483c878d95d7775289f4283aed32bdca05154721222228e5
+      code_digest: sha256:b74bcaab054aa3d3df51dec2bad0834b64c00af7bdb4184272d3cd0edf63e350
       procedure_digest: sha256:b3bbd41aefd24a6960dbae829c7c8bcd57ac09f19d33d2398dfc8757ea30fb00
-      registry_digest: sha256:dcd38a3cfe6f3603537ad479e99aa1ab5aa355998586f783ab15da2af1dfd223
+      registry_digest: sha256:050fa21b99476f6b391f4e875798345129bdfaa7d3f8038f710cf9c9fde97ff6
       harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
-      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: 9fe67c1
+      apk_digest: sha256:be9de89339982b0be433b5620f41e04d0685f2ee958b496a8d0c9bc4a71b9596
+      bound_commit: b414b14
     related: [SPEC-003]
     last_run: {at: 2026-10-17, result: PASS}
 
@@ -1648,15 +1648,15 @@ tests:
     prerequisites: []
     procedure: ["scenario S10"]
     pass_criteria: ["the listening state reaches SLEEP", "the session does not disconnect"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S10 休眠: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S10 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S10 PASS in both, session errors=0, quota_guard=0"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND code_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S10 休眠: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S10 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S10 PASS in both, session errors=0, quota_guard=0", "2026-10-19 real-vendor GitHub Voice checks run 39285245437 at c6b2790 (ci/voice-evidence runs/run_20261019_1720_c6b2790; verdict.json voice:S10 PASS 1/1, build:vendor-real PASS; Gemini gemini-3.1-flash-live-preview, new GEMINI_API_KEY, summary 'voice: session up', session errors=0, quota_guard=0); rebound at b414b14 (app code identical to c6b2790, later commits touch only state/)"]
     evidence_bind:
-      code_digest: sha256:6060769ccdebe92f483c878d95d7775289f4283aed32bdca05154721222228e5
+      code_digest: sha256:b74bcaab054aa3d3df51dec2bad0834b64c00af7bdb4184272d3cd0edf63e350
       procedure_digest: sha256:0be4335a04847266202d003b87876fd4d7dd8e8470f4e6663ba6d3c71e42649f
-      registry_digest: sha256:a0691444b24af1b39d0bc8164402e5820c9b8a6ff62b62911c965eb69f9d6a61
+      registry_digest: sha256:1cbcb80f7d9761c75e114ca4dc616d93fc834faa49af764955d29cded6007c80
       harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
-      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: 9fe67c1
+      apk_digest: sha256:be9de89339982b0be433b5620f41e04d0685f2ee958b496a8d0c9bc4a71b9596
+      bound_commit: b414b14
     related: []
     last_run: {at: 2026-10-17, result: PASS}
 
@@ -1692,15 +1692,15 @@ tests:
     prerequisites: []
     procedure: ["scenario S15"]
     pass_criteria: ["no tool call at all"]
-    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S15 room noise, nobody spoke: a tool call was made (forbidden ^tool= matched) - FAIL; the previous run 38770113843 passed S15. Which tool and why: under investigation with text-free log skeletons.", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview), run 38787506856 at b4259c0, ci/voice-evidence runs/run_20261015_1903_b4259c0: S15 room noise PASS - no tool call. The earlier FAIL (run 38780871548) was S14's claim-bait correction ordering control_climate into S15's window (P60, fixed in 3d6766d); Gemini makes no turn on the noise clip alone (latency_probe 3/3).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S15 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S15 PASS in both, session errors=0, quota_guard=0"]
+    evidence: ["2026-09-20: 20/20 suite", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S15 room noise, nobody spoke: a tool call was made (forbidden ^tool= matched) - FAIL; the previous run 38770113843 passed S15. Which tool and why: under investigation with text-free log skeletons.", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview), run 38787506856 at b4259c0, ci/voice-evidence runs/run_20261015_1903_b4259c0: S15 room noise PASS - no tool call. The earlier FAIL (run 38780871548) was S14's claim-bait correction ordering control_climate into S15's window (P60, fixed in 3d6766d); Gemini makes no turn on the noise clip alone (latency_probe 3/3).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S15 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S15 PASS in both, session errors=0, quota_guard=0", "2026-10-19 real-vendor GitHub Voice checks run 39285245437 at c6b2790 (ci/voice-evidence runs/run_20261019_1720_c6b2790; verdict.json voice:S15 PASS 1/1, build:vendor-real PASS; Gemini gemini-3.1-flash-live-preview, new GEMINI_API_KEY, summary 'voice: session up', session errors=0, quota_guard=0); rebound at b414b14 (app code identical to c6b2790, later commits touch only state/)"]
     evidence_bind:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:44d3528eddb2a3423cab1000692049fb9b06e77efffcfedd1f5a5f4f1c12c8f6
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
       harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
-      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: 9fe67c1
+      apk_digest: sha256:be9de89339982b0be433b5620f41e04d0685f2ee958b496a8d0c9bc4a71b9596
+      bound_commit: b414b14
     related: [P20]
     last_run: {at: 2026-10-17, result: PASS}
 
@@ -1716,15 +1716,15 @@ tests:
     prerequisites: []
     procedure: ["scenario S18 - net:drop, then speak"]
     pass_criteria: ["the next utterance still executes its tool"]
-    evidence: ["2026-09-20: tool=control_climate after the socket was cancelled", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S18 空调打开 after the socket is cut: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S18 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S18 PASS in both, session errors=0, quota_guard=0"]
+    evidence: ["2026-09-20: tool=control_climate after the socket was cancelled", "STALE_BIND apk_digest mismatch", "2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S18 空调打开 after the socket is cut: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S18 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S18 PASS in both, session errors=0, quota_guard=0", "2026-10-19 real-vendor GitHub Voice checks run 39285245437 at c6b2790 (ci/voice-evidence runs/run_20261019_1720_c6b2790; verdict.json voice:S18 PASS 1/1, build:vendor-real PASS; Gemini gemini-3.1-flash-live-preview, new GEMINI_API_KEY, summary 'voice: session up', session errors=0, quota_guard=0); rebound at b414b14 (app code identical to c6b2790, later commits touch only state/)"]
     evidence_bind:
       code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       procedure_digest: sha256:e59356977cea4f13a18443a093c87f8f5612dae7147008e2061d52029babd6fb
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
       harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
-      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: 9fe67c1
+      apk_digest: sha256:be9de89339982b0be433b5620f41e04d0685f2ee958b496a8d0c9bc4a71b9596
+      bound_commit: b414b14
     related: [P19]
     last_run: {at: 2026-10-17, result: PASS}
 
@@ -2127,7 +2127,7 @@ tests:
     type: release
     scope: INTERMEDIATE_FLOW
     owner: HUMAN_CREDENTIAL
-    status: HUMAN_REQUIRED
+    status: HUMAN_PASS
     automation_blocker: credential_permission
     release_blocking: false
     human_reason: "Only the owner can create a Gemini API key and set the repository's Actions secrets; an agent cannot read or write secrets and must never be given a key in chat"
@@ -2140,9 +2140,18 @@ tests:
     autonomous_evidence:
       - "2026-10-19 Voice checks run 39198920117 at adfa384 (05:15 UTC): session up, every scenario PASS"
       - "2026-10-19 Voice checks runs 39241752142 at 2fb2692 and 39252810141 at a813565: session never ready, codes= 72 GEMINI_LIVE_MALFORMED_SETUP. The app maps every WebSocket close 1007 to that code, and Gemini closes 1007 'API key not valid' for a bad key (seen from a cloud session the same day); the only app changes since 05:15 are route drawing and a log line. Most likely the key shown in an owner screenshot that morning was deleted, as advised, and the secret still holds it"
+      - "2026-10-19 Voice checks run 39285245437 at c6b2790 (ci/voice-evidence runs/run_20261019_1720_c6b2790): summary.txt 'voice: session up', 'secret GEMINI_API_KEY: set, gemini_setup -> result=applied', session errors=0, codes= lists only QWEN_WORKSPACE_MISSING (no GEMINI_LIVE_MALFORMED_SETUP, no GEMINI_LIVE_AUTH_FAILED); 21/22 voice scenarios PASS with the owner's new key. The owner's key change is what satisfied this row"
     remaining_uncertainty:
       - "the close reason is not logged (I-8), so the bad-key reading is an inference until GEM-1007 (1007 'API key' -> GEMINI_LIVE_AUTH_FAILED) is in a run or the new key makes the session come up"
     returns: ["the run id of the first Voice checks run after the change"]
+    evidence_bind:
+      code_digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      procedure_digest: sha256:1c815d201553547eb1789cca637346a28711fa53fbd12e941dff2510a15e97db
+      registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
+      harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
+      artifact_digests: {}
+      apk_digest: sha256:be9de89339982b0be433b5620f41e04d0685f2ee958b496a8d0c9bc4a71b9596
+      bound_commit: b414b14
     related: [docs/CI.md]
 
   - id: RELEASE-SIGN-001
@@ -2364,11 +2373,11 @@ tests:
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
       harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
-      apk_digest: sha256:f6423353463cf47bb4587c462552918d5f40c74111f65681779214b966f292aa
-      bound_commit: 9fe67c1
+      apk_digest: sha256:be9de89339982b0be433b5620f41e04d0685f2ee958b496a8d0c9bc4a71b9596
+      bound_commit: b414b14
     related: [P21]
     last_run: {at: 2026-10-17, result: PASS}
-    evidence: ["2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S20 音量调大 - no tool, honest: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S20 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S20 PASS in both, session errors=0, quota_guard=0"]
+    evidence: ["2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemini-3.1-flash-live-preview, Gemini's voice), run 38772982830 at 5a28f04, speech-harness clip injected; ci/voice-evidence runs/run_20261015_1723_5a28f04: S20 音量调大 - no tool, honest: PASS. Earlier run 38770113843 at 0767609 also PASS for this scenario except where the expectation was since updated (S4b, S16).", "2026-10-16 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), voice checks run 38891890665 at 2db208c (ci/voice-evidence runs/run_20261016_1204_2db208c): scenarios.txt S20 PASS, session errors=0, quota_guard=0; rebound at cf7534d (code differs from 2db208c only in ToolCallGuards end-navigation regex)", "2026-10-17 GitHub emulator API 34 (real debug app), Gemini debug override (gemini-3.1-flash-live-preview, Gemini's voice), two voice checks runs on today's app code (87d5287): run 38997653201 at 87d5287 (ci/voice-evidence runs/run_20261017_0401_87d5287) and run 39001567838 at cd6d77c (runs/run_20261017_0502_cd6d77c), verdict.json from ci_verdict.py: scenarios.txt S20 PASS in both, session errors=0, quota_guard=0", "2026-10-19 real-vendor GitHub Voice checks run 39285245437 at c6b2790 (ci/voice-evidence runs/run_20261019_1720_c6b2790; verdict.json voice:S20 PASS 1/1, build:vendor-real PASS; Gemini gemini-3.1-flash-live-preview, new GEMINI_API_KEY, summary 'voice: session up', session errors=0, quota_guard=0); rebound at b414b14 (app code identical to c6b2790, later commits touch only state/)"]
 
   - id: CAMERA-RELEASE-001
     capability: vision
