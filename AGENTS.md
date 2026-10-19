@@ -198,10 +198,12 @@ does not change architecture ownership, invariants, or who may certify work. Age
 - `executor` (Opus 5.5, low effort) implements bounded task packets in its own worktree. It cannot
   spawn agents and must return BLOCKED rather than guess or redesign.
   **Owner preference (2026-10-19):** when available, run executor packets on **Gemini 3.8 Flash**
-  instead of a Claude executor, to keep that work off the Claude plan. "Available" means a Gemini API
+  instead of a Claude executor, to keep that work off the Claude plan. If 3.8 Flash is overloaded
+  (HTTP 503/502), fall back to **Gemini 3.6 Flash** (owner, 2026-10-19); this replaces token-report TC-4. "Available" means a Gemini API
   key reaches the session (an environment secret, never pasted in chat) *and* a tool-capable agent
-  runner exists for it. Neither was present in the cloud container on 2026-10-19 (the Gemini Live key
-  is a GitHub Actions secret only). Until then the Claude executor is used. The contract gate
+  runner exists for it. Status 2026-10-19: the key reaches generativelanguage.googleapis.com as a network
+  secret (model list HTTP 200; 3.6 Flash answers, 3.8 Flash was overloaded); the runner (Gemini CLI)
+  is not installed yet. Until it is, the Claude executor is used. The contract gate
   (docs/AGENT_CONTRACT_WORKFLOW.md) applies to it unchanged: scope, verify and reviewer PASS are
   checked from git, never taken from its report. Respect the vendor-file rule: the licensed vendor
   files must not be sent to it.
