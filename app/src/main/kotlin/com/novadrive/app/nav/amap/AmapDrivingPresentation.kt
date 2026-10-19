@@ -7,7 +7,6 @@ import com.amap.api.navi.AMapNaviViewOptions
 import com.amap.api.navi.AmapPageType
 import com.amap.api.navi.enums.AMapNaviViewShowMode
 import com.amap.api.navi.model.RouteOverlayOptions
-import com.amap.api.navi.view.BaseRouteOverLay
 import com.novadrive.app.DebugVoiceLog
 
 /**
@@ -113,7 +112,8 @@ internal object AmapDrivingPresentation {
             "autodraw_off" -> { setAutoDraw(naviView, false); "autodraw=false" }
             "autodraw_on" -> { setAutoDraw(naviView, true); "autodraw=true" }
             "autodraw_toggle" -> { setAutoDraw(naviView, false); setAutoDraw(naviView, true); "autodraw toggled" }
-            "overlay_reflect" -> removeRouteOverlays(naviView)
+            "eyrie_hide" -> setEyrieShowRoute(naviView, false)
+            "eyrie_show" -> setEyrieShowRoute(naviView, true)
             else -> "unknown variant"
         }
     }.getOrElse { "failed=${it.javaClass.simpleName}" }
@@ -124,38 +124,46 @@ internal object AmapDrivingPresentation {
         naviView.viewOptions = options
     }
 
-    /** P59 debug only: finds the view's internal BaseRouteOverLay objects (depth 3) and removes them. */
-    private fun removeRouteOverlays(naviView: AMapNaviView): String {
+    /**
+     * P59 debug experiment only, not called from product code: walks naviView's object graph
+     * (depth <= 4, at most [EYRIE_NODE_CAP] objects) for the SDK's native route renderer
+     * (AMapNaviCoreEyrieViewManager, matched by name) and calls setShowRoute([show]) on each.
+     */
+    private fun setEyrieShowRoute(naviView: AMapNaviView, show: Boolean): String {
+        val seen = java.util.Collections.newSetFromMap(java.util.IdentityHashMap<Any, Boolean>())
         val found = java.util.Collections.newSetFromMap(java.util.IdentityHashMap<Any, Boolean>())
-        collectOverlays(naviView, 0, java.util.Collections.newSetFromMap(java.util.IdentityHashMap()), found)
-        found.forEach { overlay ->
-            (overlay as BaseRouteOverLay).setRouteOverlayVisible(false)
-            overlay.removeFromMap()
-        }
-        val names = found.map { it.javaClass.simpleName }.distinct().take(5).joinToString(",")
-        return "overlays=${found.size} $names"
+        val truncated = !collectEyrie(naviView, 0, seen, found)
+        found.forEach { it.javaClass.getMethod("setShowRoute", java.lang.Boolean.TYPE).invoke(it, show) }
+        val shown = if (show) " shown" else ""
+        return "eyrie=${found.size}$shown visited=${seen.size}" + if (truncated) " truncated=1" else ""
     }
 
-    private fun collectOverlays(value: Any?, depth: Int, seen: MutableSet<Any>, found: MutableSet<Any>) {
-        if (value == null || !seen.add(value)) return
-        if (value is BaseRouteOverLay) found.add(value)
-        if (depth >= 3) return
-        when (value) {
-            is Collection<*> -> value.forEach { collectOverlays(it, depth + 1, seen, found) }
-            is Map<*, *> -> value.values.forEach { collectOverlays(it, depth + 1, seen, found) }
-            is Array<*> -> value.forEach { collectOverlays(it, depth + 1, seen, found) }
-            else -> if (value.javaClass.name.startsWith("com.amap.")) {
-                generateSequence(value.javaClass as Class<*>?) { it.superclass }.forEach { cls ->
-                    cls.declaredFields.forEach { field ->
-                        if (!java.lang.reflect.Modifier.isStatic(field.modifiers) && !field.type.isPrimitive) {
-                            runCatching { field.isAccessible = true; field.get(value) }.getOrNull()
-                                ?.let { collectOverlays(it, depth + 1, seen, found) }
-                        }
-                    }
-                }
+    /** Returns false once the node cap is hit. */
+    private fun collectEyrie(value: Any?, depth: Int, seen: MutableSet<Any>, found: MutableSet<Any>): Boolean {
+        if (value == null || value in seen) return true
+        if (seen.size >= EYRIE_NODE_CAP) return false
+        seen.add(value)
+        if (value.javaClass.name == EYRIE_MANAGER) found.add(value)
+        if (depth >= 4) return true
+        val children: Sequence<Any?> = when (value) {
+            is Collection<*> -> value.asSequence()
+            is Map<*, *> -> value.values.asSequence()
+            is Array<*> -> value.asSequence()
+            else -> {
+                val n = value.javaClass.name
+                if (!n.startsWith("com.amap.") && !n.startsWith("com.autonavi.")) emptySequence()
+                else generateSequence(value.javaClass as Class<*>?) { it.superclass }
+                    .flatMap { it.declaredFields.asSequence() }
+                    .filter { !java.lang.reflect.Modifier.isStatic(it.modifiers) && !it.type.isPrimitive }
+                    .map { f -> runCatching { f.isAccessible = true; f.get(value) }.getOrNull() }
             }
         }
+        for (child in children) if (!collectEyrie(child, depth + 1, seen, found)) return false
+        return true
     }
+
+    private const val EYRIE_MANAGER = "com.autonavi.amap.navicore.eyrie.AMapNaviCoreEyrieViewManager"
+    private const val EYRIE_NODE_CAP = 20000
 
     fun listener(onExit: () -> Unit): AMapNaviViewListener = ExitForwardingListener(onExit)
 
