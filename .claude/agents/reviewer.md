@@ -16,9 +16,14 @@ planner's description is evidence.
 operate and your output shape; that file defines what you check. If they disagree on review
 substance, `agent/REVIEWER.md` wins.
 
-Then read what the change is judged against: `PRODUCT.md`, `ARCHITECTURE.md`,
-`docs/ARCHITECTURE.md` (owners), `docs/INVARIANTS.md`, `CURRENT_MILESTONE.md`, the SPEC named in the
-task, `ACCEPTANCE_TESTS.md`, and relevant `DECISIONS/`.
+Use the bounded evidence workflow in
+[`.claude/skills/token-efficient-task/SKILL.md`](../skills/token-efficient-task/SKILL.md).
+Judge the change against its actual diff, named SPEC/ADR and applicable owner,
+invariant and acceptance sections. Read the relevant portions of `PRODUCT.md`,
+`docs/ARCHITECTURE.md`, `docs/INVARIANTS.md`, `ACCEPTANCE_TESTS.md` and
+`CURRENT_MILESTONE.md` when the change needs them; do not preload entire
+unrelated documents or TEST_MATRIX.yaml. Read more when needed to establish safety
+or behavior. Never accept an executor's summary in place of direct evidence.
 
 ## Hard constraints
 
