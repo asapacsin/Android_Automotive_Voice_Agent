@@ -2589,7 +2589,16 @@ at adfa384 (`ci/voice-evidence runs/run_20261019_0515_adfa384`, device_skeletons
 result=✓` ran too - no DUPLICATE_IN_TURN. The onset was server-only (`gemini_driver_turn_fallback
 source=voice_activity`). Working hypothesis: the two sides claim under different epochs
 (`capabilityEpoch()` read at different moments, or from different counters), which the
-same-epoch `CapabilityClaimGroupTest` cannot catch. Reproduction and fix: exec/p67-r.
+same-epoch `CapabilityClaimGroupTest` cannot catch. **Not reproduced (2026-10-19, exec/p67-r):** a JVM
+chain with the real GeminiLiveClient (scripted socket), the DriverContext its pipeline installs,
+ScreenAffordanceRunner and AndroidToolDispatcher, in the observed order (and with the transcript after
+the call), executes control_climate once: both sides claim under turn.epoch (the server fallback runs
+beginDriverTurn -> onSpeechStarted(turn.epoch); openTurn flushes the transcript under the same epoch).
+So the epoch hypothesis is wrong for that chain. Remaining candidates: something starts a new driver
+turn between the two claims in the app wiring (revoicer / provider local speech activity), the
+context being null or a different instance at one claim, or the model call bypassing guard(). Next: a
+text-free `claim src=... epoch=... ctx=... ok=...` log at both claim points, then one AFF-AC
+re-measure on Gemini.
 
 **Status:** OPEN 2026-10-17. Fixed at JVM level, merged 2026-10-17: `claimCapability` keys on the
 control (`CapabilityClaimGroupTest` 7/7; app debug 1958/0, behavior-test 132/0 in the planner's
