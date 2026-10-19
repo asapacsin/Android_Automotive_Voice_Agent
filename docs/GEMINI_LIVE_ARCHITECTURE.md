@@ -88,7 +88,7 @@ Written new, not revived from git history (ADR-008).
 | `toolCall.functionCalls[]` | `ToolCall` per call | ids are opaque strings |
 | `toolCallCancellation.ids` | **new** `ToolCallCancelled(ids)` | cancels **unfinished** work only; an executed action is never "undone" by it (I-1) |
 | `goAway` | `Reconnecting` (proactive) | |
-| close codes 1007 / 1008 / 1011 | `Error` → `ErrorClass` MALFORMED / AUTH / RATE_LIMIT-or-RETRYABLE | 1011 "quota" is RATE_LIMIT, **not** retried in a loop (F14) |
+| close codes 1007 / 1008 / 1011 | `Error` → `ErrorClass` MALFORMED / AUTH / RATE_LIMIT-or-RETRYABLE | 1011 "quota" is RATE_LIMIT, **not** retried in a loop (F14); 1007 whose reason says "API key" is AUTH (Gemini closes a bad key with 1007, GEM-1007) |
 
 ### 3.3 Client → Gemini
 
