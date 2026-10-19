@@ -104,7 +104,10 @@ def main(argv=None):
     after = report_files(build_dir)
     fresh = [p for p, signature in after.items() if before.get(p) != signature]
     totals, failing, parse_errors = summarize_xml(fresh)
-    print(f"RESULT: {'PASS' if code == 0 and not parse_errors else 'FAIL'}")
+    has_failing_tests = totals["failures"] > 0 or totals["errors"] > 0
+    successful = code == 0 and not parse_errors and not has_failing_tests
+    status = "PASS" if successful and fresh else ("COMMAND_OK_NO_FRESH_XML" if successful else "FAIL")
+    print(f"RESULT: {status}")
     print(f"EXIT_CODE: {code}")
     print(f"DURATION_SECONDS: {time.monotonic() - started:.1f}")
     print(f"FRESH_JUNIT_REPORTS: {len(fresh)}")
@@ -120,7 +123,7 @@ def main(argv=None):
         print(f"XML_PARSE_ERROR: {item}")
     print(f"FULL_LOG: {log_path}")
     # Preserve command failure and never call a broken or unreadable result successful.
-    return code if code != 0 else (2 if parse_errors else 0)
+    return code if code != 0 else (2 if parse_errors or has_failing_tests else 0)
 
 
 if __name__ == "__main__":
