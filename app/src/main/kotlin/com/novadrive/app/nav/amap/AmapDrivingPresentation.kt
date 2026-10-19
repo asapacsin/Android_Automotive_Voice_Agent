@@ -29,7 +29,7 @@ internal object AmapDrivingPresentation {
     fun applyRoutePreview(naviView: AMapNaviView) {
         applyOptions(naviView, driving = false, preview = true)
         runCatching { naviView.displayOverview() }
-        DebugVoiceLog.log("nav_presentation mode=preview")
+        DebugVoiceLog.log("nav_presentation mode=preview autoDraw=${MapPresentationPolicy.drawsRoute(driving = false, preview = true)}")
     }
 
     /** Lock-car driving HUD. Must run when `startNavi` is accepted, not as a later cosmetic. */
@@ -37,13 +37,13 @@ internal object AmapDrivingPresentation {
         navi?.let { enableLiveTraffic(it) }
         applyOptions(naviView, driving = true, preview = false)
         lockCar(naviView)
-        DebugVoiceLog.log("nav_presentation mode=driving naviMode=car_up trafficLine=true layout=true overspeedPulse=true trafficLightBubble=true trafficLightCountdown=$TRAFFIC_COUNTDOWN_STATUS")
+        DebugVoiceLog.log("nav_presentation mode=driving naviMode=car_up trafficLine=true layout=true overspeedPulse=true trafficLightBubble=true trafficLightCountdown=$TRAFFIC_COUNTDOWN_STATUS autoDraw=${MapPresentationPolicy.drawsRoute(driving = true, preview = false)}")
     }
 
     /** Browse map after navigation ends. Native navi chrome is put away so it does not cover the bar. */
     fun applyIdle(naviView: AMapNaviView) {
         applyOptions(naviView, driving = false, preview = false)
-        DebugVoiceLog.log("nav_presentation mode=idle")
+        DebugVoiceLog.log("nav_presentation mode=idle autoDraw=${MapPresentationPolicy.drawsRoute(driving = false, preview = false)}")
     }
 
     /** Applies a [MapPresentationPolicy] result; true when the map went back to idle. */

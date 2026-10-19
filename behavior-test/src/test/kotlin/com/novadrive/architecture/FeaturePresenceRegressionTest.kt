@@ -277,6 +277,7 @@ class FeaturePresenceRegressionTest {
         assertContains(presentation, "setShowTrafficLightView(true)", "countdown bubble is the navi view, not our layout")
         assertContains(presentation, "TRAFFIC_COUNTDOWN_STATUS", "countdown state is declared, not silently assumed")
         assertContains(presentation, "setPointToCenter(LOCK_CENTER_X, LOCK_CENTER_Y)", "vehicle sits in the lower-middle")
+        assertContains(presentation, "setAutoDrawRoute(MapPresentationPolicy.drawsRoute(driving, preview))", "P59: route drawing follows the presentation; idle never draws")
         val host = "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapNaviViewHost.kt"
         assertContains(host, "AmapDrivingPresentation.applyDriving", "startNavi must enter driving presentation")
         assertContains(host, "EmulatorNaviSpeed.clamp", "emulator speed is urban default / debug override, not a hardcoded 120")
