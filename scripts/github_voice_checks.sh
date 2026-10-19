@@ -117,7 +117,7 @@ if [ "$choice" != "session_provider choice=gemini_live" ]; then
   res voice:quota-guard FAIL "session not gemini_live: ${choice#session_provider }"
   exit 1
 fi
-wait_for "gemini_setup_complete|state=LISTENING" 40 && note "voice: session up" || note "voice: session did not report ready ($(nova | grep -oE 'state=[A-Z_]+|err=[A-Z_]+' | tail -2 | tr '\n' ' '))"
+wait_for "gemini_setup_complete|state=LISTENING" 40 && note "voice: session up" || note "voice: session did not report ready ($(nova | grep -oE 'state=[A-Z_]+|err=[A-Z_]+|\b(GEMINI|QWEN)_[A-Z_]+' | tail -4 | tr '\n' ' '))"
 shot voice_ready
 
 adb shell screenrecord --time-limit 180 --bit-rate 4000000 /sdcard/voice_part1.mp4 &
@@ -163,7 +163,7 @@ if [ ! -s "$ev/scenarios.txt" ]; then
   note "voice: runner produced no results; adb devices: $(adb devices | tail -n +2 | tr '\n' ' ')"
 fi
 [ "$(count 'session_provider choice=qwen')" = 0 ] || qg_fail="$qg_fail qwen_session_main"
-note "voice: session errors=$(count 'state=ERROR|_PROTOCOL_ERROR') provider_lines=$(nova | grep -oE 'session_provider choice=[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ') quota_guard=$(grep -c 'QUOTA GUARD' "$ev/scenarios_raw.txt" 2>/dev/null || echo 0)"
+note "voice: session errors=$(count 'state=ERROR|_PROTOCOL_ERROR') provider_lines=$(nova | grep -oE 'session_provider choice=[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ') quota_guard=$(grep -c 'QUOTA GUARD' "$ev/scenarios_raw.txt" 2>/dev/null || echo 0) codes=$(nova | grep -oE '\b(GEMINI|QWEN)_[A-Z_]+' | sort | uniq -c | sort -rn | head -n 5 | tr -s ' ' | tr '\n' ' ')"
 adb pull /sdcard/voice_part1.mp4 "$ev/voice_part1_phone.mp4" >/dev/null 2>&1 || true
 ffmpeg -v error -y -i "$ev/voice_part1_phone.mp4" -c copy -movflags +faststart "$ev/voice_screen.mp4" && rm -f "$ev/voice_part1_phone.mp4" || true
 shot voice_end
