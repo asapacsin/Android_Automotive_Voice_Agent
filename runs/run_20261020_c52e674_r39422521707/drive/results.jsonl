@@ -1,0 +1,12 @@
+{"id": "build:vendor-real", "status": "PASS", "detail": "real vendor files packaged"}
+{"id": "device:NAV-ROUTE-001", "status": "PASS", "detail": "nav_calc_success"}
+{"id": "device:NAV-START-001", "status": "PASS", "detail": "nav_started"}
+{"id": "device:NAV-UI-007", "status": "PASS", "detail": "overview=result=overview=true  lock=result=lock=true "}
+{"id": "device:NAV-MID-ROUTE-OVERSPEED", "status": "FAIL", "detail": "speed_over=0 ring=5"}
+{"id": "device:NAV-UI-002", "status": "PASS", "detail": "view_lines=6 car_up=6 modes= 6 naviMode=car_up,"}
+{"id": "device:NAV-UI-003", "status": "PASS", "detail": "distinct_bearings=6 bearings=194 358 42 5 6 76 "}
+{"id": "device:NAV-UI-005", "status": "PASS", "detail": "maneuver=6"}
+{"id": "device:NAV-UI-004", "status": "PASS", "detail": "traffic_update=5"}
+{"id": "device:NAV-UI-006", "status": "PASS", "detail": "lane_shown=24 junction_shown=0"}
+{"id": "device:NAV-E2E-ARRIVAL-001", "status": "PASS", "detail": "proximity_arrival=1 nav_stopped reached=true reason=emulator_end"}
+{"id": "device:NAV-CRASH-001", "status": "PASS", "detail": "fatal=0 anr=0"}
