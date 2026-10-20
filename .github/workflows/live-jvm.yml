@@ -49,6 +49,19 @@ jobs:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.pieces == 'all' || inputs.pieces == '' || inputs.pieces == matrix.piece }}
         uses: actions/checkout@v4
 
+      - name: Cache Gradle dependencies
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.pieces == 'all' || inputs.pieces == '' || inputs.pieces == matrix.piece }}
+        uses: actions/cache@v4
+        with:
+          # Dependency downloads only (as unit-tests.yml). Never ~/.gradle/caches as a whole: the
+          # build cache can hold secret-derived outputs.
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle/libs.versions.toml') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
       - name: Run text-live and push its summary to ci/live-jvm-evidence
         if: ${{ matrix.piece == 'text-live' && (github.event_name != 'workflow_dispatch' || inputs.pieces == 'all' || inputs.pieces == '' || inputs.pieces == matrix.piece) }}
         env:

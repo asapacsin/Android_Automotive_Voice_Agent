@@ -73,6 +73,11 @@ call; executors were ~10-16%).
   run, review round or session starts, tell the owner in the same message how long it is expected to
   take (wall clock, a range, and what it waits on, e.g. "~20-25 min: builder ~15, verify+review ~8").
   When an estimate slips by more than half, say so with the new figure; do not wait to be asked.
+- **Batch CI, check locally first (owner 2026-10-20).** A device/voice/nav CI run costs ~25 min:
+  merge 3-4 finished units, then prove them in ONE run, not one run each. Before any CI run, dry-run
+  the changed check locally (bash -n, stubbed command, grep the expected log line against the code
+  that prints it and the state it needs - e.g. query_live_info needs the navigation controller, not
+  the debug nav path); a wrong wiring found in CI costs a whole extra run.
 - **Keep 3-4 units in flight (owner 2026-10-20, after the planner ran one executor at a time and
   waited on fixed check-in times).** Before ending a turn, scheduling a check-in or waiting on a
   reviewer/CI, count the units in flight (executors, scoping agents, reviewers). Fewer than 3 while
