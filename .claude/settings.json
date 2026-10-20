@@ -80,7 +80,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-source-writes.py\"",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-contract-writes.py\"",
             "timeout": 30
           }
         ]
