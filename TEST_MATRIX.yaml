@@ -774,6 +774,7 @@ tests:
       - "observe arrival lifecycle"
     pass_criteria: ["arrival callback observed", "app arrival handling executed", "session ends automatically", "no terminal regression"]
     evidence:
+      - "2026-10-20 real-vendor GitHub Device checks at ff1f635 (after the LIVEINFO-MAP refactor; ci/device-evidence runs/run_20261020_0619_ff1f635, build:vendor-real PASS, verdict PASS): proximity_arrival=1, nav_stopped reached=true reason=emulator_end"
       - "2026-10-15 re-run at ca1374d (GitHub run 38762173178, after the diagnostics-only change to AmapDrivingPresentation): same results - overview=true, lock=true, nav_proximity_arrival x1, nav_stopped reached=true reason=emulator_end, FATAL 0, ANR 0"
       - "2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006: nav_route -> nav_calc_success, nav_start emulator:50, drive to arrival without manual stop: nav_proximity_arrival x1, nav_stopped reached=true reason=emulator_end, FATAL 0, ANR 0; guidance plays x15 (Amap, emulator audio off); artifacts docs/evidence/gha-2026-10-15/nav_t10.jpg, nav_drive_90s.jpg, nav_end.jpg; full video ci/device-evidence runs/run_20261015_1524_aec4006/checks_drive.mp4"
       - "2026-09-21 (Windows desk): video D:/桌面/android_doc/nav_e2e_arrival_2026-09-21/nav_e2e_arrival.mp4 (not in the repo)"
@@ -796,7 +797,7 @@ tests:
     ended_by: natural
     regressions: []
     evidence_bind:
-      code_digest: sha256:fe6a2682ba462e867b944de329e6d558d0c042dea79280f787c2b8465f43fa64
+      code_digest: sha256:4ee6be5d2e9ed36a784e17e07b46ea506ab0c3f7aa4d095ac6d935d78ac95ff6
       procedure_digest: sha256:5e87199d84803a2726797c2880dbfdf6544778a1c8b3f483471bef673ac2e54b
       registry_digest: sha256:ba1a25e48144b5db4e39f7d5d7d6a596a4e9d486f6e67014be4707c7cf7c92b1
       harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
@@ -806,7 +807,7 @@ tests:
         "docs/evidence/gha-2026-10-17/nav_route_preview.jpg": sha256:259f2ff59d7a96583beb7949be1008cfa27bec7ea4599cbb72230f0530e53df2
         "docs/evidence/gha-2026-10-17/nav_t10.jpg": sha256:4ab8e41c16d574187796c511249fb24001bea0e864c9dc658006620b2bf96f27
       apk_digest: sha256:3f591e0d1a13d76d3999549524223a6ddc2fc713092d4a574dae9a5075f80b5d
-      bound_commit: 20c8b38
+      bound_commit: 9e3ad7d
     covers: [navigation.arrival_lifecycle]
     related: [P26, P31, SPEC-007]
     last_run: {at: 2026-10-17, result: PASS}
@@ -892,6 +893,7 @@ tests:
       - "nav_stop"
     pass_criteria: ["overview shows the whole remaining route", "return restores lock-car"]
     evidence:
+      - "2026-10-20 real-vendor GitHub Device checks at ff1f635 (after the LIVEINFO-MAP refactor; ci/device-evidence runs/run_20261020_0619_ff1f635, verdict PASS): overview=true, lock=true"
       - "2026-10-15 re-run at ca1374d (GitHub run 38762173178, after the diagnostics-only change to AmapDrivingPresentation): same results - overview=true, lock=true, nav_proximity_arrival x1, nav_stopped reached=true reason=emulator_end, FATAL 0, ANR 0"
       - "STALE_BIND code_digest mismatch"
       - "log:NovaVoice/debug_tool tool=nav_overview result=overview=true"
@@ -906,7 +908,7 @@ tests:
       - {criterion: lock_restored, required: true, observed: true, evidence: "log:NovaVoice/debug_tool nav_lock result=lock=true (GitHub run 38997655759) + artifact:docs/evidence/gha-2026-10-17/nav_lock_restored.jpg"}
     ended_by: manual
     evidence_bind:
-      code_digest: sha256:fe6a2682ba462e867b944de329e6d558d0c042dea79280f787c2b8465f43fa64
+      code_digest: sha256:4ee6be5d2e9ed36a784e17e07b46ea506ab0c3f7aa4d095ac6d935d78ac95ff6
       procedure_digest: sha256:caa86bda4983aa479e911fc0789a5d30fa7917bae84e685a641cd7ce08f7e22b
       registry_digest: sha256:702239750fd3cc8fc996d693ba56c2755ce3f0cc3af913207c5009071da995c0
       harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
@@ -914,7 +916,7 @@ tests:
         "docs/evidence/gha-2026-10-17/nav_lock_restored.jpg": sha256:a89dcb849855fed495527b19a17483341beb11a464da4ddb7a1b2700d9ba5e54
         "docs/evidence/gha-2026-10-17/nav_overview.jpg": sha256:d6404703a2c0ebe5b349e44409ba24444dd6fe74e5facf18e919f9c63df37f49
       apk_digest: sha256:3f591e0d1a13d76d3999549524223a6ddc2fc713092d4a574dae9a5075f80b5d
-      bound_commit: 20c8b38
+      bound_commit: 9e3ad7d
     covers: [navigation.return_to_tracking]
     related: [P26, SPEC-007]
     last_run: {at: 2026-10-17, result: PASS}

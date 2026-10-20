@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-20T06:17:10",
+  "generated_at": "2026-10-20T06:22:29",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "3ab8ec7",
+    "commit": "9e3ad7d",
     "branch": "claude/10-20",
-    "subject": "DEMO-STYLE-001: grader v3, two fresh gemini-3.8 runs both FAIL (pitch flat on chat turns) - stop, back to the decider",
+    "subject": "Regenerate LOCAL_DEVICE_REQUIRED.md",
     "working_tree_clean": false,
-    "uncommitted_files": 6
+    "uncommitted_files": 3
   },
   "tests": {
     "available": true,
@@ -186,7 +186,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "AFFORDANCE-DEVICE-001: STALE_BIND: Spoken control names act on the phone through the local path, once, with no model execution",
-    "actionable_count": 85,
+    "actionable_count": 83,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 29,
@@ -224,13 +224,6 @@
         "priority": 2,
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
-        "item": "NAV-E2E-ARRIVAL-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
         "item": "NAV-OVERSPEED-001",
         "blocked_by": null
       },
@@ -246,13 +239,6 @@
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
         "item": "NAV-SEARCH-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-UI-007",
         "blocked_by": null
       },
       {
