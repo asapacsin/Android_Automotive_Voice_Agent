@@ -443,6 +443,8 @@ her measured default (take8: ~220-235 Hz, pace 7-11 chars/s).
 
 ## P62 — Turn-by-turn guidance is not spoken in her voice (demo used a male voice)
 
+BLOCKED_BY: the owner's go to open Qwen sessions (AGENTS.md "Gemini first, Ayano last") - the Gemini path is FIXED (runs 38847890114, 38849988938: 43/47 MATCH); only the Qwen relay (VoiceCatalog QWEN verbatimPromptSpeech=false, SPEC-021 non-goal) and the audible G-1b check on a KVM host with audio remain
+
 **Status:** OPEN 2026-10-16. Owner test 10-16 ([docs/owner-tests/test-10-16.md](docs/owner-tests/test-10-16.md)):
 "the amap voice is male and not the same as gemini".
 
