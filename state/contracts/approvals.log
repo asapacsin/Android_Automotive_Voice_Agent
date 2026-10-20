@@ -18,3 +18,8 @@ P53-SPLIT c631ddda5cd2bc010c97f399ae97b90c3c961860c28fecd5d6056c09f5fa5052 APPRO
 DEV-SPLIT afff367c78ff55b03706ed02366f01f5f24ae43b1df486b5cbd13535c59e2cb5 APPROVED 2026-10-20 architect owner 2026-10-20 apply CI shard split and Aider offload
 AIDER-WRAP 9f4e09368c919eb139610647d49268142870ef69617d4e8948bb92b0842ddcef APPROVED 2026-10-20 architect owner 2026-10-20 apply CI shard split and Aider offload
 DIAG-BATCH 1f9726ecd798f2b3f6b7d22190e64877d132092414abd41db9729efe008dfb63 APPROVED 2026-10-20 architect diagnose along_route NO_RESULTS and P53 reuse=false
+S18-TURN f7cb06808ed41a9f9868a89428811e85a8c963361734bb2cadfdff38b9777264 APPROVED 2026-10-20 architect SPEC regression tests, frontier triage 2026-10-20
+S18-LIFE 897d0e6f70953b3ba4fd55781957faf424f086288fb56054dc109bb483f75be3 APPROVED 2026-10-20 architect SPEC regression tests, frontier triage 2026-10-20
+S15-STYLE e990d80fc8198b1b4ec49e922ee75cacfa95e2294a978a1784d632d53859152a APPROVED 2026-10-20 architect SPEC regression tests, frontier triage 2026-10-20
+S18-TURN f5e1c7f9d5f2dc9e880fb69f267319b7802c78735d9b3edb40068e42e1325277 APPROVED 2026-10-20 architect path fix DriverTurnPipelineTest under voice
+AIDER-WRAP c51bae0df070dd72359f80b78958176796d199eb48fcf97fdeb60fd5771a1fc9 APPROVED 2026-10-20 architect reviewer REVISE: aiderignore and no-detect-urls keep other tracked files from the model

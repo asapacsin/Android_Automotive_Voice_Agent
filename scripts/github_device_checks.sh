@@ -238,6 +238,13 @@ note "LIVE-INFO-SDK along_route: ${li_along:-no live_info line} dispatch $(resul
 li_search="$(nova | grep -oE 'along_route_search code=-?[0-9]+ raw=-?[0-9]+ mapped=[0-9]+ dropped_no_point=[0-9]+ dropped_other=[0-9]+ range_m=[0-9]+ route_m=-?[0-9]+' | tail -1)"
 note "PIECE LIVE-INFO-SDK search: ${li_search:-no along_route_search line}"
 pf device:LIVE-INFO-SDK-ALONG "${li_along:-no live_info line}" 'grep -q "ok=true" <<<"$li_along"'
+# ALONG-PROBE: fuel stations on the same route at 250/500/1000/2000 m (counts only); notes, no pf.
+tool along_probe
+for _ in $(seq 1 30); do
+  [ "$(nova | grep -cE 'along_probe range_m=[0-9]+ ')" -ge 4 ] && break
+  sleep 1
+done
+nova | grep -oE 'along_probe range_m=[0-9]+ code=-?[0-9]+ raw=-?[0-9]+ ms=[0-9]+' | tail -4 | while read -r l; do note "PIECE ALONG-PROBE: $l"; done
 tool dispatch "exit_navigation_mode"; sleep 4
 tool dispatch "navigate_to:destination=珠海站"; sleep 8
 tool dispatch "choose_navigation_option:index=1"; sleep 10

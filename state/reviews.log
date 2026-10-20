@@ -66,3 +66,5 @@ ca8f07588f28 PASS 2026-10-20 STYLE-GRADER reviewer: v3 rule exactly the decider'
 5111e325a6e3 REVISED 2026-10-20 10c0e514e94a reviewer REVISE resolved (shared reviews.log parser, stage tests)
 31dc8a17b8ea PASS 2026-10-20 P53-SPLIT reviewer (unverified E2E): debug-only, shared-pool newBuilder client, path-only log lines (I-8), timings only on warm run 3, grep in github_device_checks.sh matches, release unit tests compile; notes: wiring copied from LiveDestinationCandidateSource, URL held in memory until formatted
 94e60792a2cc PASS 2026-10-20 DEV-SPLIT reviewer PASS; CI all 4 shards PASS run 39406821478 (slowest 15 min)
+ffd1b7c67f79 REVISE 2026-10-20 DIAG-BATCH direct android.util.Log in AmapRouteLiveInfo; must use DebugVoiceLog.log
+255ef0df407f REVISE 2026-10-20 AIDER-WRAP check-ignore fails open; no validate/path normalisation; staged stray not removed; aiderignore+no-detect-urls; key test vacuous

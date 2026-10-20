@@ -1,0 +1,27 @@
+{
+ "task_id": "AIDER-WRAP",
+ "contract_sha256": "9f4e09368c919eb139610647d49268142870ef69617d4e8948bb92b0842ddcef",
+ "tip": "255ef0df407f2c0c6ffed43b70fc4024b54e003e",
+ "verified_by": "planner",
+ "at": "2026-10-20T10:55:24+00:00",
+ "results": [
+  {
+   "id": "wrapper-tests",
+   "kind": "regression",
+   "command": "python3 -m unittest scripts.tests.test_offload_executor",
+   "exit_code": 0,
+   "seconds": 1.9,
+   "log": "/root/nova-drive-build/nova-verify/AIDER-WRAP/255ef0df407f-wrapper-tests.log",
+   "log_sha256": "aeb4c57658a406c741a9bc3c3d0b8422cefec77f7ae7214962b8b47b2803bd18"
+  },
+  {
+   "id": "script-tests",
+   "kind": "regression",
+   "command": "python3 -m unittest discover -s scripts/tests -t .",
+   "exit_code": 0,
+   "seconds": 197.1,
+   "log": "/root/nova-drive-build/nova-verify/AIDER-WRAP/255ef0df407f-script-tests.log",
+   "log_sha256": "9bdfb9821d15ee60d4eb7bf55d33aa9de117f43b6f5b297c644b67c57aac3703"
+  }
+ ]
+}
