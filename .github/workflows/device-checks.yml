@@ -15,11 +15,22 @@
 # job logs are not readable from the agent sessions. The video is pushed to branch ci/drive-video.
 # From cursor/github-emulator-9a6b (Cursor, 2026-10-15), moved onto claude/10-15.
 # The job must not print coordinates, addresses, or transcripts.
+# SHARDS (DEV-SPLIT, the voice-checks.yml pattern): a matrix of 4 shards - dispatch, drive,
+# lifecycle, navpiece - each building its own APK (no APK artifact: the debug APK carries key-bearing
+# config, docs/CI.md), booting its own emulator and running only its sections (DEVICE_SHARD in
+# scripts/github_device_checks.sh); each shard has its own verdict (suite device-<shard> in
+# config/ci_checks.json) and pushes its evidence to runs/<run>/<shard>/. A dispatch can pick shards
+# with the input "shards" (comma list; empty or "all" = every shard); a [checks] push runs every shard.
 
 name: Device checks
 
 on:
   workflow_dispatch:
+    inputs:
+      shards:
+        description: "Comma list of shards (dispatch,drive,lifecycle,navpiece) or all"
+        required: false
+        default: all
   push:
     branches:
       - claude/10-15
@@ -45,11 +56,19 @@ permissions:
 
 jobs:
   drive:
-    # A push runs it only when the commit message asks: [checks]; pull requests and manual runs always.
-    # Fork pull requests are skipped: no secrets and a read-only token there.
+    # One job per shard picked by the plan job below (a job-level if cannot see the matrix). The
+    # condition repeats the plan job's (a push runs it only on [checks]; fork pull requests skip).
+    needs: plan
+    name: device ${{ matrix.shard }}
     if: ${{ (github.event_name != 'push' || contains(github.event.head_commit.message, '[checks]')) && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    env:
+      DEVICE_SHARD: ${{ matrix.shard }}
+      DEVICE_SUITE: ${{ matrix.suite }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -99,7 +118,7 @@ jobs:
           if [ -z "$missing" ]; then echo "ok=true" >>"$GITHUB_OUTPUT"; exit 0; fi
           echo "ok=false" >>"$GITHUB_OUTPUT"
           first="${missing# }"; first="${first%% *}"
-          python3 - "device" "secret $first not set" <<'PY'
+          python3 - "${DEVICE_SUITE:-device}" "secret $first not set" <<'PY'
           import json, subprocess, sys
           suite, detail = sys.argv[1], sys.argv[2]
           required = json.load(open("config/ci_checks.json"))["suites"][suite]["required"]
@@ -144,27 +163,64 @@ jobs:
           script: bash scripts/github_device_checks.sh "$HOME/nova-drive-build/app/outputs/apk/debug/app-debug.apk"
 
       - name: Verdict
-        # Fails the job when a required check did not pass (scripts/ci_verdict.py, suite device).
-        # A run that crashed before writing results fails here on the missing or empty file.
+        # Fails the shard when one of its own required checks did not pass (scripts/ci_verdict.py,
+        # suite matrix.suite, one of the device-* shard suites); a check of this shard with no result
+        # is MISSING (FAIL). A run that crashed before writing results fails on the missing file.
         if: always()
-        run: python3 scripts/ci_verdict.py verdict --manifest config/ci_checks.json --suite device --results evidence/results.jsonl --json-out evidence/verdict.json --summary "$GITHUB_STEP_SUMMARY"
+        run: python3 scripts/ci_verdict.py verdict --manifest config/ci_checks.json --suite "${DEVICE_SUITE:-device}" --results evidence/results.jsonl --json-out evidence/verdict.json --summary "$GITHUB_STEP_SUMMARY"
 
       - name: Push the evidence to ci/device-evidence
+        # The shards push concurrently: commit on top of the fetched branch, retry on a rejected
+        # push (fetch + rebase), up to 8 times. The run dir is shared; each shard writes <run>/<shard>/.
         if: always()
         run: |
           test -d evidence || exit 0
-          dir="run_$(date -u +%Y%m%d_%H%M)_${GITHUB_SHA::7}"
+          dir="run_$(date -u +%Y%m%d)_${GITHUB_SHA::7}_r${GITHUB_RUN_ID}"
           [ -f app/libs/Msc.jar.STUB ] && dir="${dir}_stubvendor"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          mv evidence "/tmp/$dir"
+          mv evidence "/tmp/evidence_$DEVICE_SHARD"
           if git fetch origin ci/device-evidence 2>/dev/null; then
             git switch -c ci/device-evidence FETCH_HEAD
           else
             git switch --orphan ci/device-evidence
           fi
-          mkdir -p runs
-          mv "/tmp/$dir" "runs/$dir"
-          git add "runs/$dir"
-          git commit -m "Device checks $dir (run ${GITHUB_RUN_ID})"
-          git push origin ci/device-evidence
+          mkdir -p "runs/$dir"
+          mv "/tmp/evidence_$DEVICE_SHARD" "runs/$dir/$DEVICE_SHARD"
+          git add "runs/$dir/$DEVICE_SHARD"
+          git commit -q -m "Device checks $dir/$DEVICE_SHARD (run ${GITHUB_RUN_ID})"
+          for attempt in 1 2 3 4 5 6 7 8; do
+            if git push -q origin HEAD:ci/device-evidence; then exit 0; fi
+            echo "push rejected (attempt $attempt): fetch and rebase"
+            sleep $((attempt * 3 + RANDOM % 5))
+            git fetch -q origin ci/device-evidence
+            git rebase -q FETCH_HEAD
+          done
+          echo "::error title=evidence push::gave up after 8 attempts"
+          exit 1
+
+  plan:
+    # A push runs the checks only when the commit message asks: [checks] (every shard); pull requests
+    # always (every shard); fork pull requests are skipped (no secrets, read-only token). A dispatch
+    # runs the shards named in the "shards" input (all by default); an unknown name fails here.
+    if: ${{ (github.event_name != 'push' || contains(github.event.head_commit.message, '[checks]')) && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+    steps:
+      - name: Pick the shards
+        id: pick
+        env:
+          SHARDS: ${{ inputs.shards }}
+        run: |
+          python3 - <<'PY' >>"$GITHUB_OUTPUT"
+          import json, os
+          all_shards = ["dispatch", "drive", "lifecycle", "navpiece"]
+          raw = os.environ.get("SHARDS", "").replace(" ", "")
+          picked = all_shards if raw in ("", "all") else list(dict.fromkeys(s for s in raw.split(",") if s))
+          bad = [s for s in picked if s not in all_shards]
+          if bad or not picked:
+              raise SystemExit(f"unknown shard(s): {bad}")
+          include = [{"shard": s, "suite": "device-" + s} for s in picked]
+          print("matrix=" + json.dumps({"include": include}))
+          PY

@@ -66,9 +66,29 @@ until it is fixed. A quarantined green prints `VERDICT voice PASS (1 quarantined
 | Tier | Workflow | Runs | Proves | Does not prove | Cost |
 | --- | --- | --- | --- | --- | --- |
 | A — mandatory | `Tier A gate` (`unit-tests.yml`): jobs **Tier A gates** and **Tier A build and JVM tests** | every pull request (both jobs); push to `main` (build and tests only — main is gated by the PR checks); manual | the review/delegation gate, CI tool tests, TEST_MATRIX validity, `:app:assembleDebug`, every JVM/architecture/secret-scan test (counts from the JUnit XML, per module) | anything on a device, any voice model | no paid API; ~5 min (gates) and ~14 min cold (build+tests) on a free public-repo runner; caches only Gradle dependency downloads and the SDK, never the build cache (it holds key-bearing outputs) |
-| B — emulator | `Device checks` | pull requests touching app source or the script (not fork PRs), `[checks]` commit tag, manual | real app on an API-34 emulator: dispatch rows, route/start/arrival, UI, process death, mic revoked, transcript fade, nav pieces P61/P63 | real cabin acoustics, echo cancellation, voice naturalness, hardware | Amap web search only; ~30 min |
+| B — emulator | `Device checks` | pull requests touching app source or the script (not fork PRs), `[checks]` commit tag, manual | real app on an API-34 emulator: dispatch rows, route/start/arrival, UI, process death, mic revoked, transcript fade, nav pieces P61/P63 | real cabin acoustics, echo cancellation, voice naturalness, hardware | Amap web search only; four parallel shards, ~20 min wall clock (the drive shard) instead of ~30 min |
 | B — emulator, voice | `Voice checks`, `Nav demo`, `Test worker` | manual or commit tag only (`[voice]`, `[navdemo]`, `[worker:<piece>]`) | scenario suites and nav pieces against the live **Gemini** free tier (debug-only provider override; the quota guard refuses any Qwen session) | as above; Gemini's voice is not Ayano's | Gemini free tier; not deterministic, so never on every commit |
 | C — release | `python3 scripts/test_matrix.py --release` ([RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)) | at release checkpoints | which release-blocking rows have current evidence | — | none |
+
+**Device checks shards** (DEV-SPLIT). `device-checks.yml` is a plan job plus a matrix
+(`fail-fast: false`) of four shards, the Voice checks pattern: each builds its own APK (never an
+artifact: the debug APK is key-bearing), boots its own emulator and runs only its sections of
+`scripts/github_device_checks.sh` (`DEVICE_SHARD=<shard>`; unset or `all` runs every section in the
+original order, so a local full run is unchanged). Each shard has its own verdict, suite
+`device-<shard>`; the shard suites partition suite `device` (kept for full runs), with
+`build:vendor-real` required in every shard (recorded by the shared setup). A shard that skips the
+dispatch section installs the Amap web key itself. Evidence goes to `ci/device-evidence` under
+`runs/run_<date>_<sha7>_r<run id>[_stubvendor]/<shard>/` (fetch-rebase-retry push). A `[checks]` push
+and a pull request run every shard; a dispatch takes the input `shards` (comma list, default `all`).
+
+| Shard | Suite | Sections | Tests (approx.) |
+|---|---|---|---|
+| dispatch | device-dispatch | dispatch rows (app-up, PLACE-UNSET/SAVE, CALL-NOSIM, APPS), P53 notes, LIVE-INFO-SDK | ~3 min |
+| drive | device-drive | simulated drive to arrival, NAV-ROUTE/START, NAV-UI-002..007, arrival, crash | ~7 min |
+| lifecycle | device-lifecycle | P59, process death, revoked microphone, transcript bubble probe | ~4 min |
+| navpiece | device-navpiece | nav demo pieces P61/P63 | ~2 min |
+
+Each shard adds the APK build and emulator boot (~12 min).
 
 **Voice checks shards** (VC-SPLIT, owner 2026-10-19: each demo <=5 min, function tests in small units).
 `voice-checks.yml` is a matrix (`fail-fast: false`) of nine shards; each builds its own APK (never

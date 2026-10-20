@@ -52,6 +52,8 @@ class WorkflowVerdictTest(unittest.TestCase):
                 self.assertNotIn("continue-on-error", step)
                 if name == "voice-checks.yml":  # one verdict per shard: the shard's own suite
                     self.assertIn('--suite "${VOICE_SUITE:-voice}"', step["run"])
+                elif name == "device-checks.yml":  # one verdict per shard (DEV-SPLIT)
+                    self.assertIn('--suite "${DEVICE_SUITE:-device}"', step["run"])
                 else:
                     self.assertIn(f"--suite {suite}", step["run"])
                 self.assertIn("--results evidence/results.jsonl", step["run"])
