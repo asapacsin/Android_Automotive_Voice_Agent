@@ -1,0 +1,124 @@
+{
+  "suite": "voice-b",
+  "verdict": "FAIL",
+  "vendor": "UNKNOWN",
+  "checks": [
+    {
+      "id": "build:vendor-real",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "voice:runner",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "voice:S8",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "voice:S9",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "voice:S10",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "voice:S11",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "voice:S12",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "voice:S13",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "voice:S14",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "voice:quota-guard",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    }
+  ],
+  "problems": [
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "results file missing or unreadable: evidence/results.jsonl"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required build:vendor-real has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:runner has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:S8 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:S9 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:S10 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:S11 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:S12 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:S13 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:S14 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:quota-guard has no result"
+    }
+  ]
+}
