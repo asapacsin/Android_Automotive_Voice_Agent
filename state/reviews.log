@@ -80,3 +80,4 @@ b7bee2a7d238 PASS 2026-10-20 S18-TURN reviewer PASS (A3 earned, A7 partial)
 72a03493f3ef PASS 2026-10-20 ALONG-PROBE reviewer PASS (device notes pending CI)
 79b603e6cad9 PASS 2026-10-20 AIDER-WRAP reviewer PASS after 2 REVISE rounds (aiderignore checked against real aider 0.86.2)
 4ff0e032aebc PASS 2026-10-20 COMPACT-CWD reviewer (sonnet) PASS; Aider-built
+5892a452275d PASS 2026-10-20 ALONG-PROBE2 reviewer (sonnet) PASS; debug-only
