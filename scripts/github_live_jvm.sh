@@ -1,0 +1,141 @@
+#!/bin/bash
+# Runs ONE opt-in live JVM piece on a GitHub runner and pushes a text-free summary to branch
+# ci/live-jvm-evidence under runs/run_<date>_<sha>/<piece>/.
+#   text-live  NOVA_GEMINI_TEXT_LIVE=1 ... --tests '*GeminiTextLiveMapping*' --rerun
+#              rows FUZZY-TEXT-LIVE-001 (>=17/19 and FZ-15..19 all correct) and
+#              MUSIC-TEXT-LIVE-001 (>=8/10 play_music, 0/10 control_music{play})
+#   amap-live  NOVA_LIVE_AMAP=1 ... --tests '*DemoCommuteAmapLiveTest'
+#              row DEMO-AMAP-LIVE-001 (JUnit 2/2; the 1700 m check is one of the two tests)
+# Usage: scripts/github_live_jvm.sh <text-live|amap-live>
+#        scripts/github_live_jvm.sh summarize <piece> <results.txt|-> <junit.xml|-> <out-dir>
+# Env (secrets, never printed): GEMINI_API_KEY, AMAP_WEB_KEY, NOVA_VENDOR_ZIP_URL[/_AUTH],
+#   NOVA_DEBUG_KEYSTORE_B64, AMAP_API_KEY. Test hooks: LIVE_JVM_SKIP_SETUP=1, LIVE_JVM_SKIP_PUSH=1,
+#   LIVE_JVM_GRADLE (default ./gradlew), LIVE_JVM_OUT (default evidence/live-jvm).
+# The summary holds ids, counts and correct-flags only: no phrase, model text, coordinate or
+# address (I-8). Raw gradle output is not kept.
+set -u
+
+summarize() { # piece results xml outdir
+  python3 - "$@" <<'PY'
+import os, re, sys
+import xml.etree.ElementTree as ET
+piece, results, xml, outdir = sys.argv[1:5]
+os.makedirs(outdir, exist_ok=True)
+lines = []
+tests = fail = err = skip = 0
+xml_ok = False
+if xml != "-" and os.path.isfile(xml):
+    try:
+        for ts in ET.parse(xml).getroot().iter("testsuite"):
+            tests += int(ts.get("tests", 0)); fail += int(ts.get("failures", 0))
+            err += int(ts.get("errors", 0)); skip += int(ts.get("skipped", 0))
+        xml_ok = True
+    except Exception:
+        xml_ok = False
+lines.append(f"piece={piece}")
+lines.append(f"junit tests={tests} failures={fail} errors={err} skipped={skip} parsed={'yes' if xml_ok else 'no'}")
+if piece == "text-live":
+    sets = {}
+    ctl_play = 0
+    have = results != "-" and os.path.isfile(results)
+    if have:
+        for raw in open(results, encoding="utf-8", errors="replace"):
+            p = [x.strip() for x in raw.rstrip("\n").split(" | ")]
+            if len(p) < 5 or p[4] not in ("PASS", "MISS"):
+                continue
+            sets.setdefault(p[0], []).append((p[1], p[4] == "PASS"))
+            if p[0] == "MUSIC":
+                m = re.match(r"control_music(\{.*)?", p[3].replace("got ", "", 1))
+                if m and re.search(r"play", m.group(0)):
+                    ctl_play += 1
+    lines.append(f"results_txt={'present' if have else 'missing'}")
+    fz = sets.get("FUZZY", []); mu = sets.get("MUSIC", [])
+    fzp = sum(1 for _, ok in fz if ok); mup = sum(1 for _, ok in mu if ok)
+    tail = {i: ok for i, ok in fz if re.fullmatch(r"FZ-(15|16|17|18|19)", i)}
+    tail_ok = len(tail) == 5 and all(tail.values())
+    lines.append(f"FUZZY correct={fzp}/{len(fz)} fz15_19_all_correct={'yes' if tail_ok else 'no'}")
+    lines.append(f"MUSIC play_music_correct={mup}/{len(mu)} control_music_play={ctl_play}/{len(mu)}")
+    for set_name, rows in sets.items():
+        lines.append(f"{set_name} " + " ".join(f"{i}={'ok' if ok else 'miss'}" for i, ok in rows))
+    lines.append("FUZZY-TEXT-LIVE-001 rule=" + ("MET" if have and len(fz) == 19 and fzp >= 17 and tail_ok else "NOT_MET"))
+    lines.append("MUSIC-TEXT-LIVE-001 rule=" + ("MET" if have and len(mu) == 10 and mup >= 8 and ctl_play == 0 else "NOT_MET"))
+elif piece == "amap-live":
+    lines.append("DEMO-AMAP-LIVE-001 rule=" + ("MET" if xml_ok and tests == 2 and fail == 0 and err == 0 and skip == 0 else "NOT_MET"))
+open(os.path.join(outdir, "summary.txt"), "w").write("\n".join(lines) + "\n")
+print("\n".join(lines))
+PY
+}
+
+if [ "${1:-}" = "summarize" ]; then
+  [ "$#" -eq 5 ] || { echo "usage: $0 summarize <piece> <results|-> <xml|-> <outdir>" >&2; exit 2; }
+  summarize "$2" "$3" "$4" "$5"; exit 0
+fi
+
+piece="${1:-}"
+case "$piece" in
+  text-live) env_flag=NOVA_GEMINI_TEXT_LIVE; tests='*GeminiTextLiveMapping*'; rerun="--rerun"; need=GEMINI_API_KEY
+             xmlname=TEST-com.novadrive.app.voice.GeminiTextLiveMappingTest.xml ;;
+  amap-live) env_flag=NOVA_LIVE_AMAP; tests='*DemoCommuteAmapLiveTest'; rerun=""; need=AMAP_WEB_KEY
+             xmlname=TEST-com.novadrive.app.livedemo.DemoCommuteAmapLiveTest.xml ;;
+  *) echo "usage: $0 <text-live|amap-live>" >&2; exit 2 ;;
+esac
+
+root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$root"
+out="${LIVE_JVM_OUT:-$root/evidence/live-jvm}/$piece"
+mkdir -p "$out"
+gradle="${LIVE_JVM_GRADLE:-./gradlew}"
+
+if [ -z "${!need:-}" ]; then
+  echo "secret $need is not set"
+  printf 'piece=%s\nBLOCKED secret %s not set\n' "$piece" "$need" >"$out/summary.txt"
+  rc=3
+else
+  if [ "${LIVE_JVM_SKIP_SETUP:-}" != 1 ]; then
+    # Same toolchain, vendor zip and debug keystore setup as scripts/github_build_apk.sh.
+    sudo apt-get update -q >/dev/null
+    sudo apt-get install -y -q openjdk-17-jdk-headless unzip >/dev/null
+    sudo mkdir -p /opt/android-sdk; sudo chown -R "$USER" /opt/android-sdk
+    export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 ANDROID_HOME=/opt/android-sdk
+    unset ANDROID_PREFS_ROOT ANDROID_SDK_HOME
+    export ANDROID_USER_HOME="$HOME/.android"
+    export NOVA_VENDOR_STUB_OK=yes  # JVM tests do not touch the vendor engine; a dead zip falls back to the stand-in
+    bash scripts/cloud_setup.sh >/dev/null 2>&1 || echo "cloud_setup.sh exited non-zero"
+    chmod +x ./gradlew
+  fi
+  buildroot="${NOVA_BUILD_DIR:-$HOME/nova-drive-build}"
+  rm -rf "$root/app/build/text-live" "$buildroot/app/test-results"
+  # The exact invocation of the row's evidence line, under a 5-minute timeout. Raw output is discarded.
+  env "$env_flag=1" timeout 300 "$gradle" :app:testDebugUnitTest --tests "$tests" $rerun >/dev/null 2>&1
+  rc=$?
+  echo "gradle exit=$rc"
+  xml="$(find "$buildroot/app" "$root/app/build" -name "$xmlname" 2>/dev/null | head -1)"
+  results="$(find "$buildroot/app" "$root/app/build" -path '*text-live/results.txt' 2>/dev/null | head -1)"
+  summarize "$piece" "${results:--}" "${xml:--}" "$out"
+  echo "gradle_exit=$rc" >>"$out/summary.txt"
+fi
+
+if [ "${LIVE_JVM_SKIP_PUSH:-}" = 1 ]; then exit "$rc"; fi
+sha="${GITHUB_SHA:-$(git rev-parse HEAD)}"
+dir="runs/run_$(date -u +%Y%m%d_%H%M)_${sha:0:7}/$piece"
+git config user.name "github-actions[bot]"
+git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+stage="$(mktemp -d)"; cp "$out/summary.txt" "$stage/summary.txt"
+push_rc=1
+for attempt in 1 2 3 4 5; do
+  if git fetch origin ci/live-jvm-evidence 2>/dev/null; then
+    git switch -C ci/live-jvm-evidence FETCH_HEAD >/dev/null 2>&1
+  elif [ "$attempt" = 1 ]; then
+    git switch --orphan ci/live-jvm-evidence >/dev/null 2>&1
+    git rm -rf . >/dev/null 2>&1 || true
+  fi
+  mkdir -p "$dir"; cp "$stage/summary.txt" "$dir/summary.txt"
+  git add "$dir"
+  git commit -q -m "Live JVM $piece $(basename "$(dirname "$dir")") (run ${GITHUB_RUN_ID:-local})" || true
+  if git push origin ci/live-jvm-evidence 2>/dev/null; then push_rc=0; break; fi
+  git reset -q --hard HEAD~1 2>/dev/null || true  # re-fetch and re-apply on top of the new tip
+  sleep $((attempt * 3))
+done
+[ "$push_rc" = 0 ] && echo "evidence pushed: $dir" || echo "::error title=evidence push failed::$dir"
+if [ "$rc" = 0 ] && [ "$push_rc" = 0 ]; then exit "$rc"; fi
+exit $([ "$rc" = 0 ] && echo 1 || echo "$rc")

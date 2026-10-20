@@ -1,0 +1,53 @@
+# Opt-in live JVM rows, run on demand (scripts/github_live_jvm.sh):
+#   text-live  FUZZY-TEXT-LIVE-001 and MUSIC-TEXT-LIVE-001 (Gemini free tier, one run)
+#   amap-live  DEMO-AMAP-LIVE-001 (free Amap Web API calls)
+# Summaries (ids, counts, correct-flags; no phrases, model text, coordinates or addresses) go to
+# branch ci/live-jvm-evidence under runs/run_<date>_<sha>/<piece>/summary.txt. Not for PRs.
+# Required secrets: GEMINI_API_KEY (text-live), AMAP_WEB_KEY (amap-live), NOVA_VENDOR_ZIP_URL,
+# NOVA_VENDOR_ZIP_AUTH (optional), NOVA_DEBUG_KEYSTORE_B64, AMAP_API_KEY.
+
+name: Live JVM checks
+
+on:
+  workflow_dispatch:
+    inputs:
+      pieces:
+        description: "all, text-live or amap-live"
+        default: all
+  push:
+    branches:
+      - claude/10-19
+      - claude/10-20
+
+permissions:
+  contents: write
+
+jobs:
+  live:
+    # A push runs it only when the commit message asks: [live-jvm].
+    if: ${{ github.event_name != 'push' || contains(github.event.head_commit.message, '[live-jvm]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        piece: [text-live, amap-live]
+    concurrency:
+      group: live-jvm-evidence-${{ matrix.piece }}-${{ github.run_id }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.pieces == 'all' || inputs.pieces == '' || inputs.pieces == matrix.piece }}
+        uses: actions/checkout@v4
+
+      - name: Run the piece and push its summary to ci/live-jvm-evidence
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.pieces == 'all' || inputs.pieces == '' || inputs.pieces == matrix.piece }}
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          AMAP_WEB_KEY: ${{ secrets.AMAP_WEB_KEY }}
+          AMAP_API_KEY: ${{ secrets.AMAP_API_KEY }}
+          NOVA_VENDOR_ZIP_URL: ${{ secrets.NOVA_VENDOR_ZIP_URL }}
+          NOVA_VENDOR_ZIP_AUTH: ${{ secrets.NOVA_VENDOR_ZIP_AUTH }}
+          NOVA_DEBUG_KEYSTORE_B64: ${{ secrets.NOVA_DEBUG_KEYSTORE_B64 }}
+          TEXT_LIVE_MODEL: ${{ vars.TEXT_LIVE_MODEL }}
+        run: bash scripts/github_live_jvm.sh "${{ matrix.piece }}"
