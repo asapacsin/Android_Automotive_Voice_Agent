@@ -9,8 +9,26 @@
 # Verdict: every check is recorded in evidence/results.jsonl (scripts/ci_verdict.py, suite "voice");
 # the workflow's Verdict step fails the job on a required failure. Best-effort steps (screen
 # recording, ffmpeg muxing, logcat clearing, launcher cosmetics) are marked "|| true" on purpose.
+# SHARDS (owner 2026-10-19: function tests in small units, each <=5 min after boot): the second
+# argument (or VOICE_SHARD) picks one shard; each shard's verdict is its suite in config/ci_checks.json
+# (voice-a, voice-b, voice-c, voice-device, voice-liveinfo-a, voice-liveinfo-b, voice-demo); "all"
+# runs everything and is judged by suite "voice". The id lists below must match those suites
+# (scripts/tests/test_ci_tier_b.py checks it).
 set -eu
 apk="${1:?apk path}"
+shard="${2:-${VOICE_SHARD:-all}}"
+ids_voice_a="S1 S2 S3 S4 S4b S5 S5b S6 S7"
+ids_voice_b="S8 S9 S10 S11 S12 S13 S14"
+ids_voice_c="S15 S16 S17 S18 S19 S20 S21"
+ids_liveinfo_a="LI-WEATHER LI-PLACE"
+ids_liveinfo_b="LI-TRAFFIC LI-ALONG"
+case "$shard" in
+  all) suite_name=voice ;;
+  voice-a|voice-b|voice-c) suite_name="$shard" ;;
+  device|liveinfo-a|liveinfo-b|demo) suite_name="voice-$shard" ;;
+  *) echo "::error title=voice checks::unknown shard $shard"; exit 2 ;;
+esac
+runs() { [ "$shard" = all ] || [ "$shard" = "$1" ]; }  # does this run include shard $1
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 ev="$root/evidence"
@@ -98,8 +116,17 @@ app_up && note "app: map up" || note "app: map did not come up"
 setup_key AMAP_WEB_KEY amap_web_setup amap_web_setup.txt || true
 if ! setup_key GEMINI_API_KEY gemini_setup gemini_setup.txt; then
   note "voice: skipped - no GEMINI_API_KEY secret"
-  for p in voice devrows liveinfo; do res "$p:runner" BLOCKED "secret GEMINI_API_KEY not set"; done
-  res voice:quota-guard BLOCKED "secret GEMINI_API_KEY not set"
+  # Every required id of this shard's suite is BLOCKED (a wildcard through its <prefix>runner).
+  python3 - "$suite_name" <<'PY' | while read -r rid; do res "$rid" BLOCKED "secret GEMINI_API_KEY not set"; done
+import json, sys
+ids = []
+for rid in json.load(open("config/ci_checks.json"))["suites"][sys.argv[1]]["required"]:
+    if rid.endswith("*"):
+        rid = rid[:rid.rfind(":") + 1] + "runner"
+    if rid != "build:vendor-real" and rid not in ids:
+        ids.append(rid)
+print("\n".join(ids))
+PY
   exit 0
 fi
 mark
@@ -120,17 +147,6 @@ fi
 wait_for "gemini_setup_complete|state=LISTENING" 40 && note "voice: session up" || note "voice: session did not report ready ($(nova | grep -oE 'state=[A-Z_]+|err=[A-Z_]+|\b(GEMINI|QWEN)_[A-Z_]+' | tail -4 | tr '\n' ' '))"
 shot voice_ready
 
-adb shell screenrecord --time-limit 180 --bit-rate 4000000 /sdcard/voice_part1.mp4 &
-rec1=$!
-set +e
-python3 tools/speech-harness/run_scenarios.py --wait 14 --provider gemini >"$ev/scenarios_raw.txt" 2>&1
-rc=$?
-set -e
-wait "$rec1" || true  # best-effort: screen recording
-note "voice: runner rc=$rc"
-scen "$ev/scenarios_raw.txt" voice: "$rc"
-grep -E '^\s+(PASS|FAIL)\s+S[0-9]+b?\b|^\s+(ok|FLAKY|FAIL)\s+S[0-9]+' "$ev/scenarios_raw.txt" | sed -E 's/^\s+//' | awk '{print $1, $2}' >"$ev/scenarios.txt" || true
-grep -E '^\s+expected /|^\s+forbidden /' "$ev/scenarios_raw.txt" | sed -E "s/ matched .*/ matched (text omitted)/" >"$ev/scenario_failures.txt" || true
 # skeleton RAW OUT: text-free skeleton of each failing scenario's log tail: event names and ASCII key=value codes
 # only; any token with CJK text (transcripts, replies, place names) or digits-with-dots is dropped.
 # Every suite gets one (2026-10-17): without it a device-row failure such as AFF-AC showed only that
@@ -155,6 +171,26 @@ if len(part) == 2:
             print("   " + " ".join(keep[:12]))
 PY
 }
+# Scenario rows S1..S21: shard voice-a, voice-b or voice-c runs only its ids (--only); "all" runs all.
+main_only=""
+case "$shard" in
+  voice-a) main_only="$ids_voice_a" ;;
+  voice-b) main_only="$ids_voice_b" ;;
+  voice-c) main_only="$ids_voice_c" ;;
+esac
+if runs voice-a || runs voice-b || runs voice-c; then
+adb shell screenrecord --time-limit 180 --bit-rate 4000000 /sdcard/voice_part1.mp4 &
+rec1=$!
+set +e
+# shellcheck disable=SC2086  # main_only is a word list of scenario ids
+python3 tools/speech-harness/run_scenarios.py --wait 14 --provider gemini ${main_only:+--only $main_only} >"$ev/scenarios_raw.txt" 2>&1
+rc=$?
+set -e
+wait "$rec1" || true  # best-effort: screen recording
+note "voice: runner rc=$rc"
+scen "$ev/scenarios_raw.txt" voice: "$rc"
+grep -E '^\s+(PASS|FAIL)\s+S[0-9]+b?\b|^\s+(ok|FLAKY|FAIL)\s+S[0-9]+' "$ev/scenarios_raw.txt" | sed -E 's/^\s+//' | awk '{print $1, $2}' >"$ev/scenarios.txt" || true
+grep -E '^\s+expected /|^\s+forbidden /' "$ev/scenarios_raw.txt" | sed -E "s/ matched .*/ matched (text omitted)/" >"$ev/scenario_failures.txt" || true
 skeleton "$ev/scenarios_raw.txt" "$ev/failure_skeletons.txt"
 note "voice: scenarios $(tr '\n' ' ' <"$ev/scenarios.txt")"
 if [ ! -s "$ev/scenarios.txt" ]; then
@@ -167,12 +203,13 @@ note "voice: session errors=$(count 'state=ERROR|_PROTOCOL_ERROR') provider_line
 adb pull /sdcard/voice_part1.mp4 "$ev/voice_part1_phone.mp4" >/dev/null 2>&1 || true
 ffmpeg -v error -y -i "$ev/voice_part1_phone.mp4" -c copy -movflags +faststart "$ev/voice_screen.mp4" && rm -f "$ev/voice_part1_phone.mp4" || true
 shot voice_end
+rm -f "$ev/scenarios_raw.txt"
+fi
 tool voice stop
 tool provider clear
-rm -f "$ev/scenarios_raw.txt"
 
 # ---- further suites: device rows (affordances, news, vision, fuzzy with
-# screenshots), live info x10 (LIVE-INFO-DEVICE-001). Ids + PASS/FAIL only, as above.
+# screenshots), live info x3 (LIVE-INFO-DEVICE-001; 3 instead of 10 to keep a shard <=5 min). Ids + PASS/FAIL only, as above.
 suite() { # name, result prefix, then runner args
   local name="$1" prefix="$2" rc; shift 2
   set +e
@@ -189,13 +226,24 @@ suite() { # name, result prefix, then runner args
 }
 # No Cantonese suite: the product is Mandarin-only (owner 2026-10-19, YUE-POLICY-001 option A, ADR-002).
 # Prefix devrows: (not device:) so it never clashes with the "device" suite's ids.
-suite device devrows: --file tools/speech-harness/scenarios-device.json --shots "$ev/shots"
-for f in "$ev"/shots/*.png; do [ -f "$f" ] && ffmpeg -v error -y -i "$f" -vf scale=540:-2 -q:v 4 "${f%.png}.jpg" && rm -f "$f"; done
-suite liveinfo liveinfo: --file tools/speech-harness/scenarios-liveinfo.json --repeat 10
+if runs device; then
+  suite device devrows: --file tools/speech-harness/scenarios-device.json --shots "$ev/shots"
+  for f in "$ev"/shots/*.png; do [ -f "$f" ] && ffmpeg -v error -y -i "$f" -vf scale=540:-2 -q:v 4 "${f%.png}.jpg" && rm -f "$f"; done
+fi
+# shellcheck disable=SC2086  # the id lists are word lists
+if [ "$shard" = all ]; then
+  suite liveinfo liveinfo: --file tools/speech-harness/scenarios-liveinfo.json --repeat 3
+elif [ "$shard" = liveinfo-a ]; then
+  suite liveinfo liveinfo: --file tools/speech-harness/scenarios-liveinfo.json --repeat 3 --only $ids_liveinfo_a
+elif [ "$shard" = liveinfo-b ]; then
+  suite liveinfo liveinfo: --file tools/speech-harness/scenarios-liveinfo.json --repeat 3 --only $ids_liveinfo_b
+fi
 
 # ---- WAKE-SYNTH-001: a synthetic wake through the debug path ----------------------------------
 # A stub build has no wake engine (tools/vendor-stub): the row is BLOCKED there, never run.
-if [ "$(python3 -c 'import json,sys; print(any(json.loads(l).get("id")=="build:vendor-real" and json.loads(l).get("status")!="PASS" for l in open(sys.argv[1]) if l.strip()))' "$R")" = True ]; then
+if ! runs demo; then
+  :
+elif [ "$(python3 -c 'import json,sys; print(any(json.loads(l).get("id")=="build:vendor-real" and json.loads(l).get("status")!="PASS" for l in open(sys.argv[1]) if l.strip()))' "$R")" = True ]; then
   res wake:WAKE-SYNTH-001 BLOCKED "STUB_VENDOR: no wake engine in a stub build"
 else
   mark
@@ -216,6 +264,7 @@ fi
 # ---- the review demo: the real app, driver audio over the host bridge, her replies recorded -----
 # Clips are the synthetic speech-harness lines. The bridge re-applies provider=gemini and stops if
 # the session is not gemini_live (quota guard). Its stdout carries transcripts: not kept.
+if runs demo; then
 adb shell am force-stop com.novadrive.app
 app_up || true
 sleep 3
@@ -250,9 +299,10 @@ else
   else res voice:demo-recording SKIPPED "no recording"; fi
 fi
 rm -f "$ev/bridge_err.txt"
+fi
 if [ "$choice" = "session_provider choice=gemini_live" ] && [ -z "$qg_fail" ]; then
   res voice:quota-guard PASS "gemini_live, no qwen session"
 else
   res voice:quota-guard FAIL "${qg_fail# }"
 fi
-note "voice: done, override cleared"
+note "voice: shard $shard done, override cleared"

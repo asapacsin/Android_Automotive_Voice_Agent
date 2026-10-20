@@ -50,7 +50,10 @@ class WorkflowVerdictTest(unittest.TestCase):
                 step = steps[vi]
                 self.assertEqual(str(step.get("if")).strip(), "always()")
                 self.assertNotIn("continue-on-error", step)
-                self.assertIn(f"--suite {suite}", step["run"])
+                if name == "voice-checks.yml":  # one verdict per shard: the shard's own suite
+                    self.assertIn('--suite "${VOICE_SUITE:-voice}"', step["run"])
+                else:
+                    self.assertIn(f"--suite {suite}", step["run"])
                 self.assertIn("--results evidence/results.jsonl", step["run"])
                 push = [i for i, n in enumerate(names) if n.startswith("Push the evidence")]
                 self.assertTrue(push, "no evidence push step")
@@ -139,6 +142,128 @@ class ScriptTest(unittest.TestCase):
         self.assertIn("suite device devrows:", text)
         voice = json.loads(read("config/ci_checks.json"))["suites"]["voice"]
         self.assertFalse([p for p in voice["required"] + voice["optional"] if p.startswith("device:")])
+
+
+
+SHARD_SUITES = {"voice-a": "voice-a", "voice-b": "voice-b", "voice-c": "voice-c",
+                "device": "voice-device", "liveinfo-a": "voice-liveinfo-a",
+                "liveinfo-b": "voice-liveinfo-b", "demo": "voice-demo"}
+
+
+class VoiceShardTest(unittest.TestCase):
+    """VC-SPLIT: voice checks run as shards of <=5 min of tests, one verdict per shard."""
+
+    def manifest(self):
+        return json.loads(read("config/ci_checks.json"))["suites"]
+
+    def scenario_ids(self, name):
+        return [s["id"] for s in json.loads(read("tools/speech-harness/" + name))["scenarios"]]
+
+    def pick(self, shards):
+        doc = yaml.safe_load(read(".github/workflows/voice-checks.yml"))
+        step = next(s for s in doc["jobs"]["plan"]["steps"] if s.get("id") == "pick")
+        with tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, "out")
+            env = dict(os.environ, GITHUB_OUTPUT=out, SHARDS=shards)
+            proc = subprocess.run(["bash", "-e", "-c", step["run"]], env=env, capture_output=True, text=True)
+            if proc.returncode:
+                return None
+            line = read_abs(out).strip()
+        self.assertTrue(line.startswith("matrix="))
+        return json.loads(line[len("matrix="):])["include"]
+
+    def test_plan_picks_all_or_named_shards(self):
+        for raw in ("", "all"):
+            self.assertEqual({e["shard"]: e["suite"] for e in self.pick(raw)}, SHARD_SUITES)
+        self.assertEqual(self.pick("device, liveinfo-b"),
+                         [{"shard": "device", "suite": "voice-device"},
+                          {"shard": "liveinfo-b", "suite": "voice-liveinfo-b"}])
+        self.assertIsNone(self.pick("voice-z"))
+
+    def test_matrix_is_fail_fast_false_and_built_per_shard(self):
+        doc = yaml.safe_load(read(".github/workflows/voice-checks.yml"))
+        job = doc["jobs"]["drive"]
+        self.assertIs(job["strategy"]["fail-fast"], False)
+        self.assertEqual(job["needs"], "plan")
+        runs = "\n".join(str(s.get("run", "")) + str(s.get("uses", "")) for s in job["steps"])
+        self.assertIn("bash scripts/github_build_apk.sh", runs)
+        self.assertNotIn("upload-artifact", runs)  # the debug APK is key-bearing
+        on = doc.get("on", doc.get(True))
+        self.assertEqual(on["workflow_dispatch"]["inputs"]["shards"]["default"], "all")
+        self.assertIn("[voice]", doc["jobs"]["plan"]["if"])
+
+    def test_evidence_push_is_per_shard_with_retry(self):
+        doc = yaml.safe_load(read(".github/workflows/voice-checks.yml"))
+        step = next(s for s in doc["jobs"]["drive"]["steps"] if s["name"].startswith("Push the evidence"))
+        self.assertIn('runs/$dir/$VOICE_SHARD', step["run"])
+        self.assertIn("git rebase", step["run"])
+        self.assertIn("for attempt in", step["run"])
+
+    def test_script_id_lists_match_the_shard_suites(self):
+        text = read("scripts/github_voice_checks.sh")
+        lists = dict(re.findall(r'^ids_([a-z_]+)="([^"]*)"', text, re.M))
+        suites = self.manifest()
+        for key, suite, prefix in (("voice_a", "voice-a", "voice:"), ("voice_b", "voice-b", "voice:"),
+                                   ("voice_c", "voice-c", "voice:"),
+                                   ("liveinfo_a", "voice-liveinfo-a", "liveinfo:"),
+                                   ("liveinfo_b", "voice-liveinfo-b", "liveinfo:")):
+            with self.subTest(suite=suite):
+                listed = [r[len(prefix):] for r in suites[suite]["required"]
+                          if r.startswith(prefix) and r not in (prefix + "runner", "voice:quota-guard")]
+                self.assertEqual(lists[key].split(), listed)
+        self.assertIn("--repeat 3 --only $ids_liveinfo_a", text)
+        self.assertNotIn("--repeat 10", text)
+
+    def test_every_scenario_is_in_exactly_one_shard(self):
+        suites = self.manifest()
+        owners = {}
+        for suite in SHARD_SUITES.values():
+            for rid in suites[suite]["required"] + suites[suite]["optional"]:
+                if rid in ("build:vendor-real", "voice:quota-guard") or rid.endswith(":runner"):
+                    continue
+                self.assertNotIn(rid, owners, f"{rid} in {owners.get(rid)} and {suite}")
+                owners[rid] = suite
+        want = (["voice:" + i for i in self.scenario_ids("scenarios.json")]
+                + ["devrows:" + i for i in self.scenario_ids("scenarios-device.json")]
+                + ["liveinfo:" + i for i in self.scenario_ids("scenarios-liveinfo.json")]
+                + ["voice:demo-recording", "wake:WAKE-SYNTH-001"])
+        self.assertEqual(sorted(owners), sorted(want))
+
+    def test_shards_together_cover_the_voice_suite(self):
+        suites = self.manifest()
+        union_req = set()
+        union_opt = set()
+        for suite in SHARD_SUITES.values():
+            union_req |= set(suites[suite]["required"])
+            union_opt |= set(suites[suite]["optional"])
+            # Shared gates: each shard builds its own APK and opens its own Gemini session.
+            self.assertIn("build:vendor-real", suites[suite]["required"])
+            self.assertIn("voice:quota-guard", suites[suite]["required"])
+        for pattern in suites["voice"]["required"]:
+            with self.subTest(pattern=pattern):
+                hit = ([r for r in union_req if r.startswith(pattern[:-1])] if pattern.endswith("*")
+                       else [r for r in union_req if r == pattern])
+                self.assertTrue(hit)
+        self.assertEqual(union_opt, set(suites["voice"]["optional"]))
+        self.assertEqual(sorted(r for r in union_req if r.split(":")[0] not in ("voice", "devrows", "liveinfo", "build")), [])
+
+    def test_shard_verdict_judges_only_its_own_checks(self):
+        manifest = os.path.join(ROOT, "config/ci_checks.json")
+        with tempfile.TemporaryDirectory() as tmp:
+            res = os.path.join(tmp, "r.jsonl")
+            base = [rec("build:vendor-real", "PASS"), rec("voice:quota-guard", "PASS"),
+                    rec("liveinfo:runner", "PASS"), rec("liveinfo:LI-WEATHER", "PASS")]
+            with open(res, "w") as fh:
+                fh.write("\n".join(json.dumps(r) for r in base + [rec("liveinfo:LI-PLACE", "PASS")]) + "\n")
+            rc, text = run("verdict", "--manifest", manifest, "--suite", "voice-liveinfo-a",
+                           "--results", res, clock=False)
+            self.assertEqual(rc, 0, text)  # the other shards' checks are not judged here
+            with open(res, "w") as fh:
+                fh.write("\n".join(json.dumps(r) for r in base) + "\n")
+            rc, text = run("verdict", "--manifest", manifest, "--suite", "voice-liveinfo-a",
+                           "--results", res, clock=False)
+            self.assertEqual(rc, 1, text)  # its own check with no result is MISSING, never passed
+            self.assertIn("liveinfo:LI-PLACE has no result", text)
 
 
 # Real debug_tool lines (formats of DebugToolReceiver.kt; values from the 2026-10-16 device run

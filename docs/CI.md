@@ -70,6 +70,30 @@ until it is fixed. A quarantined green prints `VERDICT voice PASS (1 quarantined
 | B — emulator, voice | `Voice checks`, `Nav demo`, `Test worker` | manual or commit tag only (`[voice]`, `[navdemo]`, `[worker:<piece>]`) | scenario suites and nav pieces against the live **Gemini** free tier (debug-only provider override; the quota guard refuses any Qwen session) | as above; Gemini's voice is not Ayano's | Gemini free tier; not deterministic, so never on every commit |
 | C — release | `python3 scripts/test_matrix.py --release` ([RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)) | at release checkpoints | which release-blocking rows have current evidence | — | none |
 
+**Voice checks shards** (VC-SPLIT, owner 2026-10-19: each demo <=5 min, function tests in small units).
+`voice-checks.yml` is a matrix (`fail-fast: false`) of seven shards; each builds its own APK (never
+uploaded as an artifact: the debug APK is key-bearing), boots its own emulator and runs only its
+tests (`scripts/github_voice_checks.sh <apk> <shard>`). Each shard has its own verdict, suite
+`voice-<shard>` in `config/ci_checks.json`, listing only that shard's ids (a check of the shard with
+no result is MISSING = FAIL); `build:vendor-real` and `voice:quota-guard` are required in every shard
+(each builds and opens Gemini sessions). Together the shards cover suite `voice` (the full-run union,
+used by `<shard>` = `all` locally).
+
+| Shard | Suite | Checks |
+|---|---|---|
+| voice-a | voice-a | `voice:runner`, `voice:S1`..`S7` (incl. S4b, S5b) |
+| voice-b | voice-b | `voice:runner`, `voice:S8`..`S14` |
+| voice-c | voice-c | `voice:runner`, `voice:S15`..`S21` |
+| device | voice-device | `devrows:runner`, every `scenarios-device.json` row |
+| liveinfo-a | voice-liveinfo-a | `liveinfo:runner`, `LI-WEATHER`, `LI-PLACE` (x3) |
+| liveinfo-b | voice-liveinfo-b | `liveinfo:runner`, `LI-TRAFFIC`, `LI-ALONG` (x3) |
+| demo | voice-demo | optional `voice:demo-recording`, `wake:WAKE-SYNTH-001` |
+
+A `[voice]` push runs every shard; a dispatch takes the input `shards` (comma list, default `all`) to
+rerun one shard alone. Live info runs 3 repeats instead of 10 (fewer Gemini sessions per full run).
+Evidence goes to `ci/voice-evidence` under `runs/run_<run id>_a<attempt>_<sha>/<shard>/`; shards push
+concurrently with a fetch-rebase-retry loop.
+
 `Drive video` (`emulator.yml`) is a recording workflow, not a gate.
 
 Skipped runs: the emulator workflows listen to pushes but run only when the commit message carries

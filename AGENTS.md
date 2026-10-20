@@ -35,6 +35,8 @@ session may run them and record the result without asking: dispatch `device-chec
 job log (`get_job_logs` works from agent sessions). Record it in TEST_MATRIX / OPEN_PROBLEMS with the
 run id. What a run may claim is [docs/CI.md](docs/CI.md) (a `_stubvendor` run is never PASS evidence).
 Do not treat "needs the emulator" as a blocker or an owner item.
+Each demo runs at most 5 minutes and function tests run in small units (owner, 2026-10-19): `voice-checks.yml`
+runs as parallel shards of <=5 min of tests each, one verdict per shard (`runs/<run>/<shard>/`; [docs/CI.md](docs/CI.md)).
 
 Before you consider a change complete: `.\gradlew.bat test --rerun-tasks :app:assembleDebug`, then
 device evidence for anything touching audio, the map or lifecycle (`ACCEPTANCE_TESTS.md` says what

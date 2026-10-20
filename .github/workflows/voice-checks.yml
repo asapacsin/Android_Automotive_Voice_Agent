@@ -11,11 +11,22 @@
 # job logs are not readable from the agent sessions. The video is pushed to branch ci/drive-video.
 # From cursor/github-emulator-9a6b (Cursor, 2026-10-15), moved onto claude/10-15.
 # The job must not print coordinates, addresses, or transcripts.
+# SHARDS (owner 2026-10-19: each demo <=5 min, function tests in small units): a matrix of 7 shards,
+# each building its own APK (no APK artifact: the debug APK carries key-bearing config, docs/CI.md),
+# booting its own emulator and running only its tests; each shard has its own verdict (suite
+# matrix.suite in config/ci_checks.json) and pushes its evidence to runs/<run>/<shard>/.
+# A dispatch can pick shards with the input "shards" (comma list; empty or "all" = every shard);
+# a [voice] push runs every shard.
 
 name: Voice checks
 
 on:
   workflow_dispatch:
+    inputs:
+      shards:
+        description: "Comma list of shards (voice-a,voice-b,voice-c,device,liveinfo-a,liveinfo-b,demo) or all"
+        required: false
+        default: all
   push:
     branches:
       - claude/10-15
@@ -26,10 +37,17 @@ permissions:
 
 jobs:
   drive:
-    # A push runs it only when the commit message asks: [voice].
-    if: ${{ github.event_name != 'push' || contains(github.event.head_commit.message, '[voice]') }}
+    # One job per shard picked by the plan job below (a job-level if cannot see the matrix).
+    needs: plan
+    name: voice ${{ matrix.shard }}
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    env:
+      VOICE_SHARD: ${{ matrix.shard }}
+      VOICE_SUITE: ${{ matrix.suite }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -67,7 +85,7 @@ jobs:
           if [ -z "$missing" ]; then echo "ok=true" >>"$GITHUB_OUTPUT"; exit 0; fi
           echo "ok=false" >>"$GITHUB_OUTPUT"
           first="${missing# }"; first="${first%% *}"
-          python3 - "voice" "secret $first not set" <<'PY'
+          python3 - "${VOICE_SUITE:-voice}" "secret $first not set" <<'PY'
           import json, subprocess, sys
           suite, detail = sys.argv[1], sys.argv[2]
           required = json.load(open("config/ci_checks.json"))["suites"][suite]["required"]
@@ -117,30 +135,66 @@ jobs:
           ram-size: 2048M
           emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -no-snapshot -camera-back none
           disable-animations: true
-          script: bash scripts/github_voice_checks.sh "$HOME/nova-drive-build/app/outputs/apk/debug/app-debug.apk"
+          script: bash scripts/github_voice_checks.sh "$HOME/nova-drive-build/app/outputs/apk/debug/app-debug.apk" "$VOICE_SHARD"
 
       - name: Verdict
-        # Fails the job when a required check did not pass (scripts/ci_verdict.py, suite voice).
-        # A run that crashed before writing results fails here on the missing or empty file.
+        # Fails the shard when one of its own required checks did not pass (scripts/ci_verdict.py,
+        # suite matrix.suite, one of the voice-* shard suites); a check of this shard with no result
+        # is MISSING (FAIL). A run that crashed before writing results fails on the missing file.
         if: always()
-        run: python3 scripts/ci_verdict.py verdict --manifest config/ci_checks.json --suite voice --results evidence/results.jsonl --json-out evidence/verdict.json --summary "$GITHUB_STEP_SUMMARY"
+        run: python3 scripts/ci_verdict.py verdict --manifest config/ci_checks.json --suite "${VOICE_SUITE:-voice}" --results evidence/results.jsonl --json-out evidence/verdict.json --summary "$GITHUB_STEP_SUMMARY"
 
       - name: Push the evidence to ci/voice-evidence
+        # Seven shards push concurrently: commit on top of the fetched branch, retry on a rejected
+        # push (fetch + rebase), up to 8 times. The run dir is shared; each shard writes <run>/<shard>/.
         if: always()
         run: |
           test -d evidence || exit 0
-          dir="run_$(date -u +%Y%m%d_%H%M)_${GITHUB_SHA::7}"
+          dir="run_${GITHUB_RUN_ID}_a${GITHUB_RUN_ATTEMPT}_${GITHUB_SHA::7}"
           [ -f app/libs/Msc.jar.STUB ] && dir="${dir}_stubvendor"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          mv evidence "/tmp/$dir"
+          mv evidence "/tmp/evidence_$VOICE_SHARD"
           if git fetch origin ci/voice-evidence 2>/dev/null; then
             git switch -c ci/voice-evidence FETCH_HEAD
           else
             git switch --orphan ci/voice-evidence
           fi
-          mkdir -p runs
-          mv "/tmp/$dir" "runs/$dir"
-          git add "runs/$dir"
-          git commit -m "Voice checks $dir (run ${GITHUB_RUN_ID})"
-          git push origin ci/voice-evidence
+          mkdir -p "runs/$dir"
+          mv "/tmp/evidence_$VOICE_SHARD" "runs/$dir/$VOICE_SHARD"
+          git add "runs/$dir/$VOICE_SHARD"
+          git commit -q -m "Voice checks $dir/$VOICE_SHARD (run ${GITHUB_RUN_ID})"
+          for attempt in 1 2 3 4 5 6 7 8; do
+            if git push -q origin HEAD:ci/voice-evidence; then exit 0; fi
+            echo "push rejected (attempt $attempt): fetch and rebase"
+            sleep $((attempt * 3 + RANDOM % 5))
+            git fetch -q origin ci/voice-evidence
+            git rebase -q FETCH_HEAD
+          done
+          echo "::error title=evidence push::gave up after 8 attempts"
+          exit 1
+
+  plan:
+    # A push runs the checks only when the commit message asks: [voice] (every shard). A dispatch
+    # runs the shards named in the "shards" input (all by default); an unknown name fails here.
+    if: ${{ github.event_name != 'push' || contains(github.event.head_commit.message, '[voice]') }}
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+    steps:
+      - name: Pick the shards
+        id: pick
+        env:
+          SHARDS: ${{ inputs.shards }}
+        run: |
+          python3 - <<'PY' >>"$GITHUB_OUTPUT"
+          import json, os
+          all_shards = ["voice-a", "voice-b", "voice-c", "device", "liveinfo-a", "liveinfo-b", "demo"]
+          raw = os.environ.get("SHARDS", "").replace(" ", "")
+          picked = all_shards if raw in ("", "all") else [s for s in raw.split(",") if s]
+          bad = [s for s in picked if s not in all_shards]
+          if bad or not picked:
+              raise SystemExit(f"unknown shard(s): {bad}")
+          include = [{"shard": s, "suite": s if s.startswith("voice-") else "voice-" + s} for s in picked]
+          print("matrix=" + json.dumps({"include": include}))
+          PY
