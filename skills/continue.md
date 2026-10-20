@@ -75,6 +75,16 @@ call; executors were ~10-16%).
   discover_work lists independent items → first scope the next items (read-only Explore agents in
   parallel, one per item) and dispatch executors on disjoint approved_paths. Read a CI run when it
   finishes, not at the check-in time; a check-in is only the fallback.
+- **Scouts on a smaller model (owner 2026-10-20, Anthropic sub-agent guidance).** Read-only scoping
+  agents (Explore) run with `model: sonnet`; executors, reviewers and the decider keep the default.
+  A scout's claim ("already satisfied", "bind only") is checked against the row's own pass criteria
+  before anything is recorded - on 2026-10-20 three "bind only" rows met none of their criteria.
+- **Tests first for behaviour changes (Claude Code best practices).** A contract that changes
+  behaviour asks the executor to commit the failing test before the fix and to report that it failed
+  on the base; refactors keep the mutation check instead.
+- **Executor worktrees only through `scripts/new_worktree.sh`** (never a bare `git worktree add`:
+  on 2026-10-20 a hand-made worktree had no vendor jars and the executor came back BLOCKED). Tell the
+  executor to run Gradle from its worktree, not the repo-root `scripts/compact_test.py`.
 - **Wall-clock first (owner 2026-10-20).** The chain executor → verify → review → merge → CI is not
   run one step at a time:
   - *Overlap verify and review.* Start the reviewer as soon as the executor commits, and run the
