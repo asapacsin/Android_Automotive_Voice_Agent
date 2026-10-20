@@ -1,0 +1,38 @@
+{
+  "suite": "voice-demo",
+  "verdict": "PASS",
+  "vendor": "REAL",
+  "checks": [
+    {
+      "id": "build:vendor-real",
+      "required": true,
+      "status": "PASS",
+      "detail": "real vendor files packaged"
+    },
+    {
+      "id": "voice:quota-guard",
+      "required": true,
+      "status": "PASS",
+      "detail": "gemini_live, no qwen session"
+    },
+    {
+      "id": "voice:demo-recording",
+      "required": false,
+      "status": "PASS",
+      "detail": "voice_demo.mp4 written"
+    },
+    {
+      "id": "wake:WAKE-SYNTH-001",
+      "required": false,
+      "status": "FAIL",
+      "detail": "detection=0 to_active=0"
+    }
+  ],
+  "problems": [
+    {
+      "level": "warning",
+      "kind": null,
+      "text": "optional wake:WAKE-SYNTH-001 is FAIL"
+    }
+  ]
+}
