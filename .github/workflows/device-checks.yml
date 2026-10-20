@@ -175,7 +175,7 @@ jobs:
         if: always()
         run: |
           test -d evidence || exit 0
-          dir="run_$(date -u +%Y%m%d)_${GITHUB_SHA::7}_r${GITHUB_RUN_ID}"
+          dir="run_$(date -u +%Y%m%d)_${GITHUB_SHA::7}_r${GITHUB_RUN_ID}_a${GITHUB_RUN_ATTEMPT}"
           [ -f app/libs/Msc.jar.STUB ] && dir="${dir}_stubvendor"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
