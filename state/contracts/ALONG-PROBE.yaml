@@ -1,0 +1,36 @@
+schema: nova-task-contract/1
+task_id: ALONG-PROBE
+title: Debug-only probe - how many fuel stations Amap's RoutePOISearch returns on the active route at range 250, 500, 1000 and 2000 m (DIAG-BATCH showed code=1000 raw=0 at 250 m on an 8.6 km route)
+branch: exec/along-probe
+base_commit: 9e7dafc77b46210b0faded3cb27bb2a1daeaf919
+approved_paths:
+  - app/src/debug/**
+  - app/src/testDebug/**
+  - scripts/github_device_checks.sh
+allowed_changes:
+  - "A debug tool (DebugToolReceiver, tool name along_probe) that, while a route is calculated or guiding, runs RoutePOISearch for TypeGasStation from the active naviPath start to end at ranges 250, 500, 1000, 2000 m one after another and logs one NovaVoice line per range: along_probe range_m=<r> code=<sdk code> raw=<routePois size or -1> ms=<elapsed> - counts only (I-8), through the same logging route the debug receiver already uses"
+  - "A pure formatter for the line with a unit test in app/src/testDebug"
+  - "github_device_checks.sh: in the dispatch section, right after the existing LIVE-INFO-SDK along_route check (route still on screen), dispatch along_probe, wait for the four lines (bounded wait), and note each as PIECE ALONG-PROBE: <line>; no pf condition, no suite change"
+architecture_constraints:
+  - Debug source set only; release unchanged; product range stays 250 until a decision
+  - No coordinate, address, place name or POI id logged (I-8)
+forbidden_changes:
+  - No change under app/src/main
+forbidden_paths:
+  - .claude/**
+  - app/src/main/**
+  - TEST_MATRIX.yaml
+  - .github/**
+  - config/**
+required_verification:
+  - id: unit
+    kind: regression
+    command: ./gradlew --no-daemon -q :app:testDebugUnitTest --tests "*AlongProbe*"
+  - id: compile-debug
+    kind: compile
+    command: ./gradlew --no-daemon -q :app:compileDebugKotlin
+  - id: bash-syntax
+    kind: lint
+    command: bash -n scripts/github_device_checks.sh
+acceptance_criteria:
+  - The dispatch shard notes four along_probe lines, one per range
