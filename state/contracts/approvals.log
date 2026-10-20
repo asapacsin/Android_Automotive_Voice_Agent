@@ -17,3 +17,4 @@ P53-SPLIT c6b3cc2973b6ec37f0e1db2b8d450b0ad74748ef9b8f914a5abdaeabd72d515e APPRO
 P53-SPLIT c631ddda5cd2bc010c97f399ae97b90c3c961860c28fecd5d6056c09f5fa5052 APPROVED 2026-10-20 architect test moved to src/testDebug (the class is debug-only; src/test would break testReleaseUnitTest)
 DEV-SPLIT afff367c78ff55b03706ed02366f01f5f24ae43b1df486b5cbd13535c59e2cb5 APPROVED 2026-10-20 architect owner 2026-10-20 apply CI shard split and Aider offload
 AIDER-WRAP 9f4e09368c919eb139610647d49268142870ef69617d4e8948bb92b0842ddcef APPROVED 2026-10-20 architect owner 2026-10-20 apply CI shard split and Aider offload
+DIAG-BATCH 1f9726ecd798f2b3f6b7d22190e64877d132092414abd41db9729efe008dfb63 APPROVED 2026-10-20 architect diagnose along_route NO_RESULTS and P53 reuse=false
