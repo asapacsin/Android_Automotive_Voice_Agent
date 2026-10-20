@@ -1,0 +1,18 @@
+{
+ "task_id": "S18-LIFE",
+ "contract_sha256": "897d0e6f70953b3ba4fd55781957faf424f086288fb56054dc109bb483f75be3",
+ "tip": "740c0ea4a32d683fe1694009ad2ee53cfd872196",
+ "verified_by": "planner",
+ "at": "2026-10-20T11:05:02+00:00",
+ "results": [
+  {
+   "id": "unit",
+   "kind": "regression",
+   "command": "./gradlew --no-daemon -q :app:testDebugUnitTest --tests \"*ListeningLifecycleTest\" --tests \"*VoiceSessionGatewayTest\"",
+   "exit_code": 0,
+   "seconds": 49.6,
+   "log": "/root/nova-build/S18-LIFE/nova-verify/S18-LIFE/740c0ea4a32d-unit.log",
+   "log_sha256": "bcbd06e73ee58c0ef9d2d139f75cb5bf76a716d5644f7ec62f384651e6ed5b26"
+  }
+ ]
+}

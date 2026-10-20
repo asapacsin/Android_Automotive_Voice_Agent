@@ -100,6 +100,10 @@ call; executors were ~10-16%).
     tests), and one stray edit outside its files; the Opus-low executor then did it in ~5 min. Never
     for `<module>/src/**`, workflows or anything needing exploration; one failed round → hand the task
     to the executor. Licensed vendor files never go to it (the wrapper refuses them).
+- **Parallel Gradle needs its own build dir (2026-10-20):** every worktree shares `~/nova-drive-build`
+  unless `NOVA_BUILD_DIR` is set, so parallel executors overwrite each other's JUnit XML. Every
+  executor packet and every planner `verify` sets `NOVA_BUILD_DIR=$HOME/nova-build/<TASK_ID>`; nobody
+  runs `./gradlew --stop` while another executor may be building (it kills their builds).
 - **Device CI is sharded (DEV-SPLIT, 2026-10-20):** dispatch `device-checks.yml` with input `shards`
   (dispatch, drive, lifecycle, navpiece) to rerun only the affected shard; a full round is ~15 min.
   - Never ask any agent to read all of TEST_MATRIX.yaml or OPEN_PROBLEMS.md; give row ids/sections.
