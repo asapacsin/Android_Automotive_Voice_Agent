@@ -1,26 +1,26 @@
 {
  "task_id": "DIAG-BATCH",
  "contract_sha256": "1f9726ecd798f2b3f6b7d22190e64877d132092414abd41db9729efe008dfb63",
- "tip": "ffd1b7c67f79391e99ddfdc0bbcde7d5863f1bff",
+ "tip": "681362f5e9fcd43d5bf72753a39958e087346a82",
  "verified_by": "planner",
- "at": "2026-10-20T10:51:51+00:00",
+ "at": "2026-10-20T11:18:08+00:00",
  "results": [
   {
    "id": "unit-mapping",
    "kind": "regression",
    "command": "./gradlew --no-daemon -q :app:testDebugUnitTest --tests \"com.novadrive.app.nav.RouteLiveInfoMappingTest\" --tests \"com.novadrive.app.PreflightTimingTest\"",
    "exit_code": 0,
-   "seconds": 14.8,
-   "log": "/root/nova-drive-build/nova-verify/DIAG-BATCH/ffd1b7c67f79-unit-mapping.log",
-   "log_sha256": "be3705ca8d832c3d3af7d11d0c1c689dbef1eff14671a1e7da19b84cd13416d9"
+   "seconds": 16.9,
+   "log": "/root/nova-build/v-DIAG-BATCH/nova-verify/DIAG-BATCH/681362f5e9fc-unit-mapping.log",
+   "log_sha256": "bcbd06e73ee58c0ef9d2d139f75cb5bf76a716d5644f7ec62f384651e6ed5b26"
   },
   {
    "id": "compile-release",
    "kind": "compile",
    "command": "./gradlew --no-daemon -q :app:compileReleaseKotlin",
    "exit_code": 0,
-   "seconds": 13.9,
-   "log": "/root/nova-drive-build/nova-verify/DIAG-BATCH/ffd1b7c67f79-compile-release.log",
+   "seconds": 15.2,
+   "log": "/root/nova-build/v-DIAG-BATCH/nova-verify/DIAG-BATCH/681362f5e9fc-compile-release.log",
    "log_sha256": "be3705ca8d832c3d3af7d11d0c1c689dbef1eff14671a1e7da19b84cd13416d9"
   },
   {
@@ -29,7 +29,7 @@
    "command": "bash -n scripts/github_device_checks.sh",
    "exit_code": 0,
    "seconds": 0.0,
-   "log": "/root/nova-drive-build/nova-verify/DIAG-BATCH/ffd1b7c67f79-bash-syntax.log",
+   "log": "/root/nova-build/v-DIAG-BATCH/nova-verify/DIAG-BATCH/681362f5e9fc-bash-syntax.log",
    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   }
  ]

@@ -68,3 +68,9 @@ ca8f07588f28 PASS 2026-10-20 STYLE-GRADER reviewer: v3 rule exactly the decider'
 94e60792a2cc PASS 2026-10-20 DEV-SPLIT reviewer PASS; CI all 4 shards PASS run 39406821478 (slowest 15 min)
 ffd1b7c67f79 REVISE 2026-10-20 DIAG-BATCH direct android.util.Log in AmapRouteLiveInfo; must use DebugVoiceLog.log
 255ef0df407f REVISE 2026-10-20 AIDER-WRAP check-ignore fails open; no validate/path normalisation; staged stray not removed; aiderignore+no-detect-urls; key test vacuous
+b9d88569155c REVISE 2026-10-20 S18-TURN A7 relay-on case testable via reflection; fix GAP reason
+740c0ea4a32d REVISE 2026-10-20 S18-LIFE add @Disabled GAP for controller guidance sparing; reword wake message
+123c2da70835 REVISE 2026-10-20 S15-STYLE replace source-regex test with restored-style first-setup tests in both clients
+681362f5e9fc PASS 2026-10-20 DIAG-BATCH reviewer PASS after REVISE (DebugVoiceLog); dispatch shard 39411329040 lines recorded
+bad615a0304d REVISE 2026-10-20 AIDER-WRAP aiderignore dir negations re-include whole subtrees (app/libs reachable)
+6b15ac71f796 REVISE 2026-10-20 ALONG-PROBE tool along_probe without 2nd arg aborts under set -u

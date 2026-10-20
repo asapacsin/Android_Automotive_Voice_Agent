@@ -23,13 +23,20 @@ object PreflightTiming {
         val ttfbMs: Long = 0,
         val bodyMs: Long = 0,
         val reused: Boolean = false,
+        /** Negotiated protocol as OkHttp names it (http/1.1, h2, ...); "unknown" without a response. */
+        val protocol: String = "unknown",
+        /** Response header Connection equals close (case-insensitive): the server ends the connection. */
+        val connClose: Boolean = false,
+        /** Ms since the previous call on this recorder ended; -1 for the first. */
+        val gapMs: Long = -1,
     )
 
     fun pathOnly(url: String): String = url.toHttpUrlOrNull()?.encodedPath ?: "unknown"
 
     fun splitLine(call: Int, url: String, timing: CallTiming): String =
         "preflight_split call=$call path=${pathOnly(url)} dns_ms=${timing.dnsMs} connect_ms=${timing.connectMs} " +
-            "tls_ms=${timing.tlsMs} ttfb_ms=${timing.ttfbMs} body_ms=${timing.bodyMs} reused=${timing.reused}"
+            "tls_ms=${timing.tlsMs} ttfb_ms=${timing.ttfbMs} body_ms=${timing.bodyMs} reused=${timing.reused} " +
+            "protocol=${timing.protocol} conn_close=${timing.connClose} gap_ms=${timing.gapMs}"
 
     fun warmLine(runsMs: List<Long>): String = "preflight_search_warm runs=${runsMs.size} ms=${runsMs.joinToString(",")}"
 
@@ -37,6 +44,7 @@ object PreflightTiming {
     class Recorder {
         @Volatile var recording = false
         val calls = CopyOnWriteArrayList<Pair<String, CallTiming>>()
+        @Volatile private var lastEnd = 0L
 
         fun client(base: OkHttpClient): OkHttpClient = base.newBuilder()
             .eventListenerFactory { call -> if (recording) Listener(call.request().url.toString()) else EventListener.NONE }
@@ -49,9 +57,17 @@ object PreflightTiming {
             private var reqEnd = 0L; private var ttfb = 0L
             private var bodyStart = 0L; private var body = 0L
             private var connected = false
+            private var gap = -1L
+            private var protocol = "unknown"
+            private var connClose = false
             private fun now() = System.nanoTime()
             private fun ms(n: Long) = n / 1_000_000
 
+            override fun callStart(call: Call) { val last = lastEnd; if (last != 0L) gap = ms(now() - last) }
+            override fun responseHeadersEnd(call: Call, response: okhttp3.Response) {
+                protocol = response.protocol.toString()
+                connClose = response.header("Connection")?.trim()?.equals("close", ignoreCase = true) == true
+            }
             override fun dnsStart(call: Call, domainName: String) { dnsStart = now() }
             override fun dnsEnd(call: Call, domainName: String, inetAddressList: List<InetAddress>) { dns += now() - dnsStart }
             override fun connectStart(call: Call, inetSocketAddress: InetSocketAddress, proxy: Proxy) { connStart = now(); connected = true }
@@ -70,7 +86,8 @@ object PreflightTiming {
 
             private fun record() {
                 // Connect time includes TLS in OkHttp's events; report them separately.
-                calls += url to CallTiming(ms(dns), ms(conn - tls).coerceAtLeast(0), ms(tls), ms(ttfb), ms(body), reused = !connected)
+                calls += url to CallTiming(ms(dns), ms(conn - tls).coerceAtLeast(0), ms(tls), ms(ttfb), ms(body), reused = !connected, protocol = protocol, connClose = connClose, gapMs = gap)
+                lastEnd = now()
             }
         }
     }
