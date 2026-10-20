@@ -1,0 +1,4 @@
+piece=amap-live
+junit tests=2 failures=0 errors=0 skipped=0 parsed=yes
+DEMO-AMAP-LIVE-001 rule=MET
+gradle_exit=0
