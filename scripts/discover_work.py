@@ -495,6 +495,66 @@ def time_records():
     return out
 
 
+def _git_in(repo, *args):
+    try:
+        return subprocess.run(["git", *args], cwd=repo, capture_output=True, text=True,
+                              check=True).stdout.strip()
+    except Exception:
+        return None
+
+
+def unfinished_executor_work(repo=None):
+    """An exec branch with commits beyond its contract's base that HEAD has not merged is finished
+    executor work waiting on the planner: verify, review or merge. Read-only; never raises.
+
+    The repo root is `repo`, else the NOVA_DISCOVER_REPO environment variable (a test seam), else
+    REPO. Review status comes from delegation_check: the last valid reviews.log record for the tip
+    wins and malformed lines are ignored."""
+    repo = repo or os.environ.get("NOVA_DISCOVER_REPO") or REPO
+    out = []
+    try:
+        import delegation_check as dc
+        records, _ = dc.parse_log(os.path.join(repo, "state", "reviews.log"))
+    except Exception:
+        records = []
+    for path in sorted(glob.glob(os.path.join(repo, "state", "contracts", "*.yaml"))):
+        try:
+            text = open(path, encoding="utf-8").read()
+            fields = dict(re.findall(r"^(task_id|branch|base_commit):[ \t]*(\S+)[ \t]*$", text,
+                                     re.M))
+            tid, branch, base = fields.get("task_id"), fields.get("branch"), fields.get("base_commit")
+            if not (tid and branch and base and branch.startswith("exec/")):
+                continue
+            tip = _git_in(repo, "rev-parse", "--verify", "-q", "refs/heads/" + branch)
+            if not tip:
+                continue
+            ahead = _git_in(repo, "rev-list", "--count", base + ".." + tip)
+            if not ahead or ahead == "0":
+                continue
+            try:
+                subprocess.run(["git", "merge-base", "--is-ancestor", tip, "HEAD"], cwd=repo,
+                               capture_output=True, check=True)
+                continue  # merged
+            except subprocess.CalledProcessError:
+                pass
+            verified = False
+            vpath = os.path.join(repo, "state", "verification", tid + ".json")
+            if os.path.isfile(vpath):
+                try:
+                    verified = json.load(open(vpath, encoding="utf-8")).get("tip") == tip
+                except Exception:
+                    verified = False
+            rec = dc.lookup(records, [tip]) if records else None
+            reviewed = bool(rec) and rec[1] == "PASS"
+            stage = "verify" if not verified else ("review" if not reviewed else "merge")
+            out.append(candidate(P_UNFINISHED, "state/contracts/%s" % os.path.basename(path), tid,
+                                 "executor work on %s (%s, %s commits) awaits %s"
+                                 % (branch, tip[:12], ahead, stage)))
+        except Exception:
+            continue
+    return out
+
+
 SOURCES = (
     missing_artifact,
     failing_tests,
@@ -507,6 +567,7 @@ SOURCES = (
     open_problems,
     stale_state,
     time_records,
+    unfinished_executor_work,
     open_backlog,
 )
 
