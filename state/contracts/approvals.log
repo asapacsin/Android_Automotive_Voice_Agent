@@ -38,3 +38,4 @@ AGENT-ROUTING 56405208201c9799fd18fb42bed5bc1a81d80b71e5bb7d26269bdd6be5c1f7c1 A
 EVID-ATTEMPT 3ef5b0a64e4285822984199ea66c77b5c558b38966eef1f94587a9303b13e695 APPROVED 2026-10-20 architect rerun evidence nested in first attempt folder; Aider offload
 SYSIMG-RETRY 6d889bc0ac66930407a3c70fe36d912e3e0bd470197b7d4c18bea53b9b621e6b APPROVED 2026-10-20 architect recurring corrupt system image download, durable fix
 SYSIMG-WORKER 3d88bd8673cb6d0c6ed891aac689f751fdae78f798b32d287cf5e69219452c6e APPROVED 2026-10-20 architect SYSIMG-RETRY follow-up for test-worker
+OVERSPEED-XSM d79097de94813f53f211883f58c84c80750b1948ee245e3836465ec130e04b50 APPROVED 2026-10-20 architect overspeed evidence on a route with posted camera limits
