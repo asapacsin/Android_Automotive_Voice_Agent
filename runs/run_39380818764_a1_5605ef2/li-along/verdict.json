@@ -1,0 +1,32 @@
+{
+  "suite": "voice-li-along",
+  "verdict": "PASS",
+  "vendor": "REAL",
+  "checks": [
+    {
+      "id": "build:vendor-real",
+      "required": true,
+      "status": "PASS",
+      "detail": "real vendor files packaged"
+    },
+    {
+      "id": "liveinfo:runner",
+      "required": true,
+      "status": "PASS",
+      "detail": "1 scenario results"
+    },
+    {
+      "id": "liveinfo:LI-ALONG",
+      "required": true,
+      "status": "PASS",
+      "detail": "10/10 runs passed"
+    },
+    {
+      "id": "voice:quota-guard",
+      "required": true,
+      "status": "PASS",
+      "detail": "gemini_live, no qwen session"
+    }
+  ],
+  "problems": []
+}
