@@ -94,6 +94,14 @@ call; executors were ~10-16%).
     so contract script work only when a reviewer adds real value).
   - Decider (effort xhigh): only for real design forks; paste the evidence numbers into the question
     so it does not re-read whole documents.
+  - Aider offload (`scripts/offload_executor.py`, OpenRouter, ~$1 budget): only for one- or two-file
+    script/test edits whose contract names the exact change. Pilot 2026-10-20 (AIDER-WRAP, a 2-file
+    script with tests, qwen3-coder): 3 rounds, ~$0.09, ~13 min of Aider time, still failing (hanging
+    tests), and one stray edit outside its files; the Opus-low executor then did it in ~5 min. Never
+    for `<module>/src/**`, workflows or anything needing exploration; one failed round → hand the task
+    to the executor. Licensed vendor files never go to it (the wrapper refuses them).
+- **Device CI is sharded (DEV-SPLIT, 2026-10-20):** dispatch `device-checks.yml` with input `shards`
+  (dispatch, drive, lifecycle, navpiece) to rerun only the affected shard; a full round is ~15 min.
   - Never ask any agent to read all of TEST_MATRIX.yaml or OPEN_PROBLEMS.md; give row ids/sections.
   A scout's claim ("already satisfied", "bind only") is checked against the row's own pass criteria
   before anything is recorded - on 2026-10-20 three "bind only" rows met none of their criteria.
