@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-20T08:25:06",
+  "generated_at": "2026-10-20T18:50:44",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "4e01f71",
+    "commit": "b0ba8c2",
     "branch": "claude/10-20",
-    "subject": "continue skill: token budget per agent type (haiku/sonnet scouts, reviewer only for module source, decider with evidence pasted)",
-    "working_tree_clean": false,
-    "uncommitted_files": 4
+    "subject": "OPEN_PROBLEMS P69: voice-a evening run, Gemini heard S3/S4/S4b and never answered; re-run on fresh quota",
+    "working_tree_clean": true,
+    "uncommitted_files": 0
   },
   "tests": {
     "available": true,
@@ -78,6 +78,16 @@
   },
   "open_issues": [
     {
+      "id": "P69",
+      "title": "voice-a: Gemini Live heard four driver lines and never answered (2026-10-20 evening)",
+      "status": "OPEN - found 2026-10-20 (Voice checks run 39465918773 attempt 2 at 71fa705, ci/voice-evidence runs/run_39465918773_a2_71"
+    },
+    {
+      "id": "P68",
+      "title": "「路上有加油站吗」 finds nothing: Amap RoutePOISearch returns zero POIs on the active route",
+      "status": "OPEN - found 2026-10-20. Device checks dispatch shard (ci/device-evidence runs/run_20261020_45a3331_r39415295646/dispatc"
+    },
+    {
       "id": "P46",
       "title": "Assistant-spoken guidance (SPEC-018) gives up on the first prompt and never comes back",
       "status": "OPEN, found 2026-10-03 while recording the demo video. PC emulator nova_api34, build 9696ce5 (`claude/10-3`), Azure voic"
@@ -100,7 +110,7 @@
     {
       "id": "P53",
       "title": "c_nav waits for the real place search",
-      "status": "OPEN - fix merged (e37bc02) and Gemini rehearsal PASS (c_nav 3.5 s, 2026-10-12). Measured 2026-10-20 on the real app (De"
+      "status": "OPEN - reuse cause found 2026-10-20 (DIAG-BATCH, dispatch shard run 39411329040 at d40d164, ci/device-evidence runs/run_"
     },
     {
       "id": "P55",
@@ -185,13 +195,48 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "A0: | A0 | G-1 … G-1f measured on the short route | measurement (emulator) | `GUIDANCE-EMU-001` | not earned |",
-    "actionable_count": 75,
+    "NEXT_ACTION": "NAV-CANCEL-001: STALE_BIND: 算了 really cancels",
+    "actionable_count": 79,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 29,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-CANCEL-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-OVERSPEED-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-PICK-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-SEARCH-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "TRUTH-WEATHER-001",
+        "blocked_by": null
+      },
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
@@ -209,21 +254,7 @@
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-018-guidance-in-assistant-voice.md",
-        "item": "A3",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-015-fuzzy-driving-requests.md",
-        "item": "A4",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-018-guidance-in-assistant-voice.md",
         "item": "A4",
         "blocked_by": null
       },
@@ -232,13 +263,6 @@
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-010-screen-affordances.md",
         "item": "A5",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-015-fuzzy-driving-requests.md",
-        "item": "A6",
         "blocked_by": null
       },
       {
@@ -259,13 +283,6 @@
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-017-music-from-description.md",
-        "item": "A7",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-018-guidance-in-assistant-voice.md",
         "item": "A7",
         "blocked_by": null
       },
@@ -567,13 +584,6 @@
         "priority": 7,
         "class": "active milestone row",
         "source": "CURRENT_MILESTONE.md",
-        "item": "Spoken control names act on the phone without a model tool c",
-        "blocked_by": null
-      },
-      {
-        "priority": 7,
-        "class": "active milestone row",
-        "source": "CURRENT_MILESTONE.md",
         "item": "Weather selected from speech ≥ 9/10 with no SPEC-008 regress",
         "blocked_by": null
       },
@@ -582,6 +592,13 @@
         "class": "recorded technical debt",
         "source": "docs/TECH_DEBT.md",
         "item": "D-9",
+        "blocked_by": null
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "state/contracts/MIDROUTE-SPEED.yaml",
+        "item": "MIDROUTE-SPEED",
         "blocked_by": null
       },
       {
@@ -638,6 +655,27 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P64",
+        "blocked_by": null
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P68",
+        "blocked_by": null
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P69",
+        "blocked_by": null
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "state/contracts/VLC-EMU.yaml",
+        "item": "VLC-EMU",
         "blocked_by": null
       },
       {
