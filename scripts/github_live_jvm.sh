@@ -11,7 +11,8 @@
 #              tryout_check.py; row DEMO-TRYOUT-001 (RESULT PASS, 19 lines graded)
 #   style      Piper s_* clips (same voice), then NOVA_LIVE_DEMO=1 NOVA_LIVE_PROVIDER=gemini
 #              NOVA_LIVE_SCENES=style ... --tests '*LiveDemoRun*' (5-minute timeout), then
-#              style_check.py; row DEMO-STYLE-001 (RESULT PASS). NOVA_GEMINI_MODEL only when non-blank.
+#              style_check.py; row DEMO-STYLE-001 (RESULT PASS, graded=7 pass=7). Blank NOVA_GEMINI_MODEL
+#              means gemini-3.8-live here; other pieces keep the harness default. Summaries carry model=.
 # Usage: scripts/github_live_jvm.sh <text-live|amap-live|tryout|style>
 #        scripts/github_live_jvm.sh summarize <piece> <results.txt|-> <junit.xml|-> <out-dir>
 # Env (secrets, never printed): GEMINI_API_KEY, AMAP_WEB_KEY, NOVA_VENDOR_ZIP_URL[/_AUTH],
@@ -113,7 +114,7 @@ elif piece == "style":
     san = lambda v, n=40: re.sub(r"[^A-Za-z0-9_.,=+-]", "", v)[:n] or "-"
     if have:
         for raw in open(results, encoding="utf-8", errors="replace"):
-            m = re.match(r"^\s+(s_[A-Za-z0-9_]+)\s+(PASS|FAIL)\s+(\d+\.\d+s|--)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)(?:\s+(\d+))?", raw.rstrip("\n"))
+            m = re.match(r"^\s+(s_[A-Za-z0-9_]+)\s+(PASS|FAIL)\s+(-?\d+\.\d+s|--)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)(?:\s+(\d+))?", raw.rstrip("\n"))
             if m:
                 key, verdict, t, tools, style, f0, spread, pace, mk = m.groups()
                 graded.append((key, verdict, f"{key} {verdict} {t} tools={san(tools, 120)} style={san(style)} "
@@ -125,12 +126,13 @@ elif piece == "style":
     lines.append(f"style_check={'present' if have else 'missing'}")
     for _, _, row in graded:
         lines.append(row)
-    lines.append(f"graded={len(graded)} pass={sum(1 for _, v, _ in graded if v == 'PASS')}")
+    spass = sum(1 for _, v, _ in graded if v == 'PASS')
+    lines.append(f"graded={len(graded)} pass={spass}")
     if result:
         lines.append(f"RESULT {result[0]}" + (f" {result[1]}" if result[1] else ""))
     else:
         lines.append("RESULT missing")
-    lines.append("DEMO-STYLE-001 rule=" + ("MET" if result and result[0] == "PASS" else "NOT_MET"))
+    lines.append("DEMO-STYLE-001 rule=" + ("MET" if result and result[0] == "PASS" and len(graded) == 7 and spass == 7 else "NOT_MET"))
 elif piece == "amap-live":
     lines.append("DEMO-AMAP-LIVE-001 rule=" + ("MET" if xml_ok and tests == 2 and fail == 0 and err == 0 and skip == 0 else "NOT_MET"))
 open(os.path.join(outdir, "summary.txt"), "w").write("\n".join(lines) + "\n")
@@ -219,7 +221,8 @@ run_style() {
   piper_setup || return
   PIPER_MODEL="$voice/zh_CN-huayan-medium.onnx" "$py" tools/demo/live/make_clips_cloud.py style >/dev/null 2>&1 \
     || { blocked make-clips; return; }
-  [ -z "${NOVA_GEMINI_MODEL:-}" ] && unset NOVA_GEMINI_MODEL  # blank workflow input: the app default
+  # Blank workflow input: gemini-3.8-live for style only (the harness default 3.1 cannot show a pitch change).
+  export NOVA_GEMINI_MODEL="${NOVA_GEMINI_MODEL:-gemini-3.8-live}"
   # The row's own procedure, under a 5-minute timeout. Raw output is discarded.
   env NOVA_LIVE_DEMO=1 NOVA_LIVE_PROVIDER=gemini NOVA_LIVE_SCENES=style NOVA_LIVE_OUT="$run" \
     timeout 300 "$gradle" :app:testDebugUnitTest --tests '*LiveDemoRun*' >/dev/null 2>&1
@@ -272,6 +275,12 @@ else
   summarize "$piece" "${results:--}" "${xml:--}" "$out"
   echo "gradle_exit=$rc" >>"$out/summary.txt"
   [ "$rc" = 124 ] && echo "timeout=yes" >>"$out/summary.txt"
+  fi
+  # The model passed to the run (harness-default when blank); text-live may already carry its own.
+  if [ -f "$out/summary.txt" ] && ! grep -q '^model=' "$out/summary.txt"; then
+    if [ "$piece" = text-live ]; then m="${TEXT_LIVE_MODEL:-}"; else m="${NOVA_GEMINI_MODEL:-}"; fi
+    m="$(printf '%s' "$m" | LC_ALL=C tr -cd 'A-Za-z0-9._-' | cut -c1-80)"
+    echo "model=${m:-harness-default}" >>"$out/summary.txt"
   fi
 fi
 

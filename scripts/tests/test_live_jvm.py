@@ -183,11 +183,61 @@ class LiveJvmTest(unittest.TestCase):
         out = self.run_summary("text-live", results().replace("model=m", "model=gem-1.5"), XML.format(n=1, f=0))
         self.assertIn("model=gem-1.5", out)
 
+    def run_style_piece(self, model):
+        with tempfile.TemporaryDirectory() as d:
+            stub = os.path.join(d, "g.sh")
+            open(stub, "w").write('#!/bin/bash\necho "${NOVA_GEMINI_MODEL-<unset>}" >"$LIVE_JVM_OUT/model_seen"\nexit 0\n')
+            pystub = os.path.join(d, "py.sh")
+            open(pystub, "w").write("#!/bin/bash\nexit 0\n")
+            os.chmod(stub, 0o755); os.chmod(pystub, 0o755)
+            env = dict(os.environ, GEMINI_API_KEY="k", NOVA_GEMINI_MODEL=model, LIVE_JVM_SKIP_SETUP="1",
+                       LIVE_JVM_SKIP_PUSH="1", LIVE_JVM_GRADLE=stub, LIVE_JVM_OUT=d, LIVE_JVM_PYTHON=pystub,
+                       LIVE_JVM_TRYOUT_WORK=os.path.join(d, "work"))
+            subprocess.run(["bash", SCRIPT, "style"], capture_output=True, text=True, env=env)
+            return (open(os.path.join(d, "model_seen")).read().strip(),
+                    open(os.path.join(d, "style", "summary.txt")).read())
+
+    def test_style_blank_model_is_38(self):
+        seen, summary = self.run_style_piece("")
+        self.assertEqual(seen, "gemini-3.8-live")
+        self.assertIn("model=gemini-3.8-live\n", summary)
+
+    def test_style_explicit_model_passes_through(self):
+        seen, summary = self.run_style_piece("gemini-x")
+        self.assertEqual(seen, "gemini-x")
+        self.assertIn("model=gemini-x\n", summary)
+
+    def test_non_style_blank_model_line_harness_default(self):
+        with tempfile.TemporaryDirectory() as d:
+            stub = os.path.join(d, "g.sh")
+            open(stub, "w").write("#!/bin/bash\nexit 1\n")
+            os.chmod(stub, 0o755)
+            env = dict(os.environ, AMAP_WEB_KEY="k", NOVA_GEMINI_MODEL="", TEXT_LIVE_MODEL="",
+                       LIVE_JVM_SKIP_SETUP="1", LIVE_JVM_SKIP_PUSH="1", LIVE_JVM_GRADLE=stub, LIVE_JVM_OUT=d)
+            subprocess.run(["bash", SCRIPT, "amap-live"], capture_output=True, text=True, env=env)
+            self.assertIn("model=harness-default\n", open(os.path.join(d, "amap-live", "summary.txt")).read())
+
+    def test_style_pass_with_fewer_than_7_graded_not_met(self):
+        res = style_output()
+        rows = res.splitlines()
+        drop = next(i for i, r in enumerate(rows) if r.lstrip().startswith("s_"))
+        out = self.run_summary("style", "\n".join(rows[:drop] + rows[drop + 1:]) + "\n", XML.format(n=1, f=0))
+        self.assertIn("RESULT PASS", out)
+        self.assertIn("graded=6", out)
+        self.assertIn("DEMO-STYLE-001 rule=NOT_MET", out)
+
+    def test_style_negative_zero_time_row_parsed(self):
+        res = style_output().replace(" 1.5s ", " -0.0s ", 1)
+        out = self.run_summary("style", res, XML.format(n=1, f=0))
+        self.assertIn("s_mood1 PASS -0.0s", out)
+        self.assertIn("graded=7 pass=7", out)
+
     def test_workflow_shape(self):
         wf = yaml.safe_load(open(os.path.join(REPO, ".github/workflows/live-jvm.yml")))
         self.assertEqual(wf["name"], "Live JVM checks")
         self.assertEqual(wf["jobs"]["live"]["strategy"]["matrix"]["piece"], ["text-live", "amap-live", "tryout", "style"])
         self.assertEqual(wf["jobs"]["live"]["timeout-minutes"], 40)
+        self.assertIn("3.8", wf[True]["workflow_dispatch"]["inputs"]["gemini_model"]["description"])
 
 
 if __name__ == "__main__":
