@@ -24,7 +24,7 @@ One tool, `query_live_info`, with a `kind`:
 | --- | --- | --- | --- |
 | `weather` | `where`: `here` / `destination` / a city name | REST `v3/weather/weatherInfo` (`extensions=base` now, `all` for 「明天」); adcode from REST `v3/geocode/regeo` (here) or the destination's `adcode` | web-service key |
 | `route_traffic` | none | Navi SDK `AMapNavi.getTrafficStatuses` on the active route | active navigation |
-| `along_route` | `category`: `fuel` / `charging` / `service_area` / `toilet` | Search SDK `RoutePOISearch` (in the bundled `navi-3dmap-location-search`, search 9.8.1) | a calculated route |
+| `along_route` | `category`: `fuel` / `charging` / `service_area` / `toilet` | REST `v3/place/polygon` with the category `types` codes over a corridor built from the route geometry (read through the `RouteLiveInfo` port); P68 | a calculated route + web-service key |
 | `place_details` | `target`: `destination` or a picker position | REST `v3/place/detail?id=<poiId>&extensions=all` | a POI id |
 
 Why one tool instead of four: every declaration competes for the model's attention, and a missed
@@ -40,8 +40,8 @@ returns to the drive, and arrival while it is open ends the drive and closes it 
 ## Non-goals
 
 - News, stock prices, fuel prices, exchange rates: still no source → still refused.
-- A second POI client. REST calls go into `AmapPoiClient`; the two SDK calls (`getTrafficStatuses`,
-  `RoutePOISearch`) go behind a port whose implementation lives in `app/nav/amap`, the only package
+- A second POI client. REST calls go into `AmapPoiClient`; the SDK calls (`getTrafficStatuses` plus a route
+  geometry/progress read; `RoutePOISearch` was removed, P68) go behind a port whose implementation lives in `app/nav/amap`, the only package
   allowed to import `com.amap` (I-9, `ArchitectureRulesTest.onlyOneFileImportsAmap`).
   `LiveDestinationCandidateSource` stays the one place candidates come from.
 - Proactive announcements (「前方拥堵」) — excluded by [B-026](../BACKLOG.md#b-026--one-owner-for-who-may-speak).
@@ -85,6 +85,16 @@ that kind's cue and the model's turn ends without calling it, the app dispatches
 call through the dispatcher and sends the result with `sendText`. SPEC-010 B4 makes the two paths
 execute once between them.
 
+B7. **`along_route` search bounds (P68).** Exactly 1 `v3/place/polygon` call per question, no retry, no
+fallback call, inside the 4 s deadline; `types=` (fuel 010100, charging 011100, service_area 180300,
+toilet 200300), `offset=25`, `page=1`, `extensions=base`. Lookahead from the car along the route:
+min(remaining, L), L = 10 km (fuel, charging, toilet) or 50 km (service_area). Polygon: Douglas-Peucker
+50 m, 8 points on a 550 m circle round each vertex, convex hull, closed ring, <= 6 decimals,
+<= 64 vertices (`AlongRouteCorridor`, pure). Keep a POI within w = 500 m of the route and 0..L ahead
+of the car, de-duplicated by id, ordered by along-route distance, at most `MAX_ALONG_ROUTE` = 5. The
+result carries the extent searched; a response count above `returned` logs `truncated=true`, no second
+page.
+
 ## Failure behaviour
 
 | Case | Code | Driver hears |
@@ -93,9 +103,10 @@ execute once between them.
 | No location fix for `here` | `NO_LOCATION` | 还没有定位，查不了这里的天气 |
 | `destination` with no destination | `NO_DESTINATION` | asks where |
 | `route_traffic` / `along_route` without a route | `NOT_NAVIGATING` | 现在没有在导航; a 「附近有加油站吗」 asked without a route is a nearby search instead: `navigate_to`「附近的加油站」 (2026-10-13, tryout run: the refusal was what a first-time driver heard) |
-| Timeout (4 s) / HTTP error / `status≠1` | `LIVE_INFO_UNAVAILABLE` | 现在查不到 — never a guess |
+| Timeout (4 s) / HTTP error / `status≠1`, incl. QPS infocodes `10004`, `10019`-`10021` | `LIVE_INFO_UNAVAILABLE` | 现在查不到 — never a guess |
 | Amap daily quota (infocode `10003`, `10044`) | `LIVE_INFO_QUOTA` | 今天的查询次数用完了 |
-| Zero results | `NO_RESULTS` | 沿途没有找到加油站 |
+| `along_route` without a web-service key | `AMAP_WEB_KEY_MISSING` | 天气查询还没有配置 |
+| Zero results | `NO_RESULTS` | 前方10公里沿途没有找到加油站 when the lookahead stopped short of the destination; 沿途没有找到加油站 only when the whole remaining route was searched |
 | Called twice in one turn | `DUPLICATE_IN_TURN` | nothing extra |
 
 Each code gets a `ToolFailureAdvice` entry so the model's sentence is shaped, not invented.
@@ -104,6 +115,10 @@ Each code gets a `ToolFailureAdvice` entry so the model's sentence is shaped, no
 
 `live_info kind=<k> ok=<b> code=<c> ms=<n> cached=<b>`. Never a coordinate, adcode, city, address
 or POI name in a log (I-8); REST URLs carrying `location=` are never logged.
+
+`along_route_search code=<status|infocode> total=<n> returned=<n> kept=<n> lookahead_m=<L> vertices=<v> ms=<t>`
+(+ `truncated=true` when the response count exceeds `returned`). Counts only: never the polygon, URL,
+names or ids.
 
 ## Acceptance criteria
 
@@ -114,10 +129,10 @@ or POI name in a log (I-8); REST URLs carrying `location=` are never logged.
 | A3 | A weather claim with no result this turn is still corrected; with a result it is not | regression protection | `FalseCapabilityClaimTest` + `TRUTH-WEATHER-001` updated | built — `FalseCapabilityClaimTest` (+6 unit tests); `TRUTH-WEATHER-001` scenario S7 re-specified in `scenarios.json` and the matrix row updated 2026-09-25; **not run on device** |
 | A4 | News / price words stay refused | negative | `TRUTH-LIVEINFO-NEWS-001` | unit only — `FalseCapabilityClaimTest.newsAndPricesStayRefusedEvenWithALiveResultInTheTurn`; matrix row `TRUTH-LIVEINFO-NEWS-001` created 2026-09-25, device part NOT_RUN |
 | A5 | Nothing identifying a place is logged; SDK types stay in `app/nav/amap` | architectural | `ArchitectureRulesTest.locationIsNotLogged` extended, `onlyOneFileImportsAmap` | built — `locationIsNotLogged` extended (adcode/city/address/POI/URL + the live_info log shape); `AmapRouteLiveInfo` added to `onlyOneFileImportsAmap` |
-| A6 | `along_route` results open the existing picker and 「第一个」 navigates | production wiring | `LiveInfoAlongRouteWiringTest` | built — `LiveInfoAlongRouteWiringTest` 2/2 (fake SDK edges; `RoutePOISearch` itself never run) |
+| A6 | `along_route` results open the existing picker and 「第一个」 navigates | production wiring | `LiveInfoAlongRouteWiringTest`, `AlongRouteCorridorTest` | built — `LiveInfoAlongRouteWiringTest` 2/2 (fake SDK edges); P68: only the fake changed (route geometry/progress instead of `RoutePOISearch`) |
 | A7 | Existing SPEC-008 selection does not regress after the declaration is added | device | SPEC-008 suite before/after, same build otherwise (LOCAL_DEVICE) | queued — `LIVE-INFO-REGRESSION-001`, NOT_RUN (needs phone) |
 | A8 | Each kind is selected from speech in ≥ 9 of 10 runs (pass^k) | device | `LIVE-INFO-DEVICE-001` (GitHub emulator, Gemini override) | earned — LIVE-INFO-DEVICE-001 PASS (TEST_MATRIX, voice checks run 38997653201, 2026-10-17: each kind 10/10; emulator, not a phone) |
-| A9 | Live Amap calls return real data with the owner's keys | external service | `LIVE-INFO-L6-001` | partial — REST weatherInfo / regeo / place/detail returned real data with the owner web key from the cloud container 2026-09-25; SDK kinds not reachable off-device |
+| A9 | Live Amap calls return real data with the owner's keys | external service | `LIVE-INFO-L6-001` | partial — REST weatherInfo / regeo / place/detail returned real data with the owner web key from the cloud container 2026-09-25; `along_route` is now REST `place/polygon`, device evidence `ci/device-evidence` `runs/run_20261020_1e246fd_r39423127550/dispatch` (ok=true, total=2 kept=1, 977 ms); `route_traffic` SDK not reachable off-device |
 | A10 | The tool is declared and dispatched; capabilities.yaml splits `realtime_weather_traffic_news`; registry agrees | reconciliation | `ArchitectureRulesTest.declaredToolsAndDispatchedToolsAgree`, `harness_check.py`, `test_matrix.py --validate` | built — `declaredToolsAndDispatchedToolsAgree`, `CapabilityContractTest` green; `test_matrix.py --validate` 0 problems; live_info.* protected by `LIVE-INFO-UNIT-001` (2026-09-25); the remaining `--protection` problems are stale device evidence unrelated to SPEC-011 |
 
 ## Open product decisions
@@ -125,7 +140,8 @@ or POI name in a log (I-8); REST URLs carrying `location=` are never logged.
 - **Which kinds first.** Default order: weather → route_traffic → along_route → place_details
   (cheapest and most asked first). Each kind is shippable on its own.
 - **Web-service quota.** The personal key's daily limits are the owner's console setting; the
-  default cache (B4) keeps weather to at most 6 calls per hour per city.
+  default cache (B4) keeps weather to at most 6 calls per hour per city. Each `along_route`
+  question makes exactly one search call against the 5,000/month personal base-search quota (P68).
 
 ## Implementation status
 
@@ -134,6 +150,10 @@ truth-guard commit after them). Step 0's fixtures were recorded; its SPEC-008 de
 4's device runs (A7, A8) and step 6 are not done. All kinds are declared in one go, so A7 must be
 measured with the full declaration. Unit evidence for `:app` came from a scratch mirror with stub
 iFlytek classes, because `Msc.jar` is not available in the cloud container.
+
+P68 (decided by: decider, 2026-10-20; `state/decisions/P68-along-route-source.md`): `RoutePOISearch`
+returned nothing on device (`run_20261020_09b4c5f_r39417607816`), so `along_route` is the Web
+`place/polygon` corridor search; merged in `exec/p68-poly` (`d395e03`).
 
 Steps, each a separate verified commit:
 
