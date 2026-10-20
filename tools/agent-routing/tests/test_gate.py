@@ -354,8 +354,21 @@ class TestReviseGate(GateBase):
         self.mock.push(200, openai_reply(review_json()))
         g.run_review("t")
         self.assertEqual(g.evaluate()["status"], "PASS")
-        self.assertFalse((root / ".agent-routing/state/gate_base.json").exists())
+        head_sha = git(root, "rev-parse", "HEAD").stdout.strip()
+        self.assertEqual(json.loads((root / ".agent-routing/state/gate_base.json").read_text())["base"], head_sha)
         self.assertEqual(g.evaluate()["status"], "CLEAN")
+
+    def test_edit_commit_after_clean_stop_still_blocks(self):
+        root, cfg = self.repo()
+        g = Gate(cfg)
+        self.assertEqual(g.evaluate()["status"], "CLEAN")
+        self.edit(root)
+        git(root, "commit", "-qam", "unreviewed")
+        out = io.StringIO()
+        stop_hook.run(io.StringIO(json.dumps({"cwd": str(root)})), out)
+        o = json.loads(out.getvalue())
+        self.assertEqual(o["decision"], "block")
+        self.assertIn("review missing", o["reason"])
 
     def test_unsendable_paths_fail_closed_and_hash_only(self):
         root, cfg = self.repo()
@@ -421,10 +434,13 @@ class TestReviseGate(GateBase):
     def test_high_globs_respect_name_boundaries(self):
         r = _rules()
         for p in ("src/ui/PreviewScreen.kt", "src/nav/NavigateUseCase.kt", "src/x/delegate.py",
-                  "src/AuthorList.kt", "src/chem/Reagent.kt", "src/Internet.txt.kt", "src/Gateway.kt"):
+                  "src/AuthorList.kt", "src/chem/Reagent.kt", "src/Internet.txt.kt", "src/Gateway.kt",
+                  "src/Cryptic.kt", "src/Authoring.kt", "src/Socketeer.kt"):
             self.assertEqual(classify([p], "+a = 1\n", r)[0], "MEDIUM", p)
         for p in ("src/AuthManager.kt", "src/OAuthClient.kt", "src/review_gate.py", "src/HttpClient.kt",
-                  "src/agent/Planner.kt", "src/stop_hook.py", "src/net/Api.kt", "src/NetworkModule.kt"):
+                  "src/agent/Planner.kt", "src/stop_hook.py", "src/net/Api.kt", "src/NetworkModule.kt",
+                  "src/CryptUtil.kt", "src/EncryptionHelper.kt", "src/decrypt_blob.py", "src/Authorizer.kt",
+                  "src/authorize.py", "src/AuthorizationFilter.kt", "src/SocketPool.kt", "src/web_sockets.py"):
             self.assertEqual(classify([p], "+a = 1\n", r)[0], "HIGH", p)
 
 

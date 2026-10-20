@@ -97,7 +97,14 @@
         "permissions",
         "credential",
         "credentials",
-        "keystore"
+        "keystore",
+        "crypt",
+        "encrypt",
+        "encryption",
+        "decrypt",
+        "decryption",
+        "authorize",
+        "authorizer"
       ]
     },
     {
@@ -151,7 +158,8 @@
         "socket",
         "websocket",
         "okhttp",
-        "retrofit"
+        "retrofit",
+        "sockets"
       ]
     },
     {

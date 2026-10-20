@@ -190,12 +190,16 @@ class Gate:
         return d
 
     def _advance_base(self):
-        """scope=all: drop the stored base once nothing in scope differs from HEAD (next base = HEAD)."""
-        if self.cfg["gate"]["scope"] != "all" or not self._stored_base():
+        """scope=all, after PASS/CLEAN: record HEAD as the base when nothing in scope differs from HEAD, so the
+        next evaluation diffs against this last clean state (an edit + commit cannot hide); otherwise keep it."""
+        if self.cfg["gate"]["scope"] != "all":
             return
-        paths, _ = changed_paths(self.root, head(self.root))
+        h = head(self.root)
+        paths, _ = changed_paths(self.root, h)
         if not [p for p in paths if not match_any(p, self.cfg["ignore"])]:
-            (self.dir / "gate_base.json").unlink()
+            self._save("gate_base.json", {"base": h})
+        elif not self._stored_base():
+            self._save("gate_base.json", {"base": h})
 
     def clear(self, force=False, reason=None):
         """Clear session/base state. Without force only when the gate is PASS or CLEAN."""
