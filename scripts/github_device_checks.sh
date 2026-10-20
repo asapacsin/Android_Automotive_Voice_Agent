@@ -174,6 +174,8 @@ shot nav_route_preview
 tool nav_start emulator:50
 if wait_for "nav_started" 30; then note "NAV: navigation started (emulator 50 km/h)"; res device:NAV-START-001 PASS "nav_started"
 else note "NAV: navigation did not start"; res device:NAV-START-001 FAIL "no nav_started"; fi
+# NAV-MID-ROUTE-001: drive above the route's speed-camera limits (40-60 km/h) so the overspeed ring shows.
+tool nav_speed 80
 view() { tool nav_view_state x; sleep 1; note "P58 view $1: $(nova | grep 'debug_tool tool=nav_view_state ' | tail -1 | grep -oE 'naviMode=[a-z_0-9]+ bearing=[0-9.-]+ tilt=[0-9.-]+')"; }
 sleep 10; shot nav_t10; view t10
 sleep 10; shot nav_t20; view t20
@@ -198,6 +200,8 @@ adb pull /sdcard/checks_drive.mp4 "$ev/checks_drive_phone.mp4" >/dev/null || tru
 ffmpeg -v error -y -i "$ev/checks_drive_phone.mp4" -c copy -movflags +faststart "$ev/checks_drive.mp4" && rm -f "$ev/checks_drive_phone.mp4" || true
 shot nav_end
 note "NAV-MID-ROUTE-001 / NAV-UI-00x: maneuver=$(count 'nav_maneuver ') lane_shown=$(count 'nav_lane_info shown=true') junction_shown=$(count 'nav_junction shown=true') traffic_update=$(count 'nav_traffic_status_update') presentation_driving=$(count 'nav_presentation mode=driving') lights=$(count 'nav_remain_lights') cameras=$(count 'nav_camera_ahead') speed_over=$(count 'nav_speed .*over=1') ring=$(count 'nav_play_ring') guidance_play=$(count 'nav_guidance_play_start')"
+mr_over="$(count 'nav_speed .*over=1')"; mr_ring="$(count 'nav_play_ring')"
+pf device:NAV-MID-ROUTE-OVERSPEED "speed_over=$mr_over ring=$mr_ring" '[ "$mr_over" -ge 1 ]'
 # NAV-UI-002..006 from lines already collected: the P58 view notes (mode, bearing numbers) and the counters above.
 ui_modes="$(grep -E '^P58 view ' "$summary" | grep -oE 'naviMode=[a-z_0-9]+' | sort | uniq -c | tr -s ' ' | tr '\n' ',')"
 ui_views="$(grep -cE '^P58 view .*naviMode=' "$summary" || true)"
