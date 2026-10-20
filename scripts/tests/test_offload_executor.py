@@ -140,7 +140,7 @@ class OffloadTest(unittest.TestCase):
         code, out = self.run_main(self.contract(), FAKE_MODE="fix")
         self.assertEqual(code, 0, out)
         self.assertIn("OFFLOAD T-1 DONE rounds=1", out)
-        self.assertIn("checks=value:PASS,scope:PASS", out)
+        self.assertIn("checks=scope:PASS,value:PASS", out)
         self.assertEqual(len(self.calls()), 1)
         self.assertEqual(git(self.repo, "rev-parse", "HEAD").strip(), self.base)  # never commits
 
@@ -173,15 +173,25 @@ class OffloadTest(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(self.repo, "stray_new.txt")))
 
     def test_key_not_printed(self):
-        code, out = self.run_main(self.contract(), FAKE_MODE="fix", OPENROUTER_API_KEY="sk-SECRET-123")
+        keycheck = os.path.join(self.repo, "keycheck.py")
+        with open(keycheck, "w") as f:
+            f.write("import os, sys; sys.exit('OPENROUTER_API_KEY' in os.environ)\n")
+        git(self.repo, "add", "keycheck.py")
+        git(self.repo, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "kc")
+        c = self.contract(base_commit=git(self.repo, "rev-parse", "HEAD").strip(), required_verification=[
+            {"id": "value", "kind": "regression", "command": "%s check.py" % sys.executable},
+            {"id": "nokey", "kind": "regression", "command": "%s keycheck.py" % sys.executable}])
+        code, out = self.run_main(c, FAKE_MODE="fix", OPENROUTER_API_KEY="sk-SECRET-123")
         self.assertEqual(code, 0, out)
+        self.assertIn("nokey:PASS", out)
         self.assertNotIn("sk-SECRET-123", out)
 
     def test_aider_flags_and_aiderignore(self):
         code, out = self.run_main(self.contract(approved=("lib/code.py", "lib/new.py")), FAKE_MODE="fix")
         self.assertEqual(code, 0, out)
         self.assertEqual(read(self.log + ".ignore").splitlines(),
-                         ["*", "**", "!/lib/", "!/lib/code.py", "!/lib/new.py"])
+                         ["*", "**", "!/lib/code.py", "!/lib/new.py"])
+        self.assertFalse(any(l.endswith("/") for l in read(self.log + ".ignore").splitlines()))
 
     def test_check_ignore_error_refused(self):
         os.symlink("lib", os.path.join(self.repo, "link"))

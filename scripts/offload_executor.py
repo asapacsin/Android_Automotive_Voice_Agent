@@ -80,17 +80,9 @@ def task_message(c):
 
 
 def aiderignore_text(files):
-    """Ignore everything, then un-ignore exactly the file list (and their parent dirs)."""
-    lines, dirs = ["*", "**"], []
-    for f in files:
-        parts = posixpath.normpath(f).split("/")
-        for i in range(1, len(parts)):
-            d = "/".join(parts[:i])
-            if d not in dirs:
-                dirs.append(d)
-    lines += ["!/%s/" % d for d in dirs]
-    lines += ["!/%s" % posixpath.normpath(f) for f in files]
-    return "\n".join(lines) + "\n"
+    """Ignore everything, then un-ignore exactly each listed file. No directory negations: Aider
+    matches full paths with GitWildMatchPattern, so "!/dir/" would re-include the whole subtree."""
+    return "\n".join(["*", "**"] + ["!/%s" % posixpath.normpath(f) for f in files]) + "\n"
 
 
 def run_aider(wt, model, msg, files):
@@ -153,7 +145,8 @@ def _dirty(wt):
 
 def run_checks(c, wt):
     """[(id, ok, output)] for required_verification plus scope."""
-    res = []
+    _, errs = tc.scope(c, wt, worktree=wt)
+    res = [("scope", not errs, "task_contract scope", "\n".join(errs))]
     env = {k: v for k, v in os.environ.items() if k != "OPENROUTER_API_KEY"}
     for v in c.get("required_verification") or []:
         try:
@@ -163,8 +156,6 @@ def run_checks(c, wt):
             res.append((v["id"], r.returncode == 0, v["command"], r.stdout))
         except (OSError, subprocess.TimeoutExpired) as e:
             res.append((v["id"], False, v["command"], "cannot run: %s" % e))
-    _, errs = tc.scope(c, wt, worktree=wt)
-    res.append(("scope", not errs, "task_contract scope", "\n".join(errs)))
     return res
 
 
