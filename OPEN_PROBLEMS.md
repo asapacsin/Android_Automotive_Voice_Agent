@@ -520,7 +520,7 @@ software rendering, which this rig cannot remove.
 
 ## P65 — With her voice on the guidance, a talkative route puts her to sleep between driver lines
 
-**Status:** OPEN 2026-10-16. Found by nav demo run 38849988938 (relay on, 120 km/h): after the
+**Status:** RESOLVED 2026-10-20 (decision B, test rig only): Nav demo run 39372815117 at 6f4cc04 (full route, 8 driver lines, relay on; ci/nav-demo runs/run_20261020_0530_6f4cc04) - navpiece:P65-awake PASS early_sleeps=0 capped_waits=0, every line answered (navigate_to, choose_navigation_option, control_climate, control_music, query_live_info), fatal=0. The product limit stays documented in docs/LISTENING_LIFECYCLE.md. Was: OPEN 2026-10-16. Found by nav demo run 38849988938 (relay on, 120 km/h): after the
 climate reply she went to 休眠中 and the music, ETA and gas lines got no answer (tools: climate only).
 **Measured:** 47 guidance prompts in ~10 min (about one every 12 s); the microphone is gated while
 guidance plays (P3, SPEC-012), and `ListeningLifecycle` sleeps after 30 s with no driver speech

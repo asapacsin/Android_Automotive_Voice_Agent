@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-20T05:30:56",
+  "generated_at": "2026-10-20T05:35:21",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "cd3c951",
+    "commit": "478201e",
     "branch": "claude/10-20",
-    "subject": "LIVEINFO-MAP contract approved",
+    "subject": "EVID-RUNID verification record (verify PASS at 16fdc42)",
     "working_tree_clean": false,
-    "uncommitted_files": 4
+    "uncommitted_files": 1
   },
   "tests": {
     "available": true,
@@ -117,11 +117,6 @@
       "id": "P64",
       "title": "The emulator demo runs at about 6.5 frames per second",
       "status": "IMPROVED, rest is a test-rig limit (2026-10-16): 6.5 → 10.6-10.7 fps. Originally OPEN 2026-10-16. Owner test 10-16: \"the"
-    },
-    {
-      "id": "P65",
-      "title": "With her voice on the guidance, a talkative route puts her to sleep between driver lines",
-      "status": "OPEN 2026-10-16. Found by nav demo run 38849988938 (relay on, 120 km/h): after the"
     }
   ],
   "tech_debt": [
@@ -192,7 +187,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "A0: | A0 | G-1 … G-1f measured on the short route | measurement (emulator) | `GUIDANCE-EMU-001` | not earned |",
-    "actionable_count": 78,
+    "actionable_count": 77,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 29,
@@ -658,13 +653,6 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P64",
-        "blocked_by": null
-      },
-      {
-        "priority": 9,
-        "class": "unfinished or open problem",
-        "source": "OPEN_PROBLEMS.md",
-        "item": "P65",
         "blocked_by": null
       },
       {
