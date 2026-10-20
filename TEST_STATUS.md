@@ -20,7 +20,6 @@ Updated 2026-09-21 · 166 tests
 
 **HUMAN_VALIDATION_READY = FALSE**
 
-- the registry does not validate: 3 problem(s)
 - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - TRUTH-MEDIA-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -94,7 +93,7 @@ Updated 2026-09-21 · 166 tests
 | ID | Capability | Test | Owner | Status | Release blocking | Evidence |
 | --- | --- | --- | --- | --- | --- | --- |
 | APPS-001 | apps | open_app reaches a real app | AUTONOMOUS | PASS | no | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
-| AFFORDANCE-DEVICE-001 | architecture | Spoken control names act on the phone through the local path, once, with no model execution | AUTONOMOUS | STALE | no | 2026-10-16 GitHub emulator API 34 (arm64 app), Gemini debug override, voice checks run … |
+| AFFORDANCE-DEVICE-001 | architecture | Spoken control names act on the phone through the local path, once, with no model execution | AUTONOMOUS | PASS | no | 2026-10-16 GitHub emulator API 34 (arm64 app), Gemini debug override, voice checks run … |
 | AFFORDANCE-UNIT-001 | architecture | Spoken on-screen controls match whole utterances and run once per turn | AUTONOMOUS | PASS | yes | 2026-09-25 cloud: 2066 JVM tests, 0 failures |
 | ARCH-PROVIDER-001 | architecture | Vendor wire vocabulary stays inside adapters | AUTONOMOUS | PASS | no | checked against a deliberately reintroduced breach |
 | GEMINI-LIVE-CLOUD-001 | architecture | The app's Gemini client against the real API (cloud) | AUTONOMOUS | PASS | no | 2026-09-29: ac_on, fan_up, nav_wanda 3/3 PASS (docs/reports/2026-09-29-gemini-live-prob… |
@@ -124,7 +123,7 @@ Updated 2026-09-21 · 166 tests
 | HELP-001 | dialogue_context | 「你能做什么」 / 「你能干啥」 gets a short capability answer | AUTONOMOUS | PASS | yes | 2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemi… |
 | HELP-UNIT-001 | dialogue_context | Help-request grammar and nudge are unit-covered | AUTONOMOUS | PASS | yes | UtteranceIntentResolver grammar + DriverTurn.CAPABILITY_HELP 2026-09-22 unit PASS |
 | PROCDEATH-001 | lifecycle | The app survives process death | AUTONOMOUS | NOT_RUN | yes | STALE_BIND apk_digest mismatch |
-| LIVE-INFO-DEVICE-001 | live_info | Each live_info kind is selected from speech | AUTONOMOUS | STALE | yes | 2026-10-16 GitHub emulator, Gemini debug override, run 38835222165 at 66de495 (runs/run… |
+| LIVE-INFO-DEVICE-001 | live_info | Each live_info kind is selected from speech | AUTONOMOUS | PASS | yes | 2026-10-16 GitHub emulator, Gemini debug override, run 38835222165 at 66de495 (runs/run… |
 | LIVE-INFO-L6-001 | live_info | Every live_info source returns real data with the owner's key | AUTONOMOUS | NOT_RUN | yes | 2026-09-25 partial: REST weatherInfo base/all, regeo and place/detail returned real dat… |
 | LIVE-INFO-REGRESSION-001 | live_info | SPEC-008 suite does not regress with query_live_info added | AUTONOMOUS | NOT_RUN | yes | — |
 | LIVE-INFO-UNIT-001 | live_info | query_live_info parses, fails honestly and opens the picker for along-route results | AUTONOMOUS | PASS | yes | 2026-09-25 cloud: :app ran in a stub-iFlytek mirror because vendor Msc.jar is absent in… |
