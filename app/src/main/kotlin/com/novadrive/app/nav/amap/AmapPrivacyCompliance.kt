@@ -24,7 +24,7 @@ object AmapPrivacyCompliance {
             MapsInitializer.updatePrivacyAgree(app, true)
             NaviSetting.updatePrivacyShow(app, true, true)
             NaviSetting.updatePrivacyAgree(app, true)
-            // The Search SDK has its own switch; RoutePOISearch (SPEC-011) refuses without it.
+            // The Search SDK has its own privacy switch; its services refuse without it.
             ServiceSettings.updatePrivacyShow(app, true, true)
             ServiceSettings.updatePrivacyAgree(app, true)
             acknowledged = true
