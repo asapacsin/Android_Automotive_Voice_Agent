@@ -13,17 +13,17 @@ approved_paths:
   - docs/CI.md
   - AGENTS.md
 allowed_changes:
-  - voice-checks.yml becomes a matrix job over shards voice-a (S1..S7), voice-b (S8..S14), voice-c (S15..S21), device, liveinfo-a (LI-WEATHER, LI-PLACE), liveinfo-b (LI-TRAFFIC, LI-ALONG), demo (demo recording and the wake check); fail-fast false; each shard builds the APK itself (no APK artifact upload - the debug APK carries key-bearing config, docs/CI.md), boots the emulator, runs only its scenarios
+  - voice-checks.yml becomes a matrix job over shards voice-a (S1..S7), voice-b (S8..S14), voice-c (S15..S21), device, li-weather, li-place, li-traffic, li-along (one live-info kind per shard), demo (demo recording and the wake check); fail-fast false; each shard builds the APK itself (no APK artifact upload - the debug APK carries key-bearing config, docs/CI.md), boots the emulator, runs only its scenarios
   - workflow_dispatch input "shards" (comma list, default all) so one shard can be rerun alone; the push trigger keeps working ([voice] runs all shards)
-  - Scenario selection by id in the speech harness runner if it lacks it; liveinfo repeat 3 instead of 10
+  - Scenario selection by id in the speech harness runner if it lacks it; liveinfo keeps --repeat 10 (LIVE-INFO-DEVICE-001 requires >= 9/10 per kind); each live-info shard runs one kind, about 8 minutes - a documented exception to the 5-minute target because a 10-repeat rate cannot be split across shards and judged per shard (planner 2026-10-20)
   - Each shard's verdict judges only that shard's checks (a shard's own check that produced no result is MISSING, never passed); the manifest gains per-shard suites or a filter so the full set of required checks is unchanged across all shards together
   - Evidence pushed per shard to ci/voice-evidence under runs/<run dir>/<shard>/ with a fetch-rebase-retry loop (shards push concurrently)
   - AGENTS.md records the owner rule (2026-10-19) - each demo at most 5 minutes, function tests in small units
-  - Script tests updated/added for the shard selection and per-shard verdict
+  - Script tests updated/added for the shard selection and per-shard verdict; the plan step de-duplicates shard names; AGENTS.md's ci/voice-evidence layout line reflects runs/<run>/<shard>/
 architecture_constraints:
   - Evidence stays text-free (I-8); no secret is printed or uploaded
   - Required checks across all shards together equal today's voice required set (minus the retired cantonese suite)
-  - Gemini quota - at most the same number of model sessions per full run as today, fewer is fine
+  - Gemini sessions - docs/CI.md states the full-run session count old vs new with its counting basis (guard session per shard, runner passes, demo bridge); the increase is only the per-shard guard and runner start sessions
 forbidden_changes:
   - No app code; no change to scenario oracles (expect/forbid) or their pass rules
 forbidden_paths:
@@ -42,5 +42,5 @@ required_verification:
     command: python3 -m unittest discover -s scripts/tests -t .
 acceptance_criteria:
   - A dispatched run (all shards) produces one verdict per shard and every required voice check appears in exactly one shard
-  - Each shard's test phase (after boot) is about 5 minutes or less on the runner
+  - Each shard's test phase (after boot) is about 5 minutes or less on the runner, except the four live-info shards (about 8 minutes, documented)
   - Script tests green

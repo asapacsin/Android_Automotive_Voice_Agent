@@ -5,3 +5,4 @@ P67-FIX c882b473b459da65671cf65a94882906d8fe9a73e8bd6d20d83ce8212f15cdf7 APPROVE
 NAVUI-PF 58e2b644062beeeed8c6afdcd29e5466cfafb7414a8c520d14cfe95dd4097dd9 APPROVED 2026-10-20 planner NAV-UI rows judged from existing device logs
 VC-SPLIT 3d57cfb2403cbb964fe50b2a84c17a4cefaced40ac7b2e682ab95f511d914d4f APPROVED 2026-10-20 planner owner 2026-10-19 time-optimised plan
 LIVE-JVM 79059ebc15a126db5ace33a44afb7d29a42f561fbbbbc874349573a7dd9e3f03 APPROVED 2026-10-20 planner owner 2026-10-19 time-optimised plan
+VC-SPLIT fd0ea9dfdb95b7c4ae53fd3250d9af8e0ca50f2c2c1568c1c72f181448d77c7a APPROVED 2026-10-20 planner R1 live-info 10 repeats one kind per shard; R2 session count documented
