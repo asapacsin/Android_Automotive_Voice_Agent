@@ -133,6 +133,10 @@ java.lang.SecurityException: Neither user 10263 nor current process has android.
 
 ---
 
+## P68 — 「路上有加油站吗」 finds nothing: Amap RoutePOISearch returns zero POIs on the active route
+
+**Status:** OPEN - found 2026-10-20. Device checks dispatch shard (ci/device-evidence runs/run_20261020_45a3331_r39415295646/dispatch, ALONG-PROBE debug probe) on the 8.6 km 珠海站 route: `along_route_search code=1000 raw=0` for TypeGasStation, and the probe gave raw=0 at range 250, 500, 1000 and 2000 m (code 1000 each, ~1 s per call). Zero fuel stations within 2 km of an 8.6 km city route is not plausible, so the range is not the cause; the query form or the service behind it is. route_traffic on the same route works (LIVE-INFO-SDK-TRAFFIC PASS). Next: ALONG-PROBE2 compares the polyline query form, another driving mode, and the web nearby search at the route midpoint. No product change until that shows which query returns real stations.
+
 ## P46 — Assistant-spoken guidance (SPEC-018) gives up on the first prompt and never comes back
 
 **Status:** OPEN, found 2026-10-03 while recording the demo video. PC emulator nova_api34, build 9696ce5 (`claude/10-3`), Azure voice on, 助手播报导航 on. Short drive to 长隆海洋王国 started by voice, emulator speed 60 km/h. **Owner 2026-10-15:** offered A/B options (P46 wait ~1.2 s for her reply; D-9 drop an unchecked reply; P48 code-written confirmations) and chose to leave this alone for now - current behaviour stays; not to be reopened without the owner.
