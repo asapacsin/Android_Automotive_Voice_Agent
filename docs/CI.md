@@ -115,6 +115,10 @@ The increase (+40) is only per-shard guard sessions (+8) and runner pass starts 
 Evidence goes to `ci/voice-evidence` under `runs/run_<run id>_a<attempt>_<sha>/<shard>/`; shards push
 concurrently with a fetch-rebase-retry loop.
 
+**Concurrency limit (2026-10-20).** All 9 shards at once on the free Gemini key hit
+`GEMINI_LIVE_QUOTA_EXCEEDED` (run 39351864713, voice-c S17; 3 codes, an infrastructure failure, not the
+app). Dispatch at most the 3 voice shards (`voice-a,voice-b,voice-c`) together, then the rest.
+
 `Drive video` (`emulator.yml`) is a recording workflow, not a gate.
 
 Skipped runs: the emulator workflows listen to pushes but run only when the commit message carries

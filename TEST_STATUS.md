@@ -6,8 +6,8 @@ Updated 2026-09-21 · 163 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 98 |
-| autonomous FAIL | 2 |
+| autonomous PASS | 99 |
+| autonomous FAIL | 1 |
 | incomplete | 0 |
 | partial pass | 0 |
 | not run | 30 |
@@ -16,7 +16,7 @@ Updated 2026-09-21 · 163 tests
 | human fail | 1 |
 | blocked external | 0 |
 | not applicable | 1 |
-| **release-blocking failures** | **1** |
+| **release-blocking failures** | **0** |
 
 **HUMAN_VALIDATION_READY = FALSE**
 
@@ -30,7 +30,6 @@ Updated 2026-09-21 · 163 tests
 - AEC-DELAY-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - PLAYBACK-BUFFER-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - LIFECYCLE-ERROR-001 is AUTONOMOUS and NOT_RUN - run it or fix it
-- SUITE-SCENARIO-001 is AUTONOMOUS and FAIL - run it or fix it
 - PROCDEATH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - VISION-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - CAMERA-RELEASE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -78,7 +77,7 @@ Updated 2026-09-21 · 163 tests
 | navigation | 27 | 20 | 5 | 2 |
 | performance | 2 | 2 | 0 | 0 |
 | permissions | 7 | 5 | 0 | 2 |
-| regression | 2 | 1 | 0 | 0 |
+| regression | 2 | 2 | 0 | 0 |
 | release | 8 | 3 | 5 | 0 |
 | reliability | 8 | 5 | 1 | 2 |
 | saved_places | 3 | 3 | 0 | 0 |
@@ -172,7 +171,7 @@ Updated 2026-09-21 · 163 tests
 | PERM-DENY-001 | permissions | A revoked microphone permission fails honestly | AUTONOMOUS | PASS | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
 | TRANSCRIPT-FADE-EMU-001 | permissions | On the emulator the transcript bubble leaves the map about 10 s after the last line | AUTONOMOUS | NOT_RUN | no | 2026-10-02 cloud attempt, not a result: the app installed on nova34 (software-only) but… |
 | TRANSCRIPT-FADE-UNIT-001 | permissions | The last exchange clears after a quiet period and never while the conversation is live | AUTONOMOUS | PASS | no | 2026-10-02 cloud, claude/10-2: TranscriptBubbleFadeTest 7/0, TranscriptBubbleSessionSim… |
-| SUITE-SCENARIO-001 | regression | The live scenario suite | AUTONOMOUS | FAIL | yes | 2026-09-20: 20/20, exit 0 |
+| SUITE-SCENARIO-001 | regression | The live scenario suite | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20, exit 0 |
 | SUITE-UNIT-001 | regression | The whole unit and architecture suite | AUTONOMOUS | PASS | yes | 2026-09-21: 819 tests, 0 failures, 0 skipped (post-P31 full suite --rerun-tasks) |
 | ABI-POLICY-001 | release | Must armeabi-v7a keep working? | HUMAN_DECISION | HUMAN_REQUIRED | no | — |
 | ABI-SIZE-001 | release | APK size per ABI | AUTONOMOUS | PASS | no | 2026-09-20: universal release APK 216.7 MB on disk, 228.0 MB uncompressed |
