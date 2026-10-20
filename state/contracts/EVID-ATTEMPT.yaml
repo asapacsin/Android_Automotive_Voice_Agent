@@ -1,0 +1,24 @@
+schema: nova-task-contract/1
+task_id: EVID-ATTEMPT
+title: Device-check evidence folder carries the run attempt, so a re-run of a shard writes its own folder instead of nesting evidence_<shard> inside the first attempt's folder
+branch: exec/evid-attempt
+base_commit: 038b850b23a58f0245e326339442549e79c40a3e
+approved_paths:
+  - .github/workflows/device-checks.yml
+allowed_changes:
+  - "In the evidence push step of .github/workflows/device-checks.yml, the run directory name line dir=\"run_$(date -u +%Y%m%d)_${GITHUB_SHA::7}_r${GITHUB_RUN_ID}\" becomes dir=\"run_$(date -u +%Y%m%d)_${GITHUB_SHA::7}_r${GITHUB_RUN_ID}_a${GITHUB_RUN_ATTEMPT}\"; nothing else changes"
+architecture_constraints:
+  - One-line change; YAML stays valid
+forbidden_changes:
+  - No other line changes
+forbidden_paths:
+  - .claude/**
+required_verification:
+  - id: yaml
+    kind: lint
+    command: python3 -c "import yaml;yaml.safe_load(open('.github/workflows/device-checks.yml'))"
+  - id: attempt-present
+    kind: lint
+    command: grep -q '_a${GITHUB_RUN_ATTEMPT}' .github/workflows/device-checks.yml
+acceptance_criteria:
+  - The evidence dir name ends with _a<attempt>
