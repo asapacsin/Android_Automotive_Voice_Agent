@@ -66,3 +66,38 @@ data class RouteTraffic(
         }
     }
 }
+
+/** A route POI as plain values, already lifted out of the SDK result. [lat]/[lon] null = no point. */
+data class RoutePoi(
+    val id: String?,
+    val title: String?,
+    val lat: Double?,
+    val lon: Double?,
+    val distanceMeters: Int,
+)
+
+/** SDK-free decisions behind [RouteLiveInfoSource] implementations. Never logs (I-8). */
+object RouteLiveInfoMapping {
+    /** Remaining-route statuses when non-empty, otherwise the path's own statuses. */
+    fun <T> chooseTrafficStatuses(remaining: List<T>?, path: List<T>?): List<T>? =
+        remaining?.takeIf { it.isNotEmpty() } ?: path
+
+    /** Route POIs to candidates: id falls back to r<index>, no point is dropped, nearest first. */
+    fun toCandidates(pois: List<RoutePoi>): List<DestinationCandidate> =
+        pois.mapIndexedNotNull { index, item ->
+            val lat = item.lat ?: return@mapIndexedNotNull null
+            val lon = item.lon ?: return@mapIndexedNotNull null
+            runCatching {
+                DestinationCandidate(
+                    id = item.id?.takeIf { it.isNotBlank() } ?: "r$index",
+                    name = item.title.orEmpty(),
+                    address = "",
+                    district = "",
+                    latitude = lat,
+                    longitude = lon,
+                    distanceMeters = item.distanceMeters,
+                    poiId = item.id?.takeIf { it.isNotBlank() },
+                )
+            }.getOrNull()
+        }.sortedBy { it.distanceMeters ?: Int.MAX_VALUE }
+}
