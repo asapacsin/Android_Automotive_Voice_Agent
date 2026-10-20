@@ -1,0 +1,68 @@
+{
+  "suite": "voice-b",
+  "verdict": "PASS",
+  "vendor": "REAL",
+  "checks": [
+    {
+      "id": "build:vendor-real",
+      "required": true,
+      "status": "PASS",
+      "detail": "real vendor files packaged"
+    },
+    {
+      "id": "voice:runner",
+      "required": true,
+      "status": "PASS",
+      "detail": "7 scenario results"
+    },
+    {
+      "id": "voice:S8",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S9",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S10",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S11",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S12",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S13",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S14",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:quota-guard",
+      "required": true,
+      "status": "PASS",
+      "detail": "gemini_live, no qwen session"
+    }
+  ],
+  "problems": []
+}
