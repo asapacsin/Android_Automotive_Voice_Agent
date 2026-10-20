@@ -8,11 +8,21 @@
 # Evidence: evidence/<name>.jpg screenshots and evidence/summary.txt, both pushed by the workflow.
 # summary.txt holds event names, counts, result codes and ok flags only - never a coordinate, an
 # address, a place name or a transcript (AGENTS.md); the same lines go out as annotations.
+# Shards (DEV-SPLIT): DEVICE_SHARD picks the sections to run - dispatch, drive, lifecycle or
+# navpiece (device-checks.yml runs one shard per emulator); unset or "all" runs every section in
+# the original order. The setup above the sections (install, launch helpers, origin) is shared.
+# Every section starts with `if in_shard <shard>; then` (scripts/tests/test_device_shards.py).
 # Verdict: each row is recorded in evidence/results.jsonl (scripts/ci_verdict.py, suite "device");
 # the workflow's Verdict step fails the job on a required failure. Best-effort steps (screen
 # recording, ffmpeg, logcat clearing, launcher cosmetics) are marked "|| true" on purpose.
 set -eu
 apk="${1:?apk path}"
+shard="${DEVICE_SHARD:-}"
+case "$shard" in
+  ""|all|dispatch|drive|lifecycle|navpiece) ;;
+  *) echo "::error title=device checks::unknown DEVICE_SHARD"; exit 2 ;;
+esac
+in_shard() { [ -z "$shard" ] || [ "$shard" = all ] || [ "$shard" = "$1" ]; }
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 ev="$root/evidence"
@@ -92,8 +102,16 @@ setup_key() { # env-name tool file
   tool "$2" x; sleep 2
   note "secret $1: set, $2 -> $(result_of "$2")"
 }
+# A shard that skipped the dispatch section installs the web key itself (P59 and the nav pieces
+# search places, as in a full run where the dispatch section already installed it).
+ensure_web_key() {
+  [ -n "${web_key:-}" ] && return 0
+  app_up || true
+  web_key=0; setup_key AMAP_WEB_KEY amap_web_setup amap_web_setup.txt && web_key=1 || true
+}
 
 # ---- dispatch rows -------------------------------------------------------------------------
+if in_shard dispatch; then
 mark
 if app_up; then note "app: map up"; res device:app-up PASS "map up"
 else note "app: map did not come up"; res device:app-up FAIL "map did not come up"; fi
@@ -138,8 +156,10 @@ music_refused=no
 grep -qE '"ok":false|"error":"[A-Z_]+"|Rejected\(' <<<"$music_res" && music_refused=yes
 pf device:APPS-001 "allowed_ok=$apps_ok/2 music_refused=$music_refused" '[ "$apps_ok" = 2 ] && [ "$music_refused" = yes ]'
 adb shell am start -W -n com.novadrive.app/.MainActivity >/dev/null
+fi
 
 # ---- simulated drive to arrival ------------------------------------------------------------
+if in_shard drive; then
 mark
 app_up || true
 adb shell screenrecord --time-limit 180 --bit-rate 6000000 /sdcard/checks_drive.mp4 &
@@ -199,6 +219,12 @@ fatal="$(app_fatal)"
 anr="$(app_anr)"
 note "NAV crash check: fatal=$fatal anr=$anr"
 pf device:NAV-CRASH-001 "fatal=$fatal anr=$anr" '[ "$fatal" = 0 ] && [ "$anr" = 0 ]'
+fi
+
+# ---- LIVE-INFO-SDK through the navigation controller -------------------------------------------
+# Needs no drive state (it routes by place search with the web key from the dispatch section), so
+# it runs in the dispatch shard; in a full run it still follows the drive.
+if in_shard dispatch; then
 # LIVE-INFO-L6 (SDK half, emulator) through the app's own navigation controller, as the model would
 # reach it (the debug nav_route/nav_start above bypass the controller, so query_live_info answers
 # NOT_NAVIGATING there - run 20261020_0928). navigate_to -> pick the first place (routes on screen):
@@ -220,6 +246,7 @@ li_traffic="$(nova | grep -oE 'live_info kind=route_traffic ok=(true|false) code
 note "LIVE-INFO-SDK route_traffic: ${li_traffic:-no live_info line} nav_started_lines=$guiding dispatch $(result_of dispatch)"
 pf device:LIVE-INFO-SDK-TRAFFIC "${li_traffic:-no live_info line}" 'grep -q "ok=true" <<<"$li_traffic"'
 tool dispatch "exit_navigation_mode"; sleep 4
+fi
 
 # ---- P59: a cancelled route choice leaves no route drawn, and the next search still draws -------
 # The voice flow, by dispatch: navigate_to -> candidates -> choose index 2 -> routes -> exit (the
@@ -230,6 +257,7 @@ tool dispatch "exit_navigation_mode"; sleep 4
 # (route drawn) and p59_<round>_cancelled (no line) are the visual proof and are read by a person.
 # The debug nav_route path above calculates without the controller, so nav_route_preview shows no
 # route line since this fix (it never reaches the PREVIEW presentation).
+if in_shard lifecycle; then
 p59_round() { # round name
   mark
   tool dispatch "navigate_to:destination=珠海站"; sleep 8
@@ -244,6 +272,7 @@ p59_round() { # round name
   [ "$(count 'nav_presentation mode=idle.*autoDraw=false')" -ge 1 ] || p59_bad=$((p59_bad + 1))
   note "P59 $1: candidates=$(count 'nav_resolve_candidates') calc=$calc cancelled=$(count 'nav_flow_cancelled') idle_off=$(count 'nav_presentation mode=idle.*autoDraw=false') preview_on=$(count 'nav_presentation mode=preview.*autoDraw=true')"
 }
+ensure_web_key
 p59_bad=0
 if [ "${web_key:-0}" = 1 ]; then
   adb shell am force-stop com.novadrive.app; app_up || true
@@ -254,8 +283,10 @@ if [ "${web_key:-0}" = 1 ]; then
 else
   res device:P59 SKIPPED "secret AMAP_WEB_KEY not set"
 fi
+fi
 
 # ---- process death -------------------------------------------------------------------------
+if in_shard lifecycle; then
 mark
 app_up || true
 adb shell input keyevent KEYCODE_HOME; sleep 2
@@ -269,8 +300,10 @@ sleep 5; shot procdeath_relaunched
 pd_fatal="$(app_fatal)"
 pf device:PROCDEATH-001 "map_up=$pd_up fatal=$pd_fatal" '[ "$pd_up" = yes ] && [ "$pd_fatal" = 0 ]'
 note "PROCDEATH-001: fatal=$pd_fatal wake=$(nova | grep -oE 'wake_[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ';') listening_claims=$(count 'state=LISTENING')"
+fi
 
 # ---- revoked microphone --------------------------------------------------------------------
+if in_shard lifecycle; then
 mark
 adb shell pm revoke com.novadrive.app android.permission.RECORD_AUDIO || true
 adb shell am force-stop com.novadrive.app
@@ -282,8 +315,10 @@ pm_fatal="$(app_fatal)"
 note "PERM-DENY-001: voice start -> $(result_of voice) mic_missing=$mic_missing wake_permission_failure=$(count 'wake_permission_failure') listening=$listening fatal=$pm_fatal"
 pf device:PERM-DENY-001 "mic_missing=$mic_missing listening=$listening fatal=$pm_fatal" '[ "$mic_missing" -ge 1 ] && [ "$listening" = 0 ] && [ "$pm_fatal" = 0 ]'
 adb shell pm grant com.novadrive.app android.permission.RECORD_AUDIO || true
+fi
 
 # ---- transcript bubble probe ---------------------------------------------------------------
+if in_shard lifecycle; then
 mark
 adb shell am start -W -n com.novadrive.app/.TranscriptFadeProbeActivity --el speaking_ms 5000 --el held_ms 15000 >/dev/null
 sleep 3; shot transcript_probe_shown
@@ -294,9 +329,12 @@ bub_s="$(grep -o transcript_bubble_shown <<<"$bubble" | wc -l)"; bub_f="$(grep -
 pf device:TRANSCRIPT-FADE-EMU-001 "shown=$bub_s faded=$bub_f" '[ "$bub_s" -ge 1 ] && [ "$bub_f" -ge 1 ]'
 # The probe activity must not stay on top of the app (run 38753002305: every later screenshot was the probe).
 adb shell am force-stop com.novadrive.app
+fi
 
 # ---- Nav demo piece checks (owner rule 2026-10-16: test each piece before a full demo run) -----
 # Relay off (the shipped path). No voice model is opened.
+if in_shard navpiece; then
+ensure_web_key
 mark
 tool guidance_relay off
 adb shell am force-stop com.novadrive.app
@@ -329,6 +367,7 @@ else
   note "PIECE checks: route failed, not run"
   res device:PIECE-P61 FAIL "route failed"
   res device:PIECE-P63 FAIL "route failed"
+fi
 fi
 
 ls -1 "$ev" | tee -a "$summary" >/dev/null
