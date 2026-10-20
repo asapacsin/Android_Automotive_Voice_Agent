@@ -20,6 +20,7 @@ approved_paths:
   - app/src/test/kotlin/com/novadrive/app/LiveInfoToolTest.kt
   - app/src/test/kotlin/com/novadrive/app/LiveInfoAlongRouteWiringTest.kt
   - app/src/test/resources/**
+  - app/src/main/kotlin/com/novadrive/app/nav/amap/AmapPrivacyCompliance.kt
   - app/src/test/kotlin/com/novadrive/app/livedemo/HengqinWorld.kt
   - app/src/test/kotlin/com/novadrive/app/RouteLiveInfoMappingTest.kt
   - app/src/debug/kotlin/com/novadrive/app/AlongProbe.kt
@@ -27,6 +28,7 @@ approved_paths:
   - app/src/testDebug/kotlin/com/novadrive/app/AlongProbeTest.kt
   - scripts/github_device_checks.sh
 allowed_changes:
+  - "AmapPrivacyCompliance.kt: comment-only edit so it no longer names RoutePOISearch (no code change)"
   - "Implement exactly the decision in state/decisions/P68-along-route-source.md (read it fully: bounds, polygon construction, filter, ordering, cap, wording, failures, log line, code locations, deletions)"
   - "Tests first: AlongRouteCorridorTest (pure geometry: closed convex <= 64 vertices <= 6 decimals; coverage within w incl. a U-turn; behind-car and off-corridor POIs dropped; ordering by along-route distance; de-dup by id), a place/polygon parser fixture with fixed fake coordinates (no real place names from logs), LiveInfoToolTest/LiveInfoAlongRouteWiringTest cases for NO_RESULTS wording with extent, AMAP_WEB_KEY_MISSING, status != 1 -> LIVE_INFO_UNAVAILABLE, and the picker still opening with <= 5 ordered candidates"
   - "Delete RoutePOISearch use, RoutePoi, toCandidates, alongRouteSearchLine and their tests; in debug AlongProbe remove the SDK forms (keep the web_around line only if still useful, else remove the probe tool and its script block)"
