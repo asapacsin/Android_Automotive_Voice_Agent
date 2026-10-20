@@ -1,0 +1,10 @@
+{"id": "build:vendor-real", "status": "PASS", "detail": "real vendor files packaged"}
+{"id": "voice:S15", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S16", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S17", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S18", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S19", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S20", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:S21", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "voice:runner", "status": "PASS", "detail": "7 scenario results"}
+{"id": "voice:quota-guard", "status": "PASS", "detail": "gemini_live, no qwen session"}
