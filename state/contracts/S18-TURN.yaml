@@ -5,7 +5,7 @@ branch: exec/s18-turn
 base_commit: 3e1484a4968e6ecf6ce89072a32069412b75d778
 approved_paths:
   - app/src/test/kotlin/com/novadrive/app/voice/GeminiLiveClientTest.kt
-  - app/src/test/kotlin/com/novadrive/app/DriverTurnPipelineTest.kt
+  - app/src/test/kotlin/com/novadrive/app/voice/DriverTurnPipelineTest.kt
   - app/src/test/kotlin/com/novadrive/app/AndroidToolDispatcherTest.kt
   - app/src/test/kotlin/com/novadrive/app/nav/amap/AmapGuidanceVoiceTest.kt
   - app/src/test/kotlin/com/novadrive/app/**/GuidanceRelayTest.kt
