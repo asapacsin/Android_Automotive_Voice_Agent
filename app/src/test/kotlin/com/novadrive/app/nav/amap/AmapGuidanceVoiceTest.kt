@@ -1,5 +1,10 @@
 package com.novadrive.app.nav.amap
 
+import com.novadrive.app.nav.Cancellable
+import com.novadrive.app.nav.GuidanceArbiterView
+import com.novadrive.app.nav.GuidanceRelay
+import com.novadrive.app.nav.GuidanceSession
+import com.novadrive.app.nav.GuidanceSpeaker
 import com.novadrive.app.nav.NavigationGuidanceVoice
 import com.novadrive.app.voice.HostAudioTap
 import org.junit.jupiter.api.AfterEach
@@ -12,6 +17,26 @@ import org.junit.jupiter.api.Test
 class AmapGuidanceVoiceTest {
     private val panel = mutableListOf<String>()
     private val host = mutableListOf<String>()
+    private val sent = mutableListOf<String>()
+    private val relayField = AmapGuidanceVoice::class.java.getDeclaredField("relay").apply { isAccessible = true }
+
+    private fun relay() = GuidanceRelay(
+        clock = { 0L },
+        schedule = { _, _ -> Cancellable { } },
+        session = object : GuidanceSession {
+            override fun blocker(): String? = null
+            override fun sendPrompt(text: String, promptId: String): Boolean { sent += promptId; return true }
+        },
+        amap = GuidanceSpeaker { true },
+        arbiter = object : GuidanceArbiterView {
+            override fun amapSpeaking() = false
+            override fun transientFocusLoss() = false
+            override fun abandon(promptId: String) {}
+            override fun bracket(speaking: Boolean) {}
+        },
+        enabled = { true },
+        log = {},
+    )
 
     private fun wire() {
         AmapGuidanceVoice.textReceiver = { panel += it }
@@ -20,6 +45,7 @@ class AmapGuidanceVoiceTest {
 
     @AfterEach
     fun tearDown() {
+        relayField.set(null, null)
         AmapGuidanceVoice.textReceiver = null
         HostAudioTap.guidanceSink = null
         if (NavigationGuidanceVoice.speaking) NavigationGuidanceVoice.onPlayEnd()
@@ -58,12 +84,17 @@ class AmapGuidanceVoiceTest {
     }
 
     @Test
-    @Disabled("GAP: no test seam to install an active GuidanceRelay without AMapNavi (relay is private, set only by enable)")
     fun toggleOnNavigationTextFeedsPanelButNotHostTap() {
+        wire()
+        relayField.set(null, relay())
+        AmapGuidanceVoice.onNavigationText("前方左转")
+        assertEquals(listOf("前方左转"), panel)
+        assertTrue(host.isEmpty(), "relay on: the host hears only Amap's fallback")
+        assertEquals(1, sent.size, "one prompt reached the session")
     }
 
     @Test
-    @Disabled("GAP: no test seam to install an active GuidanceRelay without AMapNavi (relay is private, set only by enable)")
+    @Disabled("GAP: onPlayStart → tellRelays posts to Handler(Looper.getMainLooper()), not constructible in JVM unit tests")
     fun toggleOnPlayStartDoesNotFeedPanelTwice() {
     }
 }

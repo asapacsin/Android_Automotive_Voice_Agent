@@ -131,7 +131,7 @@ class DriverTurnPipelineTest {
         }
     }
 
-    // ---- SPEC-018 A3: a GUIDANCE-turn rejection is never execution evidence -------------------
+    // ---- A rejected result (e.g. SPEC-018 NOT_A_DRIVER_TURN) is never execution evidence ------
 
     @Test
     fun aNotADriverTurnRejectionDoesNotProveExecution() {
