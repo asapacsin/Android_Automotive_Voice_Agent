@@ -1,0 +1,45 @@
+{
+ "task_id": "STYLE-CI",
+ "contract_sha256": "e36b6f7f7d18a05cd04cdced1b654a5b78ff38994d44314567261470c489fca3",
+ "tip": "b4199cc9b51566b607013f9c3576af8da87062ee",
+ "verified_by": "planner",
+ "at": "2026-10-20T05:18:40+00:00",
+ "results": [
+  {
+   "id": "style-check-selftest",
+   "kind": "regression",
+   "command": "python3 tools/demo/live/style_check.py --selftest",
+   "exit_code": 0,
+   "seconds": 1.4,
+   "log": "/root/nova-drive-build/nova-verify/STYLE-CI/b4199cc9b515-style-check-selftest.log",
+   "log_sha256": "95998f928702e9257ba9f75f745e149e1d32bcfb0e792cc7eb92698d7d32a30d"
+  },
+  {
+   "id": "workflow-yaml",
+   "kind": "lint",
+   "command": "python3 -c \"import yaml;yaml.safe_load(open('.github/workflows/live-jvm.yml'))\"",
+   "exit_code": 0,
+   "seconds": 0.0,
+   "log": "/root/nova-drive-build/nova-verify/STYLE-CI/b4199cc9b515-workflow-yaml.log",
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "id": "bash-syntax",
+   "kind": "lint",
+   "command": "bash -n scripts/github_live_jvm.sh",
+   "exit_code": 0,
+   "seconds": 0.0,
+   "log": "/root/nova-drive-build/nova-verify/STYLE-CI/b4199cc9b515-bash-syntax.log",
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "id": "script-tests",
+   "kind": "regression",
+   "command": "python3 -m unittest discover -s scripts/tests -t .",
+   "exit_code": 0,
+   "seconds": 169.7,
+   "log": "/root/nova-drive-build/nova-verify/STYLE-CI/b4199cc9b515-script-tests.log",
+   "log_sha256": "387a073da6a9780761645f6a4073d3ed410b0d6a02e41791cb3aaf5d72ad4c9d"
+  }
+ ]
+}
