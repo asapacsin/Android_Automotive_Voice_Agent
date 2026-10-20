@@ -216,7 +216,14 @@ does not change architecture ownership, invariants, or who may certify work. Age
   otherwise the Claude executor is used. **When a Gemini executor call fails** (429 quota, 502/503,
   or the CLI errors out mid-task), dispatch the same packet to the `executor` agent, which runs
   **Opus 5.5 at low effort** (`.claude/agents/executor.md`); don't retry Gemini that day (owner,
-  2026-10-20). A paid Gemini key would lift this. The contract gate
+  2026-10-20). A paid Gemini key would lift this.
+  **OpenRouter free executors (owner, 2026-10-20):** `nvidia/nemotron-3-ultra-550b-a55b:free`,
+  `poolside/laguna-s-2.1:free`, `cohere/north-mini-code:free`, `nvidia/nemotron-3.5-lightning:free`
+  via `https://openrouter.ai/api/v1/chat/completions` with the owner's OpenRouter network secret for
+  `openrouter.ai` (never pasted in chat). Status 2026-10-20: the secret did not reach the session that
+  recorded this (401 Missing Authentication header; a new session picks up added secrets) - test it first.
+  These are chat APIs, not agent runners: a packet needs a tool-capable runner around them before they
+  can edit a worktree. Order: Gemini, then these, then Opus 5.5 low. The contract gate applies unchanged. The contract gate
   (docs/AGENT_CONTRACT_WORKFLOW.md) applies to it unchanged: scope, verify and reviewer PASS are
   checked from git, never taken from its report. Respect the vendor-file rule: the licensed vendor
   files must not be sent to it.
