@@ -347,6 +347,66 @@ pf device:TRANSCRIPT-FADE-EMU-001 "shown=$bub_s faded=$bub_f" '[ "$bub_s" -ge 1 
 adb shell am force-stop com.novadrive.app
 fi
 
+# ---- VLC hand-off (MUSIC-VLC-EMU-001, SPEC-017 A6) ------------------------------------------
+# Pinned VLC for Android x86_64 from VideoLAN (sha256 = the published .sha256), downloaded at run
+# time and never committed. Two generated sine tones with test-only tags (no copyrighted media).
+# Notes carry codes and counts only; the only title compared is the generated test title (I-8).
+if in_shard lifecycle; then
+vlc_url="https://download.videolan.org/pub/videolan/vlc-android/3.6.5/VLC-Android-3.6.5-x86_64.apk"
+vlc_sha="d7049239374c91c11b143bb517fcd8210b85281480d903087cac90ebbab09ec2"
+vlc_listener="com.novadrive.app/com.novadrive.app.media.NovaMediaListener"
+vlc_apk="$(mktemp -d)/vlc.apk"
+vlc_ok=no
+if curl -fsSL --retry 3 -o "$vlc_apk" "$vlc_url" && echo "$vlc_sha  $vlc_apk" | sha256sum -c --status; then
+  if adb install -r -g "$vlc_apk" >/dev/null 2>&1; then vlc_ok=yes; fi
+fi
+if [ "$vlc_ok" != yes ]; then
+  note "MUSIC-VLC-EMU-001: VLC download, checksum or install failed"
+  res device:MUSIC-VLC-HANDOFF BLOCKED "vlc_unavailable"
+  res device:MUSIC-VLC-NOLISTENER BLOCKED "vlc_unavailable"
+else
+  vlc_media="$(mktemp -d)"
+  python3 tools/ci-media/make_tagged_tones.py "$vlc_media" >/dev/null
+  adb shell mkdir -p /sdcard/Music
+  for f in "$vlc_media"/*.mp3; do
+    adb push "$f" /sdcard/Music/ >/dev/null
+    adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file:///sdcard/Music/$(basename "$f")" >/dev/null || true
+  done
+  adb shell pm grant org.videolan.vlc android.permission.READ_MEDIA_AUDIO >/dev/null 2>&1 || true
+  # VLC builds its own media library on first launch: open it once, then leave it.
+  adb shell monkey -p org.videolan.vlc -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 || true
+  sleep 15
+  adb shell am force-stop org.videolan.vlc || true
+  # 1) listener granted: status=playing, matches_request=true, the session names the test file.
+  adb shell cmd notification allow_listener "$vlc_listener" || true
+  adb shell am force-stop com.novadrive.app
+  mark
+  app_up || true
+  tool dispatch "play_music:title=NovaTestToneA"
+  wait_for "debug_tool tool=dispatch arg=play_music[^ ]* deferred_result=" 20 || true
+  vh_res="$(nova | grep -oE 'deferred_result=.*' | tail -1 | grep -oE 'ok=[a-z]+|status=[a-z_]+|matches_request=[a-z]+' | tr '\n' ' ')"
+  vh_verify="$(nova | grep -oE 'music_verify result=[a-z_]+ match=[a-z]+' | tail -1)"
+  vh_named="$(adb shell dumpsys media_session | grep -c 'NovaTestToneA' || true)"
+  sleep 3; shot vlc_handoff
+  vh_front="$(adb shell dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity' | grep -c 'com.novadrive.app' || true)"
+  note "MUSIC-VLC-EMU-001 handoff: $vh_res verify=[$vh_verify] session_names_file=$vh_named nova_foreground=$vh_front"
+  pf device:MUSIC-VLC-HANDOFF "$vh_res named=$vh_named front=$vh_front" 'grep -q "status=playing" <<<"$vh_res" && grep -q "matches_request=true" <<<"$vh_res" && [ "$vh_named" -ge 1 ]'
+  adb shell am force-stop org.videolan.vlc || true
+  # 2) listener revoked: status=requested_unverified (no song named).
+  adb shell cmd notification disallow_listener "$vlc_listener" || true
+  adb shell am force-stop com.novadrive.app
+  mark
+  app_up || true
+  tool dispatch "play_music:title=NovaTestToneB"
+  wait_for "debug_tool tool=dispatch arg=play_music[^ ]* deferred_result=" 20 || true
+  vn_res="$(nova | grep -oE 'deferred_result=.*' | tail -1 | grep -oE 'ok=[a-z]+|status=[a-z_]+|matches_request=[a-z]+' | tr '\n' ' ')"
+  note "MUSIC-VLC-EMU-001 no listener: $vn_res"
+  pf device:MUSIC-VLC-NOLISTENER "$vn_res" 'grep -q "status=requested_unverified" <<<"$vn_res"'
+  adb shell am force-stop org.videolan.vlc || true
+  adb shell am force-stop com.novadrive.app
+fi
+fi
+
 # ---- Nav demo piece checks (owner rule 2026-10-16: test each piece before a full demo run) -----
 # Relay off (the shipped path). No voice model is opened.
 if in_shard navpiece; then
