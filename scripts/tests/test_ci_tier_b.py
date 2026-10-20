@@ -146,8 +146,9 @@ class ScriptTest(unittest.TestCase):
 
 
 SHARD_SUITES = {"voice-a": "voice-a", "voice-b": "voice-b", "voice-c": "voice-c",
-                "device": "voice-device", "liveinfo-a": "voice-liveinfo-a",
-                "liveinfo-b": "voice-liveinfo-b", "demo": "voice-demo"}
+                "device": "voice-device", "li-weather": "voice-li-weather",
+                "li-place": "voice-li-place", "li-traffic": "voice-li-traffic",
+                "li-along": "voice-li-along", "demo": "voice-demo"}
 
 
 class VoiceShardTest(unittest.TestCase):
@@ -175,9 +176,9 @@ class VoiceShardTest(unittest.TestCase):
     def test_plan_picks_all_or_named_shards(self):
         for raw in ("", "all"):
             self.assertEqual({e["shard"]: e["suite"] for e in self.pick(raw)}, SHARD_SUITES)
-        self.assertEqual(self.pick("device, liveinfo-b"),
+        self.assertEqual(self.pick("device, li-along,device"),
                          [{"shard": "device", "suite": "voice-device"},
-                          {"shard": "liveinfo-b", "suite": "voice-liveinfo-b"}])
+                          {"shard": "li-along", "suite": "voice-li-along"}])
         self.assertIsNone(self.pick("voice-z"))
 
     def test_matrix_is_fail_fast_false_and_built_per_shard(self):
@@ -204,15 +205,18 @@ class VoiceShardTest(unittest.TestCase):
         lists = dict(re.findall(r'^ids_([a-z_]+)="([^"]*)"', text, re.M))
         suites = self.manifest()
         for key, suite, prefix in (("voice_a", "voice-a", "voice:"), ("voice_b", "voice-b", "voice:"),
-                                   ("voice_c", "voice-c", "voice:"),
-                                   ("liveinfo_a", "voice-liveinfo-a", "liveinfo:"),
-                                   ("liveinfo_b", "voice-liveinfo-b", "liveinfo:")):
+                                   ("voice_c", "voice-c", "voice:")):
             with self.subTest(suite=suite):
                 listed = [r[len(prefix):] for r in suites[suite]["required"]
                           if r.startswith(prefix) and r not in (prefix + "runner", "voice:quota-guard")]
                 self.assertEqual(lists[key].split(), listed)
-        self.assertIn("--repeat 3 --only $ids_liveinfo_a", text)
-        self.assertNotIn("--repeat 10", text)
+        # LIVE-INFO-DEVICE-001: >=9/10 per kind, so each live-info shard runs one kind x10.
+        self.assertNotRegex(text, r"--repeat [0-9]\b")
+        for kind in ("WEATHER", "PLACE", "TRAFFIC", "ALONG"):
+            self.assertIn(f"li-{kind.lower()}) suite liveinfo liveinfo: --file tools/speech-harness/"
+                          f"scenarios-liveinfo.json --repeat 10 --only LI-{kind} ;;", text)
+            self.assertEqual(suites[f"voice-li-{kind.lower()}"]["required"],
+                             ["build:vendor-real", "liveinfo:runner", f"liveinfo:LI-{kind}", "voice:quota-guard"])
 
     def test_every_scenario_is_in_exactly_one_shard(self):
         suites = self.manifest()
@@ -252,15 +256,16 @@ class VoiceShardTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             res = os.path.join(tmp, "r.jsonl")
             base = [rec("build:vendor-real", "PASS"), rec("voice:quota-guard", "PASS"),
-                    rec("liveinfo:runner", "PASS"), rec("liveinfo:LI-WEATHER", "PASS")]
+                    rec("liveinfo:runner", "PASS")]
             with open(res, "w") as fh:
-                fh.write("\n".join(json.dumps(r) for r in base + [rec("liveinfo:LI-PLACE", "PASS")]) + "\n")
-            rc, text = run("verdict", "--manifest", manifest, "--suite", "voice-liveinfo-a",
+                fh.write("\n".join(json.dumps(r) for r in base + [rec("liveinfo:LI-PLACE", "PASS"),
+                                                                   rec("liveinfo:LI-WEATHER", "FAIL")]) + "\n")
+            rc, text = run("verdict", "--manifest", manifest, "--suite", "voice-li-place",
                            "--results", res, clock=False)
             self.assertEqual(rc, 0, text)  # the other shards' checks are not judged here
             with open(res, "w") as fh:
                 fh.write("\n".join(json.dumps(r) for r in base) + "\n")
-            rc, text = run("verdict", "--manifest", manifest, "--suite", "voice-liveinfo-a",
+            rc, text = run("verdict", "--manifest", manifest, "--suite", "voice-li-place",
                            "--results", res, clock=False)
             self.assertEqual(rc, 1, text)  # its own check with no result is MISSING, never passed
             self.assertIn("liveinfo:LI-PLACE has no result", text)
@@ -554,3 +559,25 @@ class AbortCleanupTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class VoiceShardBlockedTest(Base):
+    """No GEMINI_API_KEY: every shard's own verdict is BLOCKED (never FAIL on MISSING ids)."""
+
+    def test_no_gemini_key_is_blocked_for_each_shard(self):
+        for shard, suite in list(SHARD_SUITES.items()) + [("all", "voice")]:
+            with self.subTest(shard=shard), tempfile.TemporaryDirectory() as tmp:
+                path = stub_tree(tmp)
+                shutil.copy(os.path.join(ROOT, "scripts/github_voice_checks.sh"),
+                            os.path.join(tmp, "scripts/github_voice_checks.sh"))
+                env = {k: v for k, v in os.environ.items() if k not in ("GEMINI_API_KEY", "AMAP_WEB_KEY")}
+                env.update(PATH=path, NOVA_REAL_PY=sys.executable, NOVA_TEST_MARK=os.path.join(tmp, "m"))
+                proc = subprocess.run(["bash", os.path.join(tmp, "scripts/github_voice_checks.sh"),
+                                       "app.apk", shard], env=env, capture_output=True, text=True,
+                                      timeout=180)
+                self.assertEqual(proc.returncode, 0, proc.stdout[-2000:] + proc.stderr[-2000:])
+                rc, text = run("verdict", "--manifest", os.path.join(tmp, "config/ci_checks.json"),
+                               "--suite", suite, "--results", os.path.join(tmp, "evidence/results.jsonl"),
+                               clock=False)
+                self.assertEqual(rc, 3, text)
+                self.assertIn(f"VERDICT {suite} BLOCKED", text)

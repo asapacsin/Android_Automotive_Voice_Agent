@@ -36,14 +36,24 @@
       "required": ["build:vendor-real", "devrows:runner", "devrows:AFF-PAUSE", "devrows:AFF-AC", "devrows:AFF-RECENTER", "devrows:NEWS", "devrows:VISION", "devrows:FZ-MOSQ", "devrows:FZ-MOSQ-DONE", "devrows:FZ-SEAT", "devrows:FZ-LOWER", "devrows:FZ-DROWSY", "voice:quota-guard"],
       "optional": []
     },
-    "voice-liveinfo-a": {
-      "description": "Voice checks shard liveinfo-a: LI-WEATHER, LI-PLACE x3.",
-      "required": ["build:vendor-real", "liveinfo:runner", "liveinfo:LI-WEATHER", "liveinfo:LI-PLACE", "voice:quota-guard"],
+    "voice-li-weather": {
+      "description": "Voice checks shard li-weather: LI-WEATHER x10 (LIVE-INFO-DEVICE-001, >=9/10).",
+      "required": ["build:vendor-real", "liveinfo:runner", "liveinfo:LI-WEATHER", "voice:quota-guard"],
       "optional": []
     },
-    "voice-liveinfo-b": {
-      "description": "Voice checks shard liveinfo-b: LI-TRAFFIC, LI-ALONG x3.",
-      "required": ["build:vendor-real", "liveinfo:runner", "liveinfo:LI-TRAFFIC", "liveinfo:LI-ALONG", "voice:quota-guard"],
+    "voice-li-place": {
+      "description": "Voice checks shard li-place: LI-PLACE x10 (LIVE-INFO-DEVICE-001, >=9/10).",
+      "required": ["build:vendor-real", "liveinfo:runner", "liveinfo:LI-PLACE", "voice:quota-guard"],
+      "optional": []
+    },
+    "voice-li-traffic": {
+      "description": "Voice checks shard li-traffic: LI-TRAFFIC x10 (LIVE-INFO-DEVICE-001, >=9/10).",
+      "required": ["build:vendor-real", "liveinfo:runner", "liveinfo:LI-TRAFFIC", "voice:quota-guard"],
+      "optional": []
+    },
+    "voice-li-along": {
+      "description": "Voice checks shard li-along: LI-ALONG x10 (LIVE-INFO-DEVICE-001, >=9/10).",
+      "required": ["build:vendor-real", "liveinfo:runner", "liveinfo:LI-ALONG", "voice:quota-guard"],
       "optional": []
     },
     "voice-demo": {

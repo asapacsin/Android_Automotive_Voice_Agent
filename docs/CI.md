@@ -71,7 +71,7 @@ until it is fixed. A quarantined green prints `VERDICT voice PASS (1 quarantined
 | C — release | `python3 scripts/test_matrix.py --release` ([RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)) | at release checkpoints | which release-blocking rows have current evidence | — | none |
 
 **Voice checks shards** (VC-SPLIT, owner 2026-10-19: each demo <=5 min, function tests in small units).
-`voice-checks.yml` is a matrix (`fail-fast: false`) of seven shards; each builds its own APK (never
+`voice-checks.yml` is a matrix (`fail-fast: false`) of nine shards; each builds its own APK (never
 uploaded as an artifact: the debug APK is key-bearing), boots its own emulator and runs only its
 tests (`scripts/github_voice_checks.sh <apk> <shard>`). Each shard has its own verdict, suite
 `voice-<shard>` in `config/ci_checks.json`, listing only that shard's ids (a check of the shard with
@@ -85,12 +85,33 @@ used by `<shard>` = `all` locally).
 | voice-b | voice-b | `voice:runner`, `voice:S8`..`S14` |
 | voice-c | voice-c | `voice:runner`, `voice:S15`..`S21` |
 | device | voice-device | `devrows:runner`, every `scenarios-device.json` row |
-| liveinfo-a | voice-liveinfo-a | `liveinfo:runner`, `LI-WEATHER`, `LI-PLACE` (x3) |
-| liveinfo-b | voice-liveinfo-b | `liveinfo:runner`, `LI-TRAFFIC`, `LI-ALONG` (x3) |
+| li-weather | voice-li-weather | `liveinfo:runner`, `LI-WEATHER` (x10) |
+| li-place | voice-li-place | `liveinfo:runner`, `LI-PLACE` (x10) |
+| li-traffic | voice-li-traffic | `liveinfo:runner`, `LI-TRAFFIC` (x10) |
+| li-along | voice-li-along | `liveinfo:runner`, `LI-ALONG` (x10) |
 | demo | voice-demo | optional `voice:demo-recording`, `wake:WAKE-SYNTH-001` |
 
 A `[voice]` push runs every shard; a dispatch takes the input `shards` (comma list, default `all`) to
-rerun one shard alone. Live info runs 3 repeats instead of 10 (fewer Gemini sessions per full run).
+rerun one shard alone (duplicate names are dropped).
+
+**Live-info exception to the 5-minute target** (planner 2026-10-20): LIVE-INFO-DEVICE-001 is judged
+as >=9/10 per kind, so each live-info shard runs one kind with `--repeat 10` (~8 min of tests). A
+10-repeat rate cannot be split across shards and still be judged per shard.
+
+**Gemini sessions per full run.** Counting basis: a *new* session is opened by (1) the script's
+quota-guard `voice start` (once per shard); (2) `run_scenarios.py` `start_session()` at the start of
+every runner pass (the pass force-stops the app first), plus once per `fresh` scenario (S16, S17
+force-stop the app); the per-scenario `start_session()` otherwise resumes or no-ops on the live
+session and is not counted; (3) the wake check (one); (4) the demo bridge (one, after a force-stop).
+
+| | guard | S rows | device rows | live info | wake | demo bridge | total |
+|---|---|---|---|---|---|---|---|
+| before (one job) | 1 | 1 pass + 2 fresh = 3 | 1 | 10 passes = 10 | 1 | 1 | **17** |
+| shards | 9 (one per shard) | a 1 + b 1 + c (1 + 2 fresh) = 5 | 1 | 4 kinds x 10 passes = 40 | 1 | 1 | **57** |
+
+The increase (+40) is only per-shard guard sessions (+8) and runner pass starts (+2 for the S rows,
++30 for live info, which used to share one session per pass across the four kinds). Model turns
+(one per scenario per pass) are unchanged. Up to 9 sessions can be open at once.
 Evidence goes to `ci/voice-evidence` under `runs/run_<run id>_a<attempt>_<sha>/<shard>/`; shards push
 concurrently with a fetch-rebase-retry loop.
 

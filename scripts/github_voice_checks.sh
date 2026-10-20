@@ -11,7 +11,8 @@
 # recording, ffmpeg muxing, logcat clearing, launcher cosmetics) are marked "|| true" on purpose.
 # SHARDS (owner 2026-10-19: function tests in small units, each <=5 min after boot): the second
 # argument (or VOICE_SHARD) picks one shard; each shard's verdict is its suite in config/ci_checks.json
-# (voice-a, voice-b, voice-c, voice-device, voice-liveinfo-a, voice-liveinfo-b, voice-demo); "all"
+# (voice-a, voice-b, voice-c, voice-device, voice-li-weather, voice-li-place, voice-li-traffic,
+# voice-li-along, voice-demo); "all"
 # runs everything and is judged by suite "voice". The id lists below must match those suites
 # (scripts/tests/test_ci_tier_b.py checks it).
 set -eu
@@ -20,12 +21,10 @@ shard="${2:-${VOICE_SHARD:-all}}"
 ids_voice_a="S1 S2 S3 S4 S4b S5 S5b S6 S7"
 ids_voice_b="S8 S9 S10 S11 S12 S13 S14"
 ids_voice_c="S15 S16 S17 S18 S19 S20 S21"
-ids_liveinfo_a="LI-WEATHER LI-PLACE"
-ids_liveinfo_b="LI-TRAFFIC LI-ALONG"
 case "$shard" in
   all) suite_name=voice ;;
   voice-a|voice-b|voice-c) suite_name="$shard" ;;
-  device|liveinfo-a|liveinfo-b|demo) suite_name="voice-$shard" ;;
+  device|li-weather|li-place|li-traffic|li-along|demo) suite_name="voice-$shard" ;;
   *) echo "::error title=voice checks::unknown shard $shard"; exit 2 ;;
 esac
 runs() { [ "$shard" = all ] || [ "$shard" = "$1" ]; }  # does this run include shard $1
@@ -209,7 +208,8 @@ tool voice stop
 tool provider clear
 
 # ---- further suites: device rows (affordances, news, vision, fuzzy with
-# screenshots), live info x3 (LIVE-INFO-DEVICE-001; 3 instead of 10 to keep a shard <=5 min). Ids + PASS/FAIL only, as above.
+# screenshots), live info x10 (LIVE-INFO-DEVICE-001 needs >=9/10 per kind: one kind per
+# shard, ~8 min - the documented exception to the 5-minute target). Ids + PASS/FAIL only, as above.
 suite() { # name, result prefix, then runner args
   local name="$1" prefix="$2" rc; shift 2
   set +e
@@ -230,14 +230,13 @@ if runs device; then
   suite device devrows: --file tools/speech-harness/scenarios-device.json --shots "$ev/shots"
   for f in "$ev"/shots/*.png; do [ -f "$f" ] && ffmpeg -v error -y -i "$f" -vf scale=540:-2 -q:v 4 "${f%.png}.jpg" && rm -f "$f"; done
 fi
-# shellcheck disable=SC2086  # the id lists are word lists
-if [ "$shard" = all ]; then
-  suite liveinfo liveinfo: --file tools/speech-harness/scenarios-liveinfo.json --repeat 3
-elif [ "$shard" = liveinfo-a ]; then
-  suite liveinfo liveinfo: --file tools/speech-harness/scenarios-liveinfo.json --repeat 3 --only $ids_liveinfo_a
-elif [ "$shard" = liveinfo-b ]; then
-  suite liveinfo liveinfo: --file tools/speech-harness/scenarios-liveinfo.json --repeat 3 --only $ids_liveinfo_b
-fi
+case "$shard" in
+  all) suite liveinfo liveinfo: --file tools/speech-harness/scenarios-liveinfo.json --repeat 10 ;;
+  li-weather) suite liveinfo liveinfo: --file tools/speech-harness/scenarios-liveinfo.json --repeat 10 --only LI-WEATHER ;;
+  li-place) suite liveinfo liveinfo: --file tools/speech-harness/scenarios-liveinfo.json --repeat 10 --only LI-PLACE ;;
+  li-traffic) suite liveinfo liveinfo: --file tools/speech-harness/scenarios-liveinfo.json --repeat 10 --only LI-TRAFFIC ;;
+  li-along) suite liveinfo liveinfo: --file tools/speech-harness/scenarios-liveinfo.json --repeat 10 --only LI-ALONG ;;
+esac
 
 # ---- WAKE-SYNTH-001: a synthetic wake through the debug path ----------------------------------
 # A stub build has no wake engine (tools/vendor-stub): the row is BLOCKED there, never run.

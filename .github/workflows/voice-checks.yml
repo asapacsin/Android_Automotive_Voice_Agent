@@ -11,7 +11,8 @@
 # job logs are not readable from the agent sessions. The video is pushed to branch ci/drive-video.
 # From cursor/github-emulator-9a6b (Cursor, 2026-10-15), moved onto claude/10-15.
 # The job must not print coordinates, addresses, or transcripts.
-# SHARDS (owner 2026-10-19: each demo <=5 min, function tests in small units): a matrix of 7 shards,
+# SHARDS (owner 2026-10-19: each demo <=5 min, function tests in small units): a matrix of 9 shards
+# (live-info shards ~8 min: a 10-repeat rate per kind cannot be split, docs/CI.md),
 # each building its own APK (no APK artifact: the debug APK carries key-bearing config, docs/CI.md),
 # booting its own emulator and running only its tests; each shard has its own verdict (suite
 # matrix.suite in config/ci_checks.json) and pushes its evidence to runs/<run>/<shard>/.
@@ -24,7 +25,7 @@ on:
   workflow_dispatch:
     inputs:
       shards:
-        description: "Comma list of shards (voice-a,voice-b,voice-c,device,liveinfo-a,liveinfo-b,demo) or all"
+        description: "Comma list of shards (voice-a,voice-b,voice-c,device,li-weather,li-place,li-traffic,li-along,demo) or all"
         required: false
         default: all
   push:
@@ -145,7 +146,7 @@ jobs:
         run: python3 scripts/ci_verdict.py verdict --manifest config/ci_checks.json --suite "${VOICE_SUITE:-voice}" --results evidence/results.jsonl --json-out evidence/verdict.json --summary "$GITHUB_STEP_SUMMARY"
 
       - name: Push the evidence to ci/voice-evidence
-        # Seven shards push concurrently: commit on top of the fetched branch, retry on a rejected
+        # The shards push concurrently: commit on top of the fetched branch, retry on a rejected
         # push (fetch + rebase), up to 8 times. The run dir is shared; each shard writes <run>/<shard>/.
         if: always()
         run: |
@@ -189,9 +190,10 @@ jobs:
         run: |
           python3 - <<'PY' >>"$GITHUB_OUTPUT"
           import json, os
-          all_shards = ["voice-a", "voice-b", "voice-c", "device", "liveinfo-a", "liveinfo-b", "demo"]
+          all_shards = ["voice-a", "voice-b", "voice-c", "device", "li-weather", "li-place",
+                        "li-traffic", "li-along", "demo"]
           raw = os.environ.get("SHARDS", "").replace(" ", "")
-          picked = all_shards if raw in ("", "all") else [s for s in raw.split(",") if s]
+          picked = all_shards if raw in ("", "all") else list(dict.fromkeys(s for s in raw.split(",") if s))
           bad = [s for s in picked if s not in all_shards]
           if bad or not picked:
               raise SystemExit(f"unknown shard(s): {bad}")
