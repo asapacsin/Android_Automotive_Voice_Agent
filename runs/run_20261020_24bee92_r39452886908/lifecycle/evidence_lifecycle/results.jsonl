@@ -1,0 +1,7 @@
+{"id": "build:vendor-real", "status": "PASS", "detail": "real vendor files packaged"}
+{"id": "device:P59", "status": "PASS", "detail": "rounds_failed=0/2"}
+{"id": "device:PROCDEATH-001", "status": "PASS", "detail": "map_up=yes fatal=0"}
+{"id": "device:PERM-DENY-001", "status": "PASS", "detail": "mic_missing=1 listening=0 fatal=0"}
+{"id": "device:TRANSCRIPT-FADE-EMU-001", "status": "PASS", "detail": "shown=2 faded=1"}
+{"id": "device:MUSIC-VLC-HANDOFF", "status": "FAIL", "detail": "ok=false error=NOT_PLAYING  named=0 front=1"}
+{"id": "device:MUSIC-VLC-NOLISTENER", "status": "PASS", "detail": "ok=true status=requested_unverified "}
