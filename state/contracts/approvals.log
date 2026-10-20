@@ -26,3 +26,6 @@ AIDER-WRAP c51bae0df070dd72359f80b78958176796d199eb48fcf97fdeb60fd5771a1fc9 APPR
 ALONG-PROBE f5099853e9b29413782d9a1334e09fdb18d80640801f27d2c10b27ee12469da8 APPROVED 2026-10-20 architect measure along_route range since Amap docs give no limit
 S15-STYLE 2ad4609b6a6728b93eda2b485197edb28fedbebbde07304d98148220ac700606 APPROVED 2026-10-20 architect reviewer: behavioural restored-style test in both client tests
 COMPACT-CWD 327eff9a86e578b83e1f3de1cfb5e9aad1fbd575245f62cfbbb3287e269ae486 APPROVED 2026-10-20 architect first real Aider offload: small one-file script fix
+ALONG-PROBE2 9a95609c7099fae620001ccab7a68834a1e0e6aa469c49d8cf19a2279ba2d82d APPROVED 2026-10-20 architect range is not the cause; test query form and a web cross-check
+SEAM-A7 f87c348efc89f041c9b2c252e61e107437bf45f29660171e7dcff393f7261f76 APPROVED 2026-10-20 architect close SPEC-018 GAPs with internal seams
+SEAM-A4 5724bbbbda2b383593d731bc4c7588c32f2d927b2f62f6b717a353b40e34b39c APPROVED 2026-10-20 architect close SPEC-018 GAPs with internal seams

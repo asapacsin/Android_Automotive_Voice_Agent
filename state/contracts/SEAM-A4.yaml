@@ -1,0 +1,30 @@
+schema: nova-task-contract/1
+task_id: SEAM-A4
+title: SPEC-018 A4 remaining GAP - VoiceSessionController's guidance-sparing cancel (闭嘴/休眠/wake word in ACTIVE spare an open guidance prompt) made unit-testable by extracting the decision
+branch: exec/seam-a4
+base_commit: a19ff20f287aca427e592d0d969a1f4603b5b49d
+approved_paths:
+  - app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt
+  - app/src/main/kotlin/com/novadrive/app/voice/GuidanceSparingCancel.kt
+  - app/src/test/kotlin/com/novadrive/app/voice/GuidanceSparingCancelTest.kt
+  - app/src/test/kotlin/com/novadrive/app/voice/ListeningLifecycleTest.kt
+allowed_changes:
+  - "Extract the decision in VoiceSessionController.cancelReplySparingGuidance (cancel the current response only when playback.guidanceActive is false) into a small internal class or function GuidanceSparingCancel in voice/ taking a guidanceActive () -> Boolean and a cancel () -> Unit; the controller delegates to it for every caller it has today (cancelAssistantReply, wake-word activateListening) - same order, same thread"
+  - "GuidanceSparingCancelTest: guidance active -> no cancel; not active -> one cancel; plus a test that the controller's two call paths reach it if that can be shown without Android (otherwise say so in the report)"
+  - "ListeningLifecycleTest: replace the @Disabled GAP shutUpSleepAndWakeWordInActiveSpareOpenGuidance with a pointer comment to GuidanceSparingCancelTest, or keep it @Disabled with the remaining reason if the wiring cannot be shown"
+architecture_constraints:
+  - Production behaviour identical; internal only; no new dependency
+forbidden_changes:
+  - No change to any other production file
+forbidden_paths:
+  - .claude/**
+  - TEST_MATRIX.yaml
+required_verification:
+  - id: unit
+    kind: regression
+    command: ./gradlew --no-daemon -q :app:testDebugUnitTest --tests "*GuidanceSparingCancelTest" --tests "*ListeningLifecycleTest"
+  - id: compile-release
+    kind: compile
+    command: ./gradlew --no-daemon -q :app:compileReleaseKotlin
+acceptance_criteria:
+  - The guidance-sparing decision has a passing JVM test

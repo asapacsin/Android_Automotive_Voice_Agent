@@ -1,0 +1,36 @@
+schema: nova-task-contract/1
+task_id: ALONG-PROBE2
+title: Debug-only probe round 2 - why RoutePOISearch finds no fuel at any range (250..2000 m all raw=0, code 1000, 8.6 km Zhuhai route) - compare the polyline query form and a web nearby search at the route midpoint
+branch: exec/along-probe2
+base_commit: c83649c9cc6aeb3efa6143aa8273d711b70a020d
+approved_paths:
+  - app/src/debug/**
+  - app/src/testDebug/**
+  - scripts/github_device_checks.sh
+allowed_changes:
+  - "Extend the debug along_probe tool (AlongProbe.kt / DebugToolReceiver) with three more lines after the four range lines, counts only (I-8): (1) along_probe form=polyline range_m=1000 code=<c> raw=<n> points=<number of polyline points sent> - RoutePOISearchQuery built from the active naviPath coordinate list (downsampled to at most 100 points, evenly) instead of start/end; (2) along_probe form=startend mode=<another driving mode constant than DrivingDefault, e.g. DrivingNoHighWay> range_m=1000 code raw; (3) along_probe form=web_around radius_m=3000 count=<n> - the existing AmapPoiClient.resolveNearbyCandidates(keyword=加油站) at the naviPath midpoint (GCJ-02 as the path already is), with the app's configured web key, through the existing debug key access used elsewhere in the debug receiver"
+  - "Formatter tests in app/src/testDebug for the new line shapes"
+  - "github_device_checks.sh: wait for 7 lines instead of 4 (bounded, 45 s) and note each; keep the short-count note"
+architecture_constraints:
+  - Debug source set only; release and main unchanged
+  - No coordinate, address, place name or POI id logged (I-8) - counts, codes, point counts only
+forbidden_changes:
+  - No change under app/src/main
+forbidden_paths:
+  - .claude/**
+  - app/src/main/**
+  - TEST_MATRIX.yaml
+  - .github/**
+  - config/**
+required_verification:
+  - id: unit
+    kind: regression
+    command: ./gradlew --no-daemon -q :app:testDebugUnitTest --tests "*AlongProbe*"
+  - id: compile-debug
+    kind: compile
+    command: ./gradlew --no-daemon -q :app:compileDebugKotlin
+  - id: bash-syntax
+    kind: lint
+    command: bash -n scripts/github_device_checks.sh
+acceptance_criteria:
+  - The dispatch shard notes the polyline, alternate-mode and web-around lines
