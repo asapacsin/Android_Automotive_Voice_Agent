@@ -1,12 +1,13 @@
 package com.novadrive.app
 
-import com.novadrive.app.nav.AlongRouteCategory
 import com.novadrive.app.nav.DestinationCandidate
 import com.novadrive.app.nav.EmbeddedNavigationController
 import com.novadrive.app.nav.FakeNaviEngine
 import com.novadrive.app.nav.NavigationPhase
 import com.novadrive.app.nav.RouteCandidate
 import com.novadrive.app.nav.RouteLiveInfoSource
+import com.novadrive.app.nav.RouteProgress
+import com.novadrive.app.nav.StaticMapModel.GeoPoint
 import com.novadrive.app.nav.RouteTraffic
 import com.novadrive.app.vehicle.ClimateToolHandler
 import com.novadrive.ingress.realtime.DomainVoiceEvent
@@ -25,7 +26,12 @@ import org.junit.jupiter.api.Test
 class LiveInfoAlongRouteWiringTest {
     private val engine = FakeNaviEngine()
     private val navigation = EmbeddedNavigationController(resolver = engine, engine = engine)
-    private val searched = mutableListOf<AlongRouteCategory>()
+    private val searched = mutableListOf<String>()
+
+    // Fake geometry: a straight 30 km road east from a fixed fake point; stations sit on it.
+    private val mPerDegLat = Math.PI / 180 * 6_371_000.0
+    private val mPerDegLon = mPerDegLat * Math.cos(Math.toRadians(22.25))
+    private fun onRoad(meters: Int) = GeoPoint(22.25, 113.55 + meters / mPerDegLon)
 
     private val stations = listOf(
         station("s1", "中石化新港加油站", 1_200),
@@ -35,9 +41,13 @@ class LiveInfoAlongRouteWiringTest {
 
     private val route = object : RouteLiveInfoSource {
         override fun traffic(): RouteTraffic? = null
-        override suspend fun alongRoute(category: AlongRouteCategory): List<DestinationCandidate> {
-            searched += category
-            return stations
+        override fun routeProgress() = RouteProgress((0..30_000 step 100).map { onRoad(it) }, 0)
+    }
+
+    private val rest = object : AmapLiveInfoRest by LiveInfoTool.noRest() {
+        override fun placePolygon(polygon: String, types: String, key: String): LiveInfoFetch<PolygonPlaces> {
+            searched += types
+            return LiveInfoFetch.Ok(PolygonPlaces(total = stations.size, infocode = "10000", pois = stations.reversed()))
         }
     }
 
@@ -47,7 +57,7 @@ class LiveInfoAlongRouteWiringTest {
         noCamera(),
         liveInfo = LiveInfoTool(
             webKey = { "k" },
-            rest = LiveInfoTool.noRest(),
+            rest = rest,
             location = { null },
             navigation = { navigation },
             route = route,
@@ -70,7 +80,7 @@ class LiveInfoAlongRouteWiringTest {
         val output = JSONObject(lookup.deferredOutput!!())
         assertTrue(output.getBoolean("ok"), output.toString())
         assertEquals("shown_on_screen", output.getString("status"))
-        assertEquals(listOf(AlongRouteCategory.FUEL), searched)
+        assertEquals(listOf("010100"), searched)
         assertEquals(3, output.getJSONArray("options_on_screen").length())
 
         // The same picker a spoken search fills.
@@ -139,8 +149,8 @@ class LiveInfoAlongRouteWiringTest {
         name = name,
         address = "",
         district = "",
-        latitude = 22.25,
-        longitude = 113.55,
+        latitude = onRoad(meters).latitude,
+        longitude = onRoad(meters).longitude,
         distanceMeters = meters,
         poiId = id,
     )

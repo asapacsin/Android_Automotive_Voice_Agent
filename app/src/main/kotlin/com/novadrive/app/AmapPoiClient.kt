@@ -134,6 +134,15 @@ class AmapPoiClient(
     override fun placeDetail(poiId: String, key: String): LiveInfoFetch<PlaceDetail> =
         live("place/detail", key, mapOf("id" to poiId, "extensions" to "all"), AmapLiveInfoParser::placeDetail)
 
+    /** P68 along_route: one search of [polygon] by Amap type code; the polygon is never logged. */
+    override fun placePolygon(polygon: String, types: String, key: String): LiveInfoFetch<PolygonPlaces> =
+        live(
+            "place/polygon",
+            key,
+            mapOf("polygon" to polygon, "types" to types, "offset" to "25", "page" to "1", "extensions" to "base"),
+            AmapLiveInfoParser::placePolygon,
+        )
+
     private fun <T> live(
         path: String,
         key: String,

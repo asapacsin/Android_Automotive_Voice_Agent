@@ -1,11 +1,11 @@
 package com.novadrive.app.livedemo
 
 import com.novadrive.app.DebugVoiceLog
-import com.novadrive.app.nav.AlongRouteCategory
 import com.novadrive.app.nav.DestinationCandidate
 import com.novadrive.app.nav.NavigationBackend
 import com.novadrive.app.nav.RouteCandidate
 import com.novadrive.app.nav.RouteLiveInfoSource
+import com.novadrive.app.nav.RouteProgress
 import com.novadrive.app.nav.RouteTraffic
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -231,7 +231,8 @@ class HengqinWorld : NavigationBackend, RouteLiveInfoSource {
     override fun traffic(): RouteTraffic? =
         if (!navigating) null else RouteTraffic(remainingMeters, slowSegments = 1, congestedSegments = 0, metersToFirstCongestion = null)
 
-    override suspend fun alongRoute(category: AlongRouteCategory): List<DestinationCandidate>? = emptyList()
+    /** No route geometry in the simulation: along_route answers LIVE_INFO_UNAVAILABLE. */
+    override fun routeProgress(): RouteProgress? = null
 
     fun close() = worker.shutdownNow()
 }
