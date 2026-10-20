@@ -1,0 +1,76 @@
+{
+  "suite": "device-lifecycle",
+  "verdict": "FAIL",
+  "vendor": "UNKNOWN",
+  "checks": [
+    {
+      "id": "build:vendor-real",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:PROCDEATH-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:PERM-DENY-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:TRANSCRIPT-FADE-EMU-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:P59",
+      "required": false,
+      "status": "SKIPPED",
+      "detail": "not executed"
+    },
+    {
+      "id": "device:MUSIC-VLC-HANDOFF",
+      "required": false,
+      "status": "SKIPPED",
+      "detail": "not executed"
+    },
+    {
+      "id": "device:MUSIC-VLC-NOLISTENER",
+      "required": false,
+      "status": "SKIPPED",
+      "detail": "not executed"
+    }
+  ],
+  "problems": [
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "results file missing or unreadable: evidence/results.jsonl"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required build:vendor-real has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:PROCDEATH-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:PERM-DENY-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:TRANSCRIPT-FADE-EMU-001 has no result"
+    }
+  ]
+}
