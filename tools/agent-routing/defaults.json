@@ -1,0 +1,62 @@
+{
+  "policy_version": "1",
+  "providers": {
+    "gemini": {
+      "api": "gemini",
+      "base_url": "https://generativelanguage.googleapis.com/v1beta",
+      "model": "gemini-3.6-flash",
+      "role": "executor",
+      "key_env": "GEMINI_API_KEY",
+      "auth": "env",
+      "price_per_mtok": null,
+      "available_until": null
+    },
+    "poolside": {
+      "api": "openai",
+      "base_url": "https://openrouter.ai/api/v1",
+      "model": "poolside/laguna-s-2.1:free",
+      "role": "executor",
+      "key_env": "OPENROUTER_API_KEY",
+      "auth": "env",
+      "price_per_mtok": {"input": 0.0, "output": 0.0},
+      "available_until": "2026-10-31"
+    },
+    "nvidia": {
+      "api": "openai",
+      "base_url": "https://integrate.api.nvidia.com/v1",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b",
+      "role": "reviewer",
+      "key_env": "NVIDIA_API_KEY",
+      "auth": "env",
+      "price_per_mtok": null,
+      "available_until": null
+    }
+  },
+  "fallback": {"executor": null, "reviewer": null},
+  "http": {"timeout_s": 180, "max_retries": 3, "backoff_base_s": 1.0, "backoff_max_s": 30.0},
+  "limits": {"max_file_bytes": 200000, "max_context_bytes": 400000, "max_diff_bytes": 200000,
+             "max_output_tokens": 8192, "test_timeout_s": 1800},
+  "executor_rounds": 2,
+  "gate": {"scope": "all", "max_blocks": 3},
+  "tests": {"command": null, "from_session": true},
+  "budgets": {"daily": {}},
+  "never_send": [],
+  "risk_rules": [
+    {"id": "docs", "level": "LOW", "paths": ["**/*.md", "**/*.txt", "**/*.rst", "docs/**", "**/LICENSE*"]},
+    {"id": "auth-security", "level": "HIGH",
+     "paths": ["**/auth/**", "**/security/**", "**/*[Aa]uth*.*", "**/*[Ss]ecurity*", "**/*[Cc]rypt*", "**/*[Pp]ermission*"]},
+    {"id": "hooks-orchestration", "level": "HIGH",
+     "paths": [".claude/**", "**/hooks/**", "**/*hook*", "AGENTS.md", "CLAUDE.md", ".github/workflows/**", "**/*agent*"]},
+    {"id": "routing-review-config", "level": "HIGH",
+     "paths": [".agent-routing/**", "tools/agent-routing/**", "**/*gate*", "**/*review*", "**/*routing*"]},
+    {"id": "networking", "level": "HIGH",
+     "paths": ["**/net/**", "**/network/**", "**/*[Nn]etwork*", "**/*[Hh]ttp*", "**/*[Ss]ocket*"]},
+    {"id": "architecture-build", "level": "HIGH",
+     "paths": ["**/build.gradle*", "**/settings.gradle*", "**/AndroidManifest.xml", "**/pyproject.toml",
+               "**/package.json", "**/gradle/libs.versions.toml"]},
+    {"id": "concurrency-diff", "level": "HIGH",
+     "diff_regex": "\\b(synchronized|Mutex|Semaphore|ReentrantLock|AtomicReference|AtomicInteger|threading\\.|asyncio\\.|ThreadPoolExecutor|@Volatile|volatile)\\b"},
+    {"id": "secrets-auth-diff", "level": "HIGH",
+     "diff_regex": "(?i)\\b(password|passwd|api[_-]?key|private[_-]?key|secret|authori[sz]ation|authenticat\\w*)\\b"}
+  ]
+}
