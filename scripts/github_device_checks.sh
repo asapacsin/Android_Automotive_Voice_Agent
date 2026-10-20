@@ -241,14 +241,17 @@ pf device:LIVE-INFO-SDK-ALONG "${li_along:-no live_info line}" 'grep -q "ok=true
 # ALONG-PROBE: fuel stations on the same route at 250/500/1000/2000 m (counts only); notes, no pf.
 tool along_probe x
 ap_n=0
-for _ in $(seq 1 30); do
-  ap_n="$(nova | grep -cE 'along_probe range_m=[0-9]+ ' || true)"
-  [ "$ap_n" -ge 4 ] && break
+for _ in $(seq 1 45); do
+  ap_n="$(nova | grep -cE 'along_probe (range_m|form)=' || true)"
+  [ "$ap_n" -ge 7 ] && break
   sleep 1
 done
 note "PIECE ALONG-PROBE: dispatch $(result_of along_probe)"
-[ "$ap_n" -ge 4 ] || note "PIECE ALONG-PROBE: only $ap_n of 4 lines"
+[ "$ap_n" -ge 7 ] || note "PIECE ALONG-PROBE: only $ap_n of 7 lines"
 nova | grep -oE 'along_probe range_m=[0-9]+ code=-?[0-9]+ raw=-?[0-9]+ ms=[0-9]+' | tail -4 | while read -r l; do note "PIECE ALONG-PROBE: $l"; done
+nova | grep -oE 'along_probe form=polyline range_m=[0-9]+ code=-?[0-9]+ raw=-?[0-9]+ points=[0-9]+' | tail -1 | while read -r l; do note "PIECE ALONG-PROBE: $l"; done
+nova | grep -oE 'along_probe form=startend mode=[0-9]+ range_m=[0-9]+ code=-?[0-9]+ raw=-?[0-9]+' | tail -1 | while read -r l; do note "PIECE ALONG-PROBE: $l"; done
+nova | grep -oE 'along_probe form=web_around radius_m=[0-9]+ count=-?[0-9]+' | tail -1 | while read -r l; do note "PIECE ALONG-PROBE: $l"; done
 tool dispatch "exit_navigation_mode"; sleep 4
 tool dispatch "navigate_to:destination=珠海站"; sleep 8
 tool dispatch "choose_navigation_option:index=1"; sleep 10

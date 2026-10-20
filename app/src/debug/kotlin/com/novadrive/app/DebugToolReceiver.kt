@@ -300,8 +300,57 @@ class DebugToolReceiver : BroadcastReceiver() {
                 }
                 Log.d("NovaVoice", AlongProbe.line(range, code, raw, (System.nanoTime() - started) / 1_000_000))
             }
+            val gas = com.amap.api.services.routepoisearch.RoutePOISearch.RoutePOISearchType.TypeGasStation
+            // (1) polyline form from the active route's coordinates.
+            val coords = runCatching { path.coordList.orEmpty() }.getOrDefault(emptyList())
+            val sent = AlongProbe.downsample(coords, AlongProbe.MAX_POLYLINE_POINTS)
+                .map { com.amap.api.services.core.LatLonPoint(it.latitude, it.longitude) }
+            var pCode = -1
+            var pRaw: Int? = null
+            runCatching {
+                val result = com.amap.api.services.routepoisearch.RoutePOISearch(
+                    app,
+                    com.amap.api.services.routepoisearch.RoutePOISearchQuery(sent, gas, AlongProbe.POLYLINE_RANGE_M),
+                ).searchRoutePOI()
+                pCode = 1000
+                pRaw = result?.routePois?.size
+            }.onFailure { e -> if (e is com.amap.api.services.core.AMapException) pCode = e.errorCode }
+            Log.d("NovaVoice", AlongProbe.polylineLine(AlongProbe.POLYLINE_RANGE_M, pCode, pRaw, sent.size))
+            // (2) start/end with another driving mode.
+            val mode = com.amap.api.services.routepoisearch.RoutePOISearch.DrivingNoHighWay
+            var mCode = -1
+            var mRaw: Int? = null
+            runCatching {
+                val result = com.amap.api.services.routepoisearch.RoutePOISearch(
+                    app,
+                    com.amap.api.services.routepoisearch.RoutePOISearchQuery(
+                        com.amap.api.services.core.LatLonPoint(start.latitude, start.longitude),
+                        com.amap.api.services.core.LatLonPoint(end.latitude, end.longitude),
+                        mode,
+                        gas,
+                        AlongProbe.POLYLINE_RANGE_M,
+                    ),
+                ).searchRoutePOI()
+                mCode = 1000
+                mRaw = result?.routePois?.size
+            }.onFailure { e -> if (e is com.amap.api.services.core.AMapException) mCode = e.errorCode }
+            Log.d("NovaVoice", AlongProbe.modeLine(mode, AlongProbe.POLYLINE_RANGE_M, mCode, mRaw))
+            // (3) web nearby search at the route midpoint (GCJ-02, as the path is), configured web key.
+            val count = runCatching {
+                val key = AmapSettingsRepository(app).loadWebKey()
+                val mid = coords.getOrNull(coords.size / 2)
+                if (key.isNullOrBlank() || mid == null) null
+                else AmapPoiClient().resolveNearbyCandidates(
+                    keyword = "加油站",
+                    key = key,
+                    latitude = mid.latitude,
+                    longitude = mid.longitude,
+                    radiusMeters = AlongProbe.WEB_RADIUS_M,
+                ).size
+            }.getOrNull()
+            Log.d("NovaVoice", AlongProbe.webAroundLine(AlongProbe.WEB_RADIUS_M, count))
         }.start()
-        return "started ranges=${AlongProbe.RANGES.size}"
+        return "started ranges=${AlongProbe.RANGES.size} extra=3"
     }
 
     private fun navOverview(): String {
