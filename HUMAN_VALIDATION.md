@@ -4,7 +4,6 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 
 > **Not ready yet.** This is a preview of the queue; autonomous work remains:
 >
-> - the registry does not validate: 1 problem(s)
 > - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - TRUTH-MEDIA-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -12,6 +11,7 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 > - NAV-MID-ROUTE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - MUSIC-VLC-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - AEC-DELAY-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - PLAYBACK-BUFFER-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 
 29 item(s) queued.
 

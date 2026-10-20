@@ -2142,6 +2142,7 @@ tests:
       - "2026-10-19 Voice checks run 39198920117 at adfa384 (05:15 UTC): session up, every scenario PASS"
       - "2026-10-19 Voice checks runs 39241752142 at 2fb2692 and 39252810141 at a813565: session never ready, codes= 72 GEMINI_LIVE_MALFORMED_SETUP. The app maps every WebSocket close 1007 to that code, and Gemini closes 1007 'API key not valid' for a bad key (seen from a cloud session the same day); the only app changes since 05:15 are route drawing and a log line. Most likely the key shown in an owner screenshot that morning was deleted, as advised, and the secret still holds it"
       - "2026-10-19 Voice checks run 39285245437 at c6b2790 (ci/voice-evidence runs/run_20261019_1720_c6b2790): summary.txt 'voice: session up', 'secret GEMINI_API_KEY: set, gemini_setup -> result=applied', session errors=0, codes= lists only QWEN_WORKSPACE_MISSING (no GEMINI_LIVE_MALFORMED_SETUP, no GEMINI_LIVE_AUTH_FAILED); 21/22 voice scenarios PASS with the owner's new key. The owner's key change is what satisfied this row"
+      - "2026-10-20 real-vendor GitHub Voice checks run 39370994663 at 8b25fb3 (shard voice-a; ci/voice-evidence runs/run_39370994663_a1_8b25fb3/voice-a, verdict PASS, build:vendor-real PASS): GEMINI_API_KEY set and applied, session_provider choice=gemini_live, session up, errors=0, codes= empty, S1-S7 PASS; rebound at 6f4cc04 (app code unchanged since 8b25fb3)"
     remaining_uncertainty:
       - "the close reason is not logged (I-8), so the bad-key reading is an inference until GEM-1007 (1007 'API key' -> GEMINI_LIVE_AUTH_FAILED) is in a run or the new key makes the session come up"
     returns: ["the run id of the first Voice checks run after the change"]
@@ -2151,8 +2152,8 @@ tests:
       registry_digest: sha256:28d6f19f9cefd3485ad17d4a5146b0ba568d71ab05437a9cae0c9feb361eb335
       harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
-      apk_digest: sha256:be9de89339982b0be433b5620f41e04d0685f2ee958b496a8d0c9bc4a71b9596
-      bound_commit: b414b14
+      apk_digest: sha256:3f591e0d1a13d76d3999549524223a6ddc2fc713092d4a574dae9a5075f80b5d
+      bound_commit: 6f4cc04
     related: [docs/CI.md]
 
   - id: RELEASE-SIGN-001

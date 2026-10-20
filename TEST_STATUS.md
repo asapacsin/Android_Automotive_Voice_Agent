@@ -20,7 +20,6 @@ Updated 2026-09-21 · 163 tests
 
 **HUMAN_VALIDATION_READY = FALSE**
 
-- the registry does not validate: 1 problem(s)
 - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - TRUTH-MEDIA-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -177,7 +176,7 @@ Updated 2026-09-21 · 163 tests
 | ABI-SIZE-001 | release | APK size per ABI | AUTONOMOUS | PASS | no | 2026-09-20: universal release APK 216.7 MB on disk, 228.0 MB uncompressed |
 | ASTRA-DEMO-REHEARSAL-001 | release | No-touch demo rehearsal — wake search choice route | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | NavigationLocalPickGuard turn/list authority + NavigationPickSession executor results |
 | ASTRA-DEMO-REHEARSAL-003 | release | No-touch demo rehearsal — replacement search after ambiguous pick | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | NavigationLocalPickGuard AMBIGUOUS/NO_MATCH/SELECTED outcomes |
-| CI-GEMINI-KEY-001 | release | The Voice checks workflow's Gemini key is valid | HUMAN_CREDENTIAL | STALE | no | 2026-10-19 Voice checks run 39198920117 at adfa384 (05:15 UTC): session up, every scena… |
+| CI-GEMINI-KEY-001 | release | The Voice checks workflow's Gemini key is valid | HUMAN_CREDENTIAL | HUMAN_PASS | no | 2026-10-19 Voice checks run 39198920117 at adfa384 (05:15 UTC): session up, every scena… |
 | CI-VENDOR-ZIP-001 | release | The emulator workflows and cloud sessions can fetch the vendor zip | HUMAN_CREDENTIAL | HUMAN_REQUIRED | no | 2026-10-18 Device checks run 39144117274: cloud_setup 'vendor zip download failed: HTTP… |
 | RELEASE-BUILD-001 | release | The release variant builds | AUTONOMOUS | PASS | yes | 2026-09-20: app-release-unsigned.apk, 227 MB |
 | RELEASE-SIGN-001 | release | A signed release build installs and works | HUMAN_CREDENTIAL | HUMAN_REQUIRED | yes | RELEASE-BUILD-001 PASS - the release variant compiles and packages |
