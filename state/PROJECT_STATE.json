@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-20T05:54:23",
+  "generated_at": "2026-10-20T06:17:10",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "08983b1",
+    "commit": "3ab8ec7",
     "branch": "claude/10-20",
-    "subject": "Merge exec/style-model: style piece defaults to gemini-3.8-live, model= line, MET needs 7/7 graded",
+    "subject": "DEMO-STYLE-001: grader v3, two fresh gemini-3.8 runs both FAIL (pitch flat on chat turns) - stop, back to the decider",
     "working_tree_clean": false,
-    "uncommitted_files": 3
+    "uncommitted_files": 6
   },
   "tests": {
     "available": true,
@@ -66,10 +66,9 @@
     "available": true,
     "by_level": {
       "device": 36,
-      "unit": 9,
+      "unit": 11,
       "unsupported": 5,
-      "human": 1,
-      "implemented": 2
+      "human": 1
     },
     "human_verification_pending": [
       "open_mic_thresholds",
@@ -106,7 +105,7 @@
     {
       "id": "P55",
       "title": "10-13 bug: 「嗲一点」 changes neither the style on screen nor how she speaks",
-      "status": "open: design decided 2026-10-13 (decider; SPEC-021 B10, FUZZY §7.3, DeliveredStyle.kt), built and JVM-proven (DeliveredS"
+      "status": "open only for the Ayano take (waits for the owner's \"Ayano last\" go). Known Gemini limitation (decider 2026-10-20): on g"
     },
     {
       "id": "P62",
@@ -186,8 +185,8 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "DEMO-STYLE-001: FAIL: A spoken style change is heard: after 撒个娇 her chat replies sound sweeter, and 正常说话 brings the default back",
-    "actionable_count": 78,
+    "NEXT_ACTION": "AFFORDANCE-DEVICE-001: STALE_BIND: Spoken control names act on the phone through the local path, once, with no model execution",
+    "actionable_count": 85,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 29,
@@ -197,7 +196,70 @@
         "priority": 2,
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
+        "item": "AFFORDANCE-DEVICE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
         "item": "DEMO-STYLE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "LIVE-INFO-DEVICE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-CANCEL-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-E2E-ARRIVAL-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-OVERSPEED-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-PICK-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-SEARCH-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-UI-007",
+        "blocked_by": null
+      },
+      {
+        "priority": 2,
+        "class": "failing regression tests",
+        "source": "TEST_MATRIX.yaml",
+        "item": "TRUTH-WEATHER-001",
         "blocked_by": null
       },
       {
@@ -338,20 +400,6 @@
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-017-music-from-description.md",
         "item": "`MusicSource` port / `BundledTrackSource` split",
-        "blocked_by": null
-      },
-      {
-        "priority": 5,
-        "class": "implemented but not wired into production",
-        "source": "capabilities.yaml",
-        "item": "along_route",
-        "blocked_by": null
-      },
-      {
-        "priority": 5,
-        "class": "implemented but not wired into production",
-        "source": "capabilities.yaml",
-        "item": "route_traffic",
         "blocked_by": null
       },
       {
