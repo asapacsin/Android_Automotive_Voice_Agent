@@ -8,8 +8,10 @@ Prints `key verdict time tools style F0 spread pace markers note`, then `RESULT 
 Exit 0 only on PASS. Never prints reply text: it is only counted (CJK characters for the pace, sweet
 wording markers for information).
 
-A turn "sounds sweet" when at least 2 of 3 hold against s_mood1: median F0 >= +8 %, F0 spread >= +2.0 st,
-pace <= -10 %; or when the median F0 alone rose >= +15 % (F0_ALONE). s_mood2 and s_mood3 must sound sweet,
+A turn "sounds sweet" (GRADER v3) against s_mood1 when the median F0 rose >= +15 % (F0_ALONE), or when it
+rose >= +8 % and also the F0 spread rose >= +2.0 st or the pace fell >= 10 %. Pitch is necessary; spread
+and pace only confirm it (decider 2026-10-20: between two default turns, s_mood4 vs s_mood1, spread swings
+-1.7..+2.4 st and pace 0..-13 % while F0 stays within +4 %). s_mood2 and s_mood3 must sound sweet,
 s_mood4 must not; s_seat is reported only (other text).
 
 F0_ALONE (2026-10-13): the 2-of-3 rule was set before any real run of the fix. On gemini-3.8-live the
@@ -36,6 +38,7 @@ MUST_SWEET, MUST_NOT_SWEET = ("s_mood2", "s_mood3"), ("s_mood4",)
 REPLY_S = 5.0
 F0_UP, SPREAD_UP, PACE_DOWN = 0.08, 2.0, 0.10
 F0_ALONE = 0.15
+GRADER = "v3"
 MARKERS = ["嘛", "呀", "啦", "哟", "呢", "人家", "哦"]
 ERROR_RE = tryout_check.ERROR_RE
 
@@ -45,9 +48,9 @@ def sounds_sweet(s, base):
     if s is None or base is None:
         return None, None
     df = s["f0_hz"] / base["f0_hz"] - 1
-    hits = [df >= F0_UP, s["spread_st"] - base["spread_st"] >= SPREAD_UP,
-            base["pace_cps"] > 0 and s["pace_cps"] <= base["pace_cps"] * (1 - PACE_DOWN)]
-    return sum(hits) >= 2 or df >= F0_ALONE, df
+    spread_hit = s["spread_st"] - base["spread_st"] >= SPREAD_UP
+    pace_hit = base["pace_cps"] > 0 and s["pace_cps"] <= base["pace_cps"] * (1 - PACE_DOWN)
+    return df >= F0_ALONE or (df >= F0_UP and (spread_hit or pace_hit)), df
 
 
 def markers(replies):
@@ -112,6 +115,7 @@ def grade(run):
     if outside and not any("session error" in r[7] for r in rows):
         fails.append("session_error")
     print(f"== {run}")
+    print(f"GRADER {GRADER}")
     print(f"  {'key':9s} {'verd':4s} {'time':5s}  {'tools':28s} {'style':8s} {'F0':>12s} {'spread':>7s} {'pace':>6s} mk  note")
     for key, verdict, d, tool_txt, style, pr, mk, note in rows:
         ts = f"{d:4.1f}s" if d is not None else "  -- "
@@ -198,6 +202,10 @@ def selftest():
 
     def still_sweet(p): p["voice"]["s_mood4"] = SWEET_V
 
+    def default_swing(p): p["voice"]["s_mood4"] = (DEFAULT_V[0], DEFAULT_V[1] + 2.4, DEFAULT_V[2] * 0.87)
+
+    def no_pitch(p): p["voice"]["s_mood2"] = (DEFAULT_V[0] * 1.02, DEFAULT_V[1] + 2.8, DEFAULT_V[2] * 0.79)
+
     cases = [
         ("pass", None, []),
         ("no tool at s_sweet", no_tool, ["s_sweet"]),
@@ -205,6 +213,8 @@ def selftest():
         ("fade at s_mood3", fade, ["s_mood3"]),
         ("no switch back", no_back, ["s_normal", "s_mood4"]),
         ("s_mood4 still sweet", still_sweet, ["s_mood4"]),
+        ("s_mood4 default swing at base pitch", default_swing, []),
+        ("s_mood2 spread and pace without pitch", no_pitch, ["s_mood2"]),
     ]
     saved, bad = check_req.CLIPS, []
     try:
