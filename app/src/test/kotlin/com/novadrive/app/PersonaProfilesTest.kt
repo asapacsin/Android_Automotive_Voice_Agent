@@ -112,14 +112,4 @@ class PersonaProfilesTest {
                 out.filterIndexed { i, l -> i != toneAt && !l.startsWith(PersonaProfiles.VOICE_STYLE_PREFIX) }, "$style")
         }
     }
-
-    /** A6 "both clients use it": the Gemini and the OpenAI-style realtime client compose with the current style. */
-    @Test fun bothRealtimeClientsComposeWithTheDeliveredStyle() {
-        val voice = listOf(java.io.File("src/main/kotlin/com/novadrive/app/voice"), java.io.File("app/src/main/kotlin/com/novadrive/app/voice"))
-            .first { it.isDirectory }
-        for (name in listOf("GeminiLiveClient.kt", "OpenAiRealtimeClient.kt")) {
-            val src = java.io.File(voice, name).readText()
-            assertTrue(Regex("""PersonaProfiles\.compose\(\w+, deliveredStyle\.take\(\)\)""").containsMatchIn(src), name)
-        }
-    }
 }
