@@ -1,0 +1,4 @@
+{"id": "build:vendor-real", "status": "PASS", "detail": "real vendor files packaged"}
+{"id": "liveinfo:LI-TRAFFIC", "status": "PASS", "detail": ""}
+{"id": "liveinfo:runner", "status": "FAIL", "detail": "run incomplete: no summary"}
+{"id": "voice:quota-guard", "status": "PASS", "detail": "gemini_live, no qwen session"}

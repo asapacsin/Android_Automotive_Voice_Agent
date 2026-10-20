@@ -1,0 +1,38 @@
+{
+  "suite": "voice-li-traffic",
+  "verdict": "FAIL",
+  "vendor": "REAL",
+  "checks": [
+    {
+      "id": "build:vendor-real",
+      "required": true,
+      "status": "PASS",
+      "detail": "real vendor files packaged"
+    },
+    {
+      "id": "liveinfo:runner",
+      "required": true,
+      "status": "FAIL",
+      "detail": "run incomplete: no summary"
+    },
+    {
+      "id": "liveinfo:LI-TRAFFIC",
+      "required": true,
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "voice:quota-guard",
+      "required": true,
+      "status": "PASS",
+      "detail": "gemini_live, no qwen session"
+    }
+  ],
+  "problems": [
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required liveinfo:runner is FAIL"
+    }
+  ]
+}

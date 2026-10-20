@@ -1,0 +1,9 @@
+app: map up
+secret AMAP_WEB_KEY: set, amap_web_setup -> result=applied 
+secret GEMINI_API_KEY: set, gemini_setup -> result=applied 
+voice: provider override -> result=override=gemini 
+voice: session_provider choice=gemini_live
+voice: session did not report ready (err=GEMINI_LIVE_QUOTA_EXCEEDED state=DISCONNECTED state=DISCONNECTED GEMINI_LIVE_QUOTA_EXCEEDED )
+suite liveinfo: runner rc=1
+suite liveinfo:  guard=0
+voice: shard li-traffic done, override cleared
