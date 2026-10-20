@@ -1,0 +1,11 @@
+app: map up
+secret AMAP_WEB_KEY: set, amap_web_setup -> result=applied 
+secret GEMINI_API_KEY: set, gemini_setup -> result=applied 
+voice: provider override -> result=override=gemini 
+voice: session_provider choice=gemini_live
+voice: session up
+voice: runner rc=1
+voice: scenarios PASS S1 PASS S2 FAIL S3 FAIL S4 FAIL S4b PASS S5 FAIL S5b PASS S6 PASS S7 ok S1 ok S2 FAIL S3 FAIL S4 FAIL S4b ok S5 FAIL S5b ok S6 ok S7 
+voice: session errors=0 provider_lines= 1 session_provider choice=gemini_live  quota_guard=0
+0 codes=
+voice: shard voice-a done, override cleared

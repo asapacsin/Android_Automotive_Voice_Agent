@@ -1,0 +1,101 @@
+{
+  "suite": "voice-a",
+  "verdict": "FAIL",
+  "vendor": "REAL",
+  "checks": [
+    {
+      "id": "build:vendor-real",
+      "required": true,
+      "status": "PASS",
+      "detail": "real vendor files packaged"
+    },
+    {
+      "id": "voice:runner",
+      "required": true,
+      "status": "PASS",
+      "detail": "runner exit 1: scenario failures judged per scenario"
+    },
+    {
+      "id": "voice:S1",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S2",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S3",
+      "required": true,
+      "status": "FAIL",
+      "detail": "0/1 runs passed"
+    },
+    {
+      "id": "voice:S4",
+      "required": true,
+      "status": "FAIL",
+      "detail": "0/1 runs passed"
+    },
+    {
+      "id": "voice:S4b",
+      "required": true,
+      "status": "FAIL",
+      "detail": "0/1 runs passed"
+    },
+    {
+      "id": "voice:S5",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S5b",
+      "required": true,
+      "status": "FAIL",
+      "detail": "0/1 runs passed"
+    },
+    {
+      "id": "voice:S6",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S7",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:quota-guard",
+      "required": true,
+      "status": "PASS",
+      "detail": "gemini_live, no qwen session"
+    }
+  ],
+  "problems": [
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:S3 is FAIL"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:S4 is FAIL"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:S4b is FAIL"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:S5b is FAIL"
+    }
+  ]
+}

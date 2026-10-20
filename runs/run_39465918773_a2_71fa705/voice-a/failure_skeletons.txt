@@ -1,0 +1,70 @@
+-- S3
+   test_speech_start bytes=59904
+   debug_tool tool=voice arg=say:nav_home
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=8020 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   test_speech_end frames=203 elapsedMs=2030
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=8524 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=9024 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+-- S4
+   test_speech_start bytes=59904
+   debug_tool tool=voice arg=say:music_on
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=10524 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   test_speech_end frames=203 elapsedMs=2030
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=11024 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=11528 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+-- S4b
+   test_speech_start bytes=100608
+   debug_tool tool=voice arg=say:media_named_song
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=13033 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   test_speech_end frames=330 elapsedMs=3300
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=13534 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=14035 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+-- S5b
+   test_speech_start bytes=59904
+   debug_tool tool=voice arg=say:pick_second
+   gemini_driver_turn_fallback source=voice_activity
+   gemini_voice_activity type=ACTIVITY_START
+   gemini_first_transcript ms=none
+   test_speech_end frames=203 elapsedMs=2050
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=18037 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   gemini_content_no_turn kind=inputTranscription audio=0 text_parts=0
+   gemini_voice_activity type=ACTIVITY_END
+   state=LISTENING err=-
+   ctx_hint epoch=5 referents=temperature pending=0
+   TURN_HOLD epoch=5 reason=AWAITING_EXECUTION_PROOF kind=ACTION durationMs=-1
+   gemini_turn_open
+   transcript_bubble_shown
+   gemini_tool_call id=fc_4372269042812538350 tool=play_music args=valid
+   state=LISTENING err=-
+   claim src=MODEL tool=play_music group= epoch=5 ctx=152457492 ok=true
+   music_handoff pkg=com.google.android.apps.youtube.music fields=ta result=sent
+   tool=play_music args=[title, app
+   state=LISTENING err=-
+   amap_gps stopGPS=true
+   music_verify result=unverified match=false waited_ms=0
+   gemini_tool_response id=fc_4372269042812538350 chars=170
+   TURN_RELEASE epoch=5 reason=execution_proved events=13
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   state=SPEAKING err=-
+   transcript_bubble_shown
+   session_diag state=SPEAKING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=18538 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   gemini_server_meta response_tokens=TOTAL:70,AUDIO:49
+   gemini_turn_done status=completed calls=1 spoke=true dur_ms=3037 first_audio_ms=1329 first_text_ms=1329 gen_ms=1763 msgs=20 max_gap_ms=636
+   state=LISTENING err=-
+   gemini_driver_turn_fallback source=voice_activity
+   gemini_voice_activity type=ACTIVITY_START
+   gemini_first_transcript ms=none
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=19039 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   gemini_content_no_turn kind=inputTranscription audio=0 text_parts=0
+   gemini_voice_activity type=ACTIVITY_END
