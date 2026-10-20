@@ -1,0 +1,74 @@
+{
+  "suite": "voice-c",
+  "verdict": "FAIL",
+  "vendor": "REAL",
+  "checks": [
+    {
+      "id": "build:vendor-real",
+      "required": true,
+      "status": "PASS",
+      "detail": "real vendor files packaged"
+    },
+    {
+      "id": "voice:runner",
+      "required": true,
+      "status": "PASS",
+      "detail": "runner exit 1: scenario failures judged per scenario"
+    },
+    {
+      "id": "voice:S15",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S16",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S17",
+      "required": true,
+      "status": "FAIL",
+      "detail": "0/1 runs passed"
+    },
+    {
+      "id": "voice:S18",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S19",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S20",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:S21",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:quota-guard",
+      "required": true,
+      "status": "PASS",
+      "detail": "gemini_live, no qwen session"
+    }
+  ],
+  "problems": [
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:S17 is FAIL"
+    }
+  ]
+}
