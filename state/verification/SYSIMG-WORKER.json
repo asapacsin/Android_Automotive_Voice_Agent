@@ -1,0 +1,18 @@
+{
+ "task_id": "SYSIMG-WORKER",
+ "contract_sha256": "3d88bd8673cb6d0c6ed891aac689f751fdae78f798b32d287cf5e69219452c6e",
+ "tip": "2d4c4ffd8eaf1c15c981b948312f5e96f6ba7d26",
+ "verified_by": "planner",
+ "at": "2026-10-20T18:53:24+00:00",
+ "results": [
+  {
+   "id": "yaml",
+   "kind": "lint",
+   "command": "python3 -c \"import yaml;d=yaml.safe_load(open('.github/workflows/test-worker.yml'));steps=[s.get('name') for j in d['jobs'].values() for s in j['steps']];i=steps.index('Boot the emulator once and serve pieces');assert steps[i-2]=='Cache the emulator system image' and steps[i-1]=='Pre-install the emulator system image (retries)', steps\"",
+   "exit_code": 0,
+   "seconds": 0.0,
+   "log": "/root/nova-drive-build/nova-verify/SYSIMG-WORKER/2d4c4ffd8eaf-yaml.log",
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+ ]
+}
