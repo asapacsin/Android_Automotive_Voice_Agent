@@ -40,6 +40,20 @@ def tryout_output(fail=None):
     return "\n".join(rows) + "\n"
 
 
+_STYLE = {}
+
+
+def style_output(passing=True):
+    """Real style_check.py output: its own selftest (pass case, and the 'no tool at s_sweet' case)."""
+    if not _STYLE:
+        p = subprocess.run(["python3", os.path.join(REPO, "tools/demo/live/style_check.py"), "--selftest"],
+                           capture_output=True, text=True, cwd=REPO)
+        blocks = ["== " + b for b in p.stdout.split("== ")[1:]]
+        _STYLE["pass"], _STYLE["fail"] = blocks[0].split("selftest ")[0], blocks[1].split("selftest ")[0]
+    # A note with reply-like Chinese text and a CJK marker column, as a real take can carry.
+    return _STYLE["pass" if passing else "fail"].replace("sounds sweet (info)", "\u8bf4\u4e86\u300c\u55f2\u4e00\u70b9 SECRET\u300d")
+
+
 class LiveJvmTest(unittest.TestCase):
     def run_summary(self, piece, res, xml):
         with tempfile.TemporaryDirectory() as d:
@@ -121,6 +135,35 @@ class LiveJvmTest(unittest.TestCase):
             self.assertEqual(p.returncode, 3)
             self.assertIn("BLOCKED secret GEMINI_API_KEY", open(os.path.join(d, "tryout", "summary.txt")).read())
 
+    def test_style_met_and_text_free(self):
+        res = style_output()
+        self.assertIn("RESULT PASS", res)
+        out = self.run_summary("style", res, XML.format(n=1, f=0))
+        self.assertIn("DEMO-STYLE-001 rule=MET", out)
+        self.assertIn("graded=7 pass=7", out)
+        self.assertRegex(out, r"s_sweet PASS 1\.5s tools=set_speaking_style style=sweet f0=246Hz\+20% ".replace("%", ""))
+        self.assertIn("junit tests=1 failures=0", out)
+        for bad in ("\u55f2", "SECRET", "\u2713", "sounds", "info"):
+            self.assertNotIn(bad, out)
+        self.assertTrue(out.isascii(), out)
+        self.assertRegex(out, r"^[A-Za-z0-9_.,=+ \n-]*$")
+
+    def test_style_not_met(self):
+        out = self.run_summary("style", style_output(passing=False), XML.format(n=1, f=1))
+        self.assertIn("RESULT FAIL s_sweet", out)
+        self.assertIn("s_sweet FAIL", out)
+        self.assertIn("DEMO-STYLE-001 rule=NOT_MET", out)
+        self.assertIn("rule=NOT_MET", self.run_summary("style", "", XML.format(n=1, f=0)))
+
+    def test_style_missing_secret_blocked(self):
+        env = {k: v for k, v in os.environ.items() if k != "GEMINI_API_KEY"}
+        env["LIVE_JVM_SKIP_PUSH"] = "1"
+        with tempfile.TemporaryDirectory() as d:
+            env["LIVE_JVM_OUT"] = d
+            p = subprocess.run(["bash", SCRIPT, "style"], capture_output=True, text=True, env=env)
+            self.assertEqual(p.returncode, 3)
+            self.assertIn("BLOCKED secret GEMINI_API_KEY", open(os.path.join(d, "style", "summary.txt")).read())
+
     def test_model_line(self):
         out = self.run_summary("text-live", results().replace("model=m", "model=gem-1.5"), XML.format(n=1, f=0))
         self.assertIn("model=gem-1.5", out)
@@ -128,7 +171,7 @@ class LiveJvmTest(unittest.TestCase):
     def test_workflow_shape(self):
         wf = yaml.safe_load(open(os.path.join(REPO, ".github/workflows/live-jvm.yml")))
         self.assertEqual(wf["name"], "Live JVM checks")
-        self.assertEqual(wf["jobs"]["live"]["strategy"]["matrix"]["piece"], ["text-live", "amap-live", "tryout"])
+        self.assertEqual(wf["jobs"]["live"]["strategy"]["matrix"]["piece"], ["text-live", "amap-live", "tryout", "style"])
         self.assertEqual(wf["jobs"]["live"]["timeout-minutes"], 40)
 
 
