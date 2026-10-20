@@ -64,7 +64,7 @@
     "device": {
       "description": "Device rows on the emulator without a voice model session (scripts/github_device_checks.sh). Full-run union; Device checks runs it as the per-shard suites device-* (one verdict per shard, docs/CI.md).",
       "required": ["build:vendor-real", "device:app-up", "device:PLACE-UNSET-001", "device:PLACE-SAVE-001", "device:APPS-001", "device:NAV-ROUTE-001", "device:NAV-START-001", "device:NAV-UI-002", "device:NAV-UI-003", "device:NAV-UI-005", "device:NAV-UI-007", "device:NAV-E2E-ARRIVAL-001", "device:NAV-CRASH-001", "device:PROCDEATH-001", "device:PERM-DENY-001", "device:TRANSCRIPT-FADE-EMU-001", "device:PIECE-P61", "device:PIECE-P63"],
-      "optional": ["device:CALL-NOSIM-001", "device:P59", "device:NAV-UI-004", "device:NAV-UI-006", "device:LIVE-INFO-SDK-TRAFFIC", "device:LIVE-INFO-SDK-ALONG"]
+      "optional": ["device:CALL-NOSIM-001", "device:P59", "device:NAV-UI-004", "device:NAV-UI-006", "device:NAV-OVERSPEED-XSM-RING", "device:NAV-OVERSPEED-XSM-ALERT", "device:LIVE-INFO-SDK-TRAFFIC", "device:LIVE-INFO-SDK-ALONG"]
     },
     "navpiece": {
       "description": "Navigation demo pieces (scripts/github_nav_demo.sh): navpiece:complete (a normal finish) and every recorded navpiece: check are required; the video is optional.",
@@ -79,7 +79,7 @@
     "device-drive": {
       "description": "Device checks shard drive (DEVICE_SHARD=drive): simulated drive to arrival and the NAV-UI rows. build:vendor-real is recorded by the shared setup and required in every shard.",
       "required": ["build:vendor-real", "device:NAV-ROUTE-001", "device:NAV-START-001", "device:NAV-UI-002", "device:NAV-UI-003", "device:NAV-UI-005", "device:NAV-UI-007", "device:NAV-E2E-ARRIVAL-001", "device:NAV-CRASH-001"],
-      "optional": ["device:NAV-UI-004", "device:NAV-UI-006"]
+      "optional": ["device:NAV-UI-004", "device:NAV-UI-006", "device:NAV-OVERSPEED-XSM-RING", "device:NAV-OVERSPEED-XSM-ALERT"]
     },
     "device-lifecycle": {
       "description": "Device checks shard lifecycle (DEVICE_SHARD=lifecycle): P59, process death, revoked microphone, transcript bubble probe. build:vendor-real is recorded by the shared setup and required in every shard.",

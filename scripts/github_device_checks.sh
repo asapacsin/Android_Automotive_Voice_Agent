@@ -221,6 +221,41 @@ note "NAV crash check: fatal=$fatal anr=$anr"
 pf device:NAV-CRASH-001 "fatal=$fatal anr=$anr" '[ "$fatal" = 0 ] && [ "$anr" = 0 ]'
 fi
 
+# ---- overspeed evidence on a route whose speed cameras carry a posted limit -----------------------
+# The coordinate route above has cameras that report limit 0 (run 39452886908), so the ring and the
+# spoken warning need the place route that carried limitKmh=40 on 2026-09-21. 50 km/h is over it.
+# Bounded to 4 minutes; stops early once an alert or an over=1 speed line has been seen.
+if in_shard drive; then
+ensure_web_key
+if [ "${web_key:-0}" = 1 ]; then
+  mark
+  adb shell am force-stop com.novadrive.app; app_up || true
+  tool nav_route "十字门"
+  if wait_for "nav_calc_success" 90; then
+    tool nav_start emulator:50
+    if wait_for "nav_started" 30; then
+      os_i=0
+      while [ "$os_i" -lt 240 ]; do
+        if [ "$(count 'nav_overspeed_alert')" -ge 1 ] || [ "$(count 'nav_speed .*over=1')" -ge 1 ]; then sleep 8; break; fi
+        os_i=$((os_i + 5)); sleep 5
+      done
+    fi
+    tool nav_stop x; sleep 3
+  fi
+  os_limits="$(nova | grep -oE 'nav_camera_ahead.*limitKmh=[0-9]+' | grep -oE 'limitKmh=[0-9]+' | sort -u | tr '\n' ' ' || true)"
+  os_over="$(count 'nav_speed .*over=1')"
+  os_ring="$(count 'nav_play_ring')"
+  os_alert="$(count 'nav_overspeed_alert')"
+  os_play="$(count 'nav_guidance_play_start')"
+  note "NAV-OVERSPEED-XSM: limits_seen=${os_limits:-none} speed_over=$os_over ring=$os_ring overspeed_alert=$os_alert guidance_play=$os_play"
+  pf device:NAV-OVERSPEED-XSM-RING "speed_over=$os_over ring=$os_ring" '[ "$os_over" -ge 1 ] && [ "$os_ring" -ge 1 ]'
+  pf device:NAV-OVERSPEED-XSM-ALERT "overspeed_alert=$os_alert" '[ "$os_alert" -ge 1 ]'
+else
+  res device:NAV-OVERSPEED-XSM-RING SKIPPED "secret AMAP_WEB_KEY not set"
+  res device:NAV-OVERSPEED-XSM-ALERT SKIPPED "secret AMAP_WEB_KEY not set"
+fi
+fi
+
 # ---- LIVE-INFO-SDK through the navigation controller -------------------------------------------
 # Needs no drive state (it routes by place search with the web key from the dispatch section), so
 # it runs in the dispatch shard; in a full run it still follows the drive.
