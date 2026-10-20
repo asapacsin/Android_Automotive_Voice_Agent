@@ -1,0 +1,27 @@
+{
+ "task_id": "VLC-EMU",
+ "contract_sha256": "b6df16e19e816b335b86be4efbb8cfa0d65052be8b098c956184cc6e61562c4f",
+ "tip": "e37458467652e81cd77e23001b2d81b3ad0d3d2a",
+ "verified_by": "planner",
+ "at": "2026-10-20T12:28:02+00:00",
+ "results": [
+  {
+   "id": "script-tests",
+   "kind": "regression",
+   "command": "python3 -m unittest discover -s scripts/tests -t .",
+   "exit_code": 0,
+   "seconds": 210.1,
+   "log": "/root/nova-drive-build/nova-verify/VLC-EMU/e37458467652-script-tests.log",
+   "log_sha256": "185150c86f93286e5b0aa8fd1fd39b8b2e4cd3ab4eef3647c6bde76c9984b396"
+  },
+  {
+   "id": "bash-syntax",
+   "kind": "lint",
+   "command": "bash -n scripts/github_device_checks.sh",
+   "exit_code": 0,
+   "seconds": 0.0,
+   "log": "/root/nova-drive-build/nova-verify/VLC-EMU/e37458467652-bash-syntax.log",
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+ ]
+}
