@@ -2,11 +2,11 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-21 · 164 tests
+Updated 2026-09-21 · 166 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 100 |
+| autonomous PASS | 102 |
 | autonomous FAIL | 1 |
 | incomplete | 0 |
 | partial pass | 0 |
@@ -64,7 +64,7 @@ Updated 2026-09-21 · 164 tests
 | apps | 1 | 1 | 0 | 0 |
 | architecture | 5 | 5 | 0 | 0 |
 | body | 1 | 1 | 0 | 0 |
-| calling | 8 | 6 | 1 | 1 |
+| calling | 9 | 7 | 1 | 1 |
 | cantonese | 2 | 1 | 0 | 0 |
 | climate | 5 | 4 | 1 | 0 |
 | comfort | 3 | 2 | 0 | 1 |
@@ -85,7 +85,7 @@ Updated 2026-09-21 · 164 tests
 | truthfulness | 9 | 7 | 0 | 2 |
 | turn_taking | 19 | 10 | 3 | 6 |
 | unsupported | 1 | 1 | 0 | 0 |
-| vision | 2 | 0 | 0 | 2 |
+| vision | 3 | 1 | 0 | 2 |
 | wake | 2 | 1 | 1 | 0 |
 | wake_word | 4 | 1 | 1 | 2 |
 
@@ -105,6 +105,7 @@ Updated 2026-09-21 · 164 tests
 | CALL-CONFIRM-001 | calling | One match is never dialled on the first turn | AUTONOMOUS | PASS | yes | PhoneCallToolTest, 2026-09-20 |
 | CALL-DIAL-001 | calling | A failed dial is not reported as a placed call | AUTONOMOUS | PASS | yes | PhoneCallToolTest.aDiallerFailureIsNotReportedAsAPlacedCall |
 | CALL-NOSIM-001 | calling | A car that cannot call says so | AUTONOMOUS | NOT_RUN | yes | 2026-09-20 on 2391ff70, gsm.sim.state=ABSENT,ABSENT |
+| CALL-NOSIM-UNIT-001 | calling | Without telephony the call tool refuses with NO_TELEPHONY and dials nothing (JVM) | AUTONOMOUS | PASS | no | 2026-10-20 local real-vendor JVM at 08983b1: PhoneCallToolTest 13 tests 0 failures (JUn… |
 | CALL-PRIVACY-001 | calling | The phone number never reaches the model | AUTONOMOUS | PASS | yes | PhoneCallToolTest, 2026-09-20 |
 | CALL-REAL-001 | calling | A confirmed call reaches a real handset | HUMAN_ACCOUNT | HUMAN_REQUIRED | yes | CALL-CONFIRM-001, CALL-AMBIG-001, CALL-PRIVACY-001 PASS |
 | STALE-CONFIRM-001 | calling | A confirmation only authorises the call it was asked about | AUTONOMOUS | PASS | yes | 2026-09-20: found by discovery, and it was a real defect - confirmed=true was trusted o… |
@@ -251,6 +252,7 @@ Updated 2026-09-21 · 164 tests
 | UNSUPPORTED-001 | unsupported | A request with no tool is refused, not improvised | AUTONOMOUS | PASS | yes | 2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemi… |
 | CAMERA-RELEASE-001 | vision | The camera is released when the app leaves the foreground | AUTONOMOUS | NOT_RUN | yes | STALE_BIND apk_digest mismatch |
 | VISION-001 | vision | A camera question is answered from the camera | AUTONOMOUS | NOT_RUN | yes | STALE_BIND apk_digest mismatch |
+| VISION-UNIT-001 | vision | A camera question is answered from the camera frame and shown on the camera view (JVM) | AUTONOMOUS | PASS | no | 2026-10-20 local real-vendor JVM at 08983b1: CameraQuestionHandlerTest 8 tests 0 failur… |
 | ASTRA-WAKE-CYCLES-001 | wake | Ten ACTIVE to SLEEP to wake microphone handoffs | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | WakeWordController uses listeningState.uploads instead of session isActive |
 | WAKE-ARMING-001 | wake | A stale wake event starts nothing; a failed wake start is retried within a bound | AUTONOMOUS | PASS | yes | 2026-09-24: WakeArmingTest 6/6, WakeAudioPathTest source contract (cloud Linux build) |
 | WAKE-ENGINE-001 | wake_word | MSC engine accepts app-fed audio | AUTONOMOUS | NOT_RUN | yes | 2026-09-19: 50 s of app-fed PCM, no error (ACCEPTANCE_TESTS.md) |

@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-20T05:38:08",
+  "generated_at": "2026-10-20T05:54:23",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "f395949",
+    "commit": "08983b1",
     "branch": "claude/10-20",
-    "subject": "Merge exec/evid-runid: Live JVM evidence folders carry the run id",
+    "subject": "Merge exec/style-model: style piece defaults to gemini-3.8-live, model= line, MET needs 7/7 graded",
     "working_tree_clean": false,
-    "uncommitted_files": 2
+    "uncommitted_files": 3
   },
   "tests": {
     "available": true,

@@ -283,7 +283,7 @@ vision:
   describe_camera_view:
     tool: describe_camera_view
     verified: device
-    protected_by: [VISION-001]
+    protected_by: [VISION-001, VISION-UNIT-001]
     evidence: "看看前面有什么 -> camera frame -> Qianfan vision -> spoken answer"
     notes: "Needs a Qianfan API key; a legacy OAuth token is rejected with 401."
 
@@ -339,7 +339,7 @@ speech:
   post_speech_echo_protection:
     tool: null
     verified: device
-    protected_by: [ECHO-001]
+    protected_by: [ECHO-001, BARGE-IN-EVIDENCE-001]
     regression_test: echoCandidateHoldStaysWired
     required_behaviour: >
       Residual cabin echo of the assistant's own reply must not become a phantom 「没听清」 turn.
@@ -371,7 +371,7 @@ phone:
   call_without_sim:
     tool: place_call
     verified: device
-    protected_by: [CALL-NOSIM-001]
+    protected_by: [CALL-NOSIM-001, CALL-NOSIM-UNIT-001]
     evidence: "2026-09-20 on 2391ff70 (gsm.sim.state=ABSENT): NO_TELEPHONY, no dialler started"
     notes: "A car that cannot call says so. Starting the dialler and reporting success would be I-1's exact failure."
 

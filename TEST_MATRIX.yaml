@@ -352,6 +352,23 @@ tests:
     related: [B-018, P23]
     last_run: {at: 2026-09-20, result: PASS}
 
+  - id: CALL-NOSIM-UNIT-001
+    capability: calling
+    name: Without telephony the call tool refuses with NO_TELEPHONY and dials nothing (JVM)
+    purpose: "Unit guard for phone.call_without_sim while CALL-NOSIM-001 waits for a SIM-less device (the emulator has a simulated SIM)"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    covers: [phone.call_without_sim]
+    prerequisites: []
+    procedure: ["gradlew :app:testDebugUnitTest --tests *PhoneCallToolTest*"]
+    pass_criteria: ["aCarWithNoSimSaysSoInsteadOfDialling: blockedReason=NO_TELEPHONY, dialled=0"]
+    evidence: ["2026-10-20 local real-vendor JVM at 08983b1: PhoneCallToolTest 13 tests 0 failures (JUnit XML), including aCarWithNoSimSaysSoInsteadOfDialling. Unit level only - the device claim stays with CALL-NOSIM-001"]
+    related: [CALL-NOSIM-001, B-018]
+    last_run: {at: 2026-10-20, result: PASS}
+
   - id: CALL-AMBIG-001
     capability: calling
     name: Two people with one name are offered, not chosen between
@@ -725,7 +742,7 @@ tests:
     prerequisites: ["0.6.4-nav-baseline installed", "network"]
     procedure: ["nav_route 十字门", "nav_start emulator (50 km/h)", "drive ~5 min", "nav_stop"]
     pass_criteria: ["nav_start accepted=true", "guidance speaks", "light icons reported", "overspeed ring on 40-limit camera at 50 km/h", "no crash", "countdown seconds not required"]
-    evidence: ["2026-09-21: nav_traffic_countdown status=BLOCKED_EXTERNAL_AMAP_ENTITLEMENT", "nav_start accepted=true mode=2 route 9498 m; 4-7 nav_play_ring; ~20 guidance starts; nav_stopped reached=true", "nav_baseline_0_6_4.mp4 (~5 min, 72 MB) in D:/桌面/android_doc", "STALE_BIND code_digest mismatch"]
+    evidence: ["2026-09-21: nav_traffic_countdown status=BLOCKED_EXTERNAL_AMAP_ENTITLEMENT", "nav_start accepted=true mode=2 route 9498 m; 4-7 nav_play_ring; ~20 guidance starts; nav_stopped reached=true", "nav_baseline_0_6_4.mp4 (~5 min, 72 MB) in D:/桌面/android_doc", "STALE_BIND code_digest mismatch", "2026-10-20 Device checks run 39372812766 at 6f4cc04 (real vendor, ci/device-evidence runs/run_20261020_0524_6f4cc04): nav_started, guidance_play=15, lights=3, ring=5, maneuver=6, fatal=0; speed_over=0, so the overspeed-ring criterion is not shown - stays NOT_RUN"]
     acceptance:
       - {criterion: navigation_start, required: true, observed: true, evidence: "log:NovaVoice/nav_start accepted=true mode=2"}
       - {criterion: route_resolved, required: true, observed: true, evidence: "log:NovaVoice/nav_resolve ok 珠海十字门CBD + nav_calc_success routes=3 + nav_active_route meters=9498"}
@@ -2305,6 +2322,23 @@ tests:
 # ---- added by TEST_REVIEW pass 1, 2026-09-20 -------------------------------------------------
 # Found by comparing the capability groups in config/capabilities.yaml against the capability tags
 # used here: vision, apps and the unsupported-refusal group had no entry at all.
+
+  - id: VISION-UNIT-001
+    capability: vision
+    name: A camera question is answered from the camera frame and shown on the camera view (JVM)
+    purpose: "Unit guard for vision.describe_camera_view while VISION-001 waits for a fresh voice run"
+    type: unit
+    scope: COMPONENT
+    owner: AUTONOMOUS
+    status: PASS
+    release_blocking: false
+    covers: [vision.describe_camera_view]
+    prerequisites: []
+    procedure: ["gradlew :app:testDebugUnitTest --tests *CameraQuestionHandlerTest*"]
+    pass_criteria: ["CameraQuestionHandlerTest green (answer returned and shown on the camera view; failures honest)"]
+    evidence: ["2026-10-20 local real-vendor JVM at 08983b1: CameraQuestionHandlerTest 8 tests 0 failures (JUnit XML). Unit level only - the spoken flow stays with VISION-001"]
+    related: [VISION-001]
+    last_run: {at: 2026-10-20, result: PASS}
 
   - id: VISION-001
     capability: vision
