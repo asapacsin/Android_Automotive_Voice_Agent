@@ -3,7 +3,7 @@
 Examples:
   python scripts/compact_test.py -- ./gradlew :behavior-test:test
   python scripts/compact_test.py -- ./gradlew test
-  python scripts/compact_test.py -- .\gradlew.bat :app:testDebugUnitTest
+  python scripts/compact_test.py -- .\\gradlew.bat :app:testDebugUnitTest
   python scripts/compact_test.py --selftest
 
 The subprocess exit status is preserved. This does not replace the repository's
@@ -20,6 +20,29 @@ import time
 import xml.etree.ElementTree as ET
 
 REPO = Path(__file__).resolve().parents[1]
+
+
+def repo_root():
+    """Return the git repository root for the current working directory,
+    if it contains gradlew; otherwise return the script's parent repository."""
+    try:
+        # Try to get the git root of the current working directory
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            cwd=Path.cwd()
+        )
+        if result.returncode == 0:
+            git_root = Path(result.stdout.strip())
+            # Check if gradlew exists in this git root
+            if (git_root / "gradlew").exists():
+                return git_root
+    except (subprocess.SubprocessError, OSError):
+        pass
+    
+    # Fallback to the script's parent repository
+    return REPO
 
 
 def build_directory():
@@ -93,9 +116,14 @@ def main(argv=None):
     log_dir = Path(tempfile.mkdtemp(prefix="nova-compact-test-"))
     log_path = log_dir / "command.log"
     started = time.monotonic()
+    
+    # Determine the repository root to use
+    repo = repo_root()
+    print(f"compact_test: repo={repo}")
+    
     try:
         with log_path.open("wb") as output:
-            proc = subprocess.run(cmd, cwd=REPO, stdout=output, stderr=subprocess.STDOUT,
+            proc = subprocess.run(cmd, cwd=repo, stdout=output, stderr=subprocess.STDOUT,
                                   check=False)
         code = proc.returncode
     except OSError as exc:
