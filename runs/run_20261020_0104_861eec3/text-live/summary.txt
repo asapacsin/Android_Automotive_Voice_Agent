@@ -1,0 +1,12 @@
+piece=text-live
+junit tests=1 failures=0 errors=0 skipped=0 parsed=yes
+results_txt=present
+model=gemini-3.8-live
+FUZZY correct=18/19 fz15_19_all_correct=yes
+MUSIC play_music_correct=10/10 control_music_play=0/10
+FUZZY FZ-01=ok FZ-02=ok FZ-03=ok FZ-04=ok FZ-05=ok FZ-06=ok FZ-07=ok FZ-08=ok FZ-09=ok FZ-10=ok FZ-11=ok FZ-12=ok FZ-13=ok FZ-14=miss FZ-15=ok FZ-16=ok FZ-17=ok FZ-18=ok FZ-19=ok
+MUSIC M-01=ok M-02=ok M-03=ok M-04=ok M-05=ok M-06=ok M-07=ok M-08=ok M-09=ok M-10=ok
+MUSIC_CONTROL M-CTL=ok
+FUZZY-TEXT-LIVE-001 rule=MET
+MUSIC-TEXT-LIVE-001 rule=MET
+gradle_exit=0
