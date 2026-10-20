@@ -32,6 +32,7 @@ on:
     branches:
       - claude/10-15
       - claude/10-19
+      - claude/10-20
 
 permissions:
   contents: write

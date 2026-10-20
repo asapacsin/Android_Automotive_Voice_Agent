@@ -24,6 +24,7 @@ on:
     branches:
       - claude/10-15
       - claude/10-19
+      - claude/10-20
   pull_request:
     paths:
       - "app/src/main/**"
