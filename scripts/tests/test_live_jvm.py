@@ -27,6 +27,19 @@ def results(fz_miss=(), music_ctl=0, music_miss=0):
     return "model=m\n" + "\n".join(rows) + "\n"
 
 
+def tryout_output(fail=None):
+    rows = ["== /tmp/run"]
+    for i in range(19):
+        key = f"u_k{i:02d}"
+        verdict = "FAIL" if key == fail else "PASS"
+        note = "\u8bf4\u4e86\u300c\u4f60\u597d\u5bfc\u822a SECRET\u300d" if i % 2 else ""
+        tool = "control_window\u2713"
+        rows.append(f"  {key:10s} {verdict:4s} {2.1:4.1f}s  {tool:40s} {note}")
+    rows.append("RESULT " + ("PASS" if not fail else "FAIL " + fail))
+    rows.append("WARN -")
+    return "\n".join(rows) + "\n"
+
+
 class LiveJvmTest(unittest.TestCase):
     def run_summary(self, piece, res, xml):
         with tempfile.TemporaryDirectory() as d:
@@ -81,6 +94,33 @@ class LiveJvmTest(unittest.TestCase):
             self.assertEqual(open(os.path.join(d, "model_seen")).read().strip(), "unset")
             self.assertIn("timeout=yes", open(os.path.join(d, "text-live", "summary.txt")).read())
 
+    def test_tryout_met_and_text_free(self):
+        out = self.run_summary("tryout", tryout_output(), XML.format(n=1, f=0))
+        self.assertIn("DEMO-TRYOUT-001 rule=MET", out)
+        self.assertIn("graded=19 pass=19", out)
+        self.assertIn("u_k00 PASS 2.1s control_window", out)
+        self.assertIn("WARN -", out)
+        for bad in ("\u4f60", "\u5bfc\u822a", "SECRET", "\u2713"):
+            self.assertNotIn(bad, out)
+        self.assertTrue(out.isascii(), out)
+
+    def test_tryout_not_met(self):
+        out = self.run_summary("tryout", tryout_output(fail="u_k03"), XML.format(n=1, f=0))
+        self.assertIn("RESULT FAIL u_k03", out)
+        self.assertIn("u_k03 FAIL", out)
+        self.assertIn("DEMO-TRYOUT-001 rule=NOT_MET", out)
+        short = "\n".join(tryout_output().splitlines()[:5]) + "\nRESULT PASS\nWARN -\n"
+        self.assertIn("rule=NOT_MET", self.run_summary("tryout", short, XML.format(n=1, f=0)))
+
+    def test_tryout_missing_secret_blocked(self):
+        env = {k: v for k, v in os.environ.items() if k != "GEMINI_API_KEY"}
+        env["LIVE_JVM_SKIP_PUSH"] = "1"
+        with tempfile.TemporaryDirectory() as d:
+            env["LIVE_JVM_OUT"] = d
+            p = subprocess.run(["bash", SCRIPT, "tryout"], capture_output=True, text=True, env=env)
+            self.assertEqual(p.returncode, 3)
+            self.assertIn("BLOCKED secret GEMINI_API_KEY", open(os.path.join(d, "tryout", "summary.txt")).read())
+
     def test_model_line(self):
         out = self.run_summary("text-live", results().replace("model=m", "model=gem-1.5"), XML.format(n=1, f=0))
         self.assertIn("model=gem-1.5", out)
@@ -88,7 +128,8 @@ class LiveJvmTest(unittest.TestCase):
     def test_workflow_shape(self):
         wf = yaml.safe_load(open(os.path.join(REPO, ".github/workflows/live-jvm.yml")))
         self.assertEqual(wf["name"], "Live JVM checks")
-        self.assertEqual(wf["jobs"]["live"]["strategy"]["matrix"]["piece"], ["text-live", "amap-live"])
+        self.assertEqual(wf["jobs"]["live"]["strategy"]["matrix"]["piece"], ["text-live", "amap-live", "tryout"])
+        self.assertEqual(wf["jobs"]["live"]["timeout-minutes"], 40)
 
 
 if __name__ == "__main__":

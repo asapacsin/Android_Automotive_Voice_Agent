@@ -6,7 +6,10 @@
 #              MUSIC-TEXT-LIVE-001 (>=8/10 play_music, 0/10 control_music{play})
 #   amap-live  NOVA_LIVE_AMAP=1 ... --tests '*DemoCommuteAmapLiveTest'
 #              row DEMO-AMAP-LIVE-001 (JUnit 2/2; the 1700 m check is one of the two tests)
-# Usage: scripts/github_live_jvm.sh <text-live|amap-live>
+#   tryout     Piper u_* clips (zh_CN-huayan-medium), then NOVA_LIVE_DEMO=1 NOVA_LIVE_PROVIDER=gemini
+#              NOVA_LIVE_SCENES=tryout ... --tests '*LiveDemoRun*' (8-minute live timeout), then
+#              tryout_check.py; row DEMO-TRYOUT-001 (RESULT PASS, 19 lines graded)
+# Usage: scripts/github_live_jvm.sh <text-live|amap-live|tryout>
 #        scripts/github_live_jvm.sh summarize <piece> <results.txt|-> <junit.xml|-> <out-dir>
 # Env (secrets, never printed): GEMINI_API_KEY, AMAP_WEB_KEY, NOVA_VENDOR_ZIP_URL[/_AUTH],
 #   NOVA_DEBUG_KEYSTORE_B64, AMAP_API_KEY. Test hooks: LIVE_JVM_SKIP_SETUP=1, LIVE_JVM_SKIP_PUSH=1,
@@ -64,6 +67,41 @@ if piece == "text-live":
         lines.append(f"{set_name} " + " ".join(f"{i}={'ok' if ok else 'miss'}" for i, ok in rows))
     lines.append("FUZZY-TEXT-LIVE-001 rule=" + ("MET" if have and len(fz) == 19 and fzp >= 17 and tail_ok else "NOT_MET"))
     lines.append("MUSIC-TEXT-LIVE-001 rule=" + ("MET" if have and len(mu) == 10 and mup >= 8 and ctl_play == 0 else "NOT_MET"))
+elif piece == "tryout":
+    # tryout_check.py lines: "  <key> <verdict> <time>s <tools> <note>". The note can carry reply
+    # wording, so it is kept only when it is a fixed token; tools are sanitized (I-8).
+    have = results != "-" and os.path.isfile(results)
+    graded = []; result = None; warns = "-"
+    if have:
+        for raw in open(results, encoding="utf-8", errors="replace"):
+            m = re.match(r"^\s+(u_[A-Za-z0-9_]+)\s+(PASS|FAIL)\s+(\d+\.\d+s|--)\s+(\S+)\s*(.*)$", raw.rstrip("\n"))
+            if m:
+                key, verdict, t, tools, note = m.groups()
+                tools = re.sub(r"[^A-Za-z0-9_.,=-]", "", tools)[:120] or "-"
+                note = note.strip()
+                row = f"{key} {verdict} {t} {tools}"
+                if re.fullmatch(r"[A-Za-z0-9_.=-]{1,40}", note):
+                    row += f" {note}"
+                graded.append((key, verdict, row))
+                continue
+            m = re.match(r"^RESULT (PASS|FAIL)\s*(\S*)", raw)
+            if m:
+                result = (m.group(1), re.sub(r"[^A-Za-z0-9_,]", "", m.group(2)))
+                continue
+            m = re.match(r"^WARN (\S+)", raw)
+            if m:
+                warns = re.sub(r"[^A-Za-z0-9_,-]", "", m.group(1)) or "-"
+    lines.append(f"tryout_check={'present' if have else 'missing'}")
+    for _, _, row in graded:
+        lines.append(row)
+    passed = sum(1 for _, v, _ in graded if v == "PASS")
+    lines.append(f"graded={len(graded)} pass={passed}")
+    if result:
+        lines.append(f"RESULT {result[0]}" + (f" {result[1]}" if result[1] else ""))
+    else:
+        lines.append("RESULT missing")
+    lines.append(f"WARN {warns}")
+    lines.append("DEMO-TRYOUT-001 rule=" + ("MET" if result and result[0] == "PASS" and len(graded) == 19 else "NOT_MET"))
 elif piece == "amap-live":
     lines.append("DEMO-AMAP-LIVE-001 rule=" + ("MET" if xml_ok and tests == 2 and fail == 0 and err == 0 and skip == 0 else "NOT_MET"))
 open(os.path.join(outdir, "summary.txt"), "w").write("\n".join(lines) + "\n")
@@ -82,7 +120,8 @@ case "$piece" in
              xmlname=TEST-com.novadrive.app.voice.GeminiTextLiveMappingTest.xml ;;
   amap-live) env_flag=NOVA_LIVE_AMAP; tests='*DemoCommuteAmapLiveTest'; rerun=""; need=AMAP_WEB_KEY
              xmlname=TEST-com.novadrive.app.livedemo.DemoCommuteAmapLiveTest.xml ;;
-  *) echo "usage: $0 <text-live|amap-live>" >&2; exit 2 ;;
+  tryout)    need=GEMINI_API_KEY; xmlname=TEST-com.novadrive.app.livedemo.LiveDemoRun.xml ;;
+  *) echo "usage: $0 <text-live|amap-live|tryout>" >&2; exit 2 ;;
 esac
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -90,6 +129,47 @@ cd "$root"
 out="${LIVE_JVM_OUT:-$root/evidence/live-jvm}/$piece"
 mkdir -p "$out"
 gradle="${LIVE_JVM_GRADLE:-./gradlew}"
+
+blocked() { # step
+  echo "BLOCKED at $1"
+  printf 'piece=%s\nBLOCKED step %s failed\n' "$piece" "$1" >"$out/summary.txt"
+  rc=3
+}
+
+run_tryout() {
+  # Piper voice and venv live outside the repo; generated clips are untracked and never pushed.
+  local work venv voice run log
+  work="${LIVE_JVM_TRYOUT_WORK:-$(mktemp -d)}"; venv="$work/venv"; voice="$work/voice"; run="$work/run"
+  mkdir -p "$voice" "$run"
+  local py="${LIVE_JVM_PYTHON:-}"
+  if [ "${LIVE_JVM_SKIP_SETUP:-}" != 1 ]; then
+    command -v ffmpeg >/dev/null 2>&1 || sudo apt-get install -y -q ffmpeg >/dev/null 2>&1 || { blocked ffmpeg; return; }
+    python3 -m venv "$venv" >/dev/null 2>&1 || { blocked venv; return; }
+    "$venv/bin/pip" install -q piper-tts edge-tts imageio-ffmpeg numpy >/dev/null 2>&1 || { blocked pip-piper-tts; return; }
+    py="$venv/bin/python3"
+    local base=https://huggingface.co/rhasspy/piper-voices/resolve/main/zh/zh_CN/huayan/medium
+    for f in zh_CN-huayan-medium.onnx zh_CN-huayan-medium.onnx.json; do
+      curl -fsSL --retry 4 --retry-delay 5 -o "$voice/$f" "$base/$f" >/dev/null 2>&1 || { blocked voice-download; return; }
+    done
+  fi
+  py="${py:-python3}"
+  PIPER_MODEL="$voice/zh_CN-huayan-medium.onnx" "$py" tools/demo/live/make_clips_cloud.py tryout >/dev/null 2>&1 \
+    || { blocked make-clips; return; }
+  # The row's own procedure, under the 8-minute live timeout. Raw output is discarded.
+  env NOVA_LIVE_DEMO=1 NOVA_LIVE_PROVIDER=gemini NOVA_LIVE_SCENES=tryout NOVA_LIVE_OUT="$run" \
+    timeout 480 "$gradle" :app:testDebugUnitTest --tests '*LiveDemoRun*' >/dev/null 2>&1
+  rc=$?
+  echo "gradle exit=$rc"
+  log="$work/tryout_check.txt"
+  "$py" tools/demo/live/tryout_check.py "$run" >"$log" 2>/dev/null
+  echo "tryout_check exit=$?"
+  xml="$(find "$buildroot/app" "$root/app/build" -name "$xmlname" 2>/dev/null | head -1)"
+  summarize "$piece" "$log" "${xml:--}" "$out" >/dev/null
+  echo "gradle_exit=$rc" >>"$out/summary.txt"
+  [ "$rc" = 124 ] && echo "timeout=yes" >>"$out/summary.txt"
+  grep -q "rule=MET" "$out/summary.txt" || { [ "$rc" = 0 ] && rc=1; }
+  cat "$out/summary.txt"
+}
 
 if [ -z "${!need:-}" ]; then
   echo "secret $need is not set"
@@ -113,6 +193,9 @@ else
   # Warm-up so the timed row is not eaten by a cold Gradle + Kotlin compile (output discarded).
   [ "${LIVE_JVM_SKIP_SETUP:-}" = 1 ] || timeout 900 "$gradle" :app:compileDebugUnitTestKotlin >/dev/null 2>&1 || true
   rm -rf "$root/app/build/text-live" "$buildroot/app/test-results"
+  if [ "$piece" = tryout ]; then
+    run_tryout
+  else
   # The exact invocation of the row's evidence line, under a 5-minute timeout. Raw output is discarded.
   env "$env_flag=1" timeout 300 "$gradle" :app:testDebugUnitTest --tests "$tests" $rerun >/dev/null 2>&1
   rc=$?
@@ -122,6 +205,7 @@ else
   summarize "$piece" "${results:--}" "${xml:--}" "$out"
   echo "gradle_exit=$rc" >>"$out/summary.txt"
   [ "$rc" = 124 ] && echo "timeout=yes" >>"$out/summary.txt"
+  fi
 fi
 
 if [ "${LIVE_JVM_SKIP_PUSH:-}" = 1 ]; then exit "$rc"; fi
