@@ -51,6 +51,7 @@ class DebugToolReceiver : BroadcastReceiver() {
                     }.getOrDefault(false)
                     "read=$ok"
                 }
+                "along_probe" -> alongProbe(context)
                 "nav_overview" -> navOverview()
                 "nav_lock" -> navLock()
                 "nav_view_state" -> NavigationHostGateway.current()?.debugViewState() ?: "no live map host"
@@ -261,6 +262,46 @@ class DebugToolReceiver : BroadcastReceiver() {
         val host = NavigationHostGateway.current() ?: return "no live map host"
         val stopped = host.stopNavigation("manual")
         return if (stopped) "stopped" else "already inactive"
+    }
+
+    /**
+     * ALONG-PROBE: RoutePOISearch (TypeGasStation, active naviPath start to end) at each probe range in
+     * turn, one counts-only line per range. Same query construction as AmapRouteLiveInfo.alongRoute.
+     */
+    private fun alongProbe(context: Context): String {
+        val app = context.applicationContext
+        val path = runCatching {
+            com.novadrive.app.nav.amap.AmapPrivacyCompliance.ensure(app)
+            com.amap.api.navi.AMapNavi.getInstance(app).naviPath
+        }.getOrNull() ?: return "no_route"
+        val start = path.startPoint ?: return "no_route"
+        val end = path.endPoint ?: return "no_route"
+        Thread {
+            for (range in AlongProbe.RANGES) {
+                val started = System.nanoTime()
+                var code = -1
+                var raw: Int? = null
+                runCatching {
+                    val search = com.amap.api.services.routepoisearch.RoutePOISearch(
+                        app,
+                        com.amap.api.services.routepoisearch.RoutePOISearchQuery(
+                            com.amap.api.services.core.LatLonPoint(start.latitude, start.longitude),
+                            com.amap.api.services.core.LatLonPoint(end.latitude, end.longitude),
+                            com.amap.api.services.routepoisearch.RoutePOISearch.DrivingDefault,
+                            com.amap.api.services.routepoisearch.RoutePOISearch.RoutePOISearchType.TypeGasStation,
+                            range,
+                        ),
+                    )
+                    val result = search.searchRoutePOI()
+                    code = 1000
+                    raw = result?.routePois?.size
+                }.onFailure { e ->
+                    if (e is com.amap.api.services.core.AMapException) code = e.errorCode
+                }
+                Log.d("NovaVoice", AlongProbe.line(range, code, raw, (System.nanoTime() - started) / 1_000_000))
+            }
+        }.start()
+        return "started ranges=${AlongProbe.RANGES.size}"
     }
 
     private fun navOverview(): String {
