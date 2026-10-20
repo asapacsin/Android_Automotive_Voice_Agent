@@ -20,6 +20,7 @@ Updated 2026-09-21 · 166 tests
 
 **HUMAN_VALIDATION_READY = FALSE**
 
+- the registry does not validate: 11 problem(s)
 - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - TRUTH-MEDIA-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -94,7 +95,7 @@ Updated 2026-09-21 · 166 tests
 | ID | Capability | Test | Owner | Status | Release blocking | Evidence |
 | --- | --- | --- | --- | --- | --- | --- |
 | APPS-001 | apps | open_app reaches a real app | AUTONOMOUS | PASS | no | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
-| AFFORDANCE-DEVICE-001 | architecture | Spoken control names act on the phone through the local path, once, with no model execution | AUTONOMOUS | PASS | no | 2026-10-16 GitHub emulator API 34 (arm64 app), Gemini debug override, voice checks run … |
+| AFFORDANCE-DEVICE-001 | architecture | Spoken control names act on the phone through the local path, once, with no model execution | AUTONOMOUS | STALE | no | 2026-10-16 GitHub emulator API 34 (arm64 app), Gemini debug override, voice checks run … |
 | AFFORDANCE-UNIT-001 | architecture | Spoken on-screen controls match whole utterances and run once per turn | AUTONOMOUS | PASS | yes | 2026-09-25 cloud: 2066 JVM tests, 0 failures |
 | ARCH-PROVIDER-001 | architecture | Vendor wire vocabulary stays inside adapters | AUTONOMOUS | PASS | no | checked against a deliberately reintroduced breach |
 | GEMINI-LIVE-CLOUD-001 | architecture | The app's Gemini client against the real API (cloud) | AUTONOMOUS | PASS | no | 2026-09-29: ac_on, fan_up, nav_wanda 3/3 PASS (docs/reports/2026-09-29-gemini-live-prob… |
@@ -124,7 +125,7 @@ Updated 2026-09-21 · 166 tests
 | HELP-001 | dialogue_context | 「你能做什么」 / 「你能干啥」 gets a short capability answer | AUTONOMOUS | PASS | yes | 2026-10-15 GitHub emulator API 34 (real debug app), Gemini via the debug override (gemi… |
 | HELP-UNIT-001 | dialogue_context | Help-request grammar and nudge are unit-covered | AUTONOMOUS | PASS | yes | UtteranceIntentResolver grammar + DriverTurn.CAPABILITY_HELP 2026-09-22 unit PASS |
 | PROCDEATH-001 | lifecycle | The app survives process death | AUTONOMOUS | NOT_RUN | yes | STALE_BIND apk_digest mismatch |
-| LIVE-INFO-DEVICE-001 | live_info | Each live_info kind is selected from speech | AUTONOMOUS | PASS | yes | 2026-10-16 GitHub emulator, Gemini debug override, run 38835222165 at 66de495 (runs/run… |
+| LIVE-INFO-DEVICE-001 | live_info | Each live_info kind is selected from speech | AUTONOMOUS | STALE | yes | 2026-10-16 GitHub emulator, Gemini debug override, run 38835222165 at 66de495 (runs/run… |
 | LIVE-INFO-L6-001 | live_info | Every live_info source returns real data with the owner's key | AUTONOMOUS | NOT_RUN | yes | 2026-09-25 partial: REST weatherInfo base/all, regeo and place/detail returned real dat… |
 | LIVE-INFO-REGRESSION-001 | live_info | SPEC-008 suite does not regress with query_live_info added | AUTONOMOUS | NOT_RUN | yes | — |
 | LIVE-INFO-UNIT-001 | live_info | query_live_info parses, fails honestly and opens the picker for along-route results | AUTONOMOUS | PASS | yes | 2026-09-25 cloud: :app ran in a stub-iFlytek mirror because vendor Msc.jar is absent in… |
@@ -139,18 +140,18 @@ Updated 2026-09-21 · 166 tests
 | DEMO-AMAP-LIVE-001 | navigation | The commute demo's real Amap lookups at the demo origin: 导航去横琴镇 + 第一个 is >= 1.7 km away, the warm-up weather answers | AUTONOMOUS | PASS | no | 2026-10-12 cloud: with sortrule=distance FAIL (第一个 = 632 m, the origin 横琴澳门青年创业谷; Amap … |
 | GUIDANCE-DEVICE-001 | navigation | One voice on the short route; Amap audible only when the model cannot speak | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | GUIDANCE-EMU-001 measurements |
 | GUIDANCE-EMU-001 | navigation | Step-0 measurements for assistant-spoken guidance on the short route | AUTONOMOUS | NOT_RUN | yes | measurements only, no verdict yet (G-1b audibility, G-1c, G-1d and the network-cut repe… |
-| NAV-CANCEL-001 | navigation | 算了 really cancels | AUTONOMOUS | PASS | yes | 2026-09-20: nav_flow_cancelled |
+| NAV-CANCEL-001 | navigation | 算了 really cancels | AUTONOMOUS | STALE | yes | 2026-09-20: nav_flow_cancelled |
 | NAV-CHOICE-STALE-001 | navigation | A spoken ordinal on a stale list is re-presented before it is accepted | AUTONOMOUS | PASS | yes | 2026-09-24: NavigationPendingChoiceTest 10/10 (cloud Linux build) |
 | NAV-CORRECT-001 | navigation | A mid-flow destination change replaces the list | AUTONOMOUS | PASS | no | 2026-09-20: 20/20 suite |
 | NAV-DRIVE-001 | navigation | A route calculates and guides to arrival | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | NAV-SEARCH-001, NAV-PICK-001, NAV-CANCEL-001, NAV-CORRECT-001 PASS |
-| NAV-E2E-ARRIVAL-001 | navigation | Navigation reaches the destination and terminates by arrival | AUTONOMOUS | PASS | yes | 2026-10-16 GitHub device run 38832785831 at 02d9ab7: nav_proximity_arrival x1, nav_stop… |
+| NAV-E2E-ARRIVAL-001 | navigation | Navigation reaches the destination and terminates by arrival | AUTONOMOUS | STALE | yes | 2026-10-16 GitHub device run 38832785831 at 02d9ab7: nav_proximity_arrival x1, nav_stop… |
 | NAV-MID-ROUTE-001 | navigation | Mid-route navigation baseline without countdown entitlement | AUTONOMOUS | NOT_RUN | yes | 2026-09-21: nav_traffic_countdown status=BLOCKED_EXTERNAL_AMAP_ENTITLEMENT |
-| NAV-OVERSPEED-001 | navigation | Spoken over-speed warning with the guidance toggle off (the shipped path) | AUTONOMOUS | PASS | no | 2026-10-16: not covered by nav demo e9f8535/its fix - that run has the relay ON; the sh… |
+| NAV-OVERSPEED-001 | navigation | Spoken over-speed warning with the guidance toggle off (the shipped path) | AUTONOMOUS | STALE | no | 2026-10-16: not covered by nav demo e9f8535/its fix - that run has the relay ON; the sh… |
 | NAV-OVERSPEED-DEVICE-001 | navigation | The over-speed warning is heard in the car | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | NAV-OVERSPEED-001 |
 | NAV-PHONETIC-CONFIRM-001 | navigation | A phonetic lead asks for confirmation and never navigates | AUTONOMOUS | PASS | yes | 2026-09-24: NavigationPendingChoiceTest 10/10 with an injected proposer |
 | NAV-PHONETIC-DEVICE-001 | navigation | Misheard destination name is confirmed by voice on the device | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | NAV-CHOICE-STALE-001 and NAV-PHONETIC-CONFIRM-001 passed 2026-09-24 |
-| NAV-PICK-001 | navigation | 第二个 picks from the on-screen list | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
-| NAV-SEARCH-001 | navigation | A destination produces candidates and does not start navigating | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
+| NAV-PICK-001 | navigation | 第二个 picks from the on-screen list | AUTONOMOUS | STALE | yes | 2026-09-20: 20/20 suite |
+| NAV-SEARCH-001 | navigation | A destination produces candidates and does not start navigating | AUTONOMOUS | STALE | yes | 2026-09-20: 20/20 suite |
 | NAV-SIM-QA-001 | navigation | Reusable navigation screen-recording movie for QA | AUTONOMOUS | PASS | no | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
 | NAV-UI-001 | navigation | 「开始导航」 enters ACTIVE_DRIVING_NAVIGATION, not route preview | AUTONOMOUS | PASS | yes | EmbeddedNavigationControllerTest.SelectingARouteEntersDrivingPresentationNotRoutePreview |
 | NAV-UI-002 | navigation | During GPS navigation the vehicle stays in lock-car tracking | AUTONOMOUS | PASS | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
@@ -158,7 +159,7 @@ Updated 2026-09-21 · 166 tests
 | NAV-UI-004 | navigation | Active route shows traffic-state colouring when Amap supplies it | AUTONOMOUS | PASS | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
 | NAV-UI-005 | navigation | Next-maneuver guidance is visible | AUTONOMOUS | PASS | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
 | NAV-UI-006 | navigation | Lane or junction enlarge appears when Amap supplies it | AUTONOMOUS | PASS | no | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
-| NAV-UI-007 | navigation | Overview then return restores vehicle tracking | AUTONOMOUS | PASS | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
+| NAV-UI-007 | navigation | Overview then return restores vehicle tracking | AUTONOMOUS | STALE | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
 | NAV-UI-008 | navigation | Spoken 「开始导航」 enters the same driving state as a route tap | AUTONOMOUS | PASS | yes | 2026-09-20 unit |
 | NAV-UI-009 | navigation | Arrival leaves ACTIVE_DRIVING_NAVIGATION | AUTONOMOUS | PASS | yes | 2026-09-20 unit plus existing arrival tests |
 | NAV-UI-010 | navigation | Route-selection voice commands are unchanged | AUTONOMOUS | PASS | yes | 2026-09-20 unit, pre-existing tests still green |
@@ -229,7 +230,7 @@ Updated 2026-09-21 · 166 tests
 | TRUTH-LIVEINFO-NEWS-001 | truthfulness | News and prices stay refused even with a live result in the turn | AUTONOMOUS | NOT_RUN | yes | — |
 | TRUTH-MEDIA-001 | truthfulness | A named or styled song never plays the bundled track, even when misheard | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 3/3 then 5/5 after the fix; before it, the bundled track played (old criter… |
 | TRUTH-MISHEARD-001 | truthfulness | A misheard driver is not told the car acted | AUTONOMOUS | PASS | yes | 2026-09-19: 「返屋企啦」 -> 「发诺克拉。」 -> correction, not a claim |
-| TRUTH-WEATHER-001 | truthfulness | Weather and traffic answers come only from a live lookup | AUTONOMOUS | PASS | yes | 2026-09-20: refusal, 20/20 suite (pre-SPEC-011 criterion, superseded) |
+| TRUTH-WEATHER-001 | truthfulness | Weather and traffic answers come only from a live lookup | AUTONOMOUS | STALE | yes | 2026-09-20: refusal, 20/20 suite (pre-SPEC-011 criterion, superseded) |
 | ASTRA-DOUBLE-TALK-001 | turn_taking | Real double-talk and route-change acoustics | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | SpeechUplinkGate + qualifyPlayoutBargeIn uplinkGateOpen wiring |
 | ASTRA-ECHO-PLAYBACK-001 | turn_taking | Playback-only cabin echo does not self-trigger replies | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | qualified barge-in uses uplinkGateOpen instead of RMS ratio veto |
 | BARGE-IN-EVIDENCE-001 | turn_taking | Barge-in needs time-scoped speech evidence; an unconfirmed echo turn is never heard | AUTONOMOUS | PASS | yes | 2026-09-24: BargeInEvidenceTest 11/11; full suite 1618/0; REGRESSION 41/41, CHAOS 26/26… |
