@@ -1,0 +1,15 @@
+app: map up
+secret AMAP_WEB_KEY: set, amap_web_setup -> result=applied 
+secret GEMINI_API_KEY: set, gemini_setup -> result=applied 
+guidance relay: result=relay=on 
+driver waits: line=1 ms=0 cap=0 reason=none line=2 ms=0 cap=0 reason=none line=3 ms=0 cap=0 reason=none line=4 ms=0 cap=0 reason=none line=5 ms=0 cap=0 reason=none line=6 ms=0 cap=0 reason=none line=7 ms=0 cap=0 reason=none line=8 ms=0 cap=0 reason=none (the scripted driver reads the app's guidance log; a real driver cannot)
+nav demo: provider=session_provider choice=gemini_live started=1 stopped=nav_stopped reached=true reason=emulator_end guidance=0 tools= 4 tool=choose_navigation_option  4 tool=control_climate  4 tool=control_music  4 tool=navigate_to  4 tool=query_live_info  errors=0
+relay: nav_guidance_relay deadline_ms=3000 nav_guidance_relay installed=true routes:  1 guidance_route to=amap reason=AMAP_SPEAKING  2 guidance_route to=amap reason=DRIVER_SPEAKING  2 guidance_route to=amap reason=FIDELITY_MISMATCH_DIRECTION  26 guidance_route to=amap reason=FIDELITY_STRIKES  2 guidance_route to=amap reason=RESPONSE_OPEN  1 guidance_route to=amap reason=SEND_FAILED  29 guidance_route to=assistant reason=SENT 
+relay claims: assistant_waited_ms=698,755,786,684,715,725,702,807,1273,663,901,839,697,770,682,668,706,702,800,661,780,778,931,644,771,750,742,794,816, amap=0 fidelity:  27 result=MATCH  2 result=MISMATCH_DIRECTION fallback_tts:  34 nav_guidance_fallback_tts accepted=true echo_dropped=34
+overspeed: limits=limitKmh=0 limitKmh=60 over_lines=1 alerts=1 queued:  1 nav_alert_queued to=relay rings=23
+listening:  1 listening ACTIVE->SLEEP reason=inactivity_timeout  1 listening DEEP_IDLE->ACTIVE reason=start uplink_closed=35 droppedGuidance=droppedGuidance=3863
+P61 guard: guard_nearby_nav decision=refused cur=7 cap=7 refused=1 nav_stopped: nav_stopped reached=true reason=emulator_end tools_in_order: tool=navigate_to result=✓ tool=choose_navigation_option result=✓ tool=control_climate result=✓ tool=control_music result=DUPLICATE_IN_TURN tool=query_live_info result=INVALID_ARGUMENT tool=navigate_to result=NEARBY_QUESTION_WHILE_NAVIGATING tool=query_live_info result=🔎 tool=control_music result=✓ guard_vague_exit: 
+gemini closes:  2 gemini_closed code=1008 reason_class=other  1 gemini_closed code=1008 reason_class=session 
+nav demo: nav_demo.mp4 written (offset 0.0069356918334960715 s, guidance=yes)
+video: 576x1248 frames=7499 seconds=1012 fps=7.4
+nav demo: done
