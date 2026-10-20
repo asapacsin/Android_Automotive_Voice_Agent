@@ -166,12 +166,6 @@ tool nav_lock lock; sleep 3; shot nav_lock_restored
 lock_res="$(result_of nav_lock)"
 note "NAV-UI-007: lock -> $lock_res"
 pf device:NAV-UI-007 "overview=$ov_res lock=$lock_res" 'grep -q "result=overview=true" <<<"$ov_res" && grep -q "result=lock=true" <<<"$lock_res"'
-# LIVE-INFO-L6 (SDK half, emulator): traffic on the driven route through the real AmapRouteLiveInfo
-# (AMapNavi.getTrafficStatuses). ok/code/counts only (I-8). Optional: the emulator may get no statuses.
-tool dispatch "query_live_info:kind=route_traffic"; sleep 6
-li_traffic="$(nova | grep -oE 'live_info kind=route_traffic ok=(true|false) code=[A-Z_a-z-]* ms=[0-9]+' | tail -1)"
-note "LIVE-INFO-SDK route_traffic: ${li_traffic:-no live_info line} dispatch $(result_of dispatch)"
-pf device:LIVE-INFO-SDK-TRAFFIC "${li_traffic:-no live_info line}" 'grep -q "ok=true" <<<"$li_traffic"'
 i=0
 while [ "$i" -lt 60 ]; do
   if nova | grep -q "nav_stopped"; then break; fi
@@ -205,15 +199,26 @@ fatal="$(app_fatal)"
 anr="$(app_anr)"
 note "NAV crash check: fatal=$fatal anr=$anr"
 pf device:NAV-CRASH-001 "fatal=$fatal anr=$anr" '[ "$fatal" = 0 ] && [ "$anr" = 0 ]'
-# LIVE-INFO-L6 (SDK half, emulator): POIs along a calculated route through RoutePOISearch. After
-# arrival, because along_route opens the picker and would end active guidance. Counts only (I-8).
-tool nav_route "$dest"
-if wait_for "nav_calc_success" 30; then
-  tool dispatch "query_live_info:kind=along_route,category=fuel"; sleep 8
-  li_along="$(nova | grep -oE 'live_info kind=along_route ok=(true|false) code=[A-Z_a-z-]* ms=[0-9]+' | tail -1)"
-else li_along="no route calculated"; fi
+# LIVE-INFO-L6 (SDK half, emulator) through the app's own navigation controller, as the model would
+# reach it (the debug nav_route/nav_start above bypass the controller, so query_live_info answers
+# NOT_NAVIGATING there - run 20261020_0928). navigate_to -> pick the first place (routes on screen):
+# along_route (RoutePOISearch); then pick the first route (guidance): route_traffic
+# (AMapNavi.getTrafficStatuses). ok/code/ms only (I-8). Optional: the emulator may get no data.
+tool dispatch "navigate_to:destination=珠海站"; sleep 8
+tool dispatch "choose_navigation_option:index=1"; sleep 10
+tool dispatch "query_live_info:kind=along_route,category=fuel"; sleep 8
+li_along="$(nova | grep -oE 'live_info kind=along_route ok=(true|false) code=[A-Z_a-z-]* ms=[0-9]+' | tail -1)"
 note "LIVE-INFO-SDK along_route: ${li_along:-no live_info line} dispatch $(result_of dispatch)"
 pf device:LIVE-INFO-SDK-ALONG "${li_along:-no live_info line}" 'grep -q "ok=true" <<<"$li_along"'
+tool dispatch "exit_navigation_mode"; sleep 4
+tool dispatch "navigate_to:destination=珠海站"; sleep 8
+tool dispatch "choose_navigation_option:index=1"; sleep 10
+tool dispatch "choose_navigation_option:index=1"; sleep 12
+guiding="$(nova | grep -cE 'nav_started' || true)"
+tool dispatch "query_live_info:kind=route_traffic"; sleep 6
+li_traffic="$(nova | grep -oE 'live_info kind=route_traffic ok=(true|false) code=[A-Z_a-z-]* ms=[0-9]+' | tail -1)"
+note "LIVE-INFO-SDK route_traffic: ${li_traffic:-no live_info line} nav_started_lines=$guiding dispatch $(result_of dispatch)"
+pf device:LIVE-INFO-SDK-TRAFFIC "${li_traffic:-no live_info line}" 'grep -q "ok=true" <<<"$li_traffic"'
 tool dispatch "exit_navigation_mode"; sleep 4
 
 # ---- P59: a cancelled route choice leaves no route drawn, and the next search still draws -------
