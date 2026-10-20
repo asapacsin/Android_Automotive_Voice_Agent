@@ -1,0 +1,33 @@
+schema: nova-task-contract/1
+task_id: AIDER-WRAP
+title: A cheap external-model executor - scripts/offload_executor.py runs Aider (OpenRouter model) on a contract's approved files only, then the contract's required checks, retrying with the failure output
+branch: exec/aider-wrap
+base_commit: 5f104d22844efcc9e0b83a71edb2b260552a7f47
+approved_paths:
+  - scripts/offload_executor.py
+  - scripts/tests/test_offload_executor.py
+allowed_changes:
+  - "scripts/offload_executor.py CONTRACT --worktree W [--model M] [--max-rounds N] [--max-cost USD] [--dry-run]: loads the contract (reuse scripts/task_contract.py loading/glob matching by import, no second parser); requires W to be a git worktree whose branch equals the contract branch; builds the file list = tracked files in W matching approved_paths plus approved_paths entries without wildcards that do not exist yet (new files); drops any path matching forbidden_paths; REFUSES (exit 2, nothing sent) when any listed path is gitignored, is a binary/archive (.jar .aar .so .zip .apk .keystore .jks .mp3 .wav), is local.properties, or lies under app/libs/ or any vendor directory - licensed vendor files must never reach an external model"
+  - "The task message is built from the contract title, allowed_changes, architecture_constraints, forbidden_changes and acceptance_criteria, plus the instruction to edit only the given files"
+  - "Aider is run as: aider --model openrouter/<M> --yes-always --no-auto-commits --no-gitignore --map-tokens 0 --no-analytics --no-check-update --no-show-model-warnings --no-pretty --chat-history-file <tmp> --input-history-file <tmp> --message <msg> <files> with cwd W; the binary comes from NOVA_AIDER_BIN (default aider); OPENROUTER_API_KEY is passed through when set, else a placeholder (the proxy injects the real key) - the key is never printed or logged"
+  - "After each round run the contract's required_verification commands in W (same as task_contract verify) and task_contract scope; on failure, the next round's message is the failing command and the tail (<= 60 lines) of its output; stop after --max-rounds (default 3) or when the summed Aider-reported session cost (parsed from 'Cost: ... $X session') exceeds --max-cost (default 0.20)"
+  - "Prints one compact status block: OFFLOAD <TASK_ID> DONE|FAILED|REFUSED rounds=<n> cost_usd=<x> seconds=<s> checks=<id:PASS|FAIL,...>; exit 0 only on DONE; never commits (the caller commits); --dry-run prints the file list and message and does not run Aider"
+  - "Tests with a fake aider (NOVA_AIDER_BIN pointing to a temp script that edits a file and prints a Cost line) in a temporary git repo with a small contract: file-list selection, refusal of a gitignored/jar/app/libs path, forbidden_paths drop, retry with failure output, cost cap, dry run, wrong-branch refusal"
+architecture_constraints:
+  - Standard library plus PyYAML only; no credentials written anywhere
+forbidden_changes:
+  - No change to task_contract.py or any other existing file
+forbidden_paths:
+  - .claude/**
+  - "*/src/**"
+  - TEST_MATRIX.yaml
+required_verification:
+  - id: wrapper-tests
+    kind: regression
+    command: python3 -m unittest scripts.tests.test_offload_executor
+  - id: script-tests
+    kind: regression
+    command: python3 -m unittest discover -s scripts/tests -t .
+acceptance_criteria:
+  - A contract naming a gitignored or jar path is REFUSED before Aider runs
+  - A failing check triggers a second round whose message contains the failing output

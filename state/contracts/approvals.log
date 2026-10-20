@@ -15,3 +15,5 @@ WF-PRACTICES 6ef0e9e780db9108d3c13ca8f00af5cd2afcbc5605e3ebabc14d65c32b31495d AP
 STYLE-GRADER 6f55d175c2841acd4d43801fdf4084a4efda7e8f26ad9776413e4a76c05a3c56 APPROVED 2026-10-20 architect decider 2026-10-20 P55 grader v3 (withdrew fallback A)
 P53-SPLIT c6b3cc2973b6ec37f0e1db2b8d450b0ad74748ef9b8f914a5abdaeabd72d515e APPROVED 2026-10-20 architect P53 measured warm 925 ms; find where it goes
 P53-SPLIT c631ddda5cd2bc010c97f399ae97b90c3c961860c28fecd5d6056c09f5fa5052 APPROVED 2026-10-20 architect test moved to src/testDebug (the class is debug-only; src/test would break testReleaseUnitTest)
+DEV-SPLIT afff367c78ff55b03706ed02366f01f5f24ae43b1df486b5cbd13535c59e2cb5 APPROVED 2026-10-20 architect owner 2026-10-20 apply CI shard split and Aider offload
+AIDER-WRAP 9f4e09368c919eb139610647d49268142870ef69617d4e8948bb92b0842ddcef APPROVED 2026-10-20 architect owner 2026-10-20 apply CI shard split and Aider offload

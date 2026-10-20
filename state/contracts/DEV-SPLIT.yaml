@@ -1,0 +1,41 @@
+schema: nova-task-contract/1
+task_id: DEV-SPLIT
+title: Device checks run as parallel shards (one emulator each) so a device CI round takes about the longest shard instead of the sum
+branch: exec/dev-split
+base_commit: 5f104d22844efcc9e0b83a71edb2b260552a7f47
+approved_paths:
+  - .github/workflows/device-checks.yml
+  - scripts/github_device_checks.sh
+  - config/ci_checks.json
+  - scripts/ci_verdict.py
+  - scripts/tests/**
+  - docs/CI.md
+allowed_changes:
+  - device-checks.yml becomes a plan job plus a matrix job over shards, fail-fast false, following the voice-checks.yml pattern (plan job picks shards; workflow_dispatch input "shards", comma list, empty or all = every shard; a [checks] push runs every shard; fork PR skip and push-trigger conditions unchanged). Proposed shards by the script's existing sections - dispatch (dispatch rows, P53 pieces, LIVE-INFO-SDK), drive (simulated drive to arrival, NAV-UI rows), lifecycle (P59, process death, revoked microphone, transcript bubble probe), navpiece (nav demo pieces P61/P63); the executor may regroup to balance time if a section depends on state from an earlier one, keeping every current check id in exactly one shard
+  - Each shard builds the APK itself (no APK artifact upload - the debug APK carries key-bearing config, docs/CI.md), boots its own emulator, runs only its sections; github_device_checks.sh takes the shard from DEVICE_SHARD (unset = every section, so a local full run is unchanged) and keeps the shared setup (install, launch, helpers) for every shard
+  - config/ci_checks.json gains per-shard suites (device-dispatch, device-drive, ...) whose required/optional lists partition the current device suite exactly (the union equals the device suite; no id moves between required and optional); the device suite itself stays for full runs; each shard's Verdict uses its own suite, so a check of that shard with no result is MISSING, never passed
+  - Evidence pushed per shard to ci/device-evidence under runs/<run dir>/<shard>/ with a fetch-rebase-retry loop (shards push concurrently), run dir keeps the date, sha7, _r$GITHUB_RUN_ID and _stubvendor marker; the Gradle dependency cache step stays
+  - Tests in scripts/tests check the partition (union of shard suites == device suite, no overlap) and that every section of the script is reachable from exactly one shard
+architecture_constraints:
+  - No check is weakened, removed or made optional; every condition (pf expression) stays byte-identical
+  - No coordinate, address, place name or transcript in logs or evidence (I-8)
+forbidden_changes:
+  - No change to app source, other workflows, or the voice suites
+forbidden_paths:
+  - .claude/**
+  - "*/src/**"
+  - TEST_MATRIX.yaml
+  - .github/workflows/voice-checks.yml
+required_verification:
+  - id: script-tests
+    kind: regression
+    command: python3 -m unittest discover -s scripts/tests -t .
+  - id: bash-syntax
+    kind: lint
+    command: bash -n scripts/github_device_checks.sh
+  - id: workflow-yaml
+    kind: lint
+    command: python3 -c "import yaml,json;yaml.safe_load(open('.github/workflows/device-checks.yml'));json.load(open('config/ci_checks.json'))"
+acceptance_criteria:
+  - The union of the shard suites equals the current device suite (required and optional each)
+  - A dispatch with shards=dispatch runs only that shard; a full run runs all shards in parallel
