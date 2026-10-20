@@ -13,7 +13,7 @@ class PreflightTimingTest {
             timing = PreflightTiming.CallTiming(dnsMs = 3, connectMs = 40, tlsMs = 120, ttfbMs = 300, bodyMs = 5, reused = false),
         )
         assertEquals(
-            "preflight_split call=1 path=/v3/place/around dns_ms=3 connect_ms=40 tls_ms=120 ttfb_ms=300 body_ms=5 reused=false",
+            "preflight_split call=1 path=/v3/place/around dns_ms=3 connect_ms=40 tls_ms=120 ttfb_ms=300 body_ms=5 reused=false protocol=unknown conn_close=false gap_ms=-1",
             line,
         )
         listOf("SECRETKEY", "key=", "113.5", "22.1", "restapi", "https", "?", "keywords").forEach {
@@ -24,7 +24,21 @@ class PreflightTimingTest {
     @Test
     fun reusedConnectionReportsZeroSetupAndTrue() {
         val line = PreflightTiming.splitLine(2, "https://restapi.amap.com/v3/place/text?key=k", PreflightTiming.CallTiming(ttfbMs = 80, bodyMs = 1, reused = true))
-        assertEquals("preflight_split call=2 path=/v3/place/text dns_ms=0 connect_ms=0 tls_ms=0 ttfb_ms=80 body_ms=1 reused=true", line)
+        assertEquals("preflight_split call=2 path=/v3/place/text dns_ms=0 connect_ms=0 tls_ms=0 ttfb_ms=80 body_ms=1 reused=true protocol=unknown conn_close=false gap_ms=-1", line)
+    }
+
+    @Test
+    fun splitLineCarriesProtocolConnectionCloseAndGap() {
+        val line = PreflightTiming.splitLine(
+            3, "https://restapi.amap.com/v3/place/around?key=SECRETKEY&location=113.5,22.1",
+            PreflightTiming.CallTiming(ttfbMs = 90, reused = false, protocol = "http/1.1", connClose = true, gapMs = 412),
+        )
+        assertEquals(
+            "preflight_split call=3 path=/v3/place/around dns_ms=0 connect_ms=0 tls_ms=0 ttfb_ms=90 body_ms=0 reused=false " +
+                "protocol=http/1.1 conn_close=true gap_ms=412",
+            line,
+        )
+        listOf("SECRETKEY", "113.5", "22.1", "restapi").forEach { assertFalse(line.contains(it), "leaked $it") }
     }
 
     @Test

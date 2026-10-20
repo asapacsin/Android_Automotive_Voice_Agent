@@ -1,6 +1,7 @@
 package com.novadrive.app.nav.amap
 
 import android.content.Context
+import android.util.Log
 import com.amap.api.navi.AMapNavi
 import com.amap.api.services.core.LatLonPoint
 import com.amap.api.services.routepoisearch.RoutePOISearch
@@ -20,7 +21,8 @@ import kotlin.coroutines.resume
  * along the calculated route (`RoutePOISearch`, search 9.8.1 in the bundled combined artifact).
  *
  * AMapNavi is a process singleton, so this reads the same route [AmapNaviViewHost] calculated
- * without reaching into the host. Nothing here logs: a route is a trail of coordinates (I-8).
+ * without reaching into the host. The only log is the text-free along_route_search count line;
+ * a route is a trail of coordinates (I-8).
  *
  * UNVERIFIED ON DEVICE (2026-09-25): written against the SDK's signatures (javap), not run. The
  * `getTrafficStatuses(0, 0)` "remaining route" reading and the start→end route-POI query are the
@@ -60,17 +62,20 @@ class AmapRouteLiveInfo(context: Context) : RouteLiveInfoSource {
             }
             search.setPoiSearchListener { result, code ->
                 if (!continuation.isActive) return@setPoiSearchListener
-                val items = if (code == SUCCESS) result?.routePois else null
-                continuation.resume(
-                    items?.let { list ->
-                        RouteLiveInfoMapping.toCandidates(
-                            list.map { item ->
-                                val point = item.point
-                                RoutePoi(item.id, item.title, point?.latitude, point?.longitude, item.distance.toInt())
-                            },
-                        )
-                    },
-                )
+                val raw = runCatching {
+                    result?.routePois?.map { item ->
+                        val point = item.point
+                        RoutePoi(item.id, item.title, point?.latitude, point?.longitude, item.distance.toInt())
+                    }
+                }.getOrNull()
+                val candidates = if (code == SUCCESS) raw?.let { RouteLiveInfoMapping.toCandidates(it) } else null
+                runCatching {
+                    Log.d(
+                        "NovaVoice",
+                        RouteLiveInfoMapping.alongRouteSearchLine(code, raw, candidates?.size ?: 0, RANGE_METERS, path.allLength),
+                    )
+                }
+                continuation.resume(candidates)
             }
             runCatching { search.searchRoutePOIAsyn() }.onFailure { if (continuation.isActive) continuation.resume(null) }
         }
