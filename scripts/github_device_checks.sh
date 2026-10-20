@@ -201,6 +201,12 @@ ffmpeg -v error -y -i "$ev/checks_drive_phone.mp4" -c copy -movflags +faststart 
 shot nav_end
 note "NAV-MID-ROUTE-001 / NAV-UI-00x: maneuver=$(count 'nav_maneuver ') lane_shown=$(count 'nav_lane_info shown=true') junction_shown=$(count 'nav_junction shown=true') traffic_update=$(count 'nav_traffic_status_update') presentation_driving=$(count 'nav_presentation mode=driving') lights=$(count 'nav_remain_lights') cameras=$(count 'nav_camera_ahead') speed_over=$(count 'nav_speed .*over=1') ring=$(count 'nav_play_ring') guidance_play=$(count 'nav_guidance_play_start')"
 mr_over="$(count 'nav_speed .*over=1')"; mr_ring="$(count 'nav_play_ring')"
+# Counts only: why over=0 - which posted limits reached the HUD vs the cameras/facilities Amap reported.
+mr_hud_limits="$(nova | grep -oE 'nav_speed kmh=[0-9]+ limitKmh=[0-9]+' | grep -oE 'limitKmh=[0-9]+' | cut -d= -f2 | sort -nu | tr '\n' ' ' || true)"
+mr_max_kmh="$(nova | grep -oE 'nav_speed kmh=[0-9]+' | cut -d= -f2 | sort -n | tail -1 || true)"
+mr_cam_limits="$(nova | grep -E 'nav_camera_ahead' | grep -oE 'limitKmh=[0-9]+' | cut -d= -f2 | sort -nu | tr '\n' ' ' || true)"
+mr_fac_limits="$(nova | grep -oE 'nav_facility type=-?[0-9]+ limitKmh=[0-9]+' | grep -oE 'limitKmh=[0-9]+' | cut -d= -f2 | sort -nu | tr '\n' ' ' || true)"
+note "NAV-MID-ROUTE-001 limits: hud_limitKmh=[${mr_hud_limits}] max_kmh=${mr_max_kmh:-none} camera_limitKmh=[${mr_cam_limits}] facility_limitKmh=[${mr_fac_limits}]"
 pf device:NAV-MID-ROUTE-OVERSPEED "speed_over=$mr_over ring=$mr_ring" '[ "$mr_over" -ge 1 ]'
 # NAV-UI-002..006 from lines already collected: the P58 view notes (mode, bearing numbers) and the counters above.
 ui_modes="$(grep -E '^P58 view ' "$summary" | grep -oE 'naviMode=[a-z_0-9]+' | sort | uniq -c | tr -s ' ' | tr '\n' ',')"
