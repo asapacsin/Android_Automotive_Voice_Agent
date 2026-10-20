@@ -1,0 +1,140 @@
+{
+  "suite": "device",
+  "verdict": "PASS",
+  "vendor": "REAL",
+  "checks": [
+    {
+      "id": "build:vendor-real",
+      "required": true,
+      "status": "PASS",
+      "detail": "real vendor files packaged"
+    },
+    {
+      "id": "device:app-up",
+      "required": true,
+      "status": "PASS",
+      "detail": "map up"
+    },
+    {
+      "id": "device:PLACE-UNSET-001",
+      "required": true,
+      "status": "PASS",
+      "detail": "asks_for_address=yes"
+    },
+    {
+      "id": "device:PLACE-SAVE-001",
+      "required": true,
+      "status": "PASS",
+      "detail": "saved_place_set_slot_home=1"
+    },
+    {
+      "id": "device:APPS-001",
+      "required": true,
+      "status": "PASS",
+      "detail": "allowed_ok=2/2 music_refused=yes"
+    },
+    {
+      "id": "device:NAV-ROUTE-001",
+      "required": true,
+      "status": "PASS",
+      "detail": "nav_calc_success"
+    },
+    {
+      "id": "device:NAV-START-001",
+      "required": true,
+      "status": "PASS",
+      "detail": "nav_started"
+    },
+    {
+      "id": "device:NAV-UI-002",
+      "required": true,
+      "status": "PASS",
+      "detail": "view_lines=9 car_up=9 modes= 9 naviMode=car_up,"
+    },
+    {
+      "id": "device:NAV-UI-003",
+      "required": true,
+      "status": "PASS",
+      "detail": "distinct_bearings=9 bearings=0 13 23 271 28 357 360 39 5 "
+    },
+    {
+      "id": "device:NAV-UI-005",
+      "required": true,
+      "status": "PASS",
+      "detail": "maneuver=6"
+    },
+    {
+      "id": "device:NAV-UI-007",
+      "required": true,
+      "status": "PASS",
+      "detail": "overview=result=overview=true  lock=result=lock=true "
+    },
+    {
+      "id": "device:NAV-E2E-ARRIVAL-001",
+      "required": true,
+      "status": "PASS",
+      "detail": "proximity_arrival=1 nav_stopped reached=true reason=emulator_end"
+    },
+    {
+      "id": "device:NAV-CRASH-001",
+      "required": true,
+      "status": "PASS",
+      "detail": "fatal=0 anr=0"
+    },
+    {
+      "id": "device:PROCDEATH-001",
+      "required": true,
+      "status": "PASS",
+      "detail": "map_up=yes fatal=0"
+    },
+    {
+      "id": "device:PERM-DENY-001",
+      "required": true,
+      "status": "PASS",
+      "detail": "mic_missing=1 listening=0 fatal=0"
+    },
+    {
+      "id": "device:TRANSCRIPT-FADE-EMU-001",
+      "required": true,
+      "status": "PASS",
+      "detail": "shown=2 faded=1"
+    },
+    {
+      "id": "device:PIECE-P61",
+      "required": true,
+      "status": "PASS",
+      "detail": "route_replaced=0 result=\"ok\":false \"error\":\"NEARBY_QUESTION_WHILE_NAVIGATING\" "
+    },
+    {
+      "id": "device:PIECE-P63",
+      "required": true,
+      "status": "PASS",
+      "detail": "queued_to_amap=1 after_stop=nav_alert_dropped reason=not_navigating"
+    },
+    {
+      "id": "device:CALL-NOSIM-001",
+      "required": false,
+      "status": "PASS",
+      "detail": "result=\"ok\":false \"error\":\"CONTACT_NOT_FOUND\"  fatal=0"
+    },
+    {
+      "id": "device:P59",
+      "required": false,
+      "status": "PASS",
+      "detail": "rounds_failed=0/2"
+    },
+    {
+      "id": "device:NAV-UI-004",
+      "required": false,
+      "status": "PASS",
+      "detail": "traffic_update=6"
+    },
+    {
+      "id": "device:NAV-UI-006",
+      "required": false,
+      "status": "PASS",
+      "detail": "lane_shown=24 junction_shown=0"
+    }
+  ],
+  "problems": []
+}
