@@ -1,0 +1,13 @@
+{"id": "build:vendor-real", "status": "PASS", "detail": "real vendor files packaged"}
+{"id": "devrows:AFF-PAUSE", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "devrows:AFF-AC", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "devrows:AFF-RECENTER", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "devrows:NEWS", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "devrows:VISION", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "devrows:FZ-MOSQ", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "devrows:FZ-MOSQ-DONE", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "devrows:FZ-SEAT", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "devrows:FZ-LOWER", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "devrows:FZ-DROWSY", "status": "PASS", "detail": "1/1 runs passed", "passes": 1, "runs": 1}
+{"id": "devrows:runner", "status": "PASS", "detail": "10 scenario results"}
+{"id": "voice:quota-guard", "status": "PASS", "detail": "gemini_live, no qwen session"}
