@@ -1,0 +1,14 @@
+piece=style
+junit tests=1 failures=0 errors=0 skipped=0 parsed=yes
+style_check=present
+s_mood1 PASS 2.0s tools=- style=default f0=214Hz spread=9.4st pace=6.8 markers=0
+s_sweet PASS 2.3s tools=set_speaking_style style=sweet f0=216Hz+1 spread=9.7st pace=6.3 markers=2
+s_mood2 PASS 2.0s tools=- style=sweet f0=265Hz+24 spread=8.7st pace=7.7 markers=2
+s_seat PASS 1.8s tools=control_seat style=sweet f0=216Hz+1 spread=11.0st pace=6.8 markers=1
+s_mood3 PASS 2.4s tools=- style=sweet f0=255Hz+19 spread=7.5st pace=7.4 markers=2
+s_normal PASS 1.5s tools=set_speaking_style style=default f0=216Hz+1 spread=9.2st pace=8.0 markers=0
+s_mood4 PASS 1.8s tools=- style=default f0=222Hz+4 spread=7.7st pace=6.8 markers=0
+graded=7 pass=7
+RESULT PASS
+DEMO-STYLE-001 rule=MET
+gradle_exit=0
