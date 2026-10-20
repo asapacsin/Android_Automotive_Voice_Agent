@@ -69,6 +69,22 @@ class LiveJvmTest(unittest.TestCase):
             self.assertEqual(p.returncode, 3)
             self.assertIn("BLOCKED", open(os.path.join(d, "text-live", "summary.txt")).read())
 
+    def test_blank_model_not_passed_and_model_in_summary(self):
+        with tempfile.TemporaryDirectory() as d:
+            stub = os.path.join(d, "g.sh")
+            open(stub, "w").write('#!/bin/bash\nif [ "${TEXT_LIVE_MODEL+set}" = set ]; then echo set; else echo unset; fi >"$LIVE_JVM_OUT/model_seen"\nexit 124\n')
+            os.chmod(stub, 0o755)
+            env = dict(os.environ, GEMINI_API_KEY="k", TEXT_LIVE_MODEL="", LIVE_JVM_SKIP_SETUP="1",
+                       LIVE_JVM_SKIP_PUSH="1", LIVE_JVM_GRADLE=stub, LIVE_JVM_OUT=d)
+            p = subprocess.run(["bash", SCRIPT, "text-live"], capture_output=True, text=True, env=env)
+            self.assertEqual(p.returncode, 124)
+            self.assertEqual(open(os.path.join(d, "model_seen")).read().strip(), "unset")
+            self.assertIn("timeout=yes", open(os.path.join(d, "text-live", "summary.txt")).read())
+
+    def test_model_line(self):
+        out = self.run_summary("text-live", results().replace("model=m", "model=gem-1.5"), XML.format(n=1, f=0))
+        self.assertIn("model=gem-1.5", out)
+
     def test_workflow_shape(self):
         wf = yaml.safe_load(open(os.path.join(REPO, ".github/workflows/live-jvm.yml")))
         self.assertEqual(wf["name"], "Live JVM checks")

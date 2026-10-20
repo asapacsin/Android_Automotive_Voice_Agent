@@ -49,6 +49,11 @@ if piece == "text-live":
                 if m and re.search(r"play", m.group(0)):
                     ctl_play += 1
     lines.append(f"results_txt={'present' if have else 'missing'}")
+    if have:
+        for raw in open(results, encoding="utf-8", errors="replace"):
+            if raw.startswith("model="):
+                lines.append("model=" + re.sub(r"[^A-Za-z0-9._-]", "", raw[6:].strip())[:80])
+                break
     fz = sets.get("FUZZY", []); mu = sets.get("MUSIC", [])
     fzp = sum(1 for _, ok in fz if ok); mup = sum(1 for _, ok in mu if ok)
     tail = {i: ok for i, ok in fz if re.fullmatch(r"FZ-(15|16|17|18|19)", i)}
@@ -104,6 +109,9 @@ else
     chmod +x ./gradlew
   fi
   buildroot="${NOVA_BUILD_DIR:-$HOME/nova-drive-build}"
+  [ -z "${TEXT_LIVE_MODEL:-}" ] && unset TEXT_LIVE_MODEL  # a blank var must not reach the test (it only defaults on null)
+  # Warm-up so the timed row is not eaten by a cold Gradle + Kotlin compile (output discarded).
+  [ "${LIVE_JVM_SKIP_SETUP:-}" = 1 ] || timeout 900 "$gradle" :app:compileDebugUnitTestKotlin >/dev/null 2>&1 || true
   rm -rf "$root/app/build/text-live" "$buildroot/app/test-results"
   # The exact invocation of the row's evidence line, under a 5-minute timeout. Raw output is discarded.
   env "$env_flag=1" timeout 300 "$gradle" :app:testDebugUnitTest --tests "$tests" $rerun >/dev/null 2>&1
@@ -113,6 +121,7 @@ else
   results="$(find "$buildroot/app" "$root/app/build" -path '*text-live/results.txt' 2>/dev/null | head -1)"
   summarize "$piece" "${results:--}" "${xml:--}" "$out"
   echo "gradle_exit=$rc" >>"$out/summary.txt"
+  [ "$rc" = 124 ] && echo "timeout=yes" >>"$out/summary.txt"
 fi
 
 if [ "${LIVE_JVM_SKIP_PUSH:-}" = 1 ]; then exit "$rc"; fi
