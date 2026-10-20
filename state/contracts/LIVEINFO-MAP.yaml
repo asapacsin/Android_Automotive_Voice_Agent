@@ -1,0 +1,38 @@
+schema: nova-task-contract/1
+task_id: LIVEINFO-MAP
+title: The SDK-free parts of AmapRouteLiveInfo (traffic segment choice, route-POI to candidate mapping) become pure functions with JVM tests, so route_traffic and along_route honestly reach verified unit
+branch: exec/liveinfo-map
+base_commit: f13f0931a927845c33e3c424b4dc7682e766e5fd
+approved_paths:
+  - app/src/main/kotlin/com/novadrive/app/nav/RouteLiveInfo.kt
+  - app/src/main/kotlin/com/novadrive/app/nav/amap/AmapRouteLiveInfo.kt
+  - app/src/test/kotlin/com/novadrive/app/RouteLiveInfoMappingTest.kt
+  - config/capabilities.yaml
+allowed_changes:
+  - RouteLiveInfo.kt gains pure functions over plain values (no com.amap types) - the choice between the remaining-route traffic statuses and the path's own statuses (empty or null remaining falls back to the path), and the mapping of route POIs given as plain (id, title, lat, lon, distance) values to DestinationCandidate (id fallback r<index>, null point dropped, distance sort) - preserving today's behaviour exactly
+  - AmapRouteLiveInfo.kt only converts SDK objects to those plain values and calls the functions; no behaviour change, no new SDK calls
+  - New RouteLiveInfoMappingTest covering the fallback both ways, empty both, id fallback, null point dropped, sort order, and empty input
+  - config/capabilities.yaml route_traffic and along_route only - verified implemented -> unit, evidence names the tests, keeps the sentence that the SDK call has never run on a device
+architecture_constraints:
+  - Only AmapRouteLiveInfo.kt (nav/amap) imports com.amap (ArchitectureRulesTest)
+  - I-8 - no coordinates, place names or addresses logged
+  - Behaviour preserved - this is a refactor plus tests; any behaviour difference is a defect
+forbidden_changes:
+  - No change to LiveInfoTool, the picker or any other capability entry; verified must not go above unit
+forbidden_paths:
+  - TEST_MATRIX.yaml
+  - scripts/**
+  - .github/**
+required_verification:
+  - id: liveinfo-tests
+    kind: regression
+    command: ./gradlew -q :app:testDebugUnitTest --tests '*RouteLiveInfoMappingTest*' --tests '*LiveInfoToolTest*' --tests '*LiveInfoAlongRouteWiringTest*' --tests '*AmapLiveInfoParserTest*'
+  - id: architecture-and-capabilities
+    kind: regression
+    command: ./gradlew -q :behavior-test:test --tests '*CapabilityContractTest*' --tests '*ArchitectureRulesTest*'
+  - id: app-compiles
+    kind: compile
+    command: ./gradlew -q :app:compileDebugKotlin :app:compileReleaseKotlin
+acceptance_criteria:
+  - The new test fails if the fallback or the id/point/sort mapping is changed (mutation-checked by the executor and reported)
+  - route_traffic and along_route no longer listed by discover_work as only implemented
