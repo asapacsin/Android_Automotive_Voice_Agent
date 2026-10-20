@@ -25,7 +25,10 @@ class Throughput(unittest.TestCase):
             self.git("checkout", "-q", "main")
             self.git("merge", "-q", "--no-ff", "-m", "Merge %s: thing" % b, b,
                      when="2026-10-20T%s:00Z" % t)
-        self.git("commit", "-q", "--allow-empty", "-m", "Merge branch 'other'",
+        self.git("checkout", "-q", "-b", "other")
+        self.git("commit", "-q", "--allow-empty", "-m", "w", when="2026-10-20T03:40:00Z")
+        self.git("checkout", "-q", "main")
+        self.git("merge", "-q", "--no-ff", "-m", "Merge branch 'other'", "other",
                  when="2026-10-20T03:40:00Z")
 
     def tearDown(self):
@@ -46,7 +49,7 @@ class Throughput(unittest.TestCase):
         d = self.run_json()
         self.assertEqual(d["all"]["merges"], 7)
         self.assertAlmostEqual(d["all"]["median_gap_minutes"], 20.0)
-        self.assertAlmostEqual(d["all"]["merges_per_hour"], 7 / 2.5, places=2)
+        self.assertAlmostEqual(d["all"]["merges_per_hour"], 6 / 2.5, places=2)
         self.assertTrue(d["merges"][0]["subject"].startswith("Merge exec/"))
 
     def test_split(self):
@@ -54,8 +57,14 @@ class Throughput(unittest.TestCase):
         self.assertEqual(d["before"]["merges"], 3)
         self.assertEqual(d["after"]["merges"], 4)
         self.assertAlmostEqual(d["before"]["median_gap_minutes"], 30.0)
+        self.assertAlmostEqual(d["before"]["merges_per_hour"], 2 / 1.0, places=2)
         self.assertAlmostEqual(d["after"]["median_gap_minutes"], 10.0)
-        self.assertAlmostEqual(d["after"]["merges_per_hour"], 4 / 0.5, places=2)
+        self.assertAlmostEqual(d["after"]["merges_per_hour"], 3 / 0.5, places=2)
+
+    def test_single_merge_has_no_rate(self):
+        d = self.run_json("--split", "2026-10-20T01:15:00Z")
+        self.assertEqual(d["before"]["merges"], 1)
+        self.assertIsNone(d["before"]["merges_per_hour"])
 
     def test_text_output(self):
         p = subprocess.run([sys.executable, SCRIPT], cwd=self.repo, capture_output=True,

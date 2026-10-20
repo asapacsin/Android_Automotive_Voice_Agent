@@ -505,9 +505,18 @@ def _git_in(repo, *args):
 
 def unfinished_executor_work(repo=None):
     """An exec branch with commits beyond its contract's base that HEAD has not merged is finished
-    executor work waiting on the planner: verify, review or merge. Read-only; never raises."""
+    executor work waiting on the planner: verify, review or merge. Read-only; never raises.
+
+    The repo root is `repo`, else the NOVA_DISCOVER_REPO environment variable (a test seam), else
+    REPO. Review status comes from delegation_check: the last valid reviews.log record for the tip
+    wins and malformed lines are ignored."""
     repo = repo or os.environ.get("NOVA_DISCOVER_REPO") or REPO
     out = []
+    try:
+        import delegation_check as dc
+        records, _ = dc.parse_log(os.path.join(repo, "state", "reviews.log"))
+    except Exception:
+        records = []
     for path in sorted(glob.glob(os.path.join(repo, "state", "contracts", "*.yaml"))):
         try:
             text = open(path, encoding="utf-8").read()
@@ -535,15 +544,8 @@ def unfinished_executor_work(repo=None):
                     verified = json.load(open(vpath, encoding="utf-8")).get("tip") == tip
                 except Exception:
                     verified = False
-            reviewed = False
-            rpath = os.path.join(repo, "state", "reviews.log")
-            if os.path.isfile(rpath):
-                for line in open(rpath, encoding="utf-8"):
-                    parts = line.split()
-                    if len(parts) >= 2 and parts[1] == "PASS" and len(parts[0]) >= 7 \
-                            and re.fullmatch(r"[0-9a-f]+", parts[0]) and tip.startswith(parts[0]):
-                        reviewed = True
-                        break
+            rec = dc.lookup(records, [tip]) if records else None
+            reviewed = bool(rec) and rec[1] == "PASS"
             stage = "verify" if not verified else ("review" if not reviewed else "merge")
             out.append(candidate(P_UNFINISHED, "state/contracts/%s" % os.path.basename(path), tid,
                                  "executor work on %s (%s, %s commits) awaits %s"

@@ -50,9 +50,31 @@ class UnfinishedExecutorWork(unittest.TestCase):
         with open(os.path.join(self.repo, "state", "verification", tid + ".json"), "w") as f:
             json.dump({"task_id": tid, "tip": tip}, f)
 
-    def review(self, tip):
+    def review(self, tip, status="PASS", raw=None):
         with open(os.path.join(self.repo, "state", "reviews.log"), "a") as f:
-            f.write("%s PASS 2026-10-20 reviewed\n" % tip[:7])
+            f.write(raw if raw is not None else "%s %s 2026-10-20 reviewed\n" % (tip[:7], status))
+
+    def stage_after(self, *statuses, raw=None):
+        self.contract("T-A", "exec/a")
+        tip = self.branch_with_work("exec/a")
+        self.verify("T-A", tip)
+        for st in statuses:
+            self.review(tip, st)
+        if raw is not None:
+            self.review(tip, raw=raw % tip[:7])
+        return self.found()[0]["summary"]
+
+    def test_pass_then_revise_is_review(self):
+        self.assertIn("awaits review", self.stage_after("PASS", "REVISE"))
+
+    def test_pass_then_pending_is_review(self):
+        self.assertIn("awaits review", self.stage_after("PASS", "PENDING"))
+
+    def test_revise_then_pass_is_merge(self):
+        self.assertIn("awaits merge", self.stage_after("REVISE", "PASS"))
+
+    def test_malformed_pass_is_ignored(self):
+        self.assertIn("awaits review", self.stage_after(raw="%s PASS\n"))
 
     def found(self):
         return discover_work.unfinished_executor_work(repo=self.repo)

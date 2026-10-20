@@ -3,8 +3,9 @@
 
   python3 scripts/throughput.py [--ref HEAD] [--split 2026-10-20T05:00:00Z] [--json]
 
-Merges per hour is merges / hours between the first and last merge in the window; the median gap
-is between consecutive merges. Read-only.
+Merges per hour is an interval rate: (n - 1) / hours between the first and last merge in the
+window (n/a, null in --json, with fewer than two merges); the median gap is between consecutive
+merges. Read-only.
 """
 import argparse
 import datetime
@@ -35,7 +36,7 @@ def stats(items):
         "merges": len(times),
         "first": times[0].isoformat() if times else None,
         "last": times[-1].isoformat() if times else None,
-        "merges_per_hour": round(len(times) / hours, 3) if hours > 0 else None,
+        "merges_per_hour": round((len(times) - 1) / hours, 3) if hours > 0 else None,
         "median_gap_minutes": round(statistics.median(gaps), 2) if gaps else None,
     }
 
