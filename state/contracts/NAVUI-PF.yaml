@@ -1,0 +1,38 @@
+schema: nova-task-contract/1
+task_id: NAVUI-PF
+title: Device checks judge NAV-UI-002..006 from logs it already collects
+branch: exec/navui-pf
+base_commit: 2b33b58fe1ddbc8b6dd0d07ab42a87af4cc5b098
+approved_paths:
+  - scripts/github_device_checks.sh
+  - config/ci_checks.json
+  - scripts/tests/test_ci_tier_b.py
+allowed_changes:
+  - After the existing NAV-MID-ROUTE note in scripts/github_device_checks.sh, add pf/res results computed from data the script already logs (the P58 view lines naviMode=/bearing= and the nav_* counters), no new app tools or waits
+  - device:NAV-UI-002 PASS when every P58 view line during the drive has naviMode=car_up (lock-car tracking) and at least 3 view lines exist
+  - device:NAV-UI-003 PASS when the logged bearings during the drive take at least 3 distinct values and are not all 0 (map follows heading, not frozen north-up)
+  - device:NAV-UI-005 PASS when count of nav_maneuver lines is >= 1
+  - device:NAV-UI-004 PASS when traffic_update >= 1, else SKIP with detail "Amap supplied no traffic status" (pass rule says "when Amap supplies it")
+  - device:NAV-UI-006 PASS when lane_shown + junction_shown >= 1, else SKIP with detail "Amap supplied no lane or junction"
+  - config/ci_checks.json device suite - NAV-UI-002, 003, 005 required; NAV-UI-004, 006 optional
+  - test_ci_tier_b.py may gain cases if it tests the device manifest
+architecture_constraints:
+  - Text-free evidence only (I-8) - modes, bearings as numbers, counts; no coordinates or addresses
+  - No change to the app or to existing checks' logic or order
+forbidden_changes:
+  - No change to NAV-UI-007 or any other existing check
+forbidden_paths:
+  - "*/src/**"
+  - TEST_MATRIX.yaml
+  - scripts/test_matrix.py
+required_verification:
+  - id: bash-syntax
+    kind: lint
+    command: bash -n scripts/github_device_checks.sh
+  - id: script-tests
+    kind: regression
+    command: python3 -m unittest discover -s scripts/tests -t .
+acceptance_criteria:
+  - The five NAV-UI checks appear in the device verdict with the rules above
+  - Against the last real run's summary (ci/device-evidence runs/run_20261019_2023_20c8b38) the rules would give 002 PASS, 003 PASS, 004 PASS, 005 PASS, 006 PASS
+  - Script tests green
