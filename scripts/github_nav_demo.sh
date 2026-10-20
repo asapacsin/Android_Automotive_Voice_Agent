@@ -218,13 +218,26 @@ elif [ -n "${NAV_DEMO_PIECE:-}" ]; then
   note "piece mode: first 6 lines, ${duration} s"
 fi
 set +e
+# Each bridge line is prefixed with the host epoch second (P65-awake below needs when the last line went out).
 python3 tools/speech-harness/host_audio_bridge.py --from-file "$clips" --lead 8 --gap "${DEMO_GAP:-20}" --duration "$duration" --wait-quiet \
-  --no-play --provider gemini --record "$ev/demo_audio" >"$ev/bridge_out.txt" 2>"$ev/bridge_err.txt"
-bridge_rc=$?
+  --no-play --provider gemini --record "$ev/demo_audio" 2>"$ev/bridge_err.txt" \
+  | while IFS= read -r l; do printf '%s %s\n' "$(date +%s)" "$l"; done >"$ev/bridge_out.txt"
+bridge_rc=${PIPESTATUS[0]}
 set -e
 if [ "$bridge_rc" = 0 ]; then res navpiece:bridge PASS "rc=0"; else res navpiece:bridge FAIL "rc=$bridge_rc"; fi
 # Codes and numbers only from the bridge output (it also echoes app lines, which are never kept).
 note "driver waits: $(grep -oE 'wait_quiet line=[0-9]+ ms=[0-9]+ cap=[01] reason=[a-z]+' "$ev/bridge_out.txt" | sed -E 's/wait_quiet //' | tr '\n' ' ')(the scripted driver reads the app's guidance log; a real driver cannot)"
+# P65: she must not fall asleep (30 s inactivity) while scripted driver lines are still to come, and no
+# line may be pushed out by the wait cap. Compares host epoch seconds with the emulator's (host-synced) clock.
+p65_last="$(grep -E 'wait_quiet line=' "$ev/bridge_out.txt" | tail -1 | cut -d' ' -f1)"
+p65_capped="$(grep -cE 'wait_quiet line=[0-9]+ ms=[0-9]+ cap=1' "$ev/bridge_out.txt" || true)"
+p65_early=0
+for t in $(adb logcat -d -v epoch -s NovaVoice:D 2>/dev/null | grep -E 'listening LISTENING->SLEEP reason=inactivity' | awk '{print int($1)}'); do
+  [ -n "$p65_last" ] && [ "$t" -lt "$p65_last" ] && p65_early=$((p65_early + 1))
+done
+if [ -z "$p65_last" ]; then res navpiece:P65-awake FAIL "no driver line sent"
+elif [ "$p65_early" = 0 ] && [ "$p65_capped" = 0 ]; then res navpiece:P65-awake PASS "early_sleeps=0 capped_waits=0"
+else res navpiece:P65-awake FAIL "early_sleeps=$p65_early capped_waits=$p65_capped"; fi
 rm -f "$ev/bridge_out.txt"
 note "nav demo: provider=$(nova | grep -oE 'session_provider choice=[a-z_]+' | tail -1) started=$(count 'nav_started') stopped=$(nova | grep -oE 'nav_stopped reached=[a-z]+ reason=[a-z_]+' | tail -1) guidance=$(count 'nav_guidance_play_start') tools=$(nova | grep -oE '^tool=[a-z_]+|tool=[a-z_]+ args' | grep -oE 'tool=[a-z_]+' | sort | uniq -c | tr -s ' ' | tr '\n' ' ') errors=$(count 'state=ERROR|_PROTOCOL_ERROR')"
 nd_choice="$(nova | grep -oE 'session_provider choice=[a-z_]+' | tail -1)"; nd_qwen="$(count 'session_provider choice=qwen')"
