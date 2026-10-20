@@ -1,25 +1,25 @@
 piece=tryout
 junit tests=1 failures=0 errors=0 skipped=0 parsed=yes
 tryout_check=present
-u_hello PASS 1.6s -
-u_can PASS 1.7s -
-u_hot PASS 2.6s control_climate,control_climate
-u_temp PASS 2.1s control_climate
-u_window PASS 2.2s control_window
-u_sunroof PASS 2.6s control_window
-u_gas PASS 2.1s navigate_to
-u_cancel PASS 2.1s exit_navigation_mode
+u_hello PASS 2.9s -
+u_can PASS 1.6s -
+u_hot PASS 2.9s control_climate,control_climate
+u_temp PASS 2.0s control_climate
+u_window PASS 2.0s control_window
+u_sunroof PASS 2.5s control_window
+u_gas PASS 2.3s navigate_to
+u_cancel PASS 2.0s exit_navigation_mode
 u_dest PASS 2.1s navigate_to
-u_pick2 PASS 3.2s choose_navigation_option
-u_go PASS 2.4s choose_navigation_option
-u_eta PASS 2.4s query_live_info
-u_music PASS 2.7s play_music
-u_barge PASS 2.5s control_music
-u_mstop PASS 2.1s control_music
-u_mumble PASS 1.9s -
-u_call PASS 3.3s place_call
-u_navoff PASS 2.9s exit_navigation_mode
-u_bye PASS 2.4s end_conversation
+u_pick2 PASS 2.8s choose_navigation_option
+u_go PASS 2.2s choose_navigation_option
+u_eta PASS 2.2s query_live_info
+u_music PASS 2.6s play_music
+u_barge PASS 2.5s set_speech_output
+u_mstop PASS 2.3s control_music
+u_mumble PASS 2.5s -
+u_call PASS 2.6s place_call
+u_navoff PASS 2.3s exit_navigation_mode
+u_bye PASS 1.6s -
 graded=19 pass=19
 RESULT PASS
 WARN -
