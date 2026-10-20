@@ -31,10 +31,14 @@ session may run them and record the result without asking: dispatch `device-chec
 `voice-checks.yml` (Gemini free tier), `nav-demo.yml` or `emulator.yml` on the working branch
 (GitHub MCP `actions_run_trigger` → `run_workflow`, or a push whose message carries `[checks]`,
 `[voice]`, `[navdemo]`, `[drive]`). Read the result from `ci/device-evidence`, `ci/voice-evidence`,
-`ci/nav-demo` or `ci/drive-video` (`runs/<run>/verdict.json`, `summary.txt`, screenshots) and from the
+`ci/nav-demo` or `ci/drive-video` (`runs/<run>/verdict.json`, `summary.txt`, screenshots; voice:
+`runs/<run>/<shard>/verdict.json`) and from the
 job log (`get_job_logs` works from agent sessions). Record it in TEST_MATRIX / OPEN_PROBLEMS with the
 run id. What a run may claim is [docs/CI.md](docs/CI.md) (a `_stubvendor` run is never PASS evidence).
 Do not treat "needs the emulator" as a blocker or an owner item.
+Each demo runs at most 5 minutes and function tests run in small units (owner, 2026-10-19): `voice-checks.yml`
+runs as parallel shards of <=5 min of tests each, one verdict per shard; the live-info shards (~8 min, one kind x10)
+are the explicit exception, since a 10-repeat rate cannot be split ([docs/CI.md](docs/CI.md)).
 
 Before you consider a change complete: `.\gradlew.bat test --rerun-tasks :app:assembleDebug`, then
 device evidence for anything touching audio, the map or lifecycle (`ACCEPTANCE_TESTS.md` says what

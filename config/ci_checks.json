@@ -12,8 +12,53 @@
       "optional": []
     },
     "voice": {
-      "description": "Voice checks on the emulator against the Gemini live harness (free tier, not deterministic). devrows: is the scenarios-device.json runner.",
+      "description": "Voice checks on the emulator against the Gemini live harness (free tier, not deterministic). devrows: is the scenarios-device.json runner. Full-run union; Voice checks runs it as the per-shard suites voice-* (one verdict per shard, docs/CI.md).",
       "required": ["build:vendor-real", "voice:runner", "voice:S*", "devrows:runner", "devrows:*", "liveinfo:runner", "liveinfo:*", "voice:quota-guard"],
+      "optional": ["voice:demo-recording", "wake:WAKE-SYNTH-001"]
+    },
+    "voice-a": {
+      "description": "Voice checks shard voice-a: scenarios.json S1..S7.",
+      "required": ["build:vendor-real", "voice:runner", "voice:S1", "voice:S2", "voice:S3", "voice:S4", "voice:S4b", "voice:S5", "voice:S5b", "voice:S6", "voice:S7", "voice:quota-guard"],
+      "optional": []
+    },
+    "voice-b": {
+      "description": "Voice checks shard voice-b: scenarios.json S8..S14.",
+      "required": ["build:vendor-real", "voice:runner", "voice:S8", "voice:S9", "voice:S10", "voice:S11", "voice:S12", "voice:S13", "voice:S14", "voice:quota-guard"],
+      "optional": []
+    },
+    "voice-c": {
+      "description": "Voice checks shard voice-c: scenarios.json S15..S21.",
+      "required": ["build:vendor-real", "voice:runner", "voice:S15", "voice:S16", "voice:S17", "voice:S18", "voice:S19", "voice:S20", "voice:S21", "voice:quota-guard"],
+      "optional": []
+    },
+    "voice-device": {
+      "description": "Voice checks shard device: scenarios-device.json (devrows:).",
+      "required": ["build:vendor-real", "devrows:runner", "devrows:AFF-PAUSE", "devrows:AFF-AC", "devrows:AFF-RECENTER", "devrows:NEWS", "devrows:VISION", "devrows:FZ-MOSQ", "devrows:FZ-MOSQ-DONE", "devrows:FZ-SEAT", "devrows:FZ-LOWER", "devrows:FZ-DROWSY", "voice:quota-guard"],
+      "optional": []
+    },
+    "voice-li-weather": {
+      "description": "Voice checks shard li-weather: LI-WEATHER x10 (LIVE-INFO-DEVICE-001, >=9/10).",
+      "required": ["build:vendor-real", "liveinfo:runner", "liveinfo:LI-WEATHER", "voice:quota-guard"],
+      "optional": []
+    },
+    "voice-li-place": {
+      "description": "Voice checks shard li-place: LI-PLACE x10 (LIVE-INFO-DEVICE-001, >=9/10).",
+      "required": ["build:vendor-real", "liveinfo:runner", "liveinfo:LI-PLACE", "voice:quota-guard"],
+      "optional": []
+    },
+    "voice-li-traffic": {
+      "description": "Voice checks shard li-traffic: LI-TRAFFIC x10 (LIVE-INFO-DEVICE-001, >=9/10).",
+      "required": ["build:vendor-real", "liveinfo:runner", "liveinfo:LI-TRAFFIC", "voice:quota-guard"],
+      "optional": []
+    },
+    "voice-li-along": {
+      "description": "Voice checks shard li-along: LI-ALONG x10 (LIVE-INFO-DEVICE-001, >=9/10).",
+      "required": ["build:vendor-real", "liveinfo:runner", "liveinfo:LI-ALONG", "voice:quota-guard"],
+      "optional": []
+    },
+    "voice-demo": {
+      "description": "Voice checks shard demo: the review demo recording and the synthetic wake.",
+      "required": ["build:vendor-real", "voice:quota-guard"],
       "optional": ["voice:demo-recording", "wake:WAKE-SYNTH-001"]
     },
     "device": {
