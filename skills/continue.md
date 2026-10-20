@@ -100,6 +100,9 @@ call; executors were ~10-16%).
     tests), and one stray edit outside its files; the Opus-low executor then did it in ~5 min. Never
     for `<module>/src/**`, workflows or anything needing exploration; one failed round → hand the task
     to the executor. Licensed vendor files never go to it (the wrapper refuses them).
+    First real offload COMPACT-CWD (2026-10-20): contract naming the exact change in one script plus
+    its test - 1 round, 41 s, ~$0.01, sonnet reviewer PASS. Run: `python3 scripts/offload_executor.py
+    state/contracts/<ID>.yaml --worktree <wt> --model qwen/qwen3-coder`; review with `model: sonnet`.
 - **Parallel Gradle needs its own build dir (2026-10-20):** every worktree shares `~/nova-drive-build`
   unless `NOVA_BUILD_DIR` is set, so parallel executors overwrite each other's JUnit XML. Every
   executor packet and every planner `verify` sets `NOVA_BUILD_DIR=$HOME/nova-build/<TASK_ID>`; nobody
