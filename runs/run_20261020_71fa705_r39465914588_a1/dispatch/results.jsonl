@@ -1,0 +1,8 @@
+{"id": "build:vendor-real", "status": "PASS", "detail": "real vendor files packaged"}
+{"id": "device:app-up", "status": "PASS", "detail": "map up"}
+{"id": "device:PLACE-UNSET-001", "status": "PASS", "detail": "asks_for_address=yes"}
+{"id": "device:PLACE-SAVE-001", "status": "PASS", "detail": "saved_place_set_slot_home=1"}
+{"id": "device:CALL-NOSIM-001", "status": "PASS", "detail": "result=\"ok\":false \"error\":\"CONTACT_NOT_FOUND\"  fatal=0"}
+{"id": "device:APPS-001", "status": "PASS", "detail": "allowed_ok=2/2 music_refused=yes"}
+{"id": "device:LIVE-INFO-SDK-ALONG", "status": "PASS", "detail": "live_info kind=along_route ok=true code=none ms=847"}
+{"id": "device:LIVE-INFO-SDK-TRAFFIC", "status": "PASS", "detail": "live_info kind=route_traffic ok=true code=none ms=12"}
