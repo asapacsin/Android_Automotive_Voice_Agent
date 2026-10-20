@@ -2,12 +2,12 @@
 
 Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matrix.py --status`. **Do not edit by hand** — the registry is the source of truth and this is a view of it.
 
-Updated 2026-09-21 · 163 tests
+Updated 2026-09-21 · 164 tests
 
 | | |
 | --- | --- |
 | autonomous PASS | 100 |
-| autonomous FAIL | 0 |
+| autonomous FAIL | 1 |
 | incomplete | 0 |
 | partial pass | 0 |
 | not run | 30 |
@@ -44,6 +44,7 @@ Updated 2026-09-21 · 163 tests
 - QWEN-PROBE-Q1-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - QWEN-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - DEMO-COMMUTE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+- DEMO-STYLE-001 is AUTONOMOUS and FAIL - run it or fix it
 - DEVUI-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - GUIDANCE-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - CONFIG-CARD-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -80,7 +81,7 @@ Updated 2026-09-21 · 163 tests
 | reliability | 8 | 5 | 1 | 2 |
 | saved_places | 3 | 3 | 0 | 0 |
 | security | 3 | 3 | 0 | 0 |
-| speech | 25 | 9 | 9 | 6 |
+| speech | 26 | 9 | 9 | 6 |
 | truthfulness | 9 | 7 | 0 | 2 |
 | turn_taking | 19 | 10 | 3 | 6 |
 | unsupported | 1 | 1 | 0 | 0 |
@@ -197,6 +198,7 @@ Updated 2026-09-21 · 163 tests
 | DEMO-10-2-001 | speech | One demo run that exercises every claude/10-2 function, graded by the log checker | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | tools/demo/check_demo_log.py --selftest OK (2026-10-02 cloud) |
 | DEMO-10-3-001 | speech | One demo run that exercises the essential functions and every claude/10-2 and claude/10-3 function, graded by the log checker | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | tools/demo/check_demo_log.py --selftest OK (2026-10-03 cloud, 10-3 checks included) |
 | DEMO-COMMUTE-001 | speech | The commute demo 横琴创业谷 → 横琴镇, in the order of the 豆包座舱 review video, under docs/DEMO_REQUIREMENTS.md | AUTONOMOUS | NOT_RUN | no | 2026-10-10 cloud, harness validation only (Gemini, not the product provider; JVM, simul… |
+| DEMO-STYLE-001 | speech | A spoken style change is heard: after 撒个娇 her chat replies sound sweeter, and 正常说话 brings the default back | AUTONOMOUS | FAIL | no | 2026-10-20 Live JVM checks run 39373942882 at b4199cc (STYLE-CI piece, gemini default m… |
 | DEMO-TRYOUT-001 | speech | A first-time driver in their own words (19 lines: chat, vague asks, a refusal, a change of mind, barge-in, mumble, call), graded per line | AUTONOMOUS | PASS | no | 2026-10-13 cloud JVM harness, gemini-3.1-flash-live-preview (Gemini's own voice, not Ay… |
 | DEVUI-EMU-001 | speech | The rebuilt developer screen on the emulator: cards render, each saves itself, Test connection, clear-all confirm | AUTONOMOUS | NOT_RUN | no | 2026-10-10 cloud 2a5c6cd: app 1789/0, behavior-test 131/0 (developerSettingsNamesNoDorm… |
 | P45-EMU-001 | speech | The P45 conversation on the emulator with live speech, with the Azure voice | AUTONOMOUS | NOT_RUN | no | — |

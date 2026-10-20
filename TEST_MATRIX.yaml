@@ -3301,6 +3301,23 @@ tests:
     related: [P54, P55, P56, P66, DEMO-COMMUTE-001, SPEC-006, SPEC-015]
     last_run: {at: 2026-10-20, result: PASS}
 
+  - id: DEMO-STYLE-001
+    capability: speech
+    name: "A spoken style change is heard: after 撒个娇 her chat replies sound sweeter, and 正常说话 brings the default back"
+    purpose: "OPEN_PROBLEMS P55 left item: the delivery-change rate of the decided style design (SPEC-021 B10, docs/DEMO_STYLE.md)"
+    type: integration
+    scope: INTERMEDIATE_FLOW
+    owner: AUTONOMOUS
+    status: FAIL
+    release_blocking: false
+    covers: []
+    prerequisites: ["GEMINI_API_KEY - Gemini first, Ayano last", "s_* clips: PIPER_MODEL=<zh_CN-huayan onnx> python3 tools/demo/live/make_clips_cloud.py style"]
+    procedure: ["Live JVM checks workflow, pieces=style (scripts/github_live_jvm.sh style): NOVA_LIVE_DEMO=1 NOVA_LIVE_PROVIDER=gemini NOVA_LIVE_SCENES=style gradle :app:testDebugUnitTest --tests '*LiveDemoRun*' then python3 tools/demo/live/style_check.py RUN"]
+    pass_criteria: ["style_check.py RESULT PASS (all 7 keys; s_mood2/s_mood3 sweet vs s_mood1 by 2 of 3 of F0 +8 %, spread +2.0 st, pace -10 %, or F0 +15 % alone; s_mood4 back to default) in 2 of 3 runs on the same app code (P55)"]
+    evidence: ["2026-10-20 Live JVM checks run 39373942882 at b4199cc (STYLE-CI piece, gemini default model, Piper clips, simulated car, not device evidence; ci/live-jvm-evidence runs/run_20261020_0523_b4199cc/style/summary.txt): RESULT FAIL 5/7 - s_mood2 F0 +4 % spread +1.5 st pace -20 %, s_mood3 F0 +3 % spread +1.8 st pace -23 % (wording and pace sweet, pitch not); s_sweet +10 %, s_seat +32 % (tool-answer turns); s_normal and s_mood4 back to default. Cause analysis: the sweet lines reach Gemini once as a model-role turn while systemInstruction keeps the default tone (P55)"]
+    related: [P55, SPEC-021, DEMO-TRYOUT-001]
+    last_run: {at: 2026-10-20, result: FAIL}
+
   - id: DEMO-AMAP-LIVE-001
     capability: navigation
     name: "The commute demo's real Amap lookups at the demo origin: 导航去横琴镇 + 第一个 is >= 1.7 km away, the warm-up weather answers"
