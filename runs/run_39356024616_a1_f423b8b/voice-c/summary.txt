@@ -1,0 +1,11 @@
+app: map up
+secret AMAP_WEB_KEY: set, amap_web_setup -> result=applied 
+secret GEMINI_API_KEY: set, gemini_setup -> result=applied 
+voice: provider override -> result=override=gemini 
+voice: session_provider choice=gemini_live
+voice: session up
+voice: runner rc=0
+voice: scenarios PASS S15 PASS S16 PASS S17 PASS S18 PASS S19 PASS S20 PASS S21 ok S15 ok S16 ok S17 ok S18 ok S19 ok S20 ok S21 
+voice: session errors=0 provider_lines= 3 session_provider choice=gemini_live  quota_guard=0
+0 codes= 2 QWEN_WORKSPACE_MISSING 
+voice: shard voice-c done, override cleared
