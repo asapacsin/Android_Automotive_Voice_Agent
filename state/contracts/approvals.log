@@ -9,3 +9,4 @@ VC-SPLIT fd0ea9dfdb95b7c4ae53fd3250d9af8e0ca50f2c2c1568c1c72f181448d77c7a APPROV
 TRYOUT-CI 96e20cbef35ec4a323431f11891c3ec0f6f3832d1cd9a7edd49518972ba88d43 APPROVED 2026-10-20 planner owner 2026-10-20: finish remaining work; DEMO-TRYOUT-001 rerun after P45 U2 and P66
 STYLE-CI e36b6f7f7d18a05cd04cdced1b654a5b78ff38994d44314567261470c489fca3 APPROVED 2026-10-20 planner decider 2026-10-20: P55 design decided 2026-10-13; evidence piece
 LIVEINFO-MAP 152b103360c71b66d2512df01860e10d28b1beed5d256f2df9a4174caa44e862 APPROVED 2026-10-20 architect scoped by read-only explore: step 1 of 2 (step 2 = emulator SDK reads in device checks)
+EVID-RUNID 60b1007db8106ffb2529d34a52fbe3787ea9d8e9b0588937bf272c96d86e0dd4 APPROVED 2026-10-20 architect found 2026-10-20: tryout runs 39373428985/39373432268 overwrote one folder
