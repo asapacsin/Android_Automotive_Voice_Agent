@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-20T06:29:26",
+  "generated_at": "2026-10-20T06:32:59",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "2424e7c",
+    "commit": "5605ef2",
     "branch": "claude/10-20",
-    "subject": "Rebind NAV-E2E-ARRIVAL-001 and NAV-UI-007 from Device checks at ff1f635 (real vendor, PASS, after LIVEINFO-MAP)",
+    "subject": "NAV-OVERSPEED-001: add the ff1f635 evidence line the rebind cites",
     "working_tree_clean": false,
-    "uncommitted_files": 3
+    "uncommitted_files": 4
   },
   "tests": {
     "available": true,
@@ -186,7 +186,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "AFFORDANCE-DEVICE-001: STALE_BIND: Spoken control names act on the phone through the local path, once, with no model execution",
-    "actionable_count": 81,
+    "actionable_count": 77,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 29,
@@ -203,42 +203,7 @@
         "priority": 2,
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
-        "item": "DEMO-STYLE-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
         "item": "LIVE-INFO-DEVICE-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-CANCEL-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-PICK-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-SEARCH-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "TRUTH-WEATHER-001",
         "blocked_by": null
       },
       {
@@ -687,6 +652,13 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P64",
+        "blocked_by": null
+      },
+      {
+        "priority": 10,
+        "class": "stale state or harness defect",
+        "source": "state",
+        "item": "PROJECT_STATE.json",
         "blocked_by": null
       },
       {

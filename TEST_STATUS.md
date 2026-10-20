@@ -20,7 +20,7 @@ Updated 2026-09-21 · 166 tests
 
 **HUMAN_VALIDATION_READY = FALSE**
 
-- the registry does not validate: 9 problem(s)
+- the registry does not validate: 3 problem(s)
 - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - TRUTH-MEDIA-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -139,7 +139,7 @@ Updated 2026-09-21 · 166 tests
 | DEMO-AMAP-LIVE-001 | navigation | The commute demo's real Amap lookups at the demo origin: 导航去横琴镇 + 第一个 is >= 1.7 km away, the warm-up weather answers | AUTONOMOUS | PASS | no | 2026-10-12 cloud: with sortrule=distance FAIL (第一个 = 632 m, the origin 横琴澳门青年创业谷; Amap … |
 | GUIDANCE-DEVICE-001 | navigation | One voice on the short route; Amap audible only when the model cannot speak | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | GUIDANCE-EMU-001 measurements |
 | GUIDANCE-EMU-001 | navigation | Step-0 measurements for assistant-spoken guidance on the short route | AUTONOMOUS | NOT_RUN | yes | measurements only, no verdict yet (G-1b audibility, G-1c, G-1d and the network-cut repe… |
-| NAV-CANCEL-001 | navigation | 算了 really cancels | AUTONOMOUS | STALE | yes | 2026-09-20: nav_flow_cancelled |
+| NAV-CANCEL-001 | navigation | 算了 really cancels | AUTONOMOUS | PASS | yes | 2026-09-20: nav_flow_cancelled |
 | NAV-CHOICE-STALE-001 | navigation | A spoken ordinal on a stale list is re-presented before it is accepted | AUTONOMOUS | PASS | yes | 2026-09-24: NavigationPendingChoiceTest 10/10 (cloud Linux build) |
 | NAV-CORRECT-001 | navigation | A mid-flow destination change replaces the list | AUTONOMOUS | PASS | no | 2026-09-20: 20/20 suite |
 | NAV-DRIVE-001 | navigation | A route calculates and guides to arrival | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | NAV-SEARCH-001, NAV-PICK-001, NAV-CANCEL-001, NAV-CORRECT-001 PASS |
@@ -149,8 +149,8 @@ Updated 2026-09-21 · 166 tests
 | NAV-OVERSPEED-DEVICE-001 | navigation | The over-speed warning is heard in the car | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | NAV-OVERSPEED-001 |
 | NAV-PHONETIC-CONFIRM-001 | navigation | A phonetic lead asks for confirmation and never navigates | AUTONOMOUS | PASS | yes | 2026-09-24: NavigationPendingChoiceTest 10/10 with an injected proposer |
 | NAV-PHONETIC-DEVICE-001 | navigation | Misheard destination name is confirmed by voice on the device | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | NAV-CHOICE-STALE-001 and NAV-PHONETIC-CONFIRM-001 passed 2026-09-24 |
-| NAV-PICK-001 | navigation | 第二个 picks from the on-screen list | AUTONOMOUS | STALE | yes | 2026-09-20: 20/20 suite |
-| NAV-SEARCH-001 | navigation | A destination produces candidates and does not start navigating | AUTONOMOUS | STALE | yes | 2026-09-20: 20/20 suite |
+| NAV-PICK-001 | navigation | 第二个 picks from the on-screen list | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
+| NAV-SEARCH-001 | navigation | A destination produces candidates and does not start navigating | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | NAV-SIM-QA-001 | navigation | Reusable navigation screen-recording movie for QA | AUTONOMOUS | PASS | no | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
 | NAV-UI-001 | navigation | 「开始导航」 enters ACTIVE_DRIVING_NAVIGATION, not route preview | AUTONOMOUS | PASS | yes | EmbeddedNavigationControllerTest.SelectingARouteEntersDrivingPresentationNotRoutePreview |
 | NAV-UI-002 | navigation | During GPS navigation the vehicle stays in lock-car tracking | AUTONOMOUS | PASS | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
@@ -199,7 +199,7 @@ Updated 2026-09-21 · 166 tests
 | DEMO-10-2-001 | speech | One demo run that exercises every claude/10-2 function, graded by the log checker | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | tools/demo/check_demo_log.py --selftest OK (2026-10-02 cloud) |
 | DEMO-10-3-001 | speech | One demo run that exercises the essential functions and every claude/10-2 and claude/10-3 function, graded by the log checker | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | tools/demo/check_demo_log.py --selftest OK (2026-10-03 cloud, 10-3 checks included) |
 | DEMO-COMMUTE-001 | speech | The commute demo 横琴创业谷 → 横琴镇, in the order of the 豆包座舱 review video, under docs/DEMO_REQUIREMENTS.md | AUTONOMOUS | NOT_RUN | no | 2026-10-10 cloud, harness validation only (Gemini, not the product provider; JVM, simul… |
-| DEMO-STYLE-001 | speech | A spoken style change is heard: after 撒个娇 her chat replies sound sweeter, and 正常说话 brings the default back | AUTONOMOUS | STALE | no | 2026-10-20 Live JVM checks run 39373942882 at b4199cc (STYLE-CI piece, gemini-3.1-flash… |
+| DEMO-STYLE-001 | speech | A spoken style change is heard: after 撒个娇 her chat replies sound sweeter, and 正常说话 brings the default back | AUTONOMOUS | PARTIAL_PASS | no | 2026-10-20 Live JVM checks run 39373942882 at b4199cc (STYLE-CI piece, gemini-3.1-flash… |
 | DEMO-TRYOUT-001 | speech | A first-time driver in their own words (19 lines: chat, vague asks, a refusal, a change of mind, barge-in, mumble, call), graded per line | AUTONOMOUS | PASS | no | 2026-10-13 cloud JVM harness, gemini-3.1-flash-live-preview (Gemini's own voice, not Ay… |
 | DEVUI-EMU-001 | speech | The rebuilt developer screen on the emulator: cards render, each saves itself, Test connection, clear-all confirm | AUTONOMOUS | NOT_RUN | no | 2026-10-10 cloud 2a5c6cd: app 1789/0, behavior-test 131/0 (developerSettingsNamesNoDorm… |
 | P45-EMU-001 | speech | The P45 conversation on the emulator with live speech, with the Azure voice | AUTONOMOUS | NOT_RUN | no | — |
@@ -229,7 +229,7 @@ Updated 2026-09-21 · 166 tests
 | TRUTH-LIVEINFO-NEWS-001 | truthfulness | News and prices stay refused even with a live result in the turn | AUTONOMOUS | NOT_RUN | yes | — |
 | TRUTH-MEDIA-001 | truthfulness | A named or styled song never plays the bundled track, even when misheard | AUTONOMOUS | NOT_RUN | yes | 2026-09-20: 3/3 then 5/5 after the fix; before it, the bundled track played (old criter… |
 | TRUTH-MISHEARD-001 | truthfulness | A misheard driver is not told the car acted | AUTONOMOUS | PASS | yes | 2026-09-19: 「返屋企啦」 -> 「发诺克拉。」 -> correction, not a claim |
-| TRUTH-WEATHER-001 | truthfulness | Weather and traffic answers come only from a live lookup | AUTONOMOUS | STALE | yes | 2026-09-20: refusal, 20/20 suite (pre-SPEC-011 criterion, superseded) |
+| TRUTH-WEATHER-001 | truthfulness | Weather and traffic answers come only from a live lookup | AUTONOMOUS | PASS | yes | 2026-09-20: refusal, 20/20 suite (pre-SPEC-011 criterion, superseded) |
 | ASTRA-DOUBLE-TALK-001 | turn_taking | Real double-talk and route-change acoustics | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | SpeechUplinkGate + qualifyPlayoutBargeIn uplinkGateOpen wiring |
 | ASTRA-ECHO-PLAYBACK-001 | turn_taking | Playback-only cabin echo does not self-trigger replies | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | qualified barge-in uses uplinkGateOpen instead of RMS ratio veto |
 | BARGE-IN-EVIDENCE-001 | turn_taking | Barge-in needs time-scoped speech evidence; an unconfirmed echo turn is never heard | AUTONOMOUS | PASS | yes | 2026-09-24: BargeInEvidenceTest 11/11; full suite 1618/0; REGRESSION 41/41, CHAOS 26/26… |
