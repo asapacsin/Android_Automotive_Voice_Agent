@@ -1,0 +1,16 @@
+piece=style
+junit tests=1 failures=0 errors=0 skipped=0 parsed=yes
+style_check=present
+grader=v3
+s_mood1 PASS 2.3s tools=- style=default f0=222Hz spread=8.0st pace=6.3 markers=0
+s_sweet PASS 2.0s tools=set_speaking_style style=sweet f0=210Hz-5 spread=6.9st pace=6.6 markers=2
+s_mood2 FAIL 1.6s tools=- style=sweet f0=238Hz+7 spread=5.8st pace=7.2 markers=2
+s_seat PASS 2.0s tools=control_seat style=sweet f0=212Hz-4 spread=11.3st pace=7.0 markers=1
+s_mood3 FAIL 1.7s tools=- style=sweet f0=224Hz+1 spread=8.6st pace=7.2 markers=1
+s_normal PASS 1.7s tools=set_speaking_style style=default f0=209Hz-6 spread=6.7st pace=7.0 markers=0
+s_mood4 PASS 1.6s tools=- style=default f0=209Hz-6 spread=4.9st pace=6.7 markers=0
+graded=7 pass=5
+RESULT FAIL s_mood2,s_mood3
+DEMO-STYLE-001 rule=NOT_MET
+gradle_exit=0
+model=gemini-3.8-live
