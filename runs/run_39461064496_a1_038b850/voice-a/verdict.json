@@ -1,0 +1,146 @@
+{
+  "suite": "voice-a",
+  "verdict": "FAIL",
+  "vendor": "UNKNOWN",
+  "checks": [
+    {
+      "id": "build:vendor-real",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "voice:runner",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "voice:S1",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "voice:S2",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "voice:S3",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "voice:S4",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "voice:S4b",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "voice:S5",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "voice:S5b",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "voice:S6",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "voice:S7",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "voice:quota-guard",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    }
+  ],
+  "problems": [
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "results file missing or unreadable: evidence/results.jsonl"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required build:vendor-real has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:runner has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:S1 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:S2 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:S3 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:S4 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:S4b has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:S5 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:S5b has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:S6 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:S7 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required voice:quota-guard has no result"
+    }
+  ]
+}
