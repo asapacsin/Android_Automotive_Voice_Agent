@@ -192,7 +192,16 @@ class DebugToolReceiver : BroadcastReceiver() {
         val fix = if (runCatching { CoarseLocationProvider(app).lastKnown() }.getOrNull() != null) "set" else "none"
         val host = NavigationHostGateway.current()
         if (query.isNotBlank()) Thread {
-            val source = com.novadrive.app.nav.LiveDestinationCandidateSource(app)
+            // P53 split: the app's own wiring, but the Amap client shares SHARED_HTTP's pool through
+            // newBuilder() with a debug EventListener, so warm runs still reuse the warm connection.
+            val recorder = PreflightTiming.Recorder()
+            val source = com.novadrive.app.nav.LiveDestinationCandidateSource(
+                poiClient = AmapPoiClient(http = recorder.client(AmapPoiClient.SHARED_HTTP)),
+                platformFix = { CoarseLocationProvider(app).lastKnownFix() },
+                toGcj02 = { com.novadrive.app.nav.amap.AmapCoordinates.toGcj02(app, it) },
+                webKey = { AmapSettingsRepository(app).loadWebKey() },
+                savedPlaces = com.novadrive.app.nav.SavedPlaceStore(app)::get,
+            )
             fun timed(): Pair<List<com.novadrive.app.nav.DestinationCandidate>, Long> {
                 val started = System.nanoTime()
                 val result = runCatching { kotlinx.coroutines.runBlocking { source.resolve(query) } }.getOrDefault(emptyList())
@@ -203,8 +212,16 @@ class DebugToolReceiver : BroadcastReceiver() {
             Log.d("NovaVoice", "preflight_search count=${found.size} first_m=${first?.distanceMeters ?: -1} ms=$ms")
             if (first != null && host != null) host.calculateDriveRoute(first.latitude, first.longitude, first.name)
             // P53: the same search again on the same source, to show the warm (reused-connection) cost.
-            val (_, warmMs) = timed()
-            Log.d("NovaVoice", "preflight_search_warm ms=$warmMs")
+            // Three warm runs; the per-HTTP-call split is recorded for the last one only.
+            val warm = (1..3).map { run ->
+                recorder.recording = run == 3
+                timed().second
+            }
+            recorder.recording = false
+            Log.d("NovaVoice", PreflightTiming.warmLine(warm))
+            recorder.calls.forEachIndexed { i, (url, timing) ->
+                Log.d("NovaVoice", PreflightTiming.splitLine(i + 1, url, timing))
+            }
         }.start()
         return "qwen=$qwen web_key=$webKey fix=$fix map_host=${if (host != null) "live" else "none"}"
     }
