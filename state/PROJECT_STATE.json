@@ -1,21 +1,21 @@
 {
-  "generated_at": "2026-10-19T09:59:09",
+  "generated_at": "2026-10-20T05:08:49",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "b635b7f",
-    "branch": "claude/10-19",
-    "subject": "AGENTS.md: Gemini 3.6 Flash fallback when 3.8 Flash is overloaded (owner); key reachable",
+    "commit": "a1aaafe",
+    "branch": "claude/10-20",
+    "subject": "P62: BLOCKED_BY the owner's go for Qwen sessions; Gemini path fixed",
     "working_tree_clean": false,
-    "uncommitted_files": 2
+    "uncommitted_files": 1
   },
   "tests": {
     "available": true,
-    "collected_at": "2026-10-18T23:16:39",
+    "collected_at": "2026-10-20T00:18:14",
     "total": {
-      "tests": 2318,
-      "failures": 1,
+      "tests": 313,
+      "failures": 0,
       "errors": 0,
-      "skipped": 5
+      "skipped": 0
     },
     "by_module": {
       "evaluation": {
@@ -23,12 +23,6 @@
         "failures": 0,
         "errors": 0,
         "skipped": 0
-      },
-      "app": {
-        "tests": 2005,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 5
       },
       "simulator": {
         "tests": 25,
@@ -44,7 +38,7 @@
       },
       "behavior-test": {
         "tests": 132,
-        "failures": 1,
+        "failures": 0,
         "errors": 0,
         "skipped": 0
       },
@@ -61,12 +55,12 @@
         "skipped": 0
       }
     },
-    "passing": false
+    "passing": true
   },
   "apk": {
     "built": true,
-    "bytes": 224398599,
-    "built_at": "2026-10-19T05:25:30"
+    "bytes": 224903741,
+    "built_at": "2026-10-19T19:48:24"
   },
   "capabilities": {
     "available": true,
@@ -90,34 +84,29 @@
       "status": "OPEN, found 2026-10-03 while recording the demo video. PC emulator nova_api34, build 9696ce5 (`claude/10-3`), Azure voic"
     },
     {
+      "id": "P47",
+      "title": "Steady background noise: Gemini never detects the start of speech",
+      "status": "gate deadlock FIXED 2026-10-15 (JVM + live harness, see below); behaviour in a real noisy cabin still open. Found 2026-1"
+    },
+    {
       "id": "P48",
       "title": "The assistant voice lags: slow first reply, gaps between clauses, chat replies held until generation ends",
       "status": "OPEN, 2026-10-08. Owner requirement: [docs/DEMO_REQUIREMENTS.md](docs/DEMO_REQUIREMENTS.md) — no laggy AI speech. PC emu"
     },
     {
-      "id": "P51",
-      "title": "「导航去横琴镇」 + 「第一个」 chose the place the car was already at",
-      "status": "open. The persistence design is with the decider (AGENTS.md hard rule); a style scene"
-    },
-    {
       "id": "P52",
       "title": "A used-up Qwen free tier was reported as QWEN_PROTOCOL_ERROR",
-      "status": "open. The persistence design is with the decider (AGENTS.md hard rule); a style scene"
+      "status": "unknown"
     },
     {
       "id": "P53",
       "title": "c_nav waits for the real place search",
-      "status": "open. The persistence design is with the decider (AGENTS.md hard rule); a style scene"
-    },
-    {
-      "id": "P54",
-      "title": "「附近有加油站吗」 while parked was answered 「没在导航，查不了」",
-      "status": "open. The persistence design is with the decider (AGENTS.md hard rule); a style scene"
+      "status": "OPEN - fix merged (e37bc02) and Gemini rehearsal PASS (c_nav 3.5 s, 2026-10-12), but the real app's search time (preflig"
     },
     {
       "id": "P55",
       "title": "10-13 bug: 「嗲一点」 changes neither the style on screen nor how she speaks",
-      "status": "open. The persistence design is with the decider (AGENTS.md hard rule); a style scene"
+      "status": "open: design decided 2026-10-13 (decider; SPEC-021 B10, FUZZY §7.3, DeliveredStyle.kt), built and JVM-proven (DeliveredS"
     },
     {
       "id": "P56",
@@ -138,6 +127,11 @@
       "id": "P65",
       "title": "With her voice on the guidance, a talkative route puts her to sleep between driver lines",
       "status": "OPEN 2026-10-16. Found by nav demo run 38849988938 (relay on, 120 km/h): after the"
+    },
+    {
+      "id": "P66",
+      "title": "A mumble right after a barge-in and a music stop called `set_speech_output`",
+      "status": "OPEN 2026-10-17. Fixed at JVM level, merged 2026-10-17 (`ToolCallGuards.speechOutputNotRequested`,"
     }
   ],
   "tech_debt": [
@@ -207,305 +201,18 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "AFFORDANCE-DEVICE-001: FAIL: Spoken control names act on the phone through the local path, once, with no model execution",
-    "actionable_count": 127,
+    "NEXT_ACTION": "DEMO-TRYOUT-001: FAIL: A first-time driver in their own words (19 lines: chat, vague asks, a refusal, a change of mind, barge-in, mumble, call), graded per line",
+    "actionable_count": 82,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
-    "QUEUED_FOR_HUMAN": 30,
+    "QUEUED_FOR_HUMAN": 29,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
       {
         "priority": 2,
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
-        "item": "AFFORDANCE-DEVICE-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "APPS-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "BARGEIN-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "CLIMATE-IMPLICIT-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "CLIMATE-OFF-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "CLIMATE-SET-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "CTX-AMBIG-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "CTX-CHAIN-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "DEMO-AMAP-LIVE-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
         "item": "DEMO-TRYOUT-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "FUZZY-TEXT-LIVE-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "HELP-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "LIVE-INFO-DEVICE-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "MUSIC-NAMED-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "MUSIC-PLAY-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "MUSIC-TEXT-LIVE-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-CANCEL-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-CORRECT-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-E2E-ARRIVAL-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-OVERSPEED-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-PICK-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-SEARCH-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-SIM-QA-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-UI-002",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-UI-003",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-UI-004",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-UI-005",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-UI-006",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-UI-007",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NET-RECOVER-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NOISE-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "PERM-DENY-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "PLACE-NAV-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "PLACE-SAVE-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "PLACE-UNSET-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "SLEEP-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "SUITE-SCENARIO-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "TRUTH-BAIT-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "TRUTH-MISHEARD-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "TRUTH-WEATHER-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "UNSUPPORTED-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 3,
-        "class": "invariant violation",
-        "source": "test report",
-        "item": "com.novadrive.architecture.FeaturePresenceRegressionTest",
         "blocked_by": null
       },
       {
@@ -946,13 +653,6 @@
         "priority": 9,
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
-        "item": "P51",
-        "blocked_by": null
-      },
-      {
-        "priority": 9,
-        "class": "unfinished or open problem",
-        "source": "OPEN_PROBLEMS.md",
         "item": "P52",
         "blocked_by": null
       },
@@ -961,13 +661,6 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P53",
-        "blocked_by": null
-      },
-      {
-        "priority": 9,
-        "class": "unfinished or open problem",
-        "source": "OPEN_PROBLEMS.md",
-        "item": "P54",
         "blocked_by": null
       },
       {
@@ -989,7 +682,7 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P62",
-        "blocked_by": null
+        "blocked_by": "the owner's go to open Qwen sessions (AGENTS.md \"Gemini first, Ayano last\") - the Gemini path is FIXED (runs 38847890114, 38849988938: 43/47 MATCH); only the Qwen relay (VoiceCatalog QWEN verbatimPromptSpeech=false, SPEC-021 non-goal) and the audible G-1b check on a KVM host with audio remain"
       },
       {
         "priority": 9,
@@ -1013,13 +706,6 @@
         "blocked_by": null
       },
       {
-        "priority": 9,
-        "class": "unfinished or open problem",
-        "source": "OPEN_PROBLEMS.md",
-        "item": "P67",
-        "blocked_by": null
-      },
-      {
         "priority": 10,
         "class": "stale state or harness defect",
         "source": "state",
@@ -1039,13 +725,6 @@
         "source": "BACKLOG.md",
         "item": "B-012",
         "blocked_by": "a person saying 「你好小诺」 at a stated distance with the car actually moving, which is"
-      },
-      {
-        "priority": 11,
-        "class": "next authorised backlog item",
-        "source": "BACKLOG.md",
-        "item": "B-015",
-        "blocked_by": "the owner choosing between three options that are not comparable on technical grounds"
       },
       {
         "priority": 11,

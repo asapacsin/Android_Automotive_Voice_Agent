@@ -377,7 +377,7 @@ the two turns right after the switch 245 Hz, 12+ st, 5.9 chars/s; from the third
 3. The tool result and the voice-style line say 「声音不变」, telling an end-to-end voice model not to
    change how it sounds.
 
-**Status:** open. The persistence design is with the decider (AGENTS.md hard rule); a style scene
+**Status:** open: design decided 2026-10-13 (decider; SPEC-021 B10, FUZZY §7.3, DeliveredStyle.kt), built and JVM-proven (DeliveredStyleTest, GeminiLiveClientTest, SpeakingStyleTest); left: the delivery-change rate (DEMO-STYLE-001, 2 of 3 Gemini runs on the same app code; STYLE-CI piece) and the Ayano switch-back (waits for the owner's "Ayano last" go). Earlier wording: open. The persistence design is with the decider (AGENTS.md hard rule); a style scene
 (`NOVA_LIVE_SCENES=style`: same question before, after 嗲一点, two turns later, after 正常一点, with
 measured pitch/range/pace on the video and a grader) is being built to prove the fix.
 
