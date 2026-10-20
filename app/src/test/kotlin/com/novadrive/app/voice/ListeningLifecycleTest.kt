@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -567,7 +568,7 @@ class ListeningLifecycleTest {
         assertTrue(rig.lifecycle.activate("wake_word"))
         assertEquals(ListeningState.ACTIVE, rig.state)
         assertEquals(0, rig.controls.sessionsOpened, "no new session: the connection was kept")
-        assertEquals(cancels, rig.controls.cancels, "the wake word does not cancel guidance")
+        assertEquals(cancels, rig.controls.cancels, "activate from SLEEP cancels nothing")
     }
 
     @Test
@@ -580,5 +581,10 @@ class ListeningLifecycleTest {
         wait(ListeningTimeouts.DEEP_IDLE_AFTER_SLEEP_MS * 2)
         assertEquals(ListeningState.SLEEP, rig.state)
         assertFalse("close" in rig.controls.log)
+    }
+
+    @Test
+    @Disabled("GAP: built in VoiceSessionController.cancelReplySparingGuidance (playback.guidanceActive); no JVM seam — the controller constructs AndroidPlaybackPort(PcmAudioPlayer)")
+    fun shutUpSleepAndWakeWordInActiveSpareOpenGuidance() {
     }
 }
