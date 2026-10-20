@@ -1,0 +1,38 @@
+{
+  "suite": "voice-li-weather",
+  "verdict": "FAIL",
+  "vendor": "REAL",
+  "checks": [
+    {
+      "id": "build:vendor-real",
+      "required": true,
+      "status": "PASS",
+      "detail": "real vendor files packaged"
+    },
+    {
+      "id": "liveinfo:runner",
+      "required": true,
+      "status": "PASS",
+      "detail": "runner exit 1: scenario failures judged per scenario"
+    },
+    {
+      "id": "liveinfo:LI-WEATHER",
+      "required": true,
+      "status": "FLAKY",
+      "detail": "9/10 runs passed"
+    },
+    {
+      "id": "voice:quota-guard",
+      "required": true,
+      "status": "PASS",
+      "detail": "gemini_live, no qwen session"
+    }
+  ],
+  "problems": [
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required liveinfo:LI-WEATHER is FLAKY"
+    }
+  ]
+}

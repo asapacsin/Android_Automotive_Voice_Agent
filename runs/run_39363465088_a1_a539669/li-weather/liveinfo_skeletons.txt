@@ -1,0 +1,2 @@
+-- LI-WEATHER
+   debug_tool tool=voice arg=say:live_weather

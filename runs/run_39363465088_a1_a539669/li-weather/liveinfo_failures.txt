@@ -1,0 +1,2 @@
+      1           expected /kind=weather/
+      1           expected /tool=query_live_info/
