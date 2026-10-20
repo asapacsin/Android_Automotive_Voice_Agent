@@ -69,6 +69,10 @@ call; executors were ~10-16%).
   for authorised work is told to take the documented default instead. It allows the stop after 20
   consecutive refusals or when no autonomous action remains, fails open, and `NOVA_KEEP_GOING=0`
   turns it off.
+- **State a time estimate whenever work starts (owner 2026-10-20).** Each time a unit, batch, CI
+  run, review round or session starts, tell the owner in the same message how long it is expected to
+  take (wall clock, a range, and what it waits on, e.g. "~20-25 min: builder ~15, verify+review ~8").
+  When an estimate slips by more than half, say so with the new figure; do not wait to be asked.
 - **Keep 3-4 units in flight (owner 2026-10-20, after the planner ran one executor at a time and
   waited on fixed check-in times).** Before ending a turn, scheduling a check-in or waiting on a
   reviewer/CI, count the units in flight (executors, scoping agents, reviewers). Fewer than 3 while
