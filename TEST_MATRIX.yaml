@@ -1214,6 +1214,7 @@ tests:
     procedure: ["say or text 「放<一个本地文件的歌名>」", "wait up to 6 s", "note the play_music result status and now_playing", "repeat with notification access revoked"]
     pass_criteria: ["status=playing with now_playing naming the local file, matches_request=true", "the map returns to the foreground", "without notification access: status=requested_unverified and the reply names no song"]
     autonomous_evidence: ["MUSIC-UNIT-001 (JVM) covers the result rules with a fake session source"]
+    evidence: ["2026-10-20 Device checks lifecycle shard (VLC-EMU, VLC 3.6.5 x86_64, ci/device-evidence runs/run_20261020_24bee92_r39452886908/lifecycle/evidence_lifecycle): two generated tagged tones indexed (mediastore_test_rows=2); play_music hand-off: VLC came to the front with a media session (vlc_sessions=1) but did not play the named local file - deferred_result ok=false error=NOT_PLAYING, music_verify not_playing; without notification access: ok=true status=requested_unverified (third criterion met). VLC does not honour MEDIA_PLAY_FROM_SEARCH for a local title; first two criteria not met - stays NOT_RUN"]
     remaining_uncertainty: ["whether VLC honours MEDIA_PLAY_FROM_SEARCH extras for a local title", "whether its MediaSession reports the title within 6 s"]
     returns: ["status and now_playing per attempt", "music_verify log line (code-only)"]
     evidence: []
