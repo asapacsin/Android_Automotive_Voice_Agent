@@ -68,6 +68,8 @@ Use exactly these words in reports:
 
 Never write "fully verified" unless every required level was actually performed.
 
+**Repeated-run FAIL rows (owner 2026-10-19):** a row whose notes say it stays FAIL until repeated runs pass flips to PASS after 3 consecutive real-vendor runs pass it. Runs with no session (bad key) neither count nor break the streak.
+
 ## Acceptance scopes
 
 Levels say *how strong* the evidence is; scopes say *what* the verdict is allowed to claim.

@@ -1,5 +1,5 @@
 # Voice rows on the real app with the debug-only Gemini override (scripts/github_voice_checks.sh).
-# Proves: the scenario rows (S*, Cantonese, device rows, live info), the quota guard (no Qwen
+# Proves: the scenario rows (S*, device rows, live info), the quota guard (no Qwen
 # session) and the synthetic wake, judged by the Verdict step (suite "voice"). It spends the Gemini
 # free tier and is not deterministic, so it runs only by hand or on a [voice] commit, never on PRs.
 # Emulator evidence is never evidence of real cabin acoustics, echo cancellation, voice

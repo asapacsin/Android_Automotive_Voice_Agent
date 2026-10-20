@@ -25,6 +25,9 @@ meta:
   updated: 2026-09-22
   commit_at_update: 2cdc002
   device: "Xiaomi 24069RA21C (2391ff70), Android SDK 36"
+  language_policy: >
+    Mandarin-only (owner 2026-10-19, YUE-POLICY-001 option A; DECISIONS/ADR-002 addendum).
+    Cantonese is not supported and is not measured; the app must never claim it.
   completion_invariant: >
     NEW_FEATURE_WORKS AND AFFECTED_OLD_PROTECTED_CAPABILITIES_STILL_WORK AND NO_UNEXPLAINED_REGRESSION.
     A change may complete only when every supported capability in this registry still has PASS

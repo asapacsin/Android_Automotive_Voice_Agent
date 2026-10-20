@@ -57,9 +57,7 @@ Safety and global checks can never be quarantined (`voice:quota-guard`, `navpiec
 `junit:*`, `build:*`, `gate:*`, `ci:*`, `matrix:*`, `gradle:*`), and `--today` is refused outside
 the test clock, so a quarantine cannot be stretched past its expiry.
 
-Current entry (2026-10-16, expires 2026-10-30): `cantonese:YUE-HOME` — the expected behaviour of an
-ambiguous Cantonese request is undefined until the owner decides YUE-POLICY-001; release stays
-blocked through Tier C. `liveinfo:LI-PLACE` (place_details 6/10) is deliberately **not**
+Current entries: none. The `cantonese:YUE-HOME` quarantine was removed 2026-10-19 with the whole cantonese suite (owner 2026-10-19, YUE-POLICY-001 option A, Mandarin-only). `liveinfo:LI-PLACE` (place_details 6/10) is deliberately **not**
 quarantined: it is a release-blocking FAIL nobody authorised waiving, so the voice suite stays red
 until it is fixed. A quarantined green prints `VERDICT voice PASS (1 quarantined)`.
 

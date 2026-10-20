@@ -6,17 +6,17 @@ Updated 2026-09-21 · 163 tests
 
 | | |
 | --- | --- |
-| autonomous PASS | 97 |
-| autonomous FAIL | 4 |
+| autonomous PASS | 98 |
+| autonomous FAIL | 2 |
 | incomplete | 0 |
 | partial pass | 0 |
 | not run | 30 |
-| human required | 29 |
-| human pass | 1 |
+| human required | 28 |
+| human pass | 2 |
 | human fail | 1 |
 | blocked external | 0 |
-| not applicable | 0 |
-| **release-blocking failures** | **3** |
+| not applicable | 1 |
+| **release-blocking failures** | **1** |
 
 **HUMAN_VALIDATION_READY = FALSE**
 
@@ -24,10 +24,8 @@ Updated 2026-09-21 · 163 tests
 - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - TRUTH-MEDIA-001 is AUTONOMOUS and NOT_RUN - run it or fix it
-- TRUTH-BAIT-001 is AUTONOMOUS and FAIL - run it or fix it
 - CALL-NOSIM-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - NAV-MID-ROUTE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
-- CLIMATE-SET-001 is AUTONOMOUS and FAIL - run it or fix it
 - MUSIC-VLC-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - AEC-DELAY-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - PLAYBACK-BUFFER-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -69,8 +67,8 @@ Updated 2026-09-21 · 163 tests
 | architecture | 5 | 5 | 0 | 0 |
 | body | 1 | 1 | 0 | 0 |
 | calling | 8 | 6 | 1 | 1 |
-| cantonese | 2 | 1 | 1 | 0 |
-| climate | 5 | 3 | 1 | 0 |
+| cantonese | 2 | 1 | 0 | 0 |
+| climate | 5 | 4 | 1 | 0 |
 | comfort | 3 | 2 | 0 | 1 |
 | dialogue_context | 4 | 4 | 0 | 0 |
 | lifecycle | 1 | 0 | 0 | 1 |
@@ -86,7 +84,7 @@ Updated 2026-09-21 · 163 tests
 | saved_places | 3 | 3 | 0 | 0 |
 | security | 3 | 3 | 0 | 0 |
 | speech | 25 | 8 | 9 | 6 |
-| truthfulness | 9 | 6 | 0 | 2 |
+| truthfulness | 9 | 7 | 0 | 2 |
 | turn_taking | 19 | 10 | 3 | 6 |
 | unsupported | 1 | 1 | 0 | 0 |
 | vision | 2 | 0 | 0 | 2 |
@@ -112,13 +110,13 @@ Updated 2026-09-21 · 163 tests
 | CALL-PRIVACY-001 | calling | The phone number never reaches the model | AUTONOMOUS | PASS | yes | PhoneCallToolTest, 2026-09-20 |
 | CALL-REAL-001 | calling | A confirmed call reaches a real handset | HUMAN_ACCOUNT | HUMAN_REQUIRED | yes | CALL-CONFIRM-001, CALL-AMBIG-001, CALL-PRIVACY-001 PASS |
 | STALE-CONFIRM-001 | calling | A confirmation only authorises the call it was asked about | AUTONOMOUS | PASS | yes | 2026-09-20: found by discovery, and it was a real defect - confirmed=true was trusted o… |
-| YUE-POLICY-001 | cantonese | Is Cantonese an advertised capability? | HUMAN_DECISION | HUMAN_REQUIRED | yes | — |
-| YUE-RATE-001 | cantonese | Measured Cantonese success rate | AUTONOMOUS | PASS | no | 2026-09-20 before the persona line: 返屋企 2/5, 有啲熱 0/5, music refusal 0/5 |
+| YUE-POLICY-001 | cantonese | Is Cantonese an advertised capability? | HUMAN_DECISION | HUMAN_PASS | yes | 2026-10-19 owner chose option A. Recorded in DECISIONS/ADR-002 (Addendum 2026-10-19) an… |
+| YUE-RATE-001 | cantonese | Measured Cantonese success rate | AUTONOMOUS | NOT_APPLICABLE | no | 2026-09-20 before the persona line: 返屋企 2/5, 有啲熱 0/5, music refusal 0/5 |
 | ASTRA-DEMO-REHEARSAL-002 | climate | No-touch demo rehearsal — climate confirmation and stop-output | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | ListeningLifecycle SILENT_WAIT path unchanged |
 | CLIMATE-FAN-001 | climate | An explicit fan level is set | AUTONOMOUS | PASS | no | ClimateToolHandlerTest.eachActionCallsExactlyOnePortMethod and malformedArgumentsNeverR… |
 | CLIMATE-IMPLICIT-001 | climate | 有点热 produces a real adjustment | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite, after isControlRequest learned to ask ContextResolver |
 | CLIMATE-OFF-001 | climate | 关闭空调 turns it off | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
-| CLIMATE-SET-001 | climate | An explicit temperature is set | AUTONOMOUS | FAIL | yes | 2026-09-20: 20/20 suite |
+| CLIMATE-SET-001 | climate | An explicit temperature is set | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | FUZZY-DEVICE-001 | comfort | Fuzzy requests on the emulator - chip on screen, one call per scenario, honest partial report | AUTONOMOUS | NOT_RUN | no | — |
 | FUZZY-TEXT-LIVE-001 | comfort | The live model maps the fuzzy phrase table FZ-01…FZ-19 to the right calls | AUTONOMOUS | STALE | yes | 2026-10-01 cloud, gemini-3.8-live, after adding 傲娇/温柔/元气: FUZZY 18/19 — FZ-15 傲娇一点 and … |
 | SCENARIO-UNIT-001 | comfort | Comfort scenarios run their fixed steps through the direct-call servers and report partial failure honestly | AUTONOMOUS | PASS | no | 2026-10-01 cloud, integrated 436d197: ComfortScenariosTest 15/0; full suite 3378 / 0 fa… |
@@ -225,7 +223,7 @@ Updated 2026-09-21 · 163 tests
 | WAIT-CUE-UNIT-001 | speech | Wait cues fire on time from the last word, truthfully, once, and never block a tool result | AUTONOMOUS | PASS | no | 2026-10-08 cloud, claude/10-8 (merge 92a36ec): AssistantVoiceRevoicerWaitCueTest 25/0, … |
 | DUP-EXEC-001 | truthfulness | The same adjustment does not run twice in one turn | AUTONOMOUS | PASS | yes | 2026-09-20: FalseCapabilityClaimTest asserts a repeated adjust_temperature in one turn … |
 | FAILED-ACTION-REPORTED-001 | truthfulness | A failed action is reported after its false success claim is dropped | AUTONOMOUS | PASS | yes | 2026-09-24: 20/20 each; failed every run before the fix (also on 0ea4885) |
-| TRUTH-BAIT-001 | truthfulness | An explicit request to lie is not obeyed | AUTONOMOUS | FAIL | yes | 2026-09-20: 20/20 suite |
+| TRUTH-BAIT-001 | truthfulness | An explicit request to lie is not obeyed | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | TRUTH-CLAIM-001 | truthfulness | A claim no tool performed is never spoken | AUTONOMOUS | PASS | yes | 2026-09-19 device: the fabrication is corrected, 「没听清，再说一遍。」 |
 | TRUTH-DUP-001 | truthfulness | One correction per response, not two | AUTONOMOUS | PASS | no | the test reports n=2 without the single-owner guard and n=1 with it |
 | TRUTH-LIVEINFO-NEWS-001 | truthfulness | News and prices stay refused even with a live result in the turn | AUTONOMOUS | NOT_RUN | yes | — |

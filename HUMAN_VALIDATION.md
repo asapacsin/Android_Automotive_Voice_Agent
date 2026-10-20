@@ -8,12 +8,12 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 > - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - TRUTH-MEDIA-001 is AUTONOMOUS and NOT_RUN - run it or fix it
-> - TRUTH-BAIT-001 is AUTONOMOUS and FAIL - run it or fix it
 > - CALL-NOSIM-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - NAV-MID-ROUTE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
-> - CLIMATE-SET-001 is AUTONOMOUS and FAIL - run it or fix it
+> - MUSIC-VLC-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - AEC-DELAY-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 
-30 item(s) queued.
+29 item(s) queued.
 
 Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEVICE_REQUIRED.md).
 
@@ -1148,39 +1148,6 @@ Physical-device cases are also collected in [LOCAL_DEVICE_REQUIRED.md](LOCAL_DEV
 **Still unknown until you do:** w; h; e; t; h; e; r;  ; t; h; e;  ; p; h; o; n; e; '; s;  ; n; e; t; w; o; r; k;  ; (; w; i; t; h;  ; t; h; e;  ; o; w; n; e; r; '; s;  ; V; P; N; );  ; r; e; a; c; h; e; s;  ; g; e; n; e; r; a; t; i; v; e; l; a; n; g; u; a; g; e; .; g; o; o; g; l; e; a; p; i; s; .; c; o; m;  ; a; t;  ; a; l; l; ,;  ; a; n; d;  ; t; h; e;  ; s; e; t; u; p;  ; a; n; d;  ; f; i; r; s; t; -; a; u; d; i; o;  ; l; a; t; e; n; c; y;  ; f; r; o; m;  ; t; h; e; r; e
 
 ## D. Product decisions
-
-### YUE-POLICY-001 — Is Cantonese an advertised capability?
-
-**Why this needs you.** Three options that are not comparable on technical grounds. The cost and the promise to users are the owner's to weigh
-
-**Automation blocker:** `subjective_perception`
-
-**Measured, so this is a choice and not a question:**
-
-- the transcriber rejects any language but zh: `Invalid value: 'yue'. Value must be null or 'zh'` - the vendor's own words
-- after a persona sentence: 返屋企 4/5, 有啲熱 1/5, style-of-song refusal 5/5
-- Mandarin unaffected: 20/20
-- 2026-10-17: the YUE-HOT success definition now also counts the stuffy comfort scenario (cooling); see YUE-RATE-001. Recent GitHub runs (Gemini): YUE-HOT PASS at 2db208c, 87d5287 (control_climate) and cd6d77c (stuffy); YUE-HOME 0/1 in each (exit_navigation_mode or no navigate_to), quarantined pending this decision
-- the implicit-comfort phrasing has no keyword for a Mandarin transcriber to anchor on; no further wording will move it
-- option C means a new provider integration; the provider-neutral contract (SPEC-007) exists, so it is an adapter, not a rewrite
-
-**Options:**
-
-- A. Mandarin-only. Record it in ADR-002 and the capability registry, and stop measuring Cantonese.
-- B. Keep the current partial support and publish the measured rates as the expected behaviour.
-- C. Reopen ADR-008 and evaluate a provider whose transcriber accepts Cantonese.
-
-**What to do:**
-
-1. choose one of the options below and say which
-
-**It passes if:**
-
-- ADR-002 and config/capabilities.yaml record the decision, so nothing downstream claims otherwise
-
-**Tell me back:** which option, and whether the registry should say Mandarin-only
-
-*Release-blocking.*
 
 ### ABI-POLICY-001 — Must armeabi-v7a keep working?
 

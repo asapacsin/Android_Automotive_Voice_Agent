@@ -2,8 +2,7 @@
   "_comment": [
     "B-015. The question these answer is not 'does Cantonese work' but 'how often does a Cantonese request",
     "reach a real action', which is what the decision in B-015 (YUE-POLICY-001) turns on.",
-    "Since CI-1 (2026-10-16) config/ci_checks.json makes cantonese:* required in the Voice checks workflow; a check whose",
-    "expected behaviour is undefined until the owner decides is quarantined there (YUE-HOME), never left red by design.",
+    "RETIRED 2026-10-19 (owner, YUE-POLICY-001 option A: Mandarin-only, ADR-002): no CI suite runs this file any more.",
     "For a rate: python tools/speech-harness/run_scenarios.py --file tools/speech-harness/scenarios-cantonese.json --repeat 5"
   ],
   "scenarios": [

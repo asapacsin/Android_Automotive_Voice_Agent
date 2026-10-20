@@ -34,7 +34,7 @@ Status values: **Recorded** (captured, not specced) · **Specced** (has a SPEC) 
 | B-012 | **Wake-word reliability is uncharacterised** — false accepts over a long drive, and detection at distance with road noise | 2026-09-19 | **Half done** 2026-09-20 — 0 false wakes in 16 min with music, engine proven alive. Detection by a human voice still needs a person | [SPEC-001](SPECS/SPEC-001-wake-word.md) |
 | B-013 | **`BaiduFlexClientTest` readiness timeout is load-sensitive** — it fails under a full parallel suite and passes alone | 2026-09-19 | **Done** 2026-09-20 — the wait no longer encodes machine speed, and the timeout has its own test | §B-013 below |
 | B-014 | **A false sentence is spoken before it is corrected** — the correction follows; the driver still heard the claim | 2026-09-19 | **Done** 2026-09-20 — held and dropped; measured cost 93–515 ms | [P23](OPEN_PROBLEMS.md) |
-| B-015 | **Cantonese is not understood** — 「返屋企啦」 transcribes as 「发诺克拉」; the product owner speaks Cantonese | 2026-09-19 | Open | §B-015 below |
+| B-015 | **Cantonese is not understood** — 「返屋企啦」 transcribes as 「发诺克拉」; the product owner speaks Cantonese | 2026-09-19 | **Dropped** (decided 2026-10-19, owner, YUE-POLICY-001 option A) — Mandarin-only; [ADR-002](DECISIONS/ADR-002-baidu-flex-default-provider.md) addendum, `capabilities.yaml` meta.language_policy; Cantonese no longer measured | §B-015 below |
 | B-016 | **A rejected session still looked like it was listening** — `state=ERROR` with `listening=ACTIVE` and zero frames, for 30 s | 2026-09-19 | **Done** 2026-09-19 — device-verified by reproducing the rejection | §B-016 below |
 | B-017 | **A duplicate correction is device-observed but not unit-covered** — the fix is in; the regression test is not | 2026-09-20 | **Done** 2026-09-20 — covered, after three attempts and one real bug found on the way | §B-017 below |
 | B-018 | **Calling** — resolve a contact, confirm, then dial; and admit when the car cannot call at all | 2026-09-20 | **Partly done** 2026-09-20 — the refusal and the confirmation contract are verified; dialling needs a SIM | §B-018 below |
@@ -292,6 +292,8 @@ a *prompt* is wanted, not that an action happened. Doubtful audio with a picker 
 a repair must reach a driver who is mid-choice.
 
 ## B-015 — Cantonese
+
+**Decided 2026-10-19 (owner, YUE-POLICY-001 option A): Mandarin-only.** Recorded in ADR-002 (addendum) and `config/capabilities.yaml` (`meta.language_policy`); Cantonese is no longer measured (suite and quarantine removed from the voice checks; YUE-RATE-001 retired). The analysis below is history.
 
 Measured 2026-09-19 against the live model, synthesized `zh-HK`:
 

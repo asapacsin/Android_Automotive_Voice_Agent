@@ -13,7 +13,7 @@
     },
     "voice": {
       "description": "Voice checks on the emulator against the Gemini live harness (free tier, not deterministic). devrows: is the scenarios-device.json runner.",
-      "required": ["build:vendor-real", "voice:runner", "voice:S*", "devrows:runner", "devrows:*", "liveinfo:runner", "liveinfo:*", "cantonese:runner", "cantonese:*", "voice:quota-guard"],
+      "required": ["build:vendor-real", "voice:runner", "voice:S*", "devrows:runner", "devrows:*", "liveinfo:runner", "liveinfo:*", "voice:quota-guard"],
       "optional": ["voice:demo-recording", "wake:WAKE-SYNTH-001"]
     },
     "device": {
@@ -27,15 +27,5 @@
       "optional": ["navpiece:video"]
     }
   },
-  "quarantine": [
-    {
-      "id": "cantonese:YUE-HOME",
-      "suite": "voice",
-      "reason": "expected behaviour for an ambiguous Cantonese home request is undefined until the owner decides (YUE-POLICY-001), so a failure cannot be judged a regression",
-      "owner": "product owner (decision YUE-POLICY-001); planner maintains the entry",
-      "tracking": "TEST_MATRIX YUE-POLICY-001 (owner decision on ambiguous Cantonese requests, queued 2026-10-16); release still blocked via the Tier C checklist",
-      "remove_when": "owner decides the expected behaviour and the scenario passes 1/1",
-      "expires": "2026-10-30"
-    }
-  ]
+  "quarantine": []
 }

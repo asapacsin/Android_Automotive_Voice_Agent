@@ -439,14 +439,14 @@ class ReviewScenarioTest(ScenariosTest):
 
 class RunnerRcOneTest(ScenariosTest):
     def test_rc1_complete_summary(self):
-        for sid, want in (("S1", 1), ("YUE-HOME", 0)):
+        for sid, want in (("S1", 1),):
             raw = f"  PASS  S9\n  FAIL  {sid}\n" + SUMMARY + f"  ok  S9 1/1\n  FAIL  {sid} 0/1\n"
-            out, rs = self.scen(raw, prefix="cantonese:", rc=1)
+            out, rs = self.scen(raw, prefix="voice:", rc=1)
             by = {r["id"]: r for r in rs}
-            self.assertEqual(by["cantonese:runner"]["status"], "PASS")
-            self.assertEqual(by["cantonese:runner"]["detail"], "runner exit 1: scenario failures judged per scenario")
-            self.assertEqual(by[f"cantonese:{sid}"]["status"], "FAIL")
-            other = self.results([rec("voice:runner", "PASS"), rec("voice:S1", "PASS"), rec("devrows:runner", "PASS"),
+            self.assertEqual(by["voice:runner"]["status"], "PASS")
+            self.assertEqual(by["voice:runner"]["detail"], "runner exit 1: scenario failures judged per scenario")
+            self.assertEqual(by[f"voice:{sid}"]["status"], "FAIL")
+            other = self.results([rec("devrows:runner", "PASS"),
                                   rec("devrows:D1", "PASS"), rec("liveinfo:runner", "PASS"), rec("liveinfo:L1", "PASS"),
                                   rec("voice:quota-guard", "PASS"), rec("build:vendor-real", "PASS")], "other.jsonl")
             rc, text = run("verdict", "--manifest", SHIPPED, "--suite", "voice", "--today", TODAY,
@@ -507,9 +507,8 @@ class ReviewVerdictTest(Base):
 
     def incident(self, li_status, li_passes):
         recs = [rec("voice:runner", "PASS"), rec("voice:S1", "PASS"), rec("devrows:runner", "PASS"),
-                rec("devrows:D1", "PASS"), rec("liveinfo:runner", "PASS"), rec("cantonese:runner", "PASS"),
+                rec("devrows:D1", "PASS"), rec("liveinfo:runner", "PASS"),
                 rec("voice:quota-guard", "PASS"), rec("build:vendor-real", "PASS"),
-                {"id": "cantonese:YUE-HOME", "status": "FAIL", "detail": "", "passes": 0, "runs": 1},
                 {"id": "liveinfo:LI-PLACE", "status": li_status, "detail": "", "passes": li_passes, "runs": 10}]
         return run("verdict", "--manifest", SHIPPED, "--suite", "voice", "--today", TODAY,
                    "--results", self.results(recs))
@@ -517,11 +516,10 @@ class ReviewVerdictTest(Base):
     def test_incident_evidence_against_shipped_manifest(self):
         rc, out = self.incident("FLAKY", 6)
         self.assertEqual(rc, 1, out)
-        self.assertIn("QUARANTINED cantonese:YUE-HOME", out)
         rc, out = self.incident("PASS", 10)
         self.assertEqual(rc, 0, out)
-        self.assertIn("QUARANTINED cantonese:YUE-HOME", out)
-        self.assertEqual([l for l in out.splitlines() if l.startswith("VERDICT")], ["VERDICT voice PASS (1 quarantined)"])
+        self.assertNotIn("QUARANTINED", out)  # the cantonese suite and its quarantine are gone (owner 2026-10-19)
+        self.assertEqual([l for l in out.splitlines() if l.startswith("VERDICT")], ["VERDICT voice PASS"])
 
     def test_quarantine_wildcard_id(self):
         self.assertEqual(self.verdict(self.manifest(["a:*"], quarantine=[quar("a:*")]), self.results([rec("a:x", "FAIL")]))[0], 2)

@@ -98,7 +98,7 @@ app_up && note "app: map up" || note "app: map did not come up"
 setup_key AMAP_WEB_KEY amap_web_setup amap_web_setup.txt || true
 if ! setup_key GEMINI_API_KEY gemini_setup gemini_setup.txt; then
   note "voice: skipped - no GEMINI_API_KEY secret"
-  for p in voice cantonese devrows liveinfo; do res "$p:runner" BLOCKED "secret GEMINI_API_KEY not set"; done
+  for p in voice devrows liveinfo; do res "$p:runner" BLOCKED "secret GEMINI_API_KEY not set"; done
   res voice:quota-guard BLOCKED "secret GEMINI_API_KEY not set"
   exit 0
 fi
@@ -171,7 +171,7 @@ tool voice stop
 tool provider clear
 rm -f "$ev/scenarios_raw.txt"
 
-# ---- further suites: Cantonese (TRUTH-MEDIA-001), device rows (affordances, news, vision, fuzzy with
+# ---- further suites: device rows (affordances, news, vision, fuzzy with
 # screenshots), live info x10 (LIVE-INFO-DEVICE-001). Ids + PASS/FAIL only, as above.
 suite() { # name, result prefix, then runner args
   local name="$1" prefix="$2" rc; shift 2
@@ -187,7 +187,7 @@ suite() { # name, result prefix, then runner args
   note "suite $name: $(tr '\n' ' ' <"$ev/${name}.txt") guard=$(grep -c 'QUOTA GUARD' "$ev/${name}_raw.txt" || true)"
   rm -f "$ev/${name}_raw.txt"
 }
-suite cantonese cantonese: --file tools/speech-harness/scenarios-cantonese.json
+# No Cantonese suite: the product is Mandarin-only (owner 2026-10-19, YUE-POLICY-001 option A, ADR-002).
 # Prefix devrows: (not device:) so it never clashes with the "device" suite's ids.
 suite device devrows: --file tools/speech-harness/scenarios-device.json --shots "$ev/shots"
 for f in "$ev"/shots/*.png; do [ -f "$f" ] && ffmpeg -v error -y -i "$f" -vf scale=540:-2 -q:v 4 "${f%.png}.jpg" && rm -f "$f"; done
