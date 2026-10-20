@@ -117,6 +117,15 @@ jobs:
             exit 1
           fi
 
+      - name: Cache the emulator system image
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/lib/android/sdk/system-images/android-34/google_apis/x86_64
+          key: sysimg-android-34-google_apis-x86_64-${{ runner.os }}
+
+      - name: Pre-install the emulator system image (retries)
+        run: bash scripts/ci_sysimg.sh
+
       - name: Boot the emulator and record the drive
         uses: reactivecircus/android-emulator-runner@v2
         with:

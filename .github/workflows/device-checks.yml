@@ -146,6 +146,17 @@ jobs:
           NOVA_DEBUG_KEYSTORE_B64: ${{ secrets.NOVA_DEBUG_KEYSTORE_B64 }}
         run: bash scripts/github_build_apk.sh
 
+      - name: Cache the emulator system image
+        if: steps.secrets.outputs.ok == 'true'
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/lib/android/sdk/system-images/android-34/google_apis/x86_64
+          key: sysimg-android-34-google_apis-x86_64-${{ runner.os }}
+
+      - name: Pre-install the emulator system image (retries)
+        if: steps.secrets.outputs.ok == 'true'
+        run: bash scripts/ci_sysimg.sh
+
       - name: Boot the emulator and run the device checks
         if: steps.secrets.outputs.ok == 'true'
         uses: reactivecircus/android-emulator-runner@v2
