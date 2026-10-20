@@ -74,3 +74,7 @@ b9d88569155c REVISE 2026-10-20 S18-TURN A7 relay-on case testable via reflection
 681362f5e9fc PASS 2026-10-20 DIAG-BATCH reviewer PASS after REVISE (DebugVoiceLog); dispatch shard 39411329040 lines recorded
 bad615a0304d REVISE 2026-10-20 AIDER-WRAP aiderignore dir negations re-include whole subtrees (app/libs reachable)
 6b15ac71f796 REVISE 2026-10-20 ALONG-PROBE tool along_probe without 2nd arg aborts under set -u
+b7bee2a7d238 PASS 2026-10-20 S18-TURN reviewer PASS (A3 earned, A7 partial)
+121379681ed7 PASS 2026-10-20 S18-LIFE reviewer PASS (A4 partial)
+70edaad641ad PASS 2026-10-20 S15-STYLE reviewer PASS (A6 earned at JVM)
+72a03493f3ef PASS 2026-10-20 ALONG-PROBE reviewer PASS (device notes pending CI)
