@@ -24,3 +24,4 @@ S15-STYLE e990d80fc8198b1b4ec49e922ee75cacfa95e2294a978a1784d632d53859152a APPRO
 S18-TURN f5e1c7f9d5f2dc9e880fb69f267319b7802c78735d9b3edb40068e42e1325277 APPROVED 2026-10-20 architect path fix DriverTurnPipelineTest under voice
 AIDER-WRAP c51bae0df070dd72359f80b78958176796d199eb48fcf97fdeb60fd5771a1fc9 APPROVED 2026-10-20 architect reviewer REVISE: aiderignore and no-detect-urls keep other tracked files from the model
 ALONG-PROBE f5099853e9b29413782d9a1334e09fdb18d80640801f27d2c10b27ee12469da8 APPROVED 2026-10-20 architect measure along_route range since Amap docs give no limit
+S15-STYLE 2ad4609b6a6728b93eda2b485197edb28fedbebbde07304d98148220ac700606 APPROVED 2026-10-20 architect reviewer: behavioural restored-style test in both client tests

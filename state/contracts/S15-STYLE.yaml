@@ -7,6 +7,8 @@ approved_paths:
   - app/src/test/kotlin/com/novadrive/app/SpeakingStyleStoreTest.kt
   - app/src/test/kotlin/com/novadrive/app/**/PersonaProfilesTest.kt
   - app/src/test/kotlin/com/novadrive/app/**/SpeakingStyleTest.kt
+  - app/src/test/kotlin/com/novadrive/app/voice/GeminiLiveClientTest.kt
+  - app/src/test/kotlin/com/novadrive/app/voice/QwenOmniClientTest.kt
 allowed_changes:
   - "New SpeakingStyleStoreTest (persistence with the existing store seam / fake prefs) and PersonaProfilesTest cases (compose replaces the tone paragraph; the Gemini and the other realtime client both read the composed style)"
   - "Tests only. If a case cannot pass because the behaviour is not built, do not change production code: mark that case @Ignore with a one-line reason naming the missing behaviour, and list it in the report as GAP"
@@ -23,6 +25,6 @@ forbidden_paths:
 required_verification:
   - id: unit
     kind: regression
-    command: ./gradlew --no-daemon -q :app:testDebugUnitTest --tests "*SpeakingStyleStoreTest" --tests "*PersonaProfilesTest" --tests "*SpeakingStyleTest"
+    command: ./gradlew --no-daemon -q :app:testDebugUnitTest --tests "*SpeakingStyleStoreTest" --tests "*PersonaProfilesTest" --tests "*SpeakingStyleTest" --tests "*GeminiLiveClientTest" --tests "*QwenOmniClientTest"
 acceptance_criteria:
   - "Each SPEC-015 A6 behaviour has a passing test or an @Ignore GAP naming what is missing"
