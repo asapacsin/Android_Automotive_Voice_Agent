@@ -1,26 +1,26 @@
 {
  "task_id": "WF-PRACTICES",
  "contract_sha256": "6ef0e9e780db9108d3c13ca8f00af5cd2afcbc5605e3ebabc14d65c32b31495d",
- "tip": "5111e325a6e318dae420bbf1c35874e34b0ecaeb",
+ "tip": "10c0e514e94a20653f146a9b72fc888ab6259ebd",
  "verified_by": "planner",
- "at": "2026-10-20T06:05:42+00:00",
+ "at": "2026-10-20T06:16:53+00:00",
  "results": [
   {
    "id": "script-tests",
    "kind": "regression",
    "command": "python3 -m unittest discover -s scripts/tests -t .",
    "exit_code": 0,
-   "seconds": 185.6,
-   "log": "/root/nova-drive-build/nova-verify/WF-PRACTICES/5111e325a6e3-script-tests.log",
-   "log_sha256": "59d4896a47de5d572f4573c6697057ca55b5eeaf438df5e02b3dae55286a0204"
+   "seconds": 191.8,
+   "log": "/root/nova-drive-build/nova-verify/WF-PRACTICES/10c0e514e94a-script-tests.log",
+   "log_sha256": "6ed04536074b6f6fd509307a5d07f530f388cde0feb5f392d167f171ee68f6c1"
   },
   {
    "id": "discover-selftest",
    "kind": "regression",
    "command": "python3 scripts/discover_work.py --selftest",
    "exit_code": 0,
-   "seconds": 0.0,
-   "log": "/root/nova-drive-build/nova-verify/WF-PRACTICES/5111e325a6e3-discover-selftest.log",
+   "seconds": 0.1,
+   "log": "/root/nova-drive-build/nova-verify/WF-PRACTICES/10c0e514e94a-discover-selftest.log",
    "log_sha256": "24ec1524e92b3d7e0443c89f7c3ef9f466b5121211ca48c21921034eab865936"
   },
   {
@@ -28,9 +28,9 @@
    "kind": "integration",
    "command": "python3 scripts/discover_work.py --json",
    "exit_code": 0,
-   "seconds": 24.3,
-   "log": "/root/nova-drive-build/nova-verify/WF-PRACTICES/5111e325a6e3-discover-runs.log",
-   "log_sha256": "d2a730209db9d1ad9f3bb402a22c4fe22fdf95ba18a8cebd8b7a6e13e6350f95"
+   "seconds": 24.4,
+   "log": "/root/nova-drive-build/nova-verify/WF-PRACTICES/10c0e514e94a-discover-runs.log",
+   "log_sha256": "01e9e7b7ac93a702105367d5dae557dd637b5a91d703b72401d34df888078325"
   }
  ]
 }
