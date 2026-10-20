@@ -1,0 +1,12 @@
+{
+  "executor": "gemini",
+  "reviewer": "nvidia",
+  "fallback": {"executor": null, "reviewer": null},
+  "providers": {},
+  "never_send": [],
+  "risk_rules": [],
+  "risk_override": null,
+  "tests": {"command": null, "from_session": true},
+  "gate": {"scope": "all", "max_blocks": 3},
+  "budgets": {"daily": {}}
+}
