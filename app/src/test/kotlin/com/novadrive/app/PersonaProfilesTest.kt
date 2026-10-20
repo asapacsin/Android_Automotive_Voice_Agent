@@ -100,4 +100,26 @@ class PersonaProfilesTest {
             assertTrue("Ayano" !in voice)
         }
     }
+
+    @Test fun composeReplacesTheToneParagraphInPlace() {
+        val base = PersonaProfiles.DEFAULT_INSTRUCTIONS.lines()
+        val toneAt = base.indexOfFirst { it.startsWith(PersonaProfiles.TONE_PREFIX) }
+        for (style in SpeakingStyle.entries - SpeakingStyle.DEFAULT) {
+            val out = PersonaProfiles.compose(null, style).lines()
+            assertEquals(PersonaProfiles.toneLines(style)!!.first, out[toneAt], "$style")
+            assertFalse(base[toneAt] in out, "$style kept the default tone")
+            assertEquals(base.filterIndexed { i, l -> i != toneAt && !l.startsWith(PersonaProfiles.VOICE_STYLE_PREFIX) },
+                out.filterIndexed { i, l -> i != toneAt && !l.startsWith(PersonaProfiles.VOICE_STYLE_PREFIX) }, "$style")
+        }
+    }
+
+    /** A6 "both clients use it": the Gemini and the OpenAI-style realtime client compose with the current style. */
+    @Test fun bothRealtimeClientsComposeWithTheDeliveredStyle() {
+        val voice = listOf(java.io.File("src/main/kotlin/com/novadrive/app/voice"), java.io.File("app/src/main/kotlin/com/novadrive/app/voice"))
+            .first { it.isDirectory }
+        for (name in listOf("GeminiLiveClient.kt", "OpenAiRealtimeClient.kt")) {
+            val src = java.io.File(voice, name).readText()
+            assertTrue(Regex("""PersonaProfiles\.compose\(\w+, deliveredStyle\.take\(\)\)""").containsMatchIn(src), name)
+        }
+    }
 }
