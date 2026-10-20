@@ -1,6 +1,7 @@
 """K-L: install leaves unrelated configs untouched; a fresh repo adopts the tool and its gate works."""
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -71,13 +72,17 @@ class TestL_FreshRepoAdopts(Base):
         g = run(local + ["gate", "check", "--project", str(t)])
         self.assertEqual(g.returncode, 1, g.stdout)
         self.assertEqual(json.loads(g.stdout)["status"], "BLOCK")
-        hook = run(local + ["stop-hook"], input=json.dumps({"cwd": str(t), "stop_hook_active": False}), cwd=str(t))
+        env = dict(os.environ, CLAUDE_PROJECT_DIR=str(t))
+        hook = run(local + ["stop-hook"], input=json.dumps({"cwd": str(t / "tools"), "stop_hook_active": False}),
+                   cwd=str(t / "tools"), env=env)
         self.assertEqual(json.loads(hook.stdout)["decision"], "block")
         self.mock.push(200, openai_reply(review_json()))
         r = run(local + ["review", "--project", str(t), "--summary", "bump x"])
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(run(local + ["gate", "check", "--project", str(t)]).returncode, 0)
-        hook = run(local + ["stop-hook"], input=json.dumps({"cwd": str(t), "stop_hook_active": False}), cwd=str(t))
+        hook = run(local + ["stop-hook"], input=json.dumps({"cwd": str(t), "stop_hook_active": False}), cwd=str(t),
+                   env=env)
         self.assertEqual(hook.stdout.strip(), "")
+        self.assertEqual(run(local + ["gate", "clear", "--project", str(t)]).returncode, 0)
         self.assertTrue((t / ".agent-routing/state/audit.jsonl").exists())
         self.assertEqual(Path(t / ".agent-routing/.gitignore").read_text(), "state/\n")

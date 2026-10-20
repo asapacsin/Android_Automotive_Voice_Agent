@@ -2,6 +2,7 @@
 import copy
 import datetime
 import json
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -12,7 +13,8 @@ LEVELS = ("LOW", "MEDIUM", "HIGH")
 ROLES = ("executor", "reviewer")
 PROVIDER_OVERRIDABLE = {"auth", "base_url", "price_per_mtok", "timeout_s"}
 PROJECT_KEYS = {"executor", "reviewer", "fallback", "providers", "never_send", "risk_rules", "risk_override",
-                "tests", "gate", "budgets", "http", "limits", "executor_rounds", "$comment"}
+                "tests", "gate", "budgets", "http", "limits", "executor_rounds", "ignore", "$comment"}
+HOOK_TIMEOUT_S = 600
 
 
 class ConfigError(Exception):
@@ -34,6 +36,17 @@ def find_project_root(project=None):
     r = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True)
     if r.returncode != 0:
         raise ConfigError("not inside a git repository; pass --project")
+    return Path(r.stdout.strip()).resolve()
+
+
+def find_hook_root(cwd=None):
+    """Stop hook: CLAUDE_PROJECT_DIR if set, else the git toplevel of the hook's cwd."""
+    env = os.environ.get("CLAUDE_PROJECT_DIR")
+    if env:
+        return find_project_root(env)
+    r = subprocess.run(["git", "-C", str(cwd or "."), "rev-parse", "--show-toplevel"], capture_output=True, text=True)
+    if r.returncode != 0:
+        raise ConfigError("hook cwd is not inside a git repository")
     return Path(r.stdout.strip()).resolve()
 
 
@@ -64,10 +77,13 @@ def _check_rules(rules, where, errs):
         if not isinstance(r, dict) or not isinstance(r.get("id"), str) or r.get("level") not in LEVELS:
             errs.append("%s needs id (str) and level in %s" % (w, LEVELS))
             continue
-        has_p, has_d = "paths" in r, "diff_regex" in r
+        has_p, has_d = ("paths" in r or "path_words" in r), "diff_regex" in r
         if has_p == has_d:
-            errs.append("%s needs exactly one of paths / diff_regex" % w)
-        elif has_p and (not isinstance(r["paths"], list) or not all(isinstance(x, str) for x in r["paths"])):
+            errs.append("%s needs paths/path_words or diff_regex (not both)" % w)
+        elif "path_words" in r and (not isinstance(r["path_words"], list)
+                                    or not all(isinstance(x, str) for x in r["path_words"])):
+            errs.append("%s.path_words must be a list of lowercase words" % w)
+        elif "paths" in r and (not isinstance(r["paths"], list) or not all(isinstance(x, str) for x in r["paths"])):
             errs.append("%s.paths must be a list of globs" % w)
         elif has_d:
             try:
@@ -120,6 +136,13 @@ def validate(defaults, project):
                 errs.append("project.json: providers.%s.auth must be env|proxy-injected" % pid)
             if "base_url" in ov and not (isinstance(ov["base_url"], str) and ov["base_url"].startswith(("http://", "https://"))):
                 errs.append("project.json: providers.%s.base_url must be http(s)" % pid)
+    ig = project.get("ignore", [])
+    if not isinstance(ig, list) or not all(isinstance(x, str) for x in ig):
+        errs.append("project.json: ignore must be a list of globs")
+    tt = project.get("limits", {}).get("test_timeout_s")
+    if _is_num(tt) and tt >= HOOK_TIMEOUT_S - 60:
+        errs.append("project.json: limits.test_timeout_s must be below %d (hook timeout %d)" % (
+            HOOK_TIMEOUT_S - 60, HOOK_TIMEOUT_S))
     ns = project.get("never_send", [])
     if not isinstance(ns, list) or not all(isinstance(x, str) for x in ns):
         errs.append("project.json: never_send must be a list of globs")
@@ -175,6 +198,7 @@ def load_config(root):
     cfg["fallback"] = dict(cfg["fallback"], **project.get("fallback", {}))
     cfg["risk_rules"] = list(project.get("risk_rules", [])) + list(defaults["risk_rules"])
     cfg["risk_override"] = project.get("risk_override")
+    cfg["ignore"] = list(defaults.get("ignore", [])) + list(project.get("ignore", []))
     cfg["never_send"] = list(defaults.get("never_send", [])) + list(project.get("never_send", []))
     for sect in ("http", "limits", "gate", "tests", "budgets"):
         cfg[sect] = dict(cfg[sect], **project.get(sect, {}))

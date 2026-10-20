@@ -13,7 +13,7 @@ from pathlib import Path
 
 from agent_routing import config as C
 
-FAKE_KEY_ENVS = ("GEMINI_API_KEY", "OPENROUTER_API_KEY", "NVIDIA_API_KEY")
+FAKE_KEY_ENVS = ("GEMINI_API_KEY", "OPENROUTER_API_KEY", "NVIDIA_API_KEY", "CLAUDE_PROJECT_DIR")
 
 
 class MockLLM:

@@ -26,6 +26,21 @@ def _formatting_only(diff):
     return norm(added) == norm(removed)
 
 
+_WORD = re.compile(r"[A-Z]+(?=[A-Z][a-z])|[A-Z]?[a-z]+|[A-Z]+|[0-9]+")
+
+
+def path_words(path):
+    """Split a path into lowercase words at /, _, -, . and camelCase boundaries."""
+    return {w.lower() for w in _WORD.findall(path)}
+
+
+def _path_hit(rule, path):
+    if match_any(path, rule.get("paths", ())):
+        return True
+    words = rule.get("path_words")
+    return bool(words) and not path_words(path).isdisjoint(words)
+
+
 def classify(paths, diff, rules, override=None):
     """Return (level, fired_rule_ids)."""
     fired, level = [], "LOW"
@@ -34,11 +49,11 @@ def classify(paths, diff, rules, override=None):
         return "LOW", []
     added, removed = _changed_lines(diff)
     body = "\n".join(added + removed)
-    low_rules = [r for r in rules if r["level"] == "LOW" and "paths" in r]
+    low_rules = [r for r in rules if r["level"] == "LOW" and "diff_regex" not in r]
     for r in rules:
         hit = False
-        if "paths" in r:
-            hit = any(match_any(p, r["paths"]) for p in paths)
+        if "diff_regex" not in r:
+            hit = any(_path_hit(r, p) for p in paths)
         elif body:
             hit = re.search(r["diff_regex"], body) is not None
         if hit and r["level"] != "LOW":
@@ -46,7 +61,7 @@ def classify(paths, diff, rules, override=None):
             level = max(level, r["level"], key=ORDER.get)
         elif hit:
             fired.append(r["id"])
-    code = [p for p in paths if not any(match_any(p, r["paths"]) for r in low_rules)]
+    code = [p for p in paths if not any(_path_hit(r, p) for r in low_rules)]
     if code and level == "LOW":
         if _formatting_only(diff):
             fired.append("formatting-only")

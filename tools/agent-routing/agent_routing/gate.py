@@ -5,14 +5,13 @@ from pathlib import Path
 
 from . import config as C
 from .budget import Ledger
-from .executor import run_tests
+from .executor import refusal, run_tests
 from .providers import make_provider
 from .redact import redact
 from .review import actionable, review
 from .risk import classify
-from .util import changed_paths, diff_text, head, is_git_repo, match_any, sha256_text
+from .util import changed_paths, diff_text, head, is_git_repo, match_any, sha256_file, sha256_text
 
-STATE_GLOB = [C.PROJECT_DIR + "/state/**"]
 
 
 class Gate:
@@ -50,6 +49,9 @@ class Gate:
                 return cmd
         return t.get("command")
 
+    def _stored_base(self):
+        return self._load("gate_base.json", {}).get("base")
+
     def snapshot(self):
         if not is_git_repo(self.root):
             raise RuntimeError("project is not a git repository")
@@ -57,25 +59,39 @@ class Gate:
             s = self.session()
             scope, base = s.get("files", []), s.get("base") or head(self.root)
             if not scope:
-                return {"paths": [], "diff": "", "fingerprint": None, "risk": "LOW", "fired": [], "base": base}
+                return {"paths": [], "diff": "", "fingerprint": None, "risk": "LOW", "fired": [], "base": base,
+                        "refused": []}
         else:
-            scope, base = None, head(self.root)
+            scope, base = None, self._stored_base() or head(self.root)
         paths, _ = changed_paths(self.root, base, scope)
-        paths = [p for p in paths if not match_any(p, STATE_GLOB)]
-        diff = diff_text(self.root, base, paths)
+        paths = [p for p in paths if not match_any(p, self.cfg["ignore"])]
+        refused = [p for p in paths if refusal(self.root, self.cfg, p)]
+        sendable = [p for p in paths if p not in refused]
+        diff = diff_text(self.root, base, sendable)
         level, fired = classify(paths, diff, self.cfg["risk_rules"], self.cfg.get("risk_override"))
-        fp = sha256_text("\0".join(paths) + "\0" + diff) if paths else None
-        return {"paths": paths, "diff": diff, "fingerprint": fp, "risk": level, "fired": fired, "base": base}
+        opaque = []
+        for p in refused:  # never content: only a hash enters the fingerprint
+            f = self.root / p
+            opaque.append("%s:%s" % (p, sha256_file(f) if f.is_file() else "absent"))
+        fp = sha256_text("\0".join(paths) + "\0" + diff + "\0" + "\0".join(opaque)) if paths else None
+        return {"paths": paths, "diff": diff, "fingerprint": fp, "risk": level, "fired": fired, "base": base,
+                "refused": refused}
 
-    def cache_key(self, fp):
-        rv = self.cfg["providers"][self.cfg["reviewer"]]["model"]
-        return sha256_text("%s|%s|%s" % (fp, self.cfg["policy_version"], rv))
+    def cache_key(self, fp, model=None):
+        model = model or self.cfg["providers"][self.cfg["reviewer"]]["model"]
+        return sha256_text("%s|%s|%s" % (fp, self.cfg["policy_version"], model))
 
     # actions --------------------------------------------------------------------------------------
     def run_review(self, task_summary="", provider=None, snap=None):
         snap = snap or self.snapshot()
         if not snap["paths"]:
             return {"verdict": "ERROR", "errors": ["no changes in gate scope"]}
+        if snap["refused"]:
+            res = {"verdict": "ERROR", "risk": snap["risk"], "fingerprint": snap["fingerprint"],
+                   "errors": ["path cannot be sent for review: %s" % ", ".join(snap["refused"])]}
+            self.audit({"event": "review", "fingerprint": snap["fingerprint"], "verdict": "ERROR",
+                        "errors": res["errors"]})
+            return res
         if provider is None:
             try:
                 pcfg = C.resolve(self.cfg, "reviewer", log=self.audit)
@@ -91,7 +107,7 @@ class Gate:
         res["fingerprint"] = snap["fingerprint"]
         if res["verdict"] in ("PASS", "FAIL"):
             cache = self._load("reviews.json", {})
-            cache[self.cache_key(snap["fingerprint"])] = res
+            cache[self.cache_key(snap["fingerprint"], res["model"])] = res
             self._save("reviews.json", cache)
             hist = self._load("findings.json", {})
             for f in actionable(res["findings"]):
@@ -116,26 +132,33 @@ class Gate:
     def _tests(self, snap, cmd):
         cache = self._load("tests.json", {})
         key = sha256_text("%s|%s" % (snap["fingerprint"], json.dumps(cmd)))
-        if key not in cache:
-            cache = {key: run_tests(self.root, cmd, self.cfg["limits"]["test_timeout_s"], self.cfg["key_names"])}
-            self._save("tests.json", cache)
-        return cache[key]
+        if key in cache:
+            return cache[key]
+        t = run_tests(self.root, cmd, self.cfg["limits"]["test_timeout_s"], self.cfg["key_names"])
+        if not t.get("timed_out"):
+            self._save("tests.json", {key: t})
+        return t
 
     def evaluate(self, with_tests=True):
         snap = self.snapshot()
-        d = {"status": "CLEAN", "fingerprint": snap["fingerprint"], "risk": snap["risk"], "fired": snap["fired"],
+        d = {"status": "CLEAN", "unverified": None, "fingerprint": snap["fingerprint"], "risk": snap["risk"], "fired": snap["fired"],
              "paths": snap["paths"], "reasons": [], "tests": None, "review": None}
         if not snap["paths"]:
+            self._advance_base()
             self.audit({"event": "gate", "status": "CLEAN"})
             return d
+        d["unverified"] = self._load("unverified.json", {}).get(snap["fingerprint"])
         cmd = self.tests_command()
         if cmd and with_tests:
             t = self._tests(snap, cmd)
-            d["tests"] = {"passed": t["passed"], "returncode": t["returncode"], "command": t["command"]}
+            d["tests"] = {"passed": t["passed"], "returncode": t["returncode"], "command": t["command"],
+                          "timed_out": bool(t.get("timed_out"))}
             if not t["passed"]:
                 d["reasons"].append("tests failing (%s)" % " ".join(cmd))
-        elif not cmd and snap["risk"] == "HIGH":
-            d["reasons"].append("HIGH risk requires regression tests but no test command is configured")
+        elif not cmd and snap["risk"] in ("MEDIUM", "HIGH"):
+            d["reasons"].append("%s risk requires tests but no test command is configured" % snap["risk"])
+        if snap["refused"]:
+            d["reasons"].append("path cannot be sent for review: %s" % ", ".join(snap["refused"]))
         if snap["risk"] in ("MEDIUM", "HIGH"):
             rv = self._load("reviews.json", {}).get(self.cache_key(snap["fingerprint"]))
             if rv is None:
@@ -158,13 +181,36 @@ class Gate:
                 if open_:
                     d["reasons"].append("HIGH risk: no recorded resolution evidence for findings %s" % ", ".join(open_))
         d["status"] = "BLOCK" if d["reasons"] else "PASS"
+        if d["status"] == "PASS":
+            self._advance_base()
+        elif self.cfg["gate"]["scope"] == "all" and not self._stored_base():
+            self._save("gate_base.json", {"base": snap["base"]})
         self.audit({"event": "gate", "status": d["status"], "fingerprint": d["fingerprint"], "risk": d["risk"],
                     "fired": d["fired"], "reasons": d["reasons"]})
         return d
 
-    def clear_session(self):
-        for name in ("sessions.json", "findings.json", "resolutions.json", "blocks.json"):
+    def _advance_base(self):
+        """scope=all: drop the stored base once nothing in scope differs from HEAD (next base = HEAD)."""
+        if self.cfg["gate"]["scope"] != "all" or not self._stored_base():
+            return
+        paths, _ = changed_paths(self.root, head(self.root))
+        if not [p for p in paths if not match_any(p, self.cfg["ignore"])]:
+            (self.dir / "gate_base.json").unlink()
+
+    def clear(self, force=False, reason=None):
+        """Clear session/base state. Without force only when the gate is PASS or CLEAN."""
+        d = self.evaluate()
+        if d["status"] not in ("PASS", "CLEAN"):
+            if not force or not (reason or "").strip():
+                raise ValueError("gate is %s (%s); refusing to clear without --force --reason"
+                                 % (d["status"], "; ".join(d["reasons"])))
+            marks = self._load("unverified.json", {})
+            marks[d["fingerprint"]] = redact(reason.strip(), self.cfg["key_names"])
+            self._save("unverified.json", marks)
+        for name in ("sessions.json", "findings.json", "resolutions.json", "blocks.json", "gate_base.json"):
             p = self.dir / name
             if p.exists():
                 p.unlink()
-        self.audit({"event": "session_cleared"})
+        self.audit({"event": "gate_cleared", "forced": d["status"] not in ("PASS", "CLEAN"),
+                    "status": d["status"], "fingerprint": d["fingerprint"], "reason": reason})
+        return d

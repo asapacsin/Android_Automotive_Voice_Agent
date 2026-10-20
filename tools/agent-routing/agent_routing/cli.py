@@ -12,7 +12,8 @@ from .gate import Gate
 from .providers import ProviderError, make_provider
 
 HOOK_SNIPPET = {"hooks": {"Stop": [{"hooks": [{"type": "command", "command":
-                "python3 tools/agent-routing/agent_routing_cli.py stop-hook", "timeout": 1800}]}]}}
+                'python3 "$CLAUDE_PROJECT_DIR/tools/agent-routing/agent_routing_cli.py" stop-hook',
+                "timeout": C.HOOK_TIMEOUT_S}]}]}}
 
 
 def _print(obj):
@@ -64,8 +65,8 @@ def cmd_gate(a, cfg):
         print("recorded resolution for %s" % a.id)
         return 0
     if a.action == "clear":
-        g.clear_session()
-        print("session cleared")
+        d = g.clear(force=a.force, reason=a.reason)
+        print("gate cleared (%s%s)" % (d["status"], ", forced: UNVERIFIED" if d["status"] not in ("PASS", "CLEAN") else ""))
         return 0
     d = g.evaluate(with_tests=(a.action == "check"))
     _print(d)
@@ -164,6 +165,8 @@ def build_parser():
     g.add_argument("action", choices=["status", "check", "resolve", "clear"])
     g.add_argument("--id")
     g.add_argument("--evidence")
+    g.add_argument("--force", action="store_true")
+    g.add_argument("--reason")
     d = proj(sub.add_parser("doctor"))
     d.add_argument("--live", action="store_true")
     i = sub.add_parser("install")

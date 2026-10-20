@@ -15,9 +15,11 @@
 6. Add the Stop hook to `.claude/settings.json` yourself (install never edits it):
    ```json
    {"hooks": {"Stop": [{"hooks": [{"type": "command",
-     "command": "python3 tools/agent-routing/agent_routing_cli.py stop-hook", "timeout": 1800}]}]}}
+     "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/agent-routing/agent_routing_cli.py\" stop-hook",
+     "timeout": 600}]}]}}
    ```
    On Windows use `py -3` or `python` instead of `python3`.
 
 Workflow: `execute` -> fix until tests pass -> `review` -> address actionable findings (HIGH: `gate resolve
---id F --evidence "..."`) -> `review` again -> `gate check` passes -> commit -> `gate clear`.
+--id F --evidence "..."`) -> `review` again -> `gate check` passes -> commit -> `gate clear` (refused unless PASS/CLEAN;
+`--force --reason` is audited and leaves the change UNVERIFIED).

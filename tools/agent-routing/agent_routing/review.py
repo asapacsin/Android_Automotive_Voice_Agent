@@ -74,8 +74,9 @@ def review(provider, diff, risk, fired, task_summary, max_diff_bytes, key_names=
         return out
     d = redact(diff, key_names)
     if len(d) > max_diff_bytes:
-        d = d[: int(max_diff_bytes)] + "\n[... diff truncated at size cap ...]"
         out["truncated"] = True
+        out["errors"].append("change too large to review (%d > %d bytes); split it" % (len(d), max_diff_bytes))
+        return out
     user = "TASK SUMMARY:\n%s\n\nDETERMINISTIC RISK: %s (rules: %s)\n\nDIFF:\n%s" % (
         redact(task_summary or "(none given)", key_names), risk, ", ".join(fired) or "none", d)
     try:

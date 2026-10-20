@@ -1,5 +1,6 @@
 """Executor adapter: task + explicit files -> JSON change proposal -> strict validation -> apply -> tests."""
 import json
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -103,12 +104,14 @@ def run_tests(root, cmd, timeout, key_names=()):
     if not cmd:
         return {"command": None, "passed": False, "returncode": None, "output_tail": "no test command configured"}
     try:
-        r = subprocess.run(list(cmd), cwd=str(root), capture_output=True, text=True, timeout=timeout)
+        env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
+        r = subprocess.run(list(cmd), cwd=str(root), capture_output=True, text=True, timeout=timeout, env=env)
         out = (r.stdout or "") + (r.stderr or "")
         return {"command": list(cmd), "passed": r.returncode == 0, "returncode": r.returncode,
                 "output_tail": redact(out[-4000:], key_names)}
     except (OSError, subprocess.TimeoutExpired) as e:
         return {"command": list(cmd), "passed": False, "returncode": None,
+                "timed_out": isinstance(e, subprocess.TimeoutExpired),
                 "output_tail": "could not run tests: %s" % type(e).__name__}
 
 

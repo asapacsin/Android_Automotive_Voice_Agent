@@ -18,7 +18,10 @@
       "role": "executor",
       "key_env": "OPENROUTER_API_KEY",
       "auth": "env",
-      "price_per_mtok": {"input": 0.0, "output": 0.0},
+      "price_per_mtok": {
+        "input": 0.0,
+        "output": 0.0
+      },
       "available_until": "2026-10-31"
     },
     "nvidia": {
@@ -32,31 +35,152 @@
       "available_until": null
     }
   },
-  "fallback": {"executor": null, "reviewer": null},
-  "http": {"timeout_s": 180, "max_retries": 3, "backoff_base_s": 1.0, "backoff_max_s": 30.0},
-  "limits": {"max_file_bytes": 200000, "max_context_bytes": 400000, "max_diff_bytes": 200000,
-             "max_output_tokens": 8192, "test_timeout_s": 1800},
+  "fallback": {
+    "executor": null,
+    "reviewer": null
+  },
+  "http": {
+    "timeout_s": 180,
+    "max_retries": 3,
+    "backoff_base_s": 1.0,
+    "backoff_max_s": 30.0
+  },
+  "limits": {
+    "max_file_bytes": 200000,
+    "max_context_bytes": 400000,
+    "max_diff_bytes": 200000,
+    "max_output_tokens": 8192,
+    "test_timeout_s": 480
+  },
   "executor_rounds": 2,
-  "gate": {"scope": "all", "max_blocks": 3},
-  "tests": {"command": null, "from_session": true},
-  "budgets": {"daily": {}},
+  "gate": {
+    "scope": "all",
+    "max_blocks": 3
+  },
+  "tests": {
+    "command": null,
+    "from_session": true
+  },
+  "budgets": {
+    "daily": {}
+  },
   "never_send": [],
   "risk_rules": [
-    {"id": "docs", "level": "LOW", "paths": ["**/*.md", "**/*.txt", "**/*.rst", "docs/**", "**/LICENSE*"]},
-    {"id": "auth-security", "level": "HIGH",
-     "paths": ["**/auth/**", "**/security/**", "**/*[Aa]uth*.*", "**/*[Ss]ecurity*", "**/*[Cc]rypt*", "**/*[Pp]ermission*"]},
-    {"id": "hooks-orchestration", "level": "HIGH",
-     "paths": [".claude/**", "**/hooks/**", "**/*hook*", "AGENTS.md", "CLAUDE.md", ".github/workflows/**", "**/*agent*"]},
-    {"id": "routing-review-config", "level": "HIGH",
-     "paths": [".agent-routing/**", "tools/agent-routing/**", "**/*gate*", "**/*review*", "**/*routing*"]},
-    {"id": "networking", "level": "HIGH",
-     "paths": ["**/net/**", "**/network/**", "**/*[Nn]etwork*", "**/*[Hh]ttp*", "**/*[Ss]ocket*"]},
-    {"id": "architecture-build", "level": "HIGH",
-     "paths": ["**/build.gradle*", "**/settings.gradle*", "**/AndroidManifest.xml", "**/pyproject.toml",
-               "**/package.json", "**/gradle/libs.versions.toml"]},
-    {"id": "concurrency-diff", "level": "HIGH",
-     "diff_regex": "\\b(synchronized|Mutex|Semaphore|ReentrantLock|AtomicReference|AtomicInteger|threading\\.|asyncio\\.|ThreadPoolExecutor|@Volatile|volatile)\\b"},
-    {"id": "secrets-auth-diff", "level": "HIGH",
-     "diff_regex": "(?i)\\b(password|passwd|api[_-]?key|private[_-]?key|secret|authori[sz]ation|authenticat\\w*)\\b"}
+    {
+      "id": "docs",
+      "level": "LOW",
+      "paths": [
+        "**/*.md",
+        "**/*.txt",
+        "**/*.rst",
+        "docs/**",
+        "**/LICENSE*"
+      ]
+    },
+    {
+      "id": "auth-security",
+      "level": "HIGH",
+      "paths": [
+        "**/auth/**",
+        "**/security/**"
+      ],
+      "path_words": [
+        "auth",
+        "oauth",
+        "authentication",
+        "authorization",
+        "authenticator",
+        "security",
+        "crypto",
+        "cipher",
+        "permission",
+        "permissions",
+        "credential",
+        "credentials",
+        "keystore"
+      ]
+    },
+    {
+      "id": "hooks-orchestration",
+      "level": "HIGH",
+      "paths": [
+        ".claude/**",
+        "**/hooks/**",
+        "AGENTS.md",
+        "CLAUDE.md",
+        ".github/workflows/**"
+      ],
+      "path_words": [
+        "hook",
+        "hooks",
+        "agent",
+        "agents",
+        "orchestrator",
+        "orchestration"
+      ]
+    },
+    {
+      "id": "routing-review-config",
+      "level": "HIGH",
+      "paths": [
+        ".agent-routing/**",
+        "tools/agent-routing/**"
+      ],
+      "path_words": [
+        "gate",
+        "gates",
+        "review",
+        "reviewer",
+        "routing",
+        "router"
+      ]
+    },
+    {
+      "id": "networking",
+      "level": "HIGH",
+      "paths": [
+        "**/net/**",
+        "**/network/**"
+      ],
+      "path_words": [
+        "net",
+        "network",
+        "networking",
+        "http",
+        "https",
+        "socket",
+        "websocket",
+        "okhttp",
+        "retrofit"
+      ]
+    },
+    {
+      "id": "architecture-build",
+      "level": "HIGH",
+      "paths": [
+        "**/build.gradle*",
+        "**/settings.gradle*",
+        "**/AndroidManifest.xml",
+        "**/pyproject.toml",
+        "**/package.json",
+        "**/gradle/libs.versions.toml"
+      ]
+    },
+    {
+      "id": "concurrency-diff",
+      "level": "HIGH",
+      "diff_regex": "\\b(synchronized|Mutex|Semaphore|ReentrantLock|AtomicReference|AtomicInteger|threading\\.|asyncio\\.|ThreadPoolExecutor|@Volatile|volatile)\\b"
+    },
+    {
+      "id": "secrets-auth-diff",
+      "level": "HIGH",
+      "diff_regex": "(?i)\\b(password|passwd|api[_-]?key|private[_-]?key|secret|authori[sz]ation|authenticat\\w*)\\b"
+    }
+  ],
+  "ignore": [
+    "**/__pycache__/**",
+    "*.pyc",
+    "*.pyo",
+    ".agent-routing/state/**"
   ]
 }
