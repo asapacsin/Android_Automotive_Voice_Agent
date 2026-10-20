@@ -123,6 +123,22 @@ class GeminiLiveClientTest {
         assertTrue(ready.interruptResponse)
     }
 
+    /** SPEC-015 A6: the first setup already carries the current (restored) style's tone line. */
+    @Test
+    fun firstSetupComposesTheCurrentStyle() = runBlocking {
+        com.novadrive.app.SpeakingStyleState.restore(com.novadrive.app.SpeakingStyle.TSUNDERE)
+        val fake = fake()
+        val client = client()
+        client.connect(config().copy(instructions = com.novadrive.app.PersonaProfiles.DEFAULT_INSTRUCTIONS))
+        waitUntil { fake.messages("setup").isNotEmpty() }
+        val text = fake.messages("setup").first().getJSONObject("setup").getJSONObject("systemInstruction")
+            .getJSONArray("parts").getJSONObject(0).getString("text")
+        val defaultTone = com.novadrive.app.PersonaProfiles.DEFAULT_INSTRUCTIONS.lines()
+            .first { it.startsWith(com.novadrive.app.PersonaProfiles.TONE_PREFIX) }
+        assertTrue(com.novadrive.app.PersonaProfiles.toneLines(com.novadrive.app.SpeakingStyle.TSUNDERE)!!.first in text)
+        assertFalse(defaultTone in text)
+    }
+
     @Test
     fun audioFrameIsSentAsRealtimeInput() = runBlocking {
         val fake = fake()

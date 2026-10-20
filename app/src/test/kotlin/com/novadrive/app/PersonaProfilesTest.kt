@@ -100,4 +100,16 @@ class PersonaProfilesTest {
             assertTrue("Ayano" !in voice)
         }
     }
+
+    @Test fun composeReplacesTheToneParagraphInPlace() {
+        val base = PersonaProfiles.DEFAULT_INSTRUCTIONS.lines()
+        val toneAt = base.indexOfFirst { it.startsWith(PersonaProfiles.TONE_PREFIX) }
+        for (style in SpeakingStyle.entries - SpeakingStyle.DEFAULT) {
+            val out = PersonaProfiles.compose(null, style).lines()
+            assertEquals(PersonaProfiles.toneLines(style)!!.first, out[toneAt], "$style")
+            assertFalse(base[toneAt] in out, "$style kept the default tone")
+            assertEquals(base.filterIndexed { i, l -> i != toneAt && !l.startsWith(PersonaProfiles.VOICE_STYLE_PREFIX) },
+                out.filterIndexed { i, l -> i != toneAt && !l.startsWith(PersonaProfiles.VOICE_STYLE_PREFIX) }, "$style")
+        }
+    }
 }

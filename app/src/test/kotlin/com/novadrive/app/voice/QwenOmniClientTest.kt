@@ -366,6 +366,22 @@ class QwenOmniClientTest {
         Thread.sleep(NEGATIVE_WAIT_MS)
     }
 
+    /** SPEC-015 A6: the first session.update already carries the current (restored) style's tone line. */
+    @Test
+    fun firstSessionUpdateComposesTheCurrentStyle() = runBlocking {
+        com.novadrive.app.SpeakingStyleState.restore(com.novadrive.app.SpeakingStyle.TSUNDERE)
+        enqueueServer()
+        val client = client()
+        collect(client)
+        client.connect(config().copy(instructions = com.novadrive.app.PersonaProfiles.DEFAULT_INSTRUCTIONS))
+        awaitUntil({ "sent: $received" }) { sent("session.update").isNotEmpty() }
+        val instructions = sent("session.update").first().getJSONObject("session").getString("instructions")
+        val defaultTone = com.novadrive.app.PersonaProfiles.DEFAULT_INSTRUCTIONS.lines()
+            .first { it.startsWith(com.novadrive.app.PersonaProfiles.TONE_PREFIX) }
+        assertTrue(com.novadrive.app.PersonaProfiles.toneLines(com.novadrive.app.SpeakingStyle.TSUNDERE)!!.first in instructions)
+        assertFalse(defaultTone in instructions)
+    }
+
     private fun instructionsUpdates() = sent("session.update").filter { !it.getJSONObject("session").has("tools") }
 
     @Test
