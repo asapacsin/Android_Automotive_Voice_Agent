@@ -226,6 +226,37 @@ class VoiceSessionGatewayTest {
     }
 
     @Test
+    fun sendPromptLeavesEveryListeningStateAndNeverSleepsSilencesOrQueues() {
+        val identity = Any().also { identities += it }
+        val session = FakeGatewaySession()
+        val service = FakeServiceControl()
+        VoiceSessionGateway.attachInternal(identity, session, service)
+        session.isActive = true
+        listOf(ListeningState.ACTIVE, ListeningState.SILENT_WAIT, ListeningState.SLEEP).forEachIndexed { i, state ->
+            session.listeningState = state
+            assertTrue(VoiceSessionGateway.sendPrompt("前方左转", "p$i"))
+            assertEquals(state, session.listeningState, "state unchanged in $state")
+        }
+        assertEquals(0, session.startCalls)
+        assertEquals(0, service.startCalls)
+        assertTrue(session.activations.isEmpty())
+        assertTrue(session.sleeps.isEmpty())
+        assertTrue(session.silences.isEmpty())
+        assertTrue(session.texts.isEmpty(), "never the queued text path")
+    }
+
+    @Test
+    fun sendPromptRefusedWhenInactiveIsNotQueuedForALaterStart() {
+        val identity = Any().also { identities += it }
+        val session = FakeGatewaySession()
+        VoiceSessionGateway.attachInternal(identity, session, FakeServiceControl())
+        assertFalse(VoiceSessionGateway.sendPrompt("前方左转", "p1"))
+        VoiceSessionGateway.start("wake_word")
+        assertTrue(session.texts.isEmpty(), "a refused prompt is not replayed on start")
+        assertTrue(session.prompts.isEmpty())
+    }
+
+    @Test
     fun guidanceBlockerReportsCodesAndDefersToTheSession() {
         assertEquals("NOT_ATTACHED", VoiceSessionGateway.guidanceBlocker())
         val identity = Any().also { identities += it }

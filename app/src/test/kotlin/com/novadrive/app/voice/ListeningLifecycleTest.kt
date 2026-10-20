@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -535,5 +536,55 @@ class ListeningLifecycleTest {
         rig.lifecycle.onConnectionLost()
         assertEquals(ListeningState.SLEEP, rig.state)
         assertFalse("close" in rig.controls.log)
+    }
+
+    // ---- SPEC-018 A4: listening controls while navigating in SLEEP -------------------------
+
+    @Test
+    fun shutUpAndSleepInNavigatingSleepCancelNothingAndKeepTheConnection() = runTest {
+        val rig = Rig(this)
+        rig.start()
+        rig.lifecycle.onNavigating(true)
+        rig.lifecycle.sleep("user")
+        val cancelsAtSleep = rig.controls.cancels
+        rig.lifecycle.silence("闭嘴")
+        rig.lifecycle.sleep("休眠")
+        rig.lifecycle.sleepAfterReply("end")
+        assertEquals(cancelsAtSleep, rig.controls.cancels, "guidance in SLEEP is not a reply to cut")
+        assertEquals(ListeningState.SLEEP, rig.state)
+        wait(ListeningTimeouts.DEEP_IDLE_AFTER_SLEEP_MS * 2)
+        assertEquals(ListeningState.SLEEP, rig.state)
+        assertFalse("close" in rig.controls.log)
+    }
+
+    @Test
+    fun wakeWordInNavigatingSleepResumesTheSameConnectionWithoutCancelling() = runTest {
+        val rig = Rig(this)
+        rig.start()
+        rig.lifecycle.onNavigating(true)
+        rig.lifecycle.sleep("user")
+        rig.lifecycle.onConnectionLost()
+        val cancels = rig.controls.cancels
+        assertTrue(rig.lifecycle.activate("wake_word"))
+        assertEquals(ListeningState.ACTIVE, rig.state)
+        assertEquals(0, rig.controls.sessionsOpened, "no new session: the connection was kept")
+        assertEquals(cancels, rig.controls.cancels, "activate from SLEEP cancels nothing")
+    }
+
+    @Test
+    fun conversationEndingWhileNavigatingDoesNotArmDeepIdle() = runTest {
+        val rig = Rig(this)
+        rig.start()
+        rig.lifecycle.onNavigating(true)
+        rig.lifecycle.sleepAfterReply("end")
+        assertEquals(ListeningState.SLEEP, rig.state)
+        wait(ListeningTimeouts.DEEP_IDLE_AFTER_SLEEP_MS * 2)
+        assertEquals(ListeningState.SLEEP, rig.state)
+        assertFalse("close" in rig.controls.log)
+    }
+
+    @Test
+    @Disabled("GAP: built in VoiceSessionController.cancelReplySparingGuidance (playback.guidanceActive); no JVM seam — the controller constructs AndroidPlaybackPort(PcmAudioPlayer)")
+    fun shutUpSleepAndWakeWordInActiveSpareOpenGuidance() {
     }
 }
