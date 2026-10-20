@@ -1,19 +1,19 @@
 {
   "generated_by": "scripts/skill_metrics.py",
-  "events": 16,
+  "events": 17,
   "outcomes": {
     "PASS": 14,
-    "PARTIAL": 2
+    "PARTIAL": 3
   },
-  "total_retries": 4,
+  "total_retries": 6,
   "skill_usage": {
     "reproduce": 2,
     "fix": 4,
-    "verify": 5,
+    "verify": 6,
     "start": 3,
-    "continue": 5,
+    "continue": 6,
     "handoff": 9,
-    "review-packet": 3,
+    "review-packet": 4,
     "create-skill": 1
   },
   "deviations": {
@@ -35,9 +35,9 @@
   "failed_skill_assumptions": {},
   "unused_skills": [],
   "time_efficiency": {
-    "timed_tasks": 11,
-    "total_minutes": 1253,
-    "total_attempts": 21,
+    "timed_tasks": 12,
+    "total_minutes": 1853,
+    "total_attempts": 24,
     "inefficient": [
       {
         "task": "vendor-files-in-worktrees",
@@ -109,6 +109,15 @@
           "heavy-model-scouts"
         ],
         "improvement": "continue.md: 3-4 units in flight, time estimate at every start, token budget per agent type, scouts checked before recording; discover_work lists unfinished exec work (Stop hook enforces); guard_worktree hook (owner wiring); evidence dirs carry the run id; style piece names its model"
+      },
+      {
+        "task": "session-10-20-afternoon",
+        "minutes": 600,
+        "attempts": 3,
+        "waste": [
+          "re-review rounds from loose contracts; Opus reviewers on low-risk branches; shared Gradle build dir and compact_test.py on main checkout gave false counts; corrupt emulator image download x3; 2 usage-limit stops"
+        ],
+        "improvement": "contract path check before dispatch; sonnet reviewers and delta-only re-reviews for non-src branches; per-task NOVA_BUILD_DIR; compact_test uses calling worktree; system image cached with retries; Aider for exact 1-2 file edits"
       }
     ],
     "waste_causes": {
@@ -122,7 +131,8 @@
       "scout-overclaim": 1,
       "evidence-dir-collision": 1,
       "wrong-model-evidence": 1,
-      "heavy-model-scouts": 1
+      "heavy-model-scouts": 1,
+      "re-review rounds from loose contracts; Opus reviewers on low-risk branches; shared Gradle build dir and compact_test.py on main checkout gave false counts; corrupt emulator image download x3; 2 usage-limit stops": 1
     }
   },
   "observed_sequences": {
