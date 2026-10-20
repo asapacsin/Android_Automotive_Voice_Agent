@@ -1,8 +1,8 @@
 package com.novadrive.app.nav.amap
 
 import android.content.Context
-import android.util.Log
 import com.amap.api.navi.AMapNavi
+import com.novadrive.app.DebugVoiceLog
 import com.amap.api.services.core.LatLonPoint
 import com.amap.api.services.routepoisearch.RoutePOISearch
 import com.amap.api.services.routepoisearch.RoutePOISearchQuery
@@ -69,12 +69,9 @@ class AmapRouteLiveInfo(context: Context) : RouteLiveInfoSource {
                     }
                 }.getOrNull()
                 val candidates = if (code == SUCCESS) raw?.let { RouteLiveInfoMapping.toCandidates(it) } else null
-                runCatching {
-                    Log.d(
-                        "NovaVoice",
-                        RouteLiveInfoMapping.alongRouteSearchLine(code, raw, candidates?.size ?: 0, RANGE_METERS, path.allLength),
-                    )
-                }
+                DebugVoiceLog.log(
+                    RouteLiveInfoMapping.alongRouteSearchLine(code, raw, candidates?.size ?: 0, RANGE_METERS, path.allLength),
+                )
                 continuation.resume(candidates)
             }
             runCatching { search.searchRoutePOIAsyn() }.onFailure { if (continuation.isActive) continuation.resume(null) }

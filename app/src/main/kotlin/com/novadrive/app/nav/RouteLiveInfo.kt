@@ -86,11 +86,11 @@ object RouteLiveInfoMapping {
      * Text-free diagnostic for one RoutePOISearch (I-8): SDK code, raw item count (-1 when the SDK
      * gave no list), mapped candidate count and why [toCandidates] dropped items. A missing id is not
      * a drop (it falls back to r<index>); dropped_no_point counts items without lat/lon and
-     * dropped_other the rest. Counts and metres only, never a name, id or coordinate.
+     * dropped_other the rest (0 unless code is 1000: nothing else is mapped). Counts and metres only, never a name, id or coordinate.
      */
     fun alongRouteSearchLine(code: Int, raw: List<RoutePoi>?, mapped: Int, rangeMeters: Int, routeMeters: Int): String {
         val noPoint = raw?.count { it.lat == null || it.lon == null } ?: 0
-        val other = if (raw == null) 0 else (raw.size - mapped - noPoint).coerceAtLeast(0)
+        val other = if (raw == null || code != 1000) 0 else (raw.size - mapped - noPoint).coerceAtLeast(0)
         return "along_route_search code=$code raw=${raw?.size ?: -1} mapped=$mapped dropped_no_point=$noPoint " +
             "dropped_other=$other range_m=$rangeMeters route_m=$routeMeters"
     }

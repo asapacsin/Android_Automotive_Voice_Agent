@@ -33,5 +33,9 @@ class RouteLiveInfoMappingTest {
             "along_route_search code=1802 raw=-1 mapped=0 dropped_no_point=0 dropped_other=0 range_m=250 route_m=900",
             RouteLiveInfoMapping.alongRouteSearchLine(1802, null, 0, 250, 900),
         )
+        assertEquals(
+            "along_route_search code=1802 raw=2 mapped=0 dropped_no_point=0 dropped_other=0 range_m=250 route_m=900",
+            RouteLiveInfoMapping.alongRouteSearchLine(1802, listOf(RoutePoi("a", "t", 1.0, 2.0, 5), RoutePoi("b", "u", 1.0, 2.0, 6)), 0, 250, 900),
+        )
     }
 }
