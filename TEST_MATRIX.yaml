@@ -3492,13 +3492,13 @@ tests:
     status: PASS
     release_blocking: false
     evidence_bind:
-      code_digest: sha256:fe6a2682ba462e867b944de329e6d558d0c042dea79280f787c2b8465f43fa64
+      code_digest: sha256:4ee6be5d2e9ed36a784e17e07b46ea506ab0c3f7aa4d095ac6d935d78ac95ff6
       procedure_digest: sha256:2e6fb340d8948ea7e78c9d5f7e14c92ac2484f3f3a6e2605d1c10dfc54b1373c
       registry_digest: sha256:f75bb722192827cefd4bfbb0b0939dec17f07d7380dad8fe60451d365b66be97
       harness_digest: sha256:5e28e9a1a6ff4f5a07475f2f5326dfe3fdb37808ebff5fa4f7cab9008d4e92af
       artifact_digests: {}
       apk_digest: sha256:3f591e0d1a13d76d3999549524223a6ddc2fc713092d4a574dae9a5075f80b5d
-      bound_commit: 8b25fb3
+      bound_commit: 2424e7c
     covers: [navigation.speed_hud]
     prerequisites: ["emulator with this build, relay toggle off (default)", "route with a speed-limit camera (十字门 from the emulator origin)"]
     procedure: ["nav_route 十字门, start the emulator drive", "nav_speed 90 once moving", "drive past the limit camera", "read the NovaVoice log"]

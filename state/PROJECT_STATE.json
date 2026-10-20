@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-10-20T06:22:29",
+  "generated_at": "2026-10-20T06:29:26",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "9e3ad7d",
+    "commit": "2424e7c",
     "branch": "claude/10-20",
-    "subject": "Regenerate LOCAL_DEVICE_REQUIRED.md",
+    "subject": "Rebind NAV-E2E-ARRIVAL-001 and NAV-UI-007 from Device checks at ff1f635 (real vendor, PASS, after LIVEINFO-MAP)",
     "working_tree_clean": false,
     "uncommitted_files": 3
   },
@@ -186,7 +186,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "AFFORDANCE-DEVICE-001: STALE_BIND: Spoken control names act on the phone through the local path, once, with no model execution",
-    "actionable_count": 83,
+    "actionable_count": 81,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 29,
@@ -218,13 +218,6 @@
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
         "item": "NAV-CANCEL-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-OVERSPEED-001",
         "blocked_by": null
       },
       {
@@ -694,13 +687,6 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P64",
-        "blocked_by": null
-      },
-      {
-        "priority": 10,
-        "class": "stale state or harness defect",
-        "source": "state",
-        "item": "PROJECT_STATE.json",
         "blocked_by": null
       },
       {
