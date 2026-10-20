@@ -227,6 +227,17 @@ does not change architecture ownership, invariants, or who may certify work. Age
   (docs/AGENT_CONTRACT_WORKFLOW.md) applies to it unchanged: scope, verify and reviewer PASS are
   checked from git, never taken from its report. Respect the vendor-file rule: the licensed vendor
   files must not be sent to it.
+- **External executor/reviewer routing (owner, 2026-10-20):** the tool-capable runner those chat
+  APIs lacked is [`tools/agent-routing/`](tools/agent-routing/README.md) (portable, stdlib only).
+  Executors: `gemini` = `gemini-3.6-flash` (Gemini API) or `poolside` = `poolside/laguna-s-2.1:free`
+  (OpenRouter; the free endpoint ends 2026-10-31 and is never switched to the paid one); reviewer:
+  `nvidia` = `nvidia/nemotron-3-ultra-550b-a55b` (NVIDIA NIM). One executor per project in
+  `.agent-routing/project.json` (here: `gemini`); a deterministic LOW/MEDIUM/HIGH policy decides when
+  the Nemotron review is required, and the `agent_routing_cli.py stop-hook` Stop hook blocks completion
+  of a routed change until tests pass and a structured review PASS matches the current diff (bounded:
+  after 3 blocks it allows the stop as UNVERIFIED, never PASS). In this repository the gate only covers
+  changes made through `execute` sessions, so the contract workflow above is unchanged; licensed vendor
+  paths are in `never_send`. Usage: `python3 tools/agent-routing/agent_routing_cli.py route|execute|review|gate|doctor`.
 - `reviewer` (Opus 5.5, high effort, read-only) is used selectively; its policy is
   [`agent/REVIEWER.md`](agent/REVIEWER.md). Verdicts: PASS / REVISE / ARCHITECTURE_REVIEW_REQUIRED.
 - At most 4 concurrent executors. Writers get worktrees the planner creates from the exact feature

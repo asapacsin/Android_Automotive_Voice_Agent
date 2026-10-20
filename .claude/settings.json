@@ -46,6 +46,12 @@
             "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/keep-going.py\"",
             "timeout": 120,
             "statusMessage": "Checking whether autonomous work remains..."
+          },
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/agent-routing/agent_routing_cli.py\" stop-hook",
+            "timeout": 600,
+            "statusMessage": "agent-routing: checking tests and the review gate for routed changes..."
           }
         ]
       }
