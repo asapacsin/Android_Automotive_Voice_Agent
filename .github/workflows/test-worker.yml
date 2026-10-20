@@ -65,6 +65,15 @@ jobs:
           for s in make_speech make_extra make_context make_noise; do python3 tools/speech-harness/$s.py >/dev/null; done
           sudo apt-get install -y -q ffmpeg >/dev/null
 
+      - name: Cache the emulator system image
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/lib/android/sdk/system-images/android-34/google_apis/x86_64
+          key: sysimg-android-34-google_apis-x86_64-${{ runner.os }}
+
+      - name: Pre-install the emulator system image (retries)
+        run: bash scripts/ci_sysimg.sh
+
       - name: Boot the emulator once and serve pieces
         uses: reactivecircus/android-emulator-runner@v2
         env:
