@@ -104,6 +104,9 @@ call; executors were ~10-16%).
   unless `NOVA_BUILD_DIR` is set, so parallel executors overwrite each other's JUnit XML. Every
   executor packet and every planner `verify` sets `NOVA_BUILD_DIR=$HOME/nova-build/<TASK_ID>`; nobody
   runs `./gradlew --stop` while another executor may be building (it kills their builds).
+  `scripts/compact_test.py` runs Gradle in the main checkout, not the worktree - never use it for
+  an executor branch's evidence; run Gradle from the worktree and check XML test counts against the
+  @Test counts in the source.
 - **Device CI is sharded (DEV-SPLIT, 2026-10-20):** dispatch `device-checks.yml` with input `shards`
   (dispatch, drive, lifecycle, navpiece) to rerun only the affected shard; a full round is ~15 min.
   - Never ask any agent to read all of TEST_MATRIX.yaml or OPEN_PROBLEMS.md; give row ids/sections.
