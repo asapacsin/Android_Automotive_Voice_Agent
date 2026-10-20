@@ -1,6 +1,7 @@
 package com.novadrive.app
 
 import com.novadrive.app.nav.AlongRouteCategory
+import com.novadrive.app.nav.AlongRouteCorridor
 import com.novadrive.app.nav.EmbeddedNavigationController
 import com.novadrive.app.nav.NavigationPhase
 import com.novadrive.app.nav.RouteLiveInfoSource
@@ -23,6 +24,8 @@ interface AmapLiveInfoRest {
     fun weatherForecast(city: String, key: String): LiveInfoFetch<WeatherForecast>
     fun regeoPlace(latitude: Double, longitude: Double, key: String): LiveInfoFetch<RegeoPlace>
     fun placeDetail(poiId: String, key: String): LiveInfoFetch<PlaceDetail>
+    /** P68 along_route: one `v3/place/polygon` search by Amap type code. */
+    fun placePolygon(polygon: String, types: String, key: String): LiveInfoFetch<PolygonPlaces>
 }
 
 /** A fix's district adcode and the city it belongs to (a municipality's province), from regeo. */
@@ -298,10 +301,43 @@ class LiveInfoTool(
         if (controller == null || !controller.isGuiding() && controller.state().value !in ROUTE_ON_SCREEN) {
             return Precondition(NOT_NAVIGATING)
         }
+        val key = webKey()?.takeIf { it.isNotBlank() } ?: return Precondition(AMAP_WEB_KEY_MISSING)
         return Ready {
-            val found = route.alongRoute(category) ?: return@Ready failure(AmapLiveInfoParser.UNAVAILABLE)
-            if (found.isEmpty()) return@Ready failure(AmapLiveInfoParser.NO_RESULTS).put("category", category.spoken)
-            val shown = found.take(MAX_ALONG_ROUTE)
+            // P68: one place/polygon call over the corridor ahead; no retry, no fallback call.
+            val progress = route.routeProgress() ?: return@Ready failure(AmapLiveInfoParser.UNAVAILABLE)
+            val corridor = AlongRouteCorridor.plan(
+                progress.points,
+                progress.travelledMeters,
+                AlongRouteCorridor.lookaheadFor(category),
+            ) ?: return@Ready failure(AmapLiveInfoParser.UNAVAILABLE)
+            val started = nowMs()
+            val fetch = rest.placePolygon(corridor.polygon, category.amapTypes, key)
+            val ms = nowMs() - started
+            val found = when (fetch) {
+                is LiveInfoFetch.Failed -> {
+                    log(AlongRouteCorridor.searchLine(fetch.infocode ?: "none", 0, 0, 0, corridor.lookaheadMeters, corridor.vertices, ms))
+                    return@Ready failure(fetch.code)
+                }
+                is LiveInfoFetch.Ok -> fetch.value
+            }
+            val kept = corridor.keep(found.pois)
+            log(
+                AlongRouteCorridor.searchLine(
+                    found.infocode ?: "none", found.total, found.pois.size, kept.size,
+                    corridor.lookaheadMeters, corridor.vertices, ms,
+                ),
+            )
+            if (kept.isEmpty()) {
+                val km = String.format(US, "%.1f", corridor.lookaheadMeters / 1000.0).toDouble()
+                val said = if (corridor.reachesDestination) "沿途没有找到${category.spoken}"
+                else "前方${corridor.lookaheadMeters / 1000}公里沿途没有找到${category.spoken}"
+                return@Ready failure(AmapLiveInfoParser.NO_RESULTS)
+                    .put("category", category.spoken)
+                    .put("searched_ahead_km", km)
+                    .put("reached_destination", corridor.reachesDestination)
+                    .put("message", said)
+            }
+            val shown = kept.take(MAX_ALONG_ROUTE)
             // The existing picker, so 「第一个」 is the existing, device-verified navigation path (A6).
             controller.requestCandidates(shown)
             val options = JSONArray()
@@ -412,6 +448,7 @@ class LiveInfoTool(
             override fun weatherForecast(city: String, key: String) = nothing
             override fun regeoPlace(latitude: Double, longitude: Double, key: String) = nothing
             override fun placeDetail(poiId: String, key: String) = nothing
+            override fun placePolygon(polygon: String, types: String, key: String) = nothing
         }
 
         /** For call sites with no Amap at all (tests, simulations): every lookup is unavailable. */

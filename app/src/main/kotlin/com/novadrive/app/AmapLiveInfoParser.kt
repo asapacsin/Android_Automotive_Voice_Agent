@@ -1,5 +1,6 @@
 package com.novadrive.app
 
+import com.novadrive.app.nav.DestinationCandidate
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -11,7 +12,8 @@ import org.json.JSONObject
  */
 sealed interface LiveInfoFetch<out T> {
     data class Ok<T>(val value: T) : LiveInfoFetch<T>
-    data class Failed(val code: String) : LiveInfoFetch<Nothing>
+    /** [infocode] is Amap's own code when the source sent one (P68's counts-only log line); never shown. */
+    data class Failed(val code: String, val infocode: String? = null) : LiveInfoFetch<Nothing>
 }
 
 /** `v3/weather/weatherInfo?extensions=base`. Every field is only what the source returned. */
@@ -46,6 +48,9 @@ data class PlaceDetail(
     val rating: String?,
     val category: String?,
 )
+
+/** One place/polygon page: Amap's total count and the POIs that have a point (P68). Never logged. */
+data class PolygonPlaces(val total: Int, val infocode: String?, val pois: List<DestinationCandidate>)
 
 /**
  * Parsers for the Amap REST responses `query_live_info` reads. Fixtures recorded 2026-09-25 live
@@ -120,6 +125,27 @@ object AmapLiveInfoParser {
                 category = poi.text("type")?.split(';')?.lastOrNull()?.takeIf { it.isNotBlank() },
             ),
         )
+    }
+
+    /**
+     * P68 along_route: v3/place/polygon. Every POI with a point; [PolygonPlaces.total] is the
+     * response count (more than the page = truncated). An empty page is Ok - the tool decides
+     * NO_RESULTS after the corridor filter. status != 1 is unavailable (quota keeps its own code).
+     */
+    fun placePolygon(json: String): LiveInfoFetch<PolygonPlaces> {
+        val infocode = runCatching { JSONObject(json).optString("infocode").takeIf { it.isNotBlank() } }.getOrNull()
+        return when (val parsed = parse(json) { root ->
+            LiveInfoFetch.Ok(
+                PolygonPlaces(
+                    total = root.optString("count").toIntOrNull() ?: 0,
+                    infocode = infocode,
+                    pois = AmapPoiParser.parseCandidates(json),
+                ),
+            )
+        }) {
+            is LiveInfoFetch.Failed -> parsed.copy(infocode = infocode)
+            is LiveInfoFetch.Ok -> parsed
+        }
     }
 
     /** Status and quota handling shared by every endpoint; a body that is not JSON is unavailable. */

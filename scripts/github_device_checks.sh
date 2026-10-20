@@ -228,30 +228,16 @@ if in_shard dispatch; then
 # LIVE-INFO-L6 (SDK half, emulator) through the app's own navigation controller, as the model would
 # reach it (the debug nav_route/nav_start above bypass the controller, so query_live_info answers
 # NOT_NAVIGATING there - run 20261020_0928). navigate_to -> pick the first place (routes on screen):
-# along_route (RoutePOISearch); then pick the first route (guidance): route_traffic
+# along_route (one Web place/polygon over the corridor ahead, P68); then pick the first route (guidance): route_traffic
 # (AMapNavi.getTrafficStatuses). ok/code/ms only (I-8). Optional: the emulator may get no data.
 tool dispatch "navigate_to:destination=珠海站"; sleep 8
 tool dispatch "choose_navigation_option:index=1"; sleep 10
 tool dispatch "query_live_info:kind=along_route,category=fuel"; sleep 8
 li_along="$(nova | grep -oE 'live_info kind=along_route ok=(true|false) code=[A-Z_a-z-]* ms=[0-9]+' | tail -1)"
 note "LIVE-INFO-SDK along_route: ${li_along:-no live_info line} dispatch $(result_of dispatch)"
-li_search="$(nova | grep -oE 'along_route_search code=-?[0-9]+ raw=-?[0-9]+ mapped=[0-9]+ dropped_no_point=[0-9]+ dropped_other=[0-9]+ range_m=[0-9]+ route_m=-?[0-9]+' | tail -1)"
+li_search="$(nova | grep -oE 'along_route_search code=[0-9a-z]+ total=[0-9]+ returned=[0-9]+ kept=[0-9]+ lookahead_m=[0-9]+ vertices=[0-9]+ ms=[0-9]+( truncated=true)?' | tail -1)"
 note "PIECE LIVE-INFO-SDK search: ${li_search:-no along_route_search line}"
 pf device:LIVE-INFO-SDK-ALONG "${li_along:-no live_info line}" 'grep -q "ok=true" <<<"$li_along"'
-# ALONG-PROBE: fuel stations on the same route at 250/500/1000/2000 m (counts only); notes, no pf.
-tool along_probe x
-ap_n=0
-for _ in $(seq 1 45); do
-  ap_n="$(nova | grep -cE 'along_probe (range_m|form)=' || true)"
-  [ "$ap_n" -ge 7 ] && break
-  sleep 1
-done
-note "PIECE ALONG-PROBE: dispatch $(result_of along_probe)"
-[ "$ap_n" -ge 7 ] || note "PIECE ALONG-PROBE: only $ap_n of 7 lines"
-nova | grep -oE 'along_probe range_m=[0-9]+ code=-?[0-9]+ raw=-?[0-9]+ ms=[0-9]+' | tail -4 | while read -r l; do note "PIECE ALONG-PROBE: $l"; done
-nova | grep -oE 'along_probe form=polyline range_m=[0-9]+ code=-?[0-9]+ raw=-?[0-9]+ points=[0-9]+' | tail -1 | while read -r l; do note "PIECE ALONG-PROBE: $l"; done
-nova | grep -oE 'along_probe form=startend mode=[0-9]+ range_m=[0-9]+ code=-?[0-9]+ raw=-?[0-9]+' | tail -1 | while read -r l; do note "PIECE ALONG-PROBE: $l"; done
-nova | grep -oE 'along_probe form=web_around radius_m=[0-9]+ count=-?[0-9]+' | tail -1 | while read -r l; do note "PIECE ALONG-PROBE: $l"; done
 tool dispatch "exit_navigation_mode"; sleep 4
 tool dispatch "navigate_to:destination=珠海站"; sleep 8
 tool dispatch "choose_navigation_option:index=1"; sleep 10

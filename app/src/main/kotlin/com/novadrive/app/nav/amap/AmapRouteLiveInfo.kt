@@ -2,31 +2,20 @@ package com.novadrive.app.nav.amap
 
 import android.content.Context
 import com.amap.api.navi.AMapNavi
-import com.novadrive.app.DebugVoiceLog
-import com.amap.api.services.core.LatLonPoint
-import com.amap.api.services.routepoisearch.RoutePOISearch
-import com.amap.api.services.routepoisearch.RoutePOISearchQuery
-import com.novadrive.app.nav.AlongRouteCategory
-import com.novadrive.app.nav.DestinationCandidate
 import com.novadrive.app.nav.RouteLiveInfoMapping
 import com.novadrive.app.nav.RouteLiveInfoSource
-import com.novadrive.app.nav.RoutePoi
+import com.novadrive.app.nav.RouteProgress
 import com.novadrive.app.nav.RouteTraffic
 import com.novadrive.app.nav.StaticMapModel.GeoPoint
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlin.coroutines.resume
 
 /**
- * SPEC-011's two SDK reads: traffic on the driven route (`AMapNavi.getTrafficStatuses`) and POIs
- * along the calculated route (`RoutePOISearch`, search 9.8.1 in the bundled combined artifact).
+ * SPEC-011's SDK reads: traffic on the driven route (`AMapNavi.getTrafficStatuses`) and, for
+ * along_route (P68), the route's shape and the car's progress on it. The POI search itself is one
+ * Web place/polygon call made by LiveInfoTool through AmapPoiClient; the SDK's route-POI search is not
+ * used (device run 20261020: code=1000 raw=0 at every range).
  *
  * AMapNavi is a process singleton, so this reads the same route [AmapNaviViewHost] calculated
- * without reaching into the host. The only log is the text-free along_route_search count line;
- * a route is a trail of coordinates (I-8).
- *
- * UNVERIFIED ON DEVICE (2026-09-25): written against the SDK's signatures (javap), not run. The
- * `getTrafficStatuses(0, 0)` "remaining route" reading and the start→end route-POI query are the
- * two assumptions a device run must confirm (SPEC-011 A8/A9).
+ * without reaching into the host. Nothing here logs: a route is a trail of coordinates (I-8).
  */
 class AmapRouteLiveInfo(context: Context) : RouteLiveInfoSource {
     private val app = context.applicationContext
@@ -43,55 +32,15 @@ class AmapRouteLiveInfo(context: Context) : RouteLiveInfoSource {
         statuses?.takeIf { it.isNotEmpty() }?.let { list -> RouteTraffic.summarize(list.map { it.status to it.length }) }
     }.getOrNull()
 
-    override suspend fun alongRoute(category: AlongRouteCategory): List<DestinationCandidate>? {
-        val path = navi()?.naviPath ?: return null
-        val start = path.startPoint ?: return null
-        val end = path.endPoint ?: return null
-        val query = RoutePOISearchQuery(
-            LatLonPoint(start.latitude, start.longitude),
-            LatLonPoint(end.latitude, end.longitude),
-            RoutePOISearch.DrivingDefault,
-            searchType(category),
-            RANGE_METERS,
-        )
-        return suspendCancellableCoroutine { continuation ->
-            val search = runCatching { RoutePOISearch(app, query) }.getOrNull()
-            if (search == null) {
-                continuation.resume(null)
-                return@suspendCancellableCoroutine
-            }
-            search.setPoiSearchListener { result, code ->
-                if (!continuation.isActive) return@setPoiSearchListener
-                val raw = runCatching {
-                    result?.routePois?.map { item ->
-                        val point = item.point
-                        RoutePoi(item.id, item.title, point?.latitude, point?.longitude, item.distance.toInt())
-                    }
-                }.getOrNull()
-                val candidates = if (code == SUCCESS) raw?.let { RouteLiveInfoMapping.toCandidates(it) } else null
-                DebugVoiceLog.log(
-                    RouteLiveInfoMapping.alongRouteSearchLine(code, raw, candidates?.size ?: 0, RANGE_METERS, path.allLength),
-                )
-                continuation.resume(candidates)
-            }
-            runCatching { search.searchRoutePOIAsyn() }.onFailure { if (continuation.isActive) continuation.resume(null) }
-        }
-    }
-
-    private fun searchType(category: AlongRouteCategory): RoutePOISearch.RoutePOISearchType = when (category) {
-        AlongRouteCategory.FUEL -> RoutePOISearch.RoutePOISearchType.TypeGasStation
-        AlongRouteCategory.CHARGING -> RoutePOISearch.RoutePOISearchType.TypeChargeStation
-        AlongRouteCategory.SERVICE_AREA -> RoutePOISearch.RoutePOISearchType.TypeServiceArea
-        AlongRouteCategory.TOILET -> RoutePOISearch.RoutePOISearchType.TypeToilet
-    }
-
-    private companion object {
-        /** AMapException.CODE_AMAP_SUCCESS. */
-        const val SUCCESS = 1000
-
-        /** How far off the route a POI may be; the SDK's range is in metres. */
-        const val RANGE_METERS = 250
-    }
+    /** GCJ-02 already; s_car = allLength - pathRetainDistance during guidance, else 0. */
+    override fun routeProgress(): RouteProgress? = runCatching {
+        val path = navi()?.naviPath ?: return@runCatching null
+        val points = path.coordList?.map { GeoPoint(it.latitude, it.longitude) }?.takeIf { it.size >= 2 }
+            ?: return@runCatching null
+        val retain = NavigationTraceListener.latestRetainMeters
+        val travelled = if (retain == null) 0 else (path.allLength - retain).coerceAtLeast(0)
+        RouteProgress(points, travelled)
+    }.getOrNull()
 }
 
 /**

@@ -90,7 +90,7 @@ object ToolFailureAdvice {
         AmapLiveInfoParser.QUOTA to
             "今天的查询次数已经用完了，没有查到。请用一句话如实告诉用户今天的查询次数用完了，不要编造结果。",
         AmapLiveInfoParser.NO_RESULTS to
-            "查询成功，但没有找到结果（category 是要找的东西，若有）。请用一句话如实说没有找到，例如「沿途没有找到加油站」，不要编造一个。",
+            "查询成功，但没有找到结果（category 是要找的东西，若有）。有 message 时就照 message 说（例如「前方10公里沿途没有找到加油站」），否则如实说没有找到，例如「沿途没有找到加油站」，不要编造一个。",
         LiveInfoTool.INVALID_KIND to
             "这类实时信息没有数据来源，没有查询。请用一句话如实说无法回答，不要编造。",
         LiveInfoTool.INVALID_ARGUMENT to
