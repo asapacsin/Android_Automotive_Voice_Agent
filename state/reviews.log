@@ -86,3 +86,5 @@ efc460cf3db6 PASS 2026-10-20 SEAM-A4 reviewer PASS
 18d6ade533a9 REVISE 2026-10-20 P68-POLY late result opens picker after deadline (no ensureActive); octagon inscribed so coverage < w off-axis
 693de0e19b66 PASS 2026-10-20 P68-POLY delta re-review (sonnet) PASS after Opus REVISE; device run ok=true kept=1
 393998468abf REVISE 2026-10-20 AGENT-ROUTING 7 major (stop_hook_active unbounded across fingerprints; subdir cwd; relative hook path exit 2; gate clear bypass; scope=all base=HEAD; secrets in reviewer diff; truncated diff PASS) + planner: pyc artifacts in fingerprint
+6f637a1f1bb1 PASS 2026-10-20 AGENT-ROUTING delta re-review (sonnet) PASS after Opus REVISE
+045adad539b4 PASS 2026-10-20 AGENT-ROUTING delta review (sonnet) PASS: base gap + HIGH words
