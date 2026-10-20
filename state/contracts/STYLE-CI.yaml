@@ -1,0 +1,42 @@
+schema: nova-task-contract/1
+task_id: STYLE-CI
+title: The Live JVM checks workflow gains a style piece that measures DEMO-STYLE-001 (P55 delivery change) on a GitHub runner
+branch: exec/style-ci
+base_commit: 7e90bd953a56c2e905004dbd6e417a8c138fffa3
+approved_paths:
+  - .github/workflows/live-jvm.yml
+  - scripts/github_live_jvm.sh
+  - scripts/tests/test_live_jvm.py
+allowed_changes:
+  - live-jvm.yml matrix gains piece "style" (same secrets and if gating as tryout); input "pieces" accepts style; optional dispatch input gemini_model passed as NOVA_GEMINI_MODEL only when non-blank
+  - github_live_jvm.sh piece style - same Piper venv/voice setup as tryout (reuse, do not copy), clips via PIPER_MODEL=<onnx> python3 tools/demo/live/make_clips_cloud.py style, then NOVA_LIVE_DEMO=1 NOVA_LIVE_PROVIDER=gemini NOVA_LIVE_SCENES=style NOVA_LIVE_OUT=<run dir> gradle :app:testDebugUnitTest --tests '*LiveDemoRun*' under timeout 300, then python3 tools/demo/live/style_check.py <run dir>
+  - The style summary keeps only style_check.py's per-key verdict, time, tool names and numeric measures (F0, spread, pace), the RESULT line, JUnit counts, and "DEMO-STYLE-001 rule=MET" only when RESULT PASS; BLOCKED with the step name on setup failure
+  - Unit tests in scripts/tests/test_live_jvm.py - style MET and text-free, NOT_MET, missing-secret BLOCKED; workflow-shape test expects [text-live, amap-live, tryout, style]
+architecture_constraints:
+  - I-8 - nothing printed or pushed may contain keys, transcripts, phrase text, reply text, coordinates or addresses; style_check.py notes are dropped
+  - Generated audio and the Piper voice are never committed or pushed (only summary.txt goes to ci/live-jvm-evidence)
+  - The procedure is the row's own, unchanged
+forbidden_changes:
+  - No app, test or tools/ source changes; no change to the pass criteria
+forbidden_paths:
+  - "*/src/**"
+  - tools/**
+  - TEST_MATRIX.yaml
+  - scripts/test_matrix.py
+  - config/ci_checks.json
+required_verification:
+  - id: style-check-selftest
+    kind: regression
+    command: python3 tools/demo/live/style_check.py --selftest
+  - id: workflow-yaml
+    kind: lint
+    command: python3 -c "import yaml;yaml.safe_load(open('.github/workflows/live-jvm.yml'))"
+  - id: bash-syntax
+    kind: lint
+    command: bash -n scripts/github_live_jvm.sh
+  - id: script-tests
+    kind: regression
+    command: python3 -m unittest discover -s scripts/tests -t .
+acceptance_criteria:
+  - A dispatched run with pieces=style pushes runs/run_<date>_<sha>/style/summary.txt to ci/live-jvm-evidence with per-key verdicts and measures DEMO-STYLE-001 can be judged from
+  - Script tests green
