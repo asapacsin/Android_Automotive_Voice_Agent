@@ -130,4 +130,19 @@ class DriverTurnPipelineTest {
             assertTrue(callMayFollow(kind), "$kind")
         }
     }
+
+    // ---- A rejected result (e.g. SPEC-018 NOT_A_DRIVER_TURN) is never execution evidence ------
+
+    @Test
+    fun aNotADriverTurnRejectionDoesNotProveExecution() {
+        val code = GeminiPromptTurn.NOT_A_DRIVER_TURN
+        assertFalse(toolResultProvesExecution("""{"ok":false,"error":"$code"}"""))
+    }
+
+    @Test
+    fun aNotADriverTurnResultDoesNotReleaseAHeldDriverClaim() {
+        heldActionClaim()
+        pipeline.onToolResult("call_1", """{"ok":false,"error":"${GeminiPromptTurn.NOT_A_DRIVER_TURN}"}""")
+        assertTrue(host.emitted.isEmpty(), "a rejected GUIDANCE call is not proof (I-1)")
+    }
 }
