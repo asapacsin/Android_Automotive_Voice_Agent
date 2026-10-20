@@ -13,3 +13,4 @@ EVID-RUNID 60b1007db8106ffb2529d34a52fbe3787ea9d8e9b0588937bf272c96d86e0dd4 APPR
 STYLE-MODEL ac9920df42dc1057a59053d7e3aa07a642a2f377ff806cc2edac05a9a32f8db5 APPROVED 2026-10-20 architect decider 2026-10-20 P55 step; reviewer STYLE-CI follow-up
 WF-PRACTICES 6ef0e9e780db9108d3c13ca8f00af5cd2afcbc5605e3ebabc14d65c32b31495d APPROVED 2026-10-20 architect owner 2026-10-20: implement the best practices (hooks enforce, measure throughput)
 STYLE-GRADER 6f55d175c2841acd4d43801fdf4084a4efda7e8f26ad9776413e4a76c05a3c56 APPROVED 2026-10-20 architect decider 2026-10-20 P55 grader v3 (withdrew fallback A)
+P53-SPLIT c6b3cc2973b6ec37f0e1db2b8d450b0ad74748ef9b8f914a5abdaeabd72d515e APPROVED 2026-10-20 architect P53 measured warm 925 ms; find where it goes

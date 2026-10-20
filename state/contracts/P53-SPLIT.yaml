@@ -1,0 +1,31 @@
+schema: nova-task-contract/1
+task_id: P53-SPLIT
+title: Debug preflight shows where the warm place search's ~0.9 s goes (per HTTP call - DNS, connect, TLS, time to first byte, body), so P53 can be fixed in the right place
+branch: exec/p53-split
+base_commit: 8baeb49ebc472ab890d1dd4d379c5d7d52ec0f5b
+approved_paths:
+  - app/src/debug/kotlin/com/novadrive/app/DebugToolReceiver.kt
+  - app/src/debug/kotlin/com/novadrive/app/PreflightTiming.kt
+  - app/src/test/kotlin/com/novadrive/app/PreflightTimingTest.kt
+allowed_changes:
+  - Debug-only - the preflight runs the warm search 3 times and, for the last one, logs one text-free line per HTTP call the search makes - "preflight_split call=<n> path=<amap REST path only, e.g. /v3/place/text> dns_ms= connect_ms= tls_ms= ttfb_ms= body_ms= reused=<true|false>" - plus "preflight_search_warm runs=3 ms=<a>,<b>,<c>"
+  - The timing comes from an OkHttp EventListener attached to a client built from the app's shared client (newBuilder keeps the connection pool) or another debug-only seam that needs no change under app/src/main; if the search cannot be timed without a main-source change, stop and report BLOCKED with the smallest main-source seam needed
+  - A small pure formatter (PreflightTiming.kt) with a JVM test proving the line holds no query, key, coordinate or full URL
+architecture_constraints:
+  - I-8 - never the query, key, parameters, coordinates or full URL; path only
+  - Release builds unaffected (debug source set only)
+forbidden_changes:
+  - No change to app/src/main, the search behaviour or the existing preflight_search line format
+forbidden_paths:
+  - app/src/main/**
+  - scripts/**
+  - TEST_MATRIX.yaml
+required_verification:
+  - id: unit
+    kind: regression
+    command: ./gradlew -q :app:testDebugUnitTest --tests '*PreflightTimingTest*'
+  - id: compile
+    kind: compile
+    command: ./gradlew -q :app:compileDebugKotlin :app:compileReleaseKotlin
+acceptance_criteria:
+  - A device-checks run logs preflight_split lines for the warm search
