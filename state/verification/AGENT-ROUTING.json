@@ -1,18 +1,18 @@
 {
  "task_id": "AGENT-ROUTING",
  "contract_sha256": "56405208201c9799fd18fb42bed5bc1a81d80b71e5bb7d26269bdd6be5c1f7c1",
- "tip": "393998468abf9f103161a3cf3ceea9b5ae262333",
+ "tip": "6f637a1f1bb13c6cca1658d50d0a745219280b55",
  "verified_by": "planner",
- "at": "2026-10-20T16:05:54+00:00",
+ "at": "2026-10-20T16:15:01+00:00",
  "results": [
   {
    "id": "routing-tests",
    "kind": "regression",
    "command": "python3 -m unittest discover -s tools/agent-routing/tests -t tools/agent-routing",
    "exit_code": 0,
-   "seconds": 26.1,
-   "log": "/root/nova-drive-build/nova-verify/AGENT-ROUTING/393998468abf-routing-tests.log",
-   "log_sha256": "6ad17ee400d8594acee05f9364a5b5c02c8820551bde71b328610ad7781879fc"
+   "seconds": 34.3,
+   "log": "/root/nova-drive-build/nova-verify/AGENT-ROUTING/6f637a1f1bb1-routing-tests.log",
+   "log_sha256": "6ba5ee01095f87b4ef575e1cdf711cf4bef4ffc3a6d9ab734ff82da6f63af134"
   },
   {
    "id": "doctor-config",
@@ -20,7 +20,7 @@
    "command": "python3 tools/agent-routing/agent_routing_cli.py doctor --project .",
    "exit_code": 0,
    "seconds": 0.1,
-   "log": "/root/nova-drive-build/nova-verify/AGENT-ROUTING/393998468abf-doctor-config.log",
+   "log": "/root/nova-drive-build/nova-verify/AGENT-ROUTING/6f637a1f1bb1-doctor-config.log",
    "log_sha256": "ef1bb168484e5b061994a0eb22c668c14b41d1438d9c2cf994b57cb69f49f5ae"
   }
  ]
