@@ -1,0 +1,4 @@
+-- S16
+   debug_tool tool=voice arg=say:ambig_lower
+-- S17
+   debug_tool tool=voice arg=say:multi_step

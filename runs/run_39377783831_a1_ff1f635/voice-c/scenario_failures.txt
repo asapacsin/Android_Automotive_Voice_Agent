@@ -1,0 +1,2 @@
+          expected /gemini_turn_done|flex_turn_done|qwen_turn_done|TURN_RELEASE/
+          expected /^tool=navigate_to/
