@@ -1,0 +1,5 @@
+app: map did not come up
+secret AMAP_WEB_KEY: set, amap_web_setup -> 
+secret GEMINI_API_KEY: set, gemini_setup -> 
+voice: provider override -> 
+voice: no session_provider line

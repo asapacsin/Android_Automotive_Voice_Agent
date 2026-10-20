@@ -1,0 +1,2 @@
+{"id": "build:vendor-real", "status": "PASS", "detail": "real vendor files packaged"}
+{"id": "voice:quota-guard", "status": "FAIL", "detail": "no session_provider line"}
