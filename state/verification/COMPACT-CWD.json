@@ -1,0 +1,18 @@
+{
+ "task_id": "COMPACT-CWD",
+ "contract_sha256": "327eff9a86e578b83e1f3de1cfb5e9aad1fbd575245f62cfbbb3287e269ae486",
+ "tip": "4ff0e032aebc9937729e50e38056f1438b627b2d",
+ "verified_by": "planner",
+ "at": "2026-10-20T11:40:50+00:00",
+ "results": [
+  {
+   "id": "compact-tests",
+   "kind": "regression",
+   "command": "python3 -m unittest scripts.tests.test_compact_test",
+   "exit_code": 0,
+   "seconds": 0.1,
+   "log": "/root/nova-drive-build/nova-verify/COMPACT-CWD/4ff0e032aebc-compact-tests.log",
+   "log_sha256": "bbd21010222fc9a70194dfbd9a19751537c8d29023915259f33a678eb9ef6173"
+  }
+ ]
+}
