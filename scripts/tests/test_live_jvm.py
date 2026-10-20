@@ -163,6 +163,16 @@ class LiveJvmTest(unittest.TestCase):
         self.assertTrue(out.isascii(), out)
         self.assertRegex(out, r"^[A-Za-z0-9_.,=+ \n-]*$")
 
+    def test_style_grader_line(self):
+        res = style_output()
+        self.assertIn("GRADER v3", res)
+        self.assertIn("grader=v3", self.run_summary("style", res, XML.format(n=1, f=0)))
+        out = self.run_summary("style", res.replace("GRADER v3", "GRADER v3\u55f2;rm"), XML.format(n=1, f=0))
+        self.assertIn("grader=v3rm", out)
+        self.assertTrue(out.isascii(), out)
+        self.assertIn("grader=unknown", self.run_summary("style", res.replace("GRADER v3\n", ""), XML.format(n=1, f=0)))
+        self.assertIn("grader=unknown", self.run_summary("style", "", XML.format(n=1, f=0)))
+
     def test_style_not_met(self):
         out = self.run_summary("style", style_output(passing=False), XML.format(n=1, f=1))
         self.assertIn("RESULT FAIL s_sweet", out)

@@ -110,7 +110,7 @@ elif piece == "style":
     # style_check.py lines: "  <key> <verdict> <time> <tools> <style> <F0> <spread> <pace> [<mk>] <note>".
     # Notes are dropped; every kept field is reduced to [A-Za-z0-9_.,=+-] (I-8).
     have = results != "-" and os.path.isfile(results)
-    graded = []; result = None
+    graded = []; result = None; grader = "unknown"
     san = lambda v, n=40: re.sub(r"[^A-Za-z0-9_.,=+-]", "", v)[:n] or "-"
     if have:
         for raw in open(results, encoding="utf-8", errors="replace"):
@@ -120,10 +120,15 @@ elif piece == "style":
                 graded.append((key, verdict, f"{key} {verdict} {t} tools={san(tools, 120)} style={san(style)} "
                                              f"f0={san(f0)} spread={san(spread)} pace={san(pace)} markers={mk or '-'}"))
                 continue
+            m = re.match(r"^GRADER\s+(\S+)", raw)
+            if m:
+                grader = re.sub(r"[^A-Za-z0-9.]", "", m.group(1))[:20] or "unknown"
+                continue
             m = re.match(r"^RESULT (PASS|FAIL)\s*(\S*)", raw)
             if m:
                 result = (m.group(1), re.sub(r"[^A-Za-z0-9_,]", "", m.group(2)))
     lines.append(f"style_check={'present' if have else 'missing'}")
+    lines.append(f"grader={grader}")
     for _, _, row in graded:
         lines.append(row)
     spass = sum(1 for _, v, _ in graded if v == 'PASS')
