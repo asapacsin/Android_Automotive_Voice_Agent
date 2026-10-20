@@ -1,0 +1,27 @@
+{
+ "task_id": "SEAM-A4",
+ "contract_sha256": "5724bbbbda2b383593d731bc4c7588c32f2d927b2f62f6b717a353b40e34b39c",
+ "tip": "efc460cf3db62f517161199bd823ece5fcab1dd6",
+ "verified_by": "planner",
+ "at": "2026-10-20T11:49:26+00:00",
+ "results": [
+  {
+   "id": "unit",
+   "kind": "regression",
+   "command": "./gradlew --no-daemon -q :app:testDebugUnitTest --tests \"*GuidanceSparingCancelTest\" --tests \"*ListeningLifecycleTest\"",
+   "exit_code": 0,
+   "seconds": 19.5,
+   "log": "/root/nova-build/v-SA4/nova-verify/SEAM-A4/efc460cf3db6-unit.log",
+   "log_sha256": "bcbd06e73ee58c0ef9d2d139f75cb5bf76a716d5644f7ec62f384651e6ed5b26"
+  },
+  {
+   "id": "compile-release",
+   "kind": "compile",
+   "command": "./gradlew --no-daemon -q :app:compileReleaseKotlin",
+   "exit_code": 0,
+   "seconds": 14.8,
+   "log": "/root/nova-build/v-SA4/nova-verify/SEAM-A4/efc460cf3db6-compile-release.log",
+   "log_sha256": "be3705ca8d832c3d3af7d11d0c1c689dbef1eff14671a1e7da19b84cd13416d9"
+  }
+ ]
+}
