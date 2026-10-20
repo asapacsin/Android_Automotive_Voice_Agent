@@ -20,7 +20,7 @@ Updated 2026-09-21 · 163 tests
 
 **HUMAN_VALIDATION_READY = FALSE**
 
-- the registry does not validate: 15 problem(s)
+- the registry does not validate: 6 problem(s)
 - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - TRUTH-MEDIA-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -118,7 +118,7 @@ Updated 2026-09-21 · 163 tests
 | CLIMATE-OFF-001 | climate | 关闭空调 turns it off | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | CLIMATE-SET-001 | climate | An explicit temperature is set | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | FUZZY-DEVICE-001 | comfort | Fuzzy requests on the emulator - chip on screen, one call per scenario, honest partial report | AUTONOMOUS | NOT_RUN | no | — |
-| FUZZY-TEXT-LIVE-001 | comfort | The live model maps the fuzzy phrase table FZ-01…FZ-19 to the right calls | AUTONOMOUS | STALE | yes | 2026-10-01 cloud, gemini-3.8-live, after adding 傲娇/温柔/元气: FUZZY 18/19 — FZ-15 傲娇一点 and … |
+| FUZZY-TEXT-LIVE-001 | comfort | The live model maps the fuzzy phrase table FZ-01…FZ-19 to the right calls | AUTONOMOUS | PASS | yes | 2026-10-01 cloud, gemini-3.8-live, after adding 傲娇/温柔/元气: FUZZY 18/19 — FZ-15 傲娇一点 and … |
 | SCENARIO-UNIT-001 | comfort | Comfort scenarios run their fixed steps through the direct-call servers and report partial failure honestly | AUTONOMOUS | PASS | no | 2026-10-01 cloud, integrated 436d197: ComfortScenariosTest 15/0; full suite 3378 / 0 fa… |
 | CTX-AMBIG-001 | dialogue_context | 再低一点 with no history asks which | AUTONOMOUS | PASS | yes | 2026-09-20: 「您是指温度还是风量呢？」 |
 | CTX-CHAIN-001 | dialogue_context | 再凉一点 continues the previous adjustment | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
@@ -132,12 +132,12 @@ Updated 2026-09-21 · 163 tests
 | MUSIC-APP-DEVICE-001 | media | 网易云 / QQ音乐 play a described song or fail honestly | HUMAN_ACCOUNT | HUMAN_REQUIRED | yes | MUSIC-UNIT-001 (JVM) |
 | MUSIC-NAMED-001 | media | A named song goes to play_music, never the bundled track | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite (old criterion: MEDIA_LIBRARY_UNSUPPORTED) |
 | MUSIC-PLAY-001 | media | 播放音乐 plays the bundled track | AUTONOMOUS | PASS | no | 2026-09-20: 20/20 suite |
-| MUSIC-TEXT-LIVE-001 | media | The model maps music descriptions to play_music fields | AUTONOMOUS | STALE | yes | 2026-10-01 re-run after the FZ-14 wording fix: GeminiTextLiveMappingTest MUSIC 10/10 |
+| MUSIC-TEXT-LIVE-001 | media | The model maps music descriptions to play_music fields | AUTONOMOUS | PASS | yes | 2026-10-01 re-run after the FZ-14 wording fix: GeminiTextLiveMappingTest MUSIC 10/10 |
 | MUSIC-UNIT-001 | media | play_music validates, hands off and reports only what is playing | AUTONOMOUS | PASS | yes | 2026-10-01 cloud, integrated 436d197: MediaServerPlayMusicTest 12/0, MediaDomainPlayMus… |
 | MUSIC-VLC-EMU-001 | media | VLC plays a local file handed off by play_music and the readback names it | AUTONOMOUS | NOT_RUN | yes | MUSIC-UNIT-001 (JVM) covers the result rules with a fake session source |
 | MIC-CABIN-001 | microphone | Open-mic thresholds in real cabin acoustics | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | NOISE-001 PASS - room noise produces no turn |
 | AUDIO-QUALITY-001 | navigation | Guidance loudness and speech quality in a cabin | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | 21 guidance play start/end pairs observed on an emulator drive; the mic is gated while … |
-| DEMO-AMAP-LIVE-001 | navigation | The commute demo's real Amap lookups at the demo origin: 导航去横琴镇 + 第一个 is >= 1.7 km away, the warm-up weather answers | AUTONOMOUS | STALE | no | 2026-10-12 cloud: with sortrule=distance FAIL (第一个 = 632 m, the origin 横琴澳门青年创业谷; Amap … |
+| DEMO-AMAP-LIVE-001 | navigation | The commute demo's real Amap lookups at the demo origin: 导航去横琴镇 + 第一个 is >= 1.7 km away, the warm-up weather answers | AUTONOMOUS | PASS | no | 2026-10-12 cloud: with sortrule=distance FAIL (第一个 = 632 m, the origin 横琴澳门青年创业谷; Amap … |
 | GUIDANCE-DEVICE-001 | navigation | One voice on the short route; Amap audible only when the model cannot speak | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | GUIDANCE-EMU-001 measurements |
 | GUIDANCE-EMU-001 | navigation | Step-0 measurements for assistant-spoken guidance on the short route | AUTONOMOUS | NOT_RUN | yes | measurements only, no verdict yet (G-1b audibility, G-1c, G-1d and the network-cut repe… |
 | NAV-CANCEL-001 | navigation | 算了 really cancels | AUTONOMOUS | PASS | yes | 2026-09-20: nav_flow_cancelled |
@@ -154,11 +154,11 @@ Updated 2026-09-21 · 163 tests
 | NAV-SEARCH-001 | navigation | A destination produces candidates and does not start navigating | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | NAV-SIM-QA-001 | navigation | Reusable navigation screen-recording movie for QA | AUTONOMOUS | STALE | no | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
 | NAV-UI-001 | navigation | 「开始导航」 enters ACTIVE_DRIVING_NAVIGATION, not route preview | AUTONOMOUS | PASS | yes | EmbeddedNavigationControllerTest.SelectingARouteEntersDrivingPresentationNotRoutePreview |
-| NAV-UI-002 | navigation | During GPS navigation the vehicle stays in lock-car tracking | AUTONOMOUS | STALE | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
-| NAV-UI-003 | navigation | Vehicle heading rotates the navigation map | AUTONOMOUS | STALE | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
-| NAV-UI-004 | navigation | Active route shows traffic-state colouring when Amap supplies it | AUTONOMOUS | STALE | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
-| NAV-UI-005 | navigation | Next-maneuver guidance is visible | AUTONOMOUS | STALE | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
-| NAV-UI-006 | navigation | Lane or junction enlarge appears when Amap supplies it | AUTONOMOUS | STALE | no | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
+| NAV-UI-002 | navigation | During GPS navigation the vehicle stays in lock-car tracking | AUTONOMOUS | PASS | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
+| NAV-UI-003 | navigation | Vehicle heading rotates the navigation map | AUTONOMOUS | PASS | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
+| NAV-UI-004 | navigation | Active route shows traffic-state colouring when Amap supplies it | AUTONOMOUS | PASS | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
+| NAV-UI-005 | navigation | Next-maneuver guidance is visible | AUTONOMOUS | PASS | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
+| NAV-UI-006 | navigation | Lane or junction enlarge appears when Amap supplies it | AUTONOMOUS | PASS | no | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
 | NAV-UI-007 | navigation | Overview then return restores vehicle tracking | AUTONOMOUS | PASS | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
 | NAV-UI-008 | navigation | Spoken 「开始导航」 enters the same driving state as a route tap | AUTONOMOUS | PASS | yes | 2026-09-20 unit |
 | NAV-UI-009 | navigation | Arrival leaves ACTIVE_DRIVING_NAVIGATION | AUTONOMOUS | PASS | yes | 2026-09-20 unit plus existing arrival tests |

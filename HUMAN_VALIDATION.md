@@ -4,7 +4,7 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 
 > **Not ready yet.** This is a preview of the queue; autonomous work remains:
 >
-> - the registry does not validate: 15 problem(s)
+> - the registry does not validate: 6 problem(s)
 > - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - TRUTH-MEDIA-001 is AUTONOMOUS and NOT_RUN - run it or fix it
