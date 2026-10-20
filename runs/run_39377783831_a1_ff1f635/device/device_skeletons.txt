@@ -1,0 +1,26 @@
+-- FZ-SEAT
+   test_speech_start bytes=59904
+   debug_tool tool=voice arg=say:fz_seat_high
+   gemini_voice_activity type=ACTIVITY_START
+   gemini_first_transcript ms=none
+   gemini_turn_done status=cancelled calls=1 spoke=false dur_ms=21982 first_audio_ms=-1 first_text_ms=-1 gen_ms=-1 msgs=5 max_gap_ms=21593
+   state=LISTENING err=-
+   state=LISTENING err=-
+   test_speech_end frames=203 elapsedMs=2031
+   gemini_content_no_turn kind=inputTranscription audio=0 text_parts=0
+   gemini_voice_activity type=ACTIVITY_END
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=21442 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=21943 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=22442 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+-- FZ-LOWER
+   test_speech_start bytes=59904
+   debug_tool tool=voice arg=say:fz_lower_more
+   gemini_driver_turn_fallback source=voice_activity
+   gemini_voice_activity type=ACTIVITY_START
+   gemini_first_transcript ms=none
+   test_speech_end frames=203 elapsedMs=2030
+   gemini_content_no_turn kind=inputTranscription audio=0 text_parts=0
+   gemini_voice_activity type=ACTIVITY_END
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=23943 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=24444 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8
+   session_diag state=LISTENING listening=ACTIVE captureSuspended=false gated=false guidanceGated=false muted=false captured=24943 droppedGated=0 droppedMuted=0 droppedGuidance=0 peak=8

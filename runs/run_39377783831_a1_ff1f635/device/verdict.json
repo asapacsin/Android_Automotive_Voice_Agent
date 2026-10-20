@@ -1,0 +1,97 @@
+{
+  "suite": "voice-device",
+  "verdict": "FAIL",
+  "vendor": "REAL",
+  "checks": [
+    {
+      "id": "build:vendor-real",
+      "required": true,
+      "status": "PASS",
+      "detail": "real vendor files packaged"
+    },
+    {
+      "id": "devrows:runner",
+      "required": true,
+      "status": "PASS",
+      "detail": "runner exit 1: scenario failures judged per scenario"
+    },
+    {
+      "id": "devrows:AFF-PAUSE",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "devrows:AFF-AC",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "devrows:AFF-RECENTER",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "devrows:NEWS",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "devrows:VISION",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "devrows:FZ-MOSQ",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "devrows:FZ-MOSQ-DONE",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "devrows:FZ-SEAT",
+      "required": true,
+      "status": "FAIL",
+      "detail": "0/1 runs passed"
+    },
+    {
+      "id": "devrows:FZ-LOWER",
+      "required": true,
+      "status": "FAIL",
+      "detail": "0/1 runs passed"
+    },
+    {
+      "id": "devrows:FZ-DROWSY",
+      "required": true,
+      "status": "PASS",
+      "detail": "1/1 runs passed"
+    },
+    {
+      "id": "voice:quota-guard",
+      "required": true,
+      "status": "PASS",
+      "detail": "gemini_live, no qwen session"
+    }
+  ],
+  "problems": [
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required devrows:FZ-SEAT is FAIL"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required devrows:FZ-LOWER is FAIL"
+    }
+  ]
+}
