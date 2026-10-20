@@ -77,13 +77,13 @@ internal object AmapGuidanceVoice : TTSPlayListener {
      * `guidance_claim` and `nav_guidance_fallback_tts` lines say what happened to it.
      */
     fun speakAlert(text: String, hostNavigating: () -> Boolean) {
-        mainHandler.post {
+        poster {
             val active = relay
             val queue = alertQueue
             val target = OverspeedAlert.target(hostNavigating(), active != null, queue != null)
             if (target.startsWith("dropped:")) {
                 DebugVoiceLog.log("nav_alert_dropped reason=${target.removePrefix("dropped:")}")
-                return@post
+                return@poster
             }
             if (active != null) {
                 runCatching { textReceiver?.invoke(text) }
@@ -104,6 +104,9 @@ internal object AmapGuidanceVoice : TTSPlayListener {
 
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
 
+    /** Every main-thread post of this object; tests swap in an immediate runner. */
+    internal var poster: (() -> Unit) -> Unit = { task -> mainHandler.post { task() } }
+
     /** Debug builds only (the debug receiver's `guidance_relay on:<ms>`): a measurement deadline, else SPEC-018's. */
     @Volatile var debugDeadlineMs: Long? = null
 
@@ -121,7 +124,7 @@ internal object AmapGuidanceVoice : TTSPlayListener {
     private fun tellRelays(speaking: Boolean) {
         val targets = listOfNotNull(relay, alertQueue)
         if (targets.isEmpty()) return
-        mainHandler.post { targets.forEach { it.onAmapSpeaking(speaking) } }
+        poster { targets.forEach { it.onAmapSpeaking(speaking) } }
     }
 
     /** SPEC-018 developer toggle, set by the host before [enable]; false = today's Amap voice. */
@@ -153,7 +156,7 @@ internal object AmapGuidanceVoice : TTSPlayListener {
         val relay = buildRelay(navi, assistantSpeaks = true)
         DebugVoiceLog.log("nav_guidance_relay deadline_ms=${debugDeadlineMs ?: GuidanceRelay.DEFAULT_DEADLINE_MS}")
         this.relay = relay
-        GuidanceRelay.install(relay) { task -> mainHandler.post { task() } }
+        GuidanceRelay.install(relay) { task -> poster(task) }
         DebugVoiceLog.log("nav_guidance_relay installed=true")
     }
 
