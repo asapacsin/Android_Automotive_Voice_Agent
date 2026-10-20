@@ -1,0 +1,36 @@
+{
+ "task_id": "STYLE-GRADER",
+ "contract_sha256": "6f55d175c2841acd4d43801fdf4084a4efda7e8f26ad9776413e4a76c05a3c56",
+ "tip": "ca8f07588f284396655ef0782c7881862da9a046",
+ "verified_by": "planner",
+ "at": "2026-10-20T06:03:04+00:00",
+ "results": [
+  {
+   "id": "style-selftest",
+   "kind": "regression",
+   "command": "python3 tools/demo/live/style_check.py --selftest",
+   "exit_code": 0,
+   "seconds": 1.9,
+   "log": "/root/nova-drive-build/nova-verify/STYLE-GRADER/ca8f07588f28-style-selftest.log",
+   "log_sha256": "6592c70bee2dbdb915225222763105604441f717714e641831fa03fd1363e68d"
+  },
+  {
+   "id": "bash-syntax",
+   "kind": "lint",
+   "command": "bash -n scripts/github_live_jvm.sh",
+   "exit_code": 0,
+   "seconds": 0.0,
+   "log": "/root/nova-drive-build/nova-verify/STYLE-GRADER/ca8f07588f28-bash-syntax.log",
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "id": "live-jvm-tests",
+   "kind": "regression",
+   "command": "python3 -m unittest scripts/tests/test_live_jvm.py",
+   "exit_code": 0,
+   "seconds": 2.7,
+   "log": "/root/nova-drive-build/nova-verify/STYLE-GRADER/ca8f07588f28-live-jvm-tests.log",
+   "log_sha256": "5723a04ea7ecec1706662f412d8c183ec224ed164cd411187837988ad92f29f6"
+  }
+ ]
+}
