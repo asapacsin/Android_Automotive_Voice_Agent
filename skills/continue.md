@@ -60,10 +60,15 @@ the whole conversation, so in a long session that re-reading is most of the cost
 2026-10-19: ~70-78% of a session's tokens were the main conversation re-reading ~300k tokens per
 call; executors were ~10-16%).
 
-- **One unit per session.** After a unit's `/handoff` (and `task_contract.py handoff` for a
-  contracted task), end the turn so the next unit starts from a fresh session or `/clear`, reading
-  `/start`, the handoff file and git, not the old transcript. Starting fresh is not stopping the run:
-  the frontier, stop rules and termination gate below still apply to the next session.
+- **One unit per context, not per turn.** Keep each unit's heavy reading in an executor or planner
+  subagent (its own fresh context), so the main transcript stays small. After a unit's `/handoff` (and
+  `task_contract.py handoff` for a contracted task), take the next candidate; do not end the turn to
+  ask whether to continue. Claude Code enforces this: the Stop hook `.claude/hooks/keep-going.py`
+  (owner 2026-10-20) refuses the stop while `discover_work.py` reports
+  `AUTONOMOUS_ACTION_AVAILABLE = YES` and names `NEXT_ACTION`; a last message that asks permission
+  for authorised work is told to take the documented default instead. It allows the stop after 20
+  consecutive refusals or when no autonomous action remains, fails open, and `NOVA_KEEP_GOING=0`
+  turns it off.
 - **No idle check-ins.** Schedule a self check-in only for an external wait nothing else reports
   (a CI run, a deploy), at that wait's real duration, and at most one pending at a time. Background
   agents and PR events wake the session themselves. Never re-arm a check-in that found nothing new;
