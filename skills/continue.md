@@ -75,7 +75,7 @@ call; executors were ~10-16%).
     acceptance commands at the same time in the executor's worktree with its own `NOVA_BUILD_DIR`
     (never two Gradle runs on one build dir).
   - *Speculative CI.* Dispatch the emulator/voice workflow on the executor branch
-    (`workflow_dispatch`, `ref: exec/<name>`) while review runs, when pushing that branch is allowed;
+    (`workflow_dispatch`, `ref: exec/<name>`) while review runs (pushing exec/* branches is allowed, owner 2026-10-20; never merged without reviewer PASS);
     a PASS on the reviewed tip is the evidence, and nothing is re-run after the merge unless the merge
     changed the tree.
   - *Batch CI.* After several independent merges, one device / voice run checks them together; the

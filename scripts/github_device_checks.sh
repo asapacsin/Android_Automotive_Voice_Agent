@@ -99,6 +99,9 @@ if app_up; then note "app: map up"; res device:app-up PASS "map up"
 else note "app: map did not come up"; res device:app-up FAIL "map did not come up"; fi
 shot app_start
 web_key=0; setup_key AMAP_WEB_KEY amap_web_setup amap_web_setup.txt && web_key=1 || true
+# PIECE P53: the real app's place-search time, cold then warm (debug preflight; counts and ms only, no place).
+tool preflight "横琴镇"; sleep 10
+note "PIECE P53 search: $(nova | grep -oE 'preflight_search count=[0-9]+ first_m=-?[0-9]+ ms=[0-9]+' | sed -E 's/first_m=-?[0-9]+ //' | tail -1) $(nova | grep -oE 'preflight_search_warm ms=[0-9]+' | tail -1)"
 tool dispatch "navigate_to:destination=回家"; sleep 4
 asks="$(nova | grep 'debug_tool tool=dispatch ' | tail -1 | grep -q '地址' && echo yes || echo no)"
 note "PLACE-UNSET-001: navigate_to 回家 before a home is saved -> $(result_of dispatch) asks_for_address=$asks"

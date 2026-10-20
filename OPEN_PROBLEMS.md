@@ -251,6 +251,8 @@ Measured from the driver's **last audible word**, not the end of the clip; edge-
 
 ## P51 — 「导航去横琴镇」 + 「第一个」 chose the place the car was already at
 
+**Status:** FIXED 2026-10-12, verified: DEMO-AMAP-LIVE-001 (DemoCommuteAmapLiveTest, real Amap) PASS, latest Live JVM run 39350541446 at 861eec3; named-place device re-check done (NAV-SEARCH-001 voice:S5 PASS on the real app, runs 38772982830..39300840860). Residual by design: a brand named without a near-me word ranks by relevance (known gap).
+
 **Found 2026-10-12, before any local take of the commute demo, by running the app's own place search against the real Amap Web API at the demo origin** (`DemoCommuteAmapLiveTest`). The JVM harness simulates the route, so its passing takes never showed it.
 
 **Symptom (measured, real Amap):** at 横琴·澳门青年创业谷 the nearby search for 横琴镇 returned 横琴澳门青年创业谷 itself first, then four more places, all within 650 m. Amap's driving route there is 26 m long. 「第一个」 would end the drive at once, and c3–c5 (蚊子, 歌, 前面堵不堵) would be spoken with no route. The same ranking gave a bus stop for 横琴口岸 and a hotel and a gym for 横琴总部大厦.
@@ -312,6 +314,8 @@ A type-less frame with neither field is still a protocol error. All four documen
 
 ## P53 — c_nav waits for the real place search
 
+**Status:** OPEN - fix merged (e37bc02) and Gemini rehearsal PASS (c_nav 3.5 s, 2026-10-12), but the real app's search time (preflight_search ms= cold/warm) has never been measured on an emulator; next: device-checks run with tool preflight.
+
 **Found 2026-10-12, Gemini rehearsals** (cloud JVM, the app's real Amap place search for the first time). c_nav (「导航去横琴镇」) took 6.0 s and 4.7 s against its 3.5 s budget, because the search took 2.52 s and 2.25 s before any reply. Qwen takes 6 and 8, with an instant (simulated) search, answered c_nav in 2.78 s and 2.89 s, so the search may take about 0.6 s at most.
 
 **Cause:**
@@ -336,6 +340,8 @@ A type-less frame with neither field is still a protocol error. All four documen
 **Still open:** the device and PC measurement with the rebuilt debug app (`preflight_search ms=`), and the next Gemini rehearsal.
 
 ## P54 — 「附近有加油站吗」 while parked was answered 「没在导航，查不了」
+
+**Status:** FIXED 2026-10-13 (c8b11a4), verified live on the JVM harness: DEMO-TRYOUT-001 u_gas navigate_to ok in run 2 (2.5 s) and every tryout since (19/19 2026-10-14, 10-15 at 76bbc8e, 10-16 at 02d9ab7; u_gas PASS 10-17 at 323fc29). Simulated car, not device-verified.
 
 **Found 2026-10-13, first tryout run** (`NOVA_LIVE_SCENES=tryout`, Gemini, docs/DEMO_TRYOUT.md): a first-time driver's 「附近有加油站吗」 with no route. The model called `query_live_info` `along_route` (its description lists 「路上有加油站吗」), got `NOT_NAVIGATING`, whose advice said 「请用一句话如实说现在没有在导航」, and answered 「都说了没在导航，查不了。」 The claim gate dropped a first reply, two corrections followed, and the last one was still running when the driver said 「算了，不去了」, which then took 11.3 s.
 
