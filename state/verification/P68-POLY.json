@@ -1,0 +1,45 @@
+{
+ "task_id": "P68-POLY",
+ "contract_sha256": "f3b0b89e056255905105450b35014eb6c34c19dab70402a6c5b0473f0299399a",
+ "tip": "18d6ade533a983687519667943390518dffefed8",
+ "verified_by": "planner",
+ "at": "2026-10-20T12:32:53+00:00",
+ "results": [
+  {
+   "id": "unit",
+   "kind": "regression",
+   "command": "./gradlew --no-daemon -q :app:testDebugUnitTest --tests \"*AlongRouteCorridorTest\" --tests \"*AmapLiveInfoParserTest\" --tests \"*LiveInfoToolTest\" --tests \"*LiveInfoAlongRouteWiringTest\" --tests \"*RouteLiveInfoMappingTest\" --tests \"*DemoCommuteAmapLiveTest\" --tests \"*AlongProbe*\"",
+   "exit_code": 0,
+   "seconds": 20.2,
+   "log": "/root/nova-build/v-P68/nova-verify/P68-POLY/18d6ade533a9-unit.log",
+   "log_sha256": "bcbd06e73ee58c0ef9d2d139f75cb5bf76a716d5644f7ec62f384651e6ed5b26"
+  },
+  {
+   "id": "arch",
+   "kind": "regression",
+   "command": "./gradlew --no-daemon -q :behavior-test:test --tests \"*ArchitectureRulesTest\"",
+   "exit_code": 0,
+   "seconds": 14.8,
+   "log": "/root/nova-build/v-P68/nova-verify/P68-POLY/18d6ade533a9-arch.log",
+   "log_sha256": "bcbd06e73ee58c0ef9d2d139f75cb5bf76a716d5644f7ec62f384651e6ed5b26"
+  },
+  {
+   "id": "compile-release",
+   "kind": "compile",
+   "command": "./gradlew --no-daemon -q :app:compileReleaseKotlin",
+   "exit_code": 0,
+   "seconds": 15.6,
+   "log": "/root/nova-build/v-P68/nova-verify/P68-POLY/18d6ade533a9-compile-release.log",
+   "log_sha256": "be3705ca8d832c3d3af7d11d0c1c689dbef1eff14671a1e7da19b84cd13416d9"
+  },
+  {
+   "id": "bash-syntax",
+   "kind": "lint",
+   "command": "bash -n scripts/github_device_checks.sh",
+   "exit_code": 0,
+   "seconds": 0.0,
+   "log": "/root/nova-build/v-P68/nova-verify/P68-POLY/18d6ade533a9-bash-syntax.log",
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+ ]
+}
