@@ -101,7 +101,9 @@ shot app_start
 web_key=0; setup_key AMAP_WEB_KEY amap_web_setup amap_web_setup.txt && web_key=1 || true
 # PIECE P53: the real app's place-search time, cold then warm (debug preflight; counts and ms only, no place).
 tool preflight "横琴镇"; sleep 10
-note "PIECE P53 search: $(nova | grep -oE 'preflight_search count=[0-9]+ first_m=-?[0-9]+ ms=[0-9]+' | sed -E 's/first_m=-?[0-9]+ //' | tail -1) $(nova | grep -oE 'preflight_search_warm ms=[0-9]+' | tail -1)"
+note "PIECE P53 search: $(nova | grep -oE 'preflight_search count=[0-9]+ first_m=-?[0-9]+ ms=[0-9]+' | sed -E 's/first_m=-?[0-9]+ //' | tail -1) $(nova | grep -oE 'preflight_search_warm (runs=[0-9]+ )?ms=[0-9,]+' | tail -1)"
+# P53 split (debug preflight, last warm run): one line per HTTP call - REST path and phase ms only.
+nova | grep -oE 'preflight_split call=[0-9]+ path=/[A-Za-z0-9/_]+ dns_ms=-?[0-9]+ connect_ms=-?[0-9]+ tls_ms=-?[0-9]+ ttfb_ms=-?[0-9]+ body_ms=-?[0-9]+ reused=(true|false)' | tail -8 | while read -r l; do note "PIECE P53 split: $l"; done
 tool dispatch "navigate_to:destination=回家"; sleep 4
 asks="$(nova | grep 'debug_tool tool=dispatch ' | tail -1 | grep -q '地址' && echo yes || echo no)"
 note "PLACE-UNSET-001: navigate_to 回家 before a home is saved -> $(result_of dispatch) asks_for_address=$asks"
@@ -164,6 +166,12 @@ tool nav_lock lock; sleep 3; shot nav_lock_restored
 lock_res="$(result_of nav_lock)"
 note "NAV-UI-007: lock -> $lock_res"
 pf device:NAV-UI-007 "overview=$ov_res lock=$lock_res" 'grep -q "result=overview=true" <<<"$ov_res" && grep -q "result=lock=true" <<<"$lock_res"'
+# LIVE-INFO-L6 (SDK half, emulator): traffic on the driven route through the real AmapRouteLiveInfo
+# (AMapNavi.getTrafficStatuses). ok/code/counts only (I-8). Optional: the emulator may get no statuses.
+tool dispatch "query_live_info:kind=route_traffic"; sleep 6
+li_traffic="$(nova | grep -oE 'live_info kind=route_traffic ok=(true|false) code=[A-Z_a-z-]* ms=[0-9]+' | tail -1)"
+note "LIVE-INFO-SDK route_traffic: ${li_traffic:-no live_info line} dispatch $(result_of dispatch)"
+pf device:LIVE-INFO-SDK-TRAFFIC "${li_traffic:-no live_info line}" 'grep -q "ok=true" <<<"$li_traffic"'
 i=0
 while [ "$i" -lt 60 ]; do
   if nova | grep -q "nav_stopped"; then break; fi
@@ -197,6 +205,16 @@ fatal="$(app_fatal)"
 anr="$(app_anr)"
 note "NAV crash check: fatal=$fatal anr=$anr"
 pf device:NAV-CRASH-001 "fatal=$fatal anr=$anr" '[ "$fatal" = 0 ] && [ "$anr" = 0 ]'
+# LIVE-INFO-L6 (SDK half, emulator): POIs along a calculated route through RoutePOISearch. After
+# arrival, because along_route opens the picker and would end active guidance. Counts only (I-8).
+tool nav_route "$dest"
+if wait_for "nav_calc_success" 30; then
+  tool dispatch "query_live_info:kind=along_route,category=fuel"; sleep 8
+  li_along="$(nova | grep -oE 'live_info kind=along_route ok=(true|false) code=[A-Z_a-z-]* ms=[0-9]+' | tail -1)"
+else li_along="no route calculated"; fi
+note "LIVE-INFO-SDK along_route: ${li_along:-no live_info line} dispatch $(result_of dispatch)"
+pf device:LIVE-INFO-SDK-ALONG "${li_along:-no live_info line}" 'grep -q "ok=true" <<<"$li_along"'
+tool dispatch "exit_navigation_mode"; sleep 4
 
 # ---- P59: a cancelled route choice leaves no route drawn, and the next search still draws -------
 # The voice flow, by dispatch: navigate_to -> candidates -> choose index 2 -> routes -> exit (the

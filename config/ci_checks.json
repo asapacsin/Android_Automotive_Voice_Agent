@@ -64,7 +64,7 @@
     "device": {
       "description": "Device rows on the emulator without a voice model session (scripts/github_device_checks.sh).",
       "required": ["build:vendor-real", "device:app-up", "device:PLACE-UNSET-001", "device:PLACE-SAVE-001", "device:APPS-001", "device:NAV-ROUTE-001", "device:NAV-START-001", "device:NAV-UI-002", "device:NAV-UI-003", "device:NAV-UI-005", "device:NAV-UI-007", "device:NAV-E2E-ARRIVAL-001", "device:NAV-CRASH-001", "device:PROCDEATH-001", "device:PERM-DENY-001", "device:TRANSCRIPT-FADE-EMU-001", "device:PIECE-P61", "device:PIECE-P63"],
-      "optional": ["device:CALL-NOSIM-001", "device:P59", "device:NAV-UI-004", "device:NAV-UI-006"]
+      "optional": ["device:CALL-NOSIM-001", "device:P59", "device:NAV-UI-004", "device:NAV-UI-006", "device:LIVE-INFO-SDK-TRAFFIC", "device:LIVE-INFO-SDK-ALONG"]
     },
     "navpiece": {
       "description": "Navigation demo pieces (scripts/github_nav_demo.sh): navpiece:complete (a normal finish) and every recorded navpiece: check are required; the video is optional.",

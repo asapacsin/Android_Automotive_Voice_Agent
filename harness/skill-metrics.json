@@ -1,25 +1,31 @@
 {
   "generated_by": "scripts/skill_metrics.py",
-  "events": 15,
+  "events": 16,
   "outcomes": {
-    "PASS": 13,
+    "PASS": 14,
     "PARTIAL": 2
   },
-  "total_retries": 2,
+  "total_retries": 4,
   "skill_usage": {
     "reproduce": 2,
     "fix": 4,
-    "verify": 4,
-    "start": 2,
-    "continue": 4,
-    "handoff": 8,
-    "review-packet": 2,
+    "verify": 5,
+    "start": 3,
+    "continue": 5,
+    "handoff": 9,
+    "review-packet": 3,
     "create-skill": 1
   },
-  "deviations": {},
+  "deviations": {
+    "fan-out-rule-not-followed": 1,
+    "worktree-not-via-new_worktree": 1
+  },
   "missing_steps": {},
   "human_reminders": {
-    "do not treat duplicated capability truth as a bad keyword": 1
+    "do not treat duplicated capability truth as a bad keyword": 1,
+    "parallel-units": 1,
+    "time-estimate": 1,
+    "token-cost": 1
   },
   "manual_repeated_work": {
     "build-install-harness-read-log": 2,
@@ -29,9 +35,9 @@
   "failed_skill_assumptions": {},
   "unused_skills": [],
   "time_efficiency": {
-    "timed_tasks": 10,
-    "total_minutes": 1013,
-    "total_attempts": 20,
+    "timed_tasks": 11,
+    "total_minutes": 1253,
+    "total_attempts": 21,
     "inefficient": [
       {
         "task": "vendor-files-in-worktrees",
@@ -89,6 +95,20 @@
           "session-usage-limit"
         ],
         "improvement": "run at most 2 heavy agents (executor or reviewer) at a time and resume a stopped agent with SendMessage instead of a new one; reuse the same reviewer for a re-review so it keeps context"
+      },
+      {
+        "task": "session-10-20-batch",
+        "minutes": 240,
+        "attempts": 1,
+        "waste": [
+          "serial-units",
+          "hand-made-worktree",
+          "scout-overclaim",
+          "evidence-dir-collision",
+          "wrong-model-evidence",
+          "heavy-model-scouts"
+        ],
+        "improvement": "continue.md: 3-4 units in flight, time estimate at every start, token budget per agent type, scouts checked before recording; discover_work lists unfinished exec work (Stop hook enforces); guard_worktree hook (owner wiring); evidence dirs carry the run id; style piece names its model"
       }
     ],
     "waste_causes": {
@@ -96,7 +116,13 @@
       "disk-full-build-dirs": 1,
       "ci-logs-unreadable": 1,
       "expiring-vendor-host": 1,
-      "session-usage-limit": 1
+      "session-usage-limit": 1,
+      "serial-units": 1,
+      "hand-made-worktree": 1,
+      "scout-overclaim": 1,
+      "evidence-dir-collision": 1,
+      "wrong-model-evidence": 1,
+      "heavy-model-scouts": 1
     }
   },
   "observed_sequences": {
@@ -109,8 +135,16 @@
     "bash -> git add -> git commit": 1,
     "git commit -> gradlew :app:testDebugUnitTest :behavior-test:test -> gradlew :app:testDebugUnitTest": 1,
     "gradlew :app:testDebugUnitTest -> gradlew :behavior-test:test -> gradlew :app:assembleDebug": 1,
-    "gradlew :app:testDebugUnitTest -> gradlew :behavior-test:test -> git add": 1,
-    "gradlew :behavior-test:test -> git add -> git commit": 1
+    "gradlew :app:testDebugUnitTest -> gradlew :behavior-test:test -> git add": 2,
+    "gradlew :behavior-test:test -> git add -> git commit": 2,
+    "scripts/collect_state.py -> git add -> git commit": 1,
+    "git add -> git commit -> gradlew :app:testDebugUnitTest": 1,
+    "git commit -> git push -> scripts/test_matrix.py --validate": 1,
+    "git push -> scripts/test_matrix.py --validate -> scripts/test_matrix.py": 1,
+    "git fetch -> git ls-tree -> sh": 1,
+    "git add -> git commit -> make_msc_stub.sh": 1,
+    "git commit -> gradlew :app:testDebugUnitTest -> git checkout": 1,
+    "git commit -> scripts/review_packet.py -> gradlew :app:testDebugUnitTest :behavior-test:test": 1
   },
   "suggested_actions": [],
   "thresholds": {
