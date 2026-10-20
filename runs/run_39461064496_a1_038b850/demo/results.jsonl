@@ -1,0 +1,4 @@
+{"id": "build:vendor-real", "status": "PASS", "detail": "real vendor files packaged"}
+{"id": "wake:WAKE-SYNTH-001", "status": "FAIL", "detail": "detection=0 to_active=0"}
+{"id": "voice:demo-recording", "status": "PASS", "detail": "voice_demo.mp4 written"}
+{"id": "voice:quota-guard", "status": "PASS", "detail": "gemini_live, no qwen session"}
