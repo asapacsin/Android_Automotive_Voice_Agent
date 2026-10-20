@@ -402,19 +402,21 @@ live_info:
     notes: "REST v3/weather/weatherInfo; adcode from the destination POI or v3/geocode/regeo. Cached 10 min per city."
   route_traffic:
     tool: query_live_info
-    verified: implemented
+    verified: unit
     required_scope: END_TO_END
     protected_by: [LIVE-INFO-UNIT-001, TRUTH-WEATHER-001, LIVE-INFO-DEVICE-001, LIVE-INFO-L6-001]
     evidence: >
-      LiveInfoToolTest covers the tool against a fake RouteLiveInfoSource; the SDK read
-      (AmapRouteLiveInfo, AMapNavi.getTrafficStatuses) has never run on a device.
+      RouteLiveInfoMappingTest covers the remaining-route/path traffic choice; LiveInfoToolTest covers
+      the tool against a fake RouteLiveInfoSource. The SDK read (AmapRouteLiveInfo,
+      AMapNavi.getTrafficStatuses) has never run on a device.
   along_route:
     tool: query_live_info
-    verified: implemented
+    verified: unit
     required_scope: END_TO_END
     protected_by: [LIVE-INFO-UNIT-001, LIVE-INFO-DEVICE-001, LIVE-INFO-L6-001]
     evidence: >
-      LiveInfoAlongRouteWiringTest: results open the existing picker and index 1 calculates a route
+      RouteLiveInfoMappingTest covers route-POI to candidate mapping (id fallback, no-point drop,
+      distance sort); LiveInfoToolTest covers the tool; LiveInfoAlongRouteWiringTest: results open the existing picker and index 1 calculates a route
       to the first. The RoutePOISearch call itself has never run on a device.
     notes: "Showing the picker ends active guidance, exactly as a new navigate_to does."
   place_details:

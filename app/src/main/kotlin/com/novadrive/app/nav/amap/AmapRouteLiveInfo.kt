@@ -7,7 +7,9 @@ import com.amap.api.services.routepoisearch.RoutePOISearch
 import com.amap.api.services.routepoisearch.RoutePOISearchQuery
 import com.novadrive.app.nav.AlongRouteCategory
 import com.novadrive.app.nav.DestinationCandidate
+import com.novadrive.app.nav.RouteLiveInfoMapping
 import com.novadrive.app.nav.RouteLiveInfoSource
+import com.novadrive.app.nav.RoutePoi
 import com.novadrive.app.nav.RouteTraffic
 import com.novadrive.app.nav.StaticMapModel.GeoPoint
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -35,7 +37,7 @@ class AmapRouteLiveInfo(context: Context) : RouteLiveInfoSource {
     override fun traffic(): RouteTraffic? = runCatching {
         val navi = navi() ?: return@runCatching null
         val path = navi.naviPath ?: return@runCatching null
-        val statuses = navi.getTrafficStatuses(0, 0)?.takeIf { it.isNotEmpty() } ?: path.trafficStatuses
+        val statuses = RouteLiveInfoMapping.chooseTrafficStatuses(navi.getTrafficStatuses(0, 0), path.trafficStatuses)
         statuses?.takeIf { it.isNotEmpty() }?.let { list -> RouteTraffic.summarize(list.map { it.status to it.length }) }
     }.getOrNull()
 
@@ -60,21 +62,14 @@ class AmapRouteLiveInfo(context: Context) : RouteLiveInfoSource {
                 if (!continuation.isActive) return@setPoiSearchListener
                 val items = if (code == SUCCESS) result?.routePois else null
                 continuation.resume(
-                    items?.mapIndexedNotNull { index, item ->
-                        val point = item.point ?: return@mapIndexedNotNull null
-                        runCatching {
-                            DestinationCandidate(
-                                id = item.id?.takeIf { it.isNotBlank() } ?: "r$index",
-                                name = item.title.orEmpty(),
-                                address = "",
-                                district = "",
-                                latitude = point.latitude,
-                                longitude = point.longitude,
-                                distanceMeters = item.distance.toInt(),
-                                poiId = item.id?.takeIf { it.isNotBlank() },
-                            )
-                        }.getOrNull()
-                    }?.sortedBy { it.distanceMeters ?: Int.MAX_VALUE },
+                    items?.let { list ->
+                        RouteLiveInfoMapping.toCandidates(
+                            list.map { item ->
+                                val point = item.point
+                                RoutePoi(item.id, item.title, point?.latitude, point?.longitude, item.distance.toInt())
+                            },
+                        )
+                    },
                 )
             }
             runCatching { search.searchRoutePOIAsyn() }.onFailure { if (continuation.isActive) continuation.resume(null) }
