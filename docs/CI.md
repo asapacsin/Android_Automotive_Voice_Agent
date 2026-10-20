@@ -78,7 +78,7 @@ original order, so a local full run is unchanged). Each shard has its own verdic
 `device-<shard>`; the shard suites partition suite `device` (kept for full runs), with
 `build:vendor-real` required in every shard (recorded by the shared setup). A shard that skips the
 dispatch section installs the Amap web key itself. Evidence goes to `ci/device-evidence` under
-`runs/run_<date>_<sha7>_r<run id>[_stubvendor]/<shard>/` (fetch-rebase-retry push). A `[checks]` push
+`runs/run_<date>_<sha7>_r<run id>_a<attempt>[_stubvendor]/<shard>/` (fetch-rebase-retry push). A `[checks]` push
 and a pull request run every shard; a dispatch takes the input `shards` (comma list, default `all`).
 
 | Shard | Suite | Sections | Tests (approx.) |
