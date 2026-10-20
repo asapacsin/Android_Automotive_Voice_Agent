@@ -53,3 +53,4 @@ e967a87 PASS 2026-10-19 reviewer PASS (unverified E2E): eyrie_hide/show reach AM
 59567f68afea PASS 2026-10-19 GEM-1007 reviewer: 1007 'API key' -> AUTH_FAILED, both terminal, no regression for real malformed setups, reason never logged; verify app unit + behavior-test PASS
 8e1e84f165fa PASS 2026-10-19 P67-FIX reviewer: model get_state refused only after a LOCAL claim on the same epoch+tool, reads never recorded, grouping/claimDispatch unchanged; verify app unit 2070/0 + behavior-test PASS
 120b90d2046b PASS 2026-10-20 NAVUI-PF reviewer: NAV-UI-002..006 judged from existing device logs per contract; SKIPPED only on optional 004/006; set -eu safe; replay on run 20c8b38 gives 5 PASS; verify bash -n + script tests 225 OK
+6dbc24399256 PASS 2026-10-20 LIVE-JVM reviewer (R1): blank model var unset, warm-up compile, timeout flag, per-piece keys; I-8 summary ids/counts only; verify YAML + bash -n + script tests 232 OK
