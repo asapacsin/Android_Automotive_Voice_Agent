@@ -69,6 +69,12 @@ call; executors were ~10-16%).
   for authorised work is told to take the documented default instead. It allows the stop after 20
   consecutive refusals or when no autonomous action remains, fails open, and `NOVA_KEEP_GOING=0`
   turns it off.
+- **Keep 3-4 units in flight (owner 2026-10-20, after the planner ran one executor at a time and
+  waited on fixed check-in times).** Before ending a turn, scheduling a check-in or waiting on a
+  reviewer/CI, count the units in flight (executors, scoping agents, reviewers). Fewer than 3 while
+  discover_work lists independent items → first scope the next items (read-only Explore agents in
+  parallel, one per item) and dispatch executors on disjoint approved_paths. Read a CI run when it
+  finishes, not at the check-in time; a check-in is only the fallback.
 - **Wall-clock first (owner 2026-10-20).** The chain executor → verify → review → merge → CI is not
   run one step at a time:
   - *Overlap verify and review.* Start the reviewer as soon as the executor commits, and run the
