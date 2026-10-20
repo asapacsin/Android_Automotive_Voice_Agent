@@ -86,6 +86,21 @@ class LiveJvmTest(unittest.TestCase):
         self.assertIn("rule=MET", self.run_summary("amap-live", "", XML.format(n=2, f=0)))
         self.assertIn("rule=NOT_MET", self.run_summary("amap-live", "", XML.format(n=2, f=1)))
 
+    def evidence_dir(self, run_id):
+        env = {k: v for k, v in os.environ.items() if k != "GITHUB_RUN_ID"}
+        if run_id is not None:
+            env["GITHUB_RUN_ID"] = run_id
+        p = subprocess.run(["bash", SCRIPT, "evidence-dir", "abcdef0123456789", "20261020_1200", "style"],
+                           capture_output=True, text=True, env=env)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        return p.stdout.strip()
+
+    def test_evidence_dir_carries_run_id(self):
+        self.assertEqual(self.evidence_dir(None), "runs/run_20261020_1200_abcdef0/style")
+        a, b = self.evidence_dir("111"), self.evidence_dir("222")
+        self.assertEqual(a, "runs/run_20261020_1200_abcdef0_r111/style")
+        self.assertNotEqual(a, b)
+
     def test_bad_args_and_missing_secret(self):
         self.assertEqual(subprocess.run(["bash", SCRIPT, "nope"], capture_output=True).returncode, 2)
         env = {k: v for k, v in os.environ.items() if k not in ("GEMINI_API_KEY", "AMAP_WEB_KEY")}

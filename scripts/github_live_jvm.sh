@@ -1,6 +1,6 @@
 #!/bin/bash
 # Runs ONE opt-in live JVM piece on a GitHub runner and pushes a text-free summary to branch
-# ci/live-jvm-evidence under runs/run_<date>_<sha>/<piece>/.
+# ci/live-jvm-evidence under runs/run_<date>_<sha>[_r<GITHUB_RUN_ID>]/<piece>/.
 #   text-live  NOVA_GEMINI_TEXT_LIVE=1 ... --tests '*GeminiTextLiveMapping*' --rerun
 #              rows FUZZY-TEXT-LIVE-001 (>=17/19 and FZ-15..19 all correct) and
 #              MUSIC-TEXT-LIVE-001 (>=8/10 play_music, 0/10 control_music{play})
@@ -138,6 +138,14 @@ print("\n".join(lines))
 PY
 }
 
+evidence_dir() { # sha stamp piece; _r<GITHUB_RUN_ID> keeps same-minute runs on one sha apart
+  printf 'runs/run_%s_%s%s/%s\n' "$2" "${1:0:7}" "${GITHUB_RUN_ID:+_r$GITHUB_RUN_ID}" "$3"
+}
+
+if [ "${1:-}" = "evidence-dir" ]; then
+  [ "$#" -eq 4 ] || { echo "usage: $0 evidence-dir <sha> <yyyymmdd_hhmm> <piece>" >&2; exit 2; }
+  evidence_dir "$2" "$3" "$4"; exit 0
+fi
 if [ "${1:-}" = "summarize" ]; then
   [ "$#" -eq 5 ] || { echo "usage: $0 summarize <piece> <results|-> <xml|-> <outdir>" >&2; exit 2; }
   summarize "$2" "$3" "$4" "$5"; exit 0
@@ -269,7 +277,7 @@ fi
 
 if [ "${LIVE_JVM_SKIP_PUSH:-}" = 1 ]; then exit "$rc"; fi
 sha="${GITHUB_SHA:-$(git rev-parse HEAD)}"
-dir="runs/run_$(date -u +%Y%m%d_%H%M)_${sha:0:7}/$piece"
+dir="$(evidence_dir "$sha" "$(date -u +%Y%m%d_%H%M)" "$piece")"
 git config user.name "github-actions[bot]"
 git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 stage="$(mktemp -d)"; cp "$out/summary.txt" "$stage/summary.txt"
