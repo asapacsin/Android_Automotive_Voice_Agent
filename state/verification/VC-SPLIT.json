@@ -1,0 +1,36 @@
+{
+ "task_id": "VC-SPLIT",
+ "contract_sha256": "3d57cfb2403cbb964fe50b2a84c17a4cefaced40ac7b2e682ab95f511d914d4f",
+ "tip": "3819fa1bfab8b9ddd070004848eff6ddc06b58c7",
+ "verified_by": "planner",
+ "at": "2026-10-20T00:49:43+00:00",
+ "results": [
+  {
+   "id": "workflow-yaml",
+   "kind": "lint",
+   "command": "python3 -c \"import yaml;yaml.safe_load(open('.github/workflows/voice-checks.yml'))\"",
+   "exit_code": 0,
+   "seconds": 0.0,
+   "log": "/root/nova-drive-build/nova-verify/VC-SPLIT/3819fa1bfab8-workflow-yaml.log",
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "id": "bash-syntax",
+   "kind": "lint",
+   "command": "bash -n scripts/github_voice_checks.sh",
+   "exit_code": 0,
+   "seconds": 0.0,
+   "log": "/root/nova-drive-build/nova-verify/VC-SPLIT/3819fa1bfab8-bash-syntax.log",
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "id": "script-tests",
+   "kind": "regression",
+   "command": "python3 -m unittest discover -s scripts/tests -t .",
+   "exit_code": 0,
+   "seconds": 189.8,
+   "log": "/root/nova-drive-build/nova-verify/VC-SPLIT/3819fa1bfab8-script-tests.log",
+   "log_sha256": "30b8cf03b49209dfbf516a1d7a1b0b6a19917b7f97696596907d4eb57764d92b"
+  }
+ ]
+}
