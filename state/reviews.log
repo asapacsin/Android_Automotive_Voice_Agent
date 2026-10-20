@@ -65,3 +65,4 @@ ca8f07588f28 PASS 2026-10-20 STYLE-GRADER reviewer: v3 rule exactly the decider'
 10c0e514e94a PASS 2026-10-20 WF-PRACTICES reviewer after one REVISE round: reader uses delegation_check parse_log+lookup (PASS->REVISE repro now 'review'), 4 stage tests, throughput (n-1)/span, guard deny schema correct; 278 script tests OK; guard not yet wired (owner pastes settings)
 5111e325a6e3 REVISED 2026-10-20 10c0e514e94a reviewer REVISE resolved (shared reviews.log parser, stage tests)
 31dc8a17b8ea PASS 2026-10-20 P53-SPLIT reviewer (unverified E2E): debug-only, shared-pool newBuilder client, path-only log lines (I-8), timings only on warm run 3, grep in github_device_checks.sh matches, release unit tests compile; notes: wiring copied from LiveDestinationCandidateSource, URL held in memory until formatted
+94e60792a2cc PASS 2026-10-20 DEV-SPLIT reviewer PASS; CI all 4 shards PASS run 39406821478 (slowest 15 min)
