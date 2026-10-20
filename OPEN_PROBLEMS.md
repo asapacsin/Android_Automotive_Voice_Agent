@@ -314,7 +314,7 @@ A type-less frame with neither field is still a protocol error. All four documen
 
 ## P53 — c_nav waits for the real place search
 
-**Status:** OPEN - fix merged (e37bc02) and Gemini rehearsal PASS (c_nav 3.5 s, 2026-10-12), but the real app's search time (preflight_search ms= cold/warm) has never been measured on an emulator; next: device-checks run with tool preflight.
+**Status:** OPEN - fix merged (e37bc02) and Gemini rehearsal PASS (c_nav 3.5 s, 2026-10-12). Measured 2026-10-20 on the real app (Device checks run 39372812766 at 6f4cc04, GitHub emulator, no proxy, ci/device-evidence runs/run_20261020_0524_6f4cc04): preflight_search cold 1850 ms (5 results), warm 925 ms - both above the ~0.6 s the c_nav budget leaves; next: find where the warm 0.9 s goes (DNS/TLS reuse vs Amap server time).
 
 **Found 2026-10-12, Gemini rehearsals** (cloud JVM, the app's real Amap place search for the first time). c_nav (「导航去横琴镇」) took 6.0 s and 4.7 s against its 3.5 s budget, because the search took 2.52 s and 2.25 s before any reply. Qwen takes 6 and 8, with an instant (simulated) search, answered c_nav in 2.78 s and 2.89 s, so the search may take about 0.6 s at most.
 

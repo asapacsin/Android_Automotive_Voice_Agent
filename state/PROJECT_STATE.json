@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-20T05:10:36",
+  "generated_at": "2026-10-20T05:30:56",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "df6327b",
+    "commit": "cd3c951",
     "branch": "claude/10-20",
-    "subject": "STYLE-CI contract approved",
+    "subject": "LIVEINFO-MAP contract approved",
     "working_tree_clean": false,
-    "uncommitted_files": 2
+    "uncommitted_files": 4
   },
   "tests": {
     "available": true,
@@ -101,7 +101,7 @@
     {
       "id": "P53",
       "title": "c_nav waits for the real place search",
-      "status": "OPEN - fix merged (e37bc02) and Gemini rehearsal PASS (c_nav 3.5 s, 2026-10-12), but the real app's search time (preflig"
+      "status": "OPEN - fix merged (e37bc02) and Gemini rehearsal PASS (c_nav 3.5 s, 2026-10-12). Measured 2026-10-20 on the real app (De"
     },
     {
       "id": "P55",
@@ -191,20 +191,13 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "DEMO-TRYOUT-001: FAIL: A first-time driver in their own words (19 lines: chat, vague asks, a refusal, a change of mind, barge-in, mumble, call), graded per line",
-    "actionable_count": 80,
+    "NEXT_ACTION": "A0: | A0 | G-1 … G-1f measured on the short route | measurement (emulator) | `GUIDANCE-EMU-001` | not earned |",
+    "actionable_count": 78,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 29,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "DEMO-TRYOUT-001",
-        "blocked_by": null
-      },
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
@@ -265,13 +258,6 @@
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
         "source": "SPEC-013-gemini-live-provider.md",
-        "item": "A7",
-        "blocked_by": null
-      },
-      {
-        "priority": 4,
-        "class": "unmet SPEC acceptance criterion",
-        "source": "SPEC-015-fuzzy-driving-requests.md",
         "item": "A7",
         "blocked_by": null
       },
