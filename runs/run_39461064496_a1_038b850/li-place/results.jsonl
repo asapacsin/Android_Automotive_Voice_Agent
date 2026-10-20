@@ -1,0 +1,4 @@
+{"id": "build:vendor-real", "status": "PASS", "detail": "real vendor files packaged"}
+{"id": "liveinfo:LI-PLACE", "status": "PASS", "detail": "10/10 runs passed", "passes": 10, "runs": 10}
+{"id": "liveinfo:runner", "status": "PASS", "detail": "1 scenario results"}
+{"id": "voice:quota-guard", "status": "PASS", "detail": "gemini_live, no qwen session"}
