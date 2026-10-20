@@ -43,8 +43,11 @@ class AmapGuidanceVoiceTest {
         HostAudioTap.guidanceSink = { host += it }
     }
 
+    private val defaultPoster = AmapGuidanceVoice.poster
+
     @AfterEach
     fun tearDown() {
+        AmapGuidanceVoice.poster = defaultPoster
         relayField.set(null, null)
         AmapGuidanceVoice.textReceiver = null
         HostAudioTap.guidanceSink = null
@@ -94,7 +97,19 @@ class AmapGuidanceVoiceTest {
     }
 
     @Test
-    @Disabled("GAP: onPlayStart → tellRelays posts to Handler(Looper.getMainLooper()), not constructible in JVM unit tests")
     fun toggleOnPlayStartDoesNotFeedPanelTwice() {
+        wire()
+        AmapGuidanceVoice.poster = { it() }
+        relayField.set(null, relay())
+        AmapGuidanceVoice.onNavigationText("前方左转")
+        AmapGuidanceVoice.onPlayStart("前方左转")
+        AmapGuidanceVoice.onPlayEnd("前方左转")
+        assertEquals(listOf("前方左转"), panel, "relay on: the panel is fed once, from the text callback")
+        assertTrue(host.isEmpty(), "relay on: onPlayStart does not feed the host tap")
+    }
+
+    @Test
+    @Disabled("GAP: the Amap fallback speaker (host tap feed) is built in buildRelay from a real AMapNavi, not constructible in JVM unit tests")
+    fun toggleOnHostTapFedOnlyThroughAmapFallback() {
     }
 }
