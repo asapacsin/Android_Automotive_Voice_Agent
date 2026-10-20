@@ -69,6 +69,21 @@ call; executors were ~10-16%).
   for authorised work is told to take the documented default instead. It allows the stop after 20
   consecutive refusals or when no autonomous action remains, fails open, and `NOVA_KEEP_GOING=0`
   turns it off.
+- **Wall-clock first (owner 2026-10-20).** The chain executor → verify → review → merge → CI is not
+  run one step at a time:
+  - *Overlap verify and review.* Start the reviewer as soon as the executor commits, and run the
+    acceptance commands at the same time in the executor's worktree with its own `NOVA_BUILD_DIR`
+    (never two Gradle runs on one build dir).
+  - *Speculative CI.* Dispatch the emulator/voice workflow on the executor branch
+    (`workflow_dispatch`, `ref: exec/<name>`) while review runs, when pushing that branch is allowed;
+    a PASS on the reviewed tip is the evidence, and nothing is re-run after the merge unless the merge
+    changed the tree.
+  - *Batch CI.* After several independent merges, one device / voice run checks them together; the
+    per-check verdict rows say which fix broke if it fails. One run per fix only when they touch the
+    same check.
+  - *Fan out.* Independent units (no shared OWNED_SCOPE file) go to parallel executors in separate
+    worktrees in the same message; read-only triage and planning agents run alongside them. Never wait
+    on one background job before starting work that does not depend on it.
 - **No idle check-ins.** Schedule a self check-in only for an external wait nothing else reports
   (a CI run, a deploy), at that wait's real duration, and at most one pending at a time. Background
   agents and PR events wake the session themselves. Never re-arm a check-in that found nothing new;
