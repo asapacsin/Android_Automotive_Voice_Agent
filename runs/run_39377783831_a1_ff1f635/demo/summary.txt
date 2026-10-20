@@ -1,0 +1,12 @@
+app: map up
+secret AMAP_WEB_KEY: set, amap_web_setup -> result=applied 
+secret GEMINI_API_KEY: set, gemini_setup -> result=applied 
+voice: provider override -> result=override=gemini 
+voice: session_provider choice=gemini_live
+voice: session up
+WAKE-SYNTH-001: wake on -> result=wake  status: enabled=true credentials_complete=false 
+WAKE-SYNTH-001: wake inject -> result=injecting  detection=0 to_active=0 provider= wake_lines= 1 wake_capture_started; 10 wake_init_failure;
+demo: bridge rc=0
+demo: provider=session_provider choice=gemini_live tools= 2 tool=bridge  2 tool=choose_navigation_option  9 tool=control_climate  4 tool=control_music  3 tool=exit_navigation_mode  3 tool=navigate_to  1 tool=provider  1 tool=voice  errors=0
+demo: voice_demo.mp4 written (audio offset 0.0 s)
+voice: shard demo done, override cleared
