@@ -173,6 +173,18 @@ adb pull /sdcard/checks_drive.mp4 "$ev/checks_drive_phone.mp4" >/dev/null || tru
 ffmpeg -v error -y -i "$ev/checks_drive_phone.mp4" -c copy -movflags +faststart "$ev/checks_drive.mp4" && rm -f "$ev/checks_drive_phone.mp4" || true
 shot nav_end
 note "NAV-MID-ROUTE-001 / NAV-UI-00x: maneuver=$(count 'nav_maneuver ') lane_shown=$(count 'nav_lane_info shown=true') junction_shown=$(count 'nav_junction shown=true') traffic_update=$(count 'nav_traffic_status_update') presentation_driving=$(count 'nav_presentation mode=driving') lights=$(count 'nav_remain_lights') cameras=$(count 'nav_camera_ahead') speed_over=$(count 'nav_speed .*over=1') ring=$(count 'nav_play_ring') guidance_play=$(count 'nav_guidance_play_start')"
+# NAV-UI-002..006 from lines already collected: the P58 view notes (mode, bearing numbers) and the counters above.
+ui_modes="$(grep -E '^P58 view ' "$summary" | grep -oE 'naviMode=[a-z_0-9]+' | sort | uniq -c | tr -s ' ' | tr '\n' ',')"
+ui_views="$(grep -cE '^P58 view .*naviMode=' "$summary" || true)"
+ui_carup="$(grep -cE '^P58 view [^:]*: naviMode=car_up ' "$summary" || true)"
+ui_bearings="$(grep -E '^P58 view ' "$summary" | grep -oE 'bearing=[0-9.-]+' | cut -d= -f2 | sort -u | tr '\n' ' ')"
+ui_distinct="$(wc -w <<<"$ui_bearings" | tr -d ' ')"
+ui_man="$(count 'nav_maneuver ')"; ui_lane="$(count 'nav_lane_info shown=true')"; ui_junc="$(count 'nav_junction shown=true')"; ui_traf="$(count 'nav_traffic_status_update')"
+pf device:NAV-UI-002 "view_lines=$ui_views car_up=$ui_carup modes=$ui_modes" '[ "$ui_views" -ge 3 ] && [ "$ui_carup" = "$ui_views" ]'
+pf device:NAV-UI-003 "distinct_bearings=$ui_distinct bearings=$ui_bearings" '[ "$ui_distinct" -ge 3 ] && [ "$(tr -d "0 ." <<<"$ui_bearings")" != "" ]'
+pf device:NAV-UI-005 "maneuver=$ui_man" '[ "$ui_man" -ge 1 ]'
+if [ "$ui_traf" -ge 1 ]; then res device:NAV-UI-004 PASS "traffic_update=$ui_traf"; else res device:NAV-UI-004 SKIPPED "Amap supplied no traffic status"; fi
+if [ $((ui_lane + ui_junc)) -ge 1 ]; then res device:NAV-UI-006 PASS "lane_shown=$ui_lane junction_shown=$ui_junc"; else res device:NAV-UI-006 SKIPPED "Amap supplied no lane or junction"; fi
 stopped="$(nova | grep -oE 'nav_stopped reached=(true|false) reason=[a-z_]+' | tail -1)"
 prox="$(count 'nav_proximity_arrival')"
 note "NAV-E2E-ARRIVAL-001: proximity_arrival=$prox stopped=$stopped"
