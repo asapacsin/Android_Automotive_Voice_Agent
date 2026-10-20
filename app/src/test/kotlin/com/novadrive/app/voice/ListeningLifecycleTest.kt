@@ -584,7 +584,8 @@ class ListeningLifecycleTest {
     }
 
     @Test
-    @Disabled("GAP: built in VoiceSessionController.cancelReplySparingGuidance (playback.guidanceActive); no JVM seam — the controller constructs AndroidPlaybackPort(PcmAudioPlayer)")
+    // The sparing decision itself is earned by GuidanceSparingCancelTest.
+    @Disabled("GAP: decision earned in GuidanceSparingCancelTest; remaining: wiring of cancelAssistantReply / wake-word activateListening to it needs an Android Context and PcmAudioPlayer (VoiceSessionController)")
     fun shutUpSleepAndWakeWordInActiveSpareOpenGuidance() {
     }
 }

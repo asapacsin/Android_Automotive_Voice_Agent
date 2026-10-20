@@ -200,9 +200,12 @@ class VoiceSessionController(
     }
 
     /** SPEC-018: an open guidance prompt is spared; ordinary chatter was already discarded at OPENED (B3). */
-    private fun cancelReplySparingGuidance() {
-        if (!playback.guidanceActive) active.cancelCurrentResponse()
-    }
+    private val guidanceSparingCancel = GuidanceSparingCancel(
+        guidanceActive = { playback.guidanceActive },
+        cancel = { active.cancelCurrentResponse() },
+    )
+
+    private fun cancelReplySparingGuidance() = guidanceSparingCancel.cancelUnlessGuidance()
 
     /** 「闭嘴」: the reply stops now; the conversation and listening continue (SILENT_WAIT). */
     fun shutUp(reason: String) {
