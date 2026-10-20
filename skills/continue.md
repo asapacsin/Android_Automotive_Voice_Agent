@@ -79,8 +79,17 @@ call; executors were ~10-16%).
   discover_work lists independent items → first scope the next items (read-only Explore agents in
   parallel, one per item) and dispatch executors on disjoint approved_paths. Read a CI run when it
   finishes, not at the check-in time; a check-in is only the fallback.
-- **Scouts on a smaller model (owner 2026-10-20, Anthropic sub-agent guidance).** Read-only scoping
-  agents (Explore) run with `model: sonnet`; executors, reviewers and the decider keep the default.
+- **Token budget per agent type (owner 2026-10-20, Claude Code per-subagent model slots).**
+  - Scouts (Explore): `model: haiku` for "find where X is", `model: sonnet` for "explain why X";
+    one tight question naming the files to read, never "search everything".
+  - Executors: their definition already runs Opus 5.5 at effort low (owner's fallback order; Gemini
+    first once a Gemini executor path exists).
+  - Reviewer: only for branches touching `<module>/src/**`; script/doc-only branches are verified by
+    the planner and recorded WAIVED where reviews.log allows (contracted branches still need ELIGIBLE,
+    so contract script work only when a reviewer adds real value).
+  - Decider (effort xhigh): only for real design forks; paste the evidence numbers into the question
+    so it does not re-read whole documents.
+  - Never ask any agent to read all of TEST_MATRIX.yaml or OPEN_PROBLEMS.md; give row ids/sections.
   A scout's claim ("already satisfied", "bind only") is checked against the row's own pass criteria
   before anything is recorded - on 2026-10-20 three "bind only" rows met none of their criteria.
 - **Tests first for behaviour changes (Claude Code best practices).** A contract that changes
