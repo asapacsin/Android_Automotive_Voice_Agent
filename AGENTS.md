@@ -213,7 +213,10 @@ does not change architecture ownership, invariants, or who may certify work. Age
   found 2026-10-19:** the key is on the free tier, 20 requests per model per day, and one agent task
   spends that in a single run (P67-LOG: 429 `generate_content_free_tier_requests` on both 3.8 and 3.6
   Flash before the task finished). So Gemini executors only fit tiny packets on a fresh daily quota;
-  otherwise the Claude executor is used. A paid Gemini key would lift this. The contract gate
+  otherwise the Claude executor is used. **When a Gemini executor call fails** (429 quota, 502/503,
+  or the CLI errors out mid-task), dispatch the same packet to the `executor` agent, which runs
+  **Opus 5.5 at low effort** (`.claude/agents/executor.md`); don't retry Gemini that day (owner,
+  2026-10-20). A paid Gemini key would lift this. The contract gate
   (docs/AGENT_CONTRACT_WORKFLOW.md) applies to it unchanged: scope, verify and reviewer PASS are
   checked from git, never taken from its report. Respect the vendor-file rule: the licensed vendor
   files must not be sent to it.
