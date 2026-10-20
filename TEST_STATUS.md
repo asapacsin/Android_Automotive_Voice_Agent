@@ -20,7 +20,7 @@ Updated 2026-09-21 · 163 tests
 
 **HUMAN_VALIDATION_READY = FALSE**
 
-- the registry does not validate: 6 problem(s)
+- the registry does not validate: 1 problem(s)
 - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 - TRUTH-MEDIA-001 is AUTONOMOUS and NOT_RUN - run it or fix it
@@ -145,13 +145,13 @@ Updated 2026-09-21 · 163 tests
 | NAV-DRIVE-001 | navigation | A route calculates and guides to arrival | HUMAN_PHYSICAL | HUMAN_REQUIRED | yes | NAV-SEARCH-001, NAV-PICK-001, NAV-CANCEL-001, NAV-CORRECT-001 PASS |
 | NAV-E2E-ARRIVAL-001 | navigation | Navigation reaches the destination and terminates by arrival | AUTONOMOUS | PASS | yes | 2026-10-16 GitHub device run 38832785831 at 02d9ab7: nav_proximity_arrival x1, nav_stop… |
 | NAV-MID-ROUTE-001 | navigation | Mid-route navigation baseline without countdown entitlement | AUTONOMOUS | NOT_RUN | yes | 2026-09-21: nav_traffic_countdown status=BLOCKED_EXTERNAL_AMAP_ENTITLEMENT |
-| NAV-OVERSPEED-001 | navigation | Spoken over-speed warning with the guidance toggle off (the shipped path) | AUTONOMOUS | STALE | no | 2026-10-16: not covered by nav demo e9f8535/its fix - that run has the relay ON; the sh… |
+| NAV-OVERSPEED-001 | navigation | Spoken over-speed warning with the guidance toggle off (the shipped path) | AUTONOMOUS | PASS | no | 2026-10-16: not covered by nav demo e9f8535/its fix - that run has the relay ON; the sh… |
 | NAV-OVERSPEED-DEVICE-001 | navigation | The over-speed warning is heard in the car | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | NAV-OVERSPEED-001 |
 | NAV-PHONETIC-CONFIRM-001 | navigation | A phonetic lead asks for confirmation and never navigates | AUTONOMOUS | PASS | yes | 2026-09-24: NavigationPendingChoiceTest 10/10 with an injected proposer |
 | NAV-PHONETIC-DEVICE-001 | navigation | Misheard destination name is confirmed by voice on the device | HUMAN_PHYSICAL | HUMAN_REQUIRED | no | NAV-CHOICE-STALE-001 and NAV-PHONETIC-CONFIRM-001 passed 2026-09-24 |
 | NAV-PICK-001 | navigation | 第二个 picks from the on-screen list | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
 | NAV-SEARCH-001 | navigation | A destination produces candidates and does not start navigating | AUTONOMOUS | PASS | yes | 2026-09-20: 20/20 suite |
-| NAV-SIM-QA-001 | navigation | Reusable navigation screen-recording movie for QA | AUTONOMOUS | STALE | no | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
+| NAV-SIM-QA-001 | navigation | Reusable navigation screen-recording movie for QA | AUTONOMOUS | PASS | no | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
 | NAV-UI-001 | navigation | 「开始导航」 enters ACTIVE_DRIVING_NAVIGATION, not route preview | AUTONOMOUS | PASS | yes | EmbeddedNavigationControllerTest.SelectingARouteEntersDrivingPresentationNotRoutePreview |
 | NAV-UI-002 | navigation | During GPS navigation the vehicle stays in lock-car tracking | AUTONOMOUS | PASS | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
 | NAV-UI-003 | navigation | Vehicle heading rotates the navigation map | AUTONOMOUS | PASS | yes | 2026-10-15 GitHub emulator API 34 x86_64 (arm64 app), run 38756802061 at aec4006, artif… |
