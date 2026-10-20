@@ -1,0 +1,63 @@
+schema: nova-task-contract/1
+task_id: P68-POLY
+title: along_route searches one Web place/polygon corridor ahead on the route instead of the dead SDK RoutePOISearch (P68, decider 2026-10-20)
+branch: exec/p68-poly
+base_commit: 881cd937aa49c1da2cf1ab78b3032a023ef584fa
+approved_paths:
+  - app/src/main/kotlin/com/novadrive/app/AmapPoiClient.kt
+  - app/src/main/kotlin/com/novadrive/app/AmapLiveInfoParser.kt
+  - app/src/main/kotlin/com/novadrive/app/LiveInfoTool.kt
+  - app/src/main/kotlin/com/novadrive/app/tools/LiveInfoDomain.kt
+  - app/src/main/kotlin/com/novadrive/app/ToolFailureAdvice.kt
+  - app/src/main/kotlin/com/novadrive/app/nav/RouteLiveInfo.kt
+  - app/src/main/kotlin/com/novadrive/app/nav/AlongRouteCorridor.kt
+  - app/src/main/kotlin/com/novadrive/app/nav/amap/AmapRouteLiveInfo.kt
+  - app/src/main/kotlin/com/novadrive/app/nav/amap/NavigationTraceListener.kt
+  - app/src/main/kotlin/com/novadrive/app/nav/EmbeddedNavigationController.kt
+  - app/src/test/kotlin/com/novadrive/app/nav/AlongRouteCorridorTest.kt
+  - app/src/test/kotlin/com/novadrive/app/nav/RouteLiveInfoMappingTest.kt
+  - app/src/test/kotlin/com/novadrive/app/AmapLiveInfoParserTest.kt
+  - app/src/test/kotlin/com/novadrive/app/LiveInfoToolTest.kt
+  - app/src/test/kotlin/com/novadrive/app/LiveInfoAlongRouteWiringTest.kt
+  - app/src/test/resources/**
+  - app/src/main/kotlin/com/novadrive/app/nav/amap/AmapPrivacyCompliance.kt
+  - app/src/test/kotlin/com/novadrive/app/livedemo/HengqinWorld.kt
+  - app/src/test/kotlin/com/novadrive/app/RouteLiveInfoMappingTest.kt
+  - app/src/debug/kotlin/com/novadrive/app/AlongProbe.kt
+  - app/src/debug/kotlin/com/novadrive/app/DebugToolReceiver.kt
+  - app/src/testDebug/kotlin/com/novadrive/app/AlongProbeTest.kt
+  - scripts/github_device_checks.sh
+allowed_changes:
+  - "AmapPrivacyCompliance.kt: comment-only edit so it no longer names RoutePOISearch (no code change)"
+  - "Implement exactly the decision in state/decisions/P68-along-route-source.md (read it fully: bounds, polygon construction, filter, ordering, cap, wording, failures, log line, code locations, deletions)"
+  - "Tests first: AlongRouteCorridorTest (pure geometry: closed convex <= 64 vertices <= 6 decimals; coverage within w incl. a U-turn; behind-car and off-corridor POIs dropped; ordering by along-route distance; de-dup by id), a place/polygon parser fixture with fixed fake coordinates (no real place names from logs), LiveInfoToolTest/LiveInfoAlongRouteWiringTest cases for NO_RESULTS wording with extent, AMAP_WEB_KEY_MISSING, status != 1 -> LIVE_INFO_UNAVAILABLE, and the picker still opening with <= 5 ordered candidates"
+  - "Delete RoutePOISearch use, RoutePoi, toCandidates, alongRouteSearchLine and their tests; in debug AlongProbe remove the SDK forms (keep the web_around line only if still useful, else remove the probe tool and its script block)"
+  - "github_device_checks.sh: the dispatch section's LIVE-INFO-SDK-ALONG check keeps its id and pf condition; the note grep follows the new along_route_search line shape (counts only)"
+architecture_constraints:
+  - LiveInfoTool stays the owner of along_route; REST calls only in AmapPoiClient; com.amap only in nav/amap (I-9)
+  - No coordinate, polygon, URL, place name or POI id in any log (I-8)
+  - Exactly one web call per question, inside the existing 4 s deadline
+forbidden_changes:
+  - No change to the model-facing tool contract (kind, category, failure code names) beyond the decision; no change to other live-info kinds
+forbidden_paths:
+  - .claude/**
+  - TEST_MATRIX.yaml
+  - .github/**
+  - config/**
+  - SPECS/**
+required_verification:
+  - id: unit
+    kind: regression
+    command: ./gradlew --no-daemon -q :app:testDebugUnitTest --tests "*AlongRouteCorridorTest" --tests "*AmapLiveInfoParserTest" --tests "*LiveInfoToolTest" --tests "*LiveInfoAlongRouteWiringTest" --tests "*RouteLiveInfoMappingTest" --tests "*DemoCommuteAmapLiveTest" --tests "*AlongProbe*"
+  - id: arch
+    kind: regression
+    command: ./gradlew --no-daemon -q :behavior-test:test --tests "*ArchitectureRulesTest"
+  - id: compile-release
+    kind: compile
+    command: ./gradlew --no-daemon -q :app:compileReleaseKotlin
+  - id: bash-syntax
+    kind: lint
+    command: bash -n scripts/github_device_checks.sh
+acceptance_criteria:
+  - along_route makes one place/polygon call and returns up to 5 corridor POIs ordered by distance along the route
+  - RoutePOISearch no longer referenced under app/src

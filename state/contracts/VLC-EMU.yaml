@@ -1,0 +1,32 @@
+schema: nova-task-contract/1
+task_id: VLC-EMU
+title: MUSIC-VLC-EMU-001 on the CI emulator - VLC installed, tagged local files pushed, notification listener granted, play_music hands off to VLC and the readback names the file; and the honest failure with the grant revoked
+branch: exec/vlc-emu
+base_commit: 1bb793ef990bacba53f09396f42a9926861ae192
+approved_paths:
+  - scripts/github_device_checks.sh
+  - config/ci_checks.json
+  - scripts/tests/**
+  - tools/ci-media/**
+allowed_changes:
+  - "Read the TEST_MATRIX.yaml MUSIC-VLC-EMU-001 row (grep the id, ~30 lines) and SPECS/SPEC-017 A6 for the pass criteria. Add a section to the lifecycle shard of github_device_checks.sh: download a pinned VLC for Android x86_64 APK from an official VideoLAN URL with a sha256 check (fail BLOCKED, not FAIL, when the download fails), adb install it, generate two short tagged audio files on the runner (ffmpeg sine + metadata title/artist; small, nothing copyrighted) and push to /sdcard/Music, media-scan them, grant the app's notification listener with adb shell cmd notification allow_listener, dispatch play_music via the existing debug tool, and read the existing music_verify / now_playing codes; then revoke the listener and check the honest failure code. New ids device:MUSIC-VLC-HANDOFF and device:MUSIC-VLC-NOLISTENER in the lifecycle shard suite (optional at first)"
+  - "tools/ci-media/ may hold a tiny generator script if needed (no binary audio committed)"
+  - "Notes carry codes and counts only - no track title from the device log beyond the generated test titles (I-8)"
+architecture_constraints:
+  - Scripts and manifest only; no app source change; no copyrighted media; the APK is downloaded at run time, never committed
+forbidden_changes:
+  - No change to other shards' sections or existing pf conditions
+forbidden_paths:
+  - .claude/**
+  - app/**
+  - TEST_MATRIX.yaml
+  - .github/**
+required_verification:
+  - id: script-tests
+    kind: regression
+    command: python3 -m unittest discover -s scripts/tests -t .
+  - id: bash-syntax
+    kind: lint
+    command: bash -n scripts/github_device_checks.sh
+acceptance_criteria:
+  - A lifecycle-shard run records both new ids with codes

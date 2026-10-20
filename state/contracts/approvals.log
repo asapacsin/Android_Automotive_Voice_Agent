@@ -29,3 +29,8 @@ COMPACT-CWD 327eff9a86e578b83e1f3de1cfb5e9aad1fbd575245f62cfbbb3287e269ae486 APP
 ALONG-PROBE2 9a95609c7099fae620001ccab7a68834a1e0e6aa469c49d8cf19a2279ba2d82d APPROVED 2026-10-20 architect range is not the cause; test query form and a web cross-check
 SEAM-A7 f87c348efc89f041c9b2c252e61e107437bf45f29660171e7dcff393f7261f76 APPROVED 2026-10-20 architect close SPEC-018 GAPs with internal seams
 SEAM-A4 5724bbbbda2b383593d731bc4c7588c32f2d927b2f62f6b717a353b40e34b39c APPROVED 2026-10-20 architect close SPEC-018 GAPs with internal seams
+P68-POLY 6db8046398315357437132faec94e16601d2b852ed221621862186fa5800a65d APPROVED 2026-10-20 architect decider DECIDED option b for P68
+P68-POLY 2ee92d3eb1b2fdcb1ced341a3656bf41e29081cbe480af29af5de4a98338f08c APPROVED 2026-10-20 architect executor BLOCKED: add HengqinWorld fake and root RouteLiveInfoMappingTest
+MIDROUTE-SPEED cd8c511fcccca91f012ddeae079c4b1c81bdf871819f72f5cb1333fd495c6f2c APPROVED 2026-10-20 architect autonomous emulator evidence for NOT_RUN rows
+VLC-EMU b6df16e19e816b335b86be4efbb8cfa0d65052be8b098c956184cc6e61562c4f APPROVED 2026-10-20 architect autonomous emulator evidence for NOT_RUN rows
+P68-POLY f3b0b89e056255905105450b35014eb6c34c19dab70402a6c5b0473f0299399a APPROVED 2026-10-20 architect comment-only edit in AmapPrivacyCompliance for the RoutePOISearch grep

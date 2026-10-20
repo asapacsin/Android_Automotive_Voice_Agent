@@ -1,0 +1,27 @@
+{
+ "task_id": "MIDROUTE-SPEED",
+ "contract_sha256": "cd8c511fcccca91f012ddeae079c4b1c81bdf871819f72f5cb1333fd495c6f2c",
+ "tip": "b475a9b1cf10e7237e760fe86313db56db9290dd",
+ "verified_by": "planner",
+ "at": "2026-10-20T12:24:21+00:00",
+ "results": [
+  {
+   "id": "script-tests",
+   "kind": "regression",
+   "command": "python3 -m unittest discover -s scripts/tests -t .",
+   "exit_code": 0,
+   "seconds": 216.8,
+   "log": "/root/nova-drive-build/nova-verify/MIDROUTE-SPEED/b475a9b1cf10-script-tests.log",
+   "log_sha256": "106cc5b49c352e310bd1dec028db9922f6d2da638b70cfca80869bc91dd9b4b7"
+  },
+  {
+   "id": "bash-syntax",
+   "kind": "lint",
+   "command": "bash -n scripts/github_device_checks.sh",
+   "exit_code": 0,
+   "seconds": 0.0,
+   "log": "/root/nova-drive-build/nova-verify/MIDROUTE-SPEED/b475a9b1cf10-bash-syntax.log",
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+ ]
+}
