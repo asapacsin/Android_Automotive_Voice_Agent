@@ -121,7 +121,7 @@ web_key=0; setup_key AMAP_WEB_KEY amap_web_setup amap_web_setup.txt && web_key=1
 tool preflight "横琴镇"; sleep 10
 note "PIECE P53 search: $(nova | grep -oE 'preflight_search count=[0-9]+ first_m=-?[0-9]+ ms=[0-9]+' | sed -E 's/first_m=-?[0-9]+ //' | tail -1) $(nova | grep -oE 'preflight_search_warm (runs=[0-9]+ )?ms=[0-9,]+' | tail -1)"
 # P53 split (debug preflight, last warm run): one line per HTTP call - REST path and phase ms only.
-nova | grep -oE 'preflight_split call=[0-9]+ path=/[A-Za-z0-9/_]+ dns_ms=-?[0-9]+ connect_ms=-?[0-9]+ tls_ms=-?[0-9]+ ttfb_ms=-?[0-9]+ body_ms=-?[0-9]+ reused=(true|false)' | tail -8 | while read -r l; do note "PIECE P53 split: $l"; done
+nova | grep -oE 'preflight_split call=[0-9]+ path=/[A-Za-z0-9/_]+ dns_ms=-?[0-9]+ connect_ms=-?[0-9]+ tls_ms=-?[0-9]+ ttfb_ms=-?[0-9]+ body_ms=-?[0-9]+ reused=(true|false)( protocol=[A-Za-z0-9./_-]+ conn_close=(true|false) gap_ms=-?[0-9]+)?' | tail -8 | while read -r l; do note "PIECE P53 split: $l"; done
 tool dispatch "navigate_to:destination=回家"; sleep 4
 asks="$(nova | grep 'debug_tool tool=dispatch ' | tail -1 | grep -q '地址' && echo yes || echo no)"
 note "PLACE-UNSET-001: navigate_to 回家 before a home is saved -> $(result_of dispatch) asks_for_address=$asks"
@@ -235,6 +235,8 @@ tool dispatch "choose_navigation_option:index=1"; sleep 10
 tool dispatch "query_live_info:kind=along_route,category=fuel"; sleep 8
 li_along="$(nova | grep -oE 'live_info kind=along_route ok=(true|false) code=[A-Z_a-z-]* ms=[0-9]+' | tail -1)"
 note "LIVE-INFO-SDK along_route: ${li_along:-no live_info line} dispatch $(result_of dispatch)"
+li_search="$(nova | grep -oE 'along_route_search code=-?[0-9]+ raw=-?[0-9]+ mapped=[0-9]+ dropped_no_point=[0-9]+ dropped_other=[0-9]+ range_m=[0-9]+ route_m=-?[0-9]+' | tail -1)"
+note "PIECE LIVE-INFO-SDK search: ${li_search:-no along_route_search line}"
 pf device:LIVE-INFO-SDK-ALONG "${li_along:-no live_info line}" 'grep -q "ok=true" <<<"$li_along"'
 tool dispatch "exit_navigation_mode"; sleep 4
 tool dispatch "navigate_to:destination=珠海站"; sleep 8
