@@ -20,6 +20,8 @@ approved_paths:
   - app/src/test/kotlin/com/novadrive/app/LiveInfoToolTest.kt
   - app/src/test/kotlin/com/novadrive/app/LiveInfoAlongRouteWiringTest.kt
   - app/src/test/resources/**
+  - app/src/test/kotlin/com/novadrive/app/livedemo/HengqinWorld.kt
+  - app/src/test/kotlin/com/novadrive/app/RouteLiveInfoMappingTest.kt
   - app/src/debug/kotlin/com/novadrive/app/AlongProbe.kt
   - app/src/debug/kotlin/com/novadrive/app/DebugToolReceiver.kt
   - app/src/testDebug/kotlin/com/novadrive/app/AlongProbeTest.kt
@@ -44,7 +46,7 @@ forbidden_paths:
 required_verification:
   - id: unit
     kind: regression
-    command: ./gradlew --no-daemon -q :app:testDebugUnitTest --tests "*AlongRouteCorridorTest" --tests "*AmapLiveInfoParserTest" --tests "*LiveInfoToolTest" --tests "*LiveInfoAlongRouteWiringTest" --tests "*RouteLiveInfoMappingTest" --tests "*AlongProbe*"
+    command: ./gradlew --no-daemon -q :app:testDebugUnitTest --tests "*AlongRouteCorridorTest" --tests "*AmapLiveInfoParserTest" --tests "*LiveInfoToolTest" --tests "*LiveInfoAlongRouteWiringTest" --tests "*RouteLiveInfoMappingTest" --tests "*DemoCommuteAmapLiveTest" --tests "*AlongProbe*"
   - id: arch
     kind: regression
     command: ./gradlew --no-daemon -q :behavior-test:test --tests "*ArchitectureRulesTest"
