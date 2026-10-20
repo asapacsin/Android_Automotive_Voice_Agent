@@ -25,6 +25,8 @@ class AlongRouteCorridor private constructor(
     /** `lon,lat|...`, closed, at most [MAX_VERTICES] points, six decimals. Never logged. */
     val polygon: String,
     val vertices: Int,
+    /** The simplification tolerance actually used (raised from [SIMPLIFY_M] to fit [MAX_VERTICES]). */
+    val toleranceMeters: Double,
     /** How far ahead of the car was searched: min(remaining, L). */
     val lookaheadMeters: Int,
     /** True when the lookahead covered the whole remaining route. */
@@ -85,8 +87,11 @@ class AlongRouteCorridor private constructor(
     companion object {
         /** w: how far off the route a POI may be. */
         const val HALF_WIDTH_M = 500.0
-        /** The buffer circle radius: w + 50 m (the simplification tolerance). */
-        const val BUFFER_M = HALF_WIDTH_M + 50.0
+        /**
+         * The octagon around each simplified vertex circumscribes the circle of w + tolerance, so
+         * its narrowest reach (the apothem) is still w beyond the drift the simplification allows.
+         */
+        fun bufferRadius(tolerance: Double): Double = (HALF_WIDTH_M + tolerance) / cos(PI / CIRCLE_POINTS)
         const val SIMPLIFY_M = 50.0
         const val MAX_VERTICES = 64
         private const val CIRCLE_POINTS = 8
@@ -125,10 +130,11 @@ class AlongRouteCorridor private constructor(
             var hull: List<Pair<Double, Double>>
             while (true) {
                 val simplified = douglasPeucker(segment, tolerance)
+                val radius = bufferRadius(tolerance)
                 val buffered = simplified.flatMap { (x, y) ->
                     (0 until CIRCLE_POINTS).map { k ->
                         val a = 2 * PI * k / CIRCLE_POINTS
-                        x + BUFFER_M * cos(a) to y + BUFFER_M * sin(a)
+                        x + radius * cos(a) to y + radius * sin(a)
                     }
                 }
                 hull = convexHull(buffered)
@@ -146,6 +152,7 @@ class AlongRouteCorridor private constructor(
                 carMeters = car,
                 polygon = ring.joinToString("|"),
                 vertices = ring.size,
+                toleranceMeters = tolerance,
                 lookaheadMeters = (end - car).toInt(),
                 reachesDestination = car + lookaheadMeters >= total,
             )

@@ -162,6 +162,7 @@ class AmapLiveInfoParserTest {
         assertEquals(27, found.total, "the response count, not the page size")
         assertEquals("10000", found.infocode)
         assertEquals(listOf("B0FAKE0001", "B0FAKE0002"), found.pois.map { it.poiId })
+        assertEquals(3, found.returned, "the page as sent, including the POI without a point")
         assertEquals("测试加油站甲", found.pois[0].name)
         assertEquals(39.0, found.pois[0].latitude, 0.0)
         assertEquals(116.0, found.pois[0].longitude, 0.0)

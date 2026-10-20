@@ -50,7 +50,13 @@ data class PlaceDetail(
 )
 
 /** One place/polygon page: Amap's total count and the POIs that have a point (P68). Never logged. */
-data class PolygonPlaces(val total: Int, val infocode: String?, val pois: List<DestinationCandidate>)
+data class PolygonPlaces(
+    val total: Int,
+    val infocode: String?,
+    val pois: List<DestinationCandidate>,
+    /** Items on the page as sent, including any without a usable point. */
+    val returned: Int = pois.size,
+)
 
 /**
  * Parsers for the Amap REST responses `query_live_info` reads. Fixtures recorded 2026-09-25 live
@@ -140,6 +146,7 @@ object AmapLiveInfoParser {
                     total = root.optString("count").toIntOrNull() ?: 0,
                     infocode = infocode,
                     pois = AmapPoiParser.parseCandidates(json),
+                    returned = root.optJSONArray("pois")?.length() ?: 0,
                 ),
             )
         }) {

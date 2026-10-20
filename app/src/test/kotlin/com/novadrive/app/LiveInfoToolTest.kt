@@ -519,6 +519,22 @@ class LiveInfoToolTest {
         assertNull(logs.firstOrNull { it.contains("北京") || it.contains("上海") || it.contains("110101") })
     }
 
+    @Test
+    fun aTimedOutAlongRouteSearchNeverOpensThePicker() {
+        startNavigation()
+        route.progress = RouteProgress(eastward(30_000), 0)
+        val slow = object : AmapLiveInfoRest by LiveInfoTool.noRest() {
+            override fun placePolygon(polygon: String, types: String, key: String): LiveInfoFetch<PolygonPlaces> {
+                Thread.sleep(800)
+                return LiveInfoFetch.Ok(PolygonPlaces(1, "10000", listOf(candidate("s", "测试站", poiId = "B0FAKE").copy(latitude = 22.0, longitude = 113.01))))
+            }
+        }
+        assertFails("LIVE_INFO_UNAVAILABLE", run(tool(rest = slow, timeoutMs = 200), "kind" to "along_route", "category" to "fuel"))
+        Thread.sleep(1_200)
+        assertEquals(NavigationPhase.NAVIGATING, navigation.state().value)
+        assertTrue(navigation.destinationCandidates.value.isEmpty())
+    }
+
     companion object {
         fun candidate(id: String, name: String, poiId: String? = null, adcode: String? = null) = DestinationCandidate(
             id = id,

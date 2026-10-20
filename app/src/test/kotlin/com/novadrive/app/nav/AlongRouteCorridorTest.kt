@@ -151,4 +151,48 @@ class AlongRouteCorridorTest {
         assertNull(AlongRouteCorridor.plan(listOf(at(0.0, 0.0)), 0, 10_000))
         assertNull(AlongRouteCorridor.plan(straight(1_000), 1_000, 10_000))
     }
+
+    /** Reviewer case: a 22.5° road with a 45 m bump the simplification removes; a POI 499 m off the bump peak. */
+    @Test
+    fun aPoiJustInsideWOffASimplifiedAwayBumpIsKeptAndInsideThePolygon() {
+        val angle = Math.toRadians(22.5)
+        val ux = kotlin.math.sin(angle)
+        val uy = kotlin.math.cos(angle)
+        // Unit normal to the road.
+        val nx = uy
+        val ny = -ux
+        val route = (0..100).map { i ->
+            val s = i * 100.0
+            val bump = if (i == 50) 45.0 else 0.0
+            at(s * ux + bump * nx, s * uy + bump * ny)
+        }
+        val corridor = AlongRouteCorridor.plan(route, 0, 10_000)!!
+        val peak = 5_000.0
+        val poi = poi("p", peak * ux + (45.0 + 499.0) * nx, peak * uy + (45.0 + 499.0) * ny)
+        assertEquals(listOf("p"), corridor.keep(listOf(poi)).map { it.id })
+        assertTrue(inside(ring(corridor), GeoPoint(poi.latitude, poi.longitude)), "the polygon must cover what keep() keeps")
+    }
+
+    /** A 40 km-radius loop needs more than 64 vertices at 50 m, so the tolerance is raised; w still covered. */
+    @Test
+    fun aRaisedToleranceStillCoversW() {
+        val radius = 40_000.0
+        val route = (0..500).map { i ->
+            val a = 2 * PI * i / 500
+            at(radius * kotlin.math.sin(a), radius * cos(a))
+        }
+        val corridor = AlongRouteCorridor.plan(route, 0, 300_000)!!
+        assertTrue(corridor.toleranceMeters > AlongRouteCorridor.SIMPLIFY_M, "tolerance=${corridor.toleranceMeters}")
+        assertTrue(corridor.vertices <= AlongRouteCorridor.MAX_VERTICES)
+        val r = ring(corridor)
+        listOf(37, 101, 163, 222, 311, 433).forEach { i ->
+            val a = 2 * PI * (i + 0.5) / 500
+            // Midpoint of a chord, 499 m further out along its outward normal.
+            val mid = radius * cos(PI / 500)
+            val out = mid + 499.0
+            val p = poi("x$i", out * kotlin.math.sin(a), out * cos(a))
+            assertTrue(inside(r, GeoPoint(p.latitude, p.longitude)), "leg $i")
+            assertEquals(1, corridor.keep(listOf(p)).size, "leg $i")
+        }
+    }
 }

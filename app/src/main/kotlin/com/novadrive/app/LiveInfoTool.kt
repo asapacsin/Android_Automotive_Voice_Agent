@@ -10,6 +10,8 @@ import com.novadrive.ingress.realtime.ToolDispatchResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONObject
@@ -312,6 +314,8 @@ class LiveInfoTool(
             ) ?: return@Ready failure(AmapLiveInfoParser.UNAVAILABLE)
             val started = nowMs()
             val fetch = rest.placePolygon(corridor.polygon, category.amapTypes, key)
+            // A lookup the deadline already gave up on must not log, nor open the picker afterwards.
+            currentCoroutineContext().ensureActive()
             val ms = nowMs() - started
             val found = when (fetch) {
                 is LiveInfoFetch.Failed -> {
@@ -323,7 +327,7 @@ class LiveInfoTool(
             val kept = corridor.keep(found.pois)
             log(
                 AlongRouteCorridor.searchLine(
-                    found.infocode ?: "none", found.total, found.pois.size, kept.size,
+                    found.infocode ?: "none", found.total, found.returned, kept.size,
                     corridor.lookaheadMeters, corridor.vertices, ms,
                 ),
             )
