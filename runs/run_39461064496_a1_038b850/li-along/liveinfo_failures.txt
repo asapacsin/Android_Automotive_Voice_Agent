@@ -1,0 +1,2 @@
+      1           expected /kind=along_route/
+      1           expected /tool=query_live_info/
