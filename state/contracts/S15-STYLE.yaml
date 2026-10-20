@@ -1,0 +1,28 @@
+schema: nova-task-contract/1
+task_id: S15-STYLE
+title: SPEC-015 A6 tests - the composed speaking style replaces the tone paragraph, persists across restarts, and both voice clients use it
+branch: exec/s15-style
+base_commit: 3e1484a4968e6ecf6ce89072a32069412b75d778
+approved_paths:
+  - app/src/test/kotlin/com/novadrive/app/SpeakingStyleStoreTest.kt
+  - app/src/test/kotlin/com/novadrive/app/**/PersonaProfilesTest.kt
+  - app/src/test/kotlin/com/novadrive/app/**/SpeakingStyleTest.kt
+allowed_changes:
+  - "New SpeakingStyleStoreTest (persistence with the existing store seam / fake prefs) and PersonaProfilesTest cases (compose replaces the tone paragraph; the Gemini and the other realtime client both read the composed style)"
+  - "Tests only. If a case cannot pass because the behaviour is not built, do not change production code: mark that case @Ignore with a one-line reason naming the missing behaviour, and list it in the report as GAP"
+architecture_constraints:
+  - Tests use existing seams and fakes in the test tree; no new production API
+  - No coordinate, address or transcript in any fixture beyond what existing tests already use
+forbidden_changes:
+  - No change under app/src/main or app/src/debug
+forbidden_paths:
+  - .claude/**
+  - app/src/main/**
+  - app/src/debug/**
+  - TEST_MATRIX.yaml
+required_verification:
+  - id: unit
+    kind: regression
+    command: ./gradlew --no-daemon -q :app:testDebugUnitTest --tests "*SpeakingStyleStoreTest" --tests "*PersonaProfilesTest" --tests "*SpeakingStyleTest"
+acceptance_criteria:
+  - "Each SPEC-015 A6 behaviour has a passing test or an @Ignore GAP naming what is missing"
