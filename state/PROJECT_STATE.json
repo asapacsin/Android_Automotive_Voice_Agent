@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-20T05:08:49",
+  "generated_at": "2026-10-20T05:10:36",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "a1aaafe",
+    "commit": "df6327b",
     "branch": "claude/10-20",
-    "subject": "P62: BLOCKED_BY the owner's go for Qwen sessions; Gemini path fixed",
+    "subject": "STYLE-CI contract approved",
     "working_tree_clean": false,
-    "uncommitted_files": 1
+    "uncommitted_files": 2
   },
   "tests": {
     "available": true,
@@ -109,11 +109,6 @@
       "status": "open: design decided 2026-10-13 (decider; SPEC-021 B10, FUZZY §7.3, DeliveredStyle.kt), built and JVM-proven (DeliveredS"
     },
     {
-      "id": "P56",
-      "title": "「帮我把天窗打开」 opened all four windows",
-      "status": "OPEN - live confirmation pending. The sunroof guard is in the code (JUnit `ToolCallGuardSunroofTest` 7/0, reviewer PASS "
-    },
-    {
       "id": "P62",
       "title": "Turn-by-turn guidance is not spoken in her voice (demo used a male voice)",
       "status": "OPEN 2026-10-16. Owner test 10-16 ([docs/owner-tests/test-10-16.md](docs/owner-tests/test-10-16.md)):"
@@ -127,11 +122,6 @@
       "id": "P65",
       "title": "With her voice on the guidance, a talkative route puts her to sleep between driver lines",
       "status": "OPEN 2026-10-16. Found by nav demo run 38849988938 (relay on, 120 km/h): after the"
-    },
-    {
-      "id": "P66",
-      "title": "A mumble right after a barge-in and a music stop called `set_speech_output`",
-      "status": "OPEN 2026-10-17. Fixed at JVM level, merged 2026-10-17 (`ToolCallGuards.speechOutputNotRequested`,"
     }
   ],
   "tech_debt": [
@@ -202,7 +192,7 @@
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
     "NEXT_ACTION": "DEMO-TRYOUT-001: FAIL: A first-time driver in their own words (19 lines: chat, vague asks, a refusal, a change of mind, barge-in, mumble, call), graded per line",
-    "actionable_count": 82,
+    "actionable_count": 80,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 29,
@@ -674,13 +664,6 @@
         "priority": 9,
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
-        "item": "P56",
-        "blocked_by": null
-      },
-      {
-        "priority": 9,
-        "class": "unfinished or open problem",
-        "source": "OPEN_PROBLEMS.md",
         "item": "P62",
         "blocked_by": "the owner's go to open Qwen sessions (AGENTS.md \"Gemini first, Ayano last\") - the Gemini path is FIXED (runs 38847890114, 38849988938: 43/47 MATCH); only the Qwen relay (VoiceCatalog QWEN verbatimPromptSpeech=false, SPEC-021 non-goal) and the audible G-1b check on a KVM host with audio remain"
       },
@@ -696,13 +679,6 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P65",
-        "blocked_by": null
-      },
-      {
-        "priority": 9,
-        "class": "unfinished or open problem",
-        "source": "OPEN_PROBLEMS.md",
-        "item": "P66",
         "blocked_by": null
       },
       {

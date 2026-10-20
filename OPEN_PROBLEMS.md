@@ -425,7 +425,7 @@ her measured default (take8: ~220-235 Hz, pace 7-11 chars/s).
 
 ## P56 — 「帮我把天窗打开」 opened all four windows
 
-**Status:** OPEN - live confirmation pending. The sunroof guard is in the code (JUnit `ToolCallGuardSunroofTest` 7/0, reviewer PASS 2026-10-13), but no live run has exercised it yet (tryout run 4: the model did not try a window).
+**Status:** FIXED 2026-10-20, live-confirmed: u_sunroof PASS (honest refusal, tryout_check grades no window moved) in Live JVM checks run 39372121705 at ad89725 (DEMO-TRYOUT-001 tryout piece on a GitHub runner, gemini default model, simulated car; ci/live-jvm-evidence runs/run_20261020_0504_ad89725/tryout/summary.txt: RESULT PASS 19/19). Earlier wording: OPEN - live confirmation pending. The sunroof guard is in the code (JUnit `ToolCallGuardSunroofTest` 7/0, reviewer PASS 2026-10-13), but no live run has exercised it yet (tryout run 4: the model did not try a window).
 
 **Found 2026-10-13, third tryout run** (`NOVA_LIVE_SCENES=tryout`, gemini-3.1-flash-live-preview, after the P55 fix; docs/DEMO_TRYOUT.md): the model heard 「帮我把天窗打开」 correctly and called `control_window` {action=open, window=all}; the dispatcher ran it and all four windows went to 100 %. The two earlier tryout runs refused this line, so it is model variance — and a prompt rule (`FLEX_TOOL_RULE` 「没有对应工具的请求（例如调音量、开天窗）要用一句话说明暂时不支持」) is not enforcement (AGENTS.md rule 4). SPEC-006 F-7 already required "refuse; do not execute a *nearby* supported action", but only the music case (`MEDIA_LIBRARY_UNSUPPORTED`) was enforced.
 
@@ -567,7 +567,7 @@ wait shifted the timeline), so the in-flight wait is proved offline (`--selftest
 
 ## P66 — A mumble right after a barge-in and a music stop called `set_speech_output`
 
-**Status:** OPEN 2026-10-17. Fixed at JVM level, merged 2026-10-17 (`ToolCallGuards.speechOutputNotRequested`,
+**Status:** FIXED 2026-10-20: u_mumble PASS with no tool (closing condition met) in Live JVM checks run 39372121705 at ad89725 (DEMO-TRYOUT-001 tryout piece on a GitHub runner, gemini default model, simulated car; ci/live-jvm-evidence runs/run_20261020_0504_ad89725/tryout/summary.txt: RESULT PASS 19/19). Earlier wording: OPEN 2026-10-17. Fixed at JVM level, merged 2026-10-17 (`ToolCallGuards.speechOutputNotRequested`,
 `ToolCallGuardSpeechOutputTest`; reviewer PASS after one REVISE round, which added 住嘴/住口/闭上嘴/别啰嗦了/
 不许说话/噓 and tightened resume so 「你可以再说一遍吗」 is refused). Closes after u_mumble passes on the
 next DEMO-TRYOUT-001 Gemini run. Accepted false allows (err toward the model acting): 安静 anywhere,
