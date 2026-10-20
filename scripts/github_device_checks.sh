@@ -372,11 +372,15 @@ else
     adb push "$f" /sdcard/Music/ >/dev/null
     adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file:///sdcard/Music/$(basename "$f")" >/dev/null || true
   done
+  # API 34 ignores MEDIA_SCANNER_SCAN_FILE from the shell: ask MediaProvider to scan the volume.
+  adb shell content call --uri content://media --method scan_volume --arg external_primary >/dev/null 2>&1 || true
+  vlc_indexed="$(adb shell content query --uri content://media/external/audio/media --projection title --where "title\ LIKE\ \'NovaTestTone%\'" 2>/dev/null | grep -c '^Row:' || true)"
   adb shell pm grant org.videolan.vlc android.permission.READ_MEDIA_AUDIO >/dev/null 2>&1 || true
   # VLC builds its own media library on first launch: open it once, then leave it.
   adb shell monkey -p org.videolan.vlc -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 || true
-  sleep 15
+  sleep 30
   adb shell am force-stop org.videolan.vlc || true
+  note "MUSIC-VLC-EMU-001 setup: mediastore_test_rows=$vlc_indexed"
   # 1) listener granted: status=playing, matches_request=true, the session names the test file.
   adb shell cmd notification allow_listener "$vlc_listener" || true
   adb shell am force-stop com.novadrive.app
@@ -384,12 +388,14 @@ else
   app_up || true
   tool dispatch "play_music:title=NovaTestToneA"
   wait_for "debug_tool tool=dispatch arg=play_music[^ ]* deferred_result=" 20 || true
-  vh_res="$(nova | grep -oE 'deferred_result=.*' | tail -1 | grep -oE 'ok=[a-z]+|status=[a-z_]+|matches_request=[a-z]+' | tr '\n' ' ')"
+  vh_res="$(nova | grep -oE 'deferred_result=.*' | tail -1 | grep -oE 'ok=[a-z]+|status=[a-z_]+|error=[A-Za-z_]+|matches_request=[a-z]+' | tr '\n' ' ')"
   vh_verify="$(nova | grep -oE 'music_verify result=[a-z_]+ match=[a-z]+' | tail -1)"
   vh_named="$(adb shell dumpsys media_session | grep -c 'NovaTestToneA' || true)"
+  vh_sessions="$(adb shell dumpsys media_session | grep -cE '^ +[^ ].* package=' || true)"
+  vh_vlc_sessions="$(adb shell dumpsys media_session | grep -c 'package=org.videolan.vlc' || true)"
   sleep 3; shot vlc_handoff
   vh_front="$(adb shell dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity' | grep -c 'com.novadrive.app' || true)"
-  note "MUSIC-VLC-EMU-001 handoff: $vh_res verify=[$vh_verify] session_names_file=$vh_named nova_foreground=$vh_front"
+  note "MUSIC-VLC-EMU-001 handoff: $vh_res verify=[$vh_verify] session_names_file=$vh_named sessions=$vh_sessions vlc_sessions=$vh_vlc_sessions mediastore_test_rows=$vlc_indexed nova_foreground=$vh_front"
   pf device:MUSIC-VLC-HANDOFF "$vh_res named=$vh_named front=$vh_front" 'grep -q "status=playing" <<<"$vh_res" && grep -q "matches_request=true" <<<"$vh_res" && [ "$vh_named" -ge 1 ]'
   adb shell am force-stop org.videolan.vlc || true
   # 2) listener revoked: status=requested_unverified (no song named).
