@@ -467,6 +467,7 @@ change_impact:
   voice_session_lifecycle:
     components:
       - VoiceSessionController
+      - GuidanceSparingCancel
       - PcmAudioCapture
       - AndroidMicrophonePort
       - VoiceSessionGateway
@@ -590,6 +591,7 @@ change_impact:
       - InitialLocationRecenter
       - RouteLiveInfo
       - AmapRouteLiveInfo
+      - AlongRouteCorridor
       - StaticMapModel
       - StaticMapFetcher
       - TextNavigationPanel
