@@ -20,6 +20,10 @@ FAKE_AIDER = textwrap.dedent("""\
     import os, sys
     args = sys.argv[1:]
     msg = args[args.index("--message") + 1]
+    assert "--no-detect-urls" in args, "missing --no-detect-urls"
+    with open(os.environ["FAKE_LOG"] + ".ignore", "w") as f:
+        f.write(open(args[args.index("--aiderignore") + 1]).read())
+    print("key=" + os.environ.get("OPENROUTER_API_KEY", ""))
     log = os.environ["FAKE_LOG"]
     n = sum(1 for _ in open(log)) if os.path.exists(log) else 0
     with open(log, "a") as f:
@@ -32,6 +36,10 @@ FAKE_AIDER = textwrap.dedent("""\
         with open(".gitignore", "a") as f:
             f.write("junk\\n")
         open("stray_new.txt", "w").write("x")
+    if os.environ.get("FAKE_GITADD"):
+        open("added.txt", "w").write("x")
+        import subprocess
+        subprocess.run(["git", "add", "added.txt"], check=True)
     print("Tokens: 1k sent. Cost: $0.01 message, $%s session." % os.environ.get("FAKE_COST", "0.01"))
 """)
 
@@ -75,7 +83,7 @@ class OffloadTest(unittest.TestCase):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def contract(self, approved=("lib/code.py",), **kw):
-        c = {"task_id": "T-1", "title": "Set VALUE", "branch": "exec/t", "base_commit": self.base,
+        c = {"schema": "nova-task-contract/1", "task_id": "T-1", "title": "Set VALUE", "branch": "exec/t", "base_commit": self.base,
              "approved_paths": list(approved), "allowed_changes": ["set VALUE to 42"],
              "architecture_constraints": ["stdlib"], "forbidden_changes": ["nothing else"],
              "forbidden_paths": ["*/src/**"], "acceptance_criteria": ["VALUE is 42"],
@@ -166,7 +174,40 @@ class OffloadTest(unittest.TestCase):
 
     def test_key_not_printed(self):
         code, out = self.run_main(self.contract(), FAKE_MODE="fix", OPENROUTER_API_KEY="sk-SECRET-123")
+        self.assertEqual(code, 0, out)
         self.assertNotIn("sk-SECRET-123", out)
+
+    def test_aider_flags_and_aiderignore(self):
+        code, out = self.run_main(self.contract(approved=("lib/code.py", "lib/new.py")), FAKE_MODE="fix")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(read(self.log + ".ignore").splitlines(),
+                         ["*", "**", "!/lib/", "!/lib/code.py", "!/lib/new.py"])
+
+    def test_check_ignore_error_refused(self):
+        os.symlink("lib", os.path.join(self.repo, "link"))
+        with open(os.path.join(self.repo, "secret.txt"), "w") as f:
+            f.write("s")
+        git(self.repo, "add", "-f", "secret.txt")
+        code, out = self.run_main(self.contract(approved=("link/new.py", "secret.txt")))
+        self.assertEqual(code, 2, out)
+        self.assertIn("REFUSED", out)
+        self.assertIn("cannot check ignore status", out)
+        self.assertEqual(self.calls(), [])
+
+    def test_non_relative_paths_refused(self):
+        for p in ("../x.py", "/tmp/x.py", "./app/libs/x.txt"):
+            code, out = self.run_main(self.contract(approved=(p,)))
+            self.assertEqual(code, 2, p)
+            self.assertIn("OFFLOAD T-1 REFUSED", out)
+        self.assertEqual(self.calls(), [])
+
+    def test_git_added_stray_removed(self):
+        code, out = self.run_main(self.contract(), FAKE_MODE="fix", FAKE_GITADD="1")
+        self.assertEqual(code, 0, out)
+        self.assertIn("stray=1", out)
+        self.assertIn("scope:PASS", out)
+        self.assertFalse(os.path.exists(os.path.join(self.repo, "added.txt")))
+        self.assertEqual(git(self.repo, "ls-files", "added.txt"), "")
 
 
 if __name__ == "__main__":

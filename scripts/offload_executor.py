@@ -8,6 +8,7 @@ Never commits (the caller commits). The API key is never printed or logged.
 """
 import argparse
 import os
+import posixpath
 import re
 import shlex
 import subprocess
@@ -45,7 +46,11 @@ def file_list(c, wt):
 def refusals(files, wt):
     errs = []
     for p in files:
-        low = p.lower()
+        n = posixpath.normpath(p.replace("\\", "/"))
+        if n.startswith("/") or n == ".." or n.startswith("../"):
+            errs.append("%s: not repo-relative" % p)
+            continue
+        low = n.lower()
         parts = low.split("/")
         if low.endswith(BLOCKED_EXT):
             errs.append("%s: binary/archive" % p)
@@ -56,6 +61,8 @@ def refusals(files, wt):
     if files:
         r = subprocess.run(["git", "-C", wt, "check-ignore", "--no-index", "--"] + files,
                            capture_output=True, text=True)
+        if r.returncode not in (0, 1):
+            errs.append("cannot check ignore status (git check-ignore exit %d)" % r.returncode)
         errs += ["%s: gitignored" % p for p in r.stdout.splitlines() if p]
     return errs
 
@@ -72,14 +79,32 @@ def task_message(c):
             + "\nEdit only the files you were given. Do not create, modify or delete any other file.")
 
 
+def aiderignore_text(files):
+    """Ignore everything, then un-ignore exactly the file list (and their parent dirs)."""
+    lines, dirs = ["*", "**"], []
+    for f in files:
+        parts = posixpath.normpath(f).split("/")
+        for i in range(1, len(parts)):
+            d = "/".join(parts[:i])
+            if d not in dirs:
+                dirs.append(d)
+    lines += ["!/%s/" % d for d in dirs]
+    lines += ["!/%s" % posixpath.normpath(f) for f in files]
+    return "\n".join(lines) + "\n"
+
+
 def run_aider(wt, model, msg, files):
     env = dict(os.environ)
     if not env.get("OPENROUTER_API_KEY"):
         env["OPENROUTER_API_KEY"] = "placeholder-proxy-injects"
     with tempfile.TemporaryDirectory(prefix="offload-") as tmp:
+        ignore = os.path.join(tmp, "aiderignore")
+        with open(ignore, "w") as f:
+            f.write(aiderignore_text(files))
         cmd = [os.environ.get("NOVA_AIDER_BIN", "aider"), "--model", "openrouter/" + model,
                "--yes-always", "--no-auto-commits", "--no-gitignore", "--map-tokens", "0",
                "--no-analytics", "--no-check-update", "--no-show-model-warnings", "--no-pretty",
+               "--no-detect-urls", "--aiderignore", ignore,
                "--chat-history-file", os.path.join(tmp, "chat.md"),
                "--input-history-file", os.path.join(tmp, "input"), "--message", msg] + files
         try:
@@ -103,14 +128,21 @@ def restore_strays(wt, files, before):
         code, p = e[:2], e[3:]
         if p in allowed or p in before:
             continue
-        if code == "??":
+        in_head = _git(wt, "cat-file", "-e", "HEAD:" + p, check=False).returncode == 0
+        full = os.path.join(wt, p)
+        if not in_head:
+            if code != "??":
+                _git(wt, "rm", "-q", "--cached", "--ignore-unmatch", "--", p, check=False)
             try:
-                os.remove(os.path.join(wt, p))
-            except OSError:
+                os.remove(full)
+            except FileNotFoundError:
                 pass
+            except OSError:
+                continue
+            ok = not os.path.lexists(full)
         else:
-            _git(wt, "checkout", "HEAD", "--", p, check=False)
-        n += 1
+            ok = _git(wt, "checkout", "HEAD", "--", p, check=False).returncode == 0
+        n += ok
     return n
 
 
@@ -122,9 +154,10 @@ def _dirty(wt):
 def run_checks(c, wt):
     """[(id, ok, output)] for required_verification plus scope."""
     res = []
+    env = {k: v for k, v in os.environ.items() if k != "OPENROUTER_API_KEY"}
     for v in c.get("required_verification") or []:
         try:
-            r = subprocess.run(shlex.split(v["command"]), cwd=wt, stdin=subprocess.DEVNULL,
+            r = subprocess.run(shlex.split(v["command"]), cwd=wt, stdin=subprocess.DEVNULL, env=env,
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                                timeout=CHECK_TIMEOUT)
             res.append((v["id"], r.returncode == 0, v["command"], r.stdout))
@@ -145,7 +178,7 @@ def main(argv=None):
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args(argv)
     c, _ = tc.load(a.contract)
-    tid = c.get("task_id", "?")
+    tid = c.get("task_id", "?") if isinstance(c, dict) else "?"
     wt = os.path.abspath(a.worktree)
     started = time.monotonic()
 
@@ -154,6 +187,11 @@ def main(argv=None):
               % (tid, state, rounds, cost, time.monotonic() - started, stray, checks))
         return 0 if state == "DONE" else (2 if state == "REFUSED" else 1)
 
+    problems = tc.validate(c)
+    if problems:
+        for e in problems:
+            print("REFUSED: contract: " + e)
+        return status("REFUSED")
     r = _git(wt, "rev-parse", "--abbrev-ref", "HEAD", check=False)
     if r.returncode != 0:
         print("REFUSED: %s is not a git worktree" % wt)
