@@ -1,0 +1,43 @@
+{
+  "suite": "navpiece",
+  "verdict": "FAIL",
+  "vendor": "REAL",
+  "checks": [
+    {
+      "id": "build:vendor-real",
+      "required": true,
+      "status": "PASS",
+      "detail": "real vendor files packaged"
+    },
+    {
+      "id": "navpiece:complete",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "navpiece:*",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "navpiece:video",
+      "required": false,
+      "status": "SKIPPED",
+      "detail": "not executed"
+    }
+  ],
+  "problems": [
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required navpiece:complete has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required navpiece:* has no result"
+    }
+  ]
+}

@@ -1,0 +1,382 @@
+1792556539 [app] debug_tool tool=bridge arg=on:7790 result=connecting port=7790
+1792556539 [app] host_bridge on port=7790
+1792556539 [bridge] connected
+1792556539 [bridge] clip tools/speech-harness/speech/nav_shizimen.pcm (1.94 s)
+1792556539 [bridge] clip tools/speech-harness/speech/pick_first.pcm (1.87 s)
+1792556539 [bridge] clip tools/speech-harness/speech/start_nav.pcm (1.87 s)
+1792556539 [bridge] clip tools/speech-harness/speech/ctx_too_hot.pcm (1.87 s)
+1792556539 [bridge] clip tools/speech-harness/speech/music_on.pcm (1.87 s)
+1792556539 [bridge] clip tools/speech-harness/speech/eta_q.pcm (1.87 s)
+1792556539 [bridge] clip tools/speech-harness/speech/gas_nearby.pcm (2.11 s)
+1792556539 [bridge] clip tools/speech-harness/speech/music_off.pcm (1.87 s)
+1792556539 [app] debug_tool tool=provider arg=gemini result=override=gemini_live next_session
+1792556539 [app] state=CONNECTING err=-
+1792556539 [app] debug_tool tool=voice arg=start result=Started
+1792556540 [app] state=LISTENING err=-
+1792556540 [app] error_card_cleared code=CONFIG
+1792556544 [uplink] frames=250 fps=49.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=24
+1792556547 [bridge] wait_quiet line=1 ms=0 cap=0 reason=none
+1792556547 [app] state=USER_SPEAKING err=-
+1792556549 [uplink] frames=500 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556549 [app] state=THINKING err=-
+1792556550 [app] transcript=你: 导航去十字门。
+1792556550 [app] gemini_tool_call id=fc_4702032865419677990 tool=navigate_to args=valid
+1792556550 [app] claim src=MODEL tool=navigate_to group= epoch=1 ctx=131494692 ok=true
+1792556550 [app] tool=navigate_to args=[destination] result=✓ navigate_to
+1792556552 [app] state=SPEAKING err=-
+1792556553 [app] transcript=小诺: 找到5个地点，请说第几个，或直接点选。
+1792556554 [uplink] frames=751 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556555 [app] state=LISTENING err=-
+1792556555 [reply audio] bytes=144960 rate=24000 seconds=3.02
+1792556559 [uplink] frames=1001 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556564 [uplink] frames=1252 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556569 [bridge] wait_quiet line=2 ms=0 cap=0 reason=none
+1792556569 [uplink] frames=1502 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556569 [app] state=USER_SPEAKING err=-
+1792556571 [app] state=THINKING err=-
+1792556571 [app] transcript=你: 第一个。
+1792556571 [app] gemini_tool_call id=fc_11666408620762748544 tool=choose_navigation_option args=valid
+1792556571 [app] state=LISTENING err=-
+1792556571 [app] tool=choose_navigation_option args=[index] result=✓ choose_navigation_option
+1792556574 [uplink] frames=1753 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556574 [app] state=SPEAKING err=-
+1792556576 [app] transcript=小诺: 有3条路线，推荐的约29分钟。
+1792556577 [app] state=LISTENING err=-
+1792556578 [reply audio] bytes=129600 rate=24000 seconds=2.70
+1792556579 [uplink] frames=2004 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=24
+1792556584 [uplink] frames=2255 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=29
+1792556589 [uplink] frames=2506 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556590 [bridge] wait_quiet line=3 ms=0 cap=0 reason=none
+1792556591 [app] state=USER_SPEAKING err=-
+1792556593 [app] state=THINKING err=-
+1792556593 [app] transcript=你: 开始导航。
+1792556593 [app] gemini_tool_call id=fc_5446296287844902913 tool=choose_navigation_option args=valid
+1792556594 [uplink] frames=2757 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=23
+1792556594 [app] state=LISTENING err=-
+1792556594 [app] tool=choose_navigation_option args=[preference] result=✓ choose_navigation_option
+1792556595 [app] state=SPEAKING err=-
+1792556595 [guidance] chars=10 spoken=False
+1792556595 [app] transcript=小诺: 导航已开始。
+1792556596 [app] state=LISTENING err=-
+1792556596 [reply audio] bytes=20928 rate=24000 seconds=0.44
+1792556599 [uplink] frames=3007 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556600 [reply audio] bytes=35712 rate=24000 seconds=0.74
+1792556603 [app] debug_tool tool=nav_speed arg=90 result=kmh=90
+1792556604 [uplink] frames=3258 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556606 [app] state=SPEAKING err=-
+1792556608 [app] state=LISTENING err=-
+1792556608 [reply audio] bytes=78720 rate=24000 seconds=1.64
+1792556609 [uplink] frames=3509 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556612 [bridge] wait_quiet line=4 ms=0 cap=0 reason=none
+1792556613 [app] state=USER_SPEAKING err=-
+1792556614 [uplink] frames=3760 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556614 [guidance] chars=14 spoken=False
+1792556614 [app] state=THINKING err=-
+1792556615 [app] transcript=你: 有点热。
+1792556615 [app] gemini_tool_call id=fc_6827474535950771647 tool=control_climate args=valid
+1792556615 [app] claim src=MODEL tool=control_climate group=adjust_temperature epoch=4 ctx=131494692 ok=true
+1792556615 [app] tool=control_climate args=[action, value] result=✓ 空调关 · 23°C · 风2
+1792556616 [app] gemini_tool_call id=fc_13989278408135973556 tool=control_climate args=valid
+1792556616 [app] claim src=MODEL tool=control_climate group=power epoch=4 ctx=131494692 ok=true
+1792556616 [app] tool=control_climate args=[action] result=✓ 空调开 · 23°C · 风2
+1792556616 [app] state=SPEAKING err=-
+1792556617 [app] transcript=小诺: 空调已打开，温度调低了。
+1792556618 [app] state=LISTENING err=-
+1792556619 [uplink] frames=4010 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556621 [reply audio] bytes=102240 rate=24000 seconds=2.13
+1792556623 [app] state=SPEAKING err=-
+1792556624 [uplink] frames=4260 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556625 [app] state=LISTENING err=-
+1792556626 [reply audio] bytes=79680 rate=24000 seconds=1.66
+1792556629 [uplink] frames=4511 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556634 [uplink] frames=4762 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556635 [app] state=SPEAKING err=-
+1792556637 [app] state=LISTENING err=-
+1792556638 [bridge] wait_quiet line=5 ms=3457 cap=0 reason=uplink
+1792556638 [reply audio] bytes=81120 rate=24000 seconds=1.69
+1792556638 [app] state=USER_SPEAKING err=-
+1792556639 [uplink] frames=5012 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556640 [app] state=THINKING err=-
+1792556640 [app] transcript=你: 播放音乐。
+1792556640 [app] gemini_tool_call id=fc_6177770431854500272 tool=control_music args=valid
+1792556640 [app] claim src=LOCAL tool=control_music group=playback epoch=5 ctx=131494692 ok=true
+1792556641 [app] screen_action=voice_music_play ok=true error=-
+1792556641 [app] state=LISTENING err=-
+1792556641 [app] claim src=MODEL tool=control_music group=playback epoch=5 ctx=131494692 ok=false
+1792556641 [app] tool=control_music args=[action] result=DUPLICATE_IN_TURN
+1792556641 [guidance] chars=14 spoken=False
+1792556644 [uplink] frames=5263 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792556649 [uplink] frames=5513 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556654 [uplink] frames=5764 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556659 [uplink] frames=6014 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556660 [bridge] wait_quiet line=6 ms=0 cap=0 reason=none
+1792556660 [app] state=USER_SPEAKING err=-
+1792556662 [app] state=THINKING err=-
+1792556662 [app] gemini_tool_call id=fc_3838187129840503324 tool=query_live_info args=valid
+1792556662 [app] transcript=你: 还要多久到?
+1792556662 [app] claim src=MODEL tool=query_live_info group= epoch=6 ctx=131494692 ok=true
+1792556662 [app] tool=query_live_info args=[kind] result=🔎 正在查
+1792556663 [app] state=SPEAKING err=-
+1792556664 [app] transcript=小诺: 前方路况顺畅，大约还需要30分钟。
+1792556664 [uplink] frames=6265 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556666 [app] state=LISTENING err=-
+1792556667 [reply audio] bytes=136800 rate=24000 seconds=2.85
+1792556669 [uplink] frames=6515 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556674 [uplink] frames=6766 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556677 [app] state=SPEAKING err=-
+1792556679 [uplink] frames=7017 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556680 [app] state=LISTENING err=-
+1792556681 [reply audio] bytes=144000 rate=24000 seconds=3.00
+1792556681 [bridge] wait_quiet line=7 ms=0 cap=0 reason=none
+1792556682 [app] state=USER_SPEAKING err=-
+1792556682 [guidance] chars=18 spoken=False
+1792556684 [uplink] frames=7268 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556684 [app] state=THINKING err=-
+1792556685 [app] transcript=你: 附近有加油站吗?
+1792556685 [app] gemini_tool_call id=fc_13543507629337279022 tool=navigate_to args=valid
+1792556685 [app] tool=navigate_to args=[destination] result=NEARBY_QUESTION_WHILE_NAVIGATING
+1792556685 [app] gemini_tool_call id=fc_8023087393851138869 tool=query_live_info args=valid
+1792556685 [app] claim src=MODEL tool=query_live_info group= epoch=7 ctx=131494692 ok=true
+1792556685 [app] tool=query_live_info args=[category, kind] result=🔎 正在查
+1792556688 [app] state=SPEAKING err=-
+1792556688 [app] transcript=小诺: 沿途找到4个加油站，最近的在2.8公里外，请说第几个。
+1792556688 [guidance] chars=2 spoken=False
+1792556689 [uplink] frames=7519 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=28
+1792556689 [reply audio] bytes=13312 rate=24000 seconds=0.28
+1792556691 [app] state=LISTENING err=-
+1792556694 [uplink] frames=7769 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556694 [reply audio] bytes=180608 rate=24000 seconds=3.76
+1792556699 [uplink] frames=8020 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556703 [app] state=SPEAKING err=-
+1792556704 [uplink] frames=8271 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=29
+1792556706 [app] state=LISTENING err=-
+1792556706 [bridge] wait_quiet line=8 ms=2740 cap=0 reason=uplink
+1792556706 [reply audio] bytes=141600 rate=24000 seconds=2.95
+1792556707 [app] state=USER_SPEAKING err=-
+1792556707 [guidance] chars=26 spoken=False
+1792556709 [app] state=THINKING err=-
+1792556709 [uplink] frames=8522 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556709 [app] transcript=你: 关闭音乐。
+1792556709 [app] gemini_tool_call id=fc_6631278653193012919 tool=control_music args=valid
+1792556709 [app] claim src=MODEL tool=control_music group=playback epoch=8 ctx=131494692 ok=true
+1792556709 [app] tool=control_music args=[action] result=✓ control_music
+1792556710 [app] state=SPEAKING err=-
+1792556710 [app] transcript=小诺: 音乐已关闭。
+1792556711 [app] state=LISTENING err=-
+1792556714 [uplink] frames=8773 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792556717 [reply audio] bytes=57120 rate=24000 seconds=1.19
+1792556719 [uplink] frames=9023 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556724 [uplink] frames=9273 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556729 [uplink] frames=9524 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556734 [uplink] frames=9774 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556739 [uplink] frames=10025 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792556744 [uplink] frames=10275 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792556749 [app] state=SPEAKING err=-
+1792556749 [uplink] frames=10526 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556752 [app] state=LISTENING err=-
+1792556753 [reply audio] bytes=148800 rate=24000 seconds=3.10
+1792556754 [uplink] frames=10777 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556755 [app] state=SPEAKING err=-
+1792556757 [app] state=LISTENING err=-
+1792556758 [reply audio] bytes=115200 rate=24000 seconds=2.40
+1792556759 [uplink] frames=11027 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792556764 [app] state=SPEAKING err=-
+1792556764 [uplink] frames=11278 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556767 [app] state=LISTENING err=-
+1792556768 [reply audio] bytes=123360 rate=24000 seconds=2.57
+1792556769 [uplink] frames=11529 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556774 [app] state=SPEAKING err=-
+1792556774 [uplink] frames=11780 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556777 [app] state=LISTENING err=-
+1792556778 [reply audio] bytes=128640 rate=24000 seconds=2.68
+1792556779 [app] state=SPEAKING err=-
+1792556779 [uplink] frames=12031 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792556780 [app] state=LISTENING err=-
+1792556781 [reply audio] bytes=70080 rate=24000 seconds=1.46
+1792556784 [app] state=SPEAKING err=-
+1792556784 [uplink] frames=12282 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556785 [app] state=LISTENING err=-
+1792556786 [reply audio] bytes=57600 rate=24000 seconds=1.20
+1792556789 [uplink] frames=12533 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792556794 [uplink] frames=12784 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=28
+1792556799 [app] state=SPEAKING err=-
+1792556799 [uplink] frames=13035 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556802 [app] state=LISTENING err=-
+1792556803 [reply audio] bytes=148800 rate=24000 seconds=3.10
+1792556804 [uplink] frames=13286 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556809 [uplink] frames=13537 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=28
+1792556814 [uplink] frames=13788 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556819 [uplink] frames=14039 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792556824 [uplink] frames=14290 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=24
+1792556829 [uplink] frames=14541 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556834 [uplink] frames=14792 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556839 [uplink] frames=15043 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556840 [app] state=SPEAKING err=-
+1792556842 [app] state=LISTENING err=-
+1792556843 [reply audio] bytes=127200 rate=24000 seconds=2.65
+1792556845 [uplink] frames=15294 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556845 [app] state=SPEAKING err=-
+1792556848 [app] state=LISTENING err=-
+1792556849 [reply audio] bytes=151680 rate=24000 seconds=3.16
+1792556850 [uplink] frames=15544 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556850 [app] state=SPEAKING err=-
+1792556852 [app] state=LISTENING err=-
+1792556853 [reply audio] bytes=104160 rate=24000 seconds=2.17
+1792556855 [uplink] frames=15795 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792556856 [app] state=SPEAKING err=-
+1792556859 [app] state=LISTENING err=-
+1792556860 [uplink] frames=16045 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556860 [reply audio] bytes=143520 rate=24000 seconds=2.99
+1792556860 [app] state=SPEAKING err=-
+1792556861 [app] state=LISTENING err=-
+1792556862 [reply audio] bytes=60960 rate=24000 seconds=1.27
+1792556865 [uplink] frames=16296 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=28
+1792556870 [uplink] frames=16547 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556873 [app] state=SPEAKING err=-
+1792556875 [uplink] frames=16798 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556875 [app] state=LISTENING err=-
+1792556876 [reply audio] bytes=136800 rate=24000 seconds=2.85
+1792556880 [uplink] frames=17049 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792556885 [uplink] frames=17300 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=28
+1792556890 [uplink] frames=17550 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556895 [uplink] frames=17801 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556900 [uplink] frames=18052 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=29
+1792556901 [app] state=SPEAKING err=-
+1792556903 [app] state=LISTENING err=-
+1792556903 [reply audio] bytes=84480 rate=24000 seconds=1.76
+1792556905 [uplink] frames=18303 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556907 [app] state=SPEAKING err=-
+1792556910 [uplink] frames=18554 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556911 [app] state=LISTENING err=-
+1792556912 [reply audio] bytes=161760 rate=24000 seconds=3.37
+1792556915 [uplink] frames=18805 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556920 [uplink] frames=19056 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792556925 [uplink] frames=19306 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556930 [uplink] frames=19557 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792556935 [uplink] frames=19807 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556940 [uplink] frames=20058 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556945 [uplink] frames=20308 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556950 [uplink] frames=20559 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792556955 [uplink] frames=20809 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556960 [uplink] frames=21060 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792556965 [uplink] frames=21310 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792556970 [uplink] frames=21561 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556975 [uplink] frames=21811 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556980 [uplink] frames=22062 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556985 [uplink] frames=22312 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=30
+1792556990 [uplink] frames=22563 fps=50.1 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792556995 [uplink] frames=22814 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792557000 [uplink] frames=23065 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792557005 [uplink] frames=23316 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792557010 [uplink] frames=23567 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792557015 [uplink] frames=23818 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792557020 [uplink] frames=24069 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792557022 [app] state=SPEAKING err=-
+1792557025 [uplink] frames=24320 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792557027 [app] state=LISTENING err=-
+1792557028 [reply audio] bytes=226080 rate=24000 seconds=4.71
+1792557030 [uplink] frames=24571 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792557033 [app] state=SPEAKING err=-
+1792557035 [app] state=LISTENING err=-
+1792557035 [uplink] frames=24822 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792557035 [guidance] chars=10 spoken=False
+1792557036 [reply audio] bytes=112320 rate=24000 seconds=2.34
+1792557040 [uplink] frames=25072 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792557041 [app] state=SPEAKING err=-
+1792557044 [app] state=LISTENING err=-
+1792557045 [reply audio] bytes=138720 rate=24000 seconds=2.89
+1792557045 [uplink] frames=25323 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792557047 [app] state=SPEAKING err=-
+1792557049 [app] state=LISTENING err=-
+1792557050 [reply audio] bytes=101760 rate=24000 seconds=2.12
+1792557050 [uplink] frames=25574 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792557055 [uplink] frames=25825 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792557056 [app] state=SPEAKING err=-
+1792557058 [app] state=LISTENING err=-
+1792557059 [reply audio] bytes=86880 rate=24000 seconds=1.81
+1792557059 [app] state=SPEAKING err=-
+1792557060 [uplink] frames=26075 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792557060 [app] state=LISTENING err=-
+1792557061 [reply audio] bytes=39840 rate=24000 seconds=0.83
+1792557065 [uplink] frames=26326 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792557070 [uplink] frames=26577 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=29
+1792557075 [uplink] frames=26828 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792557078 [app] state=SPEAKING err=-
+1792557080 [uplink] frames=27078 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792557081 [app] state=LISTENING err=-
+1792557081 [guidance] chars=13 spoken=False
+1792557082 [reply audio] bytes=144480 rate=24000 seconds=3.01
+1792557085 [guidance] chars=8 spoken=False
+1792557085 [uplink] frames=27328 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792557090 [uplink] frames=27579 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=31
+1792557094 [guidance] chars=15 spoken=False
+1792557095 [uplink] frames=27830 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792557100 [uplink] frames=28080 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792557102 [guidance] chars=13 spoken=False
+1792557105 [uplink] frames=28330 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792557106 [guidance] chars=7 spoken=False
+1792557110 [uplink] frames=28581 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792557112 [guidance] chars=15 spoken=False
+1792557115 [uplink] frames=28832 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792557120 [uplink] frames=29083 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792557125 [guidance] chars=11 spoken=False
+1792557125 [uplink] frames=29334 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=28
+1792557130 [app] error=GEMINI_LIVE_CONNECTION_CLOSED Gemini Live connection closed (status=1008)
+1792557130 [app] state=RECONNECTING err=-
+1792557130 [uplink] frames=29585 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792557131 [guidance] chars=12 spoken=False
+1792557131 [app] state=LISTENING err=-
+1792557135 [uplink] frames=29836 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=28
+1792557140 [uplink] frames=30087 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=28
+1792557142 [app] error_card_faded code=GEMINI_LIVE_CONNECTION_CLOSED after_ms=12000
+1792557145 [uplink] frames=30338 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792557150 [uplink] frames=30588 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792557155 [uplink] frames=30839 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792557160 [uplink] frames=31090 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792557162 [guidance] chars=11 spoken=False
+1792557165 [uplink] frames=31341 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=29
+1792557170 [uplink] frames=31591 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792557175 [uplink] frames=31842 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=28
+1792557180 [uplink] frames=32093 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792557185 [uplink] frames=32343 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792557191 [uplink] frames=32594 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=24
+1792557196 [uplink] frames=32845 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792557201 [uplink] frames=33095 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792557201 [guidance] chars=12 spoken=False
+1792557206 [uplink] frames=33346 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792557207 [guidance] chars=15 spoken=False
+1792557211 [uplink] frames=33597 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792557212 [guidance] chars=9 spoken=False
+1792557216 [uplink] frames=33847 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792557219 [guidance] chars=10 spoken=False
+1792557221 [uplink] frames=34098 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=29
+1792557226 [uplink] frames=34349 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792557231 [uplink] frames=34600 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792557236 [uplink] frames=34851 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=29
+1792557241 [uplink] frames=35101 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792557242 [guidance] chars=14 spoken=False
+1792557246 [uplink] frames=35352 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792557251 [uplink] frames=35602 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792557256 [uplink] frames=35853 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792557261 [uplink] frames=36103 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792557266 [uplink] frames=36354 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792557271 [uplink] frames=36605 fps=50.1 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792557276 [uplink] frames=36856 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792557281 [uplink] frames=37107 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=24
+1792557284 [app] error=GEMINI_LIVE_CONNECTION_CLOSED Gemini Live connection closed (status=1008)
+1792557284 [app] state=RECONNECTING err=-
+1792557285 [app] state=LISTENING err=-
+1792557286 [uplink] frames=37358 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792557291 [uplink] frames=37609 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=28
+1792557294 [guidance] chars=12 spoken=False
+1792557296 [uplink] frames=37860 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792557296 [app] error_card_faded code=GEMINI_LIVE_CONNECTION_CLOSED after_ms=12000
+1792557300 [guidance] chars=12 spoken=False
+1792557301 [uplink] frames=38110 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792557304 [guidance] chars=6 spoken=False
+1792557306 [uplink] frames=38361 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=25
+1792557310 [guidance] chars=16 spoken=False
+1792557311 [uplink] frames=38612 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=26
+1792557315 [guidance] chars=6 spoken=False
+1792557316 [uplink] frames=38863 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=27
+1792557321 [uplink] frames=39113 fps=50.0 dropped=0 stalls=0 backlog_ms=0 max_gap_ms=31
