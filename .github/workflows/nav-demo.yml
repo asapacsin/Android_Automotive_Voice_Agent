@@ -26,6 +26,8 @@ on:
       - claude/10-15
       - claude/10-19
       - claude/10-20
+      - claude/10-21
+      - demo2.0
 
 permissions:
   contents: write
@@ -34,7 +36,7 @@ jobs:
   drive:
     # A push runs it only when the commit message asks: [navdemo].
     # [navpiece]: the short piece check (owner rule 2026-10-16), the first ~150 s of the same drive.
-    if: ${{ github.event_name != 'push' || contains(github.event.head_commit.message, '[navdemo]') || contains(github.event.head_commit.message, '[navpiece]') }}
+    if: ${{ github.event_name != 'push' || contains(github.event.head_commit.message, '[navdemo]') || contains(github.event.head_commit.message, '[navpiece') }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -158,12 +160,15 @@ jobs:
         if: steps.secrets.outputs.ok == 'true'
         # Run 38864188722: the script finished but the step hung 40 min shutting the emulator down.
         # The evidence step runs anyway (always()).
-        timeout-minutes: ${{ (contains(github.event.head_commit.message, '[navpiece]') || inputs.piece) && 15 || 40 }}
+        timeout-minutes: ${{ (contains(github.event.head_commit.message, '[navpiece') || (github.event_name == 'workflow_dispatch' && inputs.piece != '')) && 15 || 40 }}
+        # The script's verdict is authoritative. Ignore a runner teardown timeout only when the
+        # script completed; an interrupted script has no navpiece:complete PASS and Verdict fails.
+        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         env:
           AMAP_WEB_KEY: ${{ secrets.AMAP_WEB_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          NAV_DEMO_PIECE: ${{ inputs.piece != '' && inputs.piece || (contains(github.event.head_commit.message, '[navpiece]') && '1' || '') }}
+          NAV_DEMO_PIECE: ${{ inputs.piece != '' && inputs.piece || (contains(github.event.head_commit.message, '[navpiece:fz14]') && 'fz14' || (contains(github.event.head_commit.message, '[navpiece]') && '1' || '')) }}
         with:
           api-level: 34
           target: google_apis
