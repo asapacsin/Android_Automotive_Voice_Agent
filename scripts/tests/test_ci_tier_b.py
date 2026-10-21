@@ -45,6 +45,9 @@ class WorkflowVerdictTest(unittest.TestCase):
         recorder = next(s for s in steps if s.get("name") == "Boot the emulator and record the navigation demo")
         piece = recorder["env"]["NAV_DEMO_PIECE"]
         self.assertIn("contains(github.event.head_commit.message, '[navpiece:demo]') && 'demo'", piece)
+        script = read("scripts/github_nav_demo.sh")
+        self.assertIn("duration=360; DEMO_GAP=1; DEMO_LEAD=1", script)
+        self.assertIn('if [ "${NAV_DEMO_PIECE:-}" = "demo" ]', script)
 
     def test_verdict_step_runs_always_before_evidence_push(self):
         for name, suite in WORKFLOWS.items():

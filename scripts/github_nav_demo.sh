@@ -172,7 +172,9 @@ app_up || true
 sleep 3
 
 # The 5-minute demo drives faster; decided before the speed-up loop below is forked.
-[ "${NAV_DEMO_PIECE:-}" = "1" ] && [ "$(tr -dc a-z <scripts/nav_piece.txt 2>/dev/null)" = "demo" ] && DEMO_SPEED=120
+if [ "${NAV_DEMO_PIECE:-}" = "demo" ] || { [ "${NAV_DEMO_PIECE:-}" = "1" ] && [ "$(tr -dc a-z <scripts/nav_piece.txt 2>/dev/null)" = "demo" ]; }; then
+  DEMO_SPEED=120
+fi
 # Screen: up to five back-to-back 180 s recordings (screenrecord's limit), stopped once the drive ends.
 rec_start="$(date +%s.%N)"
 (
@@ -206,7 +208,9 @@ if [ "${NAV_DEMO_PIECE:-}" = "demo" ]; then
   # The 5-minute demo (owner 2026-10-16): main driver functions and ambiguous commands, one drive.
   # 珠海站: ~9.9 km, a 60 km/h camera on the recommended route (routes piece 4d09b8b), 120 km/h.
   clips="$S/nav_demo_dest.pcm,$S/pick_first.pcm,$S/start_nav.pcm,$S/ctx_too_hot.pcm,$S/ctx_cooler.pcm,$S/music_on.pcm,$S/fz_mosquito.pcm,$S/fz_mosquito_done.pcm,$S/fz_seat_high.pcm,$S/fz_lower_more.pcm,$S/gas_nearby.pcm,$S/cancel.pcm,$S/eta_q.pcm,$S/music_off.pcm"
-  duration=400; DEMO_GAP=12
+  # Keep scene transitions tight; wait-quiet still holds each line until her reply/guidance is done.
+  # A 1 s gap keeps the recorded take within the no-dead-air demo requirement.
+  duration=360; DEMO_GAP=1; DEMO_LEAD=1
   note "piece mode: 5-minute demo, ${duration} s"
 elif [ "${NAV_DEMO_PIECE:-}" = "fz14" ]; then
   # DEMO_SPEC pilot (owner 2026-10-21): the hardest ambiguity, FZ-14. Temperature and seat both changed, then
@@ -227,7 +231,7 @@ elif [ -n "${NAV_DEMO_PIECE:-}" ]; then
 fi
 set +e
 # Each bridge line is prefixed with the host epoch second (P65-awake below needs when the last line went out).
-python3 tools/speech-harness/host_audio_bridge.py --from-file "$clips" --lead 8 --gap "${DEMO_GAP:-20}" --duration "$duration" --wait-quiet \
+python3 tools/speech-harness/host_audio_bridge.py --from-file "$clips" --lead "${DEMO_LEAD:-8}" --gap "${DEMO_GAP:-20}" --duration "$duration" --wait-quiet \
   --no-play --provider gemini --record "$ev/demo_audio" 2>"$ev/bridge_err.txt" \
   | while IFS= read -r l; do printf '%s %s\n' "$(date +%s)" "$l"; done >"$ev/bridge_out.txt"
 bridge_rc=${PIPESTATUS[0]}
