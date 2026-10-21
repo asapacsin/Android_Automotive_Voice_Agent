@@ -74,6 +74,9 @@ adb logcat -G 16M || true
 adb logcat -c || true
 sleep 30
 adb shell settings put global hide_error_dialogs 1 || true
+# Quarter the pixels the software GL draws (same dp layout: 540x1170 at 210 dpi), so the video is not choppy.
+adb shell wm size 540x1170 || true
+adb shell wm density 210 || true
 adb shell am force-stop com.google.android.apps.nexuslauncher || true
 adb shell input keyevent KEYCODE_HOME || true
 
@@ -175,8 +178,8 @@ rec_start="$(date +%s.%N)"
 (
   for i in 1 2 3 4 5 6; do
     echo "$(date +%s.%N)" >"$ev/seg${i}_start.txt"
-    # P64: half resolution, so the guest encoder takes less of the CPU the map renders on.
-    adb shell screenrecord --time-limit 180 --size 576x1248 --bit-rate 3000000 "/sdcard/nav_seg${i}.mp4" || true
+    # P64: low resolution (288x624), so the guest encoder takes less of the CPU the map renders on.
+    adb shell screenrecord --time-limit 180 --size 288x624 --bit-rate 1500000 "/sdcard/nav_seg${i}.mp4" || true
     [ -f "$ev/stop_recording" ] && break
   done
 ) &
