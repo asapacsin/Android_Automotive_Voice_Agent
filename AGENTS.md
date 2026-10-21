@@ -197,7 +197,7 @@ This section applies to Claude Code only; the Cursor and Codex sections above ar
 does not change architecture ownership, invariants, or who may certify work. Agent definitions:
 [`.claude/agents/`](.claude/agents/).
 
-- Start the session as `planner` (`claude --agent planner`; Opus 5.5, high effort). It reads this
+- Start the session as `planner` (`claude --agent planner`; Sonnet 5.5 since 2026-10-21, Opus only for deciders and HIGH-risk review; order in `skills/continue.md` token budget). It reads this
   file and the documents under "Where things are", builds a dependency DAG, and runs waves.
 - `executor` (Opus 5.5, low effort) implements bounded task packets in its own worktree. It cannot
   spawn agents and must return BLOCKED rather than guess or redesign.

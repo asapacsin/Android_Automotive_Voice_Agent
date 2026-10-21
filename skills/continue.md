@@ -87,15 +87,21 @@ call; executors were ~10-16%).
 - **Token budget per agent type (owner 2026-10-20, Claude Code per-subagent model slots).**
   - Scouts (Explore): `model: haiku` for "find where X is", `model: sonnet` for "explain why X";
     one tight question naming the files to read, never "search everything".
-  - Executors: their definition already runs Opus 5.5 at effort low (owner's fallback order; Gemini
-    first once a Gemini executor path exists).
-  - Reviewer: only for branches touching `<module>/src/**`; script/doc-only branches are verified by
+  - Executors (owner 2026-10-21, after 95% of tokens ran on Opus): try in this order. (1) Aider +
+    Qwen (`scripts/offload_executor.py`) when the contract names the exact script/test/doc edit;
+    (2) Poolside or Gemini through `tools/agent-routing` for bounded edits with no vendor files
+    (Gemini only on days `voice-checks` is not scheduled, voice tests keep the quota); (3) the
+    `executor` agent, now Sonnet 5.5; (4) Opus (`model: opus` on the call) only for `RISK: HIGH`
+    packets or after one failed Sonnet round.
+  - Reviewer (Sonnet by default; pass `model: opus` for HIGH risk; Nemotron for MEDIUM once its key
+    works): only for branches touching `<module>/src/**`; script/doc-only branches are verified by
     the planner and recorded WAIVED where reviews.log allows (contracted branches still need ELIGIBLE,
     so contract script work only when a reviewer adds real value).
-  - Decider (effort xhigh): only for real design forks; paste the evidence numbers into the question
+  - CI waiting and log reading: a Haiku agent or a scheduled task, never main-session polling.
+  - Decider (Opus, effort xhigh): only for real design forks; paste the evidence numbers into the question
     so it does not re-read whole documents.
-  - Aider offload (`scripts/offload_executor.py`, OpenRouter, ~$1 budget): only for one- or two-file
-    script/test edits whose contract names the exact change. Pilot 2026-10-20 (AIDER-WRAP, a 2-file
+  - Aider offload (`scripts/offload_executor.py`, OpenRouter, ~$1 budget): for edits whose contract
+    names the exact change (was: one or two files only). Pilot 2026-10-20 (AIDER-WRAP, a 2-file
     script with tests, qwen3-coder): 3 rounds, ~$0.09, ~13 min of Aider time, still failing (hanging
     tests), and one stray edit outside its files; the Opus-low executor then did it in ~5 min. Never
     for `<module>/src/**`, workflows or anything needing exploration; one failed round → hand the task

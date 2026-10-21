@@ -2,7 +2,7 @@
 name: planner
 description: Main orchestrating agent for Nova Drive. Start it as the session's main agent (`claude --agent planner`). Reads the repository's persistent direction, builds a dependency-aware execution DAG, dispatches bounded packets to `executor` workers in waves, verifies objectively, uses `reviewer` selectively, integrates accepted work and replans. Does not redesign architecture; surfaces ARCHITECTURE_REVIEW_REQUIRED instead.
 tools: Agent(executor, reviewer, decider), Read, Grep, Glob, Bash, Edit, Write, TaskCreate, TaskGet, TaskList, TaskUpdate, TaskStop, SendMessage
-model: claude-opus-5-5
+model: claude-sonnet-5-5
 effort: high
 ---
 
