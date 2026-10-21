@@ -1,66 +1,19 @@
 {
-  "generated_at": "2026-10-21T04:19:07",
+  "generated_at": "2026-10-21T08:51:25",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "ae42ebc",
-    "branch": "claude/10-21",
-    "subject": "Nav demo: render at 540x1170/210dpi and record at 288x624 so the emulator video is less choppy",
+    "commit": "3494d88",
+    "branch": "demo2.0",
+    "subject": "Fix Tier A style summary tests when style_check selftest is unavailable",
     "working_tree_clean": false,
-    "uncommitted_files": 2
+    "uncommitted_files": 5
   },
   "tests": {
-    "available": true,
-    "collected_at": "2026-10-20T00:18:14",
-    "total": {
-      "tests": 313,
-      "failures": 0,
-      "errors": 0,
-      "skipped": 0
-    },
-    "by_module": {
-      "evaluation": {
-        "tests": 27,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "simulator": {
-        "tests": 25,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "safety": {
-        "tests": 2,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "behavior-test": {
-        "tests": 132,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "contracts": {
-        "tests": 7,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "ingress": {
-        "tests": 120,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      }
-    },
-    "passing": true
+    "available": false,
+    "reason": "no JUnit XML found; run gradlew test"
   },
   "apk": {
-    "built": true,
-    "bytes": 224903741,
-    "built_at": "2026-10-19T19:48:24"
+    "built": false
   },
   "capabilities": {
     "available": true,
@@ -190,18 +143,18 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "NAV-OVERSPEED-001: STALE_BIND: Spoken over-speed warning with the guidance toggle off (the shipped path)",
-    "actionable_count": 75,
+    "NEXT_ACTION": "app-debug.apk: no debug APK has been built from this tree",
+    "actionable_count": 112,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 29,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
       {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-OVERSPEED-001",
+        "priority": 1,
+        "class": "broken build or missing artifact",
+        "source": "build output",
+        "item": "app-debug.apk",
         "blocked_by": null
       },
       {
@@ -327,6 +280,27 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "AFFORDANCE-DEVICE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "APPS-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "BARGEIN-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "CALL-NOSIM-001",
         "blocked_by": null
       },
@@ -341,6 +315,27 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "CLIMATE-IMPLICIT-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "CLIMATE-OFF-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "CLIMATE-SET-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "CONFIG-CARD-EMU-001",
         "blocked_by": null
       },
@@ -348,7 +343,42 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "CTX-AMBIG-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "CTX-CHAIN-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "DEMO-AMAP-LIVE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "DEMO-COMMUTE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "DEMO-STYLE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "DEMO-TRYOUT-001",
         "blocked_by": null
       },
       {
@@ -376,6 +406,13 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "FUZZY-TEXT-LIVE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "GATE-D10-DEVICE-001",
         "blocked_by": null
       },
@@ -397,7 +434,21 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "HELP-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "LIFECYCLE-ERROR-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "LIVE-INFO-DEVICE-001",
         "blocked_by": null
       },
       {
@@ -418,7 +469,49 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "MUSIC-NAMED-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "MUSIC-PLAY-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "MUSIC-TEXT-LIVE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "MUSIC-VLC-EMU-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-CANCEL-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-CORRECT-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-E2E-ARRIVAL-001",
         "blocked_by": null
       },
       {
@@ -432,7 +525,119 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "NAV-OVERSPEED-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-PICK-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-SEARCH-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-SIM-QA-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-UI-002",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-UI-003",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-UI-004",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-UI-005",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-UI-006",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-UI-007",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NET-RECOVER-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NOISE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "P45-EMU-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "PERM-DENY-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "PLACE-NAV-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "PLACE-SAVE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "PLACE-UNSET-001",
         "blocked_by": null
       },
       {
@@ -467,6 +672,13 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "SLEEP-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "SPEECH-ARBITER-DEVICE-001",
         "blocked_by": null
       },
@@ -481,7 +693,21 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "SUITE-SCENARIO-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "TRANSCRIPT-FADE-EMU-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "TRUTH-BAIT-001",
         "blocked_by": null
       },
       {
@@ -502,7 +728,28 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "TRUTH-MISHEARD-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "TRUTH-WEATHER-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "TTS-VOICE-EMU-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "UNSUPPORTED-001",
         "blocked_by": null
       },
       {
@@ -559,20 +806,6 @@
         "class": "recorded technical debt",
         "source": "docs/TECH_DEBT.md",
         "item": "D-9",
-        "blocked_by": null
-      },
-      {
-        "priority": 9,
-        "class": "unfinished or open problem",
-        "source": "state/contracts/MIDROUTE-SPEED.yaml",
-        "item": "MIDROUTE-SPEED",
-        "blocked_by": null
-      },
-      {
-        "priority": 9,
-        "class": "unfinished or open problem",
-        "source": "state/contracts/OVERSPEED-XSM.yaml",
-        "item": "OVERSPEED-XSM",
         "blocked_by": null
       },
       {
@@ -636,27 +869,6 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P68",
-        "blocked_by": null
-      },
-      {
-        "priority": 9,
-        "class": "unfinished or open problem",
-        "source": "state/contracts/VLC-EMU.yaml",
-        "item": "VLC-EMU",
-        "blocked_by": null
-      },
-      {
-        "priority": 10,
-        "class": "stale state or harness defect",
-        "source": "state",
-        "item": "PROJECT_STATE.json",
-        "blocked_by": null
-      },
-      {
-        "priority": 10,
-        "class": "stale state or harness defect",
-        "source": "harness/skill-events.jsonl",
-        "item": "time-record",
         "blocked_by": null
       },
       {

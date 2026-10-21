@@ -6,12 +6,12 @@ Generated from [TEST_MATRIX.yaml](TEST_MATRIX.yaml) by `python scripts/test_matr
 >
 > - WAKE-ENGINE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - WAKE-SYNTH-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - TRUTH-MISHEARD-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 > - TRUTH-MEDIA-001 is AUTONOMOUS and NOT_RUN - run it or fix it
-> - CALL-NOSIM-001 is AUTONOMOUS and NOT_RUN - run it or fix it
-> - NAV-MID-ROUTE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
-> - MUSIC-VLC-EMU-001 is AUTONOMOUS and NOT_RUN - run it or fix it
-> - AEC-DELAY-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
-> - PLAYBACK-BUFFER-DEVICE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - TRUTH-WEATHER-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - TRUTH-BAIT-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - PLACE-SAVE-001 is AUTONOMOUS and NOT_RUN - run it or fix it
+> - PLACE-NAV-001 is AUTONOMOUS and NOT_RUN - run it or fix it
 
 29 item(s) queued.
 
