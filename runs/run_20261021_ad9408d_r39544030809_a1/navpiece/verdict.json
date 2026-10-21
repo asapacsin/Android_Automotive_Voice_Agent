@@ -1,0 +1,47 @@
+{
+  "suite": "device-navpiece",
+  "verdict": "FAIL",
+  "vendor": "UNKNOWN",
+  "checks": [
+    {
+      "id": "build:vendor-real",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:PIECE-P61",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:PIECE-P63",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    }
+  ],
+  "problems": [
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "results file missing or unreadable: evidence/results.jsonl"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required build:vendor-real has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:PIECE-P61 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:PIECE-P63 has no result"
+    }
+  ]
+}
