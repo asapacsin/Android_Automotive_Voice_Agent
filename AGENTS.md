@@ -356,3 +356,7 @@ does not change architecture ownership, invariants, or who may certify work. Age
   claim-gate and turn logic, tool and scenario code, harness or recorder changes, a rehearsal of a
   demo script - is proved with the JVM suites, the mock servers or the Gemini live harness, and a
   demo is rehearsed on Gemini before its one Qwen take.
+- **Time estimates in minutes, in the owner's time** (owner, 2026-10-21). Report every time needed
+  or time taken in minutes (a range is fine), and give clock times in the owner's zone (UTC+8) as
+  well as UTC. Pick the right job first (for example the 5-minute demo piece, not the 16-minute
+  default drive) and report the actual minutes when it finishes.
