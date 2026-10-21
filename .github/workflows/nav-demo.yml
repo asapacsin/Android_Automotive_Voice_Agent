@@ -35,7 +35,7 @@ jobs:
   drive:
     # A push runs it only when the commit message asks: [navdemo].
     # [navpiece]: the short piece check (owner rule 2026-10-16), the first ~150 s of the same drive.
-    if: ${{ github.event_name != 'push' || contains(github.event.head_commit.message, '[navdemo]') || contains(github.event.head_commit.message, '[navpiece]') }}
+    if: ${{ github.event_name != 'push' || contains(github.event.head_commit.message, '[navdemo]') || contains(github.event.head_commit.message, '[navpiece') }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
