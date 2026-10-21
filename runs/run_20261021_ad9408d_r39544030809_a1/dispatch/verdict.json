@@ -1,0 +1,87 @@
+{
+  "suite": "device-dispatch",
+  "verdict": "FAIL",
+  "vendor": "UNKNOWN",
+  "checks": [
+    {
+      "id": "build:vendor-real",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:app-up",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:PLACE-UNSET-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:PLACE-SAVE-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:APPS-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:CALL-NOSIM-001",
+      "required": false,
+      "status": "SKIPPED",
+      "detail": "not executed"
+    },
+    {
+      "id": "device:LIVE-INFO-SDK-TRAFFIC",
+      "required": false,
+      "status": "SKIPPED",
+      "detail": "not executed"
+    },
+    {
+      "id": "device:LIVE-INFO-SDK-ALONG",
+      "required": false,
+      "status": "SKIPPED",
+      "detail": "not executed"
+    }
+  ],
+  "problems": [
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "results file missing or unreadable: evidence/results.jsonl"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required build:vendor-real has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:app-up has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:PLACE-UNSET-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:PLACE-SAVE-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:APPS-001 has no result"
+    }
+  ]
+}
