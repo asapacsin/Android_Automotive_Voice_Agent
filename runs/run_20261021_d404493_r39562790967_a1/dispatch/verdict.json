@@ -1,0 +1,56 @@
+{
+  "suite": "device-dispatch",
+  "verdict": "PASS",
+  "vendor": "REAL",
+  "checks": [
+    {
+      "id": "build:vendor-real",
+      "required": true,
+      "status": "PASS",
+      "detail": "real vendor files packaged"
+    },
+    {
+      "id": "device:app-up",
+      "required": true,
+      "status": "PASS",
+      "detail": "map up"
+    },
+    {
+      "id": "device:PLACE-UNSET-001",
+      "required": true,
+      "status": "PASS",
+      "detail": "asks_for_address=yes"
+    },
+    {
+      "id": "device:PLACE-SAVE-001",
+      "required": true,
+      "status": "PASS",
+      "detail": "saved_place_set_slot_home=1"
+    },
+    {
+      "id": "device:APPS-001",
+      "required": true,
+      "status": "PASS",
+      "detail": "allowed_ok=2/2 music_refused=yes"
+    },
+    {
+      "id": "device:CALL-NOSIM-001",
+      "required": false,
+      "status": "PASS",
+      "detail": "result=\"ok\":false \"error\":\"CONTACT_NOT_FOUND\"  fatal=0"
+    },
+    {
+      "id": "device:LIVE-INFO-SDK-TRAFFIC",
+      "required": false,
+      "status": "PASS",
+      "detail": "live_info kind=route_traffic ok=true code=none ms=10"
+    },
+    {
+      "id": "device:LIVE-INFO-SDK-ALONG",
+      "required": false,
+      "status": "PASS",
+      "detail": "live_info kind=along_route ok=true code=none ms=1186"
+    }
+  ],
+  "problems": []
+}
