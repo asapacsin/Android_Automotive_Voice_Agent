@@ -48,6 +48,8 @@ class WorkflowVerdictTest(unittest.TestCase):
         script = read("scripts/github_nav_demo.sh")
         self.assertIn("duration=360; DEMO_GAP=1; DEMO_LEAD=1", script)
         self.assertIn('if [ "${NAV_DEMO_PIECE:-}" = "demo" ]', script)
+        self.assertIn("demo_bridge_args+=(--finish-after-reply)", script)
+        self.assertIn("recording ended after final reply", script)
 
     def test_verdict_step_runs_always_before_evidence_push(self):
         for name, suite in WORKFLOWS.items():

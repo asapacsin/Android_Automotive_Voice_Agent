@@ -229,14 +229,30 @@ elif [ -n "${NAV_DEMO_PIECE:-}" ]; then
   clips="$(echo "$clips" | cut -d, -f1-6)"; duration=150
   note "piece mode: first 6 lines, ${duration} s"
 fi
+demo_bridge_args=()
+if [ "${NAV_DEMO_PIECE:-}" = "demo" ]; then demo_bridge_args+=(--finish-after-reply); fi
 set +e
 # Each bridge line is prefixed with the host epoch second (P65-awake below needs when the last line went out).
-python3 tools/speech-harness/host_audio_bridge.py --from-file "$clips" --lead "${DEMO_LEAD:-8}" --gap "${DEMO_GAP:-20}" --duration "$duration" --wait-quiet \
+python3 tools/speech-harness/host_audio_bridge.py --from-file "$clips" --lead "${DEMO_LEAD:-8}" --gap "${DEMO_GAP:-20}" --duration "$duration" --wait-quiet "${demo_bridge_args[@]}" \
   --no-play --provider gemini --record "$ev/demo_audio" 2>"$ev/bridge_err.txt" \
   | while IFS= read -r l; do printf '%s %s\n' "$(date +%s)" "$l"; done >"$ev/bridge_out.txt"
 bridge_rc=${PIPESTATUS[0]}
 set -e
 if [ "$bridge_rc" = 0 ]; then res navpiece:bridge PASS "rc=0"; else res navpiece:bridge FAIL "rc=$bridge_rc"; fi
+if [ "${NAV_DEMO_PIECE:-}" = "demo" ]; then
+  if grep -q '\[bridge\] reply_timeout ' "$ev/bridge_out.txt"; then
+    res navpiece:response-latency FAIL "at least one reply did not start within 5 s"
+  elif grep -q '\[bridge\] finish_after_reply complete' "$ev/bridge_out.txt"; then
+    res navpiece:response-latency PASS "all replies started within 5 s; recording ended after final reply"
+  else
+    res navpiece:response-latency FAIL "recording ended without confirming the final reply"
+  fi
+  # Stop screen capture with the conversation so the video has no long silent tail while navigation
+  # completion checks continue in the background.
+  touch "$ev/stop_recording"
+  adb shell pkill -INT screenrecord || true
+  wait "$recorder" || true
+fi
 # Codes and numbers only from the bridge output (it also echoes app lines, which are never kept).
 note "driver waits: $(grep -oE 'wait_quiet line=[0-9]+ ms=[0-9]+ cap=[01] reason=[a-z]+' "$ev/bridge_out.txt" | sed -E 's/wait_quiet //' | tr '\n' ' ')(the scripted driver reads the app's guidance log; a real driver cannot)"
 # P65: she must not fall asleep (30 s inactivity) while scripted driver lines are still to come, and no

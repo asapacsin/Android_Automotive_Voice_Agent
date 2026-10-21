@@ -257,7 +257,10 @@ class Recorder:
         self.t0, self.driver = time.time(), bytes(stream)
 
     def add_reply(self, pcm, rate):
-        LAST_REPLY[0] = time.time()
+        now = time.time()
+        LAST_REPLY[0] = now
+        if TURN["line_end"] is not None and now >= TURN["line_end"] and TURN["first_reply"] is None:
+            TURN["first_reply"] = now
         if self.t0 is None:
             return
         self.reply_rate = rate
@@ -329,6 +332,7 @@ RECORDER = Recorder(None)
 # when the car is quiet; a scripted driver, like a real one, waits for that before the next line.
 UPLINK = {"closed": False}
 LAST_REPLY = [0.0]
+TURN = {"line_end": None, "first_reply": None}
 # P65 amendment (decider, 2026-10-16): a guidance prompt sent to her but not yet audible. The relay
 # logs `guidance_route ... to=assistant reason=SENT` 0.6-1.5 s before her audio; the mark clears when
 # the uplink closes (her audio started) or after 3.5 s (the relay's 3 s deadline: Amap takes it).
@@ -379,15 +383,17 @@ def quiet_now():
     return quiet_reason() is None
 
 
-def feed_file(uplink, paths, stop, lead=1.0, gap=0.0, wait_quiet=False, cap=10.0):
+def feed_file(uplink, paths, stop, lead=1.0, gap=0.0, wait_quiet=False, cap=10.0,
+              finish_after_reply=False):
     """Clips in order, [gap] seconds of silence between them, then silence for ever.
 
     [wait_quiet]: after each gap, wait (at most [cap] s, then speak anyway: `wait_cap`) until the
     uplink is open and she is not speaking. Never repeats a line, never wakes her; the recorded
     driver track is what was actually sent.
+    [finish_after_reply]: stop after the last clip's reply has played and the voice path is quiet.
     """
     if wait_quiet:
-        return feed_file_waiting(uplink, paths, stop, lead, gap, cap)
+        return feed_file_waiting(uplink, paths, stop, lead, gap, cap, finish_after_reply)
     stream = bytearray(int(RATE * 2 * lead))
     for i, path in enumerate(paths):
         clip = open(path, "rb").read()
@@ -407,7 +413,7 @@ def feed_file(uplink, paths, stop, lead=1.0, gap=0.0, wait_quiet=False, cap=10.0
     paced(uplink, next_frame, stop)
 
 
-def feed_file_waiting(uplink, paths, stop, lead, gap, cap):
+def feed_file_waiting(uplink, paths, stop, lead, gap, cap, finish_after_reply=False):
     clips = [open(p, "rb").read() for p in paths]
     for path, clip in zip(paths, clips):
         print(f"[bridge] clip {path} ({len(clip) / RATE / 2:.2f} s)", flush=True)
@@ -415,7 +421,9 @@ def feed_file_waiting(uplink, paths, stop, lead, gap, cap):
     for i, clip in enumerate(clips):
         if i:
             plan.append(("pcm", bytes(int(RATE * 2 * gap) // 2 * 2)))
-        plan += [("wait", i), ("pcm", clip)]
+        plan += [("wait", i), ("driver", clip)]
+    if finish_after_reply:
+        plan.append(("final_reply", len(clips)))
     SESSION["watch"] = True
     sent = bytearray()
     RECORDER.started(b"")
@@ -431,6 +439,18 @@ def feed_file_waiting(uplink, paths, stop, lead, gap, cap):
                     state["wait_from"] = now
                     state["why"] = "none"
                 waited = now - state["wait_from"]
+                if item > 0 and TURN["line_end"] is not None:
+                    if TURN["first_reply"] is None:
+                        response_ms = int((now - TURN["line_end"]) * 1000)
+                        if response_ms >= 5000:
+                            print(f"[bridge] reply_timeout line={item} ms={response_ms}", flush=True)
+                            stop.set()
+                            break
+                        break
+                    print(f"[bridge] reply_latency line={item} ms={int((TURN['first_reply'] - TURN['line_end']) * 1000)}",
+                          flush=True)
+                    TURN["line_end"] = None
+                    TURN["first_reply"] = None
                 why = quiet_reason(now)
                 if why:
                     state["why"] = why
@@ -441,11 +461,32 @@ def feed_file_waiting(uplink, paths, stop, lead, gap, cap):
                     state["wait_from"] = None
                     continue
                 break  # still waiting: send silence
+            if kind == "final_reply":
+                now = time.time()
+                if TURN["line_end"] is None:
+                    state["wait_from"] = now
+                    TURN["line_end"] = now
+                if TURN["first_reply"] is None:
+                    response_ms = int((now - TURN["line_end"]) * 1000)
+                    if response_ms >= 5000:
+                        print(f"[bridge] reply_timeout line={item} ms={response_ms}", flush=True)
+                        stop.set()
+                        break
+                elif quiet_reason(now) is None:
+                    print(f"[bridge] reply_latency line={item} ms={int((TURN['first_reply'] - TURN['line_end']) * 1000)}",
+                          flush=True)
+                    print("[bridge] finish_after_reply complete", flush=True)
+                    stop.set()
+                    break
+                break
             chunk = item[state["pos"]:state["pos"] + CHUNK]
             if chunk:
                 state["pos"] += CHUNK
                 chunk = chunk + bytes(CHUNK - len(chunk))
                 sent.extend(chunk)
+                if kind == "driver" and state["pos"] >= len(item):
+                    TURN["line_end"] = time.time()
+                    TURN["first_reply"] = None
                 return chunk
             state["step"] += 1
             state["pos"] = 0
@@ -636,6 +677,8 @@ def main():
     ap.add_argument("--wait-quiet", action="store_true",
                     help="with --from-file: before each line wait (<= --wait-cap s) until the uplink is open and she is quiet")
     ap.add_argument("--wait-cap", type=float, default=10.0)
+    ap.add_argument("--finish-after-reply", action="store_true",
+                    help="with --wait-quiet: stop after the final clip's reply finishes")
     ap.add_argument("--no-play", action="store_true")
     ap.add_argument("--no-start", action="store_true", help="leave the session asleep (wake-word test)")
     ap.add_argument("--record", help="save driver.wav / reply.wav / t0.txt here (with --from-file)")
@@ -666,7 +709,8 @@ def main():
     if args.from_file:
         paths = args.from_file.split(",")
         feeder = lambda: feed_file(uplink, paths, stop, lead=args.lead, gap=args.gap,
-                                   wait_quiet=args.wait_quiet, cap=min(args.wait_cap, 10.0))
+                                   wait_quiet=args.wait_quiet, cap=min(args.wait_cap, 10.0),
+                                   finish_after_reply=args.finish_after_reply)
     else:
         feeder = lambda: feed_mic(uplink, device, stop)
 
