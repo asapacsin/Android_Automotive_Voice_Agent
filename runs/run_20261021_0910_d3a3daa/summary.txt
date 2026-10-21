@@ -1,0 +1,17 @@
+app: map up
+secret AMAP_WEB_KEY: set, amap_web_setup -> result=applied 
+secret GEMINI_API_KEY: set, gemini_setup -> result=applied 
+guidance relay: result=relay=on 
+piece mode: FZ-14 clarification pilot, 110 s
+driver waits: line=1 ms=0 cap=0 reason=none line=2 ms=0 cap=0 reason=none line=3 ms=0 cap=0 reason=none line=4 ms=0 cap=0 reason=none (the scripted driver reads the app's guidance log; a real driver cannot)
+nav demo: provider=session_provider choice=gemini_live started=0 stopped= guidance=0 tools= 4 tool=control_climate  6 tool=control_seat  errors=0
+FZ-14 pilot: no navigation by design
+relay: nav_guidance_relay deadline_ms=3000 nav_guidance_relay installed=true routes: 
+relay claims: assistant_waited_ms= amap=0 fidelity: fallback_tts: echo_dropped=0
+overspeed: limits=over_lines=0 alerts=0 queued: rings=0
+listening:  1 listening ACTIVE->SLEEP reason=inactivity_timeout  1 listening DEEP_IDLE->ACTIVE reason=start uplink_closed=0 droppedGuidance=droppedGuidance=0
+P61 guard: refused=0 nav_stopped: tools_in_order: tool=control_climate result=✓ tool=control_seat result=✓ guard_vague_exit: 
+gemini closes: 
+nav demo: nav_demo.mp4 written (offset 0.0 s, guidance=no)
+video: 288x624 frames=1306 seconds=121 fps=10.8
+nav demo: done
