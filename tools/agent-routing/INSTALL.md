@@ -1,7 +1,7 @@
 # Installing agent-routing into another repository
 
 1. From a checkout that has the tool:
-   `python3 tools/agent-routing/agent_routing_cli.py install --target /path/to/repo [--executor poolside]`
+   `python3 tools/agent-routing/agent_routing_cli.py install --target /path/to/repo [--executor cohere]`
    This copies `tools/agent-routing/` and creates `.agent-routing/project.json` (from
    `templates/project.json`) and `.agent-routing/.gitignore` only if they do not exist. No other file is
    modified.

@@ -230,6 +230,7 @@ class TestI_UnavailableReviewerNeverPasses(GateBase):
         self.assertNotIn("AAAA", s)
         self.assertNotIn("abcdefghijklmnop", s)
         self.assertNotIn("bbbb", s)
+        self.assertNotIn("Zq8xk2Lm", redact("token=Zq8xk2Lm"))  # short (8-char) values after a key name
 
 
 class TestJ_StopHookBounded(GateBase):

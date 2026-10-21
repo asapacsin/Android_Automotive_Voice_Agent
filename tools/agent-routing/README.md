@@ -6,11 +6,13 @@ Stop hook. Shared tool code lives here; each project keeps its own config in `<p
 
 | provider | API | model | role |
 |---|---|---|---|
-| `gemini` | Gemini REST `generateContent` (`x-goog-api-key` from `GEMINI_API_KEY`) | `gemini-3.6-flash` | executor |
-| `poolside` | OpenRouter `https://openrouter.ai/api/v1` (Bearer `OPENROUTER_API_KEY`) | `poolside/laguna-s-2.1:free` (available until 2026-10-31, then `PROVIDER_EXPIRED`) | executor |
-| `nvidia` | NVIDIA NIM `https://integrate.api.nvidia.com/v1` (Bearer `NVIDIA_API_KEY`) | `nvidia/nemotron-3-ultra-550b-a55b` | reviewer |
+| `cohere` | OpenRouter `https://openrouter.ai/api/v1` (Bearer `OPENROUTER_API_KEY`) | `cohere/north-mini-code:free` | executor (this repo's choice) |
+| `nvidia_or` | OpenRouter (same key) | `nvidia/nemotron-3-ultra-550b-a55b:free` | reviewer (this repo's choice) |
+| `nvidia` | NVIDIA NIM `https://integrate.api.nvidia.com/v1` (Bearer `NVIDIA_API_KEY`) | `nvidia/nemotron-3-ultra-550b-a55b` | reviewer (needs a NIM key) |
+| `minimax`, `gemma`, `xing` | OpenRouter free | `minimax/minimax-m3.1-flash:free`, `google/gemma-4-31b-it:free`, `xingchen-agi/xing4.0-29b-a4b:free` | executor candidates (minimax applied a test edit 4/4; gemma and xing failed) |
+| `gemini`, `poolside` | Gemini REST / OpenRouter | `gemini-3.6-flash`, `poolside/laguna-s-2.1:free` (until 2026-10-31, then `PROVIDER_EXPIRED`) | executor; kept for other projects, not used here |
 
-One executor per project (`"executor": "gemini" | "poolside"`), reviewer `nvidia`. Models cannot be
+One executor per project (any provider above with an executor role), one reviewer (`nvidia_or` or `nvidia`). Models cannot be
 overridden. No automatic switching: `fallback` defaults to null; a configured fallback is used only with
 `--use-fallback` and is logged.
 
@@ -27,7 +29,7 @@ overridden. No automatic switching: `fallback` defaults to null; a configured fa
   `--force --reason` (audited; the hook then reports that change as UNVERIFIED).
 - `doctor [--live]` - validate config; with `--live` one tiny call per provider: `LIVE OK`,
   `LIVE AUTH FAILED`, `LIVE UNCONFIGURED`, `LIVE FAILED <code>`; without it `SKIPPED`.
-- `install --target DIR [--executor poolside]` - copy into another project (see INSTALL.md).
+- `install --target DIR [--executor cohere]` - copy into another project (see INSTALL.md).
 - `stop-hook` - Claude Code Stop hook entry (reads hook JSON on stdin; project root = `$CLAUDE_PROJECT_DIR`,
   else the git toplevel of the hook cwd). Hook command:
   `python3 "$CLAUDE_PROJECT_DIR/tools/agent-routing/agent_routing_cli.py" stop-hook`, timeout 600 s;
@@ -72,3 +74,9 @@ State (usage ledger, audit log, review cache) is written to `.agent-routing/stat
 ## Tests
 `python3 -m unittest discover -s tools/agent-routing/tests -t tools/agent-routing` (providers mocked with
 a local `http.server`; no network).
+
+## Executor reply format and limits
+The executor asks the model for small `search`/`replace` edits (full `content` only for new or tiny files; a full
+rewrite of an existing file over 60 lines is refused). A reply that uses 98% or more of `limits.max_output_tokens`
+is reported as `TRUNCATED`; `TRUNCATED` and oversize rewrites get one guided retry. A rejected reply is saved
+redacted to `.agent-routing/state/last_reply.txt` for diagnosis.

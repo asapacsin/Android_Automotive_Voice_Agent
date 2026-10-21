@@ -201,6 +201,7 @@ does not change architecture ownership, invariants, or who may certify work. Age
   file and the documents under "Where things are", builds a dependency DAG, and runs waves.
 - `executor` (Opus 5.5, low effort) implements bounded task packets in its own worktree. It cannot
   spawn agents and must return BLOCKED rather than guess or redesign.
+  **Superseded 2026-10-21 (see External executor/reviewer routing below):** the Gemini executor order is no longer used.
   **Owner preference (2026-10-19):** when available, run executor packets on **Gemini 3.8 Flash**
   instead of a Claude executor, to keep that work off the Claude plan. If 3.8 Flash is overloaded
   (HTTP 503/502), fall back to **Gemini 3.6 Flash** (owner, 2026-10-19); this replaces token-report TC-4. "Available" means a Gemini API
@@ -229,10 +230,11 @@ does not change architecture ownership, invariants, or who may certify work. Age
   files must not be sent to it.
 - **External executor/reviewer routing (owner, 2026-10-20):** the tool-capable runner those chat
   APIs lacked is [`tools/agent-routing/`](tools/agent-routing/README.md) (portable, stdlib only).
-  Executors: `gemini` = `gemini-3.6-flash` (Gemini API) or `poolside` = `poolside/laguna-s-2.1:free`
-  (OpenRouter; the free endpoint ends 2026-10-31 and is never switched to the paid one); reviewer:
-  `nvidia` = `nvidia/nemotron-3-ultra-550b-a55b` (NVIDIA NIM). One executor per project in
-  `.agent-routing/project.json` (here: `gemini`); a deterministic LOW/MEDIUM/HIGH policy decides when
+  Executor here: `cohere` = `cohere/north-mini-code:free` (OpenRouter), the only executor, no fallback;
+  reviewer: `nvidia_or` = `nvidia/nemotron-3-ultra-550b-a55b:free` (OpenRouter; the direct NVIDIA NIM provider
+  `nvidia` needs a key and is unused). **Owner 2026-10-21:** Gemini no longer writes code and Poolside is
+  dropped; this supersedes the "Gemini first" executor order above. One executor per project in
+  `.agent-routing/project.json`; a deterministic LOW/MEDIUM/HIGH policy decides when
   the Nemotron review is required, and the `agent_routing_cli.py stop-hook` Stop hook blocks completion
   of a routed change until tests pass and a structured review PASS matches the current diff (bounded:
   after 3 blocks it allows the stop as UNVERIFIED, never PASS). In this repository the gate only covers

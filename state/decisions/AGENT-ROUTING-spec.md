@@ -85,3 +85,29 @@ unchanged (checksums of given files before/after an install); L fresh temp git r
 ## Security
 Never send: secrets (.env*, *.pem, *.key, keystore, credentials files), gitignored files, binaries, or
 project `never_send` globs. Redact before any outbound request and in every log. Never print keys.
+
+## Final report (2026-10-21)
+
+**Configured here:** executor `cohere/north-mini-code:free`, reviewer `nvidia/nemotron-3-ultra-550b-a55b:free`
+(both OpenRouter, proxy-injected key), no fallback. Gemini no longer writes code; Poolside dropped (owner).
+Claude subagents: executor/reviewer/planner Sonnet 5.5, decider Opus, HIGH-risk review Opus.
+
+**Mocked (59 -> 64 unit tests, `python3 -m unittest discover -s tests -t .` in `tools/agent-routing`):** routing,
+adapters, risk classification, gate fingerprint/stale detection, Stop-hook bounded retries, redaction, install.
+
+**Live (real APIs, 2026-10-21):**
+- Cohere executor applied a bounded edit with passing tests: 4/4 trials (about 5 s); the `risk.py` fix job (70 s);
+  the end-to-end demo below.
+- Nemotron (via OpenRouter) returned structured reviews: PASS on 3 small changes, FAIL with findings on the whole
+  package (one major finding fixed: indentation-only Python edits are no longer "formatting-only").
+- End-to-end demo (scratch repo): execute -> Stop hook blocked (review missing) -> review PASS -> Stop hook allowed
+  -> edit after approval -> Stop hook blocked again (review stale).
+
+**Failures found and fixed:** review output cap 4096 truncated a reasoning reviewer (now config 8192); the executor
+asked for whole files and was cut off at 8192 tokens (now small search/replace edits, oversize-rewrite guard,
+`TRUNCATED` detection with one guided retry, redacted raw reply kept in `.agent-routing/state/last_reply.txt`).
+
+**Not verified / blockers:** direct NVIDIA NIM (`nvidia`) returns 401 (no key); the OpenRouter copy of the same
+model is used instead. Nemotron reported its identity as "gpt-4o" in one review (recorded in `reported_identity`);
+treat a free-tier PASS as advisory. Executor was only exercised on small single-file edits. Gemma/xingchen
+candidates failed (rate limit / bad response); MiniMax M3.1 Flash applied a test edit 4/4 but is not selected.

@@ -14,7 +14,7 @@ _PATTERNS = [
 ]
 _BEARER = re.compile(r"(?i)(bearer\s+)[A-Za-z0-9._\-~+/=]{8,}")
 _KV = re.compile(r"(?i)((?:api[_-]?key|x-goog-api-key|authorization|password|secret|token)\s*[\"']?\s*[:=]\s*[\"']?)"
-                 r"[A-Za-z0-9._\-~+/]{12,}")
+                 r"[A-Za-z0-9._\-~+/]{8,}")
 
 
 def redact(text, key_names=()):

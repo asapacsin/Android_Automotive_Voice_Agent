@@ -5,7 +5,6 @@
   "fallback": {"executor": null, "reviewer": null},
   "providers": {
     "cohere": {"auth": "proxy-injected"},
-    "poolside": {"auth": "proxy-injected"},
     "nvidia": {"auth": "proxy-injected"},
     "nvidia_or": {"auth": "proxy-injected"}
   },
