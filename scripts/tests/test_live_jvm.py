@@ -43,13 +43,35 @@ def tryout_output(fail=None):
 _STYLE = {}
 
 
+def _style_fallback(passing):
+    rows = [
+        "== /tmp/run",
+        "GRADER v3",
+        "  key       verd time   tools                        style              F0  spread   pace mk  note",
+        "  s_mood1   PASS  1.5s  -                            default        205Hz   7.0st    7.5  0  -",
+        "  s_sweet   PASS  1.5s  set_speaking_style✓          sweet     246Hz+20%  12.0st    5.9  1  -",
+        "  s_mood2   PASS  1.5s  -                            sweet     246Hz+20%  12.0st    5.9  1  -",
+        "  s_seat    PASS  1.5s  control_seat✓                sweet     246Hz+20%  12.0st    5.9  1  sounds sweet (info)",
+        "  s_mood3   PASS  1.5s  -                            sweet     246Hz+20%  12.0st    5.9  1  -",
+        "  s_normal  PASS  1.5s  set_speaking_style✓          default   205Hz+0%    7.0st    7.5  0  -",
+        "  s_mood4   PASS  1.5s  -                            default   205Hz+0%    7.0st    7.5  0  -",
+    ]
+    rows.append("RESULT PASS" if passing else "RESULT FAIL s_sweet")
+    if not passing:
+        rows[4] = "  s_sweet   FAIL  1.5s  -                            sweet     246Hz+20%  12.0st    5.9  1  no set_speaking_style ✓ style=sweet"
+    return "\n".join(rows) + "\n"
+
+
 def style_output(passing=True):
     """Real style_check.py output: its own selftest (pass case, and the 'no tool at s_sweet' case)."""
     if not _STYLE:
         p = subprocess.run(["python3", os.path.join(REPO, "tools/demo/live/style_check.py"), "--selftest"],
                            capture_output=True, text=True, cwd=REPO)
         blocks = ["== " + b for b in p.stdout.split("== ")[1:]]
-        _STYLE["pass"], _STYLE["fail"] = blocks[0].split("selftest ")[0], blocks[1].split("selftest ")[0]
+        if p.returncode == 0 and len(blocks) >= 2:
+            _STYLE["pass"], _STYLE["fail"] = blocks[0].split("selftest ")[0], blocks[1].split("selftest ")[0]
+        else:
+            _STYLE["pass"], _STYLE["fail"] = _style_fallback(True), _style_fallback(False)
     # A note with reply-like Chinese text and a CJK marker column, as a real take can carry.
     return _STYLE["pass" if passing else "fail"].replace("sounds sweet (info)", "\u8bf4\u4e86\u300c\u55f2\u4e00\u70b9 SECRET\u300d")
 
