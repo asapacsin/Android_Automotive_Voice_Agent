@@ -1,0 +1,56 @@
+{
+  "suite": "navpiece",
+  "verdict": "PASS",
+  "vendor": "REAL",
+  "checks": [
+    {
+      "id": "build:vendor-real",
+      "required": true,
+      "status": "PASS",
+      "detail": "real vendor files packaged"
+    },
+    {
+      "id": "navpiece:complete",
+      "required": true,
+      "status": "PASS",
+      "detail": "voice piece"
+    },
+    {
+      "id": "navpiece:bridge",
+      "required": true,
+      "status": "PASS",
+      "detail": "rc=0"
+    },
+    {
+      "id": "navpiece:P65-awake",
+      "required": true,
+      "status": "PASS",
+      "detail": "early_sleeps=0 capped_waits=0"
+    },
+    {
+      "id": "navpiece:quota-guard",
+      "required": true,
+      "status": "PASS",
+      "detail": "gemini_live, no qwen session"
+    },
+    {
+      "id": "navpiece:nav-started",
+      "required": true,
+      "status": "PASS",
+      "detail": "started=1"
+    },
+    {
+      "id": "navpiece:no-crash",
+      "required": true,
+      "status": "PASS",
+      "detail": "fatal=0 anr=0"
+    },
+    {
+      "id": "navpiece:video",
+      "required": false,
+      "status": "PASS",
+      "detail": "nav_demo.mp4 written"
+    }
+  ],
+  "problems": []
+}
