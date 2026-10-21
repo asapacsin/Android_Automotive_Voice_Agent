@@ -1,10 +1,15 @@
 package com.novadrive.simulator
 
+import com.novadrive.vehicle.CabinLimits
+import com.novadrive.vehicle.CabinState
 import com.novadrive.vehicle.ClimateState
+import com.novadrive.vehicle.SeatId
 import com.novadrive.vehicle.VehicleActionResult
+import com.novadrive.vehicle.WindowId
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -140,5 +145,108 @@ class SimulatedVehicleControlTest {
         legacy.execute(com.novadrive.vehicle.VehicleCommand.SetCabinTemperature(21.0))
         assertEquals(21.0, legacy.climate.climateState.value.targetTemperatureCelsius)
         assertEquals(21.0, legacy.observeHvac().cabinTemperatureCelsius)
+    }
+
+    // --- cabin: windows and seats ---
+
+    private val allWindows = WindowId.entries.toSet()
+
+    @Test
+    fun cabinDefaultIsClosedWindowsAndMiddleSeats() = runBlocking {
+        val cabin = sim().getCabinState()
+        assertTrue(cabin.windows.values.all { it == 0 })
+        assertTrue(cabin.seatHeights.values.all { it == CabinLimits.SEAT_DEFAULT })
+    }
+
+    @Test
+    fun setWindowsAbsoluteAcceptsAnyIntegerPercent() = runBlocking {
+        val sim = sim()
+        val r = sim.setWindows(setOf(WindowId.FRONT_LEFT, WindowId.FRONT_RIGHT), 37) as VehicleActionResult.Success
+        assertEquals(37, r.state.windows[WindowId.FRONT_LEFT])
+        assertEquals(37, r.state.windows[WindowId.FRONT_RIGHT])
+        assertEquals(0, r.state.windows[WindowId.REAR_LEFT])
+        assertFalse(r.limitReached)
+        assertEquals(r.state, sim.cabinState.value)
+    }
+
+    @Test
+    fun setWindowsOutOfRangeIsAtomicInvalid() = runBlocking {
+        val sim = sim()
+        sim.setWindows(allWindows, 40)
+        assertTrue(sim.setWindows(allWindows, 101) is VehicleActionResult.InvalidArgument)
+        assertTrue(sim.setWindows(setOf(WindowId.REAR_LEFT), -1) is VehicleActionResult.InvalidArgument)
+        assertTrue(sim.getCabinState().windows.values.all { it == 40 })
+    }
+
+    @Test
+    fun emptyWindowSetIsInvalid() = runBlocking {
+        val sim = sim()
+        assertTrue(sim.setWindows(emptySet(), 50) is VehicleActionResult.InvalidArgument)
+        assertTrue(sim.changeWindows(emptySet(), 20) is VehicleActionResult.InvalidArgument)
+        assertEquals(CabinState.DEFAULT, sim.getCabinState())
+    }
+
+    @Test
+    fun changeWindowsIsRelativeAndClampsPerWindow() = runBlocking {
+        val sim = sim()
+        sim.setWindows(setOf(WindowId.FRONT_LEFT), 90)
+        val r = sim.changeWindows(setOf(WindowId.FRONT_LEFT, WindowId.FRONT_RIGHT), 20) as VehicleActionResult.Success
+        assertEquals(100, r.state.windows[WindowId.FRONT_LEFT])
+        assertEquals(20, r.state.windows[WindowId.FRONT_RIGHT])
+        assertTrue(r.limitReached)
+        val ok = sim.changeWindows(setOf(WindowId.FRONT_RIGHT), -10) as VehicleActionResult.Success
+        assertEquals(10, ok.state.windows[WindowId.FRONT_RIGHT])
+        assertFalse(ok.limitReached)
+    }
+
+    @Test
+    fun changeWindowsAlreadyAtLimitReportsLimit() = runBlocking {
+        val r = sim().changeWindows(allWindows, -CabinLimits.DEFAULT_WINDOW_STEP) as VehicleActionResult.Success
+        assertTrue(r.limitReached)
+        assertTrue(r.state.windows.values.all { it == 0 })
+    }
+
+    @Test
+    fun seatAbsoluteBoundsAreRejected() = runBlocking {
+        val sim = sim()
+        assertTrue(sim.setSeatHeight(SeatId.DRIVER, 11) is VehicleActionResult.InvalidArgument)
+        assertTrue(sim.setSeatHeight(SeatId.DRIVER, -1) is VehicleActionResult.InvalidArgument)
+        val r = sim.setSeatHeight(SeatId.DRIVER, 10) as VehicleActionResult.Success
+        assertEquals(10, r.state.seatHeights[SeatId.DRIVER])
+        assertEquals(CabinLimits.SEAT_DEFAULT, r.state.seatHeights[SeatId.PASSENGER])
+    }
+
+    @Test
+    fun seatRelativeClampsWithLimitReached() = runBlocking {
+        val sim = sim()
+        val down = sim.changeSeatHeight(SeatId.DRIVER, -1) as VehicleActionResult.Success
+        assertEquals(4, down.state.seatHeights[SeatId.DRIVER])
+        assertFalse(down.limitReached)
+        val floor = sim.changeSeatHeight(SeatId.DRIVER, -9) as VehicleActionResult.Success
+        assertEquals(0, floor.state.seatHeights[SeatId.DRIVER])
+        assertTrue(floor.limitReached)
+        val again = sim.changeSeatHeight(SeatId.DRIVER, -1) as VehicleActionResult.Success
+        assertTrue(again.limitReached)
+    }
+
+    @Test
+    fun cabinStateFlowEmitsChanges() = runBlocking {
+        val sim = sim()
+        val before = sim.cabinState.value
+        sim.setSeatHeight(SeatId.PASSENGER, 2)
+        assertEquals(2, sim.cabinState.value.seatHeights[SeatId.PASSENGER])
+        assertTrue(before !== sim.cabinState.value)
+        assertEquals(sim.getCabinState(), sim.cabinState.value)
+    }
+
+    @Test
+    fun cabinStateValidatesItsInvariants() {
+        val windows = WindowId.entries.associateWith { 0 }
+        val seats = SeatId.entries.associateWith { 5 }
+        assertThrows(IllegalArgumentException::class.java) { CabinState(windows - WindowId.REAR_LEFT, seats) }
+        assertThrows(IllegalArgumentException::class.java) { CabinState(windows, seats - SeatId.DRIVER) }
+        assertThrows(IllegalArgumentException::class.java) { CabinState(windows + (WindowId.FRONT_LEFT to 101), seats) }
+        assertThrows(IllegalArgumentException::class.java) { CabinState(windows, seats + (SeatId.DRIVER to 11)) }
+        assertEquals(CabinState(windows, seats), CabinState.DEFAULT)
     }
 }

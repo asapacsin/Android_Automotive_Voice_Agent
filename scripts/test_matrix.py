@@ -678,8 +678,13 @@ def protection_summary(doc=None):
 # ---- validation ------------------------------------------------------------------------------
 
 
-def validate(doc=None, requirements=None, audit_protection=None, extra_unmapped=None):
-    """Everything that would make the registry lie. Returns a list of problems."""
+def validate(doc=None, requirements=None, audit_protection=None, extra_unmapped=None,
+             check_binds=True):
+    """Everything that would make the registry lie. Returns a list of problems.
+
+    check_binds=False (--structural, Tier A) skips only evidence-bind currency, which every code
+    change invalidates by construction; it also skips a missing evidence_bind or missing bound
+    artifact. Tier C (--release) still catches all of these."""
     _BIND_COMPUTE_CACHE.clear()
     doc = doc or load()
     found = []
@@ -717,7 +722,7 @@ def validate(doc=None, requirements=None, audit_protection=None, extra_unmapped=
         if owner in HUMAN_OWNERS:
             found.extend(human_entry_problems(entry))
         found.extend(verdict_problems(entry, ids, requirements))
-        if need_runtime_bind(entry):
+        if check_binds and need_runtime_bind(entry):
             found.extend(bind_problems(entry))
     if audit_protection is None:
         audit_protection = requirements is None
@@ -1659,6 +1664,63 @@ def selftest():
     return 1 if failed else 0
 
 
+# Tier C release acceptance (docs/RELEASE_CHECKLIST.md). Automated or emulator evidence never
+# verifies a HUMAN_* row: only HUMAN_PASS does. Anything not positively verified fails closed.
+RELEASE_ORDER = ("FAILED", "STALE", "UNVERIFIED", "VERIFIED")
+
+
+def _is_release_blocking(entry):
+    value = entry.get("release_blocking")
+    if isinstance(value, str):
+        return value.strip().lower() == "true"
+    return value is True
+
+
+def release_effective(entry, stale_check=None):
+    """VERIFIED / STALE / UNVERIFIED / FAILED for one row; stale_check defaults to bind_problems."""
+    check = stale_check or bind_problems
+    owner, status = entry.get("owner"), entry.get("status")
+    if status in ("FAIL", "HUMAN_FAIL"):
+        return "FAILED"
+    if status in ("PASS", "HUMAN_PASS") and check(entry):
+        return "STALE"
+    if owner == "AUTONOMOUS" and status == "PASS":
+        return "VERIFIED"
+    if isinstance(owner, str) and owner.startswith("HUMAN_") and status == "HUMAN_PASS":
+        return "VERIFIED"
+    return "UNVERIFIED"
+
+
+def release_checklist(doc=None, stale_check=None):
+    entries = tests(doc)
+    rows, ignored = [], 0
+    for entry in entries:
+        if not _is_release_blocking(entry):
+            ignored += 1
+            continue
+        rows.append({"id": entry.get("id"), "owner": entry.get("owner"),
+                     "status": entry.get("status"),
+                     "effective": release_effective(entry, stale_check),
+                     "name": entry.get("name")})
+    rows.sort(key=lambda r: (RELEASE_ORDER.index(r["effective"]), str(r["id"])))
+    tally = {k: sum(1 for r in rows if r["effective"] == k) for k in RELEASE_ORDER}
+    verdict = "READY" if rows and tally["VERIFIED"] == len(rows) else "NOT_READY"
+    return {"verdict": verdict, "counts": tally, "rows": rows, "ignored": ignored}
+
+
+def release_text(result):
+    lines = ["%-10s  %-26s  %-16s  %-14s  %s" % ("EFFECTIVE", "ID", "OWNER", "STATUS", "NAME")]
+    for r in result["rows"]:
+        lines.append("%-10s  %-26s  %-16s  %-14s  %s" % (
+            r["effective"], r["id"], r["owner"], r["status"], r["name"]))
+    lines.append("%d non-release-blocking row(s) not listed" % result["ignored"])
+    c = result["counts"]
+    lines.append("RELEASE %s verified=%d/%d failed=%d stale=%d unverified=%d" % (
+        result["verdict"], c["VERIFIED"], len(result["rows"]), c["FAILED"], c["STALE"],
+        c["UNVERIFIED"]))
+    return "\n".join(lines)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--validate", action="store_true")
@@ -1677,6 +1739,11 @@ def main():
     ap.add_argument("--record-pass", choices=["clean", "dirty"],
                     help="record a discovery/review pass result")
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--structural", action="store_true",
+                    help="with --validate, skip evidence-bind currency (Tier A)")
+    ap.add_argument("--release", action="store_true",
+                    help="Tier C release checklist and verdict (exit 1 unless READY)")
+    ap.add_argument("--json", metavar="FILE", help="with --release, also write JSON here")
     ap.add_argument("--bind", metavar="ID", help="write evidence_bind for one runtime-bound row")
     ap.add_argument("--apply-stale", action="store_true",
                     help="requeue rows whose evidence_bind no longer matches")
@@ -1720,11 +1787,22 @@ def main():
         print("%d stale row(s)%s" % (len(stale), " (dry-run)" if args.dry_run else ""))
         return 0
 
+    if args.release:
+        result = release_checklist(doc)
+        print(release_text(result))
+        if args.json:
+            import json
+            with io.open(args.json, "w", encoding="utf-8") as handle:
+                json.dump({k: result[k] for k in ("verdict", "counts", "rows")}, handle,
+                          ensure_ascii=False, indent=2)
+        return 0 if result["verdict"] == "READY" else 1
+
     if args.validate:
-        problems = validate(doc)
+        problems = validate(doc, check_binds=not args.structural)
         for problem in problems:
             print("  %s" % problem)
-        print("%d test(s), %d problem(s)" % (len(doc["tests"]), len(problems)))
+        print("%d test(s), %d problem(s)%s" % (len(doc["tests"]), len(problems),
+              " (structural: evidence binds not checked)" if args.structural else ""))
         return 1 if problems else 0
 
     if args.work:

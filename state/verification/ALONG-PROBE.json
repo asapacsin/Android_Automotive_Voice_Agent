@@ -1,0 +1,36 @@
+{
+ "task_id": "ALONG-PROBE",
+ "contract_sha256": "f5099853e9b29413782d9a1334e09fdb18d80640801f27d2c10b27ee12469da8",
+ "tip": "72a03493f3efb82b7a0c4ccdb079e9b5e951e277",
+ "verified_by": "planner",
+ "at": "2026-10-20T11:29:10+00:00",
+ "results": [
+  {
+   "id": "unit",
+   "kind": "regression",
+   "command": "./gradlew --no-daemon -q :app:testDebugUnitTest --tests \"*AlongProbe*\"",
+   "exit_code": 0,
+   "seconds": 19.5,
+   "log": "/root/nova-build/v2-ALONG/nova-verify/ALONG-PROBE/72a03493f3ef-unit.log",
+   "log_sha256": "bcbd06e73ee58c0ef9d2d139f75cb5bf76a716d5644f7ec62f384651e6ed5b26"
+  },
+  {
+   "id": "compile-debug",
+   "kind": "compile",
+   "command": "./gradlew --no-daemon -q :app:compileDebugKotlin",
+   "exit_code": 0,
+   "seconds": 15.5,
+   "log": "/root/nova-build/v2-ALONG/nova-verify/ALONG-PROBE/72a03493f3ef-compile-debug.log",
+   "log_sha256": "be3705ca8d832c3d3af7d11d0c1c689dbef1eff14671a1e7da19b84cd13416d9"
+  },
+  {
+   "id": "bash-syntax",
+   "kind": "lint",
+   "command": "bash -n scripts/github_device_checks.sh",
+   "exit_code": 0,
+   "seconds": 0.0,
+   "log": "/root/nova-build/v2-ALONG/nova-verify/ALONG-PROBE/72a03493f3ef-bash-syntax.log",
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+ ]
+}

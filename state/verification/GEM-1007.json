@@ -1,0 +1,27 @@
+{
+ "task_id": "GEM-1007",
+ "contract_sha256": "7105e7469b561bc7fbf3e9de471184fb24ca1d166cf5393e45bc6a09aeb05983",
+ "tip": "59567f68afea20a28d23753d1feb66a02152e145",
+ "verified_by": "planner",
+ "at": "2026-10-19T14:09:41+00:00",
+ "results": [
+  {
+   "id": "app-unit",
+   "kind": "regression",
+   "command": "python3 scripts/compact_test.py -- ./gradlew --offline -q :app:testDebugUnitTest",
+   "exit_code": 0,
+   "seconds": 152.0,
+   "log": "/root/nova-drive-build/nova-verify/GEM-1007/59567f68afea-app-unit.log",
+   "log_sha256": "cdceca0f6290d77f7b0b2822b3e8b7caebd6828c08adfad20d50c0c629f6c4ef"
+  },
+  {
+   "id": "behavior-test",
+   "kind": "regression",
+   "command": "python3 scripts/compact_test.py -- ./gradlew --offline -q :behavior-test:test",
+   "exit_code": 0,
+   "seconds": 20.3,
+   "log": "/root/nova-drive-build/nova-verify/GEM-1007/59567f68afea-behavior-test.log",
+   "log_sha256": "323447d439e5d461b9a941e6bd592a7d5a8271a8266936f313a4ddf65de7ba57"
+  }
+ ]
+}

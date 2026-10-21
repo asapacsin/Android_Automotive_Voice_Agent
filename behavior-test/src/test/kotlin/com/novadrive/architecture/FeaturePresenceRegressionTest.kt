@@ -138,9 +138,9 @@ class FeaturePresenceRegressionTest {
             "a reply to an echo candidate must be held",
         )
         assertContains(
-            "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt",
+            "app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt",
             "turn.onSpeechDuringPlayback(qualified = speechEvidence())",
-            "the client must mark speech over playback with its post-AEC evidence",
+            "the per-turn gate (DriverTurnPipeline) must mark speech over playback with its post-AEC evidence",
         )
     }
 
@@ -239,9 +239,23 @@ class FeaturePresenceRegressionTest {
         )
         assertContains(host, "addOnMapTouchListener", "a manual pan must end automatic recentring")
         assertContains(
-            host,
+            "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapCoordinates.kt",
             "CoordinateConverter.CoordType.GPS",
             "platform fixes are WGS-84 and the map is GCJ-02",
+        )
+        // P51: the map and the nearby search share the one converter; no second copy.
+        assertContains(host, "AmapCoordinates.toGcj02(", "the map converts through the one owner")
+        assertContains(
+            "app/src/main/kotlin/com/novadrive/app/nav/LiveDestinationCandidateSource.kt",
+            "AmapCoordinates.toGcj02(",
+            "place/around takes GCJ-02, not the platform's WGS-84 fix",
+        )
+        val converters = File(root, "app/src/main").walkTopDown()
+            .filter { it.isFile && it.readText().contains("CoordinateConverter") }
+            .map { it.relativeTo(root).path.replace('\\', '/') }.toList()
+        assertTrue(
+            converters == listOf("app/src/main/kotlin/com/novadrive/app/nav/amap/AmapCoordinates.kt"),
+            "exactly one file may mention CoordinateConverter, found $converters",
         )
     }
 
@@ -263,6 +277,7 @@ class FeaturePresenceRegressionTest {
         assertContains(presentation, "setShowTrafficLightView(true)", "countdown bubble is the navi view, not our layout")
         assertContains(presentation, "TRAFFIC_COUNTDOWN_STATUS", "countdown state is declared, not silently assumed")
         assertContains(presentation, "setPointToCenter(LOCK_CENTER_X, LOCK_CENTER_Y)", "vehicle sits in the lower-middle")
+        assertContains(presentation, "setAutoDrawRoute(MapPresentationPolicy.drawsRoute(driving, preview))", "P59: route drawing follows the presentation; idle never draws")
         val host = "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapNaviViewHost.kt"
         assertContains(host, "AmapDrivingPresentation.applyDriving", "startNavi must enter driving presentation")
         assertContains(host, "EmulatorNaviSpeed.clamp", "emulator speed is urban default / debug override, not a hardcoded 120")
@@ -313,7 +328,8 @@ class FeaturePresenceRegressionTest {
         val capture = "app/src/main/kotlin/com/novadrive/app/voice/PcmAudioCapture.kt"
         assertContains(capture, "gateAndSend(bytes, onFrame)", "live frames must pass the uplink gate")
         assertContains(capture, "gateForInjection", "harness audio goes through the same gate or it proves nothing")
-        val client = "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt"
+        // The per-turn gate's owner is DriverTurnPipeline (ADR-010); provider clients only feed it.
+        val client = "app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt"
         assertContains(client, "onResponseCreated()", "a suspicious turn's reply audio must be held")
         assertContains(client, "finishResponse(hadToolCall =", "the verdict needs the tool-call fact")
         assertContains(client, "TURN_DROP", "every suppression must say why")

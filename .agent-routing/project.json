@@ -1,0 +1,20 @@
+{
+  "$comment": "Nova Drive routing. Gate scope 'sessions': only changes made through agent_routing execute are gated, so the existing Nova contract/review workflow is unaffected. Keys are injected per host by the cloud proxy.",
+  "executor": "cohere",
+  "reviewer": "nvidia_or",
+  "fallback": {"executor": null, "reviewer": null},
+  "providers": {
+    "cohere": {"auth": "proxy-injected"},
+    "nvidia": {"auth": "proxy-injected"},
+    "nvidia_or": {"auth": "proxy-injected"}
+  },
+  "never_send": [
+    "app/libs/**", "**/jniLibs/**", "app/src/main/assets/**", "**/*.jar", "**/*.aar", "**/*.so",
+    "local.properties", "**/*.jks", "**/*.keystore", "tools/vendor-stub/**", ".local-agent-memory/**"
+  ],
+  "risk_rules": [],
+  "risk_override": null,
+  "tests": {"command": null, "from_session": true},
+  "gate": {"scope": "sessions", "max_blocks": 3},
+  "budgets": {"daily": {}}
+}

@@ -1,0 +1,36 @@
+{
+ "task_id": "LIVEINFO-MAP",
+ "contract_sha256": "152b103360c71b66d2512df01860e10d28b1beed5d256f2df9a4174caa44e862",
+ "tip": "73f2b50b99cff72722e9e4038467cb6ecea23414",
+ "verified_by": "planner",
+ "at": "2026-10-20T05:44:25+00:00",
+ "results": [
+  {
+   "id": "liveinfo-tests",
+   "kind": "regression",
+   "command": "./gradlew -q :app:testDebugUnitTest --tests '*RouteLiveInfoMappingTest*' --tests '*LiveInfoToolTest*' --tests '*LiveInfoAlongRouteWiringTest*' --tests '*AmapLiveInfoParserTest*'",
+   "exit_code": 0,
+   "seconds": 18.0,
+   "log": "/root/nb-liveinfo-v/nova-verify/LIVEINFO-MAP/73f2b50b99cf-liveinfo-tests.log",
+   "log_sha256": "6912b1ec2d7e9edee285abe29013ec4bf9959dd471c708b2c0b816bf15da550e"
+  },
+  {
+   "id": "architecture-and-capabilities",
+   "kind": "regression",
+   "command": "./gradlew -q :behavior-test:test --tests '*CapabilityContractTest*' --tests '*ArchitectureRulesTest*'",
+   "exit_code": 0,
+   "seconds": 15.3,
+   "log": "/root/nb-liveinfo-v/nova-verify/LIVEINFO-MAP/73f2b50b99cf-architecture-and-capabilities.log",
+   "log_sha256": "6912b1ec2d7e9edee285abe29013ec4bf9959dd471c708b2c0b816bf15da550e"
+  },
+  {
+   "id": "app-compiles",
+   "kind": "compile",
+   "command": "./gradlew -q :app:compileDebugKotlin :app:compileReleaseKotlin",
+   "exit_code": 0,
+   "seconds": 15.8,
+   "log": "/root/nb-liveinfo-v/nova-verify/LIVEINFO-MAP/73f2b50b99cf-app-compiles.log",
+   "log_sha256": "16b8b4b8d94db0faccf74a4fd848a55e640e8cfd64bcf093a73e2b803afcdbd2"
+  }
+ ]
+}

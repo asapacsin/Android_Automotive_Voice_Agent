@@ -1,0 +1,681 @@
+package com.novadrive.app.livedemo
+
+import com.novadrive.ingress.realtime.VoiceCatalog
+import com.novadrive.app.AndroidToolDispatcher
+import com.novadrive.app.AmapPoiClient
+import com.novadrive.app.CoreActionExecutor
+import com.novadrive.app.DebugVoiceLog
+import com.novadrive.app.GeminiAppSettings
+import com.novadrive.app.GeminiSettingsValidator
+import com.novadrive.app.LiveInfoTool
+import com.novadrive.app.NavigationState
+import com.novadrive.app.PersonaProfiles
+import com.novadrive.app.QwenAppSettings
+import com.novadrive.app.QwenSettingsValidator
+import com.novadrive.app.SpeakingStyle
+import com.novadrive.app.SpeakingStyleState
+import com.novadrive.app.media.HandoffResult
+import com.novadrive.app.media.MusicHandoffTool
+import com.novadrive.app.media.MusicRequest
+import com.novadrive.app.media.NowPlaying
+import com.novadrive.app.media.PauseResult
+import com.novadrive.app.media.PlaybackCheck
+import com.novadrive.app.nav.EmbeddedNavigation
+import com.novadrive.app.nav.EmbeddedNavigationController
+import com.novadrive.app.nav.LocationFix
+import com.novadrive.app.nav.LiveDestinationCandidateSource
+import com.novadrive.app.nav.DestinationCandidateSource
+import com.novadrive.app.nav.DestinationCandidate
+import com.novadrive.app.nav.NavigationPhase
+import com.novadrive.app.sim.FixtureVision
+import com.novadrive.app.sim.SimulatedCamera
+import com.novadrive.app.sim.SimulatedMusic
+import com.novadrive.app.vehicle.ClimateToolHandler
+import com.novadrive.app.vision.CameraQuestionHandler
+import com.novadrive.app.voice.MicInputGain
+import com.novadrive.app.voice.RealtimeProviderFactory
+import com.novadrive.app.voice.SessionProviderConfig
+import com.novadrive.app.voice.SpeechUplinkGate
+import com.novadrive.ingress.realtime.DomainVoiceEvent
+import com.novadrive.ingress.realtime.InMemoryMicrophonePort
+import com.novadrive.ingress.realtime.ToolDispatchResult
+import com.novadrive.ingress.realtime.VoiceSessionCallbacks
+import com.novadrive.simulator.SimulatedVehicleControl
+import com.novadrive.vehicle.SeatId
+import com.novadrive.vehicle.WindowId
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.runBlocking
+import org.json.JSONArray
+import org.json.JSONObject
+import org.junit.jupiter.api.Assumptions.assumeTrue
+import org.junit.jupiter.api.Test
+import java.io.File
+import java.util.Locale
+import java.util.concurrent.Executors
+import com.novadrive.ingress.realtime.VoiceSessionController as CoreSession
+
+/**
+ * The commute demo (docs/DEMO_COMMUTE.md) recorded on the JVM against the LIVE model: the real
+ * provider client, the core session and the app's tool dispatch, with a simulated car and route.
+ * Skipped unless NOVA_LIVE_DEMO=1, so `gradlew test` never touches the network. See
+ * tools/demo/live/README.md. Never prints a key: only the names of missing variables.
+ */
+class LiveDemoRun {
+    @Test
+    fun record() {
+        assumeTrue(System.getenv("NOVA_LIVE_DEMO") == "1", "live demo runs only with NOVA_LIVE_DEMO=1")
+        val outPath = requireNotNull(System.getenv("NOVA_LIVE_OUT")?.takeIf { it.isNotBlank() }) { "NOVA_LIVE_OUT is not set" }
+        val out = File(outPath).absoluteFile.apply { mkdirs() }
+        // Gemini first, Ayano last (AGENTS.md, owner 2026-10-13): Qwen only when asked for by name.
+        val choice = System.getenv("NOVA_LIVE_PROVIDER")?.ifBlank { null } ?: "gemini"
+        val scenes = System.getenv("NOVA_LIVE_SCENES")?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }
+            ?: SCENES.keys.filter { it != DRIVE && it != TRYOUT && it != STYLE }
+        scenes.forEach { require(it in SCENES) { "unknown scene $it" } }
+        require(DRIVE !in scenes || scenes.size == 1) { "the $DRIVE scene is a whole trip; run it alone" }
+        require(TRYOUT !in scenes || scenes.size == 1) { "the $TRYOUT scene is a whole session; run it alone" }
+        require(STYLE !in scenes || scenes.size == 1) { "the $STYLE scene is a whole session; run it alone" }
+        val prefetch = if (TRYOUT in scenes) listOf(COMMUTE_QUERY) + TRYOUT_QUERIES else listOf(COMMUTE_QUERY)
+        LiveDemo(out, choice, prefetch).use { it.run(scenes) }
+    }
+
+    companion object {
+        /** The realistic drive (NOVA_LIVE_SCENES=drive): the app's speech rules and Amap guidance on. */
+        const val DRIVE = "drive"
+
+        /**
+         * Driver lines at route positions (metres travelled). Prompts (HengqinWorld.promptsFor, 2,600 m):
+         * g_start 0, g_m1_300 150, g_m1_50 400, g_m2_300 850, g_m2_50 1100, g_m3_300 1600,
+         * g_m3_50 1850, g_m4_300 2100, g_m4_50 2350, g_arrive 2600. At 40 km/h 11.1 m is 1 s.
+         */
+        val DRIVE_LINES: List<Pair<Int, String>> = listOf(
+            838 to "c_mosq", // starts ~1.1 s before g_m2_300: her reply meets the prompt
+            1_060 to "c_mosq2", // in the 150 m workload zone of 港澳大道; her reply is due as g_m2_50 plays
+            1_300 to "c_music", // calm stretch
+            1_835 to "c_traffic", // starts ~1.4 s before g_m3_50
+            1_960 to "c_weather", // just past the junction
+            2_450 to "c_close", // after the last turn, before arrival
+        )
+
+        /**
+         * A first-time driver trying the app in their own words (NOVA_LIVE_SCENES=tryout, docs/DEMO_TRYOUT.md):
+         * one session, parked until u_go. tools/demo/live/tryout_check.py grades it line by line.
+         */
+        const val TRYOUT = "tryout"
+
+        /** The tryout's lines in order before the music barge-in, and after it. */
+        val TRYOUT_PARKED = listOf("u_hello", "u_can", "u_hot", "u_temp", "u_window", "u_sunroof", "u_gas", "u_cancel", "u_dest", "u_pick2", "u_go")
+        val TRYOUT_AFTER = listOf("u_mstop", "u_mumble", "u_call", "u_navoff", "u_bye")
+
+        /**
+         * The speaking style before, after 「嗲一点」 and back (NOVA_LIVE_SCENES=style, docs/DEMO_STYLE.md): one
+         * session, parked, the same question four times. tools/demo/live/style_check.py grades it.
+         */
+        const val STYLE = "style"
+
+        /** Seconds into a playing reply at which the driver barges in with u_barge. */
+        const val BARGE_AFTER_S = 1.0
+
+        val SCENES: LinkedHashMap<String, (LiveDemo) -> Unit> = linkedMapOf(
+            "commute_board" to { s ->
+                s.timeline.title("1  上车：换个说话方式，调座椅", "Getting in: a sweeter voice, the seat higher, then higher again")
+                s.turn("c_sweet"); s.turn("c_seat"); s.turn("c_seat2")
+            },
+            "commute_depart" to { s ->
+                s.timeline.title("2  出发：导航去横琴镇", "Navigate to 横琴镇: choose the place, start; the car drives (simulated)")
+                s.turn("c_nav", 40.0); s.turn("c_pick", 40.0); s.turn("c_go", 40.0)
+                s.world.speedKmh = 40.0
+                Thread.sleep(4_000)
+            },
+            "commute_mosq" to { s ->
+                s.timeline.title("3  路上：有蚊子", "A mosquito: she opens the windows; it stays, and she does something about it")
+                s.turn("c_mosq"); s.turn("c_mosq2")
+            },
+            "commute_music" to { s ->
+                s.timeline.title("4  路上：说不全的歌名", "A song she has to work out from a vague description")
+                s.turn("c_music", 40.0)
+            },
+            "commute_ask" to { s ->
+                s.timeline.title("5  路上：问路况、天气，关窗", "Traffic ahead, the weather here, and close the windows")
+                s.turn("c_traffic", 40.0); s.turn("c_weather", 40.0); s.turn("c_close")
+            },
+            "commute_arrive" to { s ->
+                s.timeline.title("6  到达横琴镇", "Arrival")
+                s.world.speedKmh = 120.0
+                s.timeline.mark("cut_start")
+                val begin = System.currentTimeMillis()
+                while (System.currentTimeMillis() - begin < 150_000 && !s.world.arrived) Thread.sleep(500)
+                s.timeline.mark("cut_end")
+                if (!s.world.arrived) s.turn("c_end")
+                Thread.sleep(6_000)
+                s.snapshot("arrive")
+            },
+            DRIVE to { s ->
+                s.timeline.title("1  上车：换个说话方式，调座椅", "Getting in: a sweeter voice, the seat higher, then higher again")
+                s.turn("c_sweet"); s.turn("c_seat"); s.turn("c_seat2")
+                s.timeline.title("2  出发：导航去横琴镇", "Navigate to 横琴镇: choose the place, start; Amap guides from here")
+                s.turn("c_nav", 40.0); s.turn("c_pick", 40.0); s.turn("c_go", 40.0)
+                s.timeline.title("3  路上：40 km/h 实时驾驶，高德播报", "One real-time trip at 40 km/h; Amap speaks, she waits for it")
+                DRIVE_LINES.forEach { (m, key) -> s.turnAt(m, key) }
+                s.timeline.title("4  到达横琴镇", "Arrival, announced by Amap")
+                s.awaitArrival()
+                Thread.sleep(6_000)
+                s.snapshot("arrive")
+            },
+            TRYOUT to { s ->
+                s.timeline.title("试用：第一次上车，自己的话", "A first try in the driver's own words: chat, the car, a refusal, a change of mind")
+                TRYOUT_PARKED.forEach { s.turn(it, 40.0) }
+                s.timeline.title("试用：路上，音乐、打断、电话", "On the road: music, a barge-in, a call, ending navigation")
+                s.world.speedKmh = 40.0
+                s.turn("u_eta", 40.0)
+                s.turnThenBarge("u_music", "u_barge", "play_music")
+                TRYOUT_AFTER.forEach { s.turn(it, 40.0) }
+                s.snapshot("end")
+            },
+            STYLE to { s ->
+                s.timeline.title("说话风格：之前", "Speaking style: before (default)")
+                s.turn("s_mood1", 40.0)
+                s.timeline.title("嗲一点之后", "After 「嗲一点」: sweet, through a car action and two turns later")
+                listOf("s_sweet", "s_mood2", "s_seat", "s_mood3").forEach { s.turn(it, 40.0) }
+                s.timeline.title("切回正常", "Back to normal")
+                s.turn("s_normal", 40.0); s.turn("s_mood4", 40.0)
+                s.snapshot("end")
+            },
+        )
+    }
+}
+
+/** The commute destination (docs/DEMO_COMMUTE.md); its search is fetched before the session opens (P53). */
+private const val COMMUTE_QUERY = "横琴镇"
+
+/** The tryout's destination searches (docs/DEMO_TRYOUT.md), prefetched like COMMUTE_QUERY; the candidates stay real. */
+private val TRYOUT_QUERIES = listOf("长隆海洋王国", "附近的加油站")
+
+/** Tool arguments the tryout and style scenes record per call (no contact, place or free text): what the graders check. */
+private val TRYOUT_ARG_KEYS = setOf("index", "preference", "action", "window", "value", "scenario", "style")
+
+/** One live session: the composition, the real-time microphone and the per-turn state log. */
+class LiveDemo(
+    private val out: File,
+    private val choice: String,
+    private val prefetchQueries: List<String> = listOf(COMMUTE_QUERY),
+) : AutoCloseable {
+    private val repoRoot = File(System.getProperty("nova.repo.root") ?: "..")
+    // NOVA_LIVE_CLIPS: another clip set with the same names, e.g. the noisy copies of P47.
+    val timeline = LiveDemoTimeline(
+        out,
+        System.getenv("NOVA_LIVE_CLIPS")?.takeIf { it.isNotBlank() }?.let(::File) ?: File(repoRoot, "tools/demo/recorder/clips"),
+    )
+    val world = HengqinWorld()
+    private val vehicle = SimulatedVehicleControl()
+    private val music = SimulatedMusic()
+    private val handoff = SimulatedHandoff()
+    private val log = File(out, "logcat.txt").bufferedWriter(Charsets.UTF_8)
+    private val mainThread = Executors.newSingleThreadExecutor { r -> Thread(r, "livedemo-main").apply { isDaemon = true } }
+    private val scope = CoroutineScope(SupervisorJob() + mainThread.asCoroutineDispatcher())
+    private val mic = InMemoryMicrophonePort()
+    private val gate = SpeechUplinkGate()
+    private val gain = MicInputGain()
+    /**
+     * The app's own place search against the real Amap Web API when a key is present (P51: the simulated
+     * list hid that 第一个 chose the origin); the route and the drive stay simulated.
+     */
+    private val liveSearch: DestinationCandidateSource? = System.getenv("AMAP_WEB_KEY")?.takeIf { it.isNotBlank() }?.let { key ->
+        LiveDestinationCandidateSource(
+            poiClient = AmapPoiClient(),
+            platformFix = { LocationFix(HengqinWorld.ORIGIN_LAT, HengqinWorld.ORIGIN_LON) },
+            toGcj02 = { it.copy(latitude = HengqinWorld.ORIGIN_GCJ_LAT, longitude = HengqinWorld.ORIGIN_GCJ_LON) },
+            webKey = { key },
+            savedPlaces = { null },
+        )
+    }
+
+    /**
+     * P53: the commute destination's real Amap result, fetched once before the session opens, so the
+     * take does not wait on the network for 「导航去横琴镇」. The candidates are real; only the time is
+     * taken out. Any other query still searches live.
+     */
+    @Volatile private var prefetched: Map<String, List<DestinationCandidate>> = emptyMap()
+    private val search: DestinationCandidateSource = liveSearch?.let { live ->
+        DestinationCandidateSource { query ->
+            val ready = prefetched
+            val key = ready.keys.filter { query.contains(it) }.maxByOrNull { it.length }
+            if (key != null) ready.getValue(key) else live.resolve(query)
+        }
+    } ?: world
+    private val nav = EmbeddedNavigationController(resolver = search, engine = world)
+    private lateinit var core: CoreSession
+    private lateinit var playback: LiveDemoTimeline.Playback
+    @Volatile private var running = true
+
+    /** The drive scene's speech rules (null for the six commute scenes, which run as before). */
+    private var rules: DriveSpeechRules? = null
+    private val amapVoice = Executors.newSingleThreadExecutor { r -> Thread(r, "livedemo-amap").apply { isDaemon = true } }
+    /** The arbiter's hold/drop/uplink decisions since the last snapshot, with their reasons. */
+    private val turnSpeech = JSONArray()
+    /** The drive turn whose snapshot is still open, and whether its line was spoken over her reply. */
+    private var openDriveKey: String? = null
+    private var spokeOverReply = false
+    private var micFramesGated = 0L
+
+    /** The tryout and style scenes record the graded tool arguments per call (TRYOUT_ARG_KEYS). */
+    @Volatile private var tryout = false
+
+    private val turnTools = JSONArray()
+    private val turnTranscripts = mutableListOf<String>()
+    private val turns = JSONArray()
+    private val track = JSONArray()
+
+    init {
+        DebugVoiceLog.sink = { msg ->
+            val line = String.format(Locale.US, "%.3f D NovaVoice: %s\n", System.currentTimeMillis() / 1000.0, msg)
+            synchronized(log) { log.write(line); log.flush() }
+            if (msg.startsWith("speech_arbiter out=") || msg.startsWith("reply_audio_not_played") || msg.startsWith("livedemo_hold_released")) {
+                synchronized(turnSpeech) { turnSpeech.put(JSONObject().put("t", timeline.now()).put("event", msg)) }
+            }
+        }
+    }
+
+    init {
+        liveSearch?.let { live ->
+            val found = prefetchQueries.associateWith { runBlocking { live.resolve(it) } }
+            prefetched = found
+            found.values.forEach { DebugVoiceLog.log("livedemo_search prefetched=true count=${it.size}") }
+        }
+    }
+
+    private fun providerConfig(): SessionProviderConfig {
+        val instructions = PersonaProfiles.DEFAULT_INSTRUCTIONS
+        fun env(name: String) = System.getenv(name)?.takeIf { it.isNotBlank() } ?: error("missing environment variable $name")
+        // AGENTS.md hard rule: live Qwen spends the owner's limited free quota.
+        check(choice != "qwen" || System.getenv("NOVA_SPEND_QWEN_QUOTA") == "yes") {
+            "live Qwen sessions spend the owner's limited free quota (AGENTS.md hard rule); " +
+                "set NOVA_SPEND_QWEN_QUOTA=yes only when the owner approved this run"
+        }
+        // Owner, 2026-10-11: the product model's quota is for the final demo only. Name the model;
+        // 3.8 needs NOVA_ALLOW_QWEN_38=yes on the owner's explicit say.
+        val qwenModel = if (choice != "qwen") "" else env("NOVA_QWEN_MODEL")
+        check(qwenModel != VoiceCatalog.QWEN_OMNI_FLASH || System.getenv("NOVA_ALLOW_QWEN_38") == "yes") {
+            "${VoiceCatalog.QWEN_OMNI_FLASH} is the owner's final-demo quota; set NOVA_ALLOW_QWEN_38=yes only on the owner's explicit say"
+        }
+        return when (choice) {
+            "qwen" -> SessionProviderConfig.Qwen(
+                QwenSettingsValidator.configOrThrow(
+                    QwenAppSettings(
+                        consentAccepted = true,
+                        model = qwenModel,
+                        workspaceId = env("DASHSCOPE_WORKSPACE_ID"),
+                        customVoices = System.getenv("NOVA_QWEN_VOICE")?.trim()?.takeIf { it.isNotEmpty() }
+                            ?.let { mapOf(qwenModel to it) } ?: QwenAppSettings.DEFAULT_CUSTOM_VOICES,
+                    ),
+                    env("DASHSCOPE_API_KEY"), instructions,
+                ),
+            )
+            // Gemini speaks in its own voice: no assistant (Azure) voice.
+            "gemini" -> SessionProviderConfig.Gemini(
+                GeminiSettingsValidator.configOrThrow(
+                    // NOVA_GEMINI_MODEL picks the Live model; experiments start with the oldest (AGENTS.md).
+                    GeminiAppSettings(consentAccepted = true, model = System.getenv("NOVA_GEMINI_MODEL")?.trim()?.ifEmpty { null }
+                        ?: VoiceCatalog.geminiExperimentOrder.first()),
+                    env("GEMINI_API_KEY"), instructions,
+                )
+                    .copy(assistantVoice = null),
+            )
+            else -> error("NOVA_LIVE_PROVIDER must be qwen or gemini")
+        }
+    }
+
+    private fun dispatcher(): AndroidToolDispatcher {
+        val liveInfo = LiveInfoTool(
+            webKey = { System.getenv("AMAP_WEB_KEY") },
+            rest = AmapPoiClient(),
+            // LiveInfoTool takes the WGS-84 fix; the car stays in the origin's district on this route.
+            location = { HengqinWorld.ORIGIN_LAT to HengqinWorld.ORIGIN_LON },
+            navigation = { nav },
+            route = world,
+        )
+        liveInfo.warmHere()
+        return AndroidToolDispatcher(
+            CoreActionExecutor(navigationFlow = nav, music = { music }),
+            ClimateToolHandler(vehicle),
+            CameraQuestionHandler(surface = { SimulatedCamera() }, vision = FixtureVision()),
+            liveInfo = liveInfo,
+            cabin = vehicle,
+            music = handoff,
+        )
+    }
+
+    private fun onToolCall(dispatcher: AndroidToolDispatcher, call: DomainVoiceEvent.ToolCall): ToolDispatchResult {
+        val result = dispatcher.dispatch(call)
+        DebugVoiceLog.log("tool=${call.name} args=${call.arguments.keys} result=${result.successChip ?: result.blockedReason}")
+        val record = JSONObject().put("name", call.name).put("t", timeline.now())
+        if (tryout) {
+            record.put("args", JSONObject(call.arguments.filterKeys { it in TRYOUT_ARG_KEYS }))
+        }
+        val immediateOk = result.blockedReason == null && result.output?.contains("\"ok\":false") != true
+        val deferred = result.deferredOutput
+        synchronized(turnTools) { turnTools.put(record.put("ok", immediateOk).put("pending", deferred != null)) }
+        if (deferred == null) return result
+        return result.copy(deferredOutput = {
+            val output = deferred()
+            synchronized(turnTools) { record.put("ok", !output.contains("\"ok\":false")).put("pending", false) }
+            output
+        })
+    }
+
+    fun run(scenes: List<String>) {
+        NavigationState.reset()
+        SpeakingStyleState.restore(SpeakingStyle.DEFAULT)
+        setSharedNavigation(nav)
+        DebugVoiceLog.log("session_provider choice=$choice")
+        val dispatcher = dispatcher()
+        val built = RealtimeProviderFactory.build(
+            providerConfig(),
+            lastAudioSegment = { gate.snapshot() },
+            speechEvidence = { gate.hasRecentSpeech() },
+            repliesSpoken = { true },
+        )
+        providerRef = built.provider
+        playback = timeline.Playback(built.outputSampleRateHz)
+        val drive = scenes == listOf(LiveDemoRun.DRIVE)
+        tryout = scenes == listOf(LiveDemoRun.TRYOUT) || scenes == listOf(LiveDemoRun.STYLE)
+        val rules = if (!drive) null else DriveSpeechRules(
+            playback, scope,
+            pickerOpen = {
+                val phase = nav.state().value
+                phase == NavigationPhase.AWAITING_DESTINATION_SELECTION || phase == NavigationPhase.AWAITING_ROUTE_SELECTION
+            },
+            taskPending = { core.hasPendingWork() },
+        )
+        this.rules = rules
+        if (rules != null) {
+            // NavigationTraceListener.kt: curStepRetainDistance -> NavigationState; Amap's voice -> guidance listener.
+            world.onManeuverDistance = { NavigationState.onManeuverDistance(it) }
+            world.onPrompt = { key -> amapVoice.execute { speakPrompt(rules, key) } }
+        }
+        core = CoreSession(
+            provider = built.provider,
+            microphone = mic,
+            playback = rules?.port ?: playback,
+            scope = scope,
+            config = built.session,
+            callbacks = VoiceSessionCallbacks(
+                onUiState = { state, error ->
+                    rules?.onUiState(state)
+                    DebugVoiceLog.log("state=$state err=${error ?: "-"}")
+                },
+                onTranscript = { line -> synchronized(turnTranscripts) { turnTranscripts += line } },
+                onError = { code, _ -> DebugVoiceLog.log("error=$code") },
+                onToolCall = { call -> onToolCall(dispatcher, call) },
+                onUserFinalTranscript = { text -> rules?.onUserFinalTranscript(text) },
+                onSessionLog = { line -> DebugVoiceLog.log(line) },
+            ),
+        )
+        core.start()
+        val deadline = System.currentTimeMillis() + 30_000
+        while (!core.connectedNow && System.currentTimeMillis() < deadline) Thread.sleep(50)
+        check(core.connectedNow) { "the live session did not connect within 30 s (see logcat.txt)" }
+        Thread.sleep(3_000)
+        timeline.start()
+        Thread(::uplink, "livedemo-uplink").apply { isDaemon = true }.start()
+        Thread(::observe, "livedemo-observe").apply { isDaemon = true }.start()
+        try {
+            scenes.forEach { LiveDemoRun.SCENES.getValue(it)(this) }
+            Thread.sleep(2_000)
+        } finally {
+            val end = timeline.now()
+            running = false
+            Thread.sleep(300)
+            timeline.render(end)
+            writeState()
+            println(String.format(Locale.US, "[live] done %.1f s", end))
+        }
+    }
+
+    /** record_demo.turn: wake, say the clip, wait for the reply to play out, then 0.6 s. */
+    fun turn(key: String, timeout: Double = 35.0) {
+        DebugVoiceLog.log("debug_tool tool=voice arg=wake")
+        timeline.wakes += timeline.epochNow()
+        Thread.sleep(800)
+        val t = timeline.queueClip(key)
+        println(String.format(Locale.US, "[live] %7.2f say %s", t, key))
+        Thread.sleep(timeline.clipPcm(key).size * 1000L / 2 / LiveDemoTimeline.RATE)
+        timeline.waitReply(timeout = timeout)
+        Thread.sleep(600)
+        snapshot(key)
+    }
+
+    /**
+     * The tryout's barge-in: say [key]; once [tool] has been called (up to 10 s) and a reply is
+     * playing, wait [LiveDemoRun.BARGE_AFTER_S] into it and say [bargeKey] over her, as a driver would.
+     * Logs `livedemo_barge playing=<bool>`; false means there was nothing to interrupt (graded FAIL).
+     */
+    fun turnThenBarge(key: String, bargeKey: String, tool: String) {
+        DebugVoiceLog.log("debug_tool tool=voice arg=wake")
+        timeline.wakes += timeline.epochNow()
+        Thread.sleep(800)
+        val t = timeline.queueClip(key)
+        println(String.format(Locale.US, "[live] %7.2f say %s", t, key))
+        Thread.sleep(timeline.clipPcm(key).size * 1000L / 2 / LiveDemoTimeline.RATE)
+        val playingAt = awaitBargeMoment(tool)
+        snapshot(key)
+        val playing = playingAt != null && playback.playing
+        DebugVoiceLog.log("livedemo_barge playing=$playing")
+        timeline.wakes += timeline.epochNow()
+        DebugVoiceLog.log("debug_tool tool=voice arg=wake")
+        val tb = timeline.queueClip(bargeKey)
+        println(String.format(Locale.US, "[live] %7.2f say %s%s", tb, bargeKey, if (playing) " (over her reply)" else " (nothing playing)"))
+        Thread.sleep(timeline.clipPcm(bargeKey).size * 1000L / 2 / LiveDemoTimeline.RATE)
+        timeline.waitReply(timeout = 30.0, firstTimeout = 10.0)
+        Thread.sleep(600)
+        snapshot(bargeKey)
+    }
+
+    /** The barge-in moment: [tool] called, then a reply playing for [LiveDemoRun.BARGE_AFTER_S]; null if none came. */
+    private fun awaitBargeMoment(tool: String): Double? {
+        val begin = System.currentTimeMillis()
+        fun called() = synchronized(turnTools) { (0 until turnTools.length()).any { turnTools.getJSONObject(it).optString("name") == tool } }
+        while (!called() && System.currentTimeMillis() - begin < 10_000) Thread.sleep(20)
+        while (System.currentTimeMillis() - begin < 25_000) {
+            if (playback.playing) {
+                val started = timeline.now()
+                Thread.sleep((LiveDemoRun.BARGE_AFTER_S * 1000).toLong())
+                if (playback.playing) return started
+            }
+            Thread.sleep(20)
+        }
+        return null
+    }
+
+    /** An Amap prompt: the guidance listener goes true when its audio starts and false when it ends. */
+    private fun speakPrompt(rules: DriveSpeechRules, key: String) {
+        val seconds = timeline.guidanceStart(key)
+        println(String.format(Locale.US, "[live] %7.2f amap %s", timeline.now(), key))
+        rules.guidanceListener(true)
+        Thread.sleep((seconds * 1000).toLong())
+        timeline.guidanceEnd()
+        rules.guidanceListener(false)
+    }
+
+    /**
+     * The drive's turn: the driver speaks when the car reaches [meters], not when her last reply
+     * ended. If she is still talking (or held) there, he speaks anyway, as a driver would; recorded.
+     */
+    fun turnAt(meters: Int, key: String) {
+        while (world.navigating && world.travelledMeters < meters) Thread.sleep(20)
+        if (!world.navigating) println("[live]   $key: the trip ended before $meters m; spoken now")
+        closeDriveTurn()
+        spokeOverReply = playback.playing || timeline.replyHeld
+        DebugVoiceLog.log("debug_tool tool=voice arg=wake")
+        timeline.wakes += timeline.epochNow()
+        val t = timeline.queueClip(key)
+        println(String.format(Locale.US, "[live] %7.2f say %s at %d m%s", t, key, world.travelledMeters, if (spokeOverReply) " (over her reply)" else ""))
+        openDriveKey = key
+        Thread.sleep(timeline.clipPcm(key).size * 1000L / 2 / LiveDemoTimeline.RATE)
+    }
+
+    /** Arrival comes from the route at 40 km/h; the last drive turn closes when the reply has played. */
+    fun awaitArrival() {
+        val begin = System.currentTimeMillis()
+        while (!world.arrived && System.currentTimeMillis() - begin < 600_000) Thread.sleep(200)
+        timeline.waitReply(timeout = 20.0, firstTimeout = 0.5)
+        closeDriveTurn()
+    }
+
+    private fun closeDriveTurn() {
+        val open = openDriveKey ?: return
+        openDriveKey = null
+        snapshot(open)
+    }
+
+    fun snapshot(key: String) {
+        val cabin = vehicle.cabinState.value
+        val climate = vehicle.climateState.value
+        val tools = synchronized(turnTools) { JSONArray(turnTools.toString()) }
+        val lines = synchronized(turnTranscripts) { turnTranscripts.toList() }
+        turns.put(
+            JSONObject().put("key", key).put("t", timeline.now())
+                .put("tools", tools)
+                .put("driver_heard", JSONArray(lines.filter { it.startsWith("你: ") }.map { it.removePrefix("你: ") }))
+                .put("reply", JSONArray(lines.filter { it.startsWith("小诺: ") }.map { it.removePrefix("小诺: ") }))
+                .put("car", carState(cabin.seatHeights[SeatId.DRIVER], cabin.windows, climate))
+                .apply {
+                    if (rules != null) {
+                        put("speech", synchronized(turnSpeech) { JSONArray(turnSpeech.toString()) })
+                        put("spoke_over_reply", spokeOverReply)
+                        put("mic_frames_gated", micFramesGated)
+                    }
+                },
+        )
+        synchronized(turnSpeech) { while (turnSpeech.length() > 0) turnSpeech.remove(0) }
+        spokeOverReply = false
+        synchronized(turnTools) { while (turnTools.length() > 0) turnTools.remove(0) }
+        synchronized(turnTranscripts) { turnTranscripts.clear() }
+    }
+
+    private fun carState(seat: Int?, windows: Map<WindowId, Int>, climate: com.novadrive.vehicle.ClimateState) = JSONObject()
+        .put("seat_height", seat)
+        .put("windows", JSONObject(windows.mapKeys { it.key.name }))
+        .put("fan", climate.fanLevel)
+        .put("ac_on", climate.powerOn)
+        .put("temp_c", climate.targetTemperatureCelsius)
+        .put("music", handoff.lastRequest?.let { listOfNotNull(it.artist, it.title).joinToString(" · ").ifEmpty { it.query ?: "" } })
+        .put("music_confirmed", false)
+        .put("style", SpeakingStyleState.current.wireName)
+        .put("nav_phase", nav.state().value.name)
+        .put("destination", world.destinationName)
+        .put("progress", world.progress)
+        .put("remaining_m", world.remainingMeters)
+        .put("speed_kmh", if (world.navigating) world.speedKmh else 0.0)
+
+    /** The car's state twice a second for the renderer, and the player's activity for the provider. */
+    private fun observe() {
+        var wasPlaying = false
+        var lastSample = 0.0
+        while (running) {
+            val playing = playback.playing
+            if (playing != wasPlaying) {
+                wasPlaying = playing
+                runCatching { providerRef?.onPlaybackActiveChanged(playing) }
+            }
+            val t = timeline.now()
+            if (t - lastSample >= 0.5) {
+                lastSample = t
+                val cabin = vehicle.cabinState.value
+                synchronized(track) {
+                    track.put(JSONObject().put("t", t).put("car", carState(cabin.seatHeights[SeatId.DRIVER], cabin.windows, vehicle.climateState.value)))
+                }
+            }
+            Thread.sleep(50)
+        }
+    }
+
+    @Volatile private var providerRef: com.novadrive.ingress.realtime.RealtimeVoiceProvider? = null
+
+    /** 20 ms of audio every 20 ms of wall time, as two 10 ms capture frames through the app's uplink gate. */
+    private var micInterrupted = false
+
+    private fun uplink() {
+        val half = LiveDemoTimeline.FRAME / 2
+        var start = System.nanoTime()
+        var n = 0L
+        while (running) {
+            val frame = timeline.nextFrame()
+            for (k in 0..1) {
+                val part = frame.copyOfRange(k * half, (k + 1) * half)
+                // PcmAudioCapture: while guidance speaks (R1-R3, unless R0) the frame never reaches the gate.
+                if (rules?.uplinkClosed() == true) {
+                    micFramesGated++
+                    if (!micInterrupted) {
+                        micInterrupted = true
+                        val wasOpen = gate.isOpen
+                        gate.onCaptureInterrupted()
+                        if (wasOpen != gate.isOpen) core.onLocalSpeechActivity(gate.isOpen)
+                    }
+                    continue
+                }
+                micInterrupted = false
+                val before = gate.isOpen
+                val decision = gate.offer(part)
+                val after = gate.isOpen
+                decision.send.forEach { mic.emit(gain.process(it, 10)) }
+                decision.finished?.let { DebugVoiceLog.log("UPLINK_GATE_SEGMENT durationMs=${it.durationMs} suspicious=${it.isSuspicious()}") }
+                if (before != after) core.onLocalSpeechActivity(after)
+            }
+            n++
+            val delayNs = start + n * 20_000_000L - System.nanoTime()
+            if (delayNs > 0) Thread.sleep(delayNs / 1_000_000, (delayNs % 1_000_000).toInt())
+            else if (delayNs < -200_000_000L) { start = System.nanoTime(); n = 0 }
+        }
+    }
+
+    private fun writeState() {
+        val json = JSONObject().put("provider", choice).put("turns", turns).put("track", synchronized(track) { track })
+        if (rules != null) json.put("amap_guidance", timeline.guidanceWindows).put("holds", timeline.holds)
+        File(out, "state.json").writeText(json.toString(1), Charsets.UTF_8)
+    }
+
+    /**
+     * The provider clients read the screen context from the app-wide navigation owner
+     * (VoiceContextHints -> EmbeddedNavigation.currentOrNull()), which has no test setter. The harness
+     * points it at its own controller by reflection, so the model hears the same context as in the app.
+     */
+    private fun setSharedNavigation(controller: EmbeddedNavigationController?) {
+        val field = EmbeddedNavigation::class.java.getDeclaredField("instance")
+        field.isAccessible = true
+        field.set(EmbeddedNavigation, controller)
+    }
+
+    override fun close() {
+        running = false
+        runCatching { core.stop() }
+        amapVoice.shutdownNow()
+        runCatching { rules?.close() }
+        runCatching { scope.cancel() }
+        mainThread.shutdownNow()
+        world.close()
+        runCatching { setSharedNavigation(null) }
+        NavigationState.reset()
+        DebugVoiceLog.sink = null
+        synchronized(log) { log.close() }
+    }
+
+    /** The music app hand-off: always sent, never confirmed playing (no music app, as on the emulator). */
+    private class SimulatedHandoff : MusicHandoffTool {
+        @Volatile var lastRequest: MusicRequest? = null
+        override fun snapshot(): NowPlaying? = null
+        override fun handOff(request: MusicRequest): HandoffResult {
+            lastRequest = request
+            handedOff = true
+            return HandoffResult.Sent("sim.music")
+        }
+        override suspend fun await(request: MusicRequest, previous: NowPlaying?): PlaybackCheck = PlaybackCheck.Unverified
+        override fun pauseActive(): PauseResult = PauseResult.NoAccess
+        override suspend fun awaitStopped(): Boolean = true
+        @Volatile override var handedOff: Boolean = false
+            private set
+        override val lastWaitedMs: Long get() = 0
+    }
+}

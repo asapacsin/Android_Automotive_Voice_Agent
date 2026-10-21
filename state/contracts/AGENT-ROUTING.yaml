@@ -1,0 +1,31 @@
+schema: nova-task-contract/1
+task_id: AGENT-ROUTING
+title: Portable multi-provider executor/reviewer routing (Gemini 3.6 Flash / Poolside Laguna S 2.1 executors, NVIDIA Nemotron 3 Ultra reviewer) with a risk-based review gate and Claude Code Stop hook
+branch: exec/agent-routing
+base_commit: 1f7710322b0b13ef107dc80e48fa9a59a2202345
+approved_paths:
+  - tools/agent-routing/**
+  - .agent-routing/**
+allowed_changes:
+  - "Implement exactly state/decisions/AGENT-ROUTING-spec.md (read it fully): package, defaults, template, README/INSTALL, tests A-L"
+  - "This repository's own .agent-routing/project.json: executor gemini, reviewer nvidia, never_send for licensed vendor paths (app/libs/**, **/jniLibs/**, app/src/main/assets/** vendor files, *.jar, *.aar, local.properties, keystores), gate scope limited to changes made through agent_routing execute sessions (so the existing Nova review workflow is unaffected), tests command for routed changes taken from the session"
+architecture_constraints:
+  - Python standard library only (urllib, json, hashlib, subprocess, http.server for tests); Python >= 3.10; no hardcoded absolute paths; paths from the project root (git rev-parse --show-toplevel or --project); works on Linux/macOS/WSL/Windows (pathlib, no shell-specific commands, subprocess with arg lists)
+  - Fail closed for review (no PASS without a validated reviewer response from an actual call); fail safe for the Stop hook (bounded; never an infinite loop)
+  - No secrets in code, logs, tests or fixtures
+forbidden_changes:
+  - No change to existing files outside approved_paths (scripts/offload_executor.py, scripts/model_route.py, .claude/** stay as they are; the planner installs the hook)
+forbidden_paths:
+  - .claude/**
+  - app/**
+  - scripts/**
+required_verification:
+  - id: routing-tests
+    kind: regression
+    command: python3 -m unittest discover -s tools/agent-routing/tests -t tools/agent-routing
+  - id: doctor-config
+    kind: integration
+    command: python3 tools/agent-routing/agent_routing_cli.py doctor --project .
+acceptance_criteria:
+  - Tests A-L pass with mocked providers
+  - doctor validates this repository's config and reports each provider's live status honestly (LIVE OK / AUTH FAILED / SKIPPED)

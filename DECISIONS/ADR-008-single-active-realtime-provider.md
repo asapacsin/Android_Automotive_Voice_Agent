@@ -1,6 +1,6 @@
 # ADR-008 — One active realtime provider; keep the seam, delete the dormant implementations
 
-Status: **Accepted** (2026-09-19, decided by the product owner)
+Status: **Accepted** (2026-09-19, decided by the product owner) · **Amended by [ADR-010](ADR-010-gemini-live-second-provider.md)** (2026-09-29): Gemini Live is a second, opt-in provider
 Reaffirms: [ADR-001](ADR-001-direct-provider-connection.md), [ADR-002](ADR-002-baidu-flex-default-provider.md)
 Resolves: [TECH_DEBT.md](../docs/TECH_DEBT.md) D-5
 Consequence of: [ADR-007](ADR-007-embedded-amap-navigation-sdk.md) for the navigation remnants

@@ -356,7 +356,7 @@ Because the mic is gated while 小诺 speaks, correction always arrives as the *
 | F-4 | Missing context (S1–S7) | Clarify. Never substitute a default. |
 | F-5 | Ambiguous context | Clarify, naming the options. Never pick one. |
 | F-6 | Partial failure in a multi-intent turn | Report both outcomes. Never "all done". |
-| F-7 | Unsupported capability implied by natural phrasing | Refuse; do not execute a *nearby* supported action. Specifically: a request for a named song, artist or lyric must **not** start the bundled track. Availability is `CapabilityCatalog` (`unsupported.media_library`); `ActionClaimGuard.isSpecificMediaRequest` only maps the phrasing onto that id. |
+| F-7 | Unsupported capability implied by natural phrasing | Refuse; do not execute a *nearby* supported action. Specifically: a request for a named song, artist or lyric must **not** start the bundled track. Such a request goes to `play_music` (SPEC-017, `media.play_by_description`); `ActionClaimGuard.isSpecificMediaRequest` only maps the phrasing onto that id, and `control_music{play}` for it is refused `MEDIA_LIBRARY_UNSUPPORTED`. Likewise a request for a body part this product cannot move (`UtteranceIntentResolver`'s cues for `sunroof_doors_lights_wipers`: 天窗/天幕/后备箱/车门/车灯/雨刷, no window named in this turn's words) must not open a window: `control_window` for it, directly or as a `run_scenario` step (the `ComfortServer` route), is refused `UNSUPPORTED_BODY_PART` (`ToolCallGuards.sunroofOnWindowTool`, OPEN_PROBLEMS P56). |
 | F-8 | Driver reports the previous action was ineffective | Treat as C8 feedback: adjust again in the same direction. If `limit_reached`, say so honestly instead of adjusting again. If `power_on == false`, apply D1. |
 | F-9 | Cancellation race | See the table above. |
 | F-10 | Duplicate execution | Rejected by the (epoch, intent key) rule; never silently repeated. |
@@ -523,6 +523,7 @@ instead of asking is a failure).
 | CVC-44 | adjustment made, then `SLEEP`, then re-woken | 再低一点。 | stale by S2 | **none** | required | pre-sleep referent reused |
 | CVC-45 | adjustment made, then app restarted | 再低一点。 | stale by S3 | **none** | required | context survived the restart |
 | CVC-46 | navigation cancelled in CVC-36 | 就那个第二个。 | stale by S5/S7 | **none** | required | a cancelled list is still selectable |
+| CVC-47 | guidance running, no list or pending search on screen | 不去了。 | vague never-mind, not an end request (decider 2026-10-16, option B) | **none** (no `exit_navigation_mode`; a call is refused `VAGUE_EXIT_WHILE_NAVIGATING`) | — | navigation ends, or the reply does not say navigation is still running and that 「结束导航」 ends it, or she asks a yes/no question |
 
 ---
 

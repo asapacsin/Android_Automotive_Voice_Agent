@@ -1,0 +1,24 @@
+schema: nova-task-contract/1
+task_id: COMPACT-CWD
+title: compact_test.py runs Gradle in the git worktree it is called from, not always the checkout that holds the script
+branch: exec/compact-cwd
+base_commit: 8d4e632d75a2cdf878833431a1cf51a5ef46669b
+approved_paths:
+  - scripts/compact_test.py
+  - scripts/tests/test_compact_test.py
+allowed_changes:
+  - "compact_test.py: replace the fixed REPO = Path(__file__).resolve().parents[1] with a function repo_root() that returns the output of git rev-parse --show-toplevel run in the current working directory when that succeeds and the directory it names contains gradlew, else the script's parent repo (the old value). Every use of REPO (the Gradle cwd and anything else) uses repo_root(). The chosen directory is printed once as 'compact_test: repo=<path>'"
+  - "scripts/tests/test_compact_test.py: unittest - in a temporary git repo containing an empty gradlew file, with the working directory changed into it, repo_root() returns that repo; in a temporary directory that is not a git repo, repo_root() returns the script's parent repo; in a git repo without gradlew it also returns the script's parent repo. Import the module by path with importlib; restore the working directory in tearDown"
+architecture_constraints:
+  - Standard library only; behaviour unchanged when run from the main checkout
+forbidden_changes:
+  - No change to any other file
+forbidden_paths:
+  - .claude/**
+  - "*/src/**"
+required_verification:
+  - id: compact-tests
+    kind: regression
+    command: python3 -m unittest scripts.tests.test_compact_test
+acceptance_criteria:
+  - Run from a worktree, compact_test.py runs Gradle in that worktree

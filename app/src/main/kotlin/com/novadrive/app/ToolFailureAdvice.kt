@@ -28,8 +28,11 @@ object ToolFailureAdvice {
         "PREFERENCE_NOT_FOR_ROUTES" to "这个偏好只能用于地点，不能用于路线。请用户说第几条。",
         "NO_OPTIONS" to "现在没有可选的内容。请如实说明。",
         "AMBIGUOUS_REFERENT" to
-            "用户这句话没有说明要调的是温度还是风量，之前的记录也无法确定，所以没有执行。" +
-            "请只用一句话反问用户是温度还是风量，不要再调用任何工具，也不要说已经调好了。",
+            "用户这句话没有说明要调的是哪一项（options 里是可能的几项），之前的记录也无法确定，所以没有执行。" +
+            "请只用一句话反问用户是 options 里的哪一项（例如「是座椅还是温度？」），不要再调用任何工具，也不要说已经调好了。",
+        com.novadrive.app.tools.ComfortServer.NO_RECENT_MOSQUITO to
+            "最近没有因为蚊子开过车窗，所以没有执行这个场景，车窗没有动。" +
+                "如果用户是想关窗，请用 control_window action=close 正常关窗；不要说已经关好了。",
         "DUPLICATE_IN_TURN" to
             "这个操作在本轮已经执行过一次，没有重复执行。请根据上一次的结果回答，不要说又调了一次。",
         PhoneCallTool.NO_TELEPHONY to
@@ -50,9 +53,29 @@ object ToolFailureAdvice {
         PhoneCallTool.CALL_FAILED to
             "拨号没有成功，没有接通。" +
             "请用一句话如实告诉用户没打出去，不要谎称已经接通。",
+        ToolCallGuards.NEARBY_QUESTION_WHILE_NAVIGATING to
+            "现在正在导航，用户只是问附近或路上有没有，不是要换目的地，所以没有改路线，导航还在继续。" +
+                "请调用 query_live_info，kind=along_route，查沿途的，然后按结果如实简短回答；" +
+                "用户之后明确说要去那里时再调用 navigate_to。不要说已经开始导航或已经换了路线。",
+        ToolCallGuards.VAGUE_EXIT_WHILE_NAVIGATING to
+            "导航还在继续，没有结束。用户只是说算了/不用了/不去了，不是要结束导航；" +
+                "用一句话回应并说明导航还在继续、要结束请说结束导航，例如「好的，导航还在继续，要结束请说结束导航。」" +
+                "不要说导航已结束，也不要问要不要结束导航。",
+        ToolCallGuards.SPEECH_OUTPUT_NOT_REQUESTED to
+            "用户这句话并没有让你停止说话或恢复说话，所以没有执行，你的说话状态没有改变。" +
+                "不要提这件事，也不要说你会安静或已经安静；简短回应这句话本身，没听清就请他再说一遍。",
+        ToolCallGuards.UNSUPPORTED_BODY_PART to
+            "用户说的是小诺控制不了的部件，所以没有执行，车窗也没有动。" +
+            "请用一句话如实说暂时还不支持，不要说已经做了，也不要改开车窗。",
         "MEDIA_LIBRARY_UNSUPPORTED" to
-            "车上只有一首内置曲目，没有音乐库，无法搜索或指定歌曲。" +
-            "请用一句话如实告诉用户放不了他要的那首歌，不要谎称已经播放，也不要改放其它曲子。",
+            "control_music 只能放内置曲目，不能放用户说的那首，所以没有播放。" +
+            "用户说了歌名、歌手、作品或描述，请改用 play_music 按描述去放，不要谎称已经播放，也不要改放内置曲目。",
+        // SPEC-017 play_music.
+        "NOT_PLAYING" to "这首没放成，可能需要会员或者有版权限制。请如实说没放成，不要说正在放。",
+        "NO_MUSIC_APP" to "手机上没有能播放的音乐 app，请如实说。",
+        "HANDOFF_REJECTED" to "音乐 app 没有接受这次请求，没有播放。请用一句话如实说没放成，不要说正在放。",
+        "MUSIC_STILL_PLAYING" to "已经让音乐 app 暂停，但它还在放。请如实说音乐还没停，不要说已经关掉了。",
+        "MUSIC_HANDOFF_UNAVAILABLE" to "现在不能交给音乐 app 播放，没有播放。请用一句话如实说放不了，不要说正在放。",
         // SPEC-011 query_live_info. Each one says what did not happen and forbids the guess.
         LiveInfoTool.AMAP_WEB_KEY_MISSING to
             "高德的查询服务还没有配置，所以没有查。请用一句话如实说这个功能还没有配置好（例如「天气查询还没有配置」），不要编造任何结果。",
@@ -61,17 +84,19 @@ object ToolFailureAdvice {
         LiveInfoTool.NO_DESTINATION to
             "现在没有目的地，所以没有查。请用一句话问用户要查哪里，不要猜一个地方。",
         LiveInfoTool.NOT_NAVIGATING to
-            "现在没有在导航，也没有算好的路线，所以查不了路上的情况。请用一句话如实说现在没有在导航。",
+            "现在没有在导航，也没有算好的路线，所以查不了路上的情况。如果用户是在找附近的地点（例如加油站、充电站），马上改用 navigate_to（destination=附近的加油站）搜索，不要说没在导航；否则用一句话如实说现在没有在导航。",
         AmapLiveInfoParser.UNAVAILABLE to
             "这次查询没有拿到结果（超时或服务出错）。请用一句话如实说现在查不到，绝对不要猜测或编造天气、路况或地点信息。",
         AmapLiveInfoParser.QUOTA to
             "今天的查询次数已经用完了，没有查到。请用一句话如实告诉用户今天的查询次数用完了，不要编造结果。",
         AmapLiveInfoParser.NO_RESULTS to
-            "查询成功，但没有找到结果（category 是要找的东西，若有）。请用一句话如实说没有找到，例如「沿途没有找到加油站」，不要编造一个。",
+            "查询成功，但没有找到结果（category 是要找的东西，若有）。有 message 时就照 message 说（例如「前方10公里沿途没有找到加油站」），否则如实说没有找到，例如「沿途没有找到加油站」，不要编造一个。",
         LiveInfoTool.INVALID_KIND to
             "这类实时信息没有数据来源，没有查询。请用一句话如实说无法回答，不要编造。",
         LiveInfoTool.INVALID_ARGUMENT to
             "查询参数不对，没有查询。请用一句话问清楚用户要查什么，不要编造结果。",
+        // SPEC-018 B5: a tool call inside a guidance turn; no speech wanted.
+        com.novadrive.app.voice.GeminiPromptTurn.NOT_A_DRIVER_TURN to "这是导航播报，不需要回应。请不要说任何话。",
         ToolCallGuards.HOME_NOT_SET to
             "用户还没有设置家的地址，所以没有导航。" +
             "请用一句话如实说还不知道他家在哪里，请他直接说出地址，不要猜一个地方。",

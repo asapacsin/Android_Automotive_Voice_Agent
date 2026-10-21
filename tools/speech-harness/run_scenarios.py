@@ -47,6 +47,44 @@ def log_since(marker):
     return lines
 
 
+SHOTS = None  # --shots DIR: screenshots for scenarios marked "shot": true
+PROVIDER = None  # --provider gemini: the debug-only in-memory override (decided by the decider, 2026-10-15)
+
+
+def start_session():
+    """`voice start`, re-applying the provider override first (a restart clears it, by design).
+
+    Quota guard (AGENTS.md: no Qwen session while the work is on Gemini): with --provider gemini the
+    newest session_provider line must say gemini_live, or the whole run stops before any audio.
+    """
+    if PROVIDER:
+        broadcast("provider", PROVIDER)
+        time.sleep(1)
+    broadcast("voice", "start")
+    if not PROVIDER:
+        return
+    time.sleep(2)
+    out = adb("logcat", "-d", "-s", "NovaVoice").stdout
+    choices = re.findall(r"session_provider choice=([a-z_]+)", out)
+    if choices and choices[-1] != "gemini_live":
+        broadcast("voice", "stop")
+        print(f"QUOTA GUARD: session is {choices[-1]}, not gemini_live - stopping before any audio", flush=True)
+        sys.exit(3)
+
+
+def wait_idle(timeout=20):
+    """Until her newest state line is LISTENING: a reply still playing from the previous
+    scenario must not land in this one's window (S15 after S14, GitHub emulator 2026-10-15)."""
+    end = time.time() + timeout
+    while time.time() < end:
+        out = adb("logcat", "-d", "-s", "NovaVoice").stdout
+        states = re.findall(r"\bstate=([A-Z_]+)", out)
+        if not states or states[-1] == "LISTENING":
+            return True
+        time.sleep(1)
+    return False
+
+
 def push_clip(name):
     local = os.path.join(CLIPS, name + ".pcm")
     if not os.path.isfile(local):
@@ -74,7 +112,7 @@ def run_scenario(sc, wait):
     # follows - which on the first run silently invalidated the three scenarios after it.
     # start() resumes a session in SILENT_WAIT or SLEEP, is a no-op for an active one, and
     # costs no model turn.
-    broadcast("voice", "start")
+    start_session()
     # Long enough for a session opened from DEEP_IDLE to reach LISTENING: injecting during
     # setup gets the response cancelled (status=cancelled reason=client_cancelled).
     time.sleep(6)
@@ -93,6 +131,7 @@ def run_scenario(sc, wait):
         missing = push_clip(clip)
         if missing:
             return False, [missing], []
+    wait_idle()
     marker = f"scenario_marker_{sc['id']}_{int(time.time() * 1000)}"
     # A log line of our own is the scenario boundary: reading the whole buffer would let one
     # scenario pass on the previous one's evidence, which is the classic way a suite like this
@@ -104,6 +143,12 @@ def run_scenario(sc, wait):
     for clip in clips:
         broadcast("voice", "say:" + clip)
         time.sleep(wait)
+    if SHOTS and sc.get("shot"):
+        # The screen after the turn (FUZZY-DEVICE-001: the scenario chip). Map tiles only.
+        os.makedirs(SHOTS, exist_ok=True)
+        png = subprocess.run([ADB, "exec-out", "screencap", "-p"], capture_output=True, timeout=30).stdout
+        with open(os.path.join(SHOTS, sc["id"] + ".png"), "wb") as handle:
+            handle.write(png)
     lines = log_since(marker)
     if lines is None:
         return False, ["scenario marker never reached the log - the app may not be running"], []
@@ -128,7 +173,12 @@ def main():
     ap.add_argument("--only", nargs="*", default=None)
     ap.add_argument("--wait", type=int, default=14)
     ap.add_argument("--file", default=os.path.join(HERE, "scenarios.json"))
+    ap.add_argument("--provider", choices=["gemini"], help="debug builds: open Gemini sessions (quota guard on)")
+    ap.add_argument("--shots", help="save a screenshot after each scenario marked \"shot\": true")
     args = ap.parse_args()
+    global PROVIDER, SHOTS
+    PROVIDER = args.provider
+    SHOTS = args.shots
 
     with open(args.file, encoding="utf-8") as handle:
         scenarios = json.load(handle)["scenarios"]
@@ -146,13 +196,25 @@ def main():
         adb("shell", "monkey", "-p", PKG, "-c", "android.intent.category.LAUNCHER", "1")
         time.sleep(8)
         adb("logcat", "-c")
-        broadcast("voice", "start")
-        time.sleep(5)
+        # The app creates its own external files dir; a first `adb push` that creates it as the
+        # shell user left S1's clip invisible to the app ("say:temp24 result=missing", 2026-10-15).
+        broadcast("voice", "say:warmup")
+        time.sleep(1)
+        # Every clip up front: the first file pushed after launch was still invisible to the app
+        # when S1 asked for it (result=missing twice, GitHub emulator 2026-10-15); later ones were not.
+        for sc in scenarios:
+            for clip in (sc["say"] if isinstance(sc["say"], list) else [sc["say"]]):
+                push_clip(clip)
+        time.sleep(3)
+        start_session()
+        # A first session from DEEP_IDLE: 5 s lost the first line on the GitHub emulator (S1).
+        time.sleep(12)
         for sc in scenarios:
             ok, failures, lines = run_scenario(sc, args.wait)
             results[sc["id"]].append(ok)
             if not ok:
-                details[sc["id"]] = (failures, lines[-25:])
+                kept = [ln for ln in lines if "gemini_resumption_update" not in ln]
+                details[sc["id"]] = (failures, kept[-60:])
             print(f"  {'PASS' if ok else 'FAIL'}  {sc['id']:5} {sc['utterance']}", flush=True)
             if not ok:
                 for failure in failures:

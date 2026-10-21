@@ -1,0 +1,36 @@
+schema: nova-task-contract/1
+task_id: STYLE-GRADER
+title: style_check grader v3 - pitch is necessary for sweet, spread or pace only confirm it (decider 2026-10-20), with the version in the CI summary
+branch: exec/style-grader
+base_commit: ff1f635dfe5367e424bf89cb27728ce5d426d5fc
+approved_paths:
+  - tools/demo/live/style_check.py
+  - docs/DEMO_STYLE.md
+  - scripts/github_live_jvm.sh
+  - scripts/tests/test_live_jvm.py
+allowed_changes:
+  - style_check.py sounds_sweet becomes df >= F0_ALONE or (df >= F0_UP and (spread_hit or pace_hit)); every threshold unchanged (F0_UP 0.08, SPREAD_UP 2.0, PACE_DOWN 0.10, F0_ALONE 0.15); baseline stays s_mood1
+  - style_check.py prints a line "GRADER v3" in its report; selftest gains two cases - s_mood4 back at baseline pitch with spread +2.4 st and pace -13 % grades back-to-default (PASS), s_mood2 with F0 +2 %, spread +2.8 st, pace -21 % grades not sweet (FAIL s_mood2); every existing selftest case keeps its verdict
+  - github_live_jvm.sh style summary keeps a grader=v3 line taken from style_check's GRADER line (ASCII-sanitised; grader=unknown when absent); test_live_jvm.py fixtures and a test for the grader line
+  - docs/DEMO_STYLE.md states the v3 rule and why (decider 2026-10-20 - spread and pace swing as much between two default turns as the thresholds)
+architecture_constraints:
+  - I-8 unchanged
+  - Stricter or equal for every past known-bad run (fade, 3.1 runs, 10-13 final) - none may become PASS
+forbidden_changes:
+  - No threshold lowered; no app code
+forbidden_paths:
+  - "*/src/**"
+  - TEST_MATRIX.yaml
+required_verification:
+  - id: style-selftest
+    kind: regression
+    command: python3 tools/demo/live/style_check.py --selftest
+  - id: bash-syntax
+    kind: lint
+    command: bash -n scripts/github_live_jvm.sh
+  - id: live-jvm-tests
+    kind: regression
+    command: python3 -m unittest scripts/tests/test_live_jvm.py
+acceptance_criteria:
+  - The two new selftest cases and all old ones give the decided verdicts
+  - A CI style summary carries grader=v3

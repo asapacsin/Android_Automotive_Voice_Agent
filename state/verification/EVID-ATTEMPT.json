@@ -1,0 +1,27 @@
+{
+ "task_id": "EVID-ATTEMPT",
+ "contract_sha256": "3ef5b0a64e4285822984199ea66c77b5c558b38966eef1f94587a9303b13e695",
+ "tip": "ce026cf7108c61f4b91ee38f3efa247f56086a15",
+ "verified_by": "planner",
+ "at": "2026-10-20T16:52:50+00:00",
+ "results": [
+  {
+   "id": "yaml",
+   "kind": "lint",
+   "command": "python3 -c \"import yaml;yaml.safe_load(open('.github/workflows/device-checks.yml'))\"",
+   "exit_code": 0,
+   "seconds": 0.1,
+   "log": "/root/nova-drive-build/nova-verify/EVID-ATTEMPT/ce026cf7108c-yaml.log",
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "id": "attempt-present",
+   "kind": "lint",
+   "command": "grep -q '_a${GITHUB_RUN_ATTEMPT}' .github/workflows/device-checks.yml",
+   "exit_code": 0,
+   "seconds": 0.0,
+   "log": "/root/nova-drive-build/nova-verify/EVID-ATTEMPT/ce026cf7108c-attempt-present.log",
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+ ]
+}

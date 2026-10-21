@@ -13,7 +13,8 @@ import org.junit.jupiter.api.Test
  * SPEC-011 A1: each REST response parses from a fixture recorded live from restapi.amap.com on
  * 2026-09-25 (coordinates replaced with fixed values, no key), and a field the source did not send
  * stays missing. `error_quota_synthetic.json` is the one hand-written fixture: a quota response
- * cannot be provoked on purpose without exhausting the owner's key.
+ * cannot be provoked on purpose without exhausting the owner's key. `place_polygon.json` (P68) has
+ * the documented v3/place/polygon shape with fake names, fake ids and the fixed coordinate.
  */
 class AmapLiveInfoParserTest {
     private val server = MockWebServer()
@@ -69,8 +70,22 @@ class AmapLiveInfoParserTest {
     }
 
     @Test
-    fun regeoYieldsOnlyTheAdcode() {
-        assertEquals(LiveInfoFetch.Ok("110101"), AmapLiveInfoParser.regeoAdcode(fixture("regeo")))
+    fun regeoYieldsTheAdcodeAndAMunicipalitysProvinceAsItsCity() {
+        // The fixture is Beijing: `city: []`, `province: 北京市`.
+        assertEquals(LiveInfoFetch.Ok(RegeoPlace("110101", "北京市")), AmapLiveInfoParser.regeoPlace(fixture("regeo")))
+    }
+
+    @Test
+    fun regeoYieldsTheCityWhenAmapGivesOne() {
+        val body = """{"status":"1","infocode":"10000","regeocode":{"addressComponent":""" +
+            """{"city":"珠海市","province":"广东省","adcode":"440402"}}}"""
+        assertEquals(LiveInfoFetch.Ok(RegeoPlace("440402", "珠海市")), AmapLiveInfoParser.regeoPlace(body))
+    }
+
+    @Test
+    fun regeoWithoutAnAdcodeIsNoResults() {
+        val body = """{"status":"1","infocode":"10000","regeocode":{"addressComponent":{"city":"珠海市"}}}"""
+        assertEquals(LiveInfoFetch.Failed(AmapLiveInfoParser.NO_RESULTS), AmapLiveInfoParser.regeoPlace(body))
     }
 
     @Test
@@ -97,7 +112,7 @@ class AmapLiveInfoParserTest {
 
     @Test
     fun noFixtureCarriesARealCoordinate() {
-        listOf("weather_base", "weather_all", "weather_empty", "regeo", "place_detail").forEach { name ->
+        listOf("weather_base", "weather_all", "weather_empty", "regeo", "place_detail", "place_polygon").forEach { name ->
             val coordinates = Regex("\\d{2,3}\\.\\d+,\\d{1,2}\\.\\d+").findAll(fixture(name)).map { it.value }.toSet()
             assertTrue(coordinates.all { it == "116.000000,39.000000" }, "$name: $coordinates")
         }
@@ -137,5 +152,52 @@ class AmapLiveInfoParserTest {
         assertEquals("440402", candidates[0].adcode)
         assertEquals("440402", candidates[0].toDestination().adcode)
         assertFalse(candidates[1].adcode != null, "[] is not an adcode")
+    }
+
+    // ---- P68: v3/place/polygon for along_route ----
+
+    @Test
+    fun placePolygonKeepsTotalAndEveryPoiWithAPoint() {
+        val found = (AmapLiveInfoParser.placePolygon(fixture("place_polygon")) as LiveInfoFetch.Ok).value
+        assertEquals(27, found.total, "the response count, not the page size")
+        assertEquals("10000", found.infocode)
+        assertEquals(listOf("B0FAKE0001", "B0FAKE0002"), found.pois.map { it.poiId })
+        assertEquals(3, found.returned, "the page as sent, including the POI without a point")
+        assertEquals("测试加油站甲", found.pois[0].name)
+        assertEquals(39.0, found.pois[0].latitude, 0.0)
+        assertEquals(116.0, found.pois[0].longitude, 0.0)
+    }
+
+    @Test
+    fun placePolygonEmptyIsOkWithNoPois() {
+        val found = (AmapLiveInfoParser.placePolygon("""{"status":"1","count":"0","infocode":"10000","pois":[]}""") as LiveInfoFetch.Ok).value
+        assertEquals(0, found.total)
+        assertTrue(found.pois.isEmpty())
+    }
+
+    @Test
+    fun placePolygonBadStatusAndQpsAreUnavailableNeverNoResults() {
+        listOf("10004", "10019", "10020", "10021", "20000").forEach { infocode ->
+            val failed = AmapLiveInfoParser.placePolygon("""{"status":"0","info":"X","infocode":"$infocode"}""")
+            assertEquals(LiveInfoFetch.Failed("LIVE_INFO_UNAVAILABLE", infocode), failed)
+        }
+        assertEquals("LIVE_INFO_QUOTA", (AmapLiveInfoParser.placePolygon(fixture("error_quota_synthetic")) as LiveInfoFetch.Failed).code)
+        assertEquals(LiveInfoFetch.Failed("LIVE_INFO_UNAVAILABLE"), AmapLiveInfoParser.placePolygon("not json"))
+    }
+
+    @Test
+    fun clientSendsOnePolygonRequestWithTypesNotKeywords() {
+        server.enqueue(MockResponse().setBody(fixture("place_polygon")))
+        val polygon = "116.000000,39.000000|116.010000,39.000000|116.010000,39.010000|116.000000,39.000000"
+        assertTrue(client().placePolygon(polygon, "010100", "test-key") is LiveInfoFetch.Ok)
+        val url = server.takeRequest().requestUrl!!
+        assertEquals("/v3/place/polygon", url.encodedPath)
+        assertEquals(polygon, url.queryParameter("polygon"))
+        assertEquals("010100", url.queryParameter("types"))
+        assertNull(url.queryParameter("keywords"))
+        assertEquals("25", url.queryParameter("offset"))
+        assertEquals("1", url.queryParameter("page"))
+        assertEquals("base", url.queryParameter("extensions"))
+        assertEquals(1, server.requestCount)
     }
 }

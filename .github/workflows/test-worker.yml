@@ -1,0 +1,94 @@
+# Resident test worker (owner, 2026-10-16: cycles within ~5 minutes instead of ~30). Started by hand
+# (workflow_dispatch); builds once, boots the emulator once, then scripts/github_test_worker.sh picks
+# up every commit on the branch tagged [worker:<piece>], rebuilds incrementally, reinstalls and runs
+# the piece. Evidence: branch ci/test-worker. One job, up to ~5.5 h (GitHub's limit is 6 h).
+# Each piece's verdict (scripts/ci_verdict.py, suite navpiece) ends its summary.txt; the worker loop
+# itself never fails on a piece failure, so read the verdict line, not the job status.
+# Emulator evidence is never evidence of real cabin acoustics, echo cancellation, voice
+# naturalness or hardware behaviour.
+# The job must not print coordinates, addresses, transcripts or keys.
+
+name: Test worker
+
+on:
+  # A new workflow can be dispatched only once it is on the default branch; until then a commit
+  # tagged [worker-start] on the working branch starts it.
+  push:
+    branches:
+      - claude/10-15
+      - claude/10-19
+      - claude/10-20
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: "How long the worker stays up (max 320)"
+        default: "320"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: test-worker-${{ github.event_name == 'push' && !contains(github.event.head_commit.message, '[worker-start]') && github.sha || 'live' }}
+  cancel-in-progress: false
+
+jobs:
+  worker:
+    if: ${{ github.event_name != 'push' || contains(github.event.head_commit.message, '[worker-start]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm || true
+          if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+          test -r /dev/kvm -a -w /dev/kvm
+
+      - name: Build the debug APK (cold, once)
+        env:
+          AMAP_API_KEY: ${{ secrets.AMAP_API_KEY }}
+          NOVA_VENDOR_ZIP_URL: ${{ secrets.NOVA_VENDOR_ZIP_URL }}
+          # Dead vendor zip: build on the iFlytek stand-in; build:vendor-real is then BLOCKED, so the
+          # run is never green (decided by the decider 2026-10-19; docs/CI.md, tools/vendor-stub).
+          NOVA_VENDOR_STUB_OK: "yes"
+          NOVA_VENDOR_ZIP_AUTH: ${{ secrets.NOVA_VENDOR_ZIP_AUTH }}
+          NOVA_DEBUG_KEYSTORE_B64: ${{ secrets.NOVA_DEBUG_KEYSTORE_B64 }}
+        run: bash scripts/github_build_apk.sh
+
+      - name: Driver clips and tools
+        run: |
+          python3 -m pip install -q edge-tts truststore imageio-ffmpeg
+          for s in make_speech make_extra make_context make_noise; do python3 tools/speech-harness/$s.py >/dev/null; done
+          sudo apt-get install -y -q ffmpeg >/dev/null
+
+      - name: Cache the emulator system image
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/lib/android/sdk/system-images/android-34/google_apis/x86_64
+          key: sysimg-android-34-google_apis-x86_64-${{ runner.os }}
+
+      - name: Pre-install the emulator system image (retries)
+        run: bash scripts/ci_sysimg.sh
+
+      - name: Boot the emulator once and serve pieces
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          AMAP_WEB_KEY: ${{ secrets.AMAP_WEB_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          AMAP_API_KEY: ${{ secrets.AMAP_API_KEY }}
+          WORKER_BRANCH: ${{ github.ref_name }}
+          WORKER_MINUTES: ${{ inputs.minutes || '320' }}
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          cores: 4
+          ram-size: 4096M
+          emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -no-snapshot -camera-back none
+          disable-animations: true
+          script: bash scripts/github_test_worker.sh

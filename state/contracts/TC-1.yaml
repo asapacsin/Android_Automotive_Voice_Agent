@@ -1,0 +1,37 @@
+schema: nova-task-contract/1
+task_id: TC-1
+title: Archive closed problems out of OPEN_PROBLEMS.md
+branch: exec/tc-1
+base_commit: 8c52aa369108c532a6877e6d52e84e7b2e75960e
+approved_paths:
+  - OPEN_PROBLEMS.md
+  - docs/OPEN_PROBLEMS_ARCHIVE.md
+allowed_changes:
+  - Move each problem section (## Pnn — title, up to the next ## heading) that BOTH scripts/discover_work.py is_terminal and scripts/collect_state.py open_issues treat as closed, verbatim, into docs/OPEN_PROBLEMS_ARCHIVE.md in original order
+  - Leave in OPEN_PROBLEMS.md one pointer line per moved problem under a new "## Archived (closed) problems" section, formatted "- Pnn — <title> — <first words of status> → docs/OPEN_PROBLEMS_ARCHIVE.md"
+  - A short header in the archive explaining what it is and that IDs are never reused
+architecture_constraints:
+  - OPEN_PROBLEMS.md stays the canonical list of open problems (AGENTS.md "Where things are")
+  - Pointer lines must not start with "## P" so the readers never parse them as problem headings
+  - Problem IDs are never renumbered or reused
+forbidden_changes:
+  - No edit to any moved or kept section's text, status or order
+  - No change to the readers (scripts/*.py) or to any other file
+forbidden_paths:
+  - "scripts/**"
+  - TEST_MATRIX.yaml
+  - "*/src/**"
+required_verification:
+  - id: tc1-acceptance
+    kind: integration
+    command: python3 /tmp/claude-0/-home-user/1bd74f9c-9fd5-51e9-95f1-c0ec94aa3773/scratchpad/tc1_check.py 8c52aa369108c532a6877e6d52e84e7b2e75960e
+  - id: discover-work
+    kind: integration
+    command: python3 scripts/discover_work.py
+  - id: script-tests
+    kind: regression
+    command: python3 -m unittest discover -s scripts/tests -t .
+acceptance_criteria:
+  - Every base section survives verbatim in OPEN_PROBLEMS.md or the archive; non-problem sections and open problems stay put
+  - discover_work.py and collect_state.py report exactly the same open problems as at base_commit
+  - Every archived ID has a pointer line in OPEN_PROBLEMS.md; OPEN_PROBLEMS.md is less than half its base length

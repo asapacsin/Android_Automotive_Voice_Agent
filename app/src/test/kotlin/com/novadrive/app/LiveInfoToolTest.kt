@@ -1,12 +1,13 @@
 package com.novadrive.app
 
-import com.novadrive.app.nav.AlongRouteCategory
 import com.novadrive.app.nav.DestinationCandidate
 import com.novadrive.app.nav.EmbeddedNavigationController
 import com.novadrive.app.nav.FakeNaviEngine
 import com.novadrive.app.nav.NavigationPhase
 import com.novadrive.app.nav.RouteCandidate
 import com.novadrive.app.nav.RouteLiveInfoSource
+import com.novadrive.app.nav.RouteProgress
+import com.novadrive.app.nav.StaticMapModel.GeoPoint
 import com.novadrive.app.nav.RouteTraffic
 import com.novadrive.app.vehicle.ClimateToolHandler
 import com.novadrive.app.voice.DriverContext
@@ -48,10 +49,10 @@ class LiveInfoToolTest {
 
     private class FakeRoute(
         var traffic: RouteTraffic? = null,
-        var along: List<DestinationCandidate>? = emptyList(),
+        var progress: RouteProgress? = null,
     ) : RouteLiveInfoSource {
         override fun traffic() = traffic
-        override suspend fun alongRoute(category: AlongRouteCategory) = along
+        override fun routeProgress() = progress
     }
 
     private var clock = 0L
@@ -74,6 +75,7 @@ class LiveInfoToolTest {
         clockText = { "15:00" },
         log = { logs += it },
         timeoutMs = timeoutMs,
+        warmRetryPauseMs = 0,
     )
 
     private fun dispatcher(tool: LiveInfoTool, context: DriverContext? = null) = AndroidToolDispatcher(
@@ -167,10 +169,91 @@ class LiveInfoToolTest {
         server.enqueue(MockResponse().setBody(fixture("weather_empty")))
         assertFails("NO_RESULTS", run(tool(), "kind" to "weather", "where" to "不存在"))
         startNavigation()
-        route.along = emptyList()
+        route.progress = RouteProgress(eastward(30_000), 0)
+        server.enqueue(MockResponse().setBody(polygonBody(emptyList())))
         val none = run(tool(), "kind" to "along_route", "category" to "fuel")
         assertFails("NO_RESULTS", none)
-        assertEquals("加油站", none.getString("category"), "the driver hears 沿途没有找到加油站")
+        assertEquals("加油站", none.getString("category"))
+        assertEquals(10, none.getInt("searched_ahead_km"))
+        assertFalse(none.getBoolean("reached_destination"))
+        assertEquals("前方10公里沿途没有找到加油站", none.getString("message"), "the lookahead stopped short")
+    }
+
+    // ---- along_route: one place/polygon call over the corridor ahead (P68) -------------
+
+    private val mPerDegLat = Math.PI / 180 * 6_371_000.0
+    private val mPerDegLon = mPerDegLat * Math.cos(Math.toRadians(22.0))
+
+    private fun east(meters: Double, north: Double = 0.0) = GeoPoint(22.0 + north / mPerDegLat, 113.0 + meters / mPerDegLon)
+
+    private fun eastward(lengthM: Int) = (0..lengthM step 100).map { east(it.toDouble()) }
+
+    /** A place/polygon body; each pair is (east, north) metres from the fake origin. */
+    private fun polygonBody(pois: List<Pair<Double, Double>>, total: Int = pois.size): String {
+        val items = pois.mapIndexed { i, (e, n) ->
+            val p = east(e, n)
+            """{"id":"B0FAKE$i","name":"测试站$i","location":"${"%.6f".format(java.util.Locale.US, p.longitude)},${"%.6f".format(java.util.Locale.US, p.latitude)}"}"""
+        }
+        return """{"status":"1","count":"$total","infocode":"10000","pois":[${items.joinToString(",")}]}"""
+    }
+
+    @Test
+    fun alongRouteSearchingTheWholeRemainingRouteSaysSo() {
+        startNavigation()
+        route.progress = RouteProgress(eastward(8_000), 1_000)
+        server.enqueue(MockResponse().setBody(polygonBody(listOf(500.0 to 0.0, 3_000.0 to 2_000.0))))
+        val none = run(tool(), "kind" to "along_route", "category" to "fuel")
+        assertFails("NO_RESULTS", none)
+        assertTrue(none.getBoolean("reached_destination"))
+        assertEquals("沿途没有找到加油站", none.getString("message"))
+        assertTrue(logs.any { it.startsWith("along_route_search code=10000 total=2 returned=2 kept=0 lookahead_m=") }, logs.toString())
+    }
+
+    @Test
+    fun alongRouteWithoutAWebKeyNeverSearches() {
+        startNavigation()
+        route.progress = RouteProgress(eastward(30_000), 0)
+        assertFails("AMAP_WEB_KEY_MISSING", run(tool(key = null), "kind" to "along_route", "category" to "fuel"))
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun alongRouteBadStatusIsUnavailableNeverNoResults() {
+        startNavigation()
+        route.progress = RouteProgress(eastward(30_000), 0)
+        server.enqueue(MockResponse().setBody("""{"status":"0","info":"CUQPS_HAS_EXCEEDED_THE_LIMIT","infocode":"10021"}"""))
+        assertFails("LIVE_INFO_UNAVAILABLE", run(tool(), "kind" to "along_route", "category" to "fuel"))
+        assertEquals(1, server.requestCount, "no retry, no fallback call")
+        assertTrue(logs.any { it.startsWith("along_route_search code=10021 total=0 returned=0 kept=0") }, logs.toString())
+        assertEquals(NavigationPhase.NAVIGATING, navigation.state().value, "no picker on a failure")
+    }
+
+    @Test
+    fun alongRouteOpensThePickerWithAtMostFiveOrderedAlongTheRoute() {
+        startNavigation()
+        route.progress = RouteProgress(eastward(30_000), 2_000)
+        val pois = listOf(
+            9_000.0 to 100.0, 2_500.0 to -200.0, 1_000.0 to 0.0, 7_000.0 to 0.0, 4_000.0 to 300.0,
+            5_000.0 to 3_000.0, 11_000.0 to 0.0, 3_000.0 to 0.0, 15_000.0 to 0.0,
+        )
+        server.enqueue(MockResponse().setBody(polygonBody(pois, total = 40)))
+        val result = run(tool(), "kind" to "along_route", "category" to "fuel")
+        assertTrue(result.getBoolean("ok"), result.toString())
+        val options = result.getJSONArray("options_on_screen")
+        assertEquals(5, options.length())
+        assertEquals(listOf("测试站1", "测试站7", "测试站4", "测试站3", "测试站0"), (0 until 5).map { options.getJSONObject(it).getString("name") })
+        val distances = (0 until 5).map { options.getJSONObject(it).getInt("distance_m") }
+        assertEquals(distances.sorted(), distances)
+        assertTrue(kotlin.math.abs(distances[0] - 500) <= 20, distances.toString())
+        assertEquals(NavigationPhase.AWAITING_DESTINATION_SELECTION, navigation.state().value)
+        assertEquals(5, navigation.destinationCandidates.value.size)
+        assertEquals(1, server.requestCount, "exactly one search call")
+        val url = server.takeRequest().requestUrl!!
+        assertEquals("/v3/place/polygon", url.encodedPath)
+        assertEquals("010100", url.queryParameter("types"))
+        val line = logs.single { it.startsWith("along_route_search") }
+        assertTrue(Regex("along_route_search code=10000 total=40 returned=9 kept=6 lookahead_m=10000 vertices=\\d+ ms=\\d+ truncated=true").matches(line), line)
+        assertFalse(logs.any { it.contains("113.") || it.contains("22.") || it.contains("B0FAKE") || it.contains("测试") }, "no place in a log")
     }
 
     @Test
@@ -223,6 +306,82 @@ class LiveInfoToolTest {
     }
 
     @Test
+    fun theDistrictOfAFixIsLookedUpOncePerCellForThirtyMinutes() {
+        // MockWebServer answers in queue order: the order of requests the cache should make.
+        listOf("regeo", "weather_base", "weather_base", "regeo", "weather_base")
+            .forEach { server.enqueue(MockResponse().setBody(fixture(it))) }
+        val tool = tool()
+        run(tool, "kind" to "weather")
+        clock += 11 * 60_000 // past the weather cache, inside the district cache
+        assertTrue(run(tool, "kind" to "weather").getBoolean("ok"))
+        val paths = List(server.requestCount) { server.takeRequest().requestUrl!!.encodedPath }
+        assertEquals(listOf("/v3/geocode/regeo", "/v3/weather/weatherInfo", "/v3/weather/weatherInfo"), paths)
+        clock += 20 * 60_000
+        run(tool, "kind" to "weather")
+        assertEquals("/v3/geocode/regeo", server.takeRequest().requestUrl!!.encodedPath)
+    }
+
+    @Test
+    fun warmingAnswersTheFirstWeatherQuestionFromTheCache() {
+        server.enqueue(MockResponse().setBody(fixture("regeo")))
+        server.enqueue(MockResponse().setBody(fixture("weather_base")))
+        val tool = tool()
+        tool.warmHere()
+        val deadline = System.currentTimeMillis() + 5_000
+        while (logs.none { it.startsWith("live_info_warm kind=weather") } && System.currentTimeMillis() < deadline) Thread.sleep(10)
+        assertEquals(listOf("live_info_warm kind=district ok=true", "live_info_warm kind=weather ok=true cached=false"), logs.filter { it.startsWith("live_info_warm") })
+        val result = run(tool, "kind" to "weather")
+        assertTrue(result.getBoolean("ok"))
+        assertTrue(result.getBoolean("cached"), "answered from what the warm-up fetched")
+        assertEquals("14:39", result.getString("reported_at"), "with the source's own report time (B4)")
+        assertEquals(2, server.requestCount, "no request at question time")
+        assertFalse(logs.any { it.contains("22.2") || it.contains("113.5") }, "no coordinate in a log")
+    }
+
+    @Test
+    fun aSlowFirstWarmLookupIsRetriedSoTheQuestionStillHitsTheCache() {
+        // One Amap call took 1.4-3.8 s from the cloud and up to 4 s from the PC proxy (P50): the first
+        // weather lookup failing must not leave 今天天气怎么样 to a cold lookup.
+        server.enqueue(MockResponse().setBody(fixture("regeo")))
+        server.enqueue(MockResponse().setResponseCode(504))
+        server.enqueue(MockResponse().setBody(fixture("weather_base")))
+        val tool = tool()
+        warm(tool)
+        assertEquals(
+            listOf("live_info_warm kind=district ok=true", "live_info_warm_retry kind=weather", "live_info_warm kind=weather ok=true cached=false"),
+            logs.filter { it.startsWith("live_info_warm") },
+        )
+        val result = run(tool, "kind" to "weather")
+        assertTrue(result.getBoolean("cached"), "answered from the retried warm-up")
+        assertEquals(3, server.requestCount, "no request at question time")
+    }
+
+    @Test
+    fun aWarmUpThatNeverSucceedsGivesUpAfterThreeTries() {
+        repeat(LiveInfoTool.WARM_ATTEMPTS) { server.enqueue(MockResponse().setResponseCode(504)) }
+        val tool = tool()
+        tool.warmHere()
+        val deadline = System.currentTimeMillis() + 5_000
+        while (logs.none { it.startsWith("live_info_warm kind=district") } && System.currentTimeMillis() < deadline) Thread.sleep(10)
+        assertEquals(
+            listOf("live_info_warm_retry kind=district", "live_info_warm_retry kind=district", "live_info_warm kind=district ok=false"),
+            logs.filter { it.startsWith("live_info_warm") },
+        )
+        assertEquals(LiveInfoTool.WARM_ATTEMPTS, server.requestCount)
+    }
+
+    @Test
+    fun warmingWithoutAFixOrKeyDoesNothingAndSaysWhy() {
+        tool(fix = null).warmHere()
+        tool(key = null).warmHere()
+        assertEquals(
+            listOf("live_info_warm kind=district ok=false code=NO_LOCATION", "live_info_warm kind=district ok=false code=AMAP_WEB_KEY_MISSING"),
+            logs,
+        )
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
     fun weatherIsCachedTenMinutesPerCity() {
         server.enqueue(MockResponse().setBody(fixture("weather_base")))
         server.enqueue(MockResponse().setBody(fixture("weather_base")))
@@ -248,6 +407,79 @@ class LiveInfoToolTest {
         val request = server.takeRequest().requestUrl!!
         assertEquals("440402", request.queryParameter("city"), "no reverse-geocode when the POI had an adcode")
         assertEquals("all", request.queryParameter("extensions"))
+    }
+
+    /** Counts calls; regeo at any fix is Zhuhai's Xiangzhou district. */
+    private class ZhuhaiRest : AmapLiveInfoRest by LiveInfoTool.noRest() {
+        val weatherCities = mutableListOf<String>()
+        var regeoCalls = 0
+        override fun regeoPlace(latitude: Double, longitude: Double, key: String): LiveInfoFetch<RegeoPlace> {
+            regeoCalls++
+            return LiveInfoFetch.Ok(RegeoPlace("440402", "珠海市"))
+        }
+        override fun weatherNow(city: String, key: String): LiveInfoFetch<WeatherNow> {
+            weatherCities += city
+            return LiveInfoFetch.Ok(WeatherNow("香洲区", "晴", 28, null, null, null, "15:00"))
+        }
+    }
+
+    private fun warm(tool: LiveInfoTool) {
+        tool.warmHere()
+        val deadline = System.currentTimeMillis() + 5_000
+        while (logs.none { it.startsWith("live_info_warm kind=weather") } && System.currentTimeMillis() < deadline) Thread.sleep(10)
+    }
+
+    @Test
+    fun namingTheCityTheCarIsInIsAnsweredFromTheWarmCache() {
+        val rest = ZhuhaiRest()
+        val tool = tool(rest = rest)
+        warm(tool)
+        assertEquals(listOf("440402"), rest.weatherCities)
+        for (named in listOf("珠海", "珠海市", " 珠海 ")) {
+            val result = run(tool, "kind" to "weather", "where" to named)
+            assertTrue(result.getBoolean("ok"), result.toString())
+            assertTrue(result.getBoolean("cached"), "$named answered from the warm-up")
+            assertEquals(named.trim(), result.getString("where"), "the label is what the driver said")
+        }
+        assertEquals(listOf("440402"), rest.weatherCities, "no weather call at question time")
+        assertEquals(1, rest.regeoCalls)
+        assertFalse(logs.any { it.contains("珠海") || it.contains("440402") || it.contains("22.2") }, "no place in a log")
+    }
+
+    @Test
+    fun anotherCityIsStillLookedUpByName() {
+        val rest = ZhuhaiRest()
+        val tool = tool(rest = rest)
+        warm(tool)
+        assertFalse(run(tool, "kind" to "weather", "where" to "澳门").getBoolean("cached"))
+        assertEquals(listOf("440402", "澳门"), rest.weatherCities)
+    }
+
+    @Test
+    fun withoutAFreshWarmUpTheCityIsLookedUpByName() {
+        val cold = ZhuhaiRest()
+        run(tool(rest = cold), "kind" to "weather", "where" to "珠海")
+        assertEquals(listOf("珠海"), cold.weatherCities)
+        assertEquals(0, cold.regeoCalls, "never a regeo just to check")
+
+        val rest = ZhuhaiRest()
+        val tool = tool(rest = rest)
+        warm(tool)
+        clock += LiveInfoTool.ADCODE_TTL_MS
+        assertFalse(run(tool, "kind" to "weather", "where" to "珠海").getBoolean("cached"))
+        assertEquals(listOf("440402", "珠海"), rest.weatherCities)
+        assertEquals(1, rest.regeoCalls)
+    }
+
+    @Test
+    fun destinationWithoutAnAdcodeUsesTheRegeoDistrict() {
+        startNavigation(candidate("d", "珠海站"))
+        val rest = ZhuhaiRest()
+        val result = run(tool(rest = rest), "kind" to "weather", "where" to "destination")
+        assertTrue(result.getBoolean("ok"), result.toString())
+        assertEquals("目的地", result.getString("where"))
+        assertEquals(listOf("440402"), rest.weatherCities)
+        assertEquals(1, rest.regeoCalls)
     }
 
     @Test
@@ -285,6 +517,22 @@ class LiveInfoToolTest {
             logs,
         )
         assertNull(logs.firstOrNull { it.contains("北京") || it.contains("上海") || it.contains("110101") })
+    }
+
+    @Test
+    fun aTimedOutAlongRouteSearchNeverOpensThePicker() {
+        startNavigation()
+        route.progress = RouteProgress(eastward(30_000), 0)
+        val slow = object : AmapLiveInfoRest by LiveInfoTool.noRest() {
+            override fun placePolygon(polygon: String, types: String, key: String): LiveInfoFetch<PolygonPlaces> {
+                Thread.sleep(800)
+                return LiveInfoFetch.Ok(PolygonPlaces(1, "10000", listOf(candidate("s", "测试站", poiId = "B0FAKE").copy(latitude = 22.0, longitude = 113.01))))
+            }
+        }
+        assertFails("LIVE_INFO_UNAVAILABLE", run(tool(rest = slow, timeoutMs = 200), "kind" to "along_route", "category" to "fuel"))
+        Thread.sleep(1_200)
+        assertEquals(NavigationPhase.NAVIGATING, navigation.state().value)
+        assertTrue(navigation.destinationCandidates.value.isEmpty())
     }
 
     companion object {

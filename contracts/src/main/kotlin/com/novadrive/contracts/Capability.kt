@@ -61,8 +61,11 @@ class MapCapabilityCatalog(
 object CapabilityIds {
     const val PHONE_PLACE_CALL = "phone.place_call"
     const val VOLUME_CONTROL = "unsupported.volume_control"
-    const val WINDOWS_SEATS_DOORS_LIGHTS_WIPERS = "unsupported.windows_seats_doors_lights_wipers"
-    const val MEDIA_LIBRARY = "unsupported.media_library"
+    const val SUNROOF_DOORS_LIGHTS_WIPERS = "unsupported.sunroof_doors_lights_wipers"
+    const val BODY_WINDOW = "body.window"
+    const val BODY_SEAT_HEIGHT = "body.seat_height"
+    const val COMFORT_SCENARIO = "comfort.scenario"
+    const val MEDIA_PLAY_BY_DESCRIPTION = "media.play_by_description"
     const val MEDIA_NEXT_TRACK = "media.next_track"
     const val REALTIME_INFO = "unsupported.realtime_news_prices"
     const val LIVE_INFO_WEATHER = "live_info.weather"
@@ -98,16 +101,21 @@ object ProductCapabilities : CapabilityCatalog {
             rec("navigation.return_to_tracking", null, true),
             rec("media.play_music", "control_music", true),
             rec("media.stop_music", "control_music", true),
+            rec("media.play_by_description", "play_music", true),
             rec("media.next_track", null, false),
             rec("climate.power", "control_climate", true),
             rec("climate.set_temperature", "control_climate", true),
             rec("climate.set_fan", "control_climate", true),
             rec("climate.relative_adjustment_from_context", "control_climate", true),
             rec("climate.ambiguous_relative_request", null, true),
+            rec("body.window", "control_window", true),
+            rec("body.seat_height", "control_seat", true),
+            rec(CapabilityIds.COMFORT_SCENARIO, "run_scenario", true),
             rec("vision.describe_camera_view", "describe_camera_view", true),
             rec("speech.tts", null, true),
             rec("speech.silent_mode", "set_speech_output", true),
             rec("speech.sleep", "end_conversation", true),
+            rec("speech.speaking_style", "set_speaking_style", true),
             rec("speech.interrupt_tts_by_voice", null, false),
             rec("speech.wake_word", null, true),
             rec("speech.capability_help", null, true),
@@ -118,8 +126,7 @@ object ProductCapabilities : CapabilityCatalog {
             rec("apps.open_maps", "open_app", true),
             rec("apps.open_settings", "open_app", true),
             rec("unsupported.volume_control", null, false),
-            rec("unsupported.windows_seats_doors_lights_wipers", null, false),
-            rec("unsupported.media_library", null, false),
+            rec("unsupported.sunroof_doors_lights_wipers", null, false),
             rec("live_info.weather", "query_live_info", true),
             rec("live_info.route_traffic", "query_live_info", true),
             rec("live_info.along_route", "query_live_info", true),
@@ -134,7 +141,7 @@ object ProductCapabilities : CapabilityCatalog {
 
     /**
      * Spoken capability copy for help intent — only groups the catalog marks supported.
-     * Never names 音量/车窗/天气/下一首.
+     * Never names 音量/天窗/天气/下一首.
      */
     fun spokenHelpSummary(catalog: CapabilityCatalog = ProductCapabilities): String {
         val parts = mutableListOf<String>()
@@ -146,8 +153,14 @@ object ProductCapabilities : CapabilityCatalog {
         if (catalog.isSupported("media.play_music") || catalog.isSupported("media.stop_music")) {
             parts += "播放或关闭音乐"
         }
+        if (catalog.isSupported("media.play_by_description")) {
+            parts += "点歌（说歌名、歌手或描述）"
+        }
         if (catalog.ids().any { it.startsWith("climate.") && catalog.isSupported(it) }) {
             parts += "调节空调"
+        }
+        if (catalog.ids().any { it.startsWith("body.") && catalog.isSupported(it) }) {
+            parts += "开关车窗、调座椅高度"
         }
         if (catalog.isSupported("vision.describe_camera_view")) {
             parts += "看摄像头"

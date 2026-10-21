@@ -1,0 +1,21 @@
+schema: nova-task-contract/1
+task_id: SYSIMG-WORKER
+title: test-worker.yml gets the same system-image cache and retrying pre-install as the other emulator workflows (SYSIMG-RETRY follow-up)
+branch: exec/sysimg-worker
+base_commit: 45b9169e5a130b0f0eeb8733fc99086b44d4f9c4
+approved_paths:
+  - .github/workflows/test-worker.yml
+allowed_changes:
+  - "Insert, immediately before the step named 'Boot the emulator once and serve pieces' in .github/workflows/test-worker.yml, exactly these two steps at the same indentation as the other steps (no if: line, because that emulator step has none): (1) name 'Cache the emulator system image', uses actions/cache@v4, with path /usr/local/lib/android/sdk/system-images/android-34/google_apis/x86_64 and key sysimg-android-34-google_apis-x86_64-${{ runner.os }}; (2) name 'Pre-install the emulator system image (retries)', run: bash scripts/ci_sysimg.sh. Nothing else changes."
+architecture_constraints:
+  - YAML stays valid; identical step text to .github/workflows/device-checks.yml lines 149-158 minus their if lines
+forbidden_changes:
+  - No other line changes
+forbidden_paths:
+  - .claude/**
+required_verification:
+  - id: yaml
+    kind: lint
+    command: python3 -c "import yaml;d=yaml.safe_load(open('.github/workflows/test-worker.yml'));steps=[s.get('name') for j in d['jobs'].values() for s in j['steps']];i=steps.index('Boot the emulator once and serve pieces');assert steps[i-2]=='Cache the emulator system image' and steps[i-1]=='Pre-install the emulator system image (retries)', steps"
+acceptance_criteria:
+  - The two steps sit directly before the emulator step

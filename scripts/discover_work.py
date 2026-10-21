@@ -339,9 +339,9 @@ def item_section_blocker(text, item):
     return section_blocker(text, start.start(), end)
 
 
-def open_backlog():
+def open_backlog(text=None):
     out = []
-    text = read("BACKLOG.md")
+    text = read("BACKLOG.md") if text is None else text
     for match in re.finditer(r"^\| (B-\d+) \| (.+?) \| ([\d-]+) \| (.+?) \|", text, re.M):
         item, title, _, status = match.groups()
         if is_terminal(status):
@@ -359,7 +359,10 @@ def open_backlog():
         # eligible work, but the work is compiling it - not guessing what it asks for and editing
         # code (skills/continue.md, "Compile the demand first").
         section = text[bounds[0]:bounds[1]] if bounds else ""
-        compiled = "SPECS/SPEC-" in section or "SPECS/SPEC-" in match.group(0)
+        # The SPEC link sits in the row's last column, which the match above stops short of.
+        line_end = text.find("\n", match.start())
+        row = text[match.start():line_end if line_end >= 0 else len(text)]
+        compiled = "SPECS/SPEC-" in section or "SPECS/SPEC-" in row
         summary = "%s — %s" % (item, title[:80])
         if not compiled:
             summary = "%s — no SPEC yet: compile this demand into scenarios and acceptance criteria" % item
@@ -438,6 +441,120 @@ def unsettled_matrix_tests():
     return out
 
 
+# Owner, 2026-10-17: every finished piece of work records its minutes and attempts, and a slow
+# one names its improvement (skills/handoff.md step 5). Unrecorded work, and a cause of lost time
+# seen twice, are harness work on the frontier rather than a note nobody reads.
+TIME_RECORD_EVERY_COMMITS = 8
+
+
+def time_records():
+    path = os.path.join(REPO, "harness", "skill-events.jsonl")
+    events = []
+    if os.path.isfile(path):
+        for line in open(path, encoding="utf-8"):
+            line = line.strip()
+            if line:
+                try:
+                    events.append(json.loads(line))
+                except ValueError:
+                    pass
+    timed = [e for e in events if "minutes" in e]
+    out = []
+    since = timed[-1]["timestamp"] if timed else "2026-10-17T00:00:00"
+    count = git("rev-list", "--count", "--no-merges", "--since=" + since, "HEAD")
+    if count and int(count) >= TIME_RECORD_EVERY_COMMITS:
+        out.append(candidate(P_HARNESS, "harness/skill-events.jsonl", "time-record",
+                             "%s commits since the last time record (%s): run the handoff time "
+                             "review, scripts/skill_event.py --minutes --attempts --efficient"
+                             % (count, since)))
+    causes = {}
+    for e in timed:
+        for w in e.get("waste", []):
+            causes[w] = causes.get(w, 0) + 1
+        for done in e.get("resolves", []):  # a landed fix restarts the count (skill_event --resolves)
+            causes.pop(done, None)
+    # Whatever the skill metrics say is now justified (new skill or script, skill change, time
+    # improvement) is due work too, so the loop cannot go quiet again.
+    metrics_path = os.path.join(REPO, "harness", "skill-metrics.json")
+    if os.path.isfile(metrics_path):
+        try:
+            for a in json.load(open(metrics_path, encoding="utf-8")).get("suggested_actions", []):
+                if a.get("action") == "TIME_IMPROVEMENT":
+                    continue  # reported below from the records themselves
+                out.append(candidate(P_HARNESS, "harness/skill-metrics.json",
+                                     "skill-" + re.sub(r"[^\w.-]+", "-", a.get("subject", ""))[:60],
+                                     "%s: %s (seen %s) - build it now, no asking: scripts/skill_draft.py --from-metrics, then .claude/skills/create-skill/SKILL.md"
+                                     % (a.get("action"), a.get("subject"), a.get("seen"))))
+        except (OSError, ValueError):
+            pass
+    for cause, n in sorted(causes.items()):
+        if n >= 2:
+            out.append(candidate(P_HARNESS, "harness/skill-events.jsonl", "time-" + cause,
+                                 "lost time to '%s' %d times: change the process so it stops "
+                                 "(script, skill step, settings) and record the change" % (cause, n)))
+    return out
+
+
+def _git_in(repo, *args):
+    try:
+        return subprocess.run(["git", *args], cwd=repo, capture_output=True, text=True,
+                              check=True).stdout.strip()
+    except Exception:
+        return None
+
+
+def unfinished_executor_work(repo=None):
+    """An exec branch with commits beyond its contract's base that HEAD has not merged is finished
+    executor work waiting on the planner: verify, review or merge. Read-only; never raises.
+
+    The repo root is `repo`, else the NOVA_DISCOVER_REPO environment variable (a test seam), else
+    REPO. Review status comes from delegation_check: the last valid reviews.log record for the tip
+    wins and malformed lines are ignored."""
+    repo = repo or os.environ.get("NOVA_DISCOVER_REPO") or REPO
+    out = []
+    try:
+        import delegation_check as dc
+        records, _ = dc.parse_log(os.path.join(repo, "state", "reviews.log"))
+    except Exception:
+        records = []
+    for path in sorted(glob.glob(os.path.join(repo, "state", "contracts", "*.yaml"))):
+        try:
+            text = open(path, encoding="utf-8").read()
+            fields = dict(re.findall(r"^(task_id|branch|base_commit):[ \t]*(\S+)[ \t]*$", text,
+                                     re.M))
+            tid, branch, base = fields.get("task_id"), fields.get("branch"), fields.get("base_commit")
+            if not (tid and branch and base and branch.startswith("exec/")):
+                continue
+            tip = _git_in(repo, "rev-parse", "--verify", "-q", "refs/heads/" + branch)
+            if not tip:
+                continue
+            ahead = _git_in(repo, "rev-list", "--count", base + ".." + tip)
+            if not ahead or ahead == "0":
+                continue
+            try:
+                subprocess.run(["git", "merge-base", "--is-ancestor", tip, "HEAD"], cwd=repo,
+                               capture_output=True, check=True)
+                continue  # merged
+            except subprocess.CalledProcessError:
+                pass
+            verified = False
+            vpath = os.path.join(repo, "state", "verification", tid + ".json")
+            if os.path.isfile(vpath):
+                try:
+                    verified = json.load(open(vpath, encoding="utf-8")).get("tip") == tip
+                except Exception:
+                    verified = False
+            rec = dc.lookup(records, [tip]) if records else None
+            reviewed = bool(rec) and rec[1] == "PASS"
+            stage = "verify" if not verified else ("review" if not reviewed else "merge")
+            out.append(candidate(P_UNFINISHED, "state/contracts/%s" % os.path.basename(path), tid,
+                                 "executor work on %s (%s, %s commits) awaits %s"
+                                 % (branch, tip[:12], ahead, stage)))
+        except Exception:
+            continue
+    return out
+
+
 SOURCES = (
     missing_artifact,
     failing_tests,
@@ -449,6 +566,8 @@ SOURCES = (
     open_debt,
     open_problems,
     stale_state,
+    time_records,
+    unfinished_executor_work,
     open_backlog,
 )
 
@@ -678,6 +797,13 @@ def selftest():
     check("A2 a compiled demand names the implementation instead",
           "compile this demand" not in decide([
               candidate(P_BACKLOG, "BACKLOG.md", "B-098", "B-098 — specced work")])["NEXT_ACTION"])
+    rows = ("| B-097 | demand | 2026-01-01 | **Specced** | [SPEC-099](SPECS/SPEC-099-x.md) |\n"
+            "| B-096 | demand | 2026-01-01 | Open | — |\n")
+    parsed = {c["item"]: c for c in open_backlog(rows)}
+    check("A2 a SPEC linked in the row's last column counts as compiled",
+          "no SPEC yet" not in parsed["B-097"]["summary"], parsed["B-097"]["summary"])
+    check("A2 a row with no SPEC link still needs compiling",
+          "no SPEC yet" in parsed["B-096"]["summary"], parsed["B-096"]["summary"])
     check("A3 a test existing is not completion",
           completion_stage({"implemented": True, "protected": True}) == "IMPLEMENTED",
           completion_stage({"implemented": True, "protected": True}))

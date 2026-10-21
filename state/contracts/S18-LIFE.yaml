@@ -1,0 +1,27 @@
+schema: nova-task-contract/1
+task_id: S18-LIFE
+title: SPEC-018 A4 tests - no DEEP_IDLE and no reconnect-in-SLEEP while navigating; 闭嘴/休眠/wake word do not cancel guidance; sendPrompt never starts, wakes, queues or clears suspension
+branch: exec/s18-life
+base_commit: 3e1484a4968e6ecf6ce89072a32069412b75d778
+approved_paths:
+  - app/src/test/kotlin/com/novadrive/app/**/ListeningLifecycleTest.kt
+  - app/src/test/kotlin/com/novadrive/app/**/VoiceSessionGatewayTest.kt
+allowed_changes:
+  - "Add the SPEC-018 A4 cases to ListeningLifecycleTest and VoiceSessionGatewayTest (find their real location under app/src/test)"
+  - "Tests only. If a case cannot pass because the behaviour is not built, do not change production code: mark that case @Ignore with a one-line reason naming the missing behaviour, and list it in the report as GAP"
+architecture_constraints:
+  - Tests use existing seams and fakes in the test tree; no new production API
+  - No coordinate, address or transcript in any fixture beyond what existing tests already use
+forbidden_changes:
+  - No change under app/src/main or app/src/debug
+forbidden_paths:
+  - .claude/**
+  - app/src/main/**
+  - app/src/debug/**
+  - TEST_MATRIX.yaml
+required_verification:
+  - id: unit
+    kind: regression
+    command: ./gradlew --no-daemon -q :app:testDebugUnitTest --tests "*ListeningLifecycleTest" --tests "*VoiceSessionGatewayTest"
+acceptance_criteria:
+  - "Each SPEC-018 A4 behaviour has a passing test or an @Ignore GAP naming what is missing"

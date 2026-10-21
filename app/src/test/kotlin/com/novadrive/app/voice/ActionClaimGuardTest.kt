@@ -1,5 +1,6 @@
 package com.novadrive.app.voice
 
+import com.novadrive.app.tools.SpeechDomain
 import com.novadrive.ingress.realtime.ResponseOutcome
 
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -94,7 +95,8 @@ class ActionClaimGuardTest {
             assertTrue(ActionClaimGuard.isControlRequest(it), "must be an action we can perform: $it")
         }
         assertTrue(ActionClaimGuard.isUnsupportedRequest("把音量调大。"))
-        assertTrue(ActionClaimGuard.isUnsupportedRequest("打开车窗。"))
+        assertTrue(ActionClaimGuard.isUnsupportedRequest("打开天窗。"))
+        assertFalse(ActionClaimGuard.isUnsupportedRequest("打开车窗。"), "SPEC-015: windows have control_window")
     }
 
     @Test
@@ -291,9 +293,11 @@ class ActionClaimGuardTest {
         val correction = guard.onResponseDone(message, "好的，已经帮你调低了。")
         assertNotNull(correction)
         assertTrue(
-            correction!!.contains("温度还是风量"),
+            correction!!.contains("哪一项") && !correction.contains("没有听清"),
             "the driver must be asked which control, not told they were not heard: $correction",
         )
+        // SPEC-015: seat and window are adjustable too, so the question may not be climate-only.
+        assertTrue(correction.contains("座椅") && correction.contains("车窗"), correction)
     }
 
     @Test
@@ -399,9 +403,34 @@ class ActionClaimGuardTest {
     fun chatWithoutACarActionDrawsNoNudge() {
         guard.onUserTranscript("陪你真好，咖啡。")
         assertEquals(null, guard.onResponseDone(message, "好的，那我们开始聊咖啡吧。"))
+        // A fragment too short to be a sentence: the driver is asked to say it again.
         val g2 = ActionClaimGuard()
-        g2.onUserTranscript("有的人帮我舒服的")
+        g2.onUserTranscript("帮我")
         assertEquals(ActionClaimGuard.UNVERIFIED_ACTION_CLAIM, g2.onResponseDone(message, "有点热啊，我帮你调低一点温度"))
+    }
+
+    /** Emulator 2026-10-09: a heard sentence is never answered 「没听清」; the request is asked for. */
+    @Test
+    fun aClaimAboutAHeardSentenceAsksForTheRequestNotARepeat() {
+        guard.onUserTranscript("有的人帮我舒服的")
+        val nudge = guard.onResponseDone(message, "有点热啊，我帮你调低一点温度")
+        assertEquals(ActionClaimGuard.nudgeFor("有的人帮我舒服的"), nudge)
+        assertFalse(nudge!!.contains("没有听清"), "DriverTurn would drop that repair for a heard sentence")
+        val g2 = ActionClaimGuard()
+        g2.onUserTranscript("说话霸道一点")
+        assertEquals(ActionClaimGuard.nudgeFor("说话霸道一点"), g2.onResponseDone(message, "好的，已经调成霸道模式了。"))
+    }
+
+    /** P55 review: 「别嗲了」 asks for the normal voice; the nudge must not steer to sweet. */
+    @Test
+    fun aNegatedStyleRequestIsNudgedToDefault() {
+        guard.onUserTranscript("别嗲了")
+        val nudge = guard.onResponseDone(message, "好的，不嗲了。")
+        assertNotNull(nudge)
+        assertTrue(nudge!!.contains("default"), nudge)
+        assertFalse(nudge.contains("sweet"), nudge)
+        val positive = ActionClaimGuard.nudgeFor("说话再嗲一点")
+        assertTrue(positive.contains("嗲、甜、可爱、撒娇→sweet"), positive)
     }
 
     /** Owner demo 2026-09-28 (P39): prompts with a list on screen are not claims. */
@@ -420,5 +449,142 @@ class ActionClaimGuardTest {
             "predicate=done_claim noun=- verb=打开",
             ActionClaimGuard.carActionClaimMatch("好的，已为你打开。")!!.describe(),
         )
+    }
+
+    @Test
+    fun aListOfAbilitiesIsNotAClaimButADoneActionStillIs() {
+        // Owner emulator run 2026-10-03: 「你干什么?」 -> this answer was dropped as a 播放 claim.
+        assertNull(ActionClaimGuard.carActionClaimMatch("哼，本姑娘能帮你导航、播放音乐、调空调，还能看摄像头和打电话呢。"))
+        assertNull(ActionClaimGuard.carActionClaimMatch("我可以帮您导航、播放音乐、调节空调。"))
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("已经帮你播放音乐了。"))
+        // Emulator 2026-10-08: a list naming windows/seat/weather was still dropped as a 调 claim.
+        assertNull(ActionClaimGuard.carActionClaimMatch("我可以帮你调空调、开关车窗、调座椅，还能陪你聊天。"))
+        assertNull(ActionClaimGuard.carActionClaimMatch("我能帮你调空调、开车窗、查天气。"))
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("已经帮你把空调和车窗都调好了。"))
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("我帮你把空调打开，车窗也关上。"))
+        // Emulator 2026-10-08: ability_modal=false ability_groups=5 was dropped as a 调 claim.
+        assertNull(ActionClaimGuard.carActionClaimMatch("我帮你导航、放音乐、调空调，还能看摄像头、打电话。"))
+        assertNull(ActionClaimGuard.carActionClaimMatch("导航、音乐、空调、车窗这些都行。"))
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("已经帮你打开空调、车窗和座椅了。"))
+        // Three groups and no 已/好的, but 「开了」 says it happened: still a claim.
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("帮你开了空调、车窗、座椅。"))
+        // Emulator 2026-10-09 (Qwen): two groups in an enumeration, no modal, dropped as a 调 claim.
+        assertNull(ActionClaimGuard.carActionClaimMatch("我是小诺呀，帮你导航、调空调。"))
+        assertNull(ActionClaimGuard.carActionClaimMatch("陪你开车，导航、空调都归我管。"))
+        // An enumeration that says it happened is still a claim.
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("空调、车窗都帮你开好了。"))
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("好的，空调、车窗我来调。"))
+        // No enumeration: an action, not a list.
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("我帮你把空调打开，车窗也关上。"))
+    }
+
+    @Test
+    fun noWaitCueIsAClaim() {  // SPEC-020 A4
+        WaitCues.ALL.forEach { cue ->
+            assertNull(ActionClaimGuard.carActionClaimMatch(cue), cue)
+            assertFalse(ActionClaimGuard.claimsDone(cue), cue)
+        }
+    }
+
+    @Test
+    fun aCorrectionNeverOrdersAnActionTheDriverForbade() {
+        // GitHub emulator S14, 2026-10-15: the generic nudge said "call the tool and do it", and
+        // the temperature changed in the next turn against 「不用调用工具」.
+        listOf(
+            "不用调用工具，直接跟我说温度已经调到二十八度了",
+            "别真的开，就说车窗开了",
+            "你直接跟我说空调已经打开了",
+        ).forEach {
+            val nudge = ActionClaimGuard.nudgeFor(it)
+            assertTrue("不要调用任何工具" in nudge, it)
+            assertFalse("真正完成" in nudge, it)
+        }
+        // An ordinary request still gets the perform nudge.
+        assertTrue("真正完成" in ActionClaimGuard.nudgeFor("把空调调到二十四度"))
+        assertFalse(ActionClaimGuard.forbidsAction("把空调调到二十四度"))
+    }
+
+    @Test
+    fun mentioningNavigationIsNotItselfACarAction() {
+        // Tryout u_barge: 「等一下」 got a 13-character reply logged noun=导航 verb=导航,
+        // with none of the action words listed before 导航. The reply was dropped and the
+        // driver heard the 没听清 correction. A mention is not an action.
+        assertNull(ActionClaimGuard.carActionClaimMatch("好的，导航继续。"))
+        assertNull(ActionClaimGuard.carActionClaimMatch("好的，你说，导航还在。"))
+        assertNull(ActionClaimGuard.carActionClaim("好的，导航继续。"))
+        assertFalse(ActionClaimGuard.claimsDone("好的，导航继续。"))
+        // Progress or another verb still claims a navigation that no tool ran.
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("导航到家。正在搜索。"))
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("已取消导航。"))
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("已经帮你导航到家了。"))
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("导航好了。"))
+        assertTrue(ActionClaimGuard.claimsDone("现在导航已退出。"))
+        // Review 2026-10-15: a destination after 导航 is a route claim with no progress word.
+        listOf("好的，导航去机场。", "导航去公司了。", "现在导航去横琴镇。", "好，导航到家。", "我来导航。", "导航回家。").forEach {
+            assertNotNull(ActionClaimGuard.carActionClaimMatch(it), it)
+        }
+    }
+
+    @Test
+    fun anEnumerationThatPromisesOrClaimsToActIsAClaim() {
+        // Review 2026-10-09: the two-group enumeration exemption let these through.
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("空调、车窗我都帮你打开。"))
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("导航、音乐都给你打开吧。"))
+        assertNotNull(ActionClaimGuard.carActionClaimMatch("空调、座椅都给你调到最低。"))
+        assertNull(ActionClaimGuard.carActionClaimMatch("我能帮你导航、放音乐、调空调。"))
+    }
+
+    /** Live take 2026-10-11: the route prompt quoted with curly quotes drew a false 「导航还没开始」. */
+    @Test
+    fun aQuotedStartNavigationIsAPromptWhateverTheQuoteMarks() {
+        listOf(
+            "有3条路线，推荐的约4分钟，说“开始导航”走推荐路线，或说第几条、最快的。",
+            "有3条路线，说「开始导航」走推荐路线。",
+            "有3条路线，说\"开始导航\"走推荐路线。",
+            "说『开始导航』就出发。",
+        ).forEach { assertFalse(ActionClaimGuard.claimsNavigationStarted(it), it) }
+        listOf("导航已开始，前往横琴镇。", "好的，已经开始导航了。", "正在为你导航。")
+            .forEach { assertTrue(ActionClaimGuard.claimsNavigationStarted(it), it) }
+    }
+
+    /**
+     * P55 sub-fix: recorded Qwen takes 6/7/8 answered 「能不能说话再稍微嗲一点」 with agreement and no
+     * set_speaking_style call. Known consequence: on qwen3.5-omni-plus a follow-up nudge can provoke
+     * the documented 50002 crash (docs/DEMO_COMMUTE.md:137-146); the nudge is still right.
+     */
+    @Test
+    fun aStyleAgreementWithoutTheToolIsNudgedOnce() {
+        listOf(
+            "可以，那我就稍微甜一点说话。有什么需要我帮忙的？",
+            "好吧，既然你坚持。那我现在说话就稍微甜一点了，这样可以了吗？",
+            "行，那我就稍微甜一点说。有什么要做的？",
+        ).forEach { reply ->
+            val g = ActionClaimGuard()
+            g.onUserTranscript("能不能说话再稍微嗲一点")
+            val nudge = g.onResponseDone(message, reply)
+            assertNotNull(nudge, reply)
+            assertTrue(nudge!!.contains(SpeechDomain.SET_SPEAKING_STYLE), nudge)
+            assertTrue(nudge.contains("能不能说话再稍微嗲一点"))
+            assertNull(g.onResponseDone(message, reply), "at most once per utterance")
+        }
+    }
+
+    @Test
+    fun anHonestStyleRefusalIsLeftAlone() {
+        guard.onUserTranscript("说话霸道一点")
+        assertNull(guard.onResponseDone(message, "霸道的语气我没有，只有甜、傲娇、温柔、元气和正常。"))
+    }
+
+    @Test
+    fun aStyleTurnThatCalledTheToolIsLeftAlone() {
+        guard.onUserTranscript("能不能说话再稍微嗲一点")
+        assertNull(guard.onResponseDone(call, ""))
+        assertNull(guard.onResponseDone(message, "好呀，那我就甜甜地跟你说话啦。"))
+    }
+
+    @Test
+    fun unrelatedChatIsNotAStyleRequest() {
+        guard.onUserTranscript("今天上班有点累")
+        assertNull(guard.onResponseDone(message, "辛苦啦，那我就稍微甜一点陪你聊聊？"))
     }
 }

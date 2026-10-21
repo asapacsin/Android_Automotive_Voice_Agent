@@ -118,7 +118,7 @@ class InMemoryVehicleSimulator(
     private fun snapshot() =
         ObservedVehicleState(navigation, media, phone, climate.climateState.value.toObserved())
 
-    private fun VehicleActionResult.failureOrNull(): AdapterOutcome? =
+    private fun VehicleActionResult<*>.failureOrNull(): AdapterOutcome? =
         toAdapterOutcome().takeIf { it is AdapterOutcome.Failed }
 
     companion object {

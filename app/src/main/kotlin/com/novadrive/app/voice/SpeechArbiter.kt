@@ -29,6 +29,11 @@ package com.novadrive.app.voice
  * [holdMaxMs] has gone since the zone was entered, whichever is first. A reply already playing
  * ([onReplyAudio] seen, [onReplyEnded] not yet) is never cut. The P1 window does not expire
  * while a reply is being workload-held, so the held answer plays rather than being dropped.
+ *
+ * SPEC-018 (ADR-014): assistant guidance — a model turn answering an app prompt — is decided by
+ * [guidanceChunk], not [reply]: exempt from P1 (R6) and R6a, DROP on R4 or once [abandon]ed, HOLD
+ * under Amap guidance (R1) or R5. While it is open or playing an ordinary reply is HELD, and its
+ * playout closes the uplink exactly like Amap guidance (R0–R3 unchanged).
  */
 class SpeechArbiter(
     private val clock: () -> Long,
@@ -49,7 +54,14 @@ class SpeechArbiter(
     private var navigating = false
     private var windowUntilMs = 0L
     private var focus = Focus.HELD
-    private var guidanceSpeaking = false
+    private var amapGuidance = false
+    /** SPEC-018: assistant guidance audio is actually playing ([onGuidancePlayout]). */
+    private var assistantGuidance = false
+    /** SPEC-018: the app prompt whose response is open (OPENED seen, COMPLETED/VOIDED not yet). */
+    private var openGuidance: String? = null
+    private val abandoned = ArrayDeque<String>()
+    /** R1–R3 treat Amap guidance and playing assistant guidance alike. */
+    private val guidanceSpeaking: Boolean get() = amapGuidance || assistantGuidance
     private var guidanceStartedMs = 0L
     private var guidanceEndedMs: Long? = null
     private var replyPlaying = false
@@ -62,12 +74,18 @@ class SpeechArbiter(
     /** The current manoeuvre's hold reached its cap; do not re-hold until it is passed. */
     private var zoneSpent = false
 
-    fun onNavigating(value: Boolean) = synchronized(lock) {
-        navigating = value
-        if (!value) {
-            windowUntilMs = 0L
-            clearManeuver()
+    /** Observer of the navigating input (SPEC-018 G-2: the listening lifecycle); called outside the lock. */
+    @Volatile var navigatingObserver: ((Boolean) -> Unit)? = null
+
+    fun onNavigating(value: Boolean) {
+        synchronized(lock) {
+            navigating = value
+            if (!value) {
+                windowUntilMs = 0L
+                clearManeuver()
+            }
         }
+        navigatingObserver?.invoke(value)
     }
 
     /**
@@ -121,18 +139,63 @@ class SpeechArbiter(
         if (!speaking) protectUntilMs = null
     }
 
-    fun onGuidanceSpeaking(speaking: Boolean) = synchronized(lock) {
-        if (speaking) {
+    fun onGuidanceSpeaking(speaking: Boolean) = synchronized(lock) { setGuidance(speaking, assistantGuidance, restart = speaking) }
+
+    /** SPEC-018: assistant guidance audio started (true) or drained / was flushed (false). */
+    fun onGuidancePlayout(playing: Boolean) = synchronized(lock) { setGuidance(amapGuidance, playing, restart = playing && !assistantGuidance) }
+
+    /** SPEC-018 correlation: OPENED opens [promptId]; COMPLETED / VOIDED close it if it matches. */
+    fun onAssistantGuidance(promptId: String, phase: com.novadrive.ingress.realtime.DomainVoiceEvent.AppPromptTurn.Phase) =
+        synchronized(lock) {
+            if (phase == com.novadrive.ingress.realtime.DomainVoiceEvent.AppPromptTurn.Phase.OPENED) {
+                openGuidance = promptId
+            } else if (openGuidance == promptId) {
+                openGuidance = null
+            }
+        }
+
+    /** SPEC-018 B2a: [promptId] was handed elsewhere; its remaining chunks DROP. */
+    fun abandon(promptId: String) = synchronized(lock) {
+        if (promptId in abandoned) return@synchronized
+        abandoned.addLast(promptId)
+        while (abandoned.size > ABANDONED_KEPT) abandoned.removeFirst()
+    }
+
+    /** SPEC-018: the decision for a chunk of assistant guidance; independent of the listening state. */
+    fun guidanceChunk(promptId: String): Reply = synchronized(lock) {
+        when {
+            promptId in abandoned || focus == Focus.PERMANENT_LOSS -> Reply.DROP
+            amapGuidance || focus == Focus.TRANSIENT_LOSS -> Reply.HOLD
+            else -> Reply.PLAY
+        }
+    }
+
+    /** SPEC-018: an assistant guidance prompt is open or its audio is playing. */
+    fun assistantGuidanceActive(): Boolean = synchronized(lock) { openGuidance != null || assistantGuidance }
+
+    /** Whether the player must pause for assistant guidance now (R1 / R5). */
+    fun guidanceHeld(): Boolean = synchronized(lock) { amapGuidance || focus == Focus.TRANSIENT_LOSS }
+
+    /** [restart]: a guidance prompt began now (an Amap prompt always restarts the R3 cap, as before). */
+    private fun setGuidance(amap: Boolean, assistant: Boolean, restart: Boolean) {
+        val was = guidanceSpeaking
+        amapGuidance = amap
+        assistantGuidance = assistant
+        if (guidanceSpeaking && restart) {
             val now = clock()
-            guidanceSpeaking = true
             guidanceStartedMs = now
             guidanceEndedMs = null
             // R0: bounded from the first prompt that met the utterance; a back-to-back prompt does not extend it.
             if (driverSpeaking && protectUntilMs == null) protectUntilMs = now + protectMaxMs
-        } else if (guidanceSpeaking) {
-            guidanceSpeaking = false
+        } else if (was && !guidanceSpeaking) {
             guidanceEndedMs = clock()
         }
+    }
+
+    /** SPEC-018 R2: the session stopped — no open or playing assistant guidance survives it. */
+    fun clearGuidance() = synchronized(lock) {
+        openGuidance = null
+        setGuidance(amapGuidance, assistant = false, restart = false)
     }
 
     /** Session over: nothing held survives it (SPEC-009 epoch). */
@@ -140,7 +203,10 @@ class SpeechArbiter(
         navigating = false
         windowUntilMs = 0L
         focus = Focus.HELD
-        guidanceSpeaking = false
+        amapGuidance = false
+        assistantGuidance = false
+        openGuidance = null
+        abandoned.clear()
         guidanceEndedMs = null
         replyPlaying = false
         driverSpeaking = false
@@ -154,6 +220,7 @@ class SpeechArbiter(
             focus == Focus.PERMANENT_LOSS -> Reply.DROP
             muted() -> Reply.DROP
             guidanceSpeaking -> Reply.HOLD
+            openGuidance != null -> Reply.HOLD // SPEC-018: guidance pre-empts chatter
             focus == Focus.TRANSIENT_LOSS -> Reply.HOLD
             workloadHolding() -> {
                 windowUntilMs = maxOf(windowUntilMs, clock() + windowMs)
@@ -194,7 +261,7 @@ class SpeechArbiter(
 
     /** Whether the current HOLD is the workload hold (R6a), for the log only. No side effects. */
     fun workloadHeld(): Boolean = synchronized(lock) {
-        if (guidanceSpeaking || focus == Focus.TRANSIENT_LOSS || focus == Focus.PERMANENT_LOSS) return@synchronized false
+        if (guidanceSpeaking || openGuidance != null || focus == Focus.TRANSIENT_LOSS || focus == Focus.PERMANENT_LOSS) return@synchronized false
         if (!navigating || replyPlaying || muted()) return@synchronized false
         val entered = zoneEnteredMs ?: return@synchronized false
         clock() - entered < holdMaxMs
@@ -229,5 +296,7 @@ class SpeechArbiter(
         const val WORKLOAD_HOLD_DISTANCE_M = 150
         const val WORKLOAD_HOLD_MAX_MS = 8_000L
         const val MANEUVER_PASSED_JUMP_M = 20
+        /** SPEC-018: how many abandoned prompt ids are remembered. */
+        const val ABANDONED_KEPT = 8
     }
 }

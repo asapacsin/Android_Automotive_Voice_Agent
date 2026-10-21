@@ -1,0 +1,39 @@
+schema: nova-task-contract/1
+task_id: WF-PRACTICES
+title: Enforce the agent-workflow practices mechanically - finished executor work is on the frontier (so the keep-going Stop hook blocks on it), a guard script refuses hand-made worktrees, and a throughput report measures merges per hour
+branch: exec/wf-practices
+base_commit: 7ecb97cbbc08d8fb19597b6b31f12d179981d23b
+approved_paths:
+  - scripts/discover_work.py
+  - scripts/tests/test_discover_work.py
+  - scripts/hooks/guard_worktree.py
+  - scripts/tests/test_guard_worktree.py
+  - scripts/throughput.py
+  - scripts/tests/test_throughput.py
+allowed_changes:
+  - discover_work.py gains a reader (in SOURCES) unfinished_executor_work() at P_UNFINISHED - for each state/contracts/*.yaml whose branch (exec/...) exists locally and has commits beyond base_commit but is not an ancestor of HEAD, one candidate naming the stage - "verify" (no state/verification/<ID>.json whose tip matches the branch tip), "review" (no state/reviews.log PASS line keyed by a prefix of the tip), or "merge" (both present). Branches with no commits beyond base (executor still running) produce nothing. Read-only git calls only; a missing branch or bad contract never raises (it is skipped)
+  - scripts/hooks/guard_worktree.py - a Claude Code PreToolUse hook for Bash - reads the hook JSON on stdin; when tool_input.command runs "git ... worktree add" (any flags, -C, absolute paths), prints a deny decision (hookSpecificOutput.permissionDecision deny, reason pointing to scripts/new_worktree.sh <TASK_ID> <branch> <BASE_COMMIT> and why - no vendor jars otherwise); every other command, malformed input or an exception exits 0 with no output (fail open). NOVA_GUARD_WORKTREE=0 disables it
+  - scripts/throughput.py - from git log --first-parent of a ref (default HEAD), lists "Merge exec/..." merge commits with times; prints merges per hour over a window and the median gap between merges, optionally split at --split <ISO time> into before/after; --json for machine output
+  - Tests for all three - discover_work - contract with an unmerged branch at each stage, merged branch, branch at base, missing branch; guard - the deny on several git worktree add spellings, allow on new_worktree.sh, git worktree list, other commands, bad JSON, disabled; throughput - a temporary git repo with merges at known times
+architecture_constraints:
+  - discover_work stays fast (the reader adds only a few git calls per contract) and its existing selftest keeps passing
+  - No credentials, nothing written by the hook or the reader
+forbidden_changes:
+  - No change to existing discover_work readers, priorities or the stop decision; no change to .claude/**
+forbidden_paths:
+  - .claude/**
+  - "*/src/**"
+  - TEST_MATRIX.yaml
+required_verification:
+  - id: script-tests
+    kind: regression
+    command: python3 -m unittest discover -s scripts/tests -t .
+  - id: discover-selftest
+    kind: regression
+    command: python3 scripts/discover_work.py --selftest
+  - id: discover-runs
+    kind: integration
+    command: python3 scripts/discover_work.py --json
+acceptance_criteria:
+  - An exec branch with a verified-but-unreviewed tip appears in discover_work --json as an unfinished item naming the stage
+  - The guard denies a bare git worktree add and allows bash scripts/new_worktree.sh

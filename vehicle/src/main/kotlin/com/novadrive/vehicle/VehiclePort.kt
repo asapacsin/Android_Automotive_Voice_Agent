@@ -89,9 +89,9 @@ class CompositeVehiclePort(
     override fun resolveContact(query: ContactQuery): ContactResolution = phone.resolve(query)
 }
 
-fun VehicleActionResult.toAdapterOutcome(): AdapterOutcome =
+fun VehicleActionResult<*>.toAdapterOutcome(): AdapterOutcome =
     when (this) {
-        is VehicleActionResult.Success -> AdapterOutcome.Applied
+        is VehicleActionResult.Success<*> -> AdapterOutcome.Applied
         is VehicleActionResult.InvalidArgument -> AdapterOutcome.Failed("invalid_argument:$reason")
         is VehicleActionResult.Unsupported -> AdapterOutcome.Failed("unsupported:$feature")
         is VehicleActionResult.Unavailable -> AdapterOutcome.Failed("unavailable:$reason")

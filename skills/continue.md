@@ -53,6 +53,102 @@ The discovery script answers the question from the documents; it does not replac
 the work. If it lists something already finished, the document it read is wrong — fixing that
 document is itself the next work item, not a reason to ignore the tool.
 
+## Session budget (token report TC-7, TC-8)
+
+Continuing means continuing the *work*, not one ever-growing transcript. Every model call re-reads
+the whole conversation, so in a long session that re-reading is most of the cost (measured
+2026-10-19: ~70-78% of a session's tokens were the main conversation re-reading ~300k tokens per
+call; executors were ~10-16%).
+
+- **One unit per context, not per turn.** Keep each unit's heavy reading in an executor or planner
+  subagent (its own fresh context), so the main transcript stays small. After a unit's `/handoff` (and
+  `task_contract.py handoff` for a contracted task), take the next candidate; do not end the turn to
+  ask whether to continue. Claude Code enforces this: the Stop hook `.claude/hooks/keep-going.py`
+  (owner 2026-10-20) refuses the stop while `discover_work.py` reports
+  `AUTONOMOUS_ACTION_AVAILABLE = YES` and names `NEXT_ACTION`; a last message that asks permission
+  for authorised work is told to take the documented default instead. It allows the stop after 20
+  consecutive refusals or when no autonomous action remains, fails open, and `NOVA_KEEP_GOING=0`
+  turns it off.
+- **State a time estimate whenever work starts (owner 2026-10-20).** Each time a unit, batch, CI
+  run, review round or session starts, tell the owner in the same message how long it is expected to
+  take (wall clock, a range, and what it waits on, e.g. "~20-25 min: builder ~15, verify+review ~8").
+  When an estimate slips by more than half, say so with the new figure; do not wait to be asked.
+- **Batch CI, check locally first (owner 2026-10-20).** A device/voice/nav CI run costs ~25 min:
+  merge 3-4 finished units, then prove them in ONE run, not one run each. Before any CI run, dry-run
+  the changed check locally (bash -n, stubbed command, grep the expected log line against the code
+  that prints it and the state it needs - e.g. query_live_info needs the navigation controller, not
+  the debug nav path); a wrong wiring found in CI costs a whole extra run.
+- **Keep 3-4 units in flight (owner 2026-10-20, after the planner ran one executor at a time and
+  waited on fixed check-in times).** Before ending a turn, scheduling a check-in or waiting on a
+  reviewer/CI, count the units in flight (executors, scoping agents, reviewers). Fewer than 3 while
+  discover_work lists independent items → first scope the next items (read-only Explore agents in
+  parallel, one per item) and dispatch executors on disjoint approved_paths. Read a CI run when it
+  finishes, not at the check-in time; a check-in is only the fallback.
+- **Token budget per agent type (owner 2026-10-20, Claude Code per-subagent model slots).**
+  - Scouts (Explore): `model: haiku` for "find where X is", `model: sonnet` for "explain why X";
+    one tight question naming the files to read, never "search everything".
+  - Executors (owner 2026-10-21, after 95% of tokens ran on Opus): try in this order. (1) Aider +
+    Qwen (`scripts/offload_executor.py`) when the contract names the exact script/test/doc edit;
+    (2) Cohere north-mini-code (OpenRouter free; the only executor, no fallback) through `tools/agent-routing` for bounded edits with no vendor files (owner
+    2026-10-21: Gemini is not used to write code; it stays for the voice tests only); (3) the
+    `executor` agent, now Sonnet 5.5; (4) Opus (`model: opus` on the call) only for `RISK: HIGH`
+    packets or after one failed Sonnet round.
+  - Reviewer (Sonnet by default; pass `model: opus` for HIGH risk; Nemotron for MEDIUM once its key
+    works): only for branches touching `<module>/src/**`; script/doc-only branches are verified by
+    the planner and recorded WAIVED where reviews.log allows (contracted branches still need ELIGIBLE,
+    so contract script work only when a reviewer adds real value).
+  - CI waiting and log reading: a Haiku agent or a scheduled task, never main-session polling.
+  - Decider (Opus, effort xhigh): only for real design forks; paste the evidence numbers into the question
+    so it does not re-read whole documents.
+  - Aider offload (`scripts/offload_executor.py`, OpenRouter, ~$1 budget): for edits whose contract
+    names the exact change (was: one or two files only). Pilot 2026-10-20 (AIDER-WRAP, a 2-file
+    script with tests, qwen3-coder): 3 rounds, ~$0.09, ~13 min of Aider time, still failing (hanging
+    tests), and one stray edit outside its files; the Opus-low executor then did it in ~5 min. Never
+    for `<module>/src/**`, workflows or anything needing exploration; one failed round → hand the task
+    to the executor. Licensed vendor files never go to it (the wrapper refuses them).
+    First real offload COMPACT-CWD (2026-10-20): contract naming the exact change in one script plus
+    its test - 1 round, 41 s, ~$0.01, sonnet reviewer PASS. Run: `python3 scripts/offload_executor.py
+    state/contracts/<ID>.yaml --worktree <wt> --model qwen/qwen3-coder`; review with `model: sonnet`.
+- **Parallel Gradle needs its own build dir (2026-10-20):** every worktree shares `~/nova-drive-build`
+  unless `NOVA_BUILD_DIR` is set, so parallel executors overwrite each other's JUnit XML. Every
+  executor packet and every planner `verify` sets `NOVA_BUILD_DIR=$HOME/nova-build/<TASK_ID>`; nobody
+  runs `./gradlew --stop` while another executor may be building (it kills their builds).
+  `scripts/compact_test.py` runs Gradle in the main checkout, not the worktree - never use it for
+  an executor branch's evidence; run Gradle from the worktree and check XML test counts against the
+  @Test counts in the source.
+- **Device CI is sharded (DEV-SPLIT, 2026-10-20):** dispatch `device-checks.yml` with input `shards`
+  (dispatch, drive, lifecycle, navpiece) to rerun only the affected shard; a full round is ~15 min.
+  - Never ask any agent to read all of TEST_MATRIX.yaml or OPEN_PROBLEMS.md; give row ids/sections.
+  A scout's claim ("already satisfied", "bind only") is checked against the row's own pass criteria
+  before anything is recorded - on 2026-10-20 three "bind only" rows met none of their criteria.
+- **Tests first for behaviour changes (Claude Code best practices).** A contract that changes
+  behaviour asks the executor to commit the failing test before the fix and to report that it failed
+  on the base; refactors keep the mutation check instead.
+- **Executor worktrees only through `scripts/new_worktree.sh`** (never a bare `git worktree add`:
+  on 2026-10-20 a hand-made worktree had no vendor jars and the executor came back BLOCKED). Tell the
+  executor to run Gradle from its worktree, not the repo-root `scripts/compact_test.py`.
+- **Wall-clock first (owner 2026-10-20).** The chain executor → verify → review → merge → CI is not
+  run one step at a time:
+  - *Overlap verify and review.* Start the reviewer as soon as the executor commits, and run the
+    acceptance commands at the same time in the executor's worktree with its own `NOVA_BUILD_DIR`
+    (never two Gradle runs on one build dir).
+  - *Speculative CI.* Dispatch the emulator/voice workflow on the executor branch
+    (`workflow_dispatch`, `ref: exec/<name>`) while review runs (pushing exec/* branches is allowed, owner 2026-10-20; never merged without reviewer PASS);
+    a PASS on the reviewed tip is the evidence, and nothing is re-run after the merge unless the merge
+    changed the tree.
+  - *Batch CI.* After several independent merges, one device / voice run checks them together; the
+    per-check verdict rows say which fix broke if it fails. One run per fix only when they touch the
+    same check.
+  - *Fan out.* Independent units (no shared OWNED_SCOPE file) go to parallel executors in separate
+    worktrees in the same message; read-only triage and planning agents run alongside them. Never wait
+    on one background job before starting work that does not depend on it.
+- **No idle check-ins.** Schedule a self check-in only for an external wait nothing else reports
+  (a CI run, a deploy), at that wait's real duration, and at most one pending at a time. Background
+  agents and PR events wake the session themselves. Never re-arm a check-in that found nothing new;
+  cancel pending ones when the unit is done.
+- **Near a limit,** stop at the end of the current unit (commit, handoff, end the turn). Never
+  retry in a loop, re-run full suites to be sure, or let compaction run repeatedly on one session.
+
 ## Priority
 
 Lower first. Nothing cosmetic outranks something broken.
@@ -123,7 +219,15 @@ A test existing is not the feature existing. A green build is not behaviour. The
 
 ## Declaring a blocker
 
-Three one-line markers, read from the item's own section in its canonical document:
+**First, try to get past it** (AGENTS.md rule 6, owner 2026-10-17). Most blockers are not a
+person's to remove: a rate-limited download, a missing file, a refused command, a missing tool.
+Search how others got past the same thing: mirrors and alternative sources, another tool, the
+vendor's documented workaround. Try each option, and make the one that works durable (a script or
+a fallback source) so it cannot block the next run. Record the cause in the time record. Only
+what is left after that is a blocker. If only the owner can grant it, ask one short question and
+keep every other path running. Never wait for a new session or a setting while an option remains.
+
+Declaring one uses three one-line markers, read from the item's own section in its canonical document:
 
 ```
 BLOCKED_BY: the concrete thing a person must supply

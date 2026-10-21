@@ -28,3 +28,7 @@ chat history or re-deriving state from `git log`.
 - **Next 3 actions** — concrete and executable, not "investigate X".
 
 Do not dump file contents into the session. Read what the task needs.
+
+- **Open with a time estimate (owner 2026-10-20).** After reading state, tell the owner what this
+  session will work on first and how long it is expected to take (wall-clock range); see
+  skills/continue.md "State a time estimate whenever work starts".

@@ -1,0 +1,18 @@
+{
+ "task_id": "S18-TURN",
+ "contract_sha256": "f5e1c7f9d5f2dc9e880fb69f267319b7802c78735d9b3edb40068e42e1325277",
+ "tip": "b7bee2a7d2384f70dba033d83b9627dda28e49ed",
+ "verified_by": "planner",
+ "at": "2026-10-20T11:24:47+00:00",
+ "results": [
+  {
+   "id": "unit",
+   "kind": "regression",
+   "command": "./gradlew --no-daemon -q :app:testDebugUnitTest --tests \"*GeminiLiveClientTest\" --tests \"*DriverTurnPipelineTest\" --tests \"*AndroidToolDispatcherTest\" --tests \"*AmapGuidanceVoiceTest\"",
+   "exit_code": 0,
+   "seconds": 64.5,
+   "log": "/root/nova-build/v2-S18-TURN/nova-verify/S18-TURN/b7bee2a7d238-unit.log",
+   "log_sha256": "bcbd06e73ee58c0ef9d2d139f75cb5bf76a716d5644f7ec62f384651e6ed5b26"
+  }
+ ]
+}

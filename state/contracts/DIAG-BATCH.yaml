@@ -1,0 +1,40 @@
+schema: nova-task-contract/1
+task_id: DIAG-BATCH
+title: Two text-free diagnostics for the dispatch device shard - why along_route returns NO_RESULTS (raw vs mapped POI counts) and why the warm place search never reuses its connection (P53 - protocol, Connection header, idle gap)
+branch: exec/diag-batch
+base_commit: de367bc175442ab38167d8cf2c39fdad8a6c9cee
+approved_paths:
+  - app/src/main/kotlin/com/novadrive/app/nav/amap/AmapRouteLiveInfo.kt
+  - app/src/main/kotlin/com/novadrive/app/nav/RouteLiveInfo.kt
+  - app/src/test/kotlin/com/novadrive/app/nav/RouteLiveInfoMappingTest.kt
+  - app/src/debug/kotlin/com/novadrive/app/PreflightTiming.kt
+  - app/src/debug/kotlin/com/novadrive/app/DebugToolReceiver.kt
+  - app/src/testDebug/**
+  - scripts/github_device_checks.sh
+allowed_changes:
+  - "AmapRouteLiveInfo.alongRoute logs one NovaVoice line per search: along_route_search code=<sdk code> raw=<routePois size or -1> mapped=<candidates size> range_m=<RANGE_METERS> route_m=<naviPath allLength or -1> - counts and codes only, never a name, id or coordinate (I-8). A pure formatter for this line lives in RouteLiveInfoMapping (RouteLiveInfo.kt) with a unit test in RouteLiveInfoMappingTest; also count, in the formatter's input, how many raw items toCandidates dropped and why (dropped_no_id, dropped_no_point) if toCandidates filters"
+  - "PreflightTiming split line gains protocol=<http/1.1|h2|...> conn_close=<true|false> (response header Connection equals close, case-insensitive) and gap_ms=<ms since the previous call on this recorder, -1 for the first> - path stays the only URL part logged; DebugToolReceiver passes what is needed; unit test in app/src/testDebug for the new line format"
+  - "github_device_checks.sh: the dispatch section notes PIECE LIVE-INFO-SDK search: <along_route_search line> (grep -oE on the exact text-free pattern) and the P53 split regex accepts the new fields; no pf condition changes"
+architecture_constraints:
+  - Behaviour unchanged - diagnostics only; no change to range, search type, sort or client configuration
+  - No coordinate, address, place name, POI id or transcript in any log or note (I-8)
+forbidden_changes:
+  - No change to any pf condition, suite or workflow
+forbidden_paths:
+  - .claude/**
+  - TEST_MATRIX.yaml
+  - .github/**
+  - config/**
+required_verification:
+  - id: unit-mapping
+    kind: regression
+    command: ./gradlew --no-daemon -q :app:testDebugUnitTest --tests "com.novadrive.app.nav.RouteLiveInfoMappingTest" --tests "com.novadrive.app.PreflightTimingTest"
+  - id: compile-release
+    kind: compile
+    command: ./gradlew --no-daemon -q :app:compileReleaseKotlin
+  - id: bash-syntax
+    kind: lint
+    command: bash -n scripts/github_device_checks.sh
+acceptance_criteria:
+  - The along_route_search and extended preflight_split line formats are unit-tested and carry no text beyond the listed fields
+  - The dispatch device shard notes both lines

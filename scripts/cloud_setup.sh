@@ -32,6 +32,10 @@ SDK_PACKAGES=("platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;
 WEBRTC_AEC3_PIN=2cec2f52e26646f93bd2d5498bbabf59cba18da9
 MUSIC=app/src/main/res/raw/bach_air_usaf.mp3
 MUSIC_URL="https://upload.wikimedia.org/wikipedia/commons/e/ec/Air_-_Air_Force_Strings_-_United_States_Air_Force_Band.mp3"
+# Wikimedia answers shared cloud addresses with HTTP 429 (2026-09-24, 2026-10-17). Fallback: another
+# public-domain recording of the same piece on archive.org (item Bach-airOnTheGString, licence
+# creativecommons.org/licenses/publicdomain). Nothing in the app names the performer.
+MUSIC_URL_FALLBACK="https://archive.org/download/Bach-airOnTheGString/LaMusicaClasicaMasRelajanteDelMundo-Bach-AirOnTheGString.mp3"
 
 log() { echo "[cloud_setup] $*" >&2; }
 warn() { echo "[cloud_setup] WARNING: $*" >&2; }
@@ -102,29 +106,94 @@ fetch_webrtc() {
   rm -rf "$ROOT/app/.cxx"
 }
 
+# A stand-in jar (tools/vendor-stub) is not the SDK: with one in place the real zip is still fetched.
+real_jar() {
+  [ -f "$ROOT/app/libs/Msc.jar" ] && ! unzip -l "$ROOT/app/libs/Msc.jar" 2>/dev/null | grep -q 'META-INF/NOVA_VENDOR_STUB'
+}
+VENDOR_FAILURE="NOVA_VENDOR_ZIP_URL not set"
+
 fetch_vendor() {
-  if [ -f "$ROOT/app/libs/Msc.jar" ]; then return; fi
+  if real_jar; then return; fi
   if [ -z "${NOVA_VENDOR_ZIP_URL:-}" ]; then
     warn "NOVA_VENDOR_ZIP_URL not set: iFlytek files absent, :app will not compile"
     return
   fi
   log "fetching vendor files"
-  local zip
+  local zip url auth_value code host
   zip="$(mktemp --suffix=.zip)"
+  url="$(vendor_url "$NOVA_VENDOR_ZIP_URL")"
+  host="$(printf '%s' "$url" | sed -E 's#^[a-z]+://([^/]+).*#\1#')"
   local auth=()
-  [ -n "${NOVA_VENDOR_ZIP_AUTH:-}" ] && auth=(-H "Authorization: $NOVA_VENDOR_ZIP_AUTH")
-  if ! retry curl -sSfL "${auth[@]}" -o "$zip" "$NOVA_VENDOR_ZIP_URL"; then
-    warn "vendor zip download failed"
+  if [ -n "${NOVA_VENDOR_ZIP_AUTH:-}" ]; then
+    auth_value="$(vendor_auth "$NOVA_VENDOR_ZIP_AUTH")"
+    auth=(-H "Authorization: $auth_value")
+  fi
+  code=000
+  for _ in 1 2 3 4; do
+    code="$(curl -sSL "${auth[@]}" -o "$zip" -w '%{http_code}' "$url" 2>/dev/null || true)"
+    [ "$code" = 200 ] && break
+    sleep 2
+  done
+  if [ "$code" != 200 ]; then
+    vendor_fail "vendor zip download failed: HTTP $code from $host (check NOVA_VENDOR_ZIP_URL / NOVA_VENDOR_ZIP_AUTH)"
     rm -f "$zip"
     return
   fi
   if ! unzip -tq "$zip" >/dev/null 2>&1; then
-    warn "vendor download is not a zip (a sign-in page?): not extracted"
+    vendor_fail "vendor download from $host is not a zip (a sign-in or web page?): not extracted"
     rm -f "$zip"
     return
   fi
-  unzip -q -o "$zip" -d "$ROOT"
-  rm -f "$zip"
+  local tmpdir src
+  tmpdir="$(mktemp -d)"
+  unzip -q -o "$zip" -d "$tmpdir"
+  # Accept a zip laid out repo-relative (app/...) or with one top-level folder around it.
+  src="$tmpdir"
+  if [ ! -d "$tmpdir/app" ]; then
+    src="$(dirname "$(find "$tmpdir" -maxdepth 3 -path '*/app/libs' -type d | head -1)" 2>/dev/null)"
+    src="$(dirname "$src")"
+  fi
+  if [ -d "$src/app" ]; then
+    cp -R "$src/app/." "$ROOT/app/"
+  fi
+  rm -rf "$tmpdir" "$zip"
+  if real_jar; then rm -f "$ROOT/app/libs/Msc.jar.STUB"; else vendor_fail "vendor zip from $host has no app/libs/Msc.jar"; fi
+}
+
+# A github.com page link (…/blob/<ref>/<path> or …/raw/<ref>/<path>) serves HTML or redirects; use
+# the raw file URL instead. Other URLs are left as they are.
+vendor_url() {
+  printf '%s' "$1" | sed -E 's#^https://github\.com/([^/]+)/([^/]+)/(blob|raw)/(.*)$#https://raw.githubusercontent.com/\1/\2/\4#'
+}
+
+# raw.githubusercontent.com needs "token <PAT>" (or "Bearer <PAT>"); a bare token gets a 404.
+vendor_auth() {
+  case "$1" in
+    *" "*) printf '%s' "$1" ;;
+    *) printf 'token %s' "$1" ;;
+  esac
+}
+
+# Visible without the job log: a GitHub annotation (code and host only, never the URL or token).
+vendor_fail() {
+  VENDOR_FAILURE="$1"
+  warn "$1"
+  [ -n "${GITHUB_ACTIONS:-}" ] && echo "::error title=vendor files::$1"
+  return 0
+}
+
+# No real jar after the fetch: compile the stand-in so :app builds and its JVM tests run
+# (tools/vendor-stub/README.md). In GitHub Actions only when the workflow opts in with
+# NOVA_VENDOR_STUB_OK=yes (the Tier B emulator workflows; decided by the decider 2026-10-19): such a
+# run records build:vendor-real BLOCKED, so it is never green. Tier A never sets it.
+stub_vendor() {
+  real_jar && return
+  if [ -n "${GITHUB_ACTIONS:-}" ]; then
+    [ "${NOVA_VENDOR_STUB_OK:-}" = yes ] || return
+    echo "::warning title=STUB_VENDOR::building on the compile-only iFlytek stand-in: $VENDOR_FAILURE"
+  fi
+  NOVA_STUB_REASON="$VENDOR_FAILURE" "$ROOT/scripts/make_msc_stub.sh" "$ROOT" \
+    || warn "stand-in Msc.jar could not be built: :app will not compile"
 }
 
 fetch_music() {
@@ -134,8 +203,15 @@ fetch_music() {
   mkdir -p "$(dirname "$file")"
   local tmp
   tmp="$(mktemp)"
-  if retry curl -sSfL -A "NovaDriveBuild/1.0 (https://github.com/asapacsin/Android_Automotive_Voice_Agent)" \
-      -o "$tmp" "$MUSIC_URL" && head -c 3 "$tmp" | grep -q ID3; then
+  local url ok=no
+  for url in "$MUSIC_URL" "$MUSIC_URL_FALLBACK"; do
+    if retry curl -sSfL -A "NovaDriveBuild/1.0 (https://github.com/asapacsin/Android_Automotive_Voice_Agent)" \
+        -o "$tmp" "$url" && head -c 3 "$tmp" | grep -q ID3; then
+      ok=yes
+      break
+    fi
+  done
+  if [ "$ok" = yes ]; then
     mv "$tmp" "$file"
   else
     rm -f "$tmp"
@@ -145,8 +221,10 @@ fetch_music() {
 
 install_keystore() {
   [ -n "${NOVA_DEBUG_KEYSTORE_B64:-}" ] || return 0
-  mkdir -p "$HOME/.android"
-  local target="$HOME/.android/debug.keystore"
+  # AGP reads ANDROID_USER_HOME before ~/.android (GitHub run 38719315653 signed with another key).
+  local dir="${ANDROID_USER_HOME:-$HOME/.android}"
+  mkdir -p "$dir"
+  local target="$dir/debug.keystore"
   local tmp
   tmp="$(mktemp)"
   if echo "$NOVA_DEBUG_KEYSTORE_B64" | base64 -d >"$tmp" 2>/dev/null && [ -s "$tmp" ]; then
@@ -172,6 +250,7 @@ install_gradle
 install_sdk
 fetch_webrtc
 fetch_vendor
+stub_vendor
 fetch_music
 install_keystore
 write_local_properties

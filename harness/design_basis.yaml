@@ -32,3 +32,77 @@ entries:
       adds source-boundary review and Astra High contract review. This clears architecture selection,
       not numerical tuning or acoustic verification.
     suppresses_required_behavior: false
+  - id: DB-MAIA-UX-001
+    problem_class: product session voice is Qwen Maia only
+    triggers:
+      audio_media: true
+      persistence: true
+    status: PASS
+    selected_basis: repo
+    selected_pattern: >-
+      VoiceProviderChoice.resolve always returns Qwen and QwenOmniDialect sends Maia
+    evidence: >-
+      Owner instruction 2026-10-09: the product session voice is Maia. SPEC-021 seam
+      VoiceProviderChoice plus QwenOmniDialect session.update. Q-1 through Q-5 stay open.
+    suppresses_required_behavior: false
+  - id: DB-WAIT-CUE-001
+    problem_class: when Maia speaks a wait cue
+    triggers:
+      audio_media: true
+      async_lifecycle: true
+    status: PASS
+    selected_basis: repo
+    selected_pattern: >-
+      WaitCueTurn decides the cue. WaitCueAudio plays it outside the claim gate and outside the
+      session state machine. The on-screen working mark is a label only.
+    evidence: >-
+      Owner timing 2026-10-09: silent for 0-7s except a visual from 3s, one progress line at 7-8s
+      only if nothing useful has been spoken, a different delay line at 12s. SPEC-020 WaitCueAudio.
+    suppresses_required_behavior: false
+  - id: DB-P57-001
+    problem_class: a driver-side window request must not move every window
+    triggers:
+      prior_failure: true
+    status: PASS
+    selected_basis: repo
+    selected_pattern: >-
+      ToolCallGuards.driverSideWindow rewrites a control_window target to driver when this turn
+      names only the driver side. AndroidToolDispatcher applies that before the body server.
+      The epoch rule matches sunroofOnWindowTool. The tool description is a hint only.
+    evidence: >-
+      P56 showed a tool description does not stop the model choosing window=all. P57 tryout run 4
+      sent window=all for 把我这边的窗户开一点. Refusing would leave the driver window shut and fail
+      DEMO-TRYOUT u_window, which is a supported request.
+    suppresses_required_behavior: false
+  - id: DB-TRYOUT-LATENCY-001
+    problem_class: tryout replies held until generation completes, or dropped for mentioning navigation
+    triggers:
+      prior_failure: true
+      async_lifecycle: true
+    status: PASS
+    selected_basis: repo
+    selected_pattern: >-
+      A capability-help prefix plays once it names two supported groups, including on Gemini
+      where clause release is off. A device noun that is also an action word is not a claim
+      unless the reply also shows progress or a promise.
+    evidence: >-
+      Second Gemini tryout: u_can audio and text started at turn open and TURN_RELEASE
+      waited for generationComplete (5.0 s). u_barge dropped a 13-character reply logged
+      noun=导航 verb=导航, then the correction was the line the driver heard.
+    suppresses_required_behavior: false
+  - id: DB-GHA-EMU-001
+    problem_class: host one Android emulator on GitHub Actions
+    triggers:
+      hardware: true
+      nonobvious_sdk: true
+      prior_failure: true
+    status: PASS
+    selected_basis: industry
+    selected_pattern: >-
+      GitHub-hosted Ubuntu runners expose /dev/kvm. Open it with the documented udev rule,
+      then boot one API 34 Google APIs x86_64 emulator with android-emulator-runner.
+    evidence: >-
+      GitHub changelog 2024-04-02: hardware-accelerated Android virtualization on 2-vCPU
+      Linux runners. reactivecircus/android-emulator-runner runs that image on ubuntu-latest.
+      Cursor and Claude cloud sessions do not provide a usable nested KVM.
+    suppresses_required_behavior: false

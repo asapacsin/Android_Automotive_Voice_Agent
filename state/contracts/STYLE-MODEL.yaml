@@ -1,0 +1,35 @@
+schema: nova-task-contract/1
+task_id: STYLE-MODEL
+title: The Live JVM style piece runs on gemini-3.8-live when no model is given, names its model in the summary, and reports MET only when all 7 keys were graded
+branch: exec/style-model
+base_commit: b30d36bddc8752937ac55135ff73ce99021eb564
+approved_paths:
+  - scripts/github_live_jvm.sh
+  - scripts/tests/test_live_jvm.py
+  - .github/workflows/live-jvm.yml
+allowed_changes:
+  - run_style - a blank NOVA_GEMINI_MODEL becomes gemini-3.8-live for the style piece only (decider 2026-10-20 - 3.1 cannot show a pitch change; other pieces keep today's blank-means-harness-default behaviour)
+  - Every piece's summary gains a model=<name> line (the model actually passed, or harness-default when blank) - ASCII, no secrets
+  - Style rule MET only when RESULT PASS and graded=7 and pass=7 (reviewer follow-up 2026-10-20); the time regex accepts a leading minus so a -0.0s row is not dropped
+  - Workflow input description for gemini_model says blank means 3.8 for style, harness default (3.1) otherwise
+  - Tests - style blank model -> 3.8, explicit model passes through, model= line present, RESULT PASS with graded<7 is NOT_MET, -0.0s row parsed
+architecture_constraints:
+  - I-8 unchanged - summaries ASCII, no reply text
+forbidden_changes:
+  - No change to tryout/text-live/amap-live commands or rules beyond the model= line
+forbidden_paths:
+  - "*/src/**"
+  - tools/**
+  - TEST_MATRIX.yaml
+required_verification:
+  - id: bash-syntax
+    kind: lint
+    command: bash -n scripts/github_live_jvm.sh
+  - id: workflow-yaml
+    kind: lint
+    command: python3 -c "import yaml;yaml.safe_load(open('.github/workflows/live-jvm.yml'))"
+  - id: live-jvm-tests
+    kind: regression
+    command: python3 -m unittest scripts/tests/test_live_jvm.py
+acceptance_criteria:
+  - A style run dispatched with a blank model runs gemini-3.8-live and its summary says model=gemini-3.8-live

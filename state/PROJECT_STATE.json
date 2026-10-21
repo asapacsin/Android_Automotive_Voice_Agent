@@ -1,81 +1,27 @@
 {
-  "generated_at": "2026-09-29T03:26:22",
+  "generated_at": "2026-10-21T08:51:25",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "f4a1b43",
-    "branch": "cursor/9-28",
-    "subject": "Debug tool nav_read: start a real guidance prompt on demand.",
-    "working_tree_clean": true,
-    "uncommitted_files": 0
+    "commit": "3494d88",
+    "branch": "demo2.0",
+    "subject": "Fix Tier A style summary tests when style_check selftest is unavailable",
+    "working_tree_clean": false,
+    "uncommitted_files": 5
   },
   "tests": {
-    "available": true,
-    "collected_at": "2026-09-29T03:25:57",
-    "total": {
-      "tests": 1458,
-      "failures": 0,
-      "errors": 0,
-      "skipped": 0
-    },
-    "by_module": {
-      "app": {
-        "tests": 1185,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "behavior-test": {
-        "tests": 123,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "contracts": {
-        "tests": 6,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "evaluation": {
-        "tests": 27,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "ingress": {
-        "tests": 100,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "safety": {
-        "tests": 2,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      },
-      "simulator": {
-        "tests": 15,
-        "failures": 0,
-        "errors": 0,
-        "skipped": 0
-      }
-    },
-    "passing": true
+    "available": false,
+    "reason": "no JUnit XML found; run gradlew test"
   },
   "apk": {
-    "built": true,
-    "bytes": 223611908,
-    "built_at": "2026-09-29T03:24:35"
+    "built": false
   },
   "capabilities": {
     "available": true,
     "by_level": {
       "device": 36,
-      "unsupported": 6,
-      "human": 1,
-      "unit": 4,
-      "implemented": 2
+      "unit": 11,
+      "unsupported": 5,
+      "human": 1
     },
     "human_verification_pending": [
       "open_mic_thresholds",
@@ -83,7 +29,53 @@
       "phone.place_call"
     ]
   },
-  "open_issues": [],
+  "open_issues": [
+    {
+      "id": "P68",
+      "title": "「路上有加油站吗」 finds nothing: Amap RoutePOISearch returns zero POIs on the active route",
+      "status": "OPEN - found 2026-10-20. Device checks dispatch shard (ci/device-evidence runs/run_20261020_45a3331_r39415295646/dispatc"
+    },
+    {
+      "id": "P46",
+      "title": "Assistant-spoken guidance (SPEC-018) gives up on the first prompt and never comes back",
+      "status": "OPEN, found 2026-10-03 while recording the demo video. PC emulator nova_api34, build 9696ce5 (`claude/10-3`), Azure voic"
+    },
+    {
+      "id": "P47",
+      "title": "Steady background noise: Gemini never detects the start of speech",
+      "status": "gate deadlock FIXED 2026-10-15 (JVM + live harness, see below); behaviour in a real noisy cabin still open. Found 2026-1"
+    },
+    {
+      "id": "P48",
+      "title": "The assistant voice lags: slow first reply, gaps between clauses, chat replies held until generation ends",
+      "status": "OPEN, 2026-10-08. Owner requirement: [docs/DEMO_REQUIREMENTS.md](docs/DEMO_REQUIREMENTS.md) — no laggy AI speech. PC emu"
+    },
+    {
+      "id": "P52",
+      "title": "A used-up Qwen free tier was reported as QWEN_PROTOCOL_ERROR",
+      "status": "unknown"
+    },
+    {
+      "id": "P53",
+      "title": "c_nav waits for the real place search",
+      "status": "OPEN - reuse cause found 2026-10-20 (DIAG-BATCH, dispatch shard run 39411329040 at d40d164, ci/device-evidence runs/run_"
+    },
+    {
+      "id": "P55",
+      "title": "10-13 bug: 「嗲一点」 changes neither the style on screen nor how she speaks",
+      "status": "open only for the Ayano take (waits for the owner's \"Ayano last\" go). Known Gemini limitation (decider 2026-10-20): on g"
+    },
+    {
+      "id": "P62",
+      "title": "Turn-by-turn guidance is not spoken in her voice (demo used a male voice)",
+      "status": "OPEN 2026-10-16. Owner test 10-16 ([docs/owner-tests/test-10-16.md](docs/owner-tests/test-10-16.md)):"
+    },
+    {
+      "id": "P64",
+      "title": "The emulator demo runs at about 6.5 frames per second",
+      "status": "IMPROVED, rest is a test-rig limit (2026-10-16): 6.5 → 10.6-10.7 fps. Originally OPEN 2026-10-16. Owner test 10-16: \"the"
+    }
+  ],
   "tech_debt": [
     {
       "id": "D-1",
@@ -116,6 +108,26 @@
       "priority": "RESOLVED"
     },
     {
+      "id": "D-10",
+      "title": "Two orderings the claim gate misses",
+      "priority": "RESOLVED"
+    },
+    {
+      "id": "D-11",
+      "title": "A superseded turn's tool result is applied to the current turn",
+      "priority": "RESOLVED"
+    },
+    {
+      "id": "D-12",
+      "title": "「空调」 alone reads as an action claim",
+      "priority": "RESOLVED"
+    },
+    {
+      "id": "D-9",
+      "title": "The hold budget releases a reply whose words were never judged",
+      "priority": "OPEN"
+    },
+    {
       "id": "D-7",
       "title": "A false claim could be spoken for *supported* actions",
       "priority": "RESOLVED"
@@ -123,7 +135,7 @@
     {
       "id": "D-8",
       "title": "`BaiduFlexClient` is over its line budget again",
-      "priority": "OPEN"
+      "priority": "RESOLVED"
     }
   ],
   "work_frontier": {
@@ -131,13 +143,41 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "A5: | A5 | Picker selection uses the registry; `tryLocalNavigationPick` is gone | production wiring | `FeaturePresenceRegressionTest` + existing picker tests green | not built — **deferred on purpose** to",
-    "actionable_count": 65,
+    "NEXT_ACTION": "app-debug.apk: no debug APK has been built from this tree",
+    "actionable_count": 112,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
-    "QUEUED_FOR_HUMAN": 16,
+    "QUEUED_FOR_HUMAN": 29,
     "PHASE": "AUTONOMOUS_TEST",
     "candidates": [
+      {
+        "priority": 1,
+        "class": "broken build or missing artifact",
+        "source": "build output",
+        "item": "app-debug.apk",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-018-guidance-in-assistant-voice.md",
+        "item": "A0",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "A10",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "A4",
+        "blocked_by": null
+      },
       {
         "priority": 4,
         "class": "unmet SPEC acceptance criterion",
@@ -146,17 +186,87 @@
         "blocked_by": null
       },
       {
-        "priority": 5,
-        "class": "implemented but not wired into production",
-        "source": "capabilities.yaml",
-        "item": "along_route",
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-017-music-from-description.md",
+        "item": "A6",
         "blocked_by": null
       },
       {
-        "priority": 5,
-        "class": "implemented but not wired into production",
-        "source": "capabilities.yaml",
-        "item": "route_traffic",
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-013-gemini-live-provider.md",
+        "item": "A7",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-017-music-from-description.md",
+        "item": "A7",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-013-gemini-live-provider.md",
+        "item": "A8",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-016-gemini-default-and-domain-servers.md",
+        "item": "A8",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-018-guidance-in-assistant-voice.md",
+        "item": "A8",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "A9",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-018-guidance-in-assistant-voice.md",
+        "item": "A9",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-015-fuzzy-driving-requests.md",
+        "item": "Device (A9)",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-017-music-from-description.md",
+        "item": "On-screen one-time listener hint with the settings path",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-016-gemini-default-and-domain-servers.md",
+        "item": "Part A",
+        "blocked_by": null
+      },
+      {
+        "priority": 4,
+        "class": "unmet SPEC acceptance criterion",
+        "source": "SPEC-017-music-from-description.md",
+        "item": "`MusicSource` port / `BundledTrackSource` split",
         "blocked_by": null
       },
       {
@@ -226,6 +336,13 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "CONFIG-CARD-EMU-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "CTX-AMBIG-001",
         "blocked_by": null
       },
@@ -240,7 +357,77 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "DEMO-AMAP-LIVE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "DEMO-COMMUTE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "DEMO-STYLE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "DEMO-TRYOUT-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "DEVUI-EMU-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "ECHO-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "FUZZY-DEVICE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "FUZZY-TEXT-LIVE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "GATE-D10-DEVICE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "GEMINI-DEVICE-DUPLEX-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "GUIDANCE-EMU-001",
         "blocked_by": null
       },
       {
@@ -296,6 +483,20 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "MUSIC-TEXT-LIVE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "MUSIC-VLC-EMU-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "NAV-CANCEL-001",
         "blocked_by": null
       },
@@ -318,6 +519,13 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "NAV-MID-ROUTE-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "NAV-OVERSPEED-001",
         "blocked_by": null
       },
       {
@@ -401,6 +609,13 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "P45-EMU-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "PERM-DENY-001",
         "blocked_by": null
       },
@@ -443,6 +658,20 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "QWEN-EMU-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "QWEN-PROBE-Q1-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "SLEEP-001",
         "blocked_by": null
       },
@@ -465,6 +694,13 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "SUITE-SCENARIO-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "TRANSCRIPT-FADE-EMU-001",
         "blocked_by": null
       },
       {
@@ -506,6 +742,13 @@
         "priority": 6,
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
+        "item": "TTS-VOICE-EMU-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
         "item": "UNSUPPORTED-001",
         "blocked_by": null
       },
@@ -514,6 +757,13 @@
         "class": "behaviour without regression protection",
         "source": "TEST_MATRIX.yaml",
         "item": "VISION-001",
+        "blocked_by": null
+      },
+      {
+        "priority": 6,
+        "class": "behaviour without regression protection",
+        "source": "TEST_MATRIX.yaml",
+        "item": "WAIT-CUE-EMU-001",
         "blocked_by": null
       },
       {
@@ -548,13 +798,6 @@
         "priority": 7,
         "class": "active milestone row",
         "source": "CURRENT_MILESTONE.md",
-        "item": "Spoken control names act on the phone without a model tool c",
-        "blocked_by": null
-      },
-      {
-        "priority": 7,
-        "class": "active milestone row",
-        "source": "CURRENT_MILESTONE.md",
         "item": "Weather selected from speech ≥ 9/10 with no SPEC-008 regress",
         "blocked_by": null
       },
@@ -562,14 +805,70 @@
         "priority": 8,
         "class": "recorded technical debt",
         "source": "docs/TECH_DEBT.md",
-        "item": "D-8",
+        "item": "D-9",
         "blocked_by": null
       },
       {
-        "priority": 10,
-        "class": "stale state or harness defect",
-        "source": "state",
-        "item": "PROJECT_STATE.json",
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P46",
+        "blocked_by": null
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P47",
+        "blocked_by": null
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P48",
+        "blocked_by": null
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P52",
+        "blocked_by": null
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P53",
+        "blocked_by": null
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P55",
+        "blocked_by": null
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P62",
+        "blocked_by": "the owner's go to open Qwen sessions (AGENTS.md \"Gemini first, Ayano last\") - the Gemini path is FIXED (runs 38847890114, 38849988938: 43/47 MATCH); only the Qwen relay (VoiceCatalog QWEN verbatimPromptSpeech=false, SPEC-021 non-goal) and the audible G-1b check on a KVM host with audio remain"
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P64",
+        "blocked_by": null
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
+        "source": "OPEN_PROBLEMS.md",
+        "item": "P68",
         "blocked_by": null
       },
       {
@@ -578,13 +877,6 @@
         "source": "BACKLOG.md",
         "item": "B-012",
         "blocked_by": "a person saying 「你好小诺」 at a stated distance with the car actually moving, which is"
-      },
-      {
-        "priority": 11,
-        "class": "next authorised backlog item",
-        "source": "BACKLOG.md",
-        "item": "B-015",
-        "blocked_by": "the owner choosing between three options that are not comparable on technical grounds"
       },
       {
         "priority": 11,
@@ -619,6 +911,55 @@
         "class": "next authorised backlog item",
         "source": "BACKLOG.md",
         "item": "B-026",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-027",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-028",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-029",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-030",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-031",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-032",
+        "blocked_by": null
+      },
+      {
+        "priority": 11,
+        "class": "next authorised backlog item",
+        "source": "BACKLOG.md",
+        "item": "B-034",
         "blocked_by": null
       }
     ]

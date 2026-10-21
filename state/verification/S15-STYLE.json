@@ -1,0 +1,18 @@
+{
+ "task_id": "S15-STYLE",
+ "contract_sha256": "2ad4609b6a6728b93eda2b485197edb28fedbebbde07304d98148220ac700606",
+ "tip": "70edaad641ad064ac00297041f34cef8d911a84f",
+ "verified_by": "planner",
+ "at": "2026-10-20T11:28:24+00:00",
+ "results": [
+  {
+   "id": "unit",
+   "kind": "regression",
+   "command": "./gradlew --no-daemon -q :app:testDebugUnitTest --tests \"*SpeakingStyleStoreTest\" --tests \"*PersonaProfilesTest\" --tests \"*SpeakingStyleTest\" --tests \"*GeminiLiveClientTest\" --tests \"*QwenOmniClientTest\"",
+   "exit_code": 0,
+   "seconds": 110.2,
+   "log": "/root/nova-build/v2-S15-STYLE/nova-verify/S15-STYLE/70edaad641ad-unit.log",
+   "log_sha256": "bcbd06e73ee58c0ef9d2d139f75cb5bf76a716d5644f7ec62f384651e6ed5b26"
+  }
+ ]
+}

@@ -115,9 +115,8 @@ class PhantomTurnSuppressionTest {
         val job = launch(start = CoroutineStart.UNDISPATCHED) { client.events().collect { seen += it.payload } }
         client.connect(config())
         assertTrue(done.await(5, TimeUnit.SECONDS), "server script did not finish")
-        // delay, not Thread.sleep: runBlocking is single-threaded, so sleeping here would starve
-        // the collector and every assertion below would be about an empty list.
-        kotlinx.coroutines.delay(500)
+        // The server having sent is not the client having delivered: wait for the reply's end.
+        awaitUntil({ "events: $seen" }) { seen.toList().any { it is DomainVoiceEvent.ResponseDone } }
         job.cancel()
         client.disconnect()
         seen.toList()
@@ -207,7 +206,8 @@ class PhantomTurnSuppressionTest {
             // Off this thread: the collector above must run to send the function output the server waits for.
             val finished = withContext(Dispatchers.IO) { done.await(5, TimeUnit.SECONDS) }
             assertTrue(finished, "server script did not finish")
-            kotlinx.coroutines.delay(500)
+            // Both responses must have reached the collector, not merely left the server.
+            awaitUntil({ "events: $seen" }) { seen.toList().count { it is DomainVoiceEvent.ResponseDone } >= 2 }
             job.cancel()
             client.disconnect()
             seen.toList()
@@ -321,7 +321,7 @@ class PhantomTurnSuppressionTest {
             val job = launch(start = CoroutineStart.UNDISPATCHED) { client.events().collect { seen += it.payload } }
             client.connect(config())
             assertTrue(done.await(5, TimeUnit.SECONDS), "server script did not finish")
-            kotlinx.coroutines.delay(500)
+            awaitUntil({ "events: $seen" }) { seen.toList().any { it is DomainVoiceEvent.ResponseDone } }
             job.cancel()
             client.disconnect()
             seen.toList()
@@ -440,7 +440,21 @@ class PhantomTurnSuppressionTest {
         assertEquals(1, corrections.size, "expected exactly one correction, got: $corrections")
     }
 
+    /**
+     * Polls with delay, not Thread.sleep: runBlocking is single-threaded and the collector must
+     * keep running. Replaces fixed waits that lost events under full-suite load (D-FLAKE-PHANTOM).
+     */
+    private suspend fun awaitUntil(describe: () -> String, condition: () -> Boolean) {
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(AWAIT_SECONDS)
+        while (!condition()) {
+            if (System.nanoTime() > deadline) throw AssertionError("condition not met in ${AWAIT_SECONDS}s: ${describe()}")
+            kotlinx.coroutines.delay(10)
+        }
+    }
+
     private companion object {
+        const val AWAIT_SECONDS = 15L
+
         /** See BaiduFlexClientTest: long on purpose, so a busy machine cannot fail these (B-013). */
         const val READY_TIMEOUT_MS = 30_000L
     }

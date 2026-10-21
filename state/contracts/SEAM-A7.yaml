@@ -1,0 +1,28 @@
+schema: nova-task-contract/1
+task_id: SEAM-A7
+title: SPEC-018 A7 remaining GAP - an internal main-thread poster seam in AmapGuidanceVoice so the relay-on onPlayStart case (panel not fed twice; host tap only from the Amap fallback) is unit-tested
+branch: exec/seam-a7
+base_commit: a19ff20f287aca427e592d0d969a1f4603b5b49d
+approved_paths:
+  - app/src/main/kotlin/com/novadrive/app/nav/amap/AmapGuidanceVoice.kt
+  - app/src/test/kotlin/com/novadrive/app/nav/amap/AmapGuidanceVoiceTest.kt
+allowed_changes:
+  - "AmapGuidanceVoice: the lazy Handler(Looper.getMainLooper()) post used by tellRelays (and the other mainHandler.post uses) goes through one internal var poster: (() -> Unit) -> Unit whose default posts on the main handler exactly as today; tests replace it with an immediate runner and reset it in @AfterEach; an internal setter or @VisibleForTesting internal var for the relay may replace the reflective install in the test"
+  - "AmapGuidanceVoiceTest: enable toggleOnPlayStartDoesNotFeedPanelTwice (remove @Disabled) and add a case that, with the relay on, the host tap is fed only through the Amap fallback speaker path if that path is reachable without AMapNavi; otherwise keep that one as a @Disabled GAP with an exact reason"
+architecture_constraints:
+  - Production behaviour identical (same thread, same order of posts); no new public API (internal only)
+  - SPEC-018 B10 semantics unchanged
+forbidden_changes:
+  - No change to any other production file
+forbidden_paths:
+  - .claude/**
+  - TEST_MATRIX.yaml
+required_verification:
+  - id: unit
+    kind: regression
+    command: ./gradlew --no-daemon -q :app:testDebugUnitTest --tests "*AmapGuidanceVoiceTest" --tests "*GuidanceRelayTest"
+  - id: compile-release
+    kind: compile
+    command: ./gradlew --no-daemon -q :app:compileReleaseKotlin
+acceptance_criteria:
+  - toggleOnPlayStartDoesNotFeedPanelTwice runs and passes

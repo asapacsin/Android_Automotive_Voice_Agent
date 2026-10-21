@@ -1,6 +1,7 @@
 package com.novadrive.app
 
 import com.novadrive.app.nav.AlongRouteCategory
+import com.novadrive.app.nav.AlongRouteCorridor
 import com.novadrive.app.nav.EmbeddedNavigationController
 import com.novadrive.app.nav.NavigationPhase
 import com.novadrive.app.nav.RouteLiveInfoSource
@@ -9,6 +10,8 @@ import com.novadrive.ingress.realtime.ToolDispatchResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONObject
@@ -21,9 +24,14 @@ import java.util.Locale.US
 interface AmapLiveInfoRest {
     fun weatherNow(city: String, key: String): LiveInfoFetch<WeatherNow>
     fun weatherForecast(city: String, key: String): LiveInfoFetch<WeatherForecast>
-    fun regeoAdcode(latitude: Double, longitude: Double, key: String): LiveInfoFetch<String>
+    fun regeoPlace(latitude: Double, longitude: Double, key: String): LiveInfoFetch<RegeoPlace>
     fun placeDetail(poiId: String, key: String): LiveInfoFetch<PlaceDetail>
+    /** P68 along_route: one `v3/place/polygon` search by Amap type code. */
+    fun placePolygon(polygon: String, types: String, key: String): LiveInfoFetch<PolygonPlaces>
 }
+
+/** A fix's district adcode and the city it belongs to (a municipality's province), from regeo. */
+data class RegeoPlace(val adcode: String, val city: String?)
 
 /**
  * `query_live_info` (SPEC-011): weather, traffic on the route, POIs along it, and a place's details,
@@ -47,6 +55,8 @@ class LiveInfoTool(
     private val log: (String) -> Unit = { DebugVoiceLog.log(it) },
     /** SPEC-011 failure table: 4 s, then LIVE_INFO_UNAVAILABLE. */
     private val timeoutMs: Long = TIMEOUT_MS,
+    /** Pause between warm-up attempts; 0 in tests. */
+    private val warmRetryPauseMs: Long = WARM_RETRY_PAUSE_MS,
 ) {
     private data class Cached(val atMs: Long, val output: JSONObject)
 
@@ -115,16 +125,25 @@ class LiveInfoTool(
         val (label, resolveCity) = when (where) {
             HERE -> {
                 val fix = location() ?: return Precondition(NO_LOCATION)
-                "这里" to { rest.regeoAdcode(fix.first, fix.second, key) }
+                "这里" to { hereAdcode(fix, key) }
             }
             DESTINATION -> {
                 val destination = navigation()?.destination?.value ?: return Precondition(NO_DESTINATION)
                 val adcode = destination.adcode
                 "目的地" to {
-                    if (adcode != null) LiveInfoFetch.Ok(adcode) else rest.regeoAdcode(destination.latitude, destination.longitude, key)
+                    if (adcode != null) {
+                        LiveInfoFetch.Ok(adcode)
+                    } else {
+                        when (val place = rest.regeoPlace(destination.latitude, destination.longitude, key)) {
+                            is LiveInfoFetch.Ok -> LiveInfoFetch.Ok(place.value.adcode)
+                            is LiveInfoFetch.Failed -> place
+                        }
+                    }
                 }
             }
-            else -> where to { LiveInfoFetch.Ok(where) }
+            // The city the car is in resolves to the warm-up's district, so it shares its cache key
+            // (B4, 2026-10-09). Read from the cache only; never a network call to check.
+            else -> where to { LiveInfoFetch.Ok(warmDistrictOf(where) ?: where) }
         }
         return Ready {
             when (val city = resolveCity()) {
@@ -133,6 +152,83 @@ class LiveInfoTool(
             }
         }
     }
+
+    /**
+     * The district of the current fix. A district does not change within a ~1 km cell, so one
+     * lookup serves every weather question there for [ADCODE_TTL_MS]: from a slow network each
+     * Amap round trip is 1.1-1.5 s (measured 2026-10-09 from the PC proxy), and weather "here"
+     * otherwise needs two. Coordinates stay in memory and are never logged (I-8).
+     */
+    private fun hereAdcode(fix: Pair<Double, Double>, key: String): LiveInfoFetch<String> {
+        val cell = adcodeCell(fix)
+        val now = nowMs()
+        synchronized(adcodeCache) {
+            adcodeCache[cell]?.takeIf { now - it.first < ADCODE_TTL_MS }?.let { return LiveInfoFetch.Ok(it.second.adcode) }
+        }
+        return when (val fetched = rest.regeoPlace(fix.first, fix.second, key)) {
+            is LiveInfoFetch.Ok -> {
+                synchronized(adcodeCache) { adcodeCache[cell] = now to fetched.value }
+                LiveInfoFetch.Ok(fetched.value.adcode)
+            }
+            is LiveInfoFetch.Failed -> fetched
+        }
+    }
+
+    /** The cached district of the current fix, when the driver named its city; else null. Cache only. */
+    private fun warmDistrictOf(where: String): String? {
+        val fix = location() ?: return null
+        val cell = adcodeCell(fix)
+        val now = nowMs()
+        val place = synchronized(adcodeCache) {
+            adcodeCache[cell]?.takeIf { now - it.first < ADCODE_TTL_MS }?.second
+        } ?: return null
+        val city = place.city ?: return null
+        return place.adcode.takeIf { normalizeCity(city) == normalizeCity(where) }
+    }
+
+    private fun normalizeCity(name: String): String = name.trim().removeSuffix("市")
+
+    private val adcodeCache = mutableMapOf<String, Pair<Long, RegeoPlace>>()
+
+    private fun adcodeCell(fix: Pair<Double, Double>): String =
+        "%.2f,%.2f".format(US, fix.first, fix.second)
+
+    /**
+     * Resolves the district of the current fix and today's weather there in the background, at
+     * session start, so 「今天天气怎么样」 is answered from the cache. Measured 2026-10-09 from the
+     * PC proxy: the two lookups took 2.4-3.3 s of a 5.3-5.9 s weather turn. Both are answers the
+     * source returned within their TTLs (B2/B4); a failure is silent and the question retries.
+     *
+     * Each step is tried [WARM_ATTEMPTS] times: a single Amap call took 1.4-3.8 s from the cloud and
+     * 1.1-4 s from the PC proxy (P50, two of about eight timed out), so one slow call used to leave
+     * the cache empty and the weather question paid a cold lookup. Background only; nothing is heard.
+     */
+    fun warmHere() {
+        val key = webKey()?.takeIf { it.isNotBlank() } ?: return warmSkipped(AMAP_WEB_KEY_MISSING)
+        val fix = location() ?: return warmSkipped(NO_LOCATION)
+        CoroutineScope(Dispatchers.IO).async {
+            val district = warmStep("district", { it is LiveInfoFetch.Ok }) { hereAdcode(fix, key) }
+            log("live_info_warm kind=district ok=${district is LiveInfoFetch.Ok}")
+            if (district is LiveInfoFetch.Ok) {
+                val weather = warmStep("weather", { it.optBoolean("ok") }) { cachedWeather(district.value, tomorrow = false, key = key) }
+                log("live_info_warm kind=weather ok=${weather.optBoolean("ok")} cached=${weather.optBoolean("cached")}")
+            }
+        }
+    }
+
+    private suspend fun <T> warmStep(kind: String, ok: (T) -> Boolean, fetch: () -> T): T {
+        var result = fetch()
+        repeat(WARM_ATTEMPTS - 1) {
+            if (ok(result)) return result
+            log("live_info_warm_retry kind=$kind")
+            kotlinx.coroutines.delay(warmRetryPauseMs)
+            result = fetch()
+        }
+        return result
+    }
+
+    /** Only the outcome code, never a place (I-8, the SPEC-011 log shape). */
+    private fun warmSkipped(why: String) = log("live_info_warm kind=district ok=false code=$why")
 
     private fun cachedWeather(city: String, tomorrow: Boolean, key: String): JSONObject {
         val cacheKey = "$city|$tomorrow"
@@ -189,7 +285,7 @@ class LiveInfoTool(
     // ---- the route ------------------------------------------------------------
 
     private fun routeTraffic(): Checked {
-        if (navigation()?.state()?.value != NavigationPhase.NAVIGATING) return Precondition(NOT_NAVIGATING)
+        if (navigation()?.isGuiding() != true) return Precondition(NOT_NAVIGATING)
         return Ready {
             val traffic = route.traffic() ?: return@Ready failure(AmapLiveInfoParser.UNAVAILABLE)
             success(ROUTE_TRAFFIC)
@@ -204,11 +300,48 @@ class LiveInfoTool(
     private fun alongRoute(rawCategory: String?): Checked {
         val category = AlongRouteCategory.fromWire(rawCategory) ?: return Precondition(INVALID_ARGUMENT)
         val controller = navigation()
-        if (controller == null || controller.state().value !in ROUTE_ON_SCREEN) return Precondition(NOT_NAVIGATING)
+        if (controller == null || !controller.isGuiding() && controller.state().value !in ROUTE_ON_SCREEN) {
+            return Precondition(NOT_NAVIGATING)
+        }
+        val key = webKey()?.takeIf { it.isNotBlank() } ?: return Precondition(AMAP_WEB_KEY_MISSING)
         return Ready {
-            val found = route.alongRoute(category) ?: return@Ready failure(AmapLiveInfoParser.UNAVAILABLE)
-            if (found.isEmpty()) return@Ready failure(AmapLiveInfoParser.NO_RESULTS).put("category", category.spoken)
-            val shown = found.take(MAX_ALONG_ROUTE)
+            // P68: one place/polygon call over the corridor ahead; no retry, no fallback call.
+            val progress = route.routeProgress() ?: return@Ready failure(AmapLiveInfoParser.UNAVAILABLE)
+            val corridor = AlongRouteCorridor.plan(
+                progress.points,
+                progress.travelledMeters,
+                AlongRouteCorridor.lookaheadFor(category),
+            ) ?: return@Ready failure(AmapLiveInfoParser.UNAVAILABLE)
+            val started = nowMs()
+            val fetch = rest.placePolygon(corridor.polygon, category.amapTypes, key)
+            // A lookup the deadline already gave up on must not log, nor open the picker afterwards.
+            currentCoroutineContext().ensureActive()
+            val ms = nowMs() - started
+            val found = when (fetch) {
+                is LiveInfoFetch.Failed -> {
+                    log(AlongRouteCorridor.searchLine(fetch.infocode ?: "none", 0, 0, 0, corridor.lookaheadMeters, corridor.vertices, ms))
+                    return@Ready failure(fetch.code)
+                }
+                is LiveInfoFetch.Ok -> fetch.value
+            }
+            val kept = corridor.keep(found.pois)
+            log(
+                AlongRouteCorridor.searchLine(
+                    found.infocode ?: "none", found.total, found.returned, kept.size,
+                    corridor.lookaheadMeters, corridor.vertices, ms,
+                ),
+            )
+            if (kept.isEmpty()) {
+                val km = String.format(US, "%.1f", corridor.lookaheadMeters / 1000.0).toDouble()
+                val said = if (corridor.reachesDestination) "沿途没有找到${category.spoken}"
+                else "前方${corridor.lookaheadMeters / 1000}公里沿途没有找到${category.spoken}"
+                return@Ready failure(AmapLiveInfoParser.NO_RESULTS)
+                    .put("category", category.spoken)
+                    .put("searched_ahead_km", km)
+                    .put("reached_destination", corridor.reachesDestination)
+                    .put("message", said)
+            }
+            val shown = kept.take(MAX_ALONG_ROUTE)
             // The existing picker, so 「第一个」 is the existing, device-verified navigation path (A6).
             controller.requestCandidates(shown)
             val options = JSONArray()
@@ -286,11 +419,14 @@ class LiveInfoTool(
         const val INVALID_ARGUMENT = "INVALID_ARGUMENT"
 
         const val TIMEOUT_MS = 4_000L
+        const val WARM_ATTEMPTS = 3
+        const val WARM_RETRY_PAUSE_MS = 1_000L
         const val WEATHER_TTL_MS = 10 * 60 * 1000L
+        const val ADCODE_TTL_MS = 30 * 60 * 1000L
         private const val MAX_CITY = 20
         private const val MAX_ALONG_ROUTE = 5
 
-        /** A calculated route exists in the SDK: the route picker, or guidance. */
+        /** A calculated route exists in the SDK: the route picker, or guidance (see also isGuiding). */
         private val ROUTE_ON_SCREEN = setOf(
             NavigationPhase.AWAITING_ROUTE_SELECTION,
             NavigationPhase.ROUTE_READY,
@@ -314,8 +450,9 @@ class LiveInfoTool(
             private val nothing = LiveInfoFetch.Failed(AmapLiveInfoParser.UNAVAILABLE)
             override fun weatherNow(city: String, key: String) = nothing
             override fun weatherForecast(city: String, key: String) = nothing
-            override fun regeoAdcode(latitude: Double, longitude: Double, key: String) = nothing
+            override fun regeoPlace(latitude: Double, longitude: Double, key: String) = nothing
             override fun placeDetail(poiId: String, key: String) = nothing
+            override fun placePolygon(polygon: String, types: String, key: String) = nothing
         }
 
         /** For call sites with no Amap at all (tests, simulations): every lookup is unavailable. */

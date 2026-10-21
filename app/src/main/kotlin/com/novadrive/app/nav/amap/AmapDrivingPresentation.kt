@@ -29,7 +29,7 @@ internal object AmapDrivingPresentation {
     fun applyRoutePreview(naviView: AMapNaviView) {
         applyOptions(naviView, driving = false, preview = true)
         runCatching { naviView.displayOverview() }
-        DebugVoiceLog.log("nav_presentation mode=preview")
+        DebugVoiceLog.log("nav_presentation mode=preview autoDraw=${MapPresentationPolicy.drawsRoute(driving = false, preview = true)}")
     }
 
     /** Lock-car driving HUD. Must run when `startNavi` is accepted, not as a later cosmetic. */
@@ -37,13 +37,24 @@ internal object AmapDrivingPresentation {
         navi?.let { enableLiveTraffic(it) }
         applyOptions(naviView, driving = true, preview = false)
         lockCar(naviView)
-        DebugVoiceLog.log("nav_presentation mode=driving naviMode=car_up trafficLine=true layout=true overspeedPulse=true trafficLightBubble=true trafficLightCountdown=$TRAFFIC_COUNTDOWN_STATUS")
+        DebugVoiceLog.log("nav_presentation mode=driving naviMode=car_up trafficLine=true layout=true overspeedPulse=true trafficLightBubble=true trafficLightCountdown=$TRAFFIC_COUNTDOWN_STATUS autoDraw=${MapPresentationPolicy.drawsRoute(driving = true, preview = false)}")
     }
 
     /** Browse map after navigation ends. Native navi chrome is put away so it does not cover the bar. */
     fun applyIdle(naviView: AMapNaviView) {
         applyOptions(naviView, driving = false, preview = false)
-        DebugVoiceLog.log("nav_presentation mode=idle")
+        DebugVoiceLog.log("nav_presentation mode=idle autoDraw=${MapPresentationPolicy.drawsRoute(driving = false, preview = false)}")
+    }
+
+    /** Applies a [MapPresentationPolicy] result; true when the map went back to idle. */
+    fun apply(p: MapPresentationPolicy.Presentation, navi: AMapNavi?, naviView: AMapNaviView): Boolean {
+        when (p) {
+            MapPresentationPolicy.Presentation.PREVIEW -> applyRoutePreview(naviView)
+            MapPresentationPolicy.Presentation.DRIVING -> applyDriving(navi, naviView)
+            MapPresentationPolicy.Presentation.IDLE -> applyIdle(naviView)
+            MapPresentationPolicy.Presentation.UNCHANGED -> Unit
+        }
+        return p == MapPresentationPolicy.Presentation.IDLE
     }
 
     fun lockCar(naviView: AMapNaviView) {
@@ -70,6 +81,22 @@ internal object AmapDrivingPresentation {
             DebugVoiceLog.log("nav_presentation mode=driving recovered=true")
             true
         }.getOrDefault(false)
+
+    /**
+     * Debug diagnostics (P58): the view's navigation mode and the map camera, numbers only - no
+     * position. "car_up" with a bearing that follows the road is heading-up; bearing 0 while the
+     * car turns is north-up.
+     */
+    fun viewState(naviView: AMapNaviView, navigating: Boolean): String = runCatching {
+        val mode = when (naviView.naviMode) {
+            AMapNaviView.CAR_UP_MODE -> "car_up"
+            AMapNaviView.NORTH_UP_MODE -> "north_up"
+            else -> "other_${naviView.naviMode}"
+        }
+        val camera = naviView.map?.cameraPosition
+        "naviMode=$mode bearing=${camera?.bearing?.let { "%.0f".format(java.util.Locale.US, it) }} " +
+            "tilt=${camera?.tilt?.let { "%.0f".format(java.util.Locale.US, it) }} navigating=$navigating"
+    }.getOrElse { "failed=${it.javaClass.simpleName}" }
 
     fun listener(onExit: () -> Unit): AMapNaviViewListener = ExitForwardingListener(onExit)
 
@@ -100,6 +127,7 @@ internal object AmapDrivingPresentation {
             options.setRealCrossDisplayShow(driving)
             options.setAutoChangeZoom(driving)
             options.setAutoDisplayOverview(preview)
+            options.setAutoDrawRoute(MapPresentationPolicy.drawsRoute(driving, preview))
             options.setCameraBubbleShow(driving)
             options.setShowCameraDistance(driving)
             options.setWidgetOverSpeedPulseEffective(driving)

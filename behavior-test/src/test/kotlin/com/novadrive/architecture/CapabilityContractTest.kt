@@ -28,8 +28,14 @@ class CapabilityContractTest {
             .joinToString(separator = " ")
     }
 
+    /**
+     * Tools offered to the model: RealtimeToolCatalog serves the list to every adapter (ADR-010); the
+     * car domains under app/.../tools/ own the declarations (ADR-015).
+     */
     private val declaredTools: Set<String> by lazy {
-        val protocol = File(root, "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexProtocol.kt").readText()
+        val domains = File(root, "app/src/main/kotlin/com/novadrive/app/tools").listFiles { f -> f.name.endsWith(".kt") }.orEmpty().sortedBy { it.name }
+        val protocol = (listOf(File(root, "app/src/main/kotlin/com/novadrive/app/voice/RealtimeToolCatalog.kt")) + domains)
+            .joinToString("\n") { it.readText() }
         Regex("name = \"([a-z_]+)\"").findAll(protocol).map { it.groupValues[1] }.toSet() +
             Regex("const val [A-Z_]+ = \"([a-z_]+)\"").findAll(protocol).map { it.groupValues[1] }.toSet()
     }
@@ -51,7 +57,11 @@ class CapabilityContractTest {
 
     @Test
     fun everyToolInTheRegistryIsRealAndRouted() {
-        val dispatcher = File(root, "app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt").readText()
+        // Routing lives in the dispatcher and in one ToolServer per car domain (ADR-015).
+        val servers = File(root, "app/src/main/kotlin/com/novadrive/app/tools")
+            .listFiles { f -> f.name.endsWith("Server.kt") }.orEmpty().sortedBy { it.name }
+        val dispatcher = (listOf(File(root, "app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt")) + servers)
+            .joinToString("\n") { it.readText() }
         val handlers = listOf(
             "app/src/main/kotlin/com/novadrive/app/vehicle/ClimateToolHandler.kt",
             "app/src/main/kotlin/com/novadrive/app/vision/CameraQuestionHandler.kt",
@@ -60,7 +70,7 @@ class CapabilityContractTest {
             Regex("([A-Z_]{4,}) ->").findAll(dispatcher).map { it.groupValues[1].lowercase() }.toSet() +
             Regex("TOOL = \"([a-z_]+)\"").findAll(handlers).map { it.groupValues[1] }.toSet()
         val phantom = registryTools.filter { it !in declaredTools }
-        assertTrue(phantom.isEmpty()) { "Registry lists tools the model is never offered: $phantom" }
+        assertTrue(phantom.isEmpty()) { "Registry lists tools the model is never offered (not in RealtimeToolCatalog): $phantom" }
         val unrouted = registryTools.filter { it !in routed }
         assertTrue(unrouted.isEmpty()) { "Registry lists tools nothing executes: $unrouted" }
     }

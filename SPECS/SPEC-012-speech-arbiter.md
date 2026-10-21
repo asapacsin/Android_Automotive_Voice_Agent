@@ -169,3 +169,5 @@ Steps, each a separate verified commit:
    `GuidanceMicGate` becomes its internal timer; delete `VoicePolicy`, its test, and the mute window
    from `NavigationState`; A3; full test + build; device A6 (P1/P3 must re-pass — I-12).
 4. `ManeuverDistance` input from `NavigationTraceListener.onNaviInfoUpdate`; R6a; A5; device A7.
+
+> **Amended 2026-09-30 by [ADR-014](../DECISIONS/ADR-014-guidance-spoken-by-assistant.md) / [SPEC-018](SPEC-018-guidance-in-assistant-voice.md):** the non-goal "re-speaking Amap's guidance ourselves" is lifted by the owner. The arbiter gains assistant-guidance rows; with the developer toggle off, every row above is unchanged.

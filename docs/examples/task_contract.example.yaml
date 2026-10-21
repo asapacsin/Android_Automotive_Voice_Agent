@@ -1,0 +1,41 @@
+# Example task contract (schema: python scripts/task_contract.py schema). Real contracts live in
+# state/contracts/<task_id>.yaml in the main checkout and are approved with
+#   python scripts/task_contract.py approve state/contracts/<task_id>.yaml --role architect --note "..."
+schema: nova-task-contract/1
+task_id: TC-1
+title: Archive closed problems out of OPEN_PROBLEMS.md
+branch: exec/tc-1
+base_commit: de683f70b19891331302352032dbe58fe3c4959f
+approved_paths:
+  - OPEN_PROBLEMS.md
+  - docs/OPEN_PROBLEMS_ARCHIVE.md
+  - scripts/discover_work.py
+  - scripts/collect_state.py
+  - scripts/harness_check.py
+  - scripts/tests/test_open_problems_archive.py
+allowed_changes:
+  - Move FIXED/RESOLVED problem sections verbatim to docs/OPEN_PROBLEMS_ARCHIVE.md
+  - Teach the three readers to look in the archive for closed IDs
+architecture_constraints:
+  - OPEN_PROBLEMS.md stays the canonical list of open problems (AGENTS.md "Where things are")
+  - Problem IDs are never renumbered or reused
+forbidden_changes:
+  - No change to problem text or status while moving it
+  - No runtime (module src) change
+forbidden_paths:
+  - "*/src/**"
+  - TEST_MATRIX.yaml
+  - scripts/test_matrix.py
+required_verification:
+  - id: script-tests
+    kind: regression
+    command: python3 -m unittest discover -s scripts/tests -t .
+  - id: harness
+    kind: integration
+    command: python3 scripts/harness_check.py
+  - id: discover
+    kind: integration
+    command: python3 scripts/discover_work.py
+acceptance_criteria:
+  - Every open problem remains in OPEN_PROBLEMS.md; every closed one is in the archive, text unchanged
+  - discover_work.py and harness_check.py report the same open set as before the move

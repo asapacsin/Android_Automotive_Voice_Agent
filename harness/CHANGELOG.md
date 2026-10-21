@@ -2,6 +2,43 @@
 
 Newest first. One line per change, with the evidence that motivated it.
 
+## 2026-10-17 — Blockers: research the alternatives, keep solving
+
+The owner had to tell us twice to keep going when a file was missing (`human_reminders` x2), and
+`skill_metrics` flagged `vendor-files-missing-in-worktrees` and `stopped-on-refusal` twice each.
+Fixes: AGENTS.md rule 6 covers blockers; `skills/continue.md` "Declaring a blocker" now starts by
+trying alternatives (backup in `skills/.history/continue.20261017.md`); the music track falls back
+to an archive.org public-domain mirror; `new_worktree.sh` provisions vendor files from local
+checkouts or the mirrors. `skill_event.py --resolves` restarts a cause's count once its fix lands.
+
+## 2026-10-17 — review-packet: first skill built by create-skill
+
+The planner rebuilt the review packet by hand for every executor merge (`state/reviews.log` has 38
+records; create-skill eval 3 proposed it). `scripts/review_packet.py` covers the fixed steps
+(`packet`: range, prod-source rule from delegation_check, candidate SPEC lines, JUnit per variant
+with STALE; `record`: a validated reviews.log line, `--selftest`). `skills/review-packet.md`
+covers the judgement and its gotchas, with an entry at `.claude/skills/review-packet/`. Evals:
+8/8 with the skill vs 6/8 baseline; trigger check 6/6.
+
+## 2026-10-17 — Time records, observed workflows, Agent Skills format (owner)
+
+The owner asked for every piece of work to record its time and improve when slow, and for skill
+creation to follow official and community practice. The skill loop had no record after 2026-09-21.
+
+- **Time:** `skill_event.py --minutes --attempts --efficient [--waste --improvement]`; AGENTS.md
+  hard rule; `skill_metrics.py` `TIME_IMPROVEMENT`; `discover_work.py` lists an overdue record
+  and any justified skill action.
+- **Observation:** `scripts/skill_observe.py` reads repeated command sequences from the agent
+  transcripts at handoff (signatures only), stored in the handoff record. It is not a hook,
+  because adding hooks is self-modification and the owner's decision.
+- **Format and procedure:** `.claude/skills/<name>/SKILL.md` entries for the six procedures (the
+  canonical text stays in `skills/*.md`, pinned by behavior tests), plus a new `create-skill`
+  skill with evals and baseline comparison.
+- **First improvement from a time record:** `scripts/new_worktree.sh` provisions vendor files.
+- **First create-skill eval finding (self-applied):** `skills/handoff.md` step 2 runs
+  `harness_check.py` after `collect_state.py`, because it already does the full matrix validation that
+  agents were also running by hand. Backup in `skills/.history/handoff.20261017.md`.
+
 ## 2026-09-22 — Best-practice design-basis gate
 
 Agents could invent locally plausible mechanisms (e.g. mute the mic during playback when barge-in

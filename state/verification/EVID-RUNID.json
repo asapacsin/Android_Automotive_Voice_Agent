@@ -1,0 +1,36 @@
+{
+ "task_id": "EVID-RUNID",
+ "contract_sha256": "60b1007db8106ffb2529d34a52fbe3787ea9d8e9b0588937bf272c96d86e0dd4",
+ "tip": "16fdc420984c896624294f7b4e67fa444ecfa81c",
+ "verified_by": "planner",
+ "at": "2026-10-20T05:32:55+00:00",
+ "results": [
+  {
+   "id": "bash-syntax",
+   "kind": "lint",
+   "command": "bash -n scripts/github_live_jvm.sh",
+   "exit_code": 0,
+   "seconds": 0.0,
+   "log": "/root/nova-drive-build/nova-verify/EVID-RUNID/16fdc420984c-bash-syntax.log",
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "id": "workflow-yaml",
+   "kind": "lint",
+   "command": "python3 -c \"import yaml;yaml.safe_load(open('.github/workflows/live-jvm.yml'))\"",
+   "exit_code": 0,
+   "seconds": 0.1,
+   "log": "/root/nova-drive-build/nova-verify/EVID-RUNID/16fdc420984c-workflow-yaml.log",
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "id": "live-jvm-tests",
+   "kind": "regression",
+   "command": "python3 -m unittest scripts/tests/test_live_jvm.py",
+   "exit_code": 0,
+   "seconds": 2.3,
+   "log": "/root/nova-drive-build/nova-verify/EVID-RUNID/16fdc420984c-live-jvm-tests.log",
+   "log_sha256": "93af6ba20a130265c76e7d99fbf1551f5f9100c2f1d9469865dbe82cd3a5e3b2"
+  }
+ ]
+}

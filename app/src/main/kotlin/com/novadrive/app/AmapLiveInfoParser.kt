@@ -1,5 +1,6 @@
 package com.novadrive.app
 
+import com.novadrive.app.nav.DestinationCandidate
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -11,7 +12,8 @@ import org.json.JSONObject
  */
 sealed interface LiveInfoFetch<out T> {
     data class Ok<T>(val value: T) : LiveInfoFetch<T>
-    data class Failed(val code: String) : LiveInfoFetch<Nothing>
+    /** [infocode] is Amap's own code when the source sent one (P68's counts-only log line); never shown. */
+    data class Failed(val code: String, val infocode: String? = null) : LiveInfoFetch<Nothing>
 }
 
 /** `v3/weather/weatherInfo?extensions=base`. Every field is only what the source returned. */
@@ -45,6 +47,15 @@ data class PlaceDetail(
     val openingHours: String?,
     val rating: String?,
     val category: String?,
+)
+
+/** One place/polygon page: Amap's total count and the POIs that have a point (P68). Never logged. */
+data class PolygonPlaces(
+    val total: Int,
+    val infocode: String?,
+    val pois: List<DestinationCandidate>,
+    /** Items on the page as sent, including any without a usable point. */
+    val returned: Int = pois.size,
 )
 
 /**
@@ -96,10 +107,15 @@ object AmapLiveInfoParser {
         }
     }
 
-    /** `v3/geocode/regeo`: only the adcode leaves this function, never the address. */
-    fun regeoAdcode(json: String): LiveInfoFetch<String> = parse(json) { root ->
-        root.optJSONObject("regeocode")?.optJSONObject("addressComponent")?.text("adcode")
-            ?.let { LiveInfoFetch.Ok(it) } ?: LiveInfoFetch.Failed(NO_RESULTS)
+    /**
+     * `v3/geocode/regeo`: only the district adcode and its city name leave this function, never the
+     * address. A municipality has `city: []`, so its province names the city.
+     */
+    fun regeoPlace(json: String): LiveInfoFetch<RegeoPlace> = parse(json) { root ->
+        val component = root.optJSONObject("regeocode")?.optJSONObject("addressComponent")
+        component?.text("adcode")
+            ?.let { LiveInfoFetch.Ok(RegeoPlace(it, component.text("city") ?: component.text("province"))) }
+            ?: LiveInfoFetch.Failed(NO_RESULTS)
     }
 
     fun placeDetail(json: String): LiveInfoFetch<PlaceDetail> = parse(json) { root ->
@@ -115,6 +131,28 @@ object AmapLiveInfoParser {
                 category = poi.text("type")?.split(';')?.lastOrNull()?.takeIf { it.isNotBlank() },
             ),
         )
+    }
+
+    /**
+     * P68 along_route: v3/place/polygon. Every POI with a point; [PolygonPlaces.total] is the
+     * response count (more than the page = truncated). An empty page is Ok - the tool decides
+     * NO_RESULTS after the corridor filter. status != 1 is unavailable (quota keeps its own code).
+     */
+    fun placePolygon(json: String): LiveInfoFetch<PolygonPlaces> {
+        val infocode = runCatching { JSONObject(json).optString("infocode").takeIf { it.isNotBlank() } }.getOrNull()
+        return when (val parsed = parse(json) { root ->
+            LiveInfoFetch.Ok(
+                PolygonPlaces(
+                    total = root.optString("count").toIntOrNull() ?: 0,
+                    infocode = infocode,
+                    pois = AmapPoiParser.parseCandidates(json),
+                    returned = root.optJSONArray("pois")?.length() ?: 0,
+                ),
+            )
+        }) {
+            is LiveInfoFetch.Failed -> parsed.copy(infocode = infocode)
+            is LiveInfoFetch.Ok -> parsed
+        }
     }
 
     /** Status and quota handling shared by every endpoint; a body that is not JSON is unavailable. */

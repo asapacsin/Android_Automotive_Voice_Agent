@@ -32,3 +32,7 @@ Qwen, GPT-Live and the PC backend remain in the tree as **dormant compatibility 
 - Flex leaving public beta with materially different terms, or being withdrawn.
 - Measured latency, cost, or reliability on Flex being clearly worse than an alternative that also supports function calling.
 - A provider offering function calling plus a documented output sample rate and voice list for the realtime path (both currently undocumented for Flex).
+
+## Addendum 2026-10-19 — Mandarin-only (owner 2026-10-19, YUE-POLICY-001 option A)
+
+The product supports Mandarin only. Cantonese is not a supported language: the Flex transcriber accepts only `zh` (`Invalid value: 'yue'. Value must be null or 'zh'`), and measured Cantonese tool calling was unreliable (返屋企 4/5, 有啲熱 1/5). Nothing downstream may advertise or claim Cantonese. The Cantonese scenario set is no longer measured: the `cantonese` suite and the `cantonese:YUE-HOME` quarantine are removed from the voice checks, and YUE-RATE-001 is retired. A Cantonese utterance is handled like any other mis-heard speech (honest correction, never a released claim: TRUTH-MEDIA-001 / S11). Revisiting means reopening ADR-008 for a provider whose transcriber accepts Cantonese (option C).

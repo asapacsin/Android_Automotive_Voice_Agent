@@ -19,6 +19,12 @@ class ArchitectureRulesTest {
     private fun kotlinFiles(path: String): List<File> =
         File(root, path).walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
 
+    /** Every OpenAI-Realtime wire dialect (SPEC-021), so a rule covers dialects added later. */
+    private fun realtimeDialects(): String =
+        File(root, "app/src/main/kotlin/com/novadrive/app/voice").listFiles { f -> f.name.endsWith("Dialect.kt") }!!
+            .sortedBy { it.name }.also { check(it.isNotEmpty()) { "no *Dialect.kt found" } }
+            .joinToString("\n") { it.readText() }
+
     private fun text(path: String): String = File(root, path).also {
         assertTrue(it.isFile, "missing file: $path")
     }.readText()
@@ -41,6 +47,8 @@ class ArchitectureRulesTest {
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapRouteLiveInfo.kt",
             // The SDK's own guidance voice and its play listener (mic gate, host-bridge text).
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapGuidanceVoice.kt",
+            // P51: the one WGS-84 -> GCJ-02 conversion (SDK CoordinateConverter), for map and search.
+            "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapCoordinates.kt",
         )
         val unexpected = importers - allowed
         assertTrue(unexpected.isEmpty()) {
@@ -72,7 +80,8 @@ class ArchitectureRulesTest {
 
     @Test
     fun onlyAudioAndSubtitleMayBeHeld() {
-        val client = text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt")
+        // Owner of the per-turn gate: DriverTurnPipeline (ADR-010).
+        val client = text("app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt")
         assertTrue(client.contains("private fun holdOrEmit")) {
             "INVARIANT I-5: there must be exactly one place that decides what is held"
         }
@@ -92,10 +101,16 @@ class ArchitectureRulesTest {
 
     @Test
     fun executionProofOwnsActionClaims() {
-        val client = text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt")
+        // Owner of the per-turn gate: DriverTurnPipeline (ADR-010). The OpenAI-Realtime client, its
+        // Baidu subclass and every wire dialect (SPEC-021) are read too, so the loose per-turn flags
+        // below cannot come back in any of them.
+        val client = text("app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt") +
+            text("app/src/main/kotlin/com/novadrive/app/voice/OpenAiRealtimeClient.kt") +
+            text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt") +
+            realtimeDialects()
         // Proof enters the system at exactly one place: the tool result.
         assertTrue(client.contains("onExecutionResult(callId, output)")) {
-            "INVARIANT I-1: sendFunctionResult is the only source of execution evidence"
+            "INVARIANT I-1: the tool result (DriverTurnPipeline.onToolResult) is the only source of execution evidence"
         }
         val turn = text("app/src/main/kotlin/com/novadrive/app/voice/DriverTurn.kt")
         assertTrue(turn.contains("AWAITING_EXECUTION_PROOF")) {
@@ -187,6 +202,22 @@ class ArchitectureRulesTest {
         }
     }
 
+    // ---- ADR-017 (2026-10-15): the debug provider override is set only from debug sources ----
+
+    @Test
+    fun onlyDebugSourcesSetTheProviderOverride() {
+        val holder = "app/src/main/kotlin/com/novadrive/app/DebugProviderOverride.kt"
+        val writers = kotlinFiles("app/src/main").filter { it.readText().contains("DebugProviderOverride.set(") }
+            .map { it.relativeTo(root).invariantSeparatorsPath }.filter { it != holder }
+        assertTrue(writers.isEmpty()) {
+            "Only app/src/debug may set the Gemini debug override (ADR-017, 2026-10-15); main writers: $writers"
+        }
+        assertTrue(text(holder).contains("private set")) { "the override value must be settable only through set()" }
+        assertTrue(text("app/src/debug/kotlin/com/novadrive/app/DebugToolReceiver.kt").contains("DebugProviderOverride.set(")) {
+            "DebugToolReceiver is the override's one writer"
+        }
+    }
+
     // ---- maintenance: files do not grow without somebody noticing ----
 
     @Test
@@ -196,11 +227,24 @@ class ArchitectureRulesTest {
         // Raising one is allowed — with a reason in the commit
         // message. See docs/AGENT_MAINTENANCE.md step 4 and docs/TECH_DEBT.md D-1.
         val budgets = mapOf(
-            "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt" to 950,
+            // SPEC-021 step 1 (2026-10-08): only the Baidu constructor and voice members are left (51
+            // lines); turn handling must not regrow here.
+            "app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexClient.kt" to 80,
+            // SPEC-021 step 1 (2026-10-08): the turn handling moved out of BaiduFlexClient, recorded at 675.
+            // SPEC-020 (2026-10-09): the Maia wait cue is captured in this client so it is not judged as the reply.
+            "app/src/main/kotlin/com/novadrive/app/voice/OpenAiRealtimeClient.kt" to 815, // P55 2026-10-13: style re-delivery (+13: one statement per line, sleep forgets a dropped update; logic in DeliveredStyle.kt); P50 2026-10-09: streamed words, stall and underrun wiring (logic in ReplyStreaming.kt); +1 2026-10-11: the stall-notice hook (logic in WaitCueClock); +3 2026-10-11: per-reply usage log and history cap (logic in ReplyUsage.kt); +6 2026-10-11: a cue request holds the turn gate (review R1); +12 2026-10-11: a stall retry waits for its notice and is dropped if the driver speaks (re-review R1a)
+            "app/src/main/kotlin/com/novadrive/app/voice/DriverTurnPipeline.kt" to 410, // SPEC-014 clause release (budget in ReplyStreaming.kt)
             "app/src/main/kotlin/com/novadrive/app/nav/amap/AmapNaviViewHost.kt" to 900,
             "app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt" to 470,
-            "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt" to 500,
-            "app/src/main/kotlin/com/novadrive/app/nav/EmbeddedNavigationController.kt" to 500,
+            // SPEC-020 (2026-10-09): forwards the 3 s working label. Was 500.
+            "app/src/main/kotlin/com/novadrive/app/voice/VoiceSessionController.kt" to 510,
+            "app/src/main/kotlin/com/novadrive/app/nav/EmbeddedNavigationController.kt" to 545, // owner test 10-16: an along-route list keeps the drive (keptGuidance: request, select, cancel, end, arrival) - one state machine, not split across files
+            // Gemini Live adapter (ADR-010), recorded 2026-09-29 at 465 and 56 lines.
+            // SPEC-018 step 1: GUIDANCE-turn hooks at the client's turn points; correlation state already extracted to GeminiPromptTurn.kt
+            // ADR-016 / SPEC-019 (2026-10-02): four SpeechText call sites at the transcript points; the logic is in GeminiSpeechText.kt.
+            // P45 (2026-10-02): interrupt-before-verdict drop, empty-turn log, timing call sites; the timing logic is in GeminiTurnTiming.kt.
+            "app/src/main/kotlin/com/novadrive/app/voice/GeminiLiveClient.kt" to 647, // P55 2026-10-13: style re-delivery (+7: one statement per line; logic in DeliveredStyle.kt)
+            "app/src/main/kotlin/com/novadrive/app/voice/RealtimeProviderFactory.kt" to 150,
         )
         val over = budgets.mapNotNull { (path, budget) ->
             val lines = File(root, path).readLines().size
@@ -236,10 +280,11 @@ class ArchitectureRulesTest {
 
     @Test
     fun declaredToolsAndDispatchedToolsAgree() {
-        val protocol = text("app/src/main/kotlin/com/novadrive/app/voice/BaiduFlexProtocol.kt")
-        val dispatcher = text("app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt")
-        val declared = Regex("name = \"([a-z_]+)\"").findAll(protocol).map { it.groupValues[1] }.toSet() +
-            Regex("const val [A-Z_]+ = \"([a-z_]+)\"").findAll(protocol).map { it.groupValues[1] }.toSet()
+        // Declarations: RealtimeToolCatalog plus the car domains; routing: the dispatcher plus one
+        // ToolServer per domain (ADR-015). Same sources as CapabilityContractTest.
+        val declared = declaredToolNames()
+        val dispatcher = (listOf("app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt") + serverFiles())
+            .joinToString("\n") { text(it) }
         // A tool reaches an executor either as a literal branch, via a constant branch, or through
         // a handler that declares TOOL = "name". All three count as routed.
         val handlers = listOf(
@@ -257,6 +302,40 @@ class ArchitectureRulesTest {
         val undocumented = declared.filter { it !in ARGUMENT_VALUES && !capabilities.contains(it) }
         assertTrue(undocumented.isEmpty()) {
             "INVARIANT I-10: every tool must appear in docs/CAPABILITIES.md. Missing: $undocumented"
+        }
+    }
+
+    private val toolsDir = "app/src/main/kotlin/com/novadrive/app/tools"
+
+    private fun serverFiles(): List<String> =
+        File(root, toolsDir).listFiles { f -> f.name.endsWith("Server.kt") }.orEmpty()
+            .map { "$toolsDir/${it.name}" }.sorted()
+
+    private fun declaredToolNames(): Set<String> {
+        val domains = File(root, toolsDir).listFiles { f -> f.name.endsWith(".kt") }.orEmpty().sortedBy { it.name }
+        val protocol = (listOf(File(root, "app/src/main/kotlin/com/novadrive/app/voice/RealtimeToolCatalog.kt")) + domains)
+            .joinToString("\n") { it.readText() }
+        return Regex("name = \"([a-z_]+)\"").findAll(protocol).map { it.groupValues[1] }.toSet() +
+            Regex("const val [A-Z_]+ = \"([a-z_]+)\"").findAll(protocol).map { it.groupValues[1] }.toSet()
+    }
+
+    // ---- the dispatcher routes by domain, never by tool name (SPEC-016 B, ADR-015) ----
+
+    @Test
+    fun dispatcherDoesNotBranchOnToolNames() {
+        val file = text("app/src/main/kotlin/com/novadrive/app/AndroidToolDispatcher.kt")
+        val start = file.indexOf("class AndroidToolDispatcher(")
+        assertTrue(start >= 0, "AndroidToolDispatcher class not found")
+        val end = file.indexOf("\n}\n", start).let { if (it < 0) file.length else it }
+        val body = file.substring(start, end)
+        val tools = declaredToolNames() - ARGUMENT_VALUES
+        val literalBranches = Regex("\"([a-z_]+)\" ->").findAll(body).map { it.groupValues[1] }.toList()
+        val constantBranches = Regex("([A-Z_]{4,}) ->").findAll(body).map { it.groupValues[1].lowercase() }
+            .filter { it in tools }.toList()
+        val literals = tools.filter { body.contains("\"$it\"") }
+        assertTrue(literalBranches.isEmpty() && constantBranches.isEmpty() && literals.isEmpty()) {
+            "AndroidToolDispatcher must route through the domain ToolServers, not by tool name: " +
+                "branches=$literalBranches constants=$constantBranches literals=$literals"
         }
     }
 
@@ -351,5 +430,19 @@ class ArchitectureRulesTest {
             "power_on", "power_off", "set_temperature", "set_fan", "temperature_up",
             "temperature_down", "fan_up", "fan_down",
         )
+    }
+
+    // ---- ADR-017: the developer screen shows only what the product session uses ----
+
+    @Test
+    fun developerSettingsNamesNoDormantProvider() {
+        val body = text("app/src/main/kotlin/com/novadrive/app/DeveloperSettingsActivity.kt")
+        val forbidden = listOf(
+            "GeminiSettingsRepository", "AzureSpeechSettingsRepository", "BaiduFlexClient",
+            "BaiduRealtimeClient", "VoiceProviderPreference", "ReplaySpeechToSpeechPort",
+        ).filter { body.contains(it) }
+        assertTrue(forbidden.isEmpty()) {
+            "ADR-017: DeveloperSettingsActivity must not reference dormant providers (CredentialWipe owns the clear): $forbidden"
+        }
     }
 }

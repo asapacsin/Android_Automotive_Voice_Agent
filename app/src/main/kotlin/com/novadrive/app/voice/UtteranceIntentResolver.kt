@@ -17,11 +17,31 @@ class UtteranceIntentResolver(
         if (matchesCapabilityHelpGrammar(text)) {
             return UtteranceIntent(CapabilityIds.SPEECH_CAPABILITY_HELP)
         }
+        if (matchesSpeakingStyle(text)) return UtteranceIntent(SPEECH_SPEAKING_STYLE)
         val hit = cues.firstOrNull { it.first in text } ?: return null
         return UtteranceIntent(hit.second)
     }
 
+    /** The words that name [capabilityId], longest first: the vocabulary guards share with this resolver. */
+    fun cuesFor(capabilityId: String): List<String> = cues.filter { it.second == capabilityId }.map { it.first }
+
     companion object {
+        /** `speech.speaking_style` (contracts Capability.kt); CapabilityIds has no constant for it yet. */
+        const val SPEECH_SPEAKING_STYLE = "speech.speaking_style"
+
+        /**
+         * P55: a request for how 小诺 *speaks*. Bounded: a style adjective counts only next to a
+         * speaking-manner word (说话/语气/口气/腔调), so a bare 「甜一点」 or 「温柔一点开」 is not one.
+         * 嗲 / 撒娇 / 傲娇 name a manner on their own.
+         */
+        private val STYLE_MANNER_GRAMMAR = Regex(
+            "(说话|语气|口气|腔调).{0,4}(嗲|甜|温柔|可爱|元气|活泼|霸道|正常|傲娇|凶|酷)",
+        )
+        private val STYLE_WORDS = listOf("嗲", "撒娇", "撒个娇", "傲娇", "傲嬌")
+
+        fun matchesSpeakingStyle(text: String): Boolean =
+            STYLE_WORDS.any { it in text } || STYLE_MANNER_GRAMMAR.containsMatchIn(text)
+
         private val PUNCTUATION = Regex("[，。！？、,.!?\\s\t　]+")
         private val WAKE_PREFIX = Regex("^(你好小诺|小诺)+")
 
@@ -75,16 +95,29 @@ class UtteranceIntentResolver(
                 "大声" to CapabilityIds.VOLUME_CONTROL,
                 "小声" to CapabilityIds.VOLUME_CONTROL,
                 "声音" to CapabilityIds.VOLUME_CONTROL,
-                "车窗" to CapabilityIds.WINDOWS_SEATS_DOORS_LIGHTS_WIPERS,
-                "窗户" to CapabilityIds.WINDOWS_SEATS_DOORS_LIGHTS_WIPERS,
-                "天窗" to CapabilityIds.WINDOWS_SEATS_DOORS_LIGHTS_WIPERS,
-                "座椅" to CapabilityIds.WINDOWS_SEATS_DOORS_LIGHTS_WIPERS,
-                "后备箱" to CapabilityIds.WINDOWS_SEATS_DOORS_LIGHTS_WIPERS,
-                "车门" to CapabilityIds.WINDOWS_SEATS_DOORS_LIGHTS_WIPERS,
-                "车灯" to CapabilityIds.WINDOWS_SEATS_DOORS_LIGHTS_WIPERS,
-                "雨刷" to CapabilityIds.WINDOWS_SEATS_DOORS_LIGHTS_WIPERS,
+                "车窗" to CapabilityIds.BODY_WINDOW,
+                "窗户" to CapabilityIds.BODY_WINDOW,
+                "开窗" to CapabilityIds.BODY_WINDOW,
+                "关窗" to CapabilityIds.BODY_WINDOW,
+                // SPEC-015 FZ-01/02/09/10: comfort scenarios. Not bare 困 (「困难」「被困」).
+                "蚊子" to CapabilityIds.COMFORT_SCENARIO,
+                "虫子" to CapabilityIds.COMFORT_SCENARIO,
+                "闷" to CapabilityIds.COMFORT_SCENARIO,
+                "空气不好" to CapabilityIds.COMFORT_SCENARIO,
+                "异味" to CapabilityIds.COMFORT_SCENARIO,
+                "好困" to CapabilityIds.COMFORT_SCENARIO,
+                "犯困" to CapabilityIds.COMFORT_SCENARIO,
+                "有点困" to CapabilityIds.COMFORT_SCENARIO,
+                "座椅" to CapabilityIds.BODY_SEAT_HEIGHT,
+                "座位" to CapabilityIds.BODY_SEAT_HEIGHT,
+                "天窗" to CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS,
+                "天幕" to CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS,
+                "后备箱" to CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS,
+                "车门" to CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS,
+                "车灯" to CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS,
+                "雨刷" to CapabilityIds.SUNROOF_DOORS_LIGHTS_WIPERS,
             ).sortedByDescending { it.first.length },
         )
     }
 }
-
+

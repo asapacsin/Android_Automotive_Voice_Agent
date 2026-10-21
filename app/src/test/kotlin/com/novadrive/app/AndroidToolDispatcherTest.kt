@@ -52,6 +52,20 @@ class AndroidToolDispatcherTest {
     }
 
     @Test
+    fun aGuidanceTurnToolCallFailsWithoutExecutingAndSaysNoSpeechIsWanted() {
+        val executor = FakeExecutor()
+        val dispatcher = AndroidToolDispatcher(executor, ClimateToolHandler(SimulatedVehicleControl()), noCamera())
+        val code = com.novadrive.app.voice.GeminiPromptTurn.NOT_A_DRIVER_TURN
+        val result = dispatcher.dispatch(call("navigate_to", mapOf("_validation_error" to code)))
+        assertEquals(0, executor.executions)
+        val output = JSONObject(result.output!!)
+        assertFalse(output.getBoolean("ok"))
+        assertEquals(code, output.getString("error"))
+        assertEquals(ToolFailureAdvice.forCode(code), output.getString("next"))
+        assertTrue(output.getString("next").contains("导航播报"))
+    }
+
+    @Test
     fun openAppAcceptsOnlyTheFixedAllowlist() {
         val executor = FakeExecutor()
         val dispatcher = AndroidToolDispatcher(executor, ClimateToolHandler(SimulatedVehicleControl()), noCamera())
@@ -234,7 +248,7 @@ class AndroidToolDispatcherTest {
         var pickerMatch: NavigationChoice? = null
         override fun matchPickerName(utterance: String): NavigationChoice? = pickerMatch
         override fun chooseNavigationOption(choice: NavigationChoice): AndroidActionResult { choices += choice; return next }
-        override suspend fun awaitNavigationOptions() = EmbeddedNavigationController.OptionsSnapshot(
+        override suspend fun awaitNavigationOptions(cancelsAtDispatch: Long) = EmbeddedNavigationController.OptionsSnapshot(
             NavigationPhase.AWAITING_DESTINATION_SELECTION,
             listOf(DestinationCandidate("a", "珠海站", "", "", 22.2, 113.5, distanceMeters = 12_900)),
             emptyList(),

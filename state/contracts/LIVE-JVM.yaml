@@ -1,0 +1,37 @@
+schema: nova-task-contract/1
+task_id: LIVE-JVM
+title: A GitHub workflow runs the opt-in live JVM rows (text-live mapping, Amap demo) on demand
+branch: exec/live-jvm
+base_commit: 7b8dd9ad7db09efd05d2e59c3da8eeb25bb0f4e8
+approved_paths:
+  - .github/workflows/live-jvm.yml
+  - scripts/github_live_jvm.sh
+  - scripts/tests/test_live_jvm.py
+allowed_changes:
+  - New workflow_dispatch workflow "Live JVM checks" (also on push to claude/10-19 and claude/10-20 when the commit message contains [live-jvm]) with a matrix over pieces text-live (NOVA_GEMINI_TEXT_LIVE=1, --tests '*GeminiTextLiveMapping*' --rerun; rows FUZZY-TEXT-LIVE-001 and MUSIC-TEXT-LIVE-001) and amap-live (NOVA_LIVE_AMAP=1, --tests '*DemoCommuteAmapLiveTest'; row DEMO-AMAP-LIVE-001); input "pieces" (default all)
+  - Secrets GEMINI_API_KEY, AMAP_WEB_KEY, and the vendor zip secrets the other workflows use to build (copy that setup step from device-checks.yml / voice-checks.yml)
+  - scripts/github_live_jvm.sh runs one piece, each under a 5-minute timeout, writes a text-free summary (JUnit counts, the test's own results.txt pass counts - no transcripts, phrases, coordinates or addresses) and pushes it to branch ci/live-jvm-evidence under runs/run_<date>_<sha>/<piece>/ with a fetch-rebase-retry loop
+  - A small unittest for the script's argument handling / summary format if practical
+architecture_constraints:
+  - I-8 - nothing printed or pushed may contain keys, transcripts, phrase text, coordinates or addresses
+  - Gradle invocations exactly as the rows' evidence lines name them
+forbidden_changes:
+  - No app or test source changes; DEMO-TRYOUT-001 is out of scope (needs synthesized clips)
+forbidden_paths:
+  - "*/src/**"
+  - TEST_MATRIX.yaml
+  - scripts/test_matrix.py
+  - config/ci_checks.json
+required_verification:
+  - id: workflow-yaml
+    kind: lint
+    command: python3 -c "import yaml;yaml.safe_load(open('.github/workflows/live-jvm.yml'))"
+  - id: bash-syntax
+    kind: lint
+    command: bash -n scripts/github_live_jvm.sh
+  - id: script-tests
+    kind: regression
+    command: python3 -m unittest discover -s scripts/tests -t .
+acceptance_criteria:
+  - A dispatched run produces per-piece summaries on ci/live-jvm-evidence with pass counts the rows' pass rules can be judged from
+  - Script tests green

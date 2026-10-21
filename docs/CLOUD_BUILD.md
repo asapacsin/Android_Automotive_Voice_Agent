@@ -36,9 +36,30 @@ one only disables what needs it.
 Include the mp3 in the zip: its public-domain source (Wikimedia) rate-limits shared cloud
 addresses, and the script's fallback download failed with HTTP 429 on 2026-09-24.
 
+Do not use a temporary file host (filebin.net, transfer.sh, …): its links expire. On 2026-10-17 the
+GitHub Actions secret still pointed at a filebin.net link, which began answering HTTP 403, and every
+Tier A, device and voice run went red without building. Use a private GitHub repository's raw URL
+with a read-only fine-grained token, and put the same two values in both the cloud environment and
+the repository's Actions secrets. `cloud_setup.sh` accepts a bare token, a `github.com/…/blob/…`
+link and a zip with one top-level folder. A failed fetch now prints an `::error` annotation with
+the HTTP code and host, so a red run says why.
+
+**No zip, or a dead one:** `cloud_setup.sh` and `new_worktree.sh` then build a compile-only
+stand-in for `app/libs/Msc.jar` ([tools/vendor-stub/README.md](../tools/vendor-stub/README.md)), so
+`:app` compiles and its JVM tests run. Such a build is never device or wake-word evidence; the
+entry `META-INF/NOVA_VENDOR_STUB` inside the jar (and the file `app/libs/Msc.jar.STUB`) says it is
+one. Never run `test_matrix.py --bind` on such a tree: a bind hashes the local APK, which would
+then be the stub's (not enforced in code - changing `test_matrix.py` invalidates every bind). In GitHub Actions only the Tier B emulator
+workflows may use it, by setting `NOVA_VENDOR_STUB_OK=yes`; their runs are then BLOCKED, never green
+([docs/CI.md](CI.md) "Stand-in vendor builds"). Tier A and the drive video never do.
+
 The zip URL must serve the zip itself. A private link that answers with a sign-in page is
 detected (`unzip -t`) and skipped with a warning. Anything reachable without authentication is
 readable by anyone holding the URL; prefer an authenticated URL with `NOVA_VENDOR_ZIP_AUTH`.
+
+Executor worktrees get the same files from `scripts/new_worktree.sh <task> <branch> <BASE_COMMIT>`,
+which downloads the zip once per container (cached under `~/.cache/nova-drive/`), unpacks it into
+the new worktree and refuses any path git would not ignore.
 
 The Amap key checks the APK signature: a cloud APK authorises only when it is signed with the
 keystore whose SHA1 is registered on the key, which is why the owner's debug keystore is used.
@@ -59,6 +80,15 @@ about 220 MB, almost all of it the Amap navigation SDK's native libraries.
   26 s and the display stayed on the boot fallback screen.
 - The plain x86_64 image has no ARM translation (`ro.product.cpu.abilist=x86_64`), and the app
   ships only `arm64-v8a`/`armeabi-v7a` native libraries, so the APK cannot install there.
+
+Re-measured 2026-10-02 with the existing `nova34` AVD (API 34 Google APIs x86_64 r14, arm64 translation 0.2.3):
+
+- **Boot:** it boots headless in 6–20 minutes. Only one host core is used (`-accel tcg,thread=multi` never brought adbd up in 20 minutes).
+- **Load:** with the app open, the Amap map under translation keeps the guest load at 13–27. The app, System UI, Launcher, phone and GMS all ANR, and system_server restarts several times an hour.
+- **Install:** a 224 MB install often kills system_server (`Broken pipe`). Two installs succeeded, each right after a fresh `-wipe-data` boot.
+- **AVD damage:** repeated kills damaged the AVD (`libstatspull.so` missing, zygote restart loop); `-wipe-data` repaired it.
+- **Probe:** even the map-free `TranscriptFadeProbeActivity` failed to attach within the 10 s process-start timeout, and `adb shell` calls took over 30 s.
+- **Conclusion:** no device-level UI check is possible in this container; queue it for the PC.
 
 A KVM-capable host (the Windows PC, see [EMULATOR_TESTING.md](EMULATOR_TESTING.md)) with a Google
 APIs image that includes ARM translation is the minimum for emulator runs. Audio, echo

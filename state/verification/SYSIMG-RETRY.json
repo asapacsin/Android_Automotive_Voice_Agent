@@ -1,0 +1,36 @@
+{
+ "task_id": "SYSIMG-RETRY",
+ "contract_sha256": "6d889bc0ac66930407a3c70fe36d912e3e0bd470197b7d4c18bea53b9b621e6b",
+ "tip": "275f4946580afeb6980a809085d36660c1727565",
+ "verified_by": "planner",
+ "at": "2026-10-20T17:10:45+00:00",
+ "results": [
+  {
+   "id": "script-tests",
+   "kind": "regression",
+   "command": "python3 -m unittest discover -s scripts/tests -t .",
+   "exit_code": 0,
+   "seconds": 203.2,
+   "log": "/root/nova-drive-build/nova-verify/SYSIMG-RETRY/275f4946580a-script-tests.log",
+   "log_sha256": "800d3e830ac8c0378a77c397862966426a5393b50d7d83fbce16396553cf4447"
+  },
+  {
+   "id": "bash-syntax",
+   "kind": "lint",
+   "command": "bash -n scripts/ci_sysimg.sh",
+   "exit_code": 0,
+   "seconds": 0.0,
+   "log": "/root/nova-drive-build/nova-verify/SYSIMG-RETRY/275f4946580a-bash-syntax.log",
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "id": "yaml",
+   "kind": "lint",
+   "command": "python3 -c \"import yaml,glob;[yaml.safe_load(open(f)) for f in glob.glob('.github/workflows/*.yml')]\"",
+   "exit_code": 0,
+   "seconds": 0.1,
+   "log": "/root/nova-drive-build/nova-verify/SYSIMG-RETRY/275f4946580a-yaml.log",
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+ ]
+}

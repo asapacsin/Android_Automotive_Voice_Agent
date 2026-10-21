@@ -1,0 +1,226 @@
+# Voice rows on the real app with the debug-only Gemini override (scripts/github_voice_checks.sh).
+# Proves: the scenario rows (S*, device rows, live info), the quota guard (no Qwen
+# session) and the synthetic wake, judged by the Verdict step (suite "voice"). It spends the Gemini
+# free tier and is not deterministic, so it runs only by hand or on a [voice] commit, never on PRs.
+# Emulator evidence is never evidence of real cabin acoustics, echo cancellation, voice
+# naturalness or hardware behaviour.
+# ubuntu-latest has working KVM. The app is built only when the Actions secrets are set.
+# Required secrets: AMAP_API_KEY, NOVA_VENDOR_ZIP_URL, NOVA_DEBUG_KEYSTORE_B64.
+# The debug APK is checked against the Amap key's 调试版安全码 SHA1.
+# Results come back as annotations (stage reached, Amap error token, route error code), because
+# job logs are not readable from the agent sessions. The video is pushed to branch ci/drive-video.
+# From cursor/github-emulator-9a6b (Cursor, 2026-10-15), moved onto claude/10-15.
+# The job must not print coordinates, addresses, or transcripts.
+# SHARDS (owner 2026-10-19: each demo <=5 min, function tests in small units): a matrix of 9 shards
+# (live-info shards ~8 min: a 10-repeat rate per kind cannot be split, docs/CI.md),
+# each building its own APK (no APK artifact: the debug APK carries key-bearing config, docs/CI.md),
+# booting its own emulator and running only its tests; each shard has its own verdict (suite
+# matrix.suite in config/ci_checks.json) and pushes its evidence to runs/<run>/<shard>/.
+# A dispatch can pick shards with the input "shards" (comma list; empty or "all" = every shard);
+# a [voice] push runs every shard.
+
+name: Voice checks
+
+on:
+  workflow_dispatch:
+    inputs:
+      shards:
+        description: "Comma list of shards (voice-a,voice-b,voice-c,device,li-weather,li-place,li-traffic,li-along,demo) or all"
+        required: false
+        default: all
+  push:
+    branches:
+      - claude/10-15
+      - claude/10-19
+      - claude/10-20
+
+permissions:
+  contents: write
+
+jobs:
+  drive:
+    # One job per shard picked by the plan job below (a job-level if cannot see the matrix).
+    needs: plan
+    name: voice ${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    env:
+      VOICE_SHARD: ${{ matrix.shard }}
+      VOICE_SUITE: ${{ matrix.suite }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          # Dependency downloads only (as unit-tests.yml). Never ~/.gradle/caches as a whole: the
+          # build cache can hold secret-derived outputs.
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle/libs.versions.toml') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm || true
+          if [ -e /dev/kvm ]; then
+            sudo chmod 666 /dev/kvm
+          fi
+          ls -l /dev/kvm
+          test -r /dev/kvm -a -w /dev/kvm
+
+      - name: Require the app secrets
+        env:
+          AMAP_API_KEY: ${{ secrets.AMAP_API_KEY }}
+          NOVA_VENDOR_ZIP_URL: ${{ secrets.NOVA_VENDOR_ZIP_URL }}
+          NOVA_VENDOR_ZIP_AUTH: ${{ secrets.NOVA_VENDOR_ZIP_AUTH }}
+          NOVA_DEBUG_KEYSTORE_B64: ${{ secrets.NOVA_DEBUG_KEYSTORE_B64 }}
+        # A missing secret is BLOCKED, not FAIL: every required id of the suite is recorded BLOCKED
+        # (a wildcard through its <prefix>runner), the step exits 0, the later steps are skipped and
+        # the Verdict step reports BLOCKED (exit 3).
+        id: secrets
+        run: |
+          missing=""
+          for name in AMAP_API_KEY NOVA_VENDOR_ZIP_URL NOVA_DEBUG_KEYSTORE_B64; do
+            eval "value=\${$name}"
+            if [ -z "$value" ]; then
+              echo "missing $name"
+              missing="$missing $name"
+            fi
+          done
+          if [ -z "$missing" ]; then echo "ok=true" >>"$GITHUB_OUTPUT"; exit 0; fi
+          echo "ok=false" >>"$GITHUB_OUTPUT"
+          first="${missing# }"; first="${first%% *}"
+          python3 - "${VOICE_SUITE:-voice}" "secret $first not set" <<'PY'
+          import json, subprocess, sys
+          suite, detail = sys.argv[1], sys.argv[2]
+          required = json.load(open("config/ci_checks.json"))["suites"][suite]["required"]
+          ids = []
+          for rid in required:
+              if rid.endswith("*"):
+                  rid = rid[:rid.rfind(":") + 1] + "runner"
+              if rid not in ids:
+                  ids.append(rid)
+          for rid in ids:
+              subprocess.run([sys.executable, "scripts/ci_verdict.py", "record", "--out",
+                              "evidence/results.jsonl", "--id", rid, "--status", "BLOCKED",
+                              "--detail", detail], check=True)
+          PY
+
+      - name: Build the debug APK
+        if: steps.secrets.outputs.ok == 'true'
+        env:
+          AMAP_API_KEY: ${{ secrets.AMAP_API_KEY }}
+          NOVA_VENDOR_ZIP_URL: ${{ secrets.NOVA_VENDOR_ZIP_URL }}
+          # Dead vendor zip: build on the iFlytek stand-in; build:vendor-real is then BLOCKED, so the
+          # run is never green (decided by the decider 2026-10-19; docs/CI.md, tools/vendor-stub).
+          NOVA_VENDOR_STUB_OK: "yes"
+          NOVA_VENDOR_ZIP_AUTH: ${{ secrets.NOVA_VENDOR_ZIP_AUTH }}
+          NOVA_DEBUG_KEYSTORE_B64: ${{ secrets.NOVA_DEBUG_KEYSTORE_B64 }}
+        run: bash scripts/github_build_apk.sh
+
+      - name: Generate the scenario driver clips (edge-tts, synthetic speech)
+        if: steps.secrets.outputs.ok == 'true'
+        run: |
+          python3 -m pip install -q edge-tts truststore imageio-ffmpeg
+          for s in make_speech make_extra make_context make_noise; do python3 tools/speech-harness/$s.py >/dev/null; done
+          ls tools/speech-harness/speech | wc -l
+
+      - name: Cache the emulator system image
+        if: steps.secrets.outputs.ok == 'true'
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/lib/android/sdk/system-images/android-34/google_apis/x86_64
+          key: sysimg-android-34-google_apis-x86_64-${{ runner.os }}
+
+      - name: Pre-install the emulator system image (retries)
+        if: steps.secrets.outputs.ok == 'true'
+        run: bash scripts/ci_sysimg.sh
+
+      - name: Boot the emulator and run the voice checks
+        if: steps.secrets.outputs.ok == 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          AMAP_WEB_KEY: ${{ secrets.AMAP_WEB_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          cores: 2
+          ram-size: 2048M
+          emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -no-snapshot -camera-back none
+          disable-animations: true
+          script: bash scripts/github_voice_checks.sh "$HOME/nova-drive-build/app/outputs/apk/debug/app-debug.apk" "$VOICE_SHARD"
+
+      - name: Verdict
+        # Fails the shard when one of its own required checks did not pass (scripts/ci_verdict.py,
+        # suite matrix.suite, one of the voice-* shard suites); a check of this shard with no result
+        # is MISSING (FAIL). A run that crashed before writing results fails on the missing file.
+        if: always()
+        run: python3 scripts/ci_verdict.py verdict --manifest config/ci_checks.json --suite "${VOICE_SUITE:-voice}" --results evidence/results.jsonl --json-out evidence/verdict.json --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Push the evidence to ci/voice-evidence
+        # The shards push concurrently: commit on top of the fetched branch, retry on a rejected
+        # push (fetch + rebase), up to 8 times. The run dir is shared; each shard writes <run>/<shard>/.
+        if: always()
+        run: |
+          test -d evidence || exit 0
+          dir="run_${GITHUB_RUN_ID}_a${GITHUB_RUN_ATTEMPT}_${GITHUB_SHA::7}"
+          [ -f app/libs/Msc.jar.STUB ] && dir="${dir}_stubvendor"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mv evidence "/tmp/evidence_$VOICE_SHARD"
+          if git fetch origin ci/voice-evidence 2>/dev/null; then
+            git switch -c ci/voice-evidence FETCH_HEAD
+          else
+            git switch --orphan ci/voice-evidence
+          fi
+          mkdir -p "runs/$dir"
+          mv "/tmp/evidence_$VOICE_SHARD" "runs/$dir/$VOICE_SHARD"
+          git add "runs/$dir/$VOICE_SHARD"
+          git commit -q -m "Voice checks $dir/$VOICE_SHARD (run ${GITHUB_RUN_ID})"
+          for attempt in 1 2 3 4 5 6 7 8; do
+            if git push -q origin HEAD:ci/voice-evidence; then exit 0; fi
+            echo "push rejected (attempt $attempt): fetch and rebase"
+            sleep $((attempt * 3 + RANDOM % 5))
+            git fetch -q origin ci/voice-evidence
+            git rebase -q FETCH_HEAD
+          done
+          echo "::error title=evidence push::gave up after 8 attempts"
+          exit 1
+
+  plan:
+    # A push runs the checks only when the commit message asks: [voice] (every shard). A dispatch
+    # runs the shards named in the "shards" input (all by default); an unknown name fails here.
+    if: ${{ github.event_name != 'push' || contains(github.event.head_commit.message, '[voice]') }}
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+    steps:
+      - name: Pick the shards
+        id: pick
+        env:
+          SHARDS: ${{ inputs.shards }}
+        run: |
+          python3 - <<'PY' >>"$GITHUB_OUTPUT"
+          import json, os
+          all_shards = ["voice-a", "voice-b", "voice-c", "device", "li-weather", "li-place",
+                        "li-traffic", "li-along", "demo"]
+          raw = os.environ.get("SHARDS", "").replace(" ", "")
+          picked = all_shards if raw in ("", "all") else list(dict.fromkeys(s for s in raw.split(",") if s))
+          bad = [s for s in picked if s not in all_shards]
+          if bad or not picked:
+              raise SystemExit(f"unknown shard(s): {bad}")
+          include = [{"shard": s, "suite": s if s.startswith("voice-") else "voice-" + s} for s in picked]
+          print("matrix=" + json.dumps({"include": include}))
+          PY

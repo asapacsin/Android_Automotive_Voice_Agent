@@ -54,6 +54,7 @@ internal class NavigationTraceListener(
 
     override fun onCalculateRouteSuccess(routeIds: IntArray?) {
         val ids = routeIds ?: IntArray(0)
+        latestRetainMeters = null
         DebugVoiceLog.log("nav_calc_success routes=${ids.size}")
         onRouteReady(ids)
     }
@@ -80,6 +81,7 @@ internal class NavigationTraceListener(
     override fun onStartNavi(type: Int) {
         lastNaviType = type
         lastRemainMeters = null
+        latestRetainMeters = null
         proximityStreak = 0
         completionSignaled = false
         DebugVoiceLog.log("nav_started type=$type")
@@ -103,6 +105,7 @@ internal class NavigationTraceListener(
      */
     override fun onArriveDestination() {
         DebugVoiceLog.log("nav_arrived")
+        latestRetainMeters = null
         onNavigationEnded("arrived")
     }
 
@@ -113,6 +116,7 @@ internal class NavigationTraceListener(
      */
     override fun onEndEmulatorNavi() {
         DebugVoiceLog.log("nav_emulator_end")
+        latestRetainMeters = null
         onNavigationEnded("emulator_end")
     }
 
@@ -161,6 +165,7 @@ internal class NavigationTraceListener(
             ),
         )
         val remainMeters = info.pathRetainDistance
+        latestRetainMeters = remainMeters
         val remainSeconds = info.pathRetainTime
         val lights = runCatching { info.routeRemainLightCount }.getOrNull()
         if (lights != null && lights != lastRemainLights) {
@@ -199,7 +204,7 @@ internal class NavigationTraceListener(
         )
     }
 
-    override fun onGetNavigationText(type: Int, text: String?) = Unit
+    override fun onGetNavigationText(type: Int, text: String?) = AmapGuidanceVoice.onNavigationText(text)
 
     override fun onGetNavigationText(text: String?) = Unit
 
@@ -278,6 +283,14 @@ internal class NavigationTraceListener(
     internal data class CameraSample(val type: Int, val limitKmh: Int, val distM: Int)
 
     internal companion object {
+        /**
+         * P68: the last NaviInfo.pathRetainDistance of the current guidance, null before guidance or
+         * after a new route/arrival. AmapRouteLiveInfo reads the car's place on the route from it
+         * (allLength - this). Process-wide like AMapNavi itself; never logged.
+         */
+        @Volatile
+        var latestRetainMeters: Int? = null
+
         /**
          * The only camera log line: type and limit per camera, distance as a bucket. Never a
          * coordinate. Logged only when it changes, so a camera being approached logs a few lines,

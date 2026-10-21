@@ -1,0 +1,27 @@
+{
+ "task_id": "NAVUI-PF",
+ "contract_sha256": "58e2b644062beeeed8c6afdcd29e5466cfafb7414a8c520d14cfe95dd4097dd9",
+ "tip": "120b90d2046bc3207e1015d5cdf0ea157ba68f4b",
+ "verified_by": "planner",
+ "at": "2026-10-20T00:19:37+00:00",
+ "results": [
+  {
+   "id": "bash-syntax",
+   "kind": "lint",
+   "command": "bash -n scripts/github_device_checks.sh",
+   "exit_code": 0,
+   "seconds": 0.0,
+   "log": "/root/nova-drive-build/nova-verify/NAVUI-PF/120b90d2046b-bash-syntax.log",
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "id": "script-tests",
+   "kind": "regression",
+   "command": "python3 -m unittest discover -s scripts/tests -t .",
+   "exit_code": 0,
+   "seconds": 219.3,
+   "log": "/root/nova-drive-build/nova-verify/NAVUI-PF/120b90d2046b-script-tests.log",
+   "log_sha256": "b93d0f64b2ae975a32b0ce7e0b6458e9e2d427e592dc8469b2bb365cb927eccd"
+  }
+ ]
+}

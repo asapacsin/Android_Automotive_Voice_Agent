@@ -9,6 +9,7 @@ enum class VoiceProviderId {
     GPT_LIVE,
     BAIDU,
     BAIDU_FLEX,
+    GEMINI_LIVE,
     FAKE,
     ;
 
@@ -19,6 +20,7 @@ enum class VoiceProviderId {
                 GPT_LIVE -> "gpt_live"
                 BAIDU -> "baidu"
                 BAIDU_FLEX -> "baidu_flex"
+                GEMINI_LIVE -> "gemini_live"
                 FAKE -> "fake"
             }
 
@@ -30,6 +32,7 @@ enum class VoiceProviderId {
                 "gpt_live", "gptlive", "openai_live" -> GPT_LIVE
                 "baidu" -> BAIDU
                 "baidu_flex", "flex" -> BAIDU_FLEX
+                "gemini_live", "gemini" -> GEMINI_LIVE
                 "fake", "mock" -> FAKE
                 else -> error("UNKNOWN_VOICE_PROVIDER")
             }
@@ -72,6 +75,24 @@ data class ProviderCapabilities(
     val unknownEventTolerance: Boolean,
     val requiresCredentials: Boolean,
     val realtimeAudio: Boolean = true,
+    /**
+     * The provider reports when the driver starts and stops speaking. False (Gemini Live): the
+     * local uplink gate supplies that evidence instead, through
+     * [VoiceSessionController.onLocalSpeechActivity]; see ADR-010.
+     */
+    val serverSpeechActivityEvents: Boolean = true,
+    /** The provider can withdraw a tool call it already issued ([DomainVoiceEvent.ToolCallCancelled]). */
+    val toolCallCancellation: Boolean = false,
+    /**
+     * The provider can be asked to speak an app prompt verbatim and correlates the response with
+     * it ([RealtimeVoiceProvider.sendPrompt], [DomainVoiceEvent.AppPromptTurn]; SPEC-018).
+     */
+    val verbatimPromptSpeech: Boolean = false,
+    /**
+     * The provider streams the words of its spoken reply as they are generated, ahead of their
+     * audio, so the output gate can release a checked reply clause by clause (SPEC-014).
+     */
+    val streamedReplyText: Boolean = false,
 ) {
     val functionCalling: Boolean get() = customTools
 }
@@ -89,20 +110,41 @@ object VoiceCatalog {
     const val DEFAULT_PROVIDER_WIRE = "baidu_flex"
     val DEFAULT_PROVIDER: VoiceProviderId = VoiceProviderId.BAIDU_FLEX
     const val DEFAULT_MODEL = "qianfan-realtime-flex-v1"
-    const val QWEN_FLASH = "qwen-audio-3.0-realtime-flash"
-    const val QWEN_PLUS = "qwen-audio-3.0-realtime-plus"
+    /** SPEC-021: Qwen-Omni realtime (Alibaba Cloud, Singapore). Not selectable yet. */
+    const val QWEN_OMNI_FLASH = "qwen3.8-omni-flash-realtime"
+    /**
+     * The owner's experiment model (2026-10-10), on its own free quota so qwen3.8's is kept for the final
+     * demo. The docs list it with function calling, Maia and semantic_vad. The older
+     * qwen3-omni-flash-realtime is not offered: it has no function calling and no Maia.
+     */
+    const val QWEN_OMNI_PLUS_35 = "qwen3.5-omni-plus-realtime"
     const val GPT_LIVE_1 = "gpt-live-1"
     const val BAIDU_LITE_NEAR = "audio-mini-realtime-near"
     const val BAIDU_LITE_FAR = "audio-mini-realtime-far"
     const val BAIDU_PRO_NEAR = "audio-realtime-near"
     const val BAIDU_PRO_FAR = "audio-realtime-far"
     const val BAIDU_FLEX = "qianfan-realtime-flex-v1"
+    const val GEMINI_LIVE_FAST = "gemini-3.8-live"
+    const val GEMINI_LIVE_EXTENDED = "gemini-3.8-live-extended-thinking"
+    /**
+     * The oldest Live model that works, for experiments only (owner 2026-10-12: oldest first; AGENTS.md).
+     * Measured 2026-10-12 on the owner's free key: tools, Mandarin, 2.2-2.3 s. Older
+     * gemini-2.5-flash-native-audio-preview-12-2025 closed our setup with 1007 (malformed setup), so it
+     * is not offered. Never the product default.
+     */
+    const val GEMINI_LIVE_31_PREVIEW = "gemini-3.1-flash-live-preview"
+
+    /** Gemini Live models for experiments, oldest working first (AGENTS.md). */
+    val geminiExperimentOrder: List<String> = listOf(GEMINI_LIVE_31_PREVIEW, GEMINI_LIVE_FAST, GEMINI_LIVE_EXTENDED)
+
+    /** Default Gemini model (ADR-011 N-1). Extended thinking stays opt-in and a saved choice is kept. */
+    const val GEMINI_LIVE_DEFAULT = GEMINI_LIVE_FAST
     const val FAKE_MODEL = "fake-realtime"
 
     val qwenModels: Map<String, String> =
         mapOf(
-            QWEN_FLASH to "Qwen Flash",
-            QWEN_PLUS to "Qwen Plus",
+            QWEN_OMNI_FLASH to "Qwen3.8 Omni Flash（正式 / final）",
+            QWEN_OMNI_PLUS_35 to "Qwen3.5 Omni Plus（实验 / experiments）",
         )
     val gptLiveModels: Map<String, String> =
         mapOf(GPT_LIVE_1 to "GPT Live 1")
@@ -114,18 +156,33 @@ object VoiceCatalog {
             BAIDU_PRO_FAR to "Pro Far",
         )
     val baiduFlexModels: Map<String, String> = mapOf(BAIDU_FLEX to "Flex")
+    val geminiLiveModels: Map<String, String> =
+        linkedMapOf(
+            GEMINI_LIVE_FAST to "Gemini 3.8 Live（推荐）",
+            GEMINI_LIVE_EXTENDED to "Gemini 3.8 Live Extended Thinking",
+            GEMINI_LIVE_31_PREVIEW to "Gemini 3.1 Flash Live Preview（实验 / experiments）",
+        )
+
+    /**
+     * Declared per-model trait: the model accepts `thinkingConfig.thinkingLevel` in its setup.
+     * The fast model rejects it with close code 1007 (probe F27). Undeclared model -> false.
+     */
+    private val geminiThinkingLevelModels: Set<String> = setOf(GEMINI_LIVE_EXTENDED)
+
+    fun geminiAcceptsThinkingLevel(model: String): Boolean = model in geminiThinkingLevelModels
     val fakeModels: Map<String, String> =
         mapOf(FAKE_MODEL to "Fake")
 
     val selectableLabels: Map<String, String> =
-        qwenModels + gptLiveModels + baiduModels + baiduFlexModels + fakeModels
+        qwenModels + gptLiveModels + baiduModels + baiduFlexModels + geminiLiveModels + fakeModels
 
     fun defaultModel(provider: VoiceProviderId): String =
         when (provider) {
-            VoiceProviderId.QWEN -> QWEN_FLASH
+            VoiceProviderId.QWEN -> QWEN_OMNI_FLASH
             VoiceProviderId.GPT_LIVE -> GPT_LIVE_1
             VoiceProviderId.BAIDU -> BAIDU_LITE_NEAR
             VoiceProviderId.BAIDU_FLEX -> BAIDU_FLEX
+            VoiceProviderId.GEMINI_LIVE -> GEMINI_LIVE_DEFAULT
             VoiceProviderId.FAKE -> FAKE_MODEL
         }
 
@@ -135,6 +192,7 @@ object VoiceCatalog {
             VoiceProviderId.GPT_LIVE -> gptLiveModels
             VoiceProviderId.BAIDU -> baiduModels
             VoiceProviderId.BAIDU_FLEX -> baiduFlexModels
+            VoiceProviderId.GEMINI_LIVE -> geminiLiveModels
             VoiceProviderId.FAKE -> fakeModels
         }
 
@@ -144,6 +202,7 @@ object VoiceCatalog {
             in gptLiveModels -> VoiceProviderId.GPT_LIVE
             in baiduModels -> VoiceProviderId.BAIDU
             in baiduFlexModels -> VoiceProviderId.BAIDU_FLEX
+            in geminiLiveModels -> VoiceProviderId.GEMINI_LIVE
             in fakeModels -> VoiceProviderId.FAKE
             else -> error("UNKNOWN_MODEL")
         }
@@ -165,11 +224,13 @@ object VoiceCatalog {
             VoiceProviderId.GPT_LIVE -> "GPT_LIVE_INVALID_MODEL"
             VoiceProviderId.BAIDU -> "BAIDU_INVALID_MODEL"
             VoiceProviderId.BAIDU_FLEX -> "BAIDU_FLEX_INVALID_MODEL"
+            VoiceProviderId.GEMINI_LIVE -> "GEMINI_LIVE_INVALID_MODEL"
             VoiceProviderId.FAKE -> "FAKE_INVALID_MODEL"
         }
 
     fun capabilities(provider: VoiceProviderId): ProviderCapabilities =
         when (provider) {
+            // SPEC-021, from the docs 2026-10-09; measured in Q-1.
             VoiceProviderId.QWEN ->
                 ProviderCapabilities(
                     provider = provider,
@@ -180,6 +241,11 @@ object VoiceCatalog {
                     workResultInjection = true,
                     unknownEventTolerance = true,
                     requiresCredentials = true,
+                    serverSpeechActivityEvents = true,
+                    toolCallCancellation = false,
+                    verbatimPromptSpeech = false,
+                    // response.audio_transcript.delta streams the words ahead of the audio (SPEC-014).
+                    streamedReplyText = true,
                 )
             VoiceProviderId.GPT_LIVE ->
                 ProviderCapabilities(
@@ -214,6 +280,23 @@ object VoiceCatalog {
                     unknownEventTolerance = true,
                     requiresCredentials = true,
                 )
+            // Measured 2026-09-29 (docs/reports/2026-09-29-gemini-live-probe.md): no client
+            // response cancel, server VAD interrupts by itself, no speech-started/stopped events,
+            // tool results as toolResponse, and toolCallCancellation in the protocol.
+            VoiceProviderId.GEMINI_LIVE ->
+                ProviderCapabilities(
+                    provider = provider,
+                    customTools = true,
+                    serverVadInterrupt = true,
+                    clientResponseCancel = false,
+                    optionalInputCommit = false,
+                    workResultInjection = true,
+                    unknownEventTolerance = true,
+                    requiresCredentials = true,
+                    serverSpeechActivityEvents = false,
+                    toolCallCancellation = true,
+                    verbatimPromptSpeech = true,
+                )
             VoiceProviderId.FAKE ->
                 ProviderCapabilities(
                     provider = provider,
@@ -235,11 +318,11 @@ object VoiceModels {
     const val LITE_FAR = VoiceCatalog.BAIDU_LITE_FAR
     const val PRO_NEAR = VoiceCatalog.BAIDU_PRO_NEAR
     const val PRO_FAR = VoiceCatalog.BAIDU_PRO_FAR
-    const val QWEN_FLASH = VoiceCatalog.QWEN_FLASH
-    const val QWEN_PLUS = VoiceCatalog.QWEN_PLUS
     const val GPT_LIVE_1 = VoiceCatalog.GPT_LIVE_1
     const val FAKE = VoiceCatalog.FAKE_MODEL
     const val FLEX = VoiceCatalog.BAIDU_FLEX
+    const val GEMINI_LIVE_DEFAULT = VoiceCatalog.GEMINI_LIVE_DEFAULT
+    const val GEMINI_LIVE_EXTENDED = VoiceCatalog.GEMINI_LIVE_EXTENDED
 
     val labels: Map<String, String>
         get() = VoiceCatalog.selectableLabels

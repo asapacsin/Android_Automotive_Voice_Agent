@@ -1,0 +1,31 @@
+schema: nova-task-contract/1
+task_id: OVERSPEED-XSM
+title: Overspeed evidence on the 十字门 route, whose speed cameras carry a posted limit (the CI drive route's cameras report limit 0)
+branch: exec/overspeed-xsm
+base_commit: 36741982abd42da74929fa3ff4e75dd3a55fd465
+approved_paths:
+  - scripts/github_device_checks.sh
+  - config/ci_checks.json
+  - scripts/tests/**
+  - docs/CI.md
+allowed_changes:
+  - "Evidence: drive shard at 80 km/h on the coordinate route gave hud_limitKmh=[0] camera_limitKmh=[0] (run 39452886908); the 2026-09-21 run on the 十字门 route (nav_route 十字门, nav_start emulator 50 km/h) logged nav_camera_ahead limitKmh=40, nav_speed over=1 and nav_play_ring. TEST_MATRIX rows NAV-MID-ROUTE-001 (overspeed ring on 40-limit camera at 50 km/h) and NAV-OVERSPEED-001 (spoken over-speed warning, guidance toggle off) need it - read both rows' pass criteria (grep -n the ids in TEST_MATRIX.yaml, ~30 lines each)"
+  - "Add a section at the end of the drive shard of scripts/github_device_checks.sh: ensure_web_key; route to 十字门 through the same debug path the 2026-09-21 run used (nav_route by place name - check DebugToolReceiver tool names), start the emulator drive at 50 km/h, drive for a bounded time (<= 4 min, stop early once nav_overspeed_alert or nav_speed over=1 has appeared and a few seconds passed), stop navigation; note counts only (limits seen, speed_over, ring, overspeed_alert, guidance_play) and record optional checks device:NAV-OVERSPEED-XSM-RING (speed_over>=1 and ring>=1) and device:NAV-OVERSPEED-XSM-ALERT (nav_overspeed_alert >= 1) - optional in suites device and device-drive"
+  - "Keep the existing drive section and every pf condition unchanged; every tool() call has two arguments (set -eu); grep -c with || true; no coordinates or place names in notes beyond the fixed destination word already in the script"
+architecture_constraints:
+  - Scripts and manifest only; no app source; the shard's added time stays under 5 minutes
+forbidden_changes:
+  - No change to other shards
+forbidden_paths:
+  - .claude/**
+  - app/**
+  - TEST_MATRIX.yaml
+required_verification:
+  - id: script-tests
+    kind: regression
+    command: python3 -m unittest discover -s scripts/tests -t .
+  - id: bash-syntax
+    kind: lint
+    command: bash -n scripts/github_device_checks.sh
+acceptance_criteria:
+  - A drive-shard run records both new checks with counts

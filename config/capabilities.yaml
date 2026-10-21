@@ -25,6 +25,9 @@ meta:
   updated: 2026-09-22
   commit_at_update: 2cdc002
   device: "Xiaomi 24069RA21C (2391ff70), Android SDK 36"
+  language_policy: >
+    Mandarin-only (owner 2026-10-19, YUE-POLICY-001 option A; DECISIONS/ADR-002 addendum).
+    Cantonese is not supported and is not measured; the app must never claim it.
   completion_invariant: >
     NEW_FEATURE_WORKS AND AFFECTED_OLD_PROTECTED_CAPABILITIES_STILL_WORK AND NO_UNEXPLAINED_REGRESSION.
     A change may complete only when every supported capability in this registry still has PASS
@@ -181,6 +184,25 @@ media:
     tool: control_music
     verified: device
     protected_by: [MUSIC-PLAY-001, AFFORDANCE-DEVICE-001]
+  play_by_description:
+    tool: play_music
+    verified: unit
+    required_scope: END_TO_END
+    protected_by: [MUSIC-UNIT-001, MUSIC-TEXT-LIVE-001, MUSIC-VLC-EMU-001, MUSIC-APP-DEVICE-001]
+    evidence: >
+      MediaServerPlayMusicTest, MediaDomainPlayMusicTest, FalseCapabilityClaimTest (JVM, fake
+      hand-off and session source). Never run on a device.
+    required_behaviour: >
+      A named or described song (SPEC-017) is handed to the driver's music app with
+      MEDIA_PLAY_FROM_SEARCH and read back from the active MediaSession. Results: playing (with
+      now_playing and matches_request), requested_unverified (no notification access - may say only
+      that the app was asked), ok=false NOT_PLAYING / NO_MUSIC_APP / HANDOFF_REJECTED /
+      MUSIC_HANDOFF_UNAVAILABLE. Only now_playing may be claimed (I-1). control_music{play} is still
+      refused with MEDIA_LIBRARY_UNSUPPORTED for such a request, so the bundled track never answers it.
+    notes: >
+      Replaces unsupported.media_library. Its evidence, kept: on 2391ff70 2026-09-19 the named-song
+      request returned MEDIA_LIBRARY_UNSUPPORTED on control_music and nothing played, while
+      「播放音乐」 still returned music_playing. That refusal remains the guard on the bundled path.
   next_track:
     tool: null
     verified: unsupported
@@ -229,11 +251,39 @@ climate:
       When two dimensions were recently adjusted, or none was, 「再低一点」 must be asked about in one
       sentence and no tool called. Guessing correctly is still wrong.
 
+body:
+  window:
+    tool: control_window
+    verified: unit
+    required_scope: COMPONENT
+    protected_by: [BODY-UNIT-001]
+    backend: SimulatedVehicleControl
+    evidence: "WindowToolHandlerTest, BodyDomainTest, ActionAnnouncementTest (SPEC-015 B1/B4/B5)."
+    notes: "Simulated windows. Real vehicle = one new VehicleControlPort in VehicleControlProvider."
+  seat_height:
+    tool: control_seat
+    verified: unit
+    required_scope: COMPONENT
+    protected_by: [BODY-UNIT-001]
+    backend: SimulatedVehicleControl
+    evidence: "SeatToolHandlerTest, BodyDomainTest, ActionAnnouncementTest (SPEC-015 B1/B4/B5)."
+    notes: "Simulated seat. Real vehicle = one new VehicleControlPort in VehicleControlProvider."
+
+comfort:
+  scenario:
+    tool: run_scenario
+    verified: unit
+    required_scope: COMPONENT
+    protected_by: [SCENARIO-UNIT-001]
+    backend: SimulatedVehicleControl
+    evidence: "ComfortScenariosTest (SPEC-015 FZ-09/FZ-10, B7/B8): mosquito | mosquito_done | stuffy | drowsy through the same tool servers as a direct call."
+    notes: "Fixed playbooks in ComfortScenarios; partial failure reported step by step; drowsy only offers a rest stop."
+
 vision:
   describe_camera_view:
     tool: describe_camera_view
     verified: device
-    protected_by: [VISION-001]
+    protected_by: [VISION-001, VISION-UNIT-001]
     evidence: "看看前面有什么 -> camera frame -> Qianfan vision -> spoken answer"
     notes: "Needs a Qianfan API key; a legacy OAuth token is rejected with 401."
 
@@ -254,6 +304,13 @@ speech:
     verified: device
     protected_by: [SLEEP-001]
     evidence: "休眠 -> SLEEP; speech in SLEEP ignored; tap or wake word -> ACTIVE"
+  speaking_style:
+    tool: set_speaking_style
+    verified: unit
+    required_scope: COMPONENT
+    protected_by: [STYLE-UNIT-001]
+    evidence: "SpeakingStyleToolTest: sweet/default set and persist the style; PersonaProfiles.compose carries SWEET_TONE"
+    notes: "Tone only; the voice never changes. Sticky across turns, sessions, sleep and restarts (SPEC-015 FZ-11/FZ-12/B6)."
   interrupt_tts_by_voice:
     tool: null
     verified: unsupported
@@ -282,7 +339,7 @@ speech:
   post_speech_echo_protection:
     tool: null
     verified: device
-    protected_by: [ECHO-001]
+    protected_by: [ECHO-001, BARGE-IN-EVIDENCE-001]
     regression_test: echoCandidateHoldStaysWired
     required_behaviour: >
       Residual cabin echo of the assistant's own reply must not become a phantom 「没听清」 turn.
@@ -314,7 +371,7 @@ phone:
   call_without_sim:
     tool: place_call
     verified: device
-    protected_by: [CALL-NOSIM-001]
+    protected_by: [CALL-NOSIM-001, CALL-NOSIM-UNIT-001]
     evidence: "2026-09-20 on 2391ff70 (gsm.sim.state=ABSENT): NO_TELEPHONY, no dialler started"
     notes: "A car that cannot call says so. Starting the dialler and reporting success would be I-1's exact failure."
 
@@ -345,19 +402,21 @@ live_info:
     notes: "REST v3/weather/weatherInfo; adcode from the destination POI or v3/geocode/regeo. Cached 10 min per city."
   route_traffic:
     tool: query_live_info
-    verified: implemented
+    verified: unit
     required_scope: END_TO_END
     protected_by: [LIVE-INFO-UNIT-001, TRUTH-WEATHER-001, LIVE-INFO-DEVICE-001, LIVE-INFO-L6-001]
     evidence: >
-      LiveInfoToolTest covers the tool against a fake RouteLiveInfoSource; the SDK read
-      (AmapRouteLiveInfo, AMapNavi.getTrafficStatuses) has never run on a device.
+      RouteLiveInfoMappingTest covers the remaining-route/path traffic choice; LiveInfoToolTest covers
+      the tool against a fake RouteLiveInfoSource. The SDK read (AmapRouteLiveInfo,
+      AMapNavi.getTrafficStatuses) has never run on a device.
   along_route:
     tool: query_live_info
-    verified: implemented
+    verified: unit
     required_scope: END_TO_END
     protected_by: [LIVE-INFO-UNIT-001, LIVE-INFO-DEVICE-001, LIVE-INFO-L6-001]
     evidence: >
-      LiveInfoAlongRouteWiringTest: results open the existing picker and index 1 calculates a route
+      RouteLiveInfoMappingTest covers route-POI to candidate mapping (id fallback, no-point drop,
+      distance sort); LiveInfoToolTest covers the tool; LiveInfoAlongRouteWiringTest: results open the existing picker and index 1 calculates a route
       to the first. The RoutePOISearch call itself has never run on a device.
     notes: "Showing the picker ends active guidance, exactly as a new navigate_to does."
   place_details:
@@ -374,24 +433,17 @@ unsupported:
     recognised_by: UtteranceIntentResolver
     protected_by: [TRUTH-BAIT-001]
     required_behaviour: "One honest sentence. Never 正在调整音量."
-  windows_seats_doors_lights_wipers:
+  sunroof_doors_lights_wipers:
     tool: null
     verified: unsupported
     recognised_by: UtteranceIntentResolver
     protected_by: [TRUTH-BAIT-001]
-  media_library:
-    tool: null
-    verified: unsupported
-    recognised_by: ActionClaimGuard.isSpecificMediaRequest
-    protected_by: [MUSIC-NAMED-001, TRUTH-MEDIA-001]
-    evidence: >
-      FalseCapabilityClaimTest, and on 2391ff70 2026-09-19: the named-song request returned
-      MEDIA_LIBRARY_UNSUPPORTED and nothing played, while 「播放音乐」 still returned music_playing.
     required_behaviour: >
-      A request naming a song, an artist or a style is refused in one sentence. It must never start
-      the bundled track: something would play, the result would be ok=true, and the driver would be
-      told they got what they asked for. Refused at AndroidToolDispatcher with
-      MEDIA_LIBRARY_UNSUPPORTED, so a prompt rule is not the only thing preventing it (I-11).
+      Refuse in one honest sentence (SPEC-006 F-7). A control_window call - direct or as a
+      run_scenario step - whose driver words (this turn's, transcript normalised by TranscriptText)
+      name one of UtteranceIntentResolver's cues for this id (天窗/天幕/后备箱/车门/车灯/雨刷) and no
+      window is refused UNSUPPORTED_BODY_PART before anything moves (ToolCallGuards, OPEN_PROBLEMS
+      P56). JVM: ToolCallGuardSunroofTest, ComfortScenariosTest, UtteranceIntentResolverTest.
   # SPEC-011 split realtime_weather_traffic_news: weather and route traffic moved to live_info.*;
   # what is left has no source at all.
   realtime_news_prices:
@@ -415,6 +467,7 @@ change_impact:
   voice_session_lifecycle:
     components:
       - VoiceSessionController
+      - GuidanceSparingCancel
       - PcmAudioCapture
       - AndroidMicrophonePort
       - VoiceSessionGateway
@@ -439,6 +492,14 @@ change_impact:
       - EmptyResponseRetryPolicy
       - NetworkFaults
       - BaiduFlexClient
+      - OpenAiRealtimeClient
+      - ReplyUsage
+      - DeliveredStyle
+      - RealtimeDialect
+      - BaiduFlexDialect
+      - QwenOmniDialect
+      - QwenOmniClient
+      - QwenOmniProvider
       - BaiduRealtimeClient
       - BaiduFlexProvider
       - BaiduFlexProtocol
@@ -446,6 +507,30 @@ change_impact:
       - BaiduAccessTokenClient
       - BaiduDirectRealtimeProvider
       - ConversationResetPolicy
+      - GeminiLiveClient
+      - TranscriptText
+      - QwenSettings
+      - GeminiTurnTiming
+      - GeminiTurnDiagnostics
+      - NoAnswerReask
+      - GeminiCorrectionGrace
+      - WaitCues
+      - WaitCueClock
+      - ReplyStreaming
+      - ProviderCueCapture
+      - GeminiPromptTurn
+      - GuidanceClaims
+      - GuidanceBlockers
+      - GeminiLiveProtocol
+      - GeminiLiveProvider
+      - RealtimeProviderFactory
+      - AssistantVoice
+      - AssistantVoiceRevoicer
+      - AzureSpeechVoice
+      - ClauseSegmenter
+      - GeminiSpeechText
+      - HostAudioTap
+      - PlayoutBargeInQualification
       - Results
       - Policy
       - StructuredCommand
@@ -461,16 +546,27 @@ change_impact:
     components:
       - EmbeddedNavigationController
       - AmapNaviViewHost
+      - AmapCoordinates
       - AmapDrivingPresentation
+      - MapPresentationPolicy
       - NavigationProgressTrace
       - NavigationStateStore
       - NavigationCandidates
       - LiveDestinationCandidateSource
       - NavigationHostGateway
       - NavigationGuidanceVoice
+      - GuidanceRelay
+      - GuidanceFidelity
+      - GuidanceTranscripts
+      - GuidanceSession
+      - GuidanceSpeaker
+      - GuidanceArbiterView
+      - Cancellable
       - NaviPresentation
       - DrivingSpeedHud
       - DrivingSpeedHudView
+      - OverspeedAlert
+      - RouteCameraSummary
       - NaviEngine
       - AmapPrivacyCompliance
       - NavigationVoiceOutput
@@ -495,6 +591,12 @@ change_impact:
       - InitialLocationRecenter
       - RouteLiveInfo
       - AmapRouteLiveInfo
+      - AlongRouteCorridor
+      - StaticMapModel
+      - StaticMapFetcher
+      - TextNavigationPanel
+      - TextNavigationPanelModel
+      - AmapGuidanceVoice
       - Location
       - Results
       - Policy
@@ -518,6 +620,8 @@ change_impact:
     components:
       - ActionClaimGuard
       - DriverTurn
+      - DriverTurnPipeline
+      - RealtimeToolCatalog
       - UtteranceIntentResolver
       - ProductCapabilities
       - DriverContext
@@ -534,7 +638,7 @@ change_impact:
       - speech.capability_help
       - speech.action_claim_truthfulness
       - unsupported.volume_control
-      - unsupported.media_library
+      - media.play_by_description
       - unsupported.realtime_news_prices
       - live_info.weather
       - phone.place_call

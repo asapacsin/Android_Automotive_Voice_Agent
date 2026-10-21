@@ -1,0 +1,36 @@
+{
+ "task_id": "TRYOUT-CI",
+ "contract_sha256": "96e20cbef35ec4a323431f11891c3ec0f6f3832d1cd9a7edd49518972ba88d43",
+ "tip": "ad897251143172f1abf26c65193763aa7c694546",
+ "verified_by": "planner",
+ "at": "2026-10-20T04:55:12+00:00",
+ "results": [
+  {
+   "id": "workflow-yaml",
+   "kind": "lint",
+   "command": "python3 -c \"import yaml;yaml.safe_load(open('.github/workflows/live-jvm.yml'))\"",
+   "exit_code": 0,
+   "seconds": 0.1,
+   "log": "/root/nova-drive-build/nova-verify/TRYOUT-CI/ad8972511431-workflow-yaml.log",
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "id": "bash-syntax",
+   "kind": "lint",
+   "command": "bash -n scripts/github_live_jvm.sh",
+   "exit_code": 0,
+   "seconds": 0.0,
+   "log": "/root/nova-drive-build/nova-verify/TRYOUT-CI/ad8972511431-bash-syntax.log",
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "id": "script-tests",
+   "kind": "regression",
+   "command": "python3 -m unittest discover -s scripts/tests -t .",
+   "exit_code": 0,
+   "seconds": 197.3,
+   "log": "/root/nova-drive-build/nova-verify/TRYOUT-CI/ad8972511431-script-tests.log",
+   "log_sha256": "e6d36b1b60732744596aff66c17211273a2e078ac2c88e7fc5ef69522ef47fa8"
+  }
+ ]
+}

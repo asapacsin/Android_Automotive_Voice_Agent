@@ -1,0 +1,96 @@
+{
+  "_doc": "CI check manifest read by scripts/ci_verdict.py. Each suite lists required and optional check ids (a trailing * is a prefix wildcard that must match at least one result). A required check passes only on PASS; FAIL, FLAKY, SKIPPED or a missing result fail the job, BLOCKED blocks it. Quarantine entries need all of id, suite, reason, owner, tracking, remove_when, expires (YYYY-MM-DD, at most 30 days ahead); they only cover measured FAIL/FLAKY results, and an expired entry makes the manifest invalid.",
+  "suites": {
+    "tier-a-gates": {
+      "description": "Tier A gates: CI verdict selftest, script tests, delegation and review audit, review-hook selftest, test matrix structural validation (required); evidence-bind currency is optional here and enforced by Tier C --release.",
+      "required": ["ci:verdict-selftest", "ci:script-tests", "gate:delegation", "gate:review-records", "gate:review-hook-selftest", "matrix:validate"],
+      "optional": ["matrix:evidence-current"]
+    },
+    "tier-a-build": {
+      "description": "Tier A build: debug APK build, JVM test run and JUnit XML per module.",
+      "required": ["build:assembleDebug", "gradle:test", "junit:app", "junit:behavior-test", "junit:contracts", "junit:evaluation", "junit:ingress", "junit:safety", "junit:simulator"],
+      "optional": []
+    },
+    "voice": {
+      "description": "Voice checks on the emulator against the Gemini live harness (free tier, not deterministic). devrows: is the scenarios-device.json runner. Full-run union; Voice checks runs it as the per-shard suites voice-* (one verdict per shard, docs/CI.md).",
+      "required": ["build:vendor-real", "voice:runner", "voice:S*", "devrows:runner", "devrows:*", "liveinfo:runner", "liveinfo:*", "voice:quota-guard"],
+      "optional": ["voice:demo-recording", "wake:WAKE-SYNTH-001"]
+    },
+    "voice-a": {
+      "description": "Voice checks shard voice-a: scenarios.json S1..S7.",
+      "required": ["build:vendor-real", "voice:runner", "voice:S1", "voice:S2", "voice:S3", "voice:S4", "voice:S4b", "voice:S5", "voice:S5b", "voice:S6", "voice:S7", "voice:quota-guard"],
+      "optional": []
+    },
+    "voice-b": {
+      "description": "Voice checks shard voice-b: scenarios.json S8..S14.",
+      "required": ["build:vendor-real", "voice:runner", "voice:S8", "voice:S9", "voice:S10", "voice:S11", "voice:S12", "voice:S13", "voice:S14", "voice:quota-guard"],
+      "optional": []
+    },
+    "voice-c": {
+      "description": "Voice checks shard voice-c: scenarios.json S15..S21.",
+      "required": ["build:vendor-real", "voice:runner", "voice:S15", "voice:S16", "voice:S17", "voice:S18", "voice:S19", "voice:S20", "voice:S21", "voice:quota-guard"],
+      "optional": []
+    },
+    "voice-device": {
+      "description": "Voice checks shard device: scenarios-device.json (devrows:).",
+      "required": ["build:vendor-real", "devrows:runner", "devrows:AFF-PAUSE", "devrows:AFF-AC", "devrows:AFF-RECENTER", "devrows:NEWS", "devrows:VISION", "devrows:FZ-MOSQ", "devrows:FZ-MOSQ-DONE", "devrows:FZ-SEAT", "devrows:FZ-LOWER", "devrows:FZ-DROWSY", "voice:quota-guard"],
+      "optional": []
+    },
+    "voice-li-weather": {
+      "description": "Voice checks shard li-weather: LI-WEATHER x10 (LIVE-INFO-DEVICE-001, >=9/10).",
+      "required": ["build:vendor-real", "liveinfo:runner", "liveinfo:LI-WEATHER", "voice:quota-guard"],
+      "optional": []
+    },
+    "voice-li-place": {
+      "description": "Voice checks shard li-place: LI-PLACE x10 (LIVE-INFO-DEVICE-001, >=9/10).",
+      "required": ["build:vendor-real", "liveinfo:runner", "liveinfo:LI-PLACE", "voice:quota-guard"],
+      "optional": []
+    },
+    "voice-li-traffic": {
+      "description": "Voice checks shard li-traffic: LI-TRAFFIC x10 (LIVE-INFO-DEVICE-001, >=9/10).",
+      "required": ["build:vendor-real", "liveinfo:runner", "liveinfo:LI-TRAFFIC", "voice:quota-guard"],
+      "optional": []
+    },
+    "voice-li-along": {
+      "description": "Voice checks shard li-along: LI-ALONG x10 (LIVE-INFO-DEVICE-001, >=9/10).",
+      "required": ["build:vendor-real", "liveinfo:runner", "liveinfo:LI-ALONG", "voice:quota-guard"],
+      "optional": []
+    },
+    "voice-demo": {
+      "description": "Voice checks shard demo: the review demo recording and the synthetic wake.",
+      "required": ["build:vendor-real", "voice:quota-guard"],
+      "optional": ["voice:demo-recording", "wake:WAKE-SYNTH-001"]
+    },
+    "device": {
+      "description": "Device rows on the emulator without a voice model session (scripts/github_device_checks.sh). Full-run union; Device checks runs it as the per-shard suites device-* (one verdict per shard, docs/CI.md).",
+      "required": ["build:vendor-real", "device:app-up", "device:PLACE-UNSET-001", "device:PLACE-SAVE-001", "device:APPS-001", "device:NAV-ROUTE-001", "device:NAV-START-001", "device:NAV-UI-002", "device:NAV-UI-003", "device:NAV-UI-005", "device:NAV-UI-007", "device:NAV-E2E-ARRIVAL-001", "device:NAV-CRASH-001", "device:PROCDEATH-001", "device:PERM-DENY-001", "device:TRANSCRIPT-FADE-EMU-001", "device:PIECE-P61", "device:PIECE-P63"],
+      "optional": ["device:CALL-NOSIM-001", "device:P59", "device:NAV-UI-004", "device:NAV-UI-006", "device:LIVE-INFO-SDK-TRAFFIC", "device:LIVE-INFO-SDK-ALONG"]
+    },
+    "navpiece": {
+      "description": "Navigation demo pieces (scripts/github_nav_demo.sh): navpiece:complete (a normal finish) and every recorded navpiece: check are required; the video is optional.",
+      "required": ["build:vendor-real", "navpiece:complete", "navpiece:*"],
+      "optional": ["navpiece:video"]
+    },
+    "device-dispatch": {
+      "description": "Device checks shard dispatch (DEVICE_SHARD=dispatch): dispatch rows (app-up, PLACE-UNSET/SAVE, CALL-NOSIM, APPS), PIECE P53 timing notes, LIVE-INFO-SDK. build:vendor-real is recorded by the shared setup and required in every shard.",
+      "required": ["build:vendor-real", "device:app-up", "device:PLACE-UNSET-001", "device:PLACE-SAVE-001", "device:APPS-001"],
+      "optional": ["device:CALL-NOSIM-001", "device:LIVE-INFO-SDK-TRAFFIC", "device:LIVE-INFO-SDK-ALONG"]
+    },
+    "device-drive": {
+      "description": "Device checks shard drive (DEVICE_SHARD=drive): simulated drive to arrival and the NAV-UI rows. build:vendor-real is recorded by the shared setup and required in every shard.",
+      "required": ["build:vendor-real", "device:NAV-ROUTE-001", "device:NAV-START-001", "device:NAV-UI-002", "device:NAV-UI-003", "device:NAV-UI-005", "device:NAV-UI-007", "device:NAV-E2E-ARRIVAL-001", "device:NAV-CRASH-001"],
+      "optional": ["device:NAV-UI-004", "device:NAV-UI-006"]
+    },
+    "device-lifecycle": {
+      "description": "Device checks shard lifecycle (DEVICE_SHARD=lifecycle): P59, process death, revoked microphone, transcript bubble probe. build:vendor-real is recorded by the shared setup and required in every shard.",
+      "required": ["build:vendor-real", "device:PROCDEATH-001", "device:PERM-DENY-001", "device:TRANSCRIPT-FADE-EMU-001"],
+      "optional": ["device:P59"]
+    },
+    "device-navpiece": {
+      "description": "Device checks shard navpiece (DEVICE_SHARD=navpiece): nav demo pieces P61/P63. build:vendor-real is recorded by the shared setup and required in every shard.",
+      "required": ["build:vendor-real", "device:PIECE-P61", "device:PIECE-P63"],
+      "optional": []
+    }
+  },
+  "quarantine": []
+}

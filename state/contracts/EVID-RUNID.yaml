@@ -1,0 +1,32 @@
+schema: nova-task-contract/1
+task_id: EVID-RUNID
+title: Live JVM evidence folders carry the GitHub run id so two runs on one commit in the same minute no longer overwrite each other
+branch: exec/evid-runid
+base_commit: 904f4bb13d02c374ac0bf21abf9ba7c7913dd89f
+approved_paths:
+  - scripts/github_live_jvm.sh
+  - scripts/tests/test_live_jvm.py
+  - .github/workflows/live-jvm.yml
+allowed_changes:
+  - The evidence dir becomes runs/run_<date>_<sha7>_r<GITHUB_RUN_ID>/<piece> when GITHUB_RUN_ID is set (unchanged format otherwise); header comment and workflow comment updated to match
+  - A unit test proves two runs with different GITHUB_RUN_ID on the same sha and minute get different dirs, and the no-run-id format is unchanged
+architecture_constraints:
+  - I-8 unchanged - only summary.txt is pushed
+forbidden_changes:
+  - No change to summaries, pieces, verdict rules or push mechanics other than the dir name
+forbidden_paths:
+  - "*/src/**"
+  - tools/**
+  - TEST_MATRIX.yaml
+required_verification:
+  - id: bash-syntax
+    kind: lint
+    command: bash -n scripts/github_live_jvm.sh
+  - id: workflow-yaml
+    kind: lint
+    command: python3 -c "import yaml;yaml.safe_load(open('.github/workflows/live-jvm.yml'))"
+  - id: live-jvm-tests
+    kind: regression
+    command: python3 -m unittest scripts/tests/test_live_jvm.py
+acceptance_criteria:
+  - Two same-minute runs on one sha keep both summaries on ci/live-jvm-evidence

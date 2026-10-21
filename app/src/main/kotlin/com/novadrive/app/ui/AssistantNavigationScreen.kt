@@ -214,6 +214,11 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
         overlay.bindListening(state)
     }
 
+    /** SPEC-020: the 3 s 「处理中」 label. It does not change the session state. */
+    fun setWorkingCue(showing: Boolean) {
+        overlay.setWorkingCue(showing)
+    }
+
     var onListeningToggle: (() -> Unit)?
         get() = overlay.onListeningToggle
         set(value) {
@@ -224,8 +229,19 @@ class AssistantNavigationScreen(context: Context) : FrameLayout(context) {
         overlay.appendTranscript(line)
     }
 
+    /** B-035: what keeps the last exchange on screen although the turn is over. */
+    var transcriptHeld: () -> Boolean
+        get() = overlay.transcriptHeld
+        set(value) {
+            overlay.transcriptHeld = value
+        }
+
     fun showError(code: String, message: String) {
         overlay.showError(code, message)
+    }
+
+    fun clearError(code: String) {
+        overlay.clearError(code)
     }
 
     /** Driver opened the camera: show it and have the assistant look once, without a button. */

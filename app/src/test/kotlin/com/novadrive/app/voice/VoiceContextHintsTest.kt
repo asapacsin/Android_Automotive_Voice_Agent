@@ -8,6 +8,17 @@ import org.junit.jupiter.api.Test
 
 class VoiceContextHintsTest {
     @Test
+    fun aClimateChangeAloneIsNotAnOpenQuestion() {
+        // B-035: after 有点热 only a referent exists; the bubble must still be allowed to fade.
+        assertFalse(VoiceContextHints.questionOpen(null, cameraOpen = false, pendingClarification = false))
+        assertFalse(VoiceContextHints.questionOpen(NavigationPhase.NAVIGATING, cameraOpen = false, pendingClarification = false))
+        assertTrue(VoiceContextHints.questionOpen(NavigationPhase.AWAITING_DESTINATION_SELECTION, false, false))
+        assertTrue(VoiceContextHints.questionOpen(NavigationPhase.AWAITING_ROUTE_SELECTION, false, false))
+        assertTrue(VoiceContextHints.questionOpen(null, cameraOpen = true, pendingClarification = false))
+        assertTrue(VoiceContextHints.questionOpen(null, cameraOpen = false, pendingClarification = true))
+    }
+
+    @Test
     fun nothingOnScreenMeansNoHint() {
         assertNull(VoiceContextHints.compose(null, cameraOpen = false))
         assertNull(VoiceContextHints.compose(NavigationPhase.IDLE, cameraOpen = false))
@@ -42,6 +53,17 @@ class VoiceContextHintsTest {
         val hint = VoiceContextHints.compose(NavigationPhase.NAVIGATING, cameraOpen = false)!!
         assertTrue(hint.contains("正在导航"))
         assertTrue(hint.contains("exit_navigation_mode"))
+    }
+
+    @Test
+    fun vagueNeverMindMidDriveKeepsNavigating() {
+        // Decider 2026-10-16, option B: 「不去了」 mid-drive does not end navigation.
+        val hint = VoiceContextHints.compose(NavigationPhase.NAVIGATING, cameraOpen = false)!!
+        assertTrue(hint.contains("只有用户明确要结束导航"))
+        assertTrue(hint.contains("「算了」「不用了」「不去了」「没事了」不是结束导航"))
+        assertTrue(hint.contains("想结束可以说「结束导航」"))
+        assertTrue(hint.contains("不要问\"要结束导航吗\""))
+        assertFalse(hint.contains("「不去了」时调用"))
     }
 
     @Test

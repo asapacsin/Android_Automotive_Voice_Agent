@@ -1,0 +1,33 @@
+schema: nova-task-contract/1
+task_id: P67-FIX
+title: P67 - a model get_state on a control the local path already ran this turn is refused DUPLICATE_IN_TURN
+branch: exec/p67-fix
+base_commit: c6b279017bf06ace97e0e3f48fcd9f44dc524a3b
+approved_paths:
+  - app/src/main/kotlin/com/novadrive/app/voice/DriverContext.kt
+  - app/src/test/kotlin/com/novadrive/app/CapabilityClaimGroupTest.kt
+  - app/src/test/kotlin/com/novadrive/app/CapabilityClaimLogTest.kt
+allowed_changes:
+  - In DriverContext.claimCapability, a read action (get_state) claimed by MODEL returns false when LOCAL holds any claim on the same epoch and tool; a read is never recorded as a claim, so it never blocks a later LOCAL or MODEL claim; MODEL get_state with no LOCAL claim returns true
+  - KDoc on claimCapability/controlGroup updated with the P67 evidence (Voice checks run 39285245437 at c6b2790 - LOCAL group=power then MODEL group=get_state, same epoch and ctx, executed)
+  - Tests - local power_on then model get_state -> false; model get_state first then local power_on -> true; model get_state with no local claim -> true; existing CapabilityClaimGroupTest rows keep passing; CapabilityClaimLogTest may add a get_state row
+architecture_constraints:
+  - SPEC-010 A7/B4 - a model call for the same capability in the turn the local path ran is refused DUPLICATE_IN_TURN
+  - DriverContext stays the single owner of claims; ToolCallGuards and ScreenAffordanceRunner unchanged
+forbidden_changes:
+  - No change to power/playback grouping, claimDispatch, refusal codes or any guard order
+forbidden_paths:
+  - "scripts/**"
+  - TEST_MATRIX.yaml
+  - OPEN_PROBLEMS.md
+required_verification:
+  - id: app-unit
+    kind: regression
+    command: python3 scripts/compact_test.py -- ./gradlew --offline -q :app:testDebugUnitTest
+  - id: behavior-test
+    kind: regression
+    command: python3 scripts/compact_test.py -- ./gradlew --offline -q :behavior-test:test
+acceptance_criteria:
+  - The observed P67 order (LOCAL power claim, then MODEL get_state, same epoch) refuses the model call
+  - A model-first read never blocks the local path
+  - Full app unit and behavior-test suites pass; the AFF-AC re-measure on the next Voice checks run passes

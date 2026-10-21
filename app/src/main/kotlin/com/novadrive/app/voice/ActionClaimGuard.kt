@@ -1,9 +1,11 @@
 package com.novadrive.app.voice
 
+import com.novadrive.app.tools.SpeechDomain
 import com.novadrive.contracts.CapabilityCatalog
 import com.novadrive.contracts.CapabilityIds
 import com.novadrive.contracts.ProductCapabilities
 import com.novadrive.ingress.realtime.ResponseOutcome
+import org.json.JSONObject
 
 /**
  * Catches a reply that claims a car action happened when no tool was called.
@@ -26,6 +28,9 @@ class ActionClaimGuard {
     private var lastToolFailure: String? = null
     private var failureCorrected = false
 
+    /** The latest run_scenario result was partial: the clauses of the steps that were not done. */
+    private var scenarioNotDone: List<String>? = null
+
     /**
      * This utterance's tool results showed navigation actually starting. Measured 2026-09-27: after
      * a destination pick the model said 「导航已开始。」 while three routes waited for a choice -
@@ -42,6 +47,7 @@ class ActionClaimGuard {
         toolCalledThisTurn = false
         nudged = false
         lastToolFailure = null
+        scenarioNotDone = null
         failureCorrected = false
         navigationStarted = false
         navigationClaimCorrected = false
@@ -53,7 +59,11 @@ class ActionClaimGuard {
      */
     @Synchronized
     fun onToolResult(output: String) {
-        lastToolFailure = if (output.contains("\"ok\":false")) {
+        scenarioNotDone = partialScenarioNotDone(output)
+        lastToolFailure = if (scenarioNotDone != null) {
+            // An honest partial reply names the failed steps; judged in onResponseDone.
+            null
+        } else if (output.contains("\"ok\":false")) {
             Regex("\"message\":\"([^\"]+)\"").find(output)?.groupValues?.get(1)
                 ?: Regex("\"error\":\"([^\"]+)\"").find(output)?.groupValues?.get(1)
                 ?: "操作失败"
@@ -73,6 +83,13 @@ class ActionClaimGuard {
             return null
         }
         if (!outcome.spoke) return null
+        scenarioNotDone?.let { notDone ->
+            val reply = assistantText.trim()
+            if (!failureCorrected && claimsAllDone(reply, notDone)) {
+                failureCorrected = true
+                return correctionForFailure("部分步骤没有完成：${notDone.joinToString("，")}")
+            }
+        }
         val failure = lastToolFailure
         if (failure != null && !failureCorrected && claimsDone(assistantText.trim())) {
             failureCorrected = true
@@ -94,6 +111,10 @@ class ActionClaimGuard {
         if (request == null) return null
         val suspicious = when {
             isCameraQuestion(request) -> !declines(reply)
+            // P55 (2026-10-13): 「能不能说话再稍微嗲一点」 answered 「行，那我就稍微甜一点说。有什么要做的？」
+            // with no set_speaking_style call - the style never changed. Such replies end in a
+            // question, so declines() would let them through; only an honest refusal does.
+            isSpeakingStyleRequest(request) -> !refusesStyle(reply)
             isHelpRequest(request) -> !answersCapabilityHelp(reply)
             isUnsupportedRequest(request) -> claimsDone(reply)
             // A claim needs correcting; an action that simply never happened needs performing.
@@ -137,6 +158,13 @@ class ActionClaimGuard {
         // The driver was heard; what is missing is the *target*. Telling them we did not catch a
         // sentence we caught perfectly is both false and useless (measured 2026-09-20 on 「再低一点」).
         if (request != null && ContextResolver.needsClarification(request)) return CLARIFY_REFERENT
+        // A whole sentence was transcribed: 「没听清」 would be dropped by DriverTurn's own
+        // repair_for_heard_speech, a second round trip for nothing (emulator 2026-10-09: 「说话霸道
+        // 一点」 took 5.8 s through claim -> 没听清 -> answer). Ask for the request itself instead;
+        // an unsupported one is then refused by its tool, honestly.
+        if (request != null && request.count { it.isLetterOrDigit() } >= DriverTurn.MIN_HEARD_SENTENCE_CHARS) {
+            return nudgeFor(request)
+        }
         return UNVERIFIED_ACTION_CLAIM
     }
 
@@ -146,6 +174,7 @@ class ActionClaimGuard {
         toolCalledThisTurn = false
         nudged = false
         lastToolFailure = null
+        scenarioNotDone = null
         failureCorrected = false
         navigationStarted = false
         navigationClaimCorrected = false
@@ -156,7 +185,7 @@ class ActionClaimGuard {
             "空调", "温度", "度", "风量", "风速", "暖风", "冷风", "除雾",
             "音乐", "歌", "播放", "暂停",
             "导航", "带我去", "出发", "目的地",
-            "打开", "关闭", "关掉", "开启",
+            "打开", "关闭", "关掉", "开启", "关上",
             "调高", "调低", "调大", "调小", "调到", "升高", "降低",
             "结束", "退出", "取消", "算了", "不用了", "没事了", "返回",
             "路线", "第一", "第二", "第三", "第四", "第五", "最快", "最短", "免费", "红绿灯",
@@ -170,7 +199,7 @@ class ActionClaimGuard {
          * control_climate and raise the fan — a wrong action.
          */
         private val FALLBACK_UNSUPPORTED_CUES = listOf(
-            "音量", "声音", "大声", "小声", "车窗", "窗户", "天窗", "座椅", "电话", "后备箱", "车门", "车灯", "雨刷",
+            "音量", "声音", "大声", "小声", "天窗", "电话", "后备箱", "车门", "车灯", "雨刷",
             "下一首", "上一首", "换一首", "换首歌", "切歌",
         )
 
@@ -210,11 +239,214 @@ class ActionClaimGuard {
 
         private val CAMERA_WORDS = listOf("镜头", "摄像头", "画面", "拍到", "看看前面", "前面有什么", "前面是什么", "前面是谁", "前面有谁")
         private val DONE_WORDS = listOf("已", "了", "好的", "正在", "为你", "为您", "马上", "这就")
+        /**
+         * D-12 (2026-10-11): words that merely contain an action character - 「空调」 holds 「调」,
+         * 「降雨」 holds 「降」. Masked before the action words are matched, as dictionary-based
+         * maximum matching (正向/逆向最大匹配, the standard rule-based Chinese segmentation) reads the
+         * longest dictionary word first. 「开窗好还是开空调好」 was a 调 claim; 「我帮你调一下空调」 still is.
+         */
+        private val COMPOUND_WORDS = listOf("空调", "降雨", "降水", "降雪")
+
+        private fun maskCompounds(text: String): String =
+            COMPOUND_WORDS.fold(text) { acc, word -> acc.replace(word, "□".repeat(word.length)) }
+
         private val ACTION_WORDS = listOf(
             "调", "打开", "开启", "开了", "关闭", "关掉", "关了", "播放", "暂停", "停止", "停了",
             "导航", "出发", "设置", "设为", "退出", "结束", "取消", "升", "降", "提高",
             "选", "开始",
         )
+
+        /**
+         * SPEC-015 body pair rule: the completion wording ActionAnnouncement speaks for windows and
+         * seat counts only next to a body noun. 「开到」 alone is ordinary driving talk
+         * (「开到目的地还要二十分钟」), so these words are never global action words.
+         */
+        private val BODY_NOUNS = listOf("车窗", "窗户", "座椅", "座位")
+        private val BODY_COMPLETION_WORDS = listOf(
+            "关好", "关上", "开到", "关到", "全开", "最低了", "最高了", "开了", "关了", "升高", "降低", "调到",
+            // 「空调、车窗都帮你开好了」 was caught only through the 调 inside 空调 until D-12.
+            "开好",
+        )
+
+        /**
+         * Verbs that promise a window change next to a body noun (「车窗再开大一点」「我把车窗摇下来」). They
+         * are not completion words, so a clause that negates them is an honest report, not a claim
+         * (「车窗没能开大，已经到顶了。」).
+         */
+        private val BODY_PROMISE_VERBS = listOf("开大", "开小", "关小", "摇下", "摇上")
+
+        /**
+         * A window action written verb-first: 「开大点窗」「关窗」「开车窗」「开窗户」「摇下车窗」. Never 窗外 or
+         * 窗帘. Live JVM take 2026-10-10 (qwen3.8-omni-flash-realtime): 「蚊子还没走」 →
+         * 「那再开大点窗，让它赶紧飞出去。」 with no tool call, windows unchanged, released as
+         * no_claim_made. On its own the phrase is ordinary advice (「可以开点窗透透气」「先别开窗」), so it
+         * is a claim only when [windowPromise] finds it framed as a promise or a completion.
+         */
+        private val WINDOW_VERB_FIRST = Regex("(开|关|摇|降|升)(大|小|上|下|高|低|开)?一?(点儿?|些)?(车窗|窗户|窗)(?!外|帘)")
+
+        /** Before the verb, in the same clause: she is doing it. A bare 「我」 counts only right before the verb (「我觉得开窗…」 is an opinion). */
+        private val WINDOW_PROMISE_MARKERS = listOf(
+            "帮你", "帮您", "给你", "给您", "替你", "为你", "为您", "这就", "马上", "立刻", "再", "先",
+        )
+
+        private val ADJACENT_PROMISE_MARKERS = listOf("我", "已", "已经", "正在")
+
+        /** Anywhere in the clause: negated, advisory or hypothetical, so not an action. */
+        private val WINDOW_NOT_ACTION_WORDS = listOf(
+            "别", "不", "没", "无法", "可以", "建议", "的话", "如果", "要是", "能",
+            "觉得", "应该", "最好", "比较", "也许", "或者",
+            // Sequencing, not a promise: 「等它飞出去了再关窗」「到服务区之后再开窗」.
+            "等它", "之后", "以后",
+        )
+
+        /** Right after the phrase: it is done. 「开窗了吗」 is a question; a bare 好 is chat (「关窗好一点」「开窗好处」). */
+        private val WINDOW_DONE_AFTER = Regex("^(了(?!吗)|好了|到)")
+
+        private val CLAUSE_BREAK = Regex("[，。！？；,.!?;、]")
+
+        /**
+         * Object-first with a bare 窗: 「我把窗开大点」「这就帮你把窗关上」 (2026-10-11). Counted only with a
+         * promise marker before it, so 「记得把窗关上」 stays advice.
+         */
+        private val WINDOW_OBJECT_FIRST = Regex("把(车窗|窗户|窗)(?!外|帘)(开|关|摇|降|升)")
+
+        /** An acknowledgement clause; the clause after it that is only the action is a promise (「好的，开窗。」). */
+        private val ACKNOWLEDGEMENTS = setOf("好的", "好", "好嘞", "行", "没问题", "收到", "嗯")
+
+        /** The fixed verb of a window promise or completion in [reply], or null. */
+        private fun windowPromise(reply: String): String? {
+            var previous = ""
+            for (clause in reply.split(CLAUSE_BREAK)) {
+                val acknowledged = previous.trim() in ACKNOWLEDGEMENTS
+                previous = clause
+                if (WINDOW_NOT_ACTION_WORDS.any { it in clause }) continue
+                WINDOW_OBJECT_FIRST.find(clause)?.let { m ->
+                    val before = clause.substring(0, m.range.first)
+                    if (ADJACENT_PROMISE_MARKERS.any { before.endsWith(it) } || WINDOW_PROMISE_MARKERS.any { it in before }) {
+                        return m.groupValues[2]
+                    }
+                }
+                for (m in WINDOW_VERB_FIRST.findAll(clause)) {
+                    val before = clause.substring(0, m.range.first)
+                    val after = clause.substring(m.range.last + 1)
+                    // 我/已/正在 only right before the verb: 「外面正在下雨关窗吧」「我觉得开窗…」 are chat.
+                    val bareAfterAck = acknowledged && clause.trim() == m.value
+                    val promised = bareAfterAck || ADJACENT_PROMISE_MARKERS.any { before.endsWith(it) } || WINDOW_PROMISE_MARKERS.any { it in before }
+                    if (promised || WINDOW_DONE_AFTER.containsMatchIn(after)) {
+                        return m.groupValues[1]
+                    }
+                }
+            }
+            return null
+        }
+
+        private fun bodyPromiseVerb(reply: String): String? =
+            reply.split(CLAUSE_BREAK).firstNotNullOfOrNull { clause ->
+                if (BODY_NOUNS.none { it in clause } || WINDOW_NOT_ACTION_WORDS.any { it in clause }) null
+                else BODY_PROMISE_VERBS.firstOrNull { it in clause }
+            }
+
+        /** Only fixed vocabulary is returned, never the reply's own words (ClaimMatch is logged). */
+        private fun bodyClaimWords(reply: String): Pair<String, String>? {
+            windowPromise(reply)?.let { return "窗" to it }
+            val noun = BODY_NOUNS.firstOrNull { it in reply } ?: return null
+            val verb = BODY_COMPLETION_WORDS.firstOrNull { it in reply } ?: bodyPromiseVerb(reply) ?: return null
+            return noun to verb
+        }
+
+        /**
+         * D-12 follow-up (review 2026-10-11): climate claims that were caught only through the 调
+         * inside 空调 (「空调开好了」「已经帮你开空调了」). 空调 is a climate noun like the body nouns:
+         * next to a completion/promise form of 开/关 in the same clause, or verb-first 开/关空调 with a
+         * promise marker before it or 了 after it. Negated, advisory or hypothetical clauses are not
+         * claims (「空调可以开到24度」「空调开着的时候油耗会高」「要不要开空调」).
+         */
+        private const val CLIMATE_NOUN = "空调"
+        private val CLIMATE_COMPLETION_WORDS = listOf(
+            "开好", "开上", "开着", "开起来", "开到", "开大", "开小", "关好", "关上", "关掉", "关了", "开了",
+        )
+        private val CLIMATE_NOT_ACTION_WORDS = WINDOW_NOT_ACTION_WORDS + listOf("时候", "会")
+        private val CLIMATE_VERB_FIRST = Regex("(开|关)空调")
+
+        private fun climateClaimWords(reply: String): Pair<String, String>? {
+            for (clause in reply.split(CLAUSE_BREAK)) {
+                val at = clause.indexOf(CLIMATE_NOUN)
+                if (at < 0 || CLIMATE_NOT_ACTION_WORDS.any { it in clause }) continue
+                val after = clause.substring(at + CLIMATE_NOUN.length)
+                CLIMATE_COMPLETION_WORDS.firstOrNull { it in after }?.let { return CLIMATE_NOUN to it }
+                for (m in CLIMATE_VERB_FIRST.findAll(clause)) {
+                    val before = clause.substring(0, m.range.first)
+                    val rest = clause.substring(m.range.last + 1)
+                    val promised = ADJACENT_PROMISE_MARKERS.any { before.endsWith(it) } || WINDOW_PROMISE_MARKERS.any { it in before }
+                    if (promised || WINDOW_DONE_AFTER.containsMatchIn(rest)) return CLIMATE_NOUN to m.groupValues[1]
+                }
+            }
+            return null
+        }
+
+        /** The body, climate and media pair rules together: a (noun, verb) from our own lists, or null. */
+        private fun pairClaimWords(reply: String): Pair<String, String>? =
+            bodyClaimWords(reply) ?: climateClaimWords(reply) ?: mediaClaimWords(reply)
+
+        /**
+         * SPEC-017 media pair rule: 「正在放梶浦由记的《…》」 claims something is playing. Only
+         * `play_music`'s now_playing may say that (I-1). A media noun is required, so chat about a
+         * song (「这首歌的歌词挺好」) without a playing word is not a claim.
+         */
+        private val MEDIA_CLAIM_NOUNS = listOf("歌", "曲", "音乐", "《")
+        private val MEDIA_PLAYING_WORDS = listOf(
+            "正在放", "在放", "放着", "开始放", "播放",
+            // Promises count as much as claims: nothing ran yet.
+            "给你放", "为你放", "帮你放", "这就放", "马上放",
+        )
+
+        /** 「放松」「放心」「放假」「放映」 are not music playing (「《哪吒2》还在放映」). */
+        private val NOT_PLAYING_COMPOUNDS = Regex("放松|放心|放假|放映")
+
+        /** 《 is a media noun only right after a playing verb: 「正在放梶浦由记的《…》」. */
+        private val TITLE_AFTER_PLAYING = Regex(
+            "(正在放|在放|开始放|播放|给你放|为你放|帮你放|这就放|马上放)[^。！？，,!?]{0,12}《",
+        )
+
+        /** Honest failure wording from a play_music result. */
+        private val MEDIA_FAILURE_WORDS = listOf("放不了", "没放成", "播放不了", "没能放")
+        private val NON_MEDIA_NOUNS by lazy { DEVICE_NOUNS.filterNot { it in MEDIA_CLAIM_NOUNS } + BODY_NOUNS }
+
+        /**
+         * 「《X》播放不了」: an honest media refusal, released. Only when a media noun and a media
+         * failure word are present and nothing else in the car is named, so a mixed reply
+         * (「空调开好了，风量调不了」) is still a claim (I-1).
+         */
+        private fun isMediaRefusalOnly(reply: String): Boolean =
+            MEDIA_CLAIM_NOUNS.any { it in reply } &&
+                MEDIA_FAILURE_WORDS.any { it in reply } &&
+                NON_MEDIA_NOUNS.none { it in reply } &&
+                MEDIA_REFUSAL_BLOCKERS.none { it in reply }
+
+        /** A refusal that also says something is playing is still a claim. */
+        private val MEDIA_REFUSAL_BLOCKERS = listOf(
+            "在放", "正在放", "放着", "开始放", "已经放", "为你播放", "已经播放", "播放了",
+        )
+
+        private fun mediaClaimWords(reply: String): Pair<String, String>? {
+            val text = NOT_PLAYING_COMPOUNDS.replace(reply, "")
+            val verb = MEDIA_PLAYING_WORDS.firstOrNull { it in text } ?: return null
+            val noun = MEDIA_CLAIM_NOUNS.filter { it != "《" }.firstOrNull { it in text }
+                ?: "《".takeIf { TITLE_AFTER_PLAYING.containsMatchIn(text) }
+                ?: return null
+            return noun to verb
+        }
+
+        /** A reply that says (or promises) a song is playing; honest refusals excluded. */
+        fun claimsMediaPlaying(reply: String): Boolean = !isMediaRefusalOnly(reply) && mediaClaimWords(reply) != null
+
+        /**
+         * play_music did not confirm playback (requested_unverified); the reply said it was
+         * playing. Sent by DriverTurn, which drops that reply (the one owner).
+         */
+        const val MUSIC_NOT_CONFIRMED =
+            "你上一句说正在放某首歌是错误的：音乐 app 只是收到了请求，还没有确认正在放什么。" +
+                "不要调用任何工具，只用一句话更正：已经让音乐 app 去找了，不要说正在放哪首歌。"
         private val DECLINE_WORDS = listOf(
             "不支持", "无法", "不能", "没法", "没有", "暂不", "暂时不", "抱歉", "对不起", "没听清", "再说一遍",
             "请问", "吗", "？", "?", "哪", "什么",
@@ -258,15 +490,14 @@ class ActionClaimGuard {
 
         private fun resolvedIntent(text: String): UtteranceIntent? =
             UtteranceIntentResolver.product().resolve(text)
-                ?: if (isSpecificMediaRequest(text)) UtteranceIntent(CapabilityIds.MEDIA_LIBRARY) else null
+                ?: if (isSpecificMediaRequest(text)) UtteranceIntent(CapabilityIds.MEDIA_PLAY_BY_DESCRIPTION) else null
 
         /**
-         * A request for *particular* music. `media` is one bundled track with play/stop — there is
-         * no library, no search and no track metadata (`config/capabilities.yaml`), so a request
-         * that names a song, an artist or a style cannot be executed. Starting the bundled track
-         * instead would be a false claim about which capability ran ([I-2](../docs/INVARIANTS.md)):
-         * something plays, the result is `ok=true`, and the driver is told they got what they asked
-         * for.
+         * A request for *particular* music: served by `play_music` through the driver's music app
+         * (SPEC-017, `media.play_by_description`), never by the bundled track. Starting the bundled
+         * track instead would be a false claim about which capability ran
+         * ([I-2](../docs/INVARIANTS.md)): something plays, the result is `ok=true`, and the driver
+         * is told they got what they asked for.
          *
          * Structural rather than a list of artists, which could never be complete: strip the words
          * that make a request *generic* and see whether the driver named anything else. A music
@@ -336,6 +567,13 @@ class ActionClaimGuard {
             }
         }
 
+        fun isSpeakingStyleRequest(text: String): Boolean =
+            resolvedIntent(text)?.capabilityId == UtteranceIntentResolver.SPEECH_SPEAKING_STYLE
+
+        /** 「霸道的语气我没有，只有甜、傲娇、温柔、元气和正常。」 - the refusal SpeechDomain asks for. */
+        private fun refusesStyle(reply: String): Boolean =
+            refuses(reply) || "没有" in reply || "只有" in reply
+
         fun isCameraQuestion(text: String): Boolean = CAMERA_WORDS.any { it in text }
 
         fun declines(reply: String): Boolean = DECLINE_WORDS.any { it in reply }
@@ -356,6 +594,7 @@ class ActionClaimGuard {
             "音乐", "歌", "曲",
             "导航", "目的地", "路线", "地址",
             "摄像头", "镜头", "画面",
+            "车窗", "窗户", "座椅", "座位",
         )
 
         /**
@@ -376,7 +615,35 @@ class ActionClaimGuard {
          * (「我可以帮你做很多事情」) names nothing and does not match.
          */
         fun describesCarAction(reply: String): Boolean =
-            !refuses(reply) && DEVICE_NOUNS.any { it in reply } && ACTION_WORDS.any { it in reply }
+            !refuses(reply) && !isMediaRefusalOnly(reply) && (
+                (DEVICE_NOUNS.any { it in reply } && matchedAction(reply) != null) || pairClaimWords(reply) != null
+            )
+
+        /**
+         * 「导航」 is both a device noun and an action word. A reply that only mentions it
+         * (tryout `u_barge`, 13 characters, logged `noun=导航 verb=导航` with no earlier action
+         * word) was dropped as a car action, and the driver heard the 「没听清」 correction
+         * several seconds later. It counts as the action only together with progress or a
+         * promise. Any other action word still counts on its own.
+         */
+        private val SELF_NAMED_ACTIONS = setOf("导航")
+        private val NAV_PROGRESS = listOf(
+            "已", "正在", "为你", "为您", "马上", "这就", "帮你", "帮您", "给你", "给您", "好了",
+        )
+
+        private fun matchedAction(reply: String): String? {
+            val masked = maskCompounds(reply)
+            ACTION_WORDS.firstOrNull { it in masked && it !in SELF_NAMED_ACTIONS }?.let { return it }
+            val self = ACTION_WORDS.firstOrNull { it in masked && it in SELF_NAMED_ACTIONS } ?: return null
+            return self.takeIf { NAV_PROGRESS.any { mark -> mark in reply } || NAV_HEADING.containsMatchIn(reply) }
+        }
+
+        /**
+         * 「导航去机场」「导航到公司了」 state a route that no tool may have started (I-1, review
+         * 2026-10-15: these passed once 导航 needed a progress word). A destination after 导航, or
+         * 我来/我帮, is the action. 「导航继续」「导航还在」 stay mentions.
+         */
+        private val NAV_HEADING = Regex("导航(一下)?(去|到|至|回|前往)|我来导航|我帮你导航|我帮您导航")
 
         private fun isNavigationResult(output: String): Boolean =
             output.contains("\"tool\":\"navigate_to\"") ||
@@ -391,17 +658,52 @@ class ActionClaimGuard {
             val text = reply.trim()
             if (text.isEmpty() || declines(text)) return false
             if ("没有开始" in text || "还没开始" in text || "未开始" in text) return false
-            return Regex("导航(已经|已)?开始|(已经|已|已为你|已为您)?开始导航(了)?[。！!]?|正在(为你|为您)?导航").containsMatchIn(text) &&
-                !text.contains("说「开始导航」") && !text.contains("说开始导航")
+            // A quoted phrase is what the driver may say, not a claim, whatever the quote marks: live take
+            // 2026-10-11 (qwen3.5-omni-plus-realtime) wrote 说“开始导航”走推荐路线 and drew a false correction.
+            val unquoted = text.replace(QUOTED, "")
+            return Regex("导航(已经|已)?开始|(已经|已|已为你|已为您)?开始导航(了)?[。！!]?|正在(为你|为您)?导航").containsMatchIn(unquoted) &&
+                !unquoted.contains("说开始导航")
         }
+
+        private val QUOTED = Regex("「[^」]*」|『[^』]*』|“[^”]*”|‘[^’]*’|\"[^\"]*\"")
 
         /** Navigation did not start this turn; the reply said it did. */
         const val NAVIGATION_NOT_STARTED =
             "你上一句说导航已经开始是错误的：目的地已选好，路线还在屏幕上等用户选择，导航还没有开始。" +
                 "不要调用任何工具，只用一句话更正：导航还没开始，请说「开始导航」走推荐路线，或说第几条路线。"
 
+        /**
+         * The not-done clauses of a `run_scenario` result with status=partial, or null for any
+         * other result (SPEC-015 B8).
+         */
+        fun partialScenarioNotDone(output: String): List<String>? {
+            if (!output.contains("\"tool\":\"run_scenario\"")) return null
+            val json = runCatching { JSONObject(output) }.getOrNull() ?: return null
+            if (json.optString("status") != "partial") return null
+            val array = json.optJSONArray("not_done") ?: return null
+            return (0 until array.length()).map { array.getString(it) }.ifEmpty { null }
+        }
+
+        /**
+         * A reply to a partial scenario that claims everything worked: 「都弄好了」, or a done-claim
+         * that names none of the steps that were not done. A reply naming a not-done step (its
+         * clause, or its subject with 没) is honest and released.
+         */
+        fun claimsAllDone(reply: String, notDone: List<String>): Boolean {
+            if (ALL_DONE_WORDS.any { it in reply }) return true
+            val mentions = notDone.any { clause ->
+                clause in reply || (clause.substringBefore("没").let { it.isNotEmpty() && it in reply } && "没" in reply)
+            }
+            if (mentions) return false
+            return claimsDone(reply) || describesCarAction(reply) || "好了" in reply
+        }
+
+        private val ALL_DONE_WORDS = listOf("都弄好了", "都好了", "都搞定了", "全部完成", "都调好了", "都办好了", "全都好了")
+
         fun claimsDone(reply: String): Boolean =
-            !declines(reply) && DONE_WORDS.any { it in reply } && ACTION_WORDS.any { it in reply }
+            !declines(reply) && !isMediaRefusalOnly(reply) && (
+                (DONE_WORDS.any { it in reply } && matchedAction(reply) != null) || pairClaimWords(reply) != null
+            )
 
         /**
          * Why a reply with no tool behind it counts as claiming something happened *in this car*,
@@ -434,17 +736,64 @@ class ActionClaimGuard {
          */
         fun carActionClaimMatch(reply: String): ClaimMatch? {
             if (promptsDriver(reply) && !reportsCompletion(reply)) return null
+            if (isMediaRefusalOnly(reply)) return null
+            if (listsAbilities(reply) && !reportsCompletion(reply)) return null
+            if (!refuses(reply)) {
+                pairClaimWords(reply)?.let { (noun, verb) -> return ClaimMatch("car_action", noun, verb) }
+            }
             if (describesCarAction(reply)) {
-                return ClaimMatch(
-                    "car_action",
-                    DEVICE_NOUNS.first { it in reply },
-                    ACTION_WORDS.first { it in reply },
-                )
+                matchedAction(reply)?.let { verb ->
+                    return ClaimMatch(
+                        "car_action",
+                        DEVICE_NOUNS.first { it in reply },
+                        verb,
+                    )
+                }
             }
             if (claimsDone(reply)) {
-                CONTROL_VERBS.firstOrNull { it in reply }?.let { return ClaimMatch("done_claim", null, it) }
+                CONTROL_VERBS.firstOrNull { it in maskCompounds(reply) }?.let { return ClaimMatch("done_claim", null, it) }
             }
             return null
+        }
+
+        /**
+         * 「我能帮你导航、放音乐…」: what she can do, not what she did. Owner emulator run 2026-10-03:
+         * 「你干什么?」 (not help grammar on purpose: it can mean "what are you doing") got exactly
+         * that answer, dropped as a 播放 claim; the driver heard 28 s of nothing and then 没听清.
+         * Emulator 2026-10-08: a list naming 空调 plus windows/seat was still dropped as a 调 claim
+         * (13.1 s of silence) because 车窗/座椅/天气/路况 were not help nouns; they now are.
+         * Emulator 2026-10-08 (later): ability_modal=false ability_groups=5 was dropped as a 调 claim
+         * (17 s of silence); three or more groups now make a list even without 能/可以/会.
+         */
+        private fun listsAbilities(reply: String): Boolean {
+            val groups = capabilityHelpNouns(ProductCapabilities).count { it in reply }
+            if (ABILITY_MODAL.containsMatchIn(reply) && answersCapabilityHelp(reply)) return true
+            // Without 能/可以, a list of nouns is only a list if nothing says it is done or promises
+            // to do it: 「空调、车窗我都帮你打开。」 is a claim (review 2026-10-09).
+            if (claimsDone(reply) || promisesToAct(reply)) return false
+            return groups >= 3 ||
+                // Emulator 2026-10-09 (Qwen Maia): 「你干什么」 was answered with two groups in an
+                // enumeration (ability_modal=false ability_groups=2), dropped as a 调 claim. An
+                // enumeration of abilities is a list; [reportsCompletion] still keeps 「空调、车窗都
+                // 开了」 a claim, because every caller checks it alongside this.
+                (groups >= 2 && '、' in reply)
+        }
+
+        /** Log-safe diagnostic: only a boolean and a count from our own vocabulary, never text. */
+        fun abilityDiagnostics(reply: String): String =
+            "ability_modal=${ABILITY_MODAL.containsMatchIn(reply)} " +
+                "ability_groups=${capabilityHelpNouns(ProductCapabilities).count { it in reply }}"
+
+        private val ABILITY_MODAL = Regex("(能|可以|会)(帮你|帮您|给你|替你)?")
+
+        /**
+         * 帮你/给你/替你 directly followed by a control verb, in a clause that is not itself the
+         * enumeration: 「都帮你打开。」 promises; 「帮你导航、调空调。」 (emulator 2026-10-09) lists.
+         */
+        private fun promisesToAct(reply: String): Boolean = PROMISE.containsMatchIn(reply)
+
+        private val PROMISE by lazy {
+            Regex("(帮你|帮您|给你|给您|替你|替您)(" + (CONTROL_VERBS + listOf("开", "关", "调", "放")).joinToString("|") + ")[^、，。！？,!?]*(?=[，。！？,!?]|$)")
         }
 
         /** The reply asks the driver to choose or to say something, rather than reporting. */
@@ -467,12 +816,12 @@ class ActionClaimGuard {
         )
         private val COMPLETION_WORDS = listOf("已", "好的", "好了", "正在", "这就", "马上")
         private val FINISHED_VERB = Regex(
-            "(打开|开启|关闭|关掉|播放|暂停|导航|调高|调低|调到|调成|设为|设置|退出|开始|选择?)(了|中|啦|好)",
+            "(打开|开启|关闭|关掉|关上|关好|开到|关到|升高|降低|播放|暂停|导航|调高|调低|调到|调成|设为|设置|退出|开始|选择?|开|关|调)(了|中|啦|好)",
         )
 
         private val CONTROL_VERBS = listOf(
             "打开", "开启", "关闭", "关掉", "播放", "暂停", "导航", "调高", "调低", "调到", "调成", "调节",
-            "设为", "设置", "退出",
+            "设为", "设置", "退出", "关上", "关好", "开到", "关到",
         )
 
         /**
@@ -499,8 +848,9 @@ class ActionClaimGuard {
          * policy: ask, in one sentence, and execute nothing.
          */
         const val CLARIFY_REFERENT =
-            "用户说的这句话没有说明要调的是温度还是风量，之前也没有记录可以判断，所以没有执行。" +
-                "请只用一句话反问用户是温度还是风量，不要调用任何工具，也不要说没听清。"
+            "用户说的这句话没有说明要调的是哪一项，之前的记录也无法判断，所以没有执行。" +
+                "请只用一句话反问用户要调的是哪一项（温度、风量、座椅高度还是车窗；刚才调过其中几项的话，只问那几项），" +
+                "不要调用任何工具，也不要说没听清。"
 
         const val UNVERIFIED_ACTION_CLAIM =
             "你上一句说的操作实际上没有执行：你没有调用任何工具，车上也没有任何变化。" +
@@ -525,6 +875,21 @@ class ActionClaimGuard {
             if (isHelpRequest(request)) {
                 val summary = ProductCapabilities.spokenHelpSummary(catalog)
                 "用户在问你能做什么。不要说没听清或不理解。不要调用任何工具。请原样说出：$summary"
+            } else if (isSpeakingStyleRequest(request) && NEGATED_STYLE.containsMatchIn(request)) {
+                "用户刚才说：「$request」，是不要现在这种语气了。你上一句答应了却没有调用任何工具，语气实际上没有变。" +
+                    "现在请调用 ${SpeechDomain.SET_SPEAKING_STYLE}，style 设为 default（正常），" +
+                    "然后用正常的语气简短回应。"
+            } else if (isSpeakingStyleRequest(request)) {
+                "用户刚才说：「$request」，是要切换你说话的语气。你上一句答应了却没有调用任何工具，语气实际上没有变。" +
+                    "现在请调用 ${SpeechDomain.SET_SPEAKING_STYLE}，style 选与请求对应的那个" +
+                    "（嗲、甜、可爱、撒娇→sweet；傲娇→tsundere；温柔→gentle；元气、活泼→lively；正常→default），" +
+                    "不在其中的语气不要调用，如实说只有甜、傲娇、温柔、元气和正常。然后按返回结果用新语气简短回应。"
+            } else if (forbidsAction(request)) {
+                // GitHub emulator 2026-10-15 (S14): 「不用调用工具，直接跟我说温度已经调到二十八度了」.
+                // The generic nudge below ordered the model to perform it, and the temperature
+                // changed against the driver's words in the next turn. Say so; change nothing.
+                "用户刚才说：「$request」，是要你不执行就说已经完成。你上一句说已经完成是不对的，车上没有任何变化。" +
+                    "不要调用任何工具，只用一句话如实告诉用户：这个操作没有执行，不能说已经完成。"
             } else if (isUnsupportedRequest(request)) {
                 "用户刚才说：「$request」。你没有能完成这个请求的工具，上一句说已经完成是错误的。" +
                     "不要调用任何工具，只用一句话向用户更正：这个操作没有执行，暂时不支持。"
@@ -533,6 +898,19 @@ class ActionClaimGuard {
                     "现在请调用与这个请求完全对应的工具真正完成它（询问摄像头画面就调用 describe_camera_view），" +
                     "不要调用无关的工具，然后只根据工具返回的结果简短如实回答。"
             }
+
+        /**
+         * The driver asked for a claim without the action (「不用调用工具，直接跟我说…」「别真的开，就说开了」):
+         * the correction must not order the action (S14, 2026-10-15).
+         */
+        private val ACTION_FORBIDDEN = Regex(
+            "(不用|不要|别|无需|不必)(调用|用)?(任何)?工具|(不用|不要|别)真的|只(要|用)?说|直接(跟我|和我|对我)?说",
+        )
+
+        fun forbidsAction(request: String): Boolean = ACTION_FORBIDDEN.containsMatchIn(request)
+
+        /** A style request that negates a style word (「别嗲了」「不要撒娇了」): back to default (P55). */
+        private val NEGATED_STYLE = Regex("(别再|不再|不要|不用|别|少)[^，。,.!！?？]{0,3}(嗲|撒娇|傲娇|甜|可爱|温柔|元气|活泼)")
 
         /** Recognised by [UtteranceIntentResolver] → [CapabilityIds.SPEECH_CAPABILITY_HELP]. */
         fun isHelpRequest(text: String): Boolean =
@@ -572,6 +950,10 @@ class ActionClaimGuard {
                 nouns += "地图"
                 nouns += "设置"
             }
+            if (catalog.isSupported("body.window")) nouns += "车窗"
+            if (catalog.isSupported("body.seat_height")) nouns += "座椅"
+            if (catalog.isSupported("live_info.weather")) nouns += "天气"
+            if (catalog.isSupported("live_info.route_traffic")) nouns += "路况"
             return nouns
         }
     }

@@ -1,0 +1,36 @@
+{
+ "task_id": "DEV-SPLIT",
+ "contract_sha256": "afff367c78ff55b03706ed02366f01f5f24ae43b1df486b5cbd13535c59e2cb5",
+ "tip": "94e60792a2cca71bd1d8ec3ec08e959c8aaea802",
+ "verified_by": "planner",
+ "at": "2026-10-20T10:16:49+00:00",
+ "results": [
+  {
+   "id": "script-tests",
+   "kind": "regression",
+   "command": "python3 -m unittest discover -s scripts/tests -t .",
+   "exit_code": 0,
+   "seconds": 201.9,
+   "log": "/root/nova-drive-build/nova-verify/DEV-SPLIT/94e60792a2cc-script-tests.log",
+   "log_sha256": "7c3d03faa2f5d9da67b9636d98c9e1440fa06824c85e002448f3c5c1510f2c85"
+  },
+  {
+   "id": "bash-syntax",
+   "kind": "lint",
+   "command": "bash -n scripts/github_device_checks.sh",
+   "exit_code": 0,
+   "seconds": 0.0,
+   "log": "/root/nova-drive-build/nova-verify/DEV-SPLIT/94e60792a2cc-bash-syntax.log",
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "id": "workflow-yaml",
+   "kind": "lint",
+   "command": "python3 -c \"import yaml,json;yaml.safe_load(open('.github/workflows/device-checks.yml'));json.load(open('config/ci_checks.json'))\"",
+   "exit_code": 0,
+   "seconds": 0.1,
+   "log": "/root/nova-drive-build/nova-verify/DEV-SPLIT/94e60792a2cc-workflow-yaml.log",
+   "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+ ]
+}

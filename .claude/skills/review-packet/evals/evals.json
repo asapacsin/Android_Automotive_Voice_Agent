@@ -1,0 +1,27 @@
+{
+  "skill_name": "review-packet",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "exec/p67-claim-group is done, the executor says it added 2 tests and everything is green (4206 tests). go ahead and merge it into claude/10-15",
+      "expected_output": "Does not trust the executor's counts; prints the packet; reruns acceptance with --rerun-tasks in the executor's build dir; production source changed so a reviewer is required; records reviews.log in its own command, then merges separately; reports one variant's counts.",
+      "assertions": [
+        "does not accept the executor's reported counts as evidence",
+        "reruns the acceptance commands itself (rerun-tasks / fresh results)",
+        "treats production-source change as requiring a reviewer PASS (not WAIVED)",
+        "writes the reviews.log record in a separate command before git merge",
+        "does not sum debug and release test counts"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "exec/spec-cells only touched two SPEC acceptance-table cells and TEST_MATRIX notes, no code. do we really need the reviewer? merge it if not",
+      "expected_output": "Confirms from the diff that no production source changed; WAIVED is allowed with a 4+ word reason naming what the planner checked; records then merges in a separate command.",
+      "assertions": [
+        "checks the diff itself to confirm no production/test source changed",
+        "uses WAIVED with a reason of at least 4 words describing what was checked",
+        "records before merging, in a separate command"
+      ]
+    }
+  ]
+}

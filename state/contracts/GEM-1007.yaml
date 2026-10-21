@@ -1,0 +1,31 @@
+schema: nova-task-contract/1
+task_id: GEM-1007
+title: Gemini Live close 1007 "API key not valid" is an auth failure, not a malformed setup
+branch: exec/gemini-1007-auth
+base_commit: a8135654d5dfca5f3a96b8511aa61aad7cefe65c
+approved_paths:
+  - app/src/main/kotlin/com/novadrive/app/voice/GeminiLiveProtocol.kt
+  - app/src/test/kotlin/com/novadrive/app/voice/GeminiLiveProtocolTest.kt
+allowed_changes:
+  - In GeminiLiveProtocol.closeCode, a 1007 whose reason contains "API key" (case-insensitive) maps to AUTH_FAILED; every other 1007 stays MALFORMED_SETUP
+  - The KDoc says the reason is read for the words "quota" and "API key" only
+  - Test rows in GeminiLiveProtocolTest for 1007 "API key not valid. Please pass a valid API key." -> AUTH and 1007 "Unknown name" -> MALFORMED (kept)
+architecture_constraints:
+  - The server's close reason is never logged or shown; only the mapped code leaves the function (I-8)
+  - closeFailure's resume handling unchanged
+forbidden_changes:
+  - No change to other close codes, retry policy or error classes
+forbidden_paths:
+  - "scripts/**"
+  - TEST_MATRIX.yaml
+required_verification:
+  - id: app-unit
+    kind: regression
+    command: python3 scripts/compact_test.py -- ./gradlew --offline -q :app:testDebugUnitTest
+  - id: behavior-test
+    kind: regression
+    command: python3 scripts/compact_test.py -- ./gradlew --offline -q :behavior-test:test
+acceptance_criteria:
+  - closeCode(1007, "API key not valid. Please pass a valid API key.") == AUTH_FAILED
+  - closeCode(1007, "Unknown name") == MALFORMED_SETUP
+  - Full app unit and behavior-test suites pass

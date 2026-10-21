@@ -1,0 +1,37 @@
+schema: nova-task-contract/1
+task_id: SYSIMG-RETRY
+title: Emulator workflows survive a corrupt system-image download - cache the API 34 image and pre-install it with retries before android-emulator-runner
+branch: exec/sysimg-retry
+base_commit: 366aac9f11ab2ae11a91d2731d9564c1d54c5b3a
+approved_paths:
+  - .github/workflows/device-checks.yml
+  - .github/workflows/voice-checks.yml
+  - .github/workflows/nav-demo.yml
+  - .github/workflows/emulator.yml
+  - scripts/ci_sysimg.sh
+  - scripts/tests/**
+  - docs/CI.md
+allowed_changes:
+  - "Evidence: runs 39452886908 (lifecycle) and 39461059725 (dispatch) died in reactivecircus/android-emulator-runner@v2 at 'sdkmanager --install system-images;android-34;google_apis;x86_64' with 'Error on ZipFile unknown archive', before any test ran (all checks MISSING)"
+  - "New scripts/ci_sysimg.sh: installs system-images;android-34;google_apis;x86_64 (channel 0) with up to 4 attempts and backoff, removing the partial package dir and the sdkmanager download temp between attempts; verifies the image (system.img or system-images/.../package.xml present) and exits non-zero with a clear ::error if all attempts fail"
+  - "In every workflow that uses android-emulator-runner (check which of the four do): an actions/cache@v4 step for $ANDROID_SDK_ROOT/system-images/android-34/google_apis/x86_64 (key on the image id + runner os), then a step running scripts/ci_sysimg.sh before the emulator-runner step (the runner then finds the image installed); keep every existing condition (if:) on those steps consistent with the emulator step"
+  - "A script test that the workflows contain the cache + pre-install steps before the emulator step; bash -n on the script"
+architecture_constraints:
+  - No change to the emulator options, API level or the test scripts; no secrets
+forbidden_changes:
+  - Nothing outside approved_paths
+forbidden_paths:
+  - .claude/**
+  - app/**
+required_verification:
+  - id: script-tests
+    kind: regression
+    command: python3 -m unittest discover -s scripts/tests -t .
+  - id: bash-syntax
+    kind: lint
+    command: bash -n scripts/ci_sysimg.sh
+  - id: yaml
+    kind: lint
+    command: python3 -c "import yaml,glob;[yaml.safe_load(open(f)) for f in glob.glob('.github/workflows/*.yml')]"
+acceptance_criteria:
+  - A device-checks run shows the pre-install step succeeding and the emulator booting

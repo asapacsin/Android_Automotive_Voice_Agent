@@ -10,7 +10,7 @@ enforced by review, it says so — those are the ones to be most careful with.
 
 **I-1. Only deterministic execution evidence may establish that an external action occurred.**
 The model may *propose* an action; it may not *assert* that one happened. The only proof in this
-system is a tool result with `ok=true`, delivered through `BaiduFlexClient.sendFunctionResult`.
+system is a tool result with `ok=true`, delivered through `OpenAiRealtimeClient.sendFunctionResult` (Baidu Flex, SPEC-021) or the Gemini client.
 A sentence produced by the model is never evidence, and a failed result (`ok=false`) is never proof.
 
 Consequence: when the driver asked for an action, the reply's **audio and subtitle** wait until that
@@ -28,7 +28,7 @@ events), `PhantomTurnSuppressionTest`, `ArchitectureRulesTest.executionProofOwns
 **I-2. A capability that does not exist must fail deterministically, and say so once.**
 No tool means: no execution, one honest sentence, and the same words on screen and in the speaker.
 Never a confident intermediate ("正在调整音量") followed by a correction.
-*Enforced by:* `CapabilityCatalog` + `UtteranceIntentResolver` (availability, not keywords), the hold in `BaiduFlexClient`,
+*Enforced by:* `CapabilityCatalog` + `UtteranceIntentResolver` (availability, not keywords), the hold in `DriverTurnPipeline` (wired by `OpenAiRealtimeClient` and `GeminiLiveClient`),
 `PhantomTurnSuppressionTest.aFalseClaimAboutAnUnsupportedRequestIsNeverSpokenOrShown`.
 A lexical fallback remains in `ActionClaimGuard` for phrases that never mapped to an id; it must
 not override a registered capability.
@@ -75,6 +75,16 @@ strings until 2026-09-19. Differences between providers are capabilities, not pr
 *Owner:* `RealtimeVoiceProvider` + the adapter that implements it.
 *Enforced by:* `ProviderBoundaryTest`, `RealtimeProviderContractTest`,
 [ADR-009](../DECISIONS/ADR-009-provider-neutral-realtime-contract.md).
+
+**I-14. Every executed action is reported to the driver from its result.**
+On screen always (the chip), and in speech through the result's `announce` clause, built from the
+state read back after the action (`ActionAnnouncement`). A reply may omit a step; it may never add one
+that has no `ok=true` result (I-1 restated). An announcement never states more than the read-back
+state shows (review of W3a, 2026-09-30: a group "fully open" claim when one window was clamped).
+*Owner:* the domain server + `ActionAnnouncement`; the claim gate (`DriverTurn`, `ActionClaimGuard`
+body/media pair rules) catches the same sentences spoken without a result.
+*Enforced by:* `ActionAnnouncementTest`, `WindowToolHandlerTest`,
+`FalseCapabilityClaimTest.everyActionAnnouncementIsRecognisedAsAClaim`.
 
 **I-9. Vendor types stay inside their adapter.**
 `com.amap` may be imported by exactly one file. Baidu JSON never escapes the Android voice adapters.

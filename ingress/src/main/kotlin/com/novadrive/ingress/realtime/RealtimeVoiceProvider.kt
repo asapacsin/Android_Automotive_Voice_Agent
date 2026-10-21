@@ -34,11 +34,36 @@ interface RealtimeVoiceProvider {
 
     suspend fun sendText(text: String) {}
 
+    /**
+     * Sends an app prompt to be spoken now, correlated as [promptId] through
+     * [DomainVoiceEvent.AppPromptTurn] (SPEC-018). Send now or fail: never queued, never replayed
+     * after a reconnect; false when not connected or unsupported
+     * ([ProviderCapabilities.verbatimPromptSpeech]).
+     */
+    fun sendPrompt(text: String, promptId: String): Boolean = false
+
     /** Drops microphone audio queued but not yet sent (listening was just stopped). */
     fun discardPendingAudio() {}
 
     /** Listening resumed after a sleep; the conversation continues where it was. */
     fun resumeListening() {}
+
+    /**
+     * Local evidence that the driver started ([active] true) or stopped speaking, from the uplink
+     * gate. Called only for a provider whose [ProviderCapabilities.serverSpeechActivityEvents] is
+     * false, so it can open its driver turn at the same moment the session core does.
+     */
+    fun onLocalSpeechActivity(active: Boolean) {}
+
+    /** The device started ([active] true) or stopped playing reply audio; for client-side VAD. */
+    fun onPlaybackActiveChanged(active: Boolean) {}
+
+    /**
+     * The session discarded the current reply's playback (a qualified barge-in, a client cancel, a
+     * server interrupt or a reconnect). The session decides; a provider that produces reply audio
+     * itself (ADR-016 assistant voice) stops producing it. Must not block.
+     */
+    fun onPlaybackFlushed() {}
 
     /** Cancels a reply that is in progress even if its audio has not started yet. */
     suspend fun cancelActiveResponse(): DomainVoiceEvent = cancelAssistantResponse()

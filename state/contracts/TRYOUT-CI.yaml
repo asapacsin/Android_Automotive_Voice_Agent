@@ -1,0 +1,39 @@
+schema: nova-task-contract/1
+task_id: TRYOUT-CI
+title: The Live JVM checks workflow gains a tryout piece that runs DEMO-TRYOUT-001 on a GitHub runner
+branch: exec/tryout-ci
+base_commit: 8b25fb3511d1d0fa1782aab27a1fbb386b19feeb
+approved_paths:
+  - .github/workflows/live-jvm.yml
+  - scripts/github_live_jvm.sh
+  - scripts/tests/test_live_jvm.py
+allowed_changes:
+  - live-jvm.yml matrix gains piece "tryout" (step env GEMINI_API_KEY, AMAP_WEB_KEY and the vendor/keystore secrets the other pieces use); input "pieces" accepts tryout; job timeout may rise to 40 minutes
+  - github_live_jvm.sh piece tryout - setup installs piper-tts (pip) and ffmpeg, downloads the Piper voice zh_CN-huayan-medium (.onnx and .onnx.json) from huggingface.co/rhasspy/piper-voices, makes the u_* clips with PIPER_MODEL=<onnx> python3 tools/demo/live/make_clips_cloud.py tryout, then runs the row's procedure exactly - NOVA_LIVE_DEMO=1 NOVA_LIVE_PROVIDER=gemini NOVA_LIVE_SCENES=tryout NOVA_LIVE_OUT=<run dir> gradle :app:testDebugUnitTest --tests '*LiveDemoRun*' (under a timeout of at most 8 minutes, the documented live exception), then python3 tools/demo/live/tryout_check.py <run dir>
+  - The tryout summary keeps only tryout_check.py's per-line key, verdict, reply time and tool names, the RESULT line and the WARN keys, plus JUnit counts and "DEMO-TRYOUT-001 rule=MET" only when RESULT PASS; if the clips or the model download fail the summary says BLOCKED with the step name
+  - Unit tests in scripts/tests/test_live_jvm.py for the tryout summarize path (a sample tryout_check output in, a text-free summary out, rule MET/NOT_MET)
+architecture_constraints:
+  - I-8 - nothing printed or pushed may contain keys, transcripts, phrase text, reply text, coordinates or addresses; tryout_check.py's note column is dropped unless it is a fixed token
+  - Generated audio and the Piper voice are never committed or pushed (only summary.txt goes to ci/live-jvm-evidence)
+  - The procedure is the row's own, unchanged
+forbidden_changes:
+  - No app, test or tools/ source changes; no change to the pass criteria
+forbidden_paths:
+  - "*/src/**"
+  - tools/**
+  - TEST_MATRIX.yaml
+  - scripts/test_matrix.py
+  - config/ci_checks.json
+required_verification:
+  - id: workflow-yaml
+    kind: lint
+    command: python3 -c "import yaml;yaml.safe_load(open('.github/workflows/live-jvm.yml'))"
+  - id: bash-syntax
+    kind: lint
+    command: bash -n scripts/github_live_jvm.sh
+  - id: script-tests
+    kind: regression
+    command: python3 -m unittest discover -s scripts/tests -t .
+acceptance_criteria:
+  - A dispatched run with pieces=tryout pushes runs/run_<date>_<sha>/tryout/summary.txt to ci/live-jvm-evidence with per-line verdicts DEMO-TRYOUT-001 can be judged from
+  - Script tests green

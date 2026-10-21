@@ -1,0 +1,32 @@
+schema: nova-task-contract/1
+task_id: MIDROUTE-SPEED
+title: NAV-MID-ROUTE-001 evidence - the simulated drive passes a speed-limit camera above its limit so the overspeed ring is shown and recorded
+branch: exec/midroute-speed
+base_commit: 1bb793ef990bacba53f09396f42a9926861ae192
+approved_paths:
+  - scripts/github_device_checks.sh
+  - config/ci_checks.json
+  - app/src/debug/**
+  - app/src/testDebug/**
+  - scripts/tests/**
+allowed_changes:
+  - "Read the TEST_MATRIX.yaml NAV-MID-ROUTE-001 row (grep the id, read ~30 lines) for its pass criteria. Latest run (39372812766 at 6f4cc04) met everything except speed_over=0. In the drive shard of github_device_checks.sh, set the simulated speed (existing debug nav_speed / nav_start tools) so the car passes the route's speed-limit camera above its limit, and record a check (new optional id device:NAV-MID-ROUTE-OVERSPEED in the drive shard suite, PASS when the existing overspeed/speed_over log line count >= 1); if the debug tools cannot set a speed above the limit, extend the debug tool minimally"
+  - "Counts only in notes (I-8); no change to existing pf conditions"
+architecture_constraints:
+  - Debug source set and scripts only; no app/src/main change
+forbidden_changes:
+  - No change to other shards' sections
+forbidden_paths:
+  - .claude/**
+  - app/src/main/**
+  - TEST_MATRIX.yaml
+  - .github/**
+required_verification:
+  - id: script-tests
+    kind: regression
+    command: python3 -m unittest discover -s scripts/tests -t .
+  - id: bash-syntax
+    kind: lint
+    command: bash -n scripts/github_device_checks.sh
+acceptance_criteria:
+  - A drive-shard run shows speed_over >= 1 and the new check PASS

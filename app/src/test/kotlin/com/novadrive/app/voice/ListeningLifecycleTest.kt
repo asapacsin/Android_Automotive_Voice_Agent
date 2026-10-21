@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -84,6 +85,23 @@ class ListeningLifecycleTest {
         assertEquals(ListeningState.ACTIVE, rig.state)
         wait(1_001)
         assertEquals(ListeningState.SLEEP, rig.state)
+    }
+
+    @Test
+    fun aQuestionHeardWithoutABusyEdgeStillRestartsTheInactivityWindow() = runTest {
+        // P45: with no local speech activity (the emulator skips the uplink gate) and the reply
+        // held, nothing made the session busy; the old deadline slept it 7 s after the question.
+        val rig = Rig(this)
+        rig.start()
+        wait(23_000)
+        rig.lifecycle.onMeaningfulUserTurn()
+        wait(7_001)
+        assertEquals(ListeningState.ACTIVE, rig.state, "the deadline from before the question must not fire")
+        wait(22_998)
+        assertEquals(ListeningState.ACTIVE, rig.state)
+        wait(2)
+        assertEquals(ListeningState.SLEEP, rig.state)
+        assertEquals("inactivity_timeout", rig.transitions.last().second)
     }
 
     @Test
@@ -421,5 +439,153 @@ class ListeningLifecycleTest {
         wait(5_001)
         assertEquals(ListeningState.SLEEP, lifecycle.state.value)
         assertEquals(20_000L, ListeningTimeouts.SILENT_WAIT_TIMEOUT_MS)
+    }
+
+    // ---- SPEC-018 G-2: navigating keeps SLEEP connected ------------------------------------
+
+    @Test
+    fun sleepWhileNavigatingNeverGoesDeepIdle() = runTest {
+        val rig = Rig(this)
+        rig.start()
+        rig.lifecycle.onNavigating(true)
+        rig.lifecycle.sleep("user")
+        wait(ListeningTimeouts.DEEP_IDLE_AFTER_SLEEP_MS * 3)
+        assertEquals(ListeningState.SLEEP, rig.state)
+        assertFalse("close" in rig.controls.log)
+    }
+
+    @Test
+    fun navigationStartingInSleepCancelsTheDeepIdleTimer() = runTest {
+        val rig = Rig(this)
+        rig.start()
+        rig.lifecycle.sleep("user")
+        wait(ListeningTimeouts.DEEP_IDLE_AFTER_SLEEP_MS - 1_000)
+        rig.lifecycle.onNavigating(true)
+        wait(ListeningTimeouts.DEEP_IDLE_AFTER_SLEEP_MS)
+        assertEquals(ListeningState.SLEEP, rig.state)
+    }
+
+    @Test
+    fun connectionLostInSleepWhileNavigatingStaysSleep() = runTest {
+        val rig = Rig(this)
+        rig.start()
+        rig.lifecycle.onNavigating(true)
+        rig.lifecycle.sleep("user")
+        rig.lifecycle.onConnectionLost()
+        assertEquals(ListeningState.SLEEP, rig.state)
+        assertFalse("close" in rig.controls.log)
+    }
+
+    @Test
+    fun deepIdleTimerStartsWhenNavigationEndsInSleep() = runTest {
+        val rig = Rig(this)
+        rig.start()
+        rig.lifecycle.onNavigating(true)
+        rig.lifecycle.sleep("user")
+        wait(ListeningTimeouts.DEEP_IDLE_AFTER_SLEEP_MS * 2)
+        rig.lifecycle.onNavigating(false)
+        wait(ListeningTimeouts.DEEP_IDLE_AFTER_SLEEP_MS - 1_000)
+        assertEquals(ListeningState.SLEEP, rig.state)
+        wait(2_000)
+        assertEquals(ListeningState.DEEP_IDLE, rig.state)
+        assertTrue("close" in rig.controls.log)
+    }
+
+    // ---- R7: with the relay off (toggle off) or no verbatim provider, navigating changes nothing ----
+
+    @Test
+    fun toggleOffNavigatingSleepStillGoesDeepIdle() = runTest {
+        val rig = Rig(this)
+        rig.start()
+        rig.lifecycle.onNavigating(GuidanceBlockers.keepsSleepConnected(navigating = true, relayActive = false, verbatim = true))
+        rig.lifecycle.sleep("user")
+        wait(ListeningTimeouts.DEEP_IDLE_AFTER_SLEEP_MS - 1_000)
+        assertEquals(ListeningState.SLEEP, rig.state)
+        wait(2_000)
+        assertEquals(ListeningState.DEEP_IDLE, rig.state)
+        assertTrue("close" in rig.controls.log)
+    }
+
+    @Test
+    fun toggleOffNavigatingConnectionLostInSleepGoesDeepIdle() = runTest {
+        val rig = Rig(this)
+        rig.start()
+        rig.lifecycle.onNavigating(GuidanceBlockers.keepsSleepConnected(navigating = true, relayActive = false, verbatim = true))
+        rig.lifecycle.sleep("user")
+        rig.lifecycle.onConnectionLost()
+        assertEquals(ListeningState.DEEP_IDLE, rig.state)
+    }
+
+    @Test
+    fun providerWithoutVerbatimSpeechNavigatingSleepStillGoesDeepIdle() = runTest {
+        val rig = Rig(this)
+        rig.start()
+        rig.lifecycle.onNavigating(GuidanceBlockers.keepsSleepConnected(navigating = true, relayActive = true, verbatim = false))
+        rig.lifecycle.sleep("user")
+        rig.lifecycle.onConnectionLost()
+        assertEquals(ListeningState.DEEP_IDLE, rig.state)
+    }
+
+    @Test
+    fun toggleOnVerbatimNavigatingKeepsTheConnectionInSleep() = runTest {
+        val rig = Rig(this)
+        rig.start()
+        rig.lifecycle.onNavigating(GuidanceBlockers.keepsSleepConnected(navigating = true, relayActive = true, verbatim = true))
+        rig.lifecycle.sleep("user")
+        wait(ListeningTimeouts.DEEP_IDLE_AFTER_SLEEP_MS * 2)
+        rig.lifecycle.onConnectionLost()
+        assertEquals(ListeningState.SLEEP, rig.state)
+        assertFalse("close" in rig.controls.log)
+    }
+
+    // ---- SPEC-018 A4: listening controls while navigating in SLEEP -------------------------
+
+    @Test
+    fun shutUpAndSleepInNavigatingSleepCancelNothingAndKeepTheConnection() = runTest {
+        val rig = Rig(this)
+        rig.start()
+        rig.lifecycle.onNavigating(true)
+        rig.lifecycle.sleep("user")
+        val cancelsAtSleep = rig.controls.cancels
+        rig.lifecycle.silence("闭嘴")
+        rig.lifecycle.sleep("休眠")
+        rig.lifecycle.sleepAfterReply("end")
+        assertEquals(cancelsAtSleep, rig.controls.cancels, "guidance in SLEEP is not a reply to cut")
+        assertEquals(ListeningState.SLEEP, rig.state)
+        wait(ListeningTimeouts.DEEP_IDLE_AFTER_SLEEP_MS * 2)
+        assertEquals(ListeningState.SLEEP, rig.state)
+        assertFalse("close" in rig.controls.log)
+    }
+
+    @Test
+    fun wakeWordInNavigatingSleepResumesTheSameConnectionWithoutCancelling() = runTest {
+        val rig = Rig(this)
+        rig.start()
+        rig.lifecycle.onNavigating(true)
+        rig.lifecycle.sleep("user")
+        rig.lifecycle.onConnectionLost()
+        val cancels = rig.controls.cancels
+        assertTrue(rig.lifecycle.activate("wake_word"))
+        assertEquals(ListeningState.ACTIVE, rig.state)
+        assertEquals(0, rig.controls.sessionsOpened, "no new session: the connection was kept")
+        assertEquals(cancels, rig.controls.cancels, "activate from SLEEP cancels nothing")
+    }
+
+    @Test
+    fun conversationEndingWhileNavigatingDoesNotArmDeepIdle() = runTest {
+        val rig = Rig(this)
+        rig.start()
+        rig.lifecycle.onNavigating(true)
+        rig.lifecycle.sleepAfterReply("end")
+        assertEquals(ListeningState.SLEEP, rig.state)
+        wait(ListeningTimeouts.DEEP_IDLE_AFTER_SLEEP_MS * 2)
+        assertEquals(ListeningState.SLEEP, rig.state)
+        assertFalse("close" in rig.controls.log)
+    }
+
+    @Test
+    // The sparing decision itself is earned by GuidanceSparingCancelTest.
+    @Disabled("GAP: decision earned in GuidanceSparingCancelTest; remaining: wiring of cancelAssistantReply / wake-word activateListening to it needs an Android Context and PcmAudioPlayer (VoiceSessionController)")
+    fun shutUpSleepAndWakeWordInActiveSpareOpenGuidance() {
     }
 }

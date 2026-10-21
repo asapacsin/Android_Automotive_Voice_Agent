@@ -3,6 +3,29 @@
 > A builder may **not** declare a milestone complete because the code compiles.
 > This file defines what each kind of evidence is allowed to claim.
 
+## Test-run policy (product owner, 2026-09-30)
+
+Binding on every agent and every test procedure:
+
+1. **Short routes only.** Never run a device or emulator test on a long route. The standard
+   navigation route is **横琴创业谷 → 励骏庞都** — meaningful (real junctions, guidance prompts)
+   but short. A procedure that needs navigation uses it unless it states why it cannot.
+   *To check on first use:* the route crosses from Hengqin into Macau; if Amap cannot plan it,
+   record that and ask the owner for a replacement rather than picking a long route.
+2. **Do not spend Gemini on things that are not voice.** A test of a function that does not need
+   speech (map, routing, HUD, UI, settings, vehicle simulation, parsers) drives it directly
+   (ADB, unit test, injected text) and does not open a Gemini session. Gemini is used only when
+   the thing under test is the voice path itself.
+
+## CI verdicts (owner, 2026-10-16)
+
+A green GitHub check is evidence only for what its tier runs, and only through
+`scripts/ci_verdict.py` (PASS / FAIL / SKIPPED / BLOCKED / FLAKY; FLAKY and SKIPPED never pass a
+required check). Tier A (JVM + build + gates) is L2-L4; Tier B emulator runs are emulator evidence,
+never real cabin acoustics, echo cancellation, voice naturalness or hardware; Tier C
+(`test_matrix.py --release`) keeps device- and human-only rows UNVERIFIED until real evidence
+exists. Details: [docs/CI.md](docs/CI.md).
+
 ## Verification levels
 
 | Level | Name | What it actually proves |
@@ -44,6 +67,8 @@ Use exactly these words in reports:
 | **FAILED** | Performed and did not pass. Include the observed behaviour. |
 
 Never write "fully verified" unless every required level was actually performed.
+
+**Repeated-run FAIL rows (owner 2026-10-19):** a row whose notes say it stays FAIL until repeated runs pass flips to PASS after 3 consecutive real-vendor runs pass it. Runs with no session (bad key) neither count nor break the streak.
 
 ## Acceptance scopes
 

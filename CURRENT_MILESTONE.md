@@ -1,5 +1,91 @@
 # Current Milestone
 
+## Branch claude/10-15 (2026-10-15)
+
+**Real app with voice (2026-10-15, evening):** a debug-only, in-memory Gemini override (decided by the decider; release stays Qwen-only) lets the GitHub emulator run the real app with a live session. `run_scenarios.py` S1..S21 **23/23** (run 38791103929 at 8d05eb3, `gemini-3.1-flash-live-preview`, Gemini's voice, quota guard on every session, 0 Qwen sessions). Review video with sound: `demo-videos/real_app_emulator_gemini_voice_2026-10-15.mp4`. Fixed on the way: P47 (uplink gate locked open on a fan), P60 (a correction ordered an action the driver forbade). Open: P59 (route stays drawn after 算了), Cantonese (owner question).
+
+
+`claude/10-13` + the Cursor tryout work (`cursor/p57-my-side-window-9a6b`, `cursor/drop-scolding-tone-9a6b`), reviewed and fixed: three stale session goldens, the driver-window rewrite now narrows only `window=all`, and 「导航去…」 is a claim again (OPEN_PROBLEMS P57). Full JVM suite 4086 / 0 failures. Gemini tryout RESULT PASS 19/19, video `demo-videos/tryout_gemini_2026-10-15.mp4` (Gemini's voice, not Ayano). GitHub emulator (moved here from `cursor/github-emulator-9a6b`, fixed: APK was signed with the wrong debug certificate → Amap code 22): run 38724466975 drove the real app on an API 34 emulator - map, route, turn-by-turn with lanes and junction view at 80 km/h, arrival; 180 s video on branch `ci/drive-video` (`docs/EMULATOR_TESTING.md`). No voice in it: the session is unconfigured (no Qwen by rule). Not merged: the rest of `cursor/github-emulator-9a6b` (based on an old commit; its drive step has failed on every run) and `wt/p57` (superseded).
+
+## Tryout — DEMO-TRYOUT-001 PASS on the JVM harness (2026-10-14)
+
+P57: 「把我这边的窗户开一点」 opens only the driver window. The 2026-10-14 Gemini tryout (`gemini-3.1-flash-live-preview`, simulated car, not a device) graded `tryout_check.py` RESULT PASS, 19/19. `u_window` was `window=driver` and no other window moved. Place search prefetched five candidates. `u_can` 1.5 s, `u_pick2` 2.4 s, `u_barge` 1.7 s. The video is on PR #12. This is not device evidence.
+
+## Active work — ADR-017: Qwen-Omni Realtime + Maia (cloud, `claude/10-9`, 2026-10-09)
+
+**The owner's decision:** one end-to-end model, `qwen3.8-omni-flash-realtime` with the stock voice Maia, no separate TTS ([ADR-017](DECISIONS/ADR-017-qwen-omni-realtime-end-to-end.md)). **2026-10-09:** the product session is Qwen Maia now (`VoiceProviderChoice` + fixed `session.update` voice); Gemini/Baidu/Azure developer fields no longer select the session. Gates Q-1 to Q-5 stay open; stack deletion still waits for Q-5. The adapter is [SPEC-021](SPECS/SPEC-021-qwen-omni-provider.md).
+
+**Wait cues, same day:** she does not say she is doing it on every turn. Silent for 7 s (on-screen 「处理中」 from 3 s). One 「收到，正在处理。」 at 7 s only if nothing useful has been spoken. A different delay line at 12 s. [SPEC-020](SPECS/SPEC-020-wait-cues.md). Not device-verified.
+
+**The Qwen Maia demo (owner, 2026-10-09: "pull the cursor 10-9 and start building up the require demo, fix the problem while building").** `cursor/10-9` (the owner's PC session: always-Qwen, 7 s cues, P50 demo fixes, takes recorded) is merged into `claude/10-9`. An independent review of it found I-1 leaks, now fixed in the cloud (JVM evidence only):
+- clause release no longer plays anything before the transcript classifies the turn; ability answers release only once they pass their own end rule; an enumeration that claims or promises the action is a claim (SPEC-014 note);
+- the wait cue Maia speaks is played only when its transcript is exactly the cue text and it had no tool call; a reply mistaken for the cue is handed back to the normal path (`ProviderCueCapture`); the stall retry goes through the turn gate;
+- 「今天珠海天气怎么样」 at the Zhuhai fix is answered from the session-start warm cache (SPEC-011 B4 amendment) — it was 5.4–5.7 s, over the 5 s limit;
+- `check_req.py` grades `reply_underrun` for every Qwen session; `seed_qwen.py --accept-consent` loads the key on the emulator.
+
+**Next — the owner's PC:** re-record every scene on `claude/10-9` HEAD and grade each take with `check_req.py` (`QWEN-EMU-001`; procedure in `tools/demo/recorder/README.md`), then compose the video (DEMO_REQUIREMENTS §4). The cloud container cannot run the emulator (no KVM; the app ships ARM-only native libraries).
+
+**Commute demo (owner, 2026-10-10):** a demo in the order of the Weibo 家越07 / 豆包座舱 video (style, seat + 「再调高一点」, mosquito + 「还没走」, a song from a vague description) on the trip 横琴创业谷 → 横琴镇: [docs/DEMO_COMMUTE.md](docs/DEMO_COMMUTE.md), recorder scenes `commute_*` with `KEEP=1`, test row `DEMO-COMMUTE-001`. Recording needs the owner's PC.
+
+**Correction from the docs:** this model is served only from the workspace endpoint `wss://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/...`. The owner needs the **workspace ID** as well as the key (PC: `setx DASHSCOPE_WORKSPACE_ID <id>`).
+
+**Done (cloud, JVM evidence only):**
+- **Q-1 probe**, `tools/qwen-omni-probe/`:
+  - It measures latency, a tool turn, barge-in (also a cough or knock), text input, and Maia clips for Q-2.
+  - The offline selftest passes.
+  - The batch is `run_q1.ps1`.
+- **SPEC-021 step 1:** `OpenAiRealtimeClient` + `RealtimeDialect` extracted from `BaiduFlexClient`, with the Baidu tests unmodified and green.
+- **Steps 2–3:** `QwenOmniDialect` / `QwenOmniClient` / `QwenOmniProvider`, settings (key in the Keystore, workspace, Maia, consent), opt-in selection in developer settings, no fallback.
+
+**Next — needs the owner's PC:**
+1. **`QWEN-PROBE-Q1-001`:** run `tools\qwen-omni-probe\run_q1.ps1` with `DASHSCOPE_API_KEY` and `DASHSCOPE_WORKSPACE_ID` set.
+   - It answers SPEC-021's open questions: text input, `semantic_vad` timing, and Maia's style range.
+2. **`QWEN-VOICE-EAR-001`** (Q-2): listen to `out\say\*.wav` next to the Xiaoyi clips.
+3. **SPEC-021 step 4** (cloud, after Q-1 and Q-2): tune to the measured facts, plus the Maia wait-cue clips (a SPEC-020 amendment).
+4. **Q-4:** the emulator demo with Qwen selected (开发者设置 → Qwen, key + workspace + consent).
+
+## Previous: handoff 2026-10-08 (PC session → cloud)
+
+**The owner's goal:** a demo with no laggy AI speech and no long silence. The bar is [docs/DEMO_REQUIREMENTS.md](docs/DEMO_REQUIREMENTS.md). The numbers behind it are in [OPEN_PROBLEMS.md](OPEN_PROBLEMS.md) P48.
+
+**Done** on `claude/10-3`. Unit suites pass (app 1639 / 0). The emulator measurements are in P48.
+- `e0ba94f`, `d0c66cf`, `7673d72` (AB-1): an ability list is no longer dropped as a fake action claim. 「帮你开了空调…」 still counts as a claim.
+- `dcc609a` (P48): the Azure voice is warmed with a real synthesis, and the next clause is fetched while one plays. On the emulator, the clause gap is now 0 ms and the first Azure audio 0.26–0.6 s (it was 1.7–1.9 s).
+- `16f31aa`: count-only timing logs (`assistant_voice_text` / `_flush` / `_gap_ms`).
+- `4bd714b`: [SPEC-020](SPECS/SPEC-020-wait-cues.md) wait cues, authorised by the owner. When a reply is slow she says 「收到，正在处理。」 or 「嗯，我想想。」. At 5 s she says a truthful reason; at 12 s she says she is still waiting.
+- `tools/demo/recorder/`: the silent emulator demo recorder and its grader (PC only).
+
+**Done on `claude/10-8` (cloud, 2026-10-08):** [SPEC-020](SPECS/SPEC-020-wait-cues.md) wait cues, merged as `92a36ec` from the owner's WIP.
+- The independent review went REVISE, REVISE, then PASS.
+- Fixed before merging:
+  - Cue audio sent as model reply audio would have held the session in SPEAKING. Tool results would then never be delivered, so a slow navigation or music turn could never finish. A cue is now `WaitCueAudio`, played by the core in a stamp of its own.
+  - The core silently dropped cue audio after any finished or interrupted reply.
+  - The clock started 1.2 s late. It is now measured from the last word.
+  - A cue could be spoken between a reply's clauses.
+  - A cough, a reply that ended silent, or an app-handled 「第一个」 could get a cue.
+- JVM: app 1677/0, ingress 118/0, `WAIT-CUE-UNIT-001`.
+- Two flaky `AssistantVoiceRevoicerTest` cases, which predate this work, were de-raced.
+- `tools/demo/check_demo_log.py` grades the cues (A6).
+
+**Next — needs the owner's PC:**
+1. **`WAIT-CUE-EMU-001`** (SPEC-020 A6): the cues on the emulator, with live Gemini and the Azure voice.
+2. **Re-record the demo on the PC emulator.** This cannot be done in the cloud. Use `tools/demo/recorder/README.md`. A take passes only if `check_req.py` passes.
+   - The scenes are: ability (你会干啥 / 你都能帮我干嘛), 有点闷, styles (嗲 / 吃什么 / 元气 / 霸道 / 正常) and the error card. Add one slow turn (navigation or music) to hear the wait cue.
+   - The output goes to `android_doc/demo_new_functions_<date>/`.
+- `:behavior-test` is green again. The GeminiLiveClient line budget (646 lines against 640, from `9696ce5`) is back to 640: the chat-correction grace moved to `GeminiCorrectionGrace`.
+
+**Still slow:** 2.6–4.2 s from the driver's last word to her voice. The parts:
+- Gemini's end-of-speech detection: 1.0–2.0 s.
+- Gemini's first message: 0–1.5 s.
+- Gemini's second turn after a tool call: 0.7–1.2 s.
+- The claim gate holds chat replies until generation completes: 0.9–1.8 s.
+
+~~The owner was asked about SPEC-014 clause release … has not decided.~~ **Decided 2026-10-09:** the owner chose "Build clause release". It is built for Qwen (`streamedReplyText`); see SPEC-014's status note and OPEN_PROBLEMS P50.
+
+**Other findings this session:**
+- P47: steady background noise stops Gemini from detecting the start of speech (emulator, synthetic noise; still needs the real-microphone check).
+- P45 addendum 3: a 12 s VAD stall, and the warm-up was inconsistent before `dcc609a`.
+
 **M4 — More voice coverage without depending on the model** — opened 2026-09-24 by the product owner
 
 Date opened: 2026-09-24 · Source: [B-024, B-025, B-026](BACKLOG.md) · Specs:
@@ -23,10 +109,10 @@ Each SPEC's steps are separate verified commits; a device row never blocks the n
 | 2 | Affordance registry and whole-utterance matcher | L2 | **built** (L2) — SPEC-010 step 2, `AffordanceMatcherTest` |
 | 3 | One execution per turn across the local and model paths | L2 | **built** (L2) — SPEC-010 step 3, `AffordanceTurnClaimTest` |
 | 4 | Screen and picker publish affordances; the old local-pick path is deleted | L2–L4 | **partly built** (L2) — SPEC-010 step 4a: bottom bar wired, hint lists controls; 4b (picker fold, delete old path) waits for the phone |
-| 5 | Spoken control names act on the phone without a model tool call | **L5** | **not earned** — SPEC-010 A7, needs the phone |
+| 5 | Spoken control names act on the phone without a model tool call | **L5** | **earned on the emulator 2026-10-20** — AFFORDANCE-DEVICE-001 PASS: AFF-PAUSE, AFF-AC, AFF-RECENTER 1/1 each through the local path (real-vendor Voice checks run 39380818764); the physical-phone run is still owed (SPEC-010 A7) |
 | 6 | SPEC-008 baseline selection rate recorded before any new declaration | **L5** | **not earned** — SPEC-011 step 0, needs the phone |
 | 7 | `query_live_info` weather: parser, tool, truth guard, capability split | L2–L4 | **built** (L2, `:app` in a stub-iFlytek mirror) — SPEC-011 steps 1–3: `AmapLiveInfoParserTest`, `LiveInfoToolTest`, `FalseCapabilityClaimTest`; registry rows `LIVE-INFO-UNIT-001`, `TRUTH-WEATHER-001`, `TRUTH-LIVEINFO-NEWS-001`. REST calls returned real data with the owner's web key from the cloud (A9 partial) |
-| 8 | Weather selected from speech ≥ 9/10 with no SPEC-008 regression; live Amap data | **L5–L6** | **not earned** — SPEC-011 step 4 |
+| 8 | Weather selected from speech ≥ 9/10 with no SPEC-008 regression; live Amap data | **L5–L6** | **not earned** — selection half met on the emulator 2026-10-20 (LI-WEATHER 10/10, live Amap data, Voice checks run 39377783831); the SPEC-008 no-regression half (LIVE-INFO-REGRESSION-001) is not run - SPEC-011 step 4 |
 | 9 | `route_traffic`, `along_route`, `place_details` | L2–L6 | **built** (L2, code) — SPEC-011 step 5: `LiveInfoAlongRouteWiringTest` with fake SDK edges; `AmapRouteLiveInfo` has never run (device, `LIVE-INFO-L6-001` / `LIVE-INFO-DEVICE-001`) |
 | 10 | Speech rules characterised against today's classes | L2 | **built** (L2) — SPEC-012 step 1, `SpeechRulesCharacterizationTest` |
 | 11 | `SpeechArbiter` owns every speak/uplink decision; `VoicePolicy` deleted | L2–L4 | **built** (L2, stub mirror) — step 3: `SpeechAuthority` wired into player, focus, guidance and mic; `VoicePolicy`, `GuidanceMicGate` and the `NavigationState` window deleted; `ArchitectureRulesTest.speechDecisionsAskOnlyTheArbiter`, `SPEECH-ARBITER-UNIT-001` |

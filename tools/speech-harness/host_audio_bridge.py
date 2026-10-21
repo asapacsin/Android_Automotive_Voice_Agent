@@ -242,8 +242,152 @@ def feed_mic(uplink, device, stop):
         proc.kill()
 
 
-def feed_file(uplink, paths, stop, lead=1.0, gap=0.0):
-    """Clips in order, [gap] seconds of silence between them, then silence for ever."""
+class Recorder:
+    """--record DIR: the driver stream as sent and her reply audio, on one clock (feed start = 0).
+
+    Synthetic test clips and the model's replies only; written to DIR as driver.wav / reply.wav and
+    t0.txt (the wall-clock feed start), for muxing with a screen recording. Never a real driver."""
+
+    def __init__(self, out):
+        self.out, self.t0, self.driver = out, None, b""
+        self.reply, self.reply_rate = bytearray(), 0
+        self.guidance = []
+
+    def started(self, stream):
+        self.t0, self.driver = time.time(), bytes(stream)
+
+    def add_reply(self, pcm, rate):
+        LAST_REPLY[0] = time.time()
+        if self.t0 is None:
+            return
+        self.reply_rate = rate
+        at = int((time.time() - self.t0) * rate) * 2
+        if at > len(self.reply):
+            self.reply += bytes(at - len(self.reply))
+        self.reply += pcm
+
+    def add_guidance(self, text):
+        """Amap's guidance sentence (a tagged text frame) at its time; voiced at save() for the video."""
+        if self.t0 is not None and self.out:
+            self.guidance.append((time.time() - self.t0, text))
+
+    def _guidance_track(self):
+        """Each sentence Amap's own voice speaks, voiced with edge-tts on the clock.
+
+        A female voice, zh-CN-XiaoyiNeural (owner test 10-16, P62: the male one sounded unlike
+        anything in the car; the driver clips use Xiaoxiao, so this one is told apart). With
+        the SPEC-018 relay on, only the sentences Amap's fallback speaks arrive here; the ones she
+        speaks are in her reply audio.
+        """
+        if not self.guidance:
+            return None
+        try:
+            import asyncio, tempfile, edge_tts  # noqa: E401
+        except ImportError:
+            return None
+        rate, track = 24000, bytearray()
+        ff = shutil.which("ffmpeg")
+        for at, text in self.guidance:
+            mp3 = tempfile.mktemp(suffix=".mp3")
+            try:
+                asyncio.run(edge_tts.Communicate(text, "zh-CN-XiaoyiNeural").save(mp3))
+                pcm = subprocess.run([ff, "-loglevel", "error", "-i", mp3, "-ac", "1", "-ar", str(rate), "-f", "s16le", "-"],
+                                     capture_output=True, check=True).stdout
+            except Exception:
+                continue
+            finally:
+                if os.path.exists(mp3):
+                    os.remove(mp3)
+            pos = int(at * rate) * 2
+            if pos > len(track):
+                track += bytes(pos - len(track))
+            track += pcm
+        return bytes(track), rate
+
+    def save(self):
+        if not self.out or self.t0 is None:
+            return
+        import wave
+        os.makedirs(self.out, exist_ok=True)
+        for name, data, rate in (("driver", self.driver, RATE), ("reply", bytes(self.reply), self.reply_rate or 24000)):
+            with wave.open(os.path.join(self.out, name + ".wav"), "wb") as w:
+                w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate); w.writeframes(data)
+        voiced = self._guidance_track()
+        if voiced:
+            with wave.open(os.path.join(self.out, "guidance.wav"), "wb") as w:
+                w.setnchannels(1); w.setsampwidth(2); w.setframerate(voiced[1]); w.writeframes(voiced[0])
+        with open(os.path.join(self.out, "t0.txt"), "w") as f:
+            f.write(f"{self.t0:.3f}\n")
+        print(f"[record] driver {len(self.driver) / 2 / RATE:.1f} s, reply {len(self.reply) / 2 / max(1, self.reply_rate):.1f} s -> {self.out}", flush=True)
+
+
+RECORDER = Recorder(None)
+
+
+# P65 (decider, 2026-10-16): --wait-quiet. The app's own uplink gate (SpeechAuthority's
+# `speech_arbiter out=uplink decision=OPEN|CLOSED`, tailed by follow_log) and her reply audio say
+# when the car is quiet; a scripted driver, like a real one, waits for that before the next line.
+UPLINK = {"closed": False}
+LAST_REPLY = [0.0]
+# P65 amendment (decider, 2026-10-16): a guidance prompt sent to her but not yet audible. The relay
+# logs `guidance_route ... to=assistant reason=SENT` 0.6-1.5 s before her audio; the mark clears when
+# the uplink closes (her audio started) or after 3.5 s (the relay's 3 s deadline: Amap takes it).
+# The scripted driver reads an app log line a real driver cannot see - said in every hand-over.
+INFLIGHT = {"since": None}
+INFLIGHT_TIMEOUT_S = 3.5
+# Piece run 38864188722: the Gemini connection failed at start and line 1 was spoken into nothing.
+# The driver waits for a ready session (`gemini_setup_complete`) - up to SESSION_CAP_S - after a
+# start, a close or a failed connection.
+SESSION = {"ready": False, "watch": False}
+SESSION_CAP_S = 30.0
+
+
+def on_app_line(text, now=None):
+    """Updates the quiet signals from one NovaVoice line (codes only are read)."""
+    now = time.time() if now is None else now
+    if "gemini_setup_complete" in text:
+        SESSION["ready"] = True
+    elif re.search(r"gemini_closed code=|GEMINI_LIVE_CONNECTION_FAILED|session_provider choice=", text):
+        SESSION["ready"] = False
+    gate = re.search(r"speech_arbiter out=uplink decision=(OPEN|CLOSED)", text)
+    if gate:
+        UPLINK["closed"] = gate.group(1) == "CLOSED"
+        if UPLINK["closed"]:
+            INFLIGHT["since"] = None
+    if re.search(r"guidance_route prompt=g[0-9]+ to=assistant reason=SENT", text):
+        INFLIGHT["since"] = now
+
+
+def quiet_reason(now=None):
+    """None when the driver may speak, else why not: uplink | inflight | reply."""
+    now = time.time() if now is None else now
+    if SESSION["watch"] and not SESSION["ready"]:
+        return "session"
+    if UPLINK["closed"]:
+        return "uplink"
+    since = INFLIGHT["since"]
+    if since is not None:
+        if now - since < INFLIGHT_TIMEOUT_S:
+            return "inflight"
+        INFLIGHT["since"] = None
+    if now - LAST_REPLY[0] <= 0.6:
+        return "reply"
+    return None
+
+
+def quiet_now():
+    return quiet_reason() is None
+
+
+def feed_file(uplink, paths, stop, lead=1.0, gap=0.0, wait_quiet=False, cap=10.0):
+    """Clips in order, [gap] seconds of silence between them, then silence for ever.
+
+    [wait_quiet]: after each gap, wait (at most [cap] s, then speak anyway: `wait_cap`) until the
+    uplink is open and she is not speaking. Never repeats a line, never wakes her; the recorded
+    driver track is what was actually sent.
+    """
+    if wait_quiet:
+        return feed_file_waiting(uplink, paths, stop, lead, gap, cap)
     stream = bytearray(int(RATE * 2 * lead))
     for i, path in enumerate(paths):
         clip = open(path, "rb").read()
@@ -251,6 +395,7 @@ def feed_file(uplink, paths, stop, lead=1.0, gap=0.0):
         if i:
             stream += bytes(int(RATE * 2 * gap) // 2 * 2)
         stream += clip
+    RECORDER.started(stream)
     pos = 0
 
     def next_frame():
@@ -258,6 +403,55 @@ def feed_file(uplink, paths, stop, lead=1.0, gap=0.0):
         chunk = bytes(stream[pos:pos + CHUNK])
         pos += CHUNK
         return chunk + bytes(CHUNK - len(chunk))
+
+    paced(uplink, next_frame, stop)
+
+
+def feed_file_waiting(uplink, paths, stop, lead, gap, cap):
+    clips = [open(p, "rb").read() for p in paths]
+    for path, clip in zip(paths, clips):
+        print(f"[bridge] clip {path} ({len(clip) / RATE / 2:.2f} s)", flush=True)
+    plan = [("pcm", bytes(int(RATE * 2 * lead) // 2 * 2))]
+    for i, clip in enumerate(clips):
+        if i:
+            plan.append(("pcm", bytes(int(RATE * 2 * gap) // 2 * 2)))
+        plan += [("wait", i), ("pcm", clip)]
+    SESSION["watch"] = True
+    sent = bytearray()
+    RECORDER.started(b"")
+    RECORDER.driver = sent  # grows with what is sent, so the video's driver track stays in sync
+    state = {"step": 0, "pos": 0, "wait_from": None, "why": "none"}
+
+    def next_frame():
+        while state["step"] < len(plan):
+            kind, item = plan[state["step"]]
+            if kind == "wait":
+                now = time.time()
+                if state["wait_from"] is None:
+                    state["wait_from"] = now
+                    state["why"] = "none"
+                waited = now - state["wait_from"]
+                why = quiet_reason(now)
+                if why:
+                    state["why"] = why
+                limit = SESSION_CAP_S if why == "session" or state["why"] == "session" else cap
+                if why is None or waited >= limit:
+                    print(f"[bridge] wait_quiet line={item + 1} ms={int(waited * 1000)} cap={int(waited >= limit)} reason={state['why']}", flush=True)
+                    state["step"] += 1
+                    state["wait_from"] = None
+                    continue
+                break  # still waiting: send silence
+            chunk = item[state["pos"]:state["pos"] + CHUNK]
+            if chunk:
+                state["pos"] += CHUNK
+                chunk = chunk + bytes(CHUNK - len(chunk))
+                sent.extend(chunk)
+                return chunk
+            state["step"] += 1
+            state["pos"] = 0
+        silence = bytes(CHUNK)
+        sent.extend(silence)
+        return silence
 
     paced(uplink, next_frame, stop)
 
@@ -306,11 +500,13 @@ def downlink(conn, stop, play):
         if pcm is None:
             break
         if rate == 0:  # tagged frame: Amap guidance text, spoken here (never printed: it names places)
+            RECORDER.add_guidance(pcm.decode("utf-8", "replace"))
             speak_guidance(pcm.decode("utf-8", "replace"), play)
             continue
         reply_bytes += length
         reply_rate = rate
         last = time.time()
+        RECORDER.add_reply(pcm, rate)
         if ffplay and rate != player_rate:
             if player:
                 player.kill()
@@ -355,7 +551,7 @@ def _say(text):
     runner = ("import sys, runpy\ntry:\n import truststore; truststore.inject_into_ssl()\nexcept ImportError: pass\n"
               "sys.argv = ['edge_tts'] + sys.argv[1:]; runpy.run_module('edge_tts', run_name='__main__')")
     try:
-        made = subprocess.run([sys.executable, "-c", runner, "--voice", "zh-CN-XiaoxiaoNeural", "--text", text,
+        made = subprocess.run([sys.executable, "-c", runner, "--voice", "zh-CN-XiaoyiNeural", "--text", text,
                                "--write-media", out], capture_output=True, timeout=20).returncode == 0
     except subprocess.TimeoutExpired:
         made = False
@@ -385,6 +581,7 @@ def follow_log(stop):
         if stop.is_set():
             break
         text = line.split("NovaVoice", 1)[-1].lstrip(": ").rstrip()
+        on_app_line(text)
         if text.startswith("state="):
             if text == last_state:
                 continue
@@ -394,7 +591,38 @@ def follow_log(stop):
     proc.kill()
 
 
+def selftest():
+    """Offline: the quiet signals from scripted NovaVoice lines (no emulator, no API)."""
+    LAST_REPLY[0] = 0.0
+    SESSION["watch"] = True
+    on_app_line("session_provider choice=gemini_live", 99.0)
+    assert quiet_reason(99.5) == "session", "no line before the session is ready"
+    on_app_line("gemini_setup_complete", 99.8)
+    on_app_line("speech_arbiter out=uplink decision=OPEN reason=idle", 100.0)
+    assert quiet_reason(100.0) is None
+    on_app_line("guidance_route prompt=g7 to=assistant reason=SENT waited_ms=0", 100.0)
+    assert quiet_reason(100.5) == "inflight", "a sent prompt holds the driver"
+    on_app_line("speech_arbiter out=uplink decision=CLOSED reason=guidance", 101.0)
+    assert quiet_reason(101.1) == "uplink", "her audio started: the gate holds"
+    assert INFLIGHT["since"] is None, "closing the gate clears the in-flight mark"
+    on_app_line("speech_arbiter out=uplink decision=OPEN reason=guidance_end", 104.0)
+    assert quiet_reason(104.1) is None
+    on_app_line("guidance_route prompt=g8 to=assistant reason=SENT waited_ms=0", 110.0)
+    assert quiet_reason(113.0) == "inflight"
+    assert quiet_reason(113.6) is None, "after 3.5 s the prompt went to Amap: no longer held"
+    on_app_line("guidance_route prompt=g9 to=amap reason=AMAP_SPEAKING waited_ms=0", 120.0)
+    assert quiet_reason(120.1) is None, "a prompt routed to Amap is not her in-flight speech"
+    on_app_line("gemini_closed code=1008 reason_class=other", 130.0)
+    assert quiet_reason(130.1) == "session", "after a close, wait for the resumed session"
+    on_app_line("gemini_setup_complete", 131.0)
+    assert quiet_reason(131.1) is None
+    print("selftest ok")
+
+
 def main():
+    if "--selftest" in sys.argv:
+        selftest()
+        return
     for stream in (sys.stdout, sys.stderr):
         stream.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser()
@@ -403,10 +631,18 @@ def main():
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--from-file", help="clip.pcm, or several comma-separated, played in order")
     ap.add_argument("--gap", type=float, default=4.0, help="seconds of silence between --from-file clips")
+    ap.add_argument("--lead", type=float, default=1.0, help="seconds of silence before the first --from-file clip")
     ap.add_argument("--duration", type=float)
+    ap.add_argument("--wait-quiet", action="store_true",
+                    help="with --from-file: before each line wait (<= --wait-cap s) until the uplink is open and she is quiet")
+    ap.add_argument("--wait-cap", type=float, default=10.0)
     ap.add_argument("--no-play", action="store_true")
     ap.add_argument("--no-start", action="store_true", help="leave the session asleep (wake-word test)")
+    ap.add_argument("--record", help="save driver.wav / reply.wav / t0.txt here (with --from-file)")
+    ap.add_argument("--provider", choices=["gemini"],
+                    help="debug builds: open a Gemini session; stops if the session is anything else")
     args = ap.parse_args()
+    RECORDER.out = args.record
 
     if args.list:
         print("\n".join(list_mics()))
@@ -429,7 +665,8 @@ def main():
     uplink = Uplink()
     if args.from_file:
         paths = args.from_file.split(",")
-        feeder = lambda: feed_file(uplink, paths, stop, gap=args.gap)
+        feeder = lambda: feed_file(uplink, paths, stop, lead=args.lead, gap=args.gap,
+                                   wait_quiet=args.wait_quiet, cap=min(args.wait_cap, 10.0))
     else:
         feeder = lambda: feed_mic(uplink, device, stop)
 
@@ -466,7 +703,19 @@ def main():
                         print("[bridge] speak now; press Enter to start a new turn, Ctrl+C to quit", flush=True)
                 if not args.no_start and not started_session:
                     started_session = True
+                    if args.provider:
+                        broadcast("provider", args.provider)
                     broadcast("voice", "start")
+                    if args.provider:
+                        # Quota guard (AGENTS.md): the newest session must be the one asked for.
+                        time.sleep(2)
+                        out = adb("logcat", "-d", "-s", "NovaVoice").stdout
+                        choices = re.findall(r"session_provider choice=([a-z_]+)", out)
+                        if not choices or choices[-1] != "gemini_live":
+                            broadcast("voice", "stop")
+                            print(f"QUOTA GUARD: session is {choices[-1] if choices else 'unknown'}, stopping", flush=True)
+                            stop.set()
+                            break
             time.sleep(0.2)
             if dead.is_set() or uplink.conn is None:
                 print("[bridge] app disconnected; reconnecting", flush=True)
@@ -488,6 +737,7 @@ def main():
         conn.close()
     for proc in LOGCAT:
         proc.kill()
+    RECORDER.save()
     print("[bridge] off", flush=True)
 
 

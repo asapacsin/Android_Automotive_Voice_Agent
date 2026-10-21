@@ -36,7 +36,16 @@ import com.novadrive.contracts.ProductCapabilities
  *
  * Pure Kotlin; no Android, no clock, no I/O. Externally synchronised by [BaiduFlexClient].
  */
-class DriverTurn(val epoch: Long) {
+class DriverTurn(
+    val epoch: Long,
+    /**
+     * SPEC-014 clause release (owner decision 2026-10-09): the provider streams its reply's words
+     * ahead of their audio ([com.novadrive.ingress.realtime.ProviderCapabilities.streamedReplyText]).
+     * A chat reply ([HoldReason.UNCLASSIFIED_CLAIM]) is then released clause by clause, each only
+     * once the words up to it pass the same check the response end applies. False: unchanged.
+     */
+    private val clauseRelease: Boolean = false,
+) {
 
     enum class Phase {
         /** The driver is speaking, or has stopped and no response has started. */
@@ -59,7 +68,7 @@ class DriverTurn(val epoch: Long) {
         /** A request this product can execute. Its confirmation needs execution proof. */
         ACTION,
 
-        /** A request with no tool at all (音量, 车窗 …). No proof is possible, ever. */
+        /** A request with no tool at all (音量, 天窗 …). No proof is possible, ever. */
         NO_TOOL_ACTION,
 
         /**
@@ -113,6 +122,19 @@ class DriverTurn(val epoch: Long) {
 
         /** Keep holding: the turn is not finished. */
         data object Wait : Verdict
+
+        /**
+         * SPEC-014: play what was held up to [checkedChars] characters of checked words, and keep
+         * holding the rest. The pipeline bounds the audio at [CLAUSE_AUDIO_MS_PER_CHAR] per
+         * character, slower than any voice speaks, so audio never runs past the checked words.
+         */
+        data class ReleaseClauses(val checkedChars: Int) : Verdict
+
+        /**
+         * SPEC-014: the words so far would make the response end drop the reply. Nothing more is
+         * released early; the rest waits for the end-of-response verdict. [predicate] is log-safe.
+         */
+        data class CloseClauseGate(val predicate: String) : Verdict
     }
 
     var phase: Phase = Phase.LISTENING
@@ -139,6 +161,13 @@ class DriverTurn(val epoch: Long) {
     /** Call ids this turn dispatched whose result has not been delivered yet, with the tool name. */
     private val awaitingResults = linkedMapOf<String, String>()
 
+    /** Every call id this turn dispatched, settled or not: a result for any other id is foreign (D-11). */
+    private val registeredCalls = mutableSetOf<String>()
+
+    /** Results for calls this turn never dispatched; ignored, counted for the diagnostic line (D-11). */
+    var foreignResults: Int = 0
+        private set
+
     /** Tools that were still running when the current response started. */
     private var awaitedAtResponseStart: Set<String> = emptySet()
 
@@ -148,6 +177,19 @@ class DriverTurn(val epoch: Long) {
     /** A tool result with `ok=true` came back. This, and only this, is proof. */
     var proven: Boolean = false
         private set
+
+    /**
+     * SPEC-017: the latest `play_music` result this turn did not read back a playing track
+     * (requested_unverified or ok=false). Its ok=true proves the hand-off, not what is playing, so
+     * a reply claiming a song is playing is held and dropped (I-1).
+     */
+    private var musicUnconfirmed = false
+
+    /**
+     * Where the reply stood when the unconfirmed result arrived. On Gemini the reply is spoken in
+     * the same response as the call, so only the words after the result are judged against it.
+     */
+    private var musicResultAt = 0
 
     /** `query_live_info` kinds that returned `ok=true` this turn: the only source for REALTIME_INFO. */
     private val liveInfoKinds = mutableSetOf<String>()
@@ -192,6 +234,18 @@ class DriverTurn(val epoch: Long) {
         phase = Phase.RESPONDING
         if (audio == null) audio = segment
         awaitedAtResponseStart = awaitingResults.values.toSet()
+        preCallHold = null
+        midCallFailed = false
+        holdUntilEnd = false
+        midCallFailure = null
+        replacedHold = null
+        replySoFar = ""
+        musicResultAt = 0
+        replyBeforeResult = null
+        midResponseTools.clear()
+        wordsBeforeCall = 0
+        clauseGateClosed = false
+        clauseCheckedChars = 0
         holdReason = decideHold(contextAwaitingAnswer)
         return holdReason
     }
@@ -207,8 +261,10 @@ class DriverTurn(val epoch: Long) {
     }
 
     private fun decideHold(contextAwaitingAnswer: Boolean): HoldReason {
+        lastDecideContext = contextAwaitingAnswer
         // Before proof: proof of an earlier action says nothing about a result still being made.
         if (awaitingToolResult) return HoldReason.AWAITING_TOOL_RESULT
+        if (musicUnconfirmed) return HoldReason.AWAITING_EXECUTION_PROOF
         // Proof of *some* action is not a source for the weather: only a live-info result of the
         // kind the driver asked about is (SPEC-011 B3).
         if (proven && (kind != Kind.REALTIME_INFO || answeredFromSource())) return HoldReason.NONE
@@ -287,19 +343,161 @@ class DriverTurn(val epoch: Long) {
             return
         }
         toolCalled = true
-        if (callId != null) awaitingResults[callId] = name.orEmpty()
+        if (callId != null) {
+            registeredCalls += callId
+            awaitingResults[callId] = name.orEmpty()
+            // D-10(a): a call registered after this response's hold was decided. Nothing said from
+            // here on can be grounded in its result, so the response waits for it like one that
+            // started with the call awaited; the hold it replaced is re-decided when the result is in.
+            if (phase == Phase.RESPONDING && holdReason != HoldReason.AWAITING_TOOL_RESULT) {
+                replacedHold = holdReason
+                if (preCallHold == null) {
+                    preCallHold = holdReason
+                    wordsBeforeCall = replySoFar.length
+                }
+                holdReason = HoldReason.AWAITING_TOOL_RESULT
+            }
+            if (replacedHold != null) midResponseTools += name.orEmpty()
+        }
+    }
+
+    /** The hold a mid-response call replaced (D-10(a)); null when no such call is pending. */
+    private var replacedHold: HoldReason? = null
+
+    /** `contextAwaitingAnswer` used by the most recent [decideHold], reused to restore a replaced hold. */
+    private var lastDecideContext = false
+
+    /**
+     * The hold in force when this response's first mid-response call arrived (D-10(a)). Kept until
+     * the response ends: the words said before the call are judged by its end-of-response rule.
+     */
+    private var preCallHold: HoldReason? = null
+
+    /** A mid-response call of this response returned ok=false; [midCallFailure] is the first reason. */
+    private var midCallFailed = false
+
+    /** A mid-response result left something the response end may still drop: nothing is released before it. */
+    private var holdUntilEnd = false
+    private var midCallFailure: String? = null
+
+    /** The assistant's wording so far in this response, as last passed to [onAssistantText]. */
+    private var replySoFar = ""
+
+    /**
+     * Length of the (untrimmed) wording already said when the first mid-response call arrived.
+     * Those words are judged at the response end by [preCallHold]'s own rule; what follows the
+     * call is judged against the call's result.
+     */
+    private var wordsBeforeCall = 0
+
+    private fun wordsSinceCall(text: String): String =
+        if (text.length >= wordsBeforeCall) text.substring(wordsBeforeCall).trim() else text.trim()
+
+    /**
+     * The words said before a mid-response call, judged by the hold in force when they were said,
+     * with the proof available now. No correction: the call is already running, and a nudge would
+     * ask for the action again.
+     */
+    private fun judgeWordsBeforeCall(rawReply: String): Verdict? {
+        val hold = preCallHold ?: return null
+        val pre = rawReply.take(wordsBeforeCall).trim()
+        if (pre.isEmpty()) return null
+        val unproven = when (hold) {
+            HoldReason.AWAITING_EXECUTION_PROOF -> !proven && ActionClaimGuard.claimsDone(pre)
+            HoldReason.CAPABILITY_HELP -> !ActionClaimGuard.answersCapabilityHelp(pre)
+            HoldReason.UNCLASSIFIED_CLAIM -> !proven && ActionClaimGuard.carActionClaimMatch(pre) != null
+            else -> false
+        }
+        return if (unproven) Verdict.Drop("claim_before_call_unproven") else null
+    }
+
+    /** Tools called mid-response (D-10(a)) in this response. */
+    private val midResponseTools = mutableSetOf<String>()
+
+    /** Words stating an outcome were said before a mid-response call's result: never heard. */
+    private var replyBeforeResult: Verdict.Drop? = null
+
+    /**
+     * The last result awaited by a mid-response call arrived (D-10(a)). Words said before it that
+     * state an outcome are invented and the response is dropped at its end; otherwise the kind's
+     * own hold is restored, now seeing [proven] / [executionFailed].
+     */
+    private fun settleMidResponseCall(): Verdict {
+        replacedHold = null
+        val words = wordsSinceCall(replySoFar)
+        if (words.isNotEmpty()) {
+            val claims = ActionClaimGuard.claimsDone(words) || ActionClaimGuard.carActionClaim(words) != null
+            replyBeforeResult = when {
+                // Nothing about the picture exists until the look returns.
+                CAMERA_TOOL in midResponseTools -> Verdict.Drop("reply_before_tool_result")
+                // A failure announced for an action that then succeeded.
+                !midCallFailed && ActionClaimGuard.refuses(words) -> Verdict.Drop("reply_before_tool_result")
+                // A done-claim while a call failed: the driver hears the failure (a2). Proof of
+                // another call does not override it, whatever order the results came in.
+                midCallFailed && claims -> Verdict.Drop(
+                    "unproven_action_claim",
+                    ActionClaimGuard.reportFailure(midCallFailure ?: "操作失败"),
+                )
+                // A done-claim proved by ok=true is true (D-7's designed release).
+                else -> null
+            }
+            if (replyBeforeResult != null) return Verdict.Wait
+        }
+        holdReason = decideHold(lastDecideContext)
+        // Only a response whose every mid-response result succeeded, and whose words before the
+        // call pass, may be released now. Otherwise the response-end check may still drop it, and
+        // a drop after release would come after the driver heard the claim (review RC1).
+        if (midCallFailed || judgeWordsBeforeCall(replySoFar) != null) {
+            holdUntilEnd = true
+            if (holdReason == HoldReason.NONE) holdReason = HoldReason.AWAITING_TOOL_RESULT
+            return Verdict.Wait
+        }
+        return when {
+            holdReason != HoldReason.NONE -> Verdict.Wait
+            proven -> Verdict.Release("execution_proved")
+            else -> Verdict.Release("mid_call_result")
+        }
     }
 
     /**
      * A tool result was delivered to the model. `ok=true` is the only thing in this system that
      * proves an external action happened; a failure explicitly does **not** release a claim.
      */
-    fun onExecutionResult(ok: Boolean, failure: String?, liveInfoKind: String? = null, callId: String? = null): Verdict {
+    fun onExecutionResult(
+        ok: Boolean,
+        failure: String?,
+        liveInfoKind: String? = null,
+        callId: String? = null,
+        /** null: not a play_music result; true: status=playing read back; false: not confirmed. */
+        musicConfirmed: Boolean? = null,
+    ): Verdict {
         if (!accepts()) {
             rejectedEvents++
             return Verdict.Wait
         }
+        if (musicConfirmed != null && (callId == null || callId in registeredCalls)) {
+            musicUnconfirmed = !musicConfirmed
+            if (musicUnconfirmed) musicResultAt = if (phase == Phase.RESPONDING) replySoFar.length else 0
+        }
+        // D-11 / I-1: only a result for a call this turn dispatched can prove or fail its action.
+        // A superseded turn's late result is ignored; a null id keeps the legacy path.
+        if (callId != null && callId !in registeredCalls) {
+            foreignResults++
+            return Verdict.Wait
+        }
         if (callId != null) awaitingResults.remove(callId)
+        if (holdReason == HoldReason.AWAITING_TOOL_RESULT && (replacedHold != null || holdUntilEnd)) {
+            if (!ok) {
+                lastFailure = failure
+                executionFailed = true
+                if (!midCallFailed) midCallFailure = failure
+                midCallFailed = true
+            } else {
+                proven = true
+                if (liveInfoKind != null) liveInfoKinds += liveInfoKind
+            }
+            return if (awaitingToolResult || replyBeforeResult != null) Verdict.Wait else settleMidResponseCall()
+        }
         // A response created before this result cannot have used it; it is judged when it ends.
         if (holdReason == HoldReason.AWAITING_TOOL_RESULT) {
             if (!ok) {
@@ -318,6 +516,8 @@ class DriverTurn(val epoch: Long) {
             return Verdict.Wait
         }
         proven = true
+        // An unconfirmed hand-off proves nothing about what is playing: judged at response end.
+        if (musicUnconfirmed) return Verdict.Wait
         if (holdReason == HoldReason.AWAITING_EXECUTION_PROOF || holdReason == HoldReason.PHANTOM_AUDIO ||
             holdReason == HoldReason.ECHO_CANDIDATE
         ) {
@@ -336,25 +536,119 @@ class DriverTurn(val epoch: Long) {
             rejectedEvents++
             return Verdict.Wait
         }
+        replySoFar = text
         return when (holdReason) {
             HoldReason.NONE -> Verdict.Wait
             HoldReason.PHANTOM_AUDIO ->
                 if (!PhantomTurnGate.isContentlessReply(text)) {
-                    holdReason = HoldReason.NONE
-                    Verdict.Release("real_reply")
+                    // D-10(b): real content proves the turn is not a phantom, not that the rest of
+                    // the reply claims nothing. It is judged at the end like any unclassified reply.
+                    holdReason = HoldReason.UNCLASSIFIED_CLAIM
+                    Verdict.Wait
                 } else {
                     Verdict.Wait
                 }
+            // SPEC-014: chat, each clause claim-free. Not before the driver's words have classified
+            // the turn: 「好的，已经开了，」 may yet turn out to answer 「把车窗打开」. An ability answer
+            // is released only once the words so far already pass its end rule (answersCapabilityHelp,
+            // two ability nouns; more words never undo it), so the end can no longer drop it.
+            HoldReason.UNCLASSIFIED_CLAIM ->
+                if (toolCalled || executionFailed || musicUnconfirmed || !userSpoke || kind == Kind.UNKNOWN) {
+                    Verdict.Wait
+                } else {
+                    clauseVerdict(text, ::chatClaimPredicate)
+                }
+            HoldReason.CAPABILITY_HELP ->
+                if (toolCalled || executionFailed || musicUnconfirmed) Verdict.Wait
+                else helpAnswerVerdict(text)
+            // A live-info question with no answer from its source: the end drops only invented
+            // data (realtimeVerdict), and that is judged clause by clause the same way.
+            HoldReason.NO_TOOL_REQUEST ->
+                if (kind == Kind.REALTIME_INFO) clauseVerdict(text, ::realtimeClausePredicate) else Verdict.Wait
+            // SPEC-017: the hand-off was proved but nothing read back what is playing. The end
+            // drops only 「正在放《X》」, so the reply is released clause by clause until one says so.
+            HoldReason.AWAITING_EXECUTION_PROOF ->
+                if (musicUnconfirmed && proven && !executionFailed) clauseVerdict(text, ::musicClausePredicate) else Verdict.Wait
             // These can only be settled once the response is complete.
             HoldReason.ECHO_CANDIDATE,
-            HoldReason.NO_TOOL_REQUEST,
-            HoldReason.AWAITING_EXECUTION_PROOF,
-            HoldReason.UNCLASSIFIED_CLAIM,
-            HoldReason.CAPABILITY_HELP,
             HoldReason.AWAITING_TOOL_RESULT,
             -> Verdict.Wait
         }
     }
+
+    /**
+     * A capability answer may play once it already names two supported groups.
+     *
+     * Providers with clause release do that at a clause boundary. Gemini does not
+     * (ADR-011): the tryout held 「你能帮我做什么」 until `generationComplete`, 5.0 s after
+     * the first audio, even though the first clause already named four groups. The end
+     * rule is unchanged — two groups pass it, and a claim still closes early release.
+     */
+    private fun helpAnswerVerdict(text: String): Verdict {
+        if (clauseGateClosed) return Verdict.Wait
+        val clauseEnd = text.indexOfLast { it in CLAUSE_ENDS } + 1
+        val upToClause = if (clauseEnd > 0) text.substring(0, clauseEnd) else ""
+        if (clauseRelease && ActionClaimGuard.answersCapabilityHelp(upToClause)) {
+            return clauseVerdict(text, ::chatClaimPredicate)
+        }
+        if (!ActionClaimGuard.answersCapabilityHelp(text)) return Verdict.Wait
+        val claim = chatClaimPredicate(text)
+        if (claim != null) {
+            clauseGateClosed = true
+            return Verdict.CloseClauseGate(claim)
+        }
+        if (text.length < MIN_FIRST_CLAUSE_CHARS || text.length <= clauseCheckedChars) return Verdict.Wait
+        clauseCheckedChars = text.length
+        return Verdict.ReleaseClauses(text.length)
+    }
+
+    /** SPEC-014: the first clause that failed the check closed early release for this response. */
+    private var clauseGateClosed = false
+
+    /** Characters of this response's words already checked clean and released. */
+    private var clauseCheckedChars = 0
+
+    /**
+     * SPEC-014 behaviour 3-4. The words up to the last complete clause are judged by the
+     * [HoldReason.UNCLASSIFIED_CLAIM] end rule (a car-action or done claim, a repair request).
+     * Clean: release up to them. Not clean: close the gate, and the response end decides as
+     * before. Anything a tool, a proof or a failure touched waits for the end.
+     */
+    private fun clauseVerdict(text: String, endRule: (String) -> String?): Verdict {
+        if (!clauseRelease || clauseGateClosed || awaitingToolResult || preCallHold != null) return Verdict.Wait
+        val end = text.indexOfLast { it in CLAUSE_ENDS } + 1
+        if (end <= clauseCheckedChars) return Verdict.Wait
+        // A first release of 「嗯，」 is 450 ms of audio, then the player waits for the next clause
+        // end; emulator 2026-10-09 measured 285-464 ms underruns exactly so. Start with enough.
+        if (clauseCheckedChars == 0 && end < MIN_FIRST_CLAUSE_CHARS) return Verdict.Wait
+        val predicate = endRule(text.substring(0, end))
+        if (predicate != null) {
+            clauseGateClosed = true
+            return Verdict.CloseClauseGate(predicate)
+        }
+        clauseCheckedChars = end
+        return Verdict.ReleaseClauses(end)
+    }
+
+    /**
+     * The [HoldReason.UNCLASSIFIED_CLAIM] claim and repair check, shared by the end rule and the
+     * clause check so they cannot drift: a stricter clause check only closes the gate on replies
+     * the end then releases, and the pause is heard (emulator 2026-10-09: a 0.33 s hole).
+     */
+    private fun chatClaimPredicate(checked: String): String? =
+        ActionClaimGuard.carActionClaimMatch(checked)?.predicate
+            ?: "repair".takeIf { PhantomTurnGate.asksToRepeat(checked) }
+
+    /** The end rule's unconfirmed_music_claim: only the words after the unconfirmed result count. */
+    private fun musicClausePredicate(checked: String): String? =
+        "unconfirmed_music_claim".takeIf {
+            ActionClaimGuard.claimsMediaPlaying(checked.drop(musicResultAt.coerceAtMost(checked.length)))
+        }
+
+    /** The [realtimeVerdict] drop rule: live data stated with no successful lookup behind it. */
+    private fun realtimeClausePredicate(checked: String): String? =
+        if (answeredFromSource()) null
+        else "fabricated_realtime_info".takeIf { ActionClaimGuard.fabricatesRealtimeInfo(checked) }
 
     /** A response finished. Returns what to do with anything held. */
     fun onResponseDone(assistantText: String, hadToolCallInResponse: Boolean): Verdict {
@@ -364,7 +658,26 @@ class DriverTurn(val epoch: Long) {
         }
         if (hadToolCallInResponse) toolCalled = true
         val reply = assistantText.trim()
-        val verdict = when (holdReason) {
+        // D-10(a). Words before a mid-response call are judged by the hold they were said under;
+        // words after it by the call's result. A pending result makes any stated outcome invented;
+        // a failed call makes any done-claim a failure to report, before any tool_called release.
+        val midCallPending = replacedHold != null && holdReason == HoldReason.AWAITING_TOOL_RESULT
+        val postCall = if (preCallHold != null) wordsSinceCall(assistantText) else ""
+        val postClaims = postCall.isNotEmpty() &&
+            (ActionClaimGuard.claimsDone(postCall) || ActionClaimGuard.carActionClaim(postCall) != null)
+        val preCallVerdict = judgeWordsBeforeCall(assistantText)
+        val verdict = (
+            if (midCallFailed && (postClaims || preCallVerdict != null)) {
+                // A failed call is reported whichever side of the call the claim was said on.
+                Verdict.Drop("unproven_action_claim", ActionClaimGuard.reportFailure(midCallFailure ?: "操作失败"))
+            } else {
+                null
+            }
+            ) ?: preCallVerdict ?: replyBeforeResult ?: when {
+            midCallPending && postCall.isNotEmpty() && speaksBeforeResult(postCall) ->
+                Verdict.Drop("reply_before_tool_result")
+            else -> null
+        } ?: when (holdReason) {
             HoldReason.NONE -> Verdict.Release("not_held")
 
             // No correction: the pending result's own delivery asks the model for the real answer.
@@ -420,6 +733,7 @@ class DriverTurn(val epoch: Long) {
             HoldReason.UNCLASSIFIED_CLAIM -> when {
                 toolCalled || hadToolCallInResponse -> Verdict.Release("tool_called")
                 proven -> Verdict.Release("execution_proved")
+                chatClaimPredicate(reply) == null -> Verdict.Release("no_claim_made")
                 else -> ActionClaimGuard.carActionClaimMatch(reply)
                     ?.let { Verdict.Drop("unverified_claim_${it.predicate}", detail = it.describe()) }
                     ?: repairForHeardDriver(reply)
@@ -428,6 +742,18 @@ class DriverTurn(val epoch: Long) {
 
             HoldReason.AWAITING_EXECUTION_PROOF -> {
                 when {
+                    // SPEC-017: 「正在放《X》」 after a hand-off nothing confirmed is never heard.
+                    // Regardless of a call in this response: only the words after the result count.
+                    musicUnconfirmed &&
+                        ActionClaimGuard.claimsMediaPlaying(assistantText.drop(musicResultAt.coerceAtMost(assistantText.length))) ->
+                        Verdict.Drop(
+                            "unconfirmed_music_claim",
+                            if (executionFailed && !proven) {
+                                ActionClaimGuard.reportFailure(lastFailure ?: "操作失败")
+                            } else {
+                                ActionClaimGuard.MUSIC_NOT_CONFIRMED
+                            },
+                        )
                     // Proof arrived while this response was in flight.
                     proven -> Verdict.Release("execution_proved")
                     // The model asserted an action that nothing has proved. This is the case that
@@ -446,6 +772,15 @@ class DriverTurn(val epoch: Long) {
             }
         }
         if (verdict !is Verdict.Wait) holdReason = HoldReason.NONE
+        replacedHold = null
+        replyBeforeResult = null
+        midResponseTools.clear()
+        wordsBeforeCall = 0
+        preCallHold = null
+        midCallFailed = false
+        holdUntilEnd = false
+        midCallFailure = null
+        replySoFar = ""
         if (phase == Phase.RESPONDING) phase = Phase.SETTLED
         return verdict
     }
@@ -530,6 +865,13 @@ class DriverTurn(val epoch: Long) {
         return pending
     }
 
+    /** SPEC-014: the held output from the front while [take] allows it, in order; the rest stays held. */
+    fun takeHeldWhile(take: (Any) -> Boolean): List<Any> {
+        val pending = mutableListOf<Any>()
+        while (held.isNotEmpty() && take(held.first())) pending += held.removeAt(0)
+        return pending
+    }
+
     private fun accepts(): Boolean = phase != Phase.CANCELLED
 
     override fun toString(): String =
@@ -561,6 +903,18 @@ class DriverTurn(val epoch: Long) {
 
         /** Share of the heard bigrams that must appear in the reply; recognition is not verbatim. */
         private const val ECHO_BIGRAM_SHARE = 0.6
+
+        /** A clause ends at one of these (SPEC-014). A comma counts: a claim split there is judged by its prefix. */
+        private val CLAUSE_ENDS = setOf('。', '！', '？', '，', '；', '…', '~', '～', '.', '!', '?', ',', ';', '\n')
+
+        /** The first early release covers at least this many checked characters (900 ms of audio). */
+        private const val MIN_FIRST_CLAUSE_CHARS = 6
+
+        /**
+         * SPEC-014 behaviour 3: audio released per checked character. Mandarin TTS runs about
+         * 4-5 characters a second (200-250 ms each), so 150 ms keeps the audio behind the words.
+         */
+        const val CLAUSE_AUDIO_MS_PER_CHAR = 150
 
         /** Classifies a transcript into what its reply's truth depends on. */
         fun classify(

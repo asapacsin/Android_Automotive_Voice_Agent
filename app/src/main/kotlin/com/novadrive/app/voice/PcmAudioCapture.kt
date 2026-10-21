@@ -293,6 +293,16 @@ class AndroidMicrophonePort(
 
     val uplinkGateOpen: Boolean get() = uplinkGate.isOpen
 
+    /**
+     * Fired once per uplink-gate transition: true closed→open, false open→closed (including a
+     * reset of an open gate). Local "driver speaking" evidence for a provider without server
+     * speech events (ADR-010). Never fired while the uplink gate is disabled.
+     */
+    @Volatile var onUplinkSegmentChanged: ((Boolean) -> Unit)? = null
+
+    private fun <T> gateTransition(block: () -> T): T =
+        reportUplinkTransition({ uplinkGate.isOpen }, onUplinkSegmentChanged, block)
+
     /** Time-scoped post-AEC speech evidence; see [SpeechUplinkGate.hasRecentSpeech]. */
     val recentSpeech: Boolean get() = uplinkGate.hasRecentSpeech()
 
@@ -347,6 +357,13 @@ class AndroidMicrophonePort(
     @Volatile var uplinkGateEnabled: Boolean =
         !(com.novadrive.app.DebugVoiceLog.isEnabled && com.novadrive.app.TranslatedAbi.active)
 
+    /**
+     * Only the emulator's HAL chops speech. Frames from the debug host bridge ([HostAudioTap]) are
+     * clean 20 ms PCM, so they are gated exactly as a phone's microphone is — which also gives the
+     * provider its local end of speech (SPEC-020 wait cues, F19 onset) on the emulator.
+     */
+    private val gateBypassed: Boolean get() = !uplinkGateEnabled && HostAudioTap.source == null
+
     /** The processing every outgoing microphone frame gets; the speech harness uses it too. */
     fun processForSend(frame: ByteArray): ByteArray =
         if (inputGainEnabled) inputGain.process(frame, PcmAudioCapture.FRAME_MS) else frame
@@ -358,7 +375,7 @@ class AndroidMicrophonePort(
      */
     fun gateForInjection(frame: ByteArray): List<ByteArray> {
         if (!uplinkGateEnabled) return listOf(processForSend(frame))
-        val decision = uplinkGate.offer(frame)
+        val decision = gateTransition { uplinkGate.offer(frame) }
         decision.rejected?.let { rejection ->
             com.novadrive.app.DebugVoiceLog.log(
                 "UPLINK_GATE_REJECT reason=impulse durationMs=${rejection.durationMs} peak=${rejection.peak} " +
@@ -400,7 +417,7 @@ class AndroidMicrophonePort(
                             droppedGuidance.incrementAndGet()
                             noteCaptureInterrupted()
                         }
-                        !uplinkGateEnabled -> onFrame(processForSend(bytes))
+                        gateBypassed -> onFrame(processForSend(bytes))
                         else -> {
                             interrupted = false
                             gateAndSend(bytes, onFrame)
@@ -423,7 +440,7 @@ class AndroidMicrophonePort(
     private fun noteCaptureInterrupted() {
         if (interrupted) return
         interrupted = true
-        uplinkGate.onCaptureInterrupted()
+        gateTransition { uplinkGate.onCaptureInterrupted() }
     }
 
     /**
@@ -431,7 +448,7 @@ class AndroidMicrophonePort(
      * idle, exactly as it already is while the assistant speaks.
      */
     private fun gateAndSend(bytes: ByteArray, onFrame: (ByteArray) -> Unit) {
-        val decision = uplinkGate.offer(bytes)
+        val decision = gateTransition { uplinkGate.offer(bytes) }
         if (decision.send.isEmpty()) droppedUplinkGate.incrementAndGet()
         decision.send.forEach { frame -> onFrame(processForSend(frame)) }
         decision.rejected?.let { rejection ->
@@ -451,8 +468,20 @@ class AndroidMicrophonePort(
     override fun stop() {
         capture?.stop()
         capture = null
-        uplinkGate.reset()
+        gateTransition { uplinkGate.reset() }
     }
+}
+
+/**
+ * Runs [block] and reports an uplink-gate transition it caused to [notify]: true closed→open,
+ * false open→closed. Nothing when the state did not change, so it fires once per transition.
+ */
+internal fun <T> reportUplinkTransition(isOpen: () -> Boolean, notify: ((Boolean) -> Unit)?, block: () -> T): T {
+    val before = isOpen()
+    val result = block()
+    val after = isOpen()
+    if (before != after) notify?.invoke(after)
+    return result
 }
 
 /** Largest absolute PCM16LE sample in [bytes]; diagnostics only. */

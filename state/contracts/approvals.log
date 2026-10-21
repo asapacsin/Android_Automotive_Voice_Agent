@@ -1,0 +1,41 @@
+TC-1 0e25324d1ada289360ba0fd63914ec8c5893e66a3facce6e0bb341a29ef0b76d APPROVED 2026-10-19 architect TC-1 from token report, live trial of the contract flow
+P67-LOG 5cadcac3f3bb00e0109e594c535f2e7a480dc8d14039847d9a5834e2c5820e87 APPROVED 2026-10-19 planner P67 diagnosis log per OPEN_PROBLEMS next step
+GEM-1007 7105e7469b561bc7fbf3e9de471184fb24ca1d166cf5393e45bc6a09aeb05983 APPROVED 2026-10-19 planner voice checks run 39252810141 misreported an invalid key as malformed setup
+P67-FIX c882b473b459da65671cf65a94882906d8fe9a73e8bd6d20d83ce8212f15cdf7 APPROVED 2026-10-19 planner P67 cause from Voice checks run 39285245437 claim lines; SPEC-010 A7
+NAVUI-PF 58e2b644062beeeed8c6afdcd29e5466cfafb7414a8c520d14cfe95dd4097dd9 APPROVED 2026-10-20 planner NAV-UI rows judged from existing device logs
+VC-SPLIT 3d57cfb2403cbb964fe50b2a84c17a4cefaced40ac7b2e682ab95f511d914d4f APPROVED 2026-10-20 planner owner 2026-10-19 time-optimised plan
+LIVE-JVM 79059ebc15a126db5ace33a44afb7d29a42f561fbbbbc874349573a7dd9e3f03 APPROVED 2026-10-20 planner owner 2026-10-19 time-optimised plan
+VC-SPLIT fd0ea9dfdb95b7c4ae53fd3250d9af8e0ca50f2c2c1568c1c72f181448d77c7a APPROVED 2026-10-20 planner R1 live-info 10 repeats one kind per shard; R2 session count documented
+TRYOUT-CI 96e20cbef35ec4a323431f11891c3ec0f6f3832d1cd9a7edd49518972ba88d43 APPROVED 2026-10-20 planner owner 2026-10-20: finish remaining work; DEMO-TRYOUT-001 rerun after P45 U2 and P66
+STYLE-CI e36b6f7f7d18a05cd04cdced1b654a5b78ff38994d44314567261470c489fca3 APPROVED 2026-10-20 planner decider 2026-10-20: P55 design decided 2026-10-13; evidence piece
+LIVEINFO-MAP 152b103360c71b66d2512df01860e10d28b1beed5d256f2df9a4174caa44e862 APPROVED 2026-10-20 architect scoped by read-only explore: step 1 of 2 (step 2 = emulator SDK reads in device checks)
+EVID-RUNID 60b1007db8106ffb2529d34a52fbe3787ea9d8e9b0588937bf272c96d86e0dd4 APPROVED 2026-10-20 architect found 2026-10-20: tryout runs 39373428985/39373432268 overwrote one folder
+STYLE-MODEL ac9920df42dc1057a59053d7e3aa07a642a2f377ff806cc2edac05a9a32f8db5 APPROVED 2026-10-20 architect decider 2026-10-20 P55 step; reviewer STYLE-CI follow-up
+WF-PRACTICES 6ef0e9e780db9108d3c13ca8f00af5cd2afcbc5605e3ebabc14d65c32b31495d APPROVED 2026-10-20 architect owner 2026-10-20: implement the best practices (hooks enforce, measure throughput)
+STYLE-GRADER 6f55d175c2841acd4d43801fdf4084a4efda7e8f26ad9776413e4a76c05a3c56 APPROVED 2026-10-20 architect decider 2026-10-20 P55 grader v3 (withdrew fallback A)
+P53-SPLIT c6b3cc2973b6ec37f0e1db2b8d450b0ad74748ef9b8f914a5abdaeabd72d515e APPROVED 2026-10-20 architect P53 measured warm 925 ms; find where it goes
+P53-SPLIT c631ddda5cd2bc010c97f399ae97b90c3c961860c28fecd5d6056c09f5fa5052 APPROVED 2026-10-20 architect test moved to src/testDebug (the class is debug-only; src/test would break testReleaseUnitTest)
+DEV-SPLIT afff367c78ff55b03706ed02366f01f5f24ae43b1df486b5cbd13535c59e2cb5 APPROVED 2026-10-20 architect owner 2026-10-20 apply CI shard split and Aider offload
+AIDER-WRAP 9f4e09368c919eb139610647d49268142870ef69617d4e8948bb92b0842ddcef APPROVED 2026-10-20 architect owner 2026-10-20 apply CI shard split and Aider offload
+DIAG-BATCH 1f9726ecd798f2b3f6b7d22190e64877d132092414abd41db9729efe008dfb63 APPROVED 2026-10-20 architect diagnose along_route NO_RESULTS and P53 reuse=false
+S18-TURN f7cb06808ed41a9f9868a89428811e85a8c963361734bb2cadfdff38b9777264 APPROVED 2026-10-20 architect SPEC regression tests, frontier triage 2026-10-20
+S18-LIFE 897d0e6f70953b3ba4fd55781957faf424f086288fb56054dc109bb483f75be3 APPROVED 2026-10-20 architect SPEC regression tests, frontier triage 2026-10-20
+S15-STYLE e990d80fc8198b1b4ec49e922ee75cacfa95e2294a978a1784d632d53859152a APPROVED 2026-10-20 architect SPEC regression tests, frontier triage 2026-10-20
+S18-TURN f5e1c7f9d5f2dc9e880fb69f267319b7802c78735d9b3edb40068e42e1325277 APPROVED 2026-10-20 architect path fix DriverTurnPipelineTest under voice
+AIDER-WRAP c51bae0df070dd72359f80b78958176796d199eb48fcf97fdeb60fd5771a1fc9 APPROVED 2026-10-20 architect reviewer REVISE: aiderignore and no-detect-urls keep other tracked files from the model
+ALONG-PROBE f5099853e9b29413782d9a1334e09fdb18d80640801f27d2c10b27ee12469da8 APPROVED 2026-10-20 architect measure along_route range since Amap docs give no limit
+S15-STYLE 2ad4609b6a6728b93eda2b485197edb28fedbebbde07304d98148220ac700606 APPROVED 2026-10-20 architect reviewer: behavioural restored-style test in both client tests
+COMPACT-CWD 327eff9a86e578b83e1f3de1cfb5e9aad1fbd575245f62cfbbb3287e269ae486 APPROVED 2026-10-20 architect first real Aider offload: small one-file script fix
+ALONG-PROBE2 9a95609c7099fae620001ccab7a68834a1e0e6aa469c49d8cf19a2279ba2d82d APPROVED 2026-10-20 architect range is not the cause; test query form and a web cross-check
+SEAM-A7 f87c348efc89f041c9b2c252e61e107437bf45f29660171e7dcff393f7261f76 APPROVED 2026-10-20 architect close SPEC-018 GAPs with internal seams
+SEAM-A4 5724bbbbda2b383593d731bc4c7588c32f2d927b2f62f6b717a353b40e34b39c APPROVED 2026-10-20 architect close SPEC-018 GAPs with internal seams
+P68-POLY 6db8046398315357437132faec94e16601d2b852ed221621862186fa5800a65d APPROVED 2026-10-20 architect decider DECIDED option b for P68
+P68-POLY 2ee92d3eb1b2fdcb1ced341a3656bf41e29081cbe480af29af5de4a98338f08c APPROVED 2026-10-20 architect executor BLOCKED: add HengqinWorld fake and root RouteLiveInfoMappingTest
+MIDROUTE-SPEED cd8c511fcccca91f012ddeae079c4b1c81bdf871819f72f5cb1333fd495c6f2c APPROVED 2026-10-20 architect autonomous emulator evidence for NOT_RUN rows
+VLC-EMU b6df16e19e816b335b86be4efbb8cfa0d65052be8b098c956184cc6e61562c4f APPROVED 2026-10-20 architect autonomous emulator evidence for NOT_RUN rows
+P68-POLY f3b0b89e056255905105450b35014eb6c34c19dab70402a6c5b0473f0299399a APPROVED 2026-10-20 architect comment-only edit in AmapPrivacyCompliance for the RoutePOISearch grep
+AGENT-ROUTING 56405208201c9799fd18fb42bed5bc1a81d80b71e5bb7d26269bdd6be5c1f7c1 APPROVED 2026-10-20 architect owner request: production multi-provider agent routing
+EVID-ATTEMPT 3ef5b0a64e4285822984199ea66c77b5c558b38966eef1f94587a9303b13e695 APPROVED 2026-10-20 architect rerun evidence nested in first attempt folder; Aider offload
+SYSIMG-RETRY 6d889bc0ac66930407a3c70fe36d912e3e0bd470197b7d4c18bea53b9b621e6b APPROVED 2026-10-20 architect recurring corrupt system image download, durable fix
+SYSIMG-WORKER 3d88bd8673cb6d0c6ed891aac689f751fdae78f798b32d287cf5e69219452c6e APPROVED 2026-10-20 architect SYSIMG-RETRY follow-up for test-worker
+OVERSPEED-XSM d79097de94813f53f211883f58c84c80750b1948ee245e3836465ec130e04b50 APPROVED 2026-10-20 architect overspeed evidence on a route with posted camera limits

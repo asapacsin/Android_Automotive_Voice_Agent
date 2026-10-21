@@ -10,7 +10,6 @@ import android.widget.FrameLayout
 import kotlin.math.roundToInt
 import com.amap.api.maps.AMapUtils
 import com.amap.api.maps.CameraUpdateFactory
-import com.amap.api.maps.CoordinateConverter
 import com.amap.api.maps.model.LatLng
 import com.amap.api.maps.model.MyLocationStyle
 import com.amap.api.navi.AMapNavi
@@ -23,7 +22,6 @@ import com.novadrive.app.CoarseLocationProvider
 import com.novadrive.app.DebugVoiceLog
 import com.novadrive.app.nav.InitialLocationRecenter
 import com.novadrive.app.nav.LocationFix
-import com.novadrive.app.nav.NavigationGuidanceVoice
 import com.novadrive.app.nav.RecenterDecision
 import com.novadrive.app.nav.RecenterOutcome
 import com.novadrive.app.nav.RouteCandidate
@@ -71,6 +69,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
     private var cameraLimitKmh = 0
     private var facilityLimitKmh = 0
     private var lastSpeedHud: DrivingSpeedHud.Snapshot? = null
+    private val overspeedAlert = OverspeedAlert()
 
     /** Stand-in for the map where it cannot be drawn (`TranslatedAbi.amapNativeSafe`). */
     private val textPanel: TextNavigationPanel? = if (mapRenderable) null else TextNavigationPanel(context)
@@ -105,11 +104,11 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
 
     init {
         AmapPrivacyCompliance.ensure(context)
-        if (!mapRenderable) {
-            AmapGuidanceVoice.textReceiver = { text -> textPanel?.onGuidanceText(text) }
-        }
+        if (!mapRenderable) AmapGuidanceVoice.textReceiver = { text -> textPanel?.onGuidanceText(text) }
         AMapNavi.addTTSInitializeListener { code, _ -> DebugVoiceLog.log("nav_guidance_tts_init code=$code") }
         navi = AMapNavi.getInstance(context.applicationContext)
+        AmapGuidanceVoice.assistantVoice = AmapGuidanceVoice.assistantVoiceEnabled(context)
+        AmapGuidanceVoice.debugDeadlineMs = AmapGuidanceVoice.debugDeadline(context)
         AmapGuidanceVoice.enable(navi)
         naviView = AMapNaviView(context)
         naviView.setAMapNaviViewListener(AmapDrivingPresentation.listener { stopNavigation("ui_exit") })
@@ -126,17 +125,18 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         // Speed chip is attached by AssistantNavigationScreen above the assistant overlay.
     }
 
-    /**
-     * Called by the screen with the controller's state, so the text panel (only where
-     * `TranslatedAbi.amapNativeSafe` is false)
-     * shows the same flow the choice overlay does. No-op on a device that draws the map.
-     */
+    private var shownPhase = NavigationPhase.IDLE
+    /** Controller state from the screen: the map presentation follows its phase; the text panel shows the flow. */
     fun showNavigationState(
         phase: NavigationPhase,
         destinations: List<DestinationCandidate>,
         routes: List<RouteCandidate>,
         destinationName: String?,
-    ) = textPanel?.onState(phase, destinations, routes, destinationName)
+    ) {
+        val p = MapPresentationPolicy.onPhase(shownPhase, phase, isNavigating).also { shownPhase = phase }
+        if (AmapDrivingPresentation.apply(p, navi, naviView)) lastRouteIds = IntArray(0)
+        textPanel?.onState(phase, destinations, routes, destinationName)
+    }
 
     /** True once FINE location is held; the SDK cannot use GNSS without it. */
     private fun hasFineLocation(): Boolean =
@@ -172,8 +172,8 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
 
     /**
      * A cached platform fix, so the map is roughly right in the second before GNSS answers.
-     * It is WGS-84 and the map is GCJ-02, so it is converted here — this is the only file that
-     * may touch the SDK. A fix the policy judges stale is dropped, never shown as "you are here".
+     * It is WGS-84 and the map is GCJ-02, so it is converted through [AmapCoordinates], the one
+     * owner of that conversion. A fix the policy judges stale is dropped, never shown as "you are here".
      */
     private fun seedFromLastKnown() {
         if (recenter.settled || recenter.stopped) return
@@ -226,14 +226,8 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         }
     }
 
-    /** Android reports WGS-84; every Amap surface expects GCJ-02. Skew is ~100-500 m if skipped. */
-    private fun LocationFix.toGcj02(): LocationFix = runCatching {
-        val converted = CoordinateConverter(context)
-            .from(CoordinateConverter.CoordType.GPS)
-            .coord(LatLng(latitude, longitude))
-            .convert()
-        copy(latitude = converted.latitude, longitude = converted.longitude)
-    }.getOrElse { this }
+    /** Android reports WGS-84; every Amap surface expects GCJ-02. The one converter is [AmapCoordinates]. */
+    private fun LocationFix.toGcj02(): LocationFix = AmapCoordinates.toGcj02(context, this)
 
     /**
      * Every fix, from either source, funnels through here. The decision of whether it moves the
@@ -703,6 +697,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         facilityLimitKmh = 0
         reportedSpeedKmh = 0
         refreshSpeedHud()
+        overspeedAlert.reset()
         textPanel?.clearProgress()
         textPanel?.render()
         val navi = this.navi
@@ -716,8 +711,8 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         AmapDrivingPresentation.applyIdle(naviView)
         onDrivingChanged?.invoke(false)
         enableMyLocation()
-        // Guidance cut off mid-sentence may never report its end; do not leave the mic gated.
-        if (NavigationGuidanceVoice.speaking) NavigationGuidanceVoice.onPlayEnd()
+        // Ungates a cut-off guidance sentence and resets the SPEC-018 relay (once per navigation).
+        AmapGuidanceVoice.onNavigationStopped()
         // Every termination path funnels through here -- arrival, emulator end, and the
         // manual nav_stop fallback -- so this one call is what keeps the state machine in
         // sync. The navigationActive guard above means it fires exactly once per session.
@@ -736,6 +731,9 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         if (!isNavigating) return false
         return AmapDrivingPresentation.showOverview(naviView)
     }
+
+    /** Debug diagnostics (P58); see [AmapDrivingPresentation.viewState]. */
+    fun debugViewState(): String = AmapDrivingPresentation.viewState(naviView, isNavigating)
 
     fun resumeTracking(): Boolean {
         if (!isNavigating) return false
@@ -766,8 +764,8 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         if (traceListener != null) return
         val listener = NavigationTraceListener(
             onRouteReady = { ids ->
-                lastRouteIds = ids
-                AmapDrivingPresentation.applyRoutePreview(naviView)
+                if (MapPresentationPolicy.keepsRouteIds(shownPhase, isNavigating)) lastRouteIds = ids
+                if (MapPresentationPolicy.previewsOnRouteReady(isNavigating)) AmapDrivingPresentation.applyRoutePreview(naviView)
                 onRoutesCalculated?.invoke(ids)
             },
             // Completion -> the SAME stop path as the manual nav_stop fallback.
@@ -810,6 +808,7 @@ class AmapNaviViewHost(context: Context) : FrameLayout(context) {
         if (snap == lastSpeedHud) return
         lastSpeedHud = snap
         post { speedHud.bind(snap) }
+        AmapGuidanceVoice.onSpeedHud(overspeedAlert, snap) { isNavigating } // P63: overspeed said aloud
         if (snap.visible) {
             DebugVoiceLog.log(
                 "nav_speed kmh=${snap.speedKmh} limitKmh=${snap.limitKmh} over=${if (snap.overspeed) 1 else 0}",

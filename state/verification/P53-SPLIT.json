@@ -1,0 +1,27 @@
+{
+ "task_id": "P53-SPLIT",
+ "contract_sha256": "c631ddda5cd2bc010c97f399ae97b90c3c961860c28fecd5d6056c09f5fa5052",
+ "tip": "31dc8a17b8ead1e8de020ce6ed2129c5da16b557",
+ "verified_by": "planner",
+ "at": "2026-10-20T09:04:42+00:00",
+ "results": [
+  {
+   "id": "unit",
+   "kind": "regression",
+   "command": "./gradlew -q :app:testDebugUnitTest --tests '*PreflightTimingTest*'",
+   "exit_code": 0,
+   "seconds": 19.5,
+   "log": "/root/nb-p53v/nova-verify/P53-SPLIT/31dc8a17b8ea-unit.log",
+   "log_sha256": "bcbd06e73ee58c0ef9d2d139f75cb5bf76a716d5644f7ec62f384651e6ed5b26"
+  },
+  {
+   "id": "compile",
+   "kind": "compile",
+   "command": "./gradlew -q :app:compileDebugKotlin :app:compileReleaseKotlin",
+   "exit_code": 0,
+   "seconds": 17.3,
+   "log": "/root/nb-p53v/nova-verify/P53-SPLIT/31dc8a17b8ea-compile.log",
+   "log_sha256": "be3705ca8d832c3d3af7d11d0c1c689dbef1eff14671a1e7da19b84cd13416d9"
+  }
+ ]
+}
