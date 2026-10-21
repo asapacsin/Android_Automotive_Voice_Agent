@@ -22,7 +22,22 @@ def _formatting_only(diff):
     added, removed = _changed_lines(diff)
     if not added and not removed:
         return False
-    norm = lambda xs: sorted(s for s in ("".join(x.split()) for x in xs) if s)  # noqa: E731
+    def normalize_line(line):
+        # Keep leading whitespace
+        leading = line[:len(line) - len(line.lstrip())]
+        rest = line[len(leading):]
+        # Strip trailing whitespace
+        rest = rest.rstrip()
+        # Remove internal whitespace
+        rest = ''.join(rest.split())
+        return leading + rest
+    def norm(lines):
+        normalized = []
+        for line in lines:
+            n = normalize_line(line)
+            if n:
+                normalized.append(n)
+        return sorted(normalized)
     return norm(added) == norm(removed)
 
 

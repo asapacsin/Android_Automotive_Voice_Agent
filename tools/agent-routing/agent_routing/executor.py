@@ -12,10 +12,17 @@ from .redact import redact
 from .util import SECRET_GLOBS, head, inside, is_binary, is_ignored, match_any, normalize_rel
 
 SYSTEM = (
-    "You are a code-change executor. Reply with ONLY one JSON object, no prose, no markdown fences:\n"
-    '{"summary": "<one paragraph>", "edits": [ {"path": "<listed file>", "search": "<exact text that occurs '
-    'exactly once>", "replace": "<new text>"} OR {"path": "<listed file>", "content": "<full new file>"} ]}\n'
-    "Edit only the files listed as EDITABLE. Never touch other paths.")
+    "You are a code-change executor. Reply with ONLY one JSON object, no prose, no markdown fences, no "
+    "explanation outside the JSON. Keep your reply as short as possible.\n"
+    '{"summary": "<one short sentence>", "edits": [ {"path": "<listed file>", "search": "<exact text that '
+    'occurs exactly once>", "replace": "<new text>"} ]}\n'
+    "RULES: Make small targeted edits: `search` is a few consecutive lines copied exactly from the file "
+    "(include enough neighbouring text to be unique), `replace` is the new text for those lines. Never put a "
+    "whole existing file into `search` or `replace`. Use the full-file form "
+    '{"path": "<listed file>", "content": "<full new file>"} ONLY for a file that does not exist yet or is '
+    "tiny. Edit only the files listed as EDITABLE; never touch other paths.")
+
+MAX_REWRITE_LINES = 60
 
 
 def refusal(root, cfg, path):
@@ -89,6 +96,9 @@ def plan_edits(root, edits):
         if cur is None:
             cur = f.read_text(encoding="utf-8") if f.exists() else None
         if "content" in e:
+            if cur is not None and cur.count("\n") + 1 > MAX_REWRITE_LINES:
+                raise ValueError("OVERSIZE_REWRITE: edit %d replaces all of %s (%d lines); use small "
+                                 "search/replace edits instead" % (i, rel, cur.count("\n") + 1))
             new[rel] = e["content"]
             continue
         if cur is None:
@@ -98,6 +108,16 @@ def plan_edits(root, edits):
             raise ValueError("edit %d: search text occurs %d times in %s (need exactly 1)" % (i, n, rel))
         new[rel] = cur.replace(e["search"], e["replace"], 1)
     return new
+
+
+def _save_reply(cfg, text, provider_id, errors):
+    """Keep the redacted raw reply of a rejected round so a failure can be diagnosed (state dir is gitignored)."""
+    try:
+        p = C.state_dir(cfg) / "last_reply.txt"
+        p.write_text("provider=%s\nerrors=%s\n---\n%s" % (provider_id, errors, redact(text or "", cfg["key_names"])[:60000]),
+                     encoding="utf-8")
+    except OSError:
+        pass
 
 
 def run_tests(root, cmd, timeout, key_names=()):
@@ -185,19 +205,26 @@ def execute(root, cfg, task, files, context=(), tests_cmd=None, findings=None, p
             status["cost_usd"] = None
         elif status["cost_usd"] is not None:
             status["cost_usd"] = round(status["cost_usd"] + res.cost_usd, 6)
+        cap = int(cfg["limits"]["max_output_tokens"])
+        truncated = res.output_tokens >= int(cap * 0.98)
         try:
+            if truncated:
+                raise ValueError("TRUNCATED: reply used %d of %d output tokens and was cut off" % (res.output_tokens, cap))
             obj = parse_json_reply(res.text)
-        except (json.JSONDecodeError, ValueError):
-            status.update(status="REJECTED", errors=["executor reply is not valid JSON"])
-            return status
-        verrs = validate_proposal(obj, set(files))
-        if verrs:
-            status.update(status="REJECTED", errors=verrs)
-            return status
-        try:
+            verrs = validate_proposal(obj, set(files))
+            if verrs:
+                _save_reply(cfg, res.text, status["provider"], verrs)
+                status.update(status="REJECTED", errors=verrs)
+                return status
             new = plan_edits(root, obj["edits"])
-        except (ValueError, OSError) as e:
-            status.update(status="REJECTED", errors=[str(e)])
+        except (json.JSONDecodeError, ValueError, OSError) as e:
+            msg = "executor reply is not valid JSON" if isinstance(e, json.JSONDecodeError) else str(e)
+            _save_reply(cfg, res.text, status["provider"], [msg])
+            status.update(status="REJECTED", errors=[msg])
+            if msg.startswith(("TRUNCATED", "OVERSIZE_REWRITE")) and rnd < rounds:
+                feedback = ("Your previous reply was rejected: %s. Reply again with ONLY small search/replace "
+                            "edits (a few lines each), no full-file content for existing files." % msg)
+                continue
             return status
         for rel, content in new.items():
             f = root / rel

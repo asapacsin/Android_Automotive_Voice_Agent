@@ -33,6 +33,8 @@ class TestE_RiskTriggersReview(GateBase):
         self.assertEqual(classify(["README.md"], "+hi\n", r)[0], "LOW")
         self.assertEqual(classify(["src/app.py"], "+x = 2\n-x = 1\n", r)[0], "MEDIUM")
         self.assertEqual(classify(["src/app.py"], "+x  =  1\n-x = 1\n", r), ("LOW", ["formatting-only"]))
+        # indentation is significant in Python: an indentation-only change is not formatting-only
+        self.assertEqual(classify(["src/app.py"], "+    return x\n-return x\n", r)[0], "MEDIUM")
         lvl, fired = classify([".claude/settings.json"], "+{}\n", r)
         self.assertEqual((lvl, "hooks-orchestration" in fired), ("HIGH", True))
         self.assertEqual(classify(["src/app.py"], "+lock = threading.Lock()\n", r)[0], "HIGH")
