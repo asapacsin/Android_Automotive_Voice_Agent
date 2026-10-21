@@ -1,0 +1,16 @@
+app: map up
+secret AMAP_WEB_KEY: set, amap_web_setup -> result=applied 
+PIECE P53 search: preflight_search count=5 ms=2758 preflight_search_warm runs=3 ms=1076,1086,1304
+PIECE P53 split: preflight_split call=1 path=/v3/place/around dns_ms=25 connect_ms=274 tls_ms=292 ttfb_ms=383 body_ms=0 reused=false protocol=http/1.1 conn_close=true gap_ms=-1
+PLACE-UNSET-001: navigate_to 回家 before a home is saved -> "ok":false "error":"HOME_NOT_SET"  asks_for_address=yes
+PLACE-SAVE-001: save_place home -> "ok":true  saved_place_set_slot_home=1
+CALL-NOSIM-001: place_call -> "ok":false "error":"CONTACT_NOT_FOUND"  dialer_activities_before=0 after=0 (the emulator has a simulated SIM)
+APPS-001: open_app settings -> result=Accepted 
+APPS-001: open_app maps -> result=Accepted 
+APPS-001: dispatch open_app app=music (outside the allow-list) -> "ok":false "error":"APP_NOT_ALLOWED" 
+LIVE-INFO-SDK along_route: live_info kind=along_route ok=true code=none ms=1128 dispatch "ok":true 
+PIECE LIVE-INFO-SDK search: along_route_search code=10000 total=3 returned=3 kept=1 lookahead_m=8832 vertices=17 ms=960
+LIVE-INFO-SDK route_traffic: live_info kind=route_traffic ok=true code=none ms=4 nav_started_lines=1 dispatch "ok":true 
+app_start.jpg
+results.jsonl
+summary.txt
