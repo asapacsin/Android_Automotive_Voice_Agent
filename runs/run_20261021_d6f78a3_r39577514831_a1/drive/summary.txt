@@ -1,0 +1,32 @@
+NAV: route calculated
+NAV: navigation started (emulator 50 km/h)
+P58 view t10: naviMode=car_up bearing=356 tilt=24
+P58 view t20: naviMode=car_up bearing=360 tilt=29
+P58 view t35: naviMode=car_up bearing=5 tilt=30
+NAV-UI-007: overview -> result=overview=true 
+NAV-UI-007: lock -> result=lock=true 
+P58 view drive_0s: naviMode=car_up bearing=0 tilt=15
+P58 view drive_30s: naviMode=car_up bearing=39 tilt=21
+P58 view drive_60s: naviMode=car_up bearing=16 tilt=26
+P58 view drive_90s: naviMode=car_up bearing=1 tilt=23
+P58 view drive_120s: naviMode=car_up bearing=241 tilt=25
+P58 view drive_150s: naviMode=car_up bearing=27 tilt=0
+NAV-MID-ROUTE-001 / NAV-UI-00x: maneuver=6 lane_shown=24 junction_shown=0 traffic_update=7 presentation_driving=2 lights=3 cameras=19 speed_over=0 ring=5 guidance_play=15
+NAV-E2E-ARRIVAL-001: proximity_arrival=1 stopped=nav_stopped reached=true reason=emulator_end
+NAV crash check: fatal=0 anr=0
+checks_drive.mp4
+nav_drive_0s.jpg
+nav_drive_120s.jpg
+nav_drive_150s.jpg
+nav_drive_30s.jpg
+nav_drive_60s.jpg
+nav_drive_90s.jpg
+nav_end.jpg
+nav_lock_restored.jpg
+nav_overview.jpg
+nav_route_preview.jpg
+nav_t10.jpg
+nav_t20.jpg
+nav_t35.jpg
+results.jsonl
+summary.txt
