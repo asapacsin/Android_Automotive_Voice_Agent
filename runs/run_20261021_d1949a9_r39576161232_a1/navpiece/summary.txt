@@ -1,0 +1,6 @@
+secret AMAP_WEB_KEY: set, amap_web_setup -> result=applied 
+PIECE P61 after session stop: dispatch -> "ok":false "error":"NEARBY_QUESTION_WHILE_NAVIGATING"  route_replaced=0 nav_stopped_lines=0
+PIECE P63 speak path: result=alert  queued:  1 nav_alert_queued to=amap routes:  1 guidance_route to=amap reason=DISABLED fallback_tts:  1 nav_guidance_fallback_tts accepted=true brackets:  1 speech_arbiter out=uplink decision=CLOSED 
+PIECE P63 after stop: nav_alert_dropped reason=not_navigating
+results.jsonl
+summary.txt

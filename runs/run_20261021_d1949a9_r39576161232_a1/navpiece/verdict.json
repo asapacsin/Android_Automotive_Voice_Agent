@@ -1,0 +1,26 @@
+{
+  "suite": "device-navpiece",
+  "verdict": "PASS",
+  "vendor": "REAL",
+  "checks": [
+    {
+      "id": "build:vendor-real",
+      "required": true,
+      "status": "PASS",
+      "detail": "real vendor files packaged"
+    },
+    {
+      "id": "device:PIECE-P61",
+      "required": true,
+      "status": "PASS",
+      "detail": "route_replaced=0 result=\"ok\":false \"error\":\"NEARBY_QUESTION_WHILE_NAVIGATING\" "
+    },
+    {
+      "id": "device:PIECE-P63",
+      "required": true,
+      "status": "PASS",
+      "detail": "queued_to_amap=1 after_stop=nav_alert_dropped reason=not_navigating"
+    }
+  ],
+  "problems": []
+}
