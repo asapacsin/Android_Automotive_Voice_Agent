@@ -414,7 +414,10 @@ def feed_file(uplink, paths, stop, lead=1.0, gap=0.0, wait_quiet=False, cap=10.0
 
 
 def feed_file_waiting(uplink, paths, stop, lead, gap, cap, finish_after_reply=False):
-    clips = [open(p, "rb").read() for p in paths]
+    clips = []
+    for path in paths:
+        with open(path, "rb") as source:
+            clips.append(source.read())
     for path, clip in zip(paths, clips):
         print(f"[bridge] clip {path} ({len(clip) / RATE / 2:.2f} s)", flush=True)
     plan = [("pcm", bytes(int(RATE * 2 * lead) // 2 * 2))]
@@ -444,6 +447,15 @@ def feed_file_waiting(uplink, paths, stop, lead, gap, cap, finish_after_reply=Fa
                         response_ms = int((now - TURN["line_end"]) * 1000)
                         if response_ms >= 5000:
                             print(f"[bridge] reply_timeout line={item} ms={response_ms}", flush=True)
+                            if finish_after_reply:
+                                # Keep recording the remaining scripted scenes after recording a
+                                # real latency failure. A late/missing reply should fail the gate,
+                                # but must not truncate the entire demo before later features run.
+                                TURN["line_end"] = None
+                                TURN["first_reply"] = None
+                                state["step"] += 1
+                                state["wait_from"] = None
+                                continue
                             stop.set()
                             break
                         break
