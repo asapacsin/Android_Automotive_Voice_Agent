@@ -93,7 +93,7 @@ None blocking. Default preference order above; the owner can reorder it in devel
 
 | Area | State | Proof |
 | --- | --- | --- |
-| Session search + readback (`AndroidMediaHandoff`, `AndroidNowPlayingSource`, `NowPlayingVerifier`) | implemented in `a477f35`; CI built it, but demo run 313 stopped before the music action | code review; device behavior unverified |
+| Session search + readback (`AndroidMediaHandoff`, `AndroidNowPlayingSource`, `NowPlayingVerifier`) | implemented in `a477f35`; CI built it, but demo run 315 exercised `control_music`, not `play_music` | code review; API behavior unverified |
 | `play_music` tool + capability flip | built; never run on a device | `MediaServerPlayMusicTest`, `MediaDomainPlayMusicTest`, `FalseCapabilityClaimTest`, `CapabilityContractTest` |
 | `control_music{stop}` pauses the app's session; `music_stopped` only on readback | built; never run on a device | `MediaServerPlayMusicTest` |
 | On-screen one-time listener hint with the settings path | **not built** — only a `hint` field in the first `requested_unverified` result | — |
@@ -108,5 +108,7 @@ notification-listener permission is missing, the session is absent, or search is
 request fails rather than opening a music app. This behavior is implemented but **not yet verified**.
 The JDK 17 requirement prevented local Gradle tests. CI run 313 built the app, but failed the
 response-latency and navigation-start gates after only two scripted lines; its 17-second video ended
-at the route chooser before reaching the music request. It therefore provides no evidence about
-whether the music action changes the foreground app.
+at the route chooser. Run 315 recorded 115 seconds and reached generic `control_music` actions while
+NovaDrive remained visible, but it did not invoke named-song `play_music` or the media-session search.
+Run 315 still failed response-latency and P65 awake-time gates. Neither video verifies the
+no-app-switch behavior of the session-search action.
