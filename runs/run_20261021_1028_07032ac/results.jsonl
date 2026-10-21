@@ -1,0 +1,8 @@
+{"id": "build:vendor-real", "status": "PASS", "detail": "real vendor files packaged"}
+{"id": "navpiece:bridge", "status": "PASS", "detail": "rc=0"}
+{"id": "navpiece:P65-awake", "status": "FAIL", "detail": "early_sleeps=0 capped_waits=2"}
+{"id": "navpiece:quota-guard", "status": "PASS", "detail": "gemini_live, no qwen session"}
+{"id": "navpiece:nav-started", "status": "PASS", "detail": "started=1"}
+{"id": "navpiece:video", "status": "PASS", "detail": "nav_demo.mp4 written"}
+{"id": "navpiece:no-crash", "status": "PASS", "detail": "fatal=0 anr=0"}
+{"id": "navpiece:complete", "status": "PASS", "detail": "voice piece"}
