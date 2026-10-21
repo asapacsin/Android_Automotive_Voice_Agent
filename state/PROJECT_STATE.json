@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-20T18:50:44",
+  "generated_at": "2026-10-21T04:19:07",
   "generated_by": "scripts/collect_state.py",
   "git": {
-    "commit": "b0ba8c2",
-    "branch": "claude/10-20",
-    "subject": "OPEN_PROBLEMS P69: voice-a evening run, Gemini heard S3/S4/S4b and never answered; re-run on fresh quota",
-    "working_tree_clean": true,
-    "uncommitted_files": 0
+    "commit": "ae42ebc",
+    "branch": "claude/10-21",
+    "subject": "Nav demo: render at 540x1170/210dpi and record at 288x624 so the emulator video is less choppy",
+    "working_tree_clean": false,
+    "uncommitted_files": 2
   },
   "tests": {
     "available": true,
@@ -77,11 +77,6 @@
     ]
   },
   "open_issues": [
-    {
-      "id": "P69",
-      "title": "voice-a: Gemini Live heard four driver lines and never answered (2026-10-20 evening)",
-      "status": "OPEN - found 2026-10-20 (Voice checks run 39465918773 attempt 2 at 71fa705, ci/voice-evidence runs/run_39465918773_a2_71"
-    },
     {
       "id": "P68",
       "title": "「路上有加油站吗」 finds nothing: Amap RoutePOISearch returns zero POIs on the active route",
@@ -195,8 +190,8 @@
     "HUMAN_ACTION_REQUIRED": "NO",
     "STOP_REASON": "NOT_STOPPING",
     "BLOCKING_DEPENDENCY": "none",
-    "NEXT_ACTION": "NAV-CANCEL-001: STALE_BIND: 算了 really cancels",
-    "actionable_count": 79,
+    "NEXT_ACTION": "NAV-OVERSPEED-001: STALE_BIND: Spoken over-speed warning with the guidance toggle off (the shipped path)",
+    "actionable_count": 75,
     "blocked_count": 4,
     "HUMAN_VALIDATION_READY": "FALSE",
     "QUEUED_FOR_HUMAN": 29,
@@ -206,35 +201,7 @@
         "priority": 2,
         "class": "failing regression tests",
         "source": "TEST_MATRIX.yaml",
-        "item": "NAV-CANCEL-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
         "item": "NAV-OVERSPEED-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-PICK-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "NAV-SEARCH-001",
-        "blocked_by": null
-      },
-      {
-        "priority": 2,
-        "class": "failing regression tests",
-        "source": "TEST_MATRIX.yaml",
-        "item": "TRUTH-WEATHER-001",
         "blocked_by": null
       },
       {
@@ -604,6 +571,13 @@
       {
         "priority": 9,
         "class": "unfinished or open problem",
+        "source": "state/contracts/OVERSPEED-XSM.yaml",
+        "item": "OVERSPEED-XSM",
+        "blocked_by": null
+      },
+      {
+        "priority": 9,
+        "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P46",
         "blocked_by": null
@@ -662,13 +636,6 @@
         "class": "unfinished or open problem",
         "source": "OPEN_PROBLEMS.md",
         "item": "P68",
-        "blocked_by": null
-      },
-      {
-        "priority": 9,
-        "class": "unfinished or open problem",
-        "source": "OPEN_PROBLEMS.md",
-        "item": "P69",
         "blocked_by": null
       },
       {
