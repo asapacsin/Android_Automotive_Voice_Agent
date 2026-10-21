@@ -48,6 +48,9 @@ class WorkflowVerdictTest(unittest.TestCase):
         script = read("scripts/github_nav_demo.sh")
         self.assertIn("duration=360; DEMO_GAP=1; DEMO_LEAD=1", script)
         self.assertIn('if [ "${NAV_DEMO_PIECE:-}" = "demo" ]', script)
+        main_clips = next(line for line in script.splitlines() if line.startswith('  clips="$S/nav_demo_dest'))
+        self.assertLess(main_clips.index("fz_seat_high.pcm"), main_clips.index("fz_lower_more.pcm"))
+        self.assertLess(main_clips.index("fz_lower_more.pcm"), main_clips.index("fz_answer_seat.pcm"))
         self.assertIn("demo_bridge_args+=(--finish-after-reply)", script)
         self.assertIn("recording ended after final reply", script)
 

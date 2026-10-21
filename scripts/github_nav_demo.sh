@@ -205,9 +205,9 @@ duration=960
 # The running worker passes NAV_DEMO_PIECE=1; scripts/nav_piece.txt names which piece (default: lines).
 if [ "${NAV_DEMO_PIECE:-}" = "1" ] && [ -s scripts/nav_piece.txt ]; then NAV_DEMO_PIECE="$(tr -dc a-z <scripts/nav_piece.txt)"; fi
 if [ "${NAV_DEMO_PIECE:-}" = "demo" ]; then
-  # The 5-minute demo (owner 2026-10-16): main driver functions and ambiguous commands, one drive.
+  # The 5-minute demo: main driver functions and a complete ambiguity exchange, one drive.
   # 珠海站: ~9.9 km, a 60 km/h camera on the recommended route (routes piece 4d09b8b), 120 km/h.
-  clips="$S/nav_demo_dest.pcm,$S/pick_first.pcm,$S/start_nav.pcm,$S/ctx_too_hot.pcm,$S/ctx_cooler.pcm,$S/music_on.pcm,$S/fz_mosquito.pcm,$S/fz_mosquito_done.pcm,$S/fz_seat_high.pcm,$S/fz_lower_more.pcm,$S/gas_nearby.pcm,$S/cancel.pcm,$S/eta_q.pcm,$S/music_off.pcm"
+  clips="$S/nav_demo_dest.pcm,$S/pick_first.pcm,$S/start_nav.pcm,$S/ctx_too_hot.pcm,$S/ctx_cooler.pcm,$S/music_on.pcm,$S/fz_mosquito.pcm,$S/fz_mosquito_done.pcm,$S/fz_seat_high.pcm,$S/fz_lower_more.pcm,$S/fz_answer_seat.pcm,$S/gas_nearby.pcm,$S/cancel.pcm,$S/eta_q.pcm,$S/music_off.pcm"
   # Keep scene transitions tight; wait-quiet still holds each line until her reply/guidance is done.
   # A 1 s gap keeps the recorded take within the no-dead-air demo requirement.
   duration=360; DEMO_GAP=1; DEMO_LEAD=1
