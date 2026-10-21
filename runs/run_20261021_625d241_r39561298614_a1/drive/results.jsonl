@@ -1,0 +1,4 @@
+{"id": "build:vendor-real", "status": "PASS", "detail": "real vendor files packaged"}
+{"id": "device:NAV-ROUTE-001", "status": "PASS", "detail": "nav_calc_success"}
+{"id": "device:NAV-START-001", "status": "PASS", "detail": "nav_started"}
+{"id": "device:NAV-UI-007", "status": "PASS", "detail": "overview=result=overview=true  lock=result=lock=true "}

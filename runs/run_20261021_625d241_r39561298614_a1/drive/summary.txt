@@ -1,0 +1,13 @@
+NAV: route calculated
+NAV: navigation started (emulator 50 km/h)
+P58 view t10: naviMode=car_up bearing=357 tilt=26
+P58 view t20: naviMode=car_up bearing=360 tilt=29
+P58 view t35: naviMode=car_up bearing=5 tilt=30
+NAV-UI-007: overview -> result=overview=true 
+NAV-UI-007: lock -> result=lock=true 
+P58 view drive_0s: naviMode=car_up bearing=0 tilt=16
+P58 view drive_30s: naviMode=car_up bearing=39 tilt=20
+P58 view drive_60s: naviMode=car_up bearing=27 tilt=25
+P58 view drive_90s: naviMode=car_up bearing=14 tilt=20
+P58 view drive_120s: naviMode=car_up bearing=278 tilt=26
+P58 view drive_150s: naviMode=car_up bearing=28 tilt=0
