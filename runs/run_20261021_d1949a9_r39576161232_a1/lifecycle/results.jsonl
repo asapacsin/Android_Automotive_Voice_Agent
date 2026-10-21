@@ -1,0 +1,2 @@
+{"id": "build:vendor-real", "status": "PASS", "detail": "real vendor files packaged"}
+{"id": "device:P59", "status": "PASS", "detail": "rounds_failed=0/2"}

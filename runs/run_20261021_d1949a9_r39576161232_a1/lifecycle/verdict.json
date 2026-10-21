@@ -1,0 +1,54 @@
+{
+  "suite": "device-lifecycle",
+  "verdict": "FAIL",
+  "vendor": "REAL",
+  "checks": [
+    {
+      "id": "build:vendor-real",
+      "required": true,
+      "status": "PASS",
+      "detail": "real vendor files packaged"
+    },
+    {
+      "id": "device:PROCDEATH-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:PERM-DENY-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:TRANSCRIPT-FADE-EMU-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:P59",
+      "required": false,
+      "status": "PASS",
+      "detail": "rounds_failed=0/2"
+    }
+  ],
+  "problems": [
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:PROCDEATH-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:PERM-DENY-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:TRANSCRIPT-FADE-EMU-001 has no result"
+    }
+  ]
+}
