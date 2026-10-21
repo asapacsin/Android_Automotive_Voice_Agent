@@ -1,0 +1,16 @@
+app: map up
+secret AMAP_WEB_KEY: set, amap_web_setup -> result=applied 
+secret GEMINI_API_KEY: set, gemini_setup -> result=applied 
+guidance relay: result=relay=on 
+piece mode: 5-minute demo, 400 s
+driver waits: line=1 ms=0 cap=0 reason=none line=2 ms=0 cap=0 reason=none line=3 ms=0 cap=0 reason=none line=4 ms=0 cap=0 reason=none line=5 ms=700 cap=0 reason=uplink line=6 ms=0 cap=0 reason=none line=7 ms=0 cap=0 reason=none line=8 ms=0 cap=0 reason=none line=9 ms=3580 cap=0 reason=uplink line=10 ms=0 cap=0 reason=none line=11 ms=0 cap=0 reason=none line=12 ms=4419 cap=0 reason=reply line=13 ms=0 cap=0 reason=none line=14 ms=10000 cap=1 reason=uplink (the scripted driver reads the app's guidance log; a real driver cannot)
+nav demo: provider=session_provider choice=gemini_live started=1 stopped= guidance=0 tools= 4 tool=choose_navigation_option  6 tool=control_climate  2 tool=control_music  4 tool=control_seat  2 tool=exit_navigation_mode  4 tool=navigate_to  4 tool=query_live_info  4 tool=run_scenario  errors=0
+relay: nav_guidance_relay deadline_ms=3000 nav_guidance_relay installed=true routes:  1 guidance_route to=amap reason=AMAP_SPEAKING  2 guidance_route to=amap reason=DRIVER_SPEAKING  2 guidance_route to=amap reason=FIDELITY_MISMATCH_DIRECTION  13 guidance_route to=amap reason=FIDELITY_STRIKES  2 guidance_route to=amap reason=RESPONSE_OPEN  2 guidance_route to=amap reason=SEND_FAILED  10 guidance_route to=assistant reason=SENT 
+relay claims: assistant_waited_ms=718,624,664,631,722,771,725,648,950,639, amap=0 fidelity:  7 result=MATCH  2 result=MISMATCH_DIRECTION fallback_tts:  22 nav_guidance_fallback_tts accepted=true echo_dropped=22
+overspeed: limits=limitKmh=0 limitKmh=60 over_lines=1 alerts=1 queued:  1 nav_alert_queued to=relay rings=11
+listening:  1 listening ACTIVE->SLEEP reason=inactivity_timeout  1 listening DEEP_IDLE->ACTIVE reason=start uplink_closed=22 droppedGuidance=droppedGuidance=6528
+P61 guard: guard_nearby_nav decision=refused cur=11 cap=11 refused=1 nav_stopped: nav_stopped reached=true reason=emulator_end tools_in_order: tool=navigate_to result=✓ tool=choose_navigation_option result=✓ tool=control_climate result=✓ tool=control_music result=DUPLICATE_IN_TURN tool=run_scenario result=场景 tool=control_seat result=✓ tool=navigate_to result=NEARBY_QUESTION_WHILE_NAVIGATING tool=query_live_info result=🔎 tool=exit_navigation_mode result=✓ tool=query_live_info result=🔎 guard_vague_exit: 
+gemini closes:  1 gemini_closed code=1008 reason_class=other 
+nav demo: nav_demo.mp4 written (offset 0.0 s, guidance=yes)
+video: 288x624 frames=8032 seconds=468 fps=17.2
+nav demo: done
