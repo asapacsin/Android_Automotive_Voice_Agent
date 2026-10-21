@@ -18,7 +18,10 @@ class StructuralValidateTest(unittest.TestCase):
 
     def doc_with_stale_bind(self):
         doc = copy.deepcopy(self.base)
-        bound = next(e for e in doc["tests"] if tm.need_runtime_bind(e))
+        # Keep this regression test independent of the live registry: it may contain no
+        # runtime-bound PASS rows when all device evidence has been marked NOT_RUN.
+        bound = next(e for e in doc["tests"] if e.get("type") == "device")
+        bound["status"] = "PASS"
         bound["evidence_bind"] = {"code_digest": "deliberately-stale"}
         return doc, bound["id"]
 
