@@ -51,9 +51,9 @@ def cmd_review(a, cfg):
         p = C.resolve(cfg, "reviewer", use_fallback=True, log=g.audit)
         from .budget import Ledger
         prov = make_provider(p, cfg["http"], Ledger(g.dir / "usage.jsonl", cfg["budgets"].get("daily")), cfg["key_names"])
-        res = g.run_review(a.summary or "", provider=prov)
+        res = g.run_review(a.summary or "", provider=prov, max_output_tokens=int(cfg['limits']['max_output_tokens']))
     else:
-        res = g.run_review(a.summary or "")
+        res = g.run_review(a.summary or "", max_output_tokens=int(cfg['limits']['max_output_tokens']))
     _print(res)
     return 0 if res["verdict"] == "PASS" else 1
 

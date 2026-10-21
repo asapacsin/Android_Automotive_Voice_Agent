@@ -89,8 +89,8 @@ call; executors were ~10-16%).
     one tight question naming the files to read, never "search everything".
   - Executors (owner 2026-10-21, after 95% of tokens ran on Opus): try in this order. (1) Aider +
     Qwen (`scripts/offload_executor.py`) when the contract names the exact script/test/doc edit;
-    (2) Poolside or Gemini through `tools/agent-routing` for bounded edits with no vendor files
-    (Gemini only on days `voice-checks` is not scheduled, voice tests keep the quota); (3) the
+    (2) Poolside through `tools/agent-routing` for bounded edits with no vendor files (owner
+    2026-10-21: Gemini is not used to write code; it stays for the voice tests only); (3) the
     `executor` agent, now Sonnet 5.5; (4) Opus (`model: opus` on the call) only for `RISK: HIGH`
     packets or after one failed Sonnet round.
   - Reviewer (Sonnet by default; pass `model: opus` for HIGH risk; Nemotron for MEDIUM once its key

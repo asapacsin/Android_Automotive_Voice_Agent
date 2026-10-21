@@ -65,7 +65,7 @@ def actionable(findings):
     return [f for f in findings or [] if f.get("actionable") and f.get("evidence", "").strip()]
 
 
-def review(provider, diff, risk, fired, task_summary, max_diff_bytes, key_names=()):
+def review(provider, diff, risk, fired, task_summary, max_diff_bytes, key_names=(), max_output_tokens=8192):
     """Return a result dict. verdict is PASS/FAIL only from a validated reviewer reply; otherwise ERROR."""
     out = {"verdict": "ERROR", "risk": risk, "findings": [], "confidence": None, "provider": provider.id,
            "model": provider.model, "errors": [], "truncated": False}
@@ -80,7 +80,7 @@ def review(provider, diff, risk, fired, task_summary, max_diff_bytes, key_names=
     user = "TASK SUMMARY:\n%s\n\nDETERMINISTIC RISK: %s (rules: %s)\n\nDIFF:\n%s" % (
         redact(task_summary or "(none given)", key_names), risk, ", ".join(fired) or "none", d)
     try:
-        res = provider.chat(SYSTEM, user, max_tokens=4096, json_mode=True)
+        res = provider.chat(SYSTEM, user, max_tokens=max_output_tokens, json_mode=True)
     except ProviderError as e:
         out["errors"].append(str(e))
         out["error_code"] = e.code

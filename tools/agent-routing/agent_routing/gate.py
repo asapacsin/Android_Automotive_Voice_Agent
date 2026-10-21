@@ -82,7 +82,7 @@ class Gate:
         return sha256_text("%s|%s|%s" % (fp, self.cfg["policy_version"], model))
 
     # actions --------------------------------------------------------------------------------------
-    def run_review(self, task_summary="", provider=None, snap=None):
+    def run_review(self, task_summary="", provider=None, snap=None, max_output_tokens=None):
         snap = snap or self.snapshot()
         if not snap["paths"]:
             return {"verdict": "ERROR", "errors": ["no changes in gate scope"]}
@@ -103,7 +103,8 @@ class Gate:
             ledger = Ledger(self.dir / "usage.jsonl", self.cfg["budgets"].get("daily"))
             provider = make_provider(pcfg, self.cfg["http"], ledger, self.cfg["key_names"])
         res = review(provider, snap["diff"], snap["risk"], snap["fired"], task_summary,
-                     self.cfg["limits"]["max_diff_bytes"], self.cfg["key_names"])
+                     self.cfg["limits"]["max_diff_bytes"], self.cfg["key_names"],
+                     max_output_tokens=int(max_output_tokens or self.cfg["limits"]["max_output_tokens"]))
         res["fingerprint"] = snap["fingerprint"]
         if res["verdict"] in ("PASS", "FAIL"):
             cache = self._load("reviews.json", {})

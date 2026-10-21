@@ -1,10 +1,9 @@
 {
   "$comment": "Nova Drive routing. Gate scope 'sessions': only changes made through agent_routing execute are gated, so the existing Nova contract/review workflow is unaffected. Keys are injected per host by the cloud proxy.",
-  "executor": "gemini",
+  "executor": "poolside",
   "reviewer": "nvidia_or",
   "fallback": {"executor": null, "reviewer": null},
   "providers": {
-    "gemini": {"auth": "proxy-injected"},
     "poolside": {"auth": "proxy-injected"},
     "nvidia": {"auth": "proxy-injected"},
     "nvidia_or": {"auth": "proxy-injected"}
