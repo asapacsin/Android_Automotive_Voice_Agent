@@ -1,0 +1,18 @@
+secret AMAP_WEB_KEY: set, amap_web_setup -> result=applied 
+P59 first: candidates=1 calc=2 cancelled=1 idle_off=1 preview_on=1
+P59 second: candidates=1 calc=2 cancelled=1 idle_off=1 preview_on=1
+PROCDEATH-001: after am kill pid=none
+PROCDEATH-001: relaunched, map up
+PROCDEATH-001: fatal=0 wake= listening_claims=0
+PERM-DENY-001: voice start -> result=MicPermissionMissing  mic_missing=1 wake_permission_failure=0 listening=0 fatal=0
+TRANSCRIPT-FADE-EMU-001: probe transcript_bubble_shown transcript_bubble_shown transcript_bubble_faded since_line_ms=25059 
+p59_first_cancelled.jpg
+p59_first_routes.jpg
+p59_second_cancelled.jpg
+p59_second_routes.jpg
+perm_denied.jpg
+procdeath_relaunched.jpg
+results.jsonl
+summary.txt
+transcript_probe_after.jpg
+transcript_probe_shown.jpg
