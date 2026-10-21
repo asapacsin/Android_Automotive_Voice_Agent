@@ -360,3 +360,8 @@ does not change architecture ownership, invariants, or who may certify work. Age
   or time taken in minutes (a range is fine), and give clock times in the owner's zone (UTC+8) as
   well as UTC. Pick the right job first (for example the 5-minute demo piece, not the 16-minute
   default drive) and report the actual minutes when it finishes.
+- **Stuck helper** (owner, 2026-10-21). When a run is stuck, cannot find the cause, or is about to give
+  up or terminate, call `python3 scripts/stuck_helper.py --goal ... --tried ... --observed ... [--log f]`
+  once before stopping. The reviewer returns causes, next steps and a stop condition; continue by that
+  plan. If there is no reviewer, no key or an error it prints "PASS: no plan" and exits 0, so it never
+  blocks. It is advice, not a verdict: verify its steps with evidence before relying on them.
