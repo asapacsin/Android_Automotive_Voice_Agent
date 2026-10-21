@@ -89,7 +89,12 @@ class WorkflowVerdictTest(unittest.TestCase):
                 for later in steps[steps.index(step) + 1:]:
                     if later["name"] in ("Verdict",) or later["name"].startswith("Push the evidence"):
                         continue
-                    self.assertEqual(later.get("if"), "steps.secrets.outputs.ok == 'true'", later["name"])
+                    # The APK build may also be skipped on an APK cache hit; it still needs the secrets.
+                    want = "steps.secrets.outputs.ok == 'true'"
+                    if later["name"] == "Build the debug APK":
+                        self.assertIn(later.get("if"), (want, want + " && steps.apkcache.outputs.cache-hit != 'true'"), later["name"])
+                        continue
+                    self.assertEqual(later.get("if"), want, later["name"])
                 with tempfile.TemporaryDirectory() as tmp:
                     os.makedirs(os.path.join(tmp, "scripts"))
                     os.makedirs(os.path.join(tmp, "config"))
