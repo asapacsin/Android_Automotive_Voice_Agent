@@ -23,10 +23,10 @@ song, has the driver's own music app play it, and says only what is **actually**
   model's guess is never evidence.
 - **`MusicSource` port** (media domain), two implementations:
   - `BundledTrackSource` — today's single track; serves only a generic 「放首歌」.
-  - `MediaAppHandoffSource` — sends Android's `MEDIA_PLAY_FROM_SEARCH` (`SearchManager.QUERY`,
-    `EXTRA_MEDIA_FOCUS`, `EXTRA_MEDIA_TITLE/ARTIST/ALBUM`) to the first installed app from a
-    preference list: 网易云音乐 `com.netease.cloudmusic`, QQ音乐 `com.tencent.qqmusic`, VLC
-    `org.videolan.vlc`, then any app that resolves the intent.
+  - `MediaSessionSearchSource` — sends `MediaController.TransportControls.playFromSearch` to an
+    already active session that advertises `ACTION_PLAY_FROM_SEARCH`. It never launches or brings
+    another app to the foreground. If no controllable session exists, it fails honestly; the driver
+    must start a music app themselves before asking NovaDrive to search.
 - **`NowPlayingObserver`** reads the active `MediaSession` (title, artist, state) through
   `MediaSessionManager.getActiveSessions`, which needs notification-listener access granted once
   by the driver. This is the executor's evidence.
@@ -52,8 +52,8 @@ song, has the driver's own music app play it, and says only what is **actually**
 - **B3.** 「不是这首」 → `play_music` again with the rejected title excluded (`exclude_title`).
 - **B4.** A very vague request (「放点好听的」) plays the bundled track or hands off `query` only; no
   clarifying question unless the model has nothing to search for.
-- **B5.** The music app coming to the foreground is brought back: the app re-shows its own activity
-  after the hand-off (the map stays the driver's screen).
+- **B5.** Music search is sent only through an active media session; NovaDrive remains in the
+  foreground and the music app UI is never opened by this action.
 
 ## Non-goals
 
@@ -76,7 +76,7 @@ artists or queries in the log (a query can name a person; treat as transcript, I
 
 | # | Criterion | Kind | Proven by | State |
 | --- | --- | --- | --- | --- |
-| A1 | Intent built correctly per field set; package preference order | functional | `MediaSearchSpecsTest`, `MediaAppPreferenceTest` (intent spec as data) | built, unit tests pass |
+| A1 | Session search receives the structured query and extras; unsupported/missing sessions fail without launching UI | functional | `MediaSearchSpecsTest`, media handoff tests | built; device validation pending |
 | A2 | Readback rules: playing / unverified / not playing / mismatch; off the event loop, cancellable | functional | `NowPlayingVerifierTest`, `MediaServerPlayMusicTest` | built, unit tests pass |
 | A3 | Result JSON and `announce` never name a song that is not in `now_playing`; an unconfirmed hand-off never releases 「正在放…」 | negative | `MediaServerPlayMusicTest`, `FalseCapabilityClaimTest` | built, unit tests pass |
 | A4 | Capability flip in all three places | contract | `CapabilityContractTest` | built, passes |
@@ -93,7 +93,7 @@ None blocking. Default preference order above; the owner can reorder it in devel
 
 | Area | State | Proof |
 | --- | --- | --- |
-| Hand-off + readback (`AndroidMediaHandoff`, `AndroidNowPlayingSource`, `NowPlayingVerifier`) | built; never run on a device | unit tests (A1, A2) |
+| Session search + readback (`AndroidMediaHandoff`, `AndroidNowPlayingSource`, `NowPlayingVerifier`) | implemented; device validation pending | unit tests (A1, A2) |
 | `play_music` tool + capability flip | built; never run on a device | `MediaServerPlayMusicTest`, `MediaDomainPlayMusicTest`, `FalseCapabilityClaimTest`, `CapabilityContractTest` |
 | `control_music{stop}` pauses the app's session; `music_stopped` only on readback | built; never run on a device | `MediaServerPlayMusicTest` |
 | On-screen one-time listener hint with the settings path | **not built** — only a `hint` field in the first `requested_unverified` result | — |
