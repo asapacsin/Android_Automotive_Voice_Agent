@@ -1,0 +1,72 @@
+{
+  "suite": "device-dispatch",
+  "verdict": "FAIL",
+  "vendor": "REAL",
+  "checks": [
+    {
+      "id": "build:vendor-real",
+      "required": true,
+      "status": "PASS",
+      "detail": "real vendor files packaged"
+    },
+    {
+      "id": "device:app-up",
+      "required": true,
+      "status": "PASS",
+      "detail": "map up"
+    },
+    {
+      "id": "device:PLACE-UNSET-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:PLACE-SAVE-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:APPS-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:CALL-NOSIM-001",
+      "required": false,
+      "status": "SKIPPED",
+      "detail": "not executed"
+    },
+    {
+      "id": "device:LIVE-INFO-SDK-TRAFFIC",
+      "required": false,
+      "status": "SKIPPED",
+      "detail": "not executed"
+    },
+    {
+      "id": "device:LIVE-INFO-SDK-ALONG",
+      "required": false,
+      "status": "SKIPPED",
+      "detail": "not executed"
+    }
+  ],
+  "problems": [
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:PLACE-UNSET-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:PLACE-SAVE-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:APPS-001 has no result"
+    }
+  ]
+}
