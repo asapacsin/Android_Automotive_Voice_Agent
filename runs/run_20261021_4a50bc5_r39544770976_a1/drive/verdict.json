@@ -1,0 +1,125 @@
+{
+  "suite": "device-drive",
+  "verdict": "FAIL",
+  "vendor": "UNKNOWN",
+  "checks": [
+    {
+      "id": "build:vendor-real",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:NAV-ROUTE-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:NAV-START-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:NAV-UI-002",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:NAV-UI-003",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:NAV-UI-005",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:NAV-UI-007",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:NAV-E2E-ARRIVAL-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:NAV-CRASH-001",
+      "required": true,
+      "status": "MISSING",
+      "detail": "no result"
+    },
+    {
+      "id": "device:NAV-UI-004",
+      "required": false,
+      "status": "SKIPPED",
+      "detail": "not executed"
+    },
+    {
+      "id": "device:NAV-UI-006",
+      "required": false,
+      "status": "SKIPPED",
+      "detail": "not executed"
+    }
+  ],
+  "problems": [
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "results file missing or unreadable: evidence/results.jsonl"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required build:vendor-real has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:NAV-ROUTE-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:NAV-START-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:NAV-UI-002 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:NAV-UI-003 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:NAV-UI-005 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:NAV-UI-007 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:NAV-E2E-ARRIVAL-001 has no result"
+    },
+    {
+      "level": "error",
+      "kind": "FAIL",
+      "text": "required device:NAV-CRASH-001 has no result"
+    }
+  ]
+}
