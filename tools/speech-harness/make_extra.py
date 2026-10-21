@@ -55,6 +55,8 @@ PHRASES = {
     "fz_seat_high": "座位有点高。",
     "fz_lower_more": "再低一点。",
     "fz_drowsy": "好困啊。",
+    # DEMO_SPEC pilot (FZ-14): the driver's answer to 「是座椅还是温度？」
+    "fz_answer_seat": "座椅。",
     # WAKE-SYNTH-001 - the wake phrase, injected through the debug wake path
     "wake_phrase": "你好小诺。",
     # The navigation demo (scripts/github_nav_demo.sh): questions asked while driving

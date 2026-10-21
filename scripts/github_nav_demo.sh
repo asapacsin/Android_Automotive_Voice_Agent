@@ -208,6 +208,11 @@ if [ "${NAV_DEMO_PIECE:-}" = "demo" ]; then
   clips="$S/nav_demo_dest.pcm,$S/pick_first.pcm,$S/start_nav.pcm,$S/ctx_too_hot.pcm,$S/ctx_cooler.pcm,$S/music_on.pcm,$S/fz_mosquito.pcm,$S/fz_mosquito_done.pcm,$S/fz_seat_high.pcm,$S/fz_lower_more.pcm,$S/gas_nearby.pcm,$S/cancel.pcm,$S/eta_q.pcm,$S/music_off.pcm"
   duration=400; DEMO_GAP=12
   note "piece mode: 5-minute demo, ${duration} s"
+elif [ "${NAV_DEMO_PIECE:-}" = "fz14" ]; then
+  # DEMO_SPEC pilot (owner 2026-10-21): the hardest ambiguity, FZ-14. Temperature and seat both changed, then
+  # 再低一点 must get one question (座椅还是温度), and the answer 座椅 lowers the seat. No navigation.
+  clips="$S/ctx_too_hot.pcm,$S/fz_seat_high.pcm,$S/fz_lower_more.pcm,$S/fz_answer_seat.pcm"; duration=110; DEMO_GAP=14
+  note "piece mode: FZ-14 clarification pilot, ${duration} s"
 elif [ "${NAV_DEMO_PIECE:-}" = "window" ]; then
   # Piece: the ambiguous window lines while navigating (5-minute demo 5224551: 有蚊子 was cut by a prompt).
   clips="$S/nav_demo_dest.pcm,$S/pick_first.pcm,$S/start_nav.pcm,$S/fz_mosquito.pcm,$S/fz_mosquito_done.pcm"; duration=120; DEMO_GAP=12
@@ -247,7 +252,8 @@ nd_choice="$(nova | grep -oE 'session_provider choice=[a-z_]+' | tail -1)"; nd_q
 if [ "$nd_choice" = "session_provider choice=gemini_live" ] && [ "$nd_qwen" = 0 ]; then res navpiece:quota-guard PASS "gemini_live, no qwen session"
 else res navpiece:quota-guard FAIL "provider=${nd_choice#session_provider choice=} qwen_lines=$nd_qwen"; fi
 nd_started="$(count 'nav_started')"
-if [ "$nd_started" -ge 1 ]; then res navpiece:nav-started PASS "started=$nd_started"; else res navpiece:nav-started FAIL "started=0"; fi
+if [ "${NAV_DEMO_PIECE:-}" = "fz14" ]; then note "FZ-14 pilot: no navigation by design"
+elif [ "$nd_started" -ge 1 ]; then res navpiece:nav-started PASS "started=$nd_started"; else res navpiece:nav-started FAIL "started=0"; fi
 # Let the drive reach the destination if it has not yet.
 # Pieces stop early; the full drives (and the 5-minute demo) wait for arrival.
 { [ -z "${NAV_DEMO_PIECE:-}" ] || [ "${NAV_DEMO_PIECE:-}" = "demo" ]; } && for _ in $(seq 1 24); do nova | grep -q "nav_stopped" && break; sleep 5; done
