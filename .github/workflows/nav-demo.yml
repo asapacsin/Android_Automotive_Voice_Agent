@@ -102,8 +102,30 @@ jobs:
                               "--detail", detail], check=True)
           PY
 
-      - name: Build the debug APK
+      # The finished APK is cached by a hash of everything that goes into it, so a repeat demo run
+      # skips the 7-minute build. The key also carries 12 hex characters of a hash of the Amap key and
+      # the vendor-zip URL (one-way, never printed), so rotating either rebuilds. The cache holds
+      # only the debug-signed APK: the Amap key inside it is in the APK manifest of any build anyway.
+      - name: APK cache key
         if: steps.secrets.outputs.ok == 'true'
+        id: apkkey
+        env:
+          AMAP_API_KEY: ${{ secrets.AMAP_API_KEY }}
+          NOVA_VENDOR_ZIP_URL: ${{ secrets.NOVA_VENDOR_ZIP_URL }}
+        run: |
+          h="$(printf '%s|%s' "$AMAP_API_KEY" "$NOVA_VENDOR_ZIP_URL" | sha256sum | cut -c1-12)"
+          echo "secret_hash=$h" >>"$GITHUB_OUTPUT"
+
+      - name: Cache the built debug APK
+        if: steps.secrets.outputs.ok == 'true'
+        id: apkcache
+        uses: actions/cache@v4
+        with:
+          path: ~/nova-drive-build/app/outputs/apk/debug
+          key: apk-${{ runner.os }}-${{ hashFiles('**/*.kt', '**/*.java', '**/*.xml', '**/*.gradle*', '**/gradle.properties', '**/gradle-wrapper.properties', 'gradle/libs.versions.toml', 'scripts/github_build_apk.sh') }}-${{ steps.apkkey.outputs.secret_hash }}
+
+      - name: Build the debug APK
+        if: steps.secrets.outputs.ok == 'true' && steps.apkcache.outputs.cache-hit != 'true'
         env:
           AMAP_API_KEY: ${{ secrets.AMAP_API_KEY }}
           NOVA_VENDOR_ZIP_URL: ${{ secrets.NOVA_VENDOR_ZIP_URL }}
