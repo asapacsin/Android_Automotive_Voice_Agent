@@ -1,0 +1,3 @@
+{"id": "build:vendor-real", "status": "PASS", "detail": "real vendor files packaged"}
+{"id": "device:PIECE-P61", "status": "PASS", "detail": "route_replaced=0 result=\"ok\":false \"error\":\"NEARBY_QUESTION_WHILE_NAVIGATING\" "}
+{"id": "device:PIECE-P63", "status": "PASS", "detail": "queued_to_amap=1 after_stop=nav_alert_dropped reason=not_navigating"}
