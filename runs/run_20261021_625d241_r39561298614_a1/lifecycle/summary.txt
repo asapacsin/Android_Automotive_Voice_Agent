@@ -1,0 +1,3 @@
+secret AMAP_WEB_KEY: set, amap_web_setup -> result=applied 
+P59 first: candidates=1 calc=2 cancelled=1 idle_off=1 preview_on=1
+P59 second: candidates=1 calc=2 cancelled=1 idle_off=1 preview_on=1
