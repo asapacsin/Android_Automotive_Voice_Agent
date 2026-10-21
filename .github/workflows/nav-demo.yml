@@ -168,7 +168,7 @@ jobs:
         env:
           AMAP_WEB_KEY: ${{ secrets.AMAP_WEB_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          NAV_DEMO_PIECE: ${{ inputs.piece != '' && inputs.piece || (contains(github.event.head_commit.message, '[navpiece:fz14]') && 'fz14' || (contains(github.event.head_commit.message, '[navpiece]') && '1' || '')) }}
+          NAV_DEMO_PIECE: ${{ inputs.piece != '' && inputs.piece || (contains(github.event.head_commit.message, '[navpiece:fz14]') && 'fz14' || (contains(github.event.head_commit.message, '[navpiece:demo]') && 'demo' || (contains(github.event.head_commit.message, '[navpiece]') && '1' || ''))) }}
         with:
           api-level: 34
           target: google_apis
