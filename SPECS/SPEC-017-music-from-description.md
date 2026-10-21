@@ -93,7 +93,7 @@ None blocking. Default preference order above; the owner can reorder it in devel
 
 | Area | State | Proof |
 | --- | --- | --- |
-| Session search + readback (`AndroidMediaHandoff`, `AndroidNowPlayingSource`, `NowPlayingVerifier`) | implemented in `a477f35`; no app launch or delayed return-to-app; CI/device validation pending | code review; unit tests and demo run still pending |
+| Session search + readback (`AndroidMediaHandoff`, `AndroidNowPlayingSource`, `NowPlayingVerifier`) | implemented in `a477f35`; CI built it, but demo run 313 stopped before the music action | code review; device behavior unverified |
 | `play_music` tool + capability flip | built; never run on a device | `MediaServerPlayMusicTest`, `MediaDomainPlayMusicTest`, `FalseCapabilityClaimTest`, `CapabilityContractTest` |
 | `control_music{stop}` pauses the app's session; `music_stopped` only on readback | built; never run on a device | `MediaServerPlayMusicTest` |
 | On-screen one-time listener hint with the settings path | **not built** — only a `hint` field in the first `requested_unverified` result | — |
@@ -105,6 +105,8 @@ None blocking. Default preference order above; the owner can reorder it in devel
 session advertising `ACTION_PLAY_FROM_SEARCH`. It does not use `startActivity` and does not schedule
 a return-to-app activity launch, so the intended behavior keeps NovaDrive in the foreground. If the
 notification-listener permission is missing, the session is absent, or search is unsupported, the
-request fails rather than opening a music app. This behavior is implemented but **not yet verified**:
-the JDK 17 requirement prevented local Gradle tests, the CI run triggered for this change was skipped
-while the preceding navigation-demo run was active, and no device/demo video has confirmed it.
+request fails rather than opening a music app. This behavior is implemented but **not yet verified**.
+The JDK 17 requirement prevented local Gradle tests. CI run 313 built the app, but failed the
+response-latency and navigation-start gates after only two scripted lines; its 17-second video ended
+at the route chooser before reaching the music request. It therefore provides no evidence about
+whether the music action changes the foreground app.
