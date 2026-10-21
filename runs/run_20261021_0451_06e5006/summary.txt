@@ -1,0 +1,16 @@
+app: map up
+secret AMAP_WEB_KEY: set, amap_web_setup -> result=applied 
+secret GEMINI_API_KEY: set, gemini_setup -> result=applied 
+guidance relay: result=relay=on 
+piece mode: 5-minute demo, 400 s
+driver waits: line=1 ms=0 cap=0 reason=none line=2 ms=0 cap=0 reason=none line=3 ms=0 cap=0 reason=none line=4 ms=0 cap=0 reason=none line=5 ms=120 cap=0 reason=uplink line=6 ms=0 cap=0 reason=none line=7 ms=0 cap=0 reason=none line=8 ms=0 cap=0 reason=none line=9 ms=0 cap=0 reason=none line=10 ms=0 cap=0 reason=none line=11 ms=4440 cap=0 reason=uplink line=12 ms=0 cap=0 reason=none line=13 ms=0 cap=0 reason=none line=14 ms=1500 cap=0 reason=uplink (the scripted driver reads the app's guidance log; a real driver cannot)
+nav demo: provider=session_provider choice=gemini_live started=1 stopped=nav_stopped reached=true reason=emulator_end guidance=0 tools= 4 tool=choose_navigation_option  6 tool=control_climate  4 tool=control_music  2 tool=control_seat  2 tool=exit_navigation_mode  2 tool=navigate_to  2 tool=query_live_info  4 tool=run_scenario  errors=0
+relay: nav_guidance_relay deadline_ms=3000 nav_guidance_relay installed=true routes:  3 guidance_route to=amap reason=DRIVER_SPEAKING  2 guidance_route to=amap reason=SEND_FAILED  2 guidance_route to=amap reason=VOIDED  20 guidance_route to=assistant reason=SENT 
+relay claims: assistant_waited_ms=714,665,1429,611,651,591,2017,1268,654,697,681,766,671,670,705,599,640,682, amap=0 fidelity:  17 result=MATCH fallback_tts:  7 nav_guidance_fallback_tts accepted=true echo_dropped=7
+overspeed: limits=limitKmh=0 limitKmh=60 over_lines=1 alerts=1 queued:  1 nav_alert_queued to=relay rings=10
+listening:  1 listening ACTIVE->SLEEP reason=inactivity_timeout  1 listening DEEP_IDLE->ACTIVE reason=start uplink_closed=17 droppedGuidance=droppedGuidance=4088
+P61 guard: refused=0 nav_stopped: nav_stopped reached=true reason=emulator_end tools_in_order: tool=navigate_to result=✓ tool=choose_navigation_option result=✓ tool=control_climate result=✓ tool=control_music result=DUPLICATE_IN_TURN tool=run_scenario result=场景 tool=control_seat result=✓ tool=exit_navigation_mode result=VAGUE_EXIT_WHILE_NAVIGATING tool=query_live_info result=🔎 tool=control_music result=✓ guard_vague_exit: guard_vague_exit decision=refused 
+gemini closes: 
+nav demo: nav_demo.mp4 written (offset 0.0 s, guidance=yes)
+video: 288x624 frames=6765 seconds=415 fps=16.3
+nav demo: done
