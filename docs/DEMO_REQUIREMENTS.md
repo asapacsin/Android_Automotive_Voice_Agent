@@ -26,10 +26,9 @@ Time is measured from the end of the driver's speech to her first audible audio.
 
 ## 3. No long silence in the video
 
-- No stretch longer than 1.5 s with neither the driver nor her speaking. The exceptions:
-  - a scene title (≤ 2.5 s, to read it);
-  - a visual-only scene such as an error card, which must be marked as such;
-  - the wait between the driver's line and her reply. That wait is **never trimmed**, because it is the latency §2 measures, and the video must show it as it was.
+- **Dead air limit:** no stretch longer than 1.5 s with neither the driver nor her speaking, including between scenes and after the final reply. The scripted gap between one completed exchange and the next driver line should be at most 1.0 s.
+- **Driver-to-reply wait:** this is the only permitted longer silent stretch. Preserve it in real time so the latency can be judged; do not trim, freeze, or speed it up. It must still be within the applicable limit in §2, and never exceed 5 s. If the reply has not started by 5 s, the take fails and must be reported or re-recorded; it is not excused as ordinary idle time.
+- A scene title may hold for up to 2.5 s to be read. A visual-only scene, such as an error card, must be marked and may not exceed 1.5 s without speech.
 - A cut that skips time is marked on screen (⏩) and stated in the README. Her words and the driver's are never cut or sped up.
 - Any trimmed wait is disclosed in the footer and the README, and the real-time file is kept beside the edited one.
 
