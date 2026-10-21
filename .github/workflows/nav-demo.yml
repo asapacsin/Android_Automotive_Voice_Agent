@@ -158,7 +158,7 @@ jobs:
         if: steps.secrets.outputs.ok == 'true'
         # Run 38864188722: the script finished but the step hung 40 min shutting the emulator down.
         # The evidence step runs anyway (always()).
-        timeout-minutes: ${{ contains(github.event.head_commit.message, '[navpiece]') && 15 || 40 }}
+        timeout-minutes: ${{ (contains(github.event.head_commit.message, '[navpiece]') || inputs.piece) && 15 || 40 }}
         uses: reactivecircus/android-emulator-runner@v2
         env:
           AMAP_WEB_KEY: ${{ secrets.AMAP_WEB_KEY }}

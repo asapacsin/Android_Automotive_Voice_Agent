@@ -302,4 +302,9 @@ tool provider clear
 tool guidance_relay off
 note "nav demo: done"
 complete "voice piece"
+# The action's own teardown (adb emu kill) logs "stop: Not implemented" and then hangs until the step
+# timeout (runs 38864188722 and 298: 35 minutes lost after the demo had passed). Stop the emulator here.
+adb emu kill >/dev/null 2>&1 || true
+sleep 3
+pkill -9 -f 'qemu-system|emulator64' >/dev/null 2>&1 || true
 finish
