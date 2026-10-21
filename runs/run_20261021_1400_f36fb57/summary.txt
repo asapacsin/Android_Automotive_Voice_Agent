@@ -1,0 +1,16 @@
+app: map up
+secret AMAP_WEB_KEY: set, amap_web_setup -> result=applied 
+secret GEMINI_API_KEY: set, gemini_setup -> result=applied 
+guidance relay: result=relay=on 
+piece mode: 5-minute demo, 360 s
+driver waits: line=1 ms=457 cap=0 reason=session line=2 ms=5899 cap=0 reason=reply line=4 ms=6400 cap=0 reason=reply line=5 ms=5881 cap=0 reason=reply line=7 ms=1959 cap=0 reason=uplink line=8 ms=6759 cap=0 reason=reply line=10 ms=1683 cap=0 reason=reply line=11 ms=2844 cap=0 reason=reply line=12 ms=5260 cap=0 reason=reply line=13 ms=10000 cap=1 reason=uplink line=14 ms=4979 cap=0 reason=uplink line=15 ms=10000 cap=1 reason=reply (the scripted driver reads the app's guidance log; a real driver cannot)
+nav demo: provider=session_provider choice=gemini_live started=1 stopped= guidance=0 tools= 4 tool=choose_navigation_option  8 tool=control_climate  2 tool=control_music  2 tool=control_window  2 tool=navigate_to  4 tool=query_live_info  2 tool=run_scenario  errors=0
+relay: nav_guidance_relay deadline_ms=3000 nav_guidance_relay installed=true routes:  5 guidance_route to=amap reason=AMAP_SPEAKING  1 guidance_route to=amap reason=DEADLINE  3 guidance_route to=amap reason=DRIVER_SPEAKING  1 guidance_route to=amap reason=RESPONSE_OPEN  4 guidance_route to=amap reason=SEND_FAILED  6 guidance_route to=assistant reason=SENT 
+relay claims: assistant_waited_ms=994,1046,1086,1246,986, amap=1 fidelity:  5 result=MATCH fallback_tts:  14 nav_guidance_fallback_tts accepted=true echo_dropped=14
+overspeed: limits=limitKmh=0 limitKmh=60 over_lines=1 alerts=1 queued:  1 nav_alert_queued to=relay rings=6
+listening:  1 listening ACTIVE->SLEEP reason=inactivity_timeout  1 listening DEEP_IDLE->ACTIVE reason=start uplink_closed=12 droppedGuidance=droppedGuidance=5230
+P61 guard: refused=0 nav_stopped: tools_in_order: tool=navigate_to result=✓ tool=choose_navigation_option result=✓ tool=control_climate result=✓ tool=run_scenario result=场景 tool=control_window result=✓ tool=control_climate result=✓ tool=query_live_info result=🔎 tool=control_music result=✓ guard_vague_exit: 
+gemini closes: 
+nav demo: nav_demo.mp4 written (offset 0.0 s, guidance=yes)
+video: 288x624 frames=1654 seconds=132 fps=12.6
+nav demo: done
