@@ -76,7 +76,7 @@ artists or queries in the log (a query can name a person; treat as transcript, I
 
 | # | Criterion | Kind | Proven by | State |
 | --- | --- | --- | --- | --- |
-| A1 | Session search receives the structured query and extras; unsupported/missing sessions fail without launching UI | functional | `MediaSearchSpecsTest`, media handoff tests | built; device validation pending |
+| A1 | Session search receives the structured query and extras; unsupported/missing sessions fail without launching UI | functional | `MediaSearchSpecsTest`, media handoff tests | implemented; CI/device evidence pending |
 | A2 | Readback rules: playing / unverified / not playing / mismatch; off the event loop, cancellable | functional | `NowPlayingVerifierTest`, `MediaServerPlayMusicTest` | built, unit tests pass |
 | A3 | Result JSON and `announce` never name a song that is not in `now_playing`; an unconfirmed hand-off never releases 「正在放…」 | negative | `MediaServerPlayMusicTest`, `FalseCapabilityClaimTest` | built, unit tests pass |
 | A4 | Capability flip in all three places | contract | `CapabilityContractTest` | built, passes |
@@ -93,8 +93,18 @@ None blocking. Default preference order above; the owner can reorder it in devel
 
 | Area | State | Proof |
 | --- | --- | --- |
-| Session search + readback (`AndroidMediaHandoff`, `AndroidNowPlayingSource`, `NowPlayingVerifier`) | implemented; device validation pending | unit tests (A1, A2) |
+| Session search + readback (`AndroidMediaHandoff`, `AndroidNowPlayingSource`, `NowPlayingVerifier`) | implemented in `a477f35`; no app launch or delayed return-to-app; CI/device validation pending | code review; unit tests and demo run still pending |
 | `play_music` tool + capability flip | built; never run on a device | `MediaServerPlayMusicTest`, `MediaDomainPlayMusicTest`, `FalseCapabilityClaimTest`, `CapabilityContractTest` |
 | `control_music{stop}` pauses the app's session; `music_stopped` only on readback | built; never run on a device | `MediaServerPlayMusicTest` |
 | On-screen one-time listener hint with the settings path | **not built** — only a `hint` field in the first `requested_unverified` result | — |
 | `MusicSource` port / `BundledTrackSource` split | not built — the bundled track stays behind `control_music` | — |
+
+### No-app-switch change: verification status
+
+`play_music` now calls `MediaController.TransportControls.playFromSearch` on an already active
+session advertising `ACTION_PLAY_FROM_SEARCH`. It does not use `startActivity` and does not schedule
+a return-to-app activity launch, so the intended behavior keeps NovaDrive in the foreground. If the
+notification-listener permission is missing, the session is absent, or search is unsupported, the
+request fails rather than opening a music app. This behavior is implemented but **not yet verified**:
+the JDK 17 requirement prevented local Gradle tests, the CI run triggered for this change was skipped
+while the preceding navigation-demo run was active, and no device/demo video has confirmed it.
