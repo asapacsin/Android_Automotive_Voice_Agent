@@ -39,6 +39,13 @@ def read(rel):
 
 
 class WorkflowVerdictTest(unittest.TestCase):
+    def test_nav_demo_main_piece_push_marker_selects_demo(self):
+        doc = yaml.safe_load(read(".github/workflows/nav-demo.yml"))
+        steps = next(iter(doc["jobs"].values()))["steps"]
+        recorder = next(s for s in steps if s.get("name") == "Boot the emulator and record the navigation demo")
+        piece = recorder["env"]["NAV_DEMO_PIECE"]
+        self.assertIn("contains(github.event.head_commit.message, '[navpiece:demo]') && 'demo'", piece)
+
     def test_verdict_step_runs_always_before_evidence_push(self):
         for name, suite in WORKFLOWS.items():
             with self.subTest(workflow=name):
