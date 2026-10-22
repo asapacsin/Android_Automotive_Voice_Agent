@@ -31,6 +31,39 @@ class ToolCallGuardBodyReferentTest {
     }
 
     @Test
+    fun `FZ-14 a misheard line with no direction word is still held, by the call's direction`() {
+        val context = DriverContext()
+        context.onBodyResult("control_seat", "adjust_height", -1.0, seatOk, 1)
+        context.onClimateResult(ClimateToolActions.ADJUST_TEMPERATURE, -1.0, climateOk, 1)
+        context.onDriverUtterance("第一点。", 2) // 「再低一点」 as the recognizer heard it, runs 298 and 317
+        assertEquals(ToolCallGuards.AMBIGUOUS_REFERENT, ToolCallGuards.ambiguousReferent(seatAdjust, context))
+        val temp = DomainVoiceEvent.ToolCall("c4", "control_climate", mapOf("action" to ClimateToolActions.ADJUST_TEMPERATURE, "value" to "-1"))
+        assertEquals(ToolCallGuards.AMBIGUOUS_REFERENT, ToolCallGuards.ambiguousReferent(temp, context))
+        // The one-word answer on the next turn resolves and passes.
+        context.onDriverUtterance("座椅。", 3)
+        assertNull(ToolCallGuards.ambiguousReferent(seatAdjust, context))
+    }
+
+    @Test
+    fun `a call judged against the previous turn's words is not held`() {
+        val context = DriverContext()
+        context.onBodyResult("control_seat", "adjust_height", -1.0, seatOk, 1)
+        context.onClimateResult(ClimateToolActions.ADJUST_TEMPERATURE, -1.0, climateOk, 1)
+        context.onDriverUtterance("再低一点。", 2)
+        context.onSpeechStarted(3)
+        assertNull(ToolCallGuards.ambiguousReferent(seatAdjust, context))
+    }
+
+    @Test
+    fun `a direction-less line with one window referent passes`() {
+        val context = DriverContext()
+        context.onBodyResult("control_window", "adjust", 20.0, """{"ok":true,"tool":"control_window"}""", 1)
+        context.onDriverUtterance("再来一点。", 2)
+        val window = DomainVoiceEvent.ToolCall("c5", "control_window", mapOf("action" to "adjust", "value" to "20"))
+        assertNull(ToolCallGuards.ambiguousReferent(window, context))
+    }
+
+    @Test
     fun `FZ-05 an unambiguous seat adjust goes through`() {
         val context = DriverContext()
         context.onBodyResult("control_seat", "adjust_height", -1.0, seatOk, 1)

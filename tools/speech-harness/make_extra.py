@@ -65,12 +65,17 @@ PHRASES = {
 }
 
 
+# Spoken slower: at the default rate the recognizer heard 「再低一点」 as 「第一点」 or 「第」 in runs
+# 298, 06e5006 and 317, so the FZ-14 guard had no relative words to hold on.
+RATES = {"fz_lower_more": "-25%"}
+
+
 async def main() -> None:
     os.makedirs(OUT, exist_ok=True)
     for name, text in PHRASES.items():
         mp3 = os.path.join(OUT, name + ".mp3")
         pcm = os.path.join(OUT, name + ".pcm")
-        await edge_tts.Communicate(text, "zh-CN-XiaoxiaoNeural").save(mp3)
+        await edge_tts.Communicate(text, "zh-CN-XiaoxiaoNeural", rate=RATES.get(name, "+0%")).save(mp3)
         subprocess.run(
             [_ffmpeg(), "-loglevel", "error", "-y", "-i", mp3, "-ac", "1", "-ar", "16000", "-f", "s16le", pcm],
             check=True,

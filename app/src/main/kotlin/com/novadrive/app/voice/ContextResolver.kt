@@ -82,7 +82,11 @@ object ContextResolver {
      * @param context the app's record; navigation state is deliberately not consulted here
      * @param epoch the current turn, used to find a clarification asked in the previous one
      */
-    fun resolve(text: String, context: DriverContext, epoch: Long): Resolution {
+    /**
+     * [callDirection] is the sign of the tool call's own value, for a line whose words carry no
+     * 高/低/大/小 because the recognizer garbled them (「再低一点」 heard as 「第一点」, runs 298 and 317).
+     */
+    fun resolve(text: String, context: DriverContext, epoch: Long, callDirection: Double? = null): Resolution {
         val said = text.trim()
         if (said.isEmpty()) return Resolution.NotContextual
 
@@ -138,8 +142,11 @@ object ContextResolver {
         }
 
         // Dimension-neutral: 「再低一点」. Only the history can say what is being adjusted.
-        val direction = neutralDirection(said) ?: return Resolution.NotContextual
-        val referents = context.validReferents().filter { it.dimension in NEUTRAL_CANDIDATES }
+        val wordDirection = neutralDirection(said)
+        val direction = wordDirection ?: callDirection ?: return Resolution.NotContextual
+        // No 高/低 in the words: every referent is a candidate, the window included.
+        val candidates = if (wordDirection != null) NEUTRAL_CANDIDATES else Dimension.entries.toSet()
+        val referents = context.validReferents().filter { it.dimension in candidates }
         return when (referents.size) {
             1 -> {
                 val dimension = referents.first().dimension

@@ -350,12 +350,20 @@ object ToolCallGuards {
         if (!relative) return null
         if (context == null) return null
         val epoch = context.currentEpoch()
+        // Codes and epochs only, like the other guards.
+        fun decide(code: String, result: String?): String? {
+            com.novadrive.app.DebugVoiceLog.log("guard_referent decision=$code cur=$epoch cap=${context.capabilityEpoch()}")
+            return result
+        }
         if (epoch <= 0) return null
-        val resolution = ContextResolver.resolve(context.currentRequestText(), context, epoch)
-        if (resolution !is ContextResolver.Resolution.Clarify) return null
-        if (resolution.reason == ContextResolver.REASON_NOTHING_TO_REVERSE) return null
+        // The call can arrive before its own transcript; never judge it by the previous turn's words.
+        if (epoch < context.capabilityEpoch()) return decide("stale_words", null)
+        val callDirection = call.arguments["value"]?.toDoubleOrNull()?.let { Math.signum(it) }?.takeIf { it != 0.0 }
+        val resolution = ContextResolver.resolve(context.currentRequestText(), context, epoch, callDirection)
+        if (resolution !is ContextResolver.Resolution.Clarify) return decide("pass", null)
+        if (resolution.reason == ContextResolver.REASON_NOTHING_TO_REVERSE) return decide("pass", null)
         context.recordClarification(resolution.options, resolution.delta, epoch)
-        return AMBIGUOUS_REFERENT
+        return decide("held", AMBIGUOUS_REFERENT)
     }
 
     /**
