@@ -33,6 +33,24 @@ Relevant build declarations: [contracts](../contracts/build.gradle.kts), [safety
 
 **Recommended pilot:** convert only contracts to a minimal KMP target and run its existing contract tests plus an iOS-target compile. If that succeeds, evaluate safety and feedback next. Keep ingress, vehicle, and orchestration out of common source until their JVM-only seams have explicit replacements. This is a static-source conclusion, not proof of compilation or runtime behavior.
 
+### Preliminary platform adapter map (all iOS entries are planned, not verified)
+
+| Product area | Native iOS candidate | Main risk / proof needed | Current iOS status |
+| --- | --- | --- | --- |
+| Realtime speech-to-speech | URLSessionWebSocketTask plus AVAudioSession/AVAudioEngine | Confirm the active Qwen-Omni wire protocol, audio format, auth flow, turn events, cancellation, and real-device latency | not built |
+| Typed commands and safety | KMP contracts pilot or equivalent typed Swift contracts; deterministic dispatch | Schema parity, deny/confirm rules, malformed-call rejection, and execution-proof tests | not built |
+| Navigation | Amap iOS Navigation SDK embedded in the app | Current SDK/license/key, privacy setup, route selection/start/stop/arrival callbacks, and coordinate handling | not built |
+| Audio arbitration | AVAudioSession interruption handling plus one session/audio authority | Assistant speech vs. Amap guidance, phone/system interruptions, barge-in, and stale callback races | not built |
+| Credentials | iOS Keychain | No secrets in source/config/logs; startup errors must not trigger provider fallback | not built |
+| Music and media | AVPlayer for app-owned playback; MediaPlayer for supported system-media integration | Arbitrary control of another app is not available; verify each desired operation rather than assuming Android intent parity | not built |
+| Contacts and calling | Contacts framework and approved system calling flow | Resolve names safely, require the appropriate user confirmation, and respect iOS call/UI restrictions | not built |
+| Saved places and live information | Native local persistence plus the existing Amap service contract where compatible | Persistence format, location privacy, API-key handling, and response parsing need tests | not built |
+| Wake word and background listening | Evaluate the vendor's iOS wake-word SDK only after the push-to-talk MVP | iOS microphone/background lifecycle and interruption behavior must be demonstrated on an iPhone; no always-on promise yet | deferred |
+| HVAC/windows/seats | Port the existing simulator only as a simulator; OEM adapter only with an authorized interface | A simulator is not real vehicle control; unsupported hardware operations must be rejected | simulator not built |
+| CarPlay | CarPlay templates/scenes plus Amap's iOS CarPlay integration | Apple entitlement approval, app-category UI constraints, simulator and vehicle validation | blocked by Apple entitlement approval |
+
+This is a planning map, not a declaration that these SDKs are integrated or that the Android features have iOS equivalents. Re-evaluate each row against vendor documentation and the actual target deployment region before implementation.
+
 Exit criteria:
 - Every capability has an explicit iOS status and failure behavior.
 - Every proposed shared module has evidence that its dependencies can target iOS.
