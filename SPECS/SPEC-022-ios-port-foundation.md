@@ -79,7 +79,7 @@ Every action needs a traceable sequence from user-turn/session start through pro
 | A8 | Provider credentials are stored in Keychain and never emitted to logs | security | storage tests and secret/log scan | not built |
 | A9 | Every capability without an iOS adapter fails honestly as unsupported | negative | platform capability matrix and tests | not built |
 | A10 | The existing Android build/tests remain green and Android source/configuration is unchanged by the initial iOS foundation | regression | Android CI on the change | not built |
-| A11 | CarPlay navigation/voice UI is enabled only after Apple entitlements are granted | external approval | entitlement inspection plus CarPlay simulator/device evidence | blocked |
+| A11 | CarPlay navigation/voice UI is enabled only after Apple entitlements are granted | external approval | entitlement inspection plus CarPlay simulator/device evidence | not built |
 | A12 | All relative links in the iOS spec, ADR, and plan resolve | documentation | repository link check | not built |
 
 ## Open product decisions
