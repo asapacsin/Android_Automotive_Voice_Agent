@@ -30,7 +30,8 @@ If you are about to argue for a different provider, a different navigation strat
 | [ADR-014](ADR-014-guidance-spoken-by-assistant.md) | Navigation guidance spoken by the assistant voice; Amap voice only when the model cannot speak | **Accepted** |
 | [ADR-015](ADR-015-car-domain-servers.md) | Car functions as MCP-shaped in-process domain servers; Gemini stays the single agent | **Accepted** |
 | [ADR-016](ADR-016-chinese-voice-for-gemini.md) | Gemini stays the agent; one Chinese TTS voice speaks (vendor and voice picked by ear) | **Accepted — direction**; to be superseded by ADR-017 after its gates |
-| [ADR-017](ADR-017-qwen-omni-realtime-end-to-end.md) | Qwen-Omni Realtime with the Maia voice: one end-to-end model, no separate TTS | **Accepted — direction** (product session Maia 2026-10-09; gates Q-1…Q-5 open) |\n| [ADR-018](ADR-018-ios-monorepo-and-kmp.md) | Same-repository native iOS app with conditional shared core | Accepted |
+| [ADR-017](ADR-017-qwen-omni-realtime-end-to-end.md) | Qwen-Omni Realtime with the Maia voice: one end-to-end model, no separate TTS | **Accepted — direction** (product session Maia 2026-10-09; gates Q-1…Q-5 open) 
+| [ADR-018](ADR-018-ios-monorepo-and-kmp.md) | Same-repository native iOS app with conditional shared core | Accepted |
 
 ## Relationship to `docs/DECISIONS.md`
 
