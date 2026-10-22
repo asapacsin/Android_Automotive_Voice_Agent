@@ -1,0 +1,52 @@
+schema: nova-task-contract/1
+task_id: IOS-PORT-001
+title: Specify a same-repository native iOS port without changing Android runtime behavior
+branch: exec/ios-port-foundation
+base_commit: 9c5392919014ce425527e95dbc7c34d069d99f0d
+approved_paths:
+  - SPECS/SPEC-022-ios-port-foundation.md
+  - DECISIONS/ADR-018-ios-monorepo-and-kmp.md
+  - DECISIONS/README.md
+  - ios/README.md
+  - docs/IOS_PORT_PLAN.md
+allowed_changes:
+  - "SPECS/SPEC-022-ios-port-foundation.md: compile the iOS port request into testable behavior, staged scope, platform constraints, failure behavior, privacy requirements, and evidence-gated acceptance criteria"
+  - "DECISIONS/ADR-018-ios-monorepo-and-kmp.md: record the same-repository decision, preserve the existing Android root, prefer a native Swift iOS shell, and make Kotlin Multiplatform sharing conditional on a source/dependency audit"
+  - "DECISIONS/README.md: add the ADR-018 index row"
+  - "ios/README.md: establish the iOS directory entry point and explicitly state that no buildable iOS app exists yet"
+  - "docs/IOS_PORT_PLAN.md: define phases, dependencies, test gates, and concrete next implementation work"
+architecture_constraints:
+  - "Do not move the existing Android Gradle root or its modules; current scripts, builds, evidence, and paths assume the existing root layout"
+  - "Keep Android behavior and its existing tests unchanged; this task is documentation and migration planning only"
+  - "Share deterministic contracts and policies only after a dependency audit proves they can target iOS; do not claim current Kotlin/JVM modules are already KMP-compatible"
+  - "Use native iOS audio, lifecycle, credential, navigation, and UI adapters; unsupported operations must return explicit unsupported results and never claim success"
+  - "Treat iPhone support and CarPlay support as separate gates; CarPlay implementation depends on Apple entitlement approval"
+  - "Respect repository privacy and execution invariants: model output is not proof, only executor results prove actions, and logs must not expose credentials, transcripts, addresses, or coordinates"
+  - "Keep the active production provider and Android runtime unchanged; no provider fallback or platform behavior change in this task"
+forbidden_changes:
+  - "No Android app source, Gradle module graph, capability registry, runtime behavior, or existing acceptance-test edits"
+  - "No executable Swift, Xcode project, or Kotlin Multiplatform conversion in this documentation-only task"
+  - "No claim that iOS, audio, navigation, wake word, background execution, or CarPlay has been implemented or verified"
+forbidden_paths:
+  - app/**
+  - contracts/**
+  - ingress/**
+  - safety/**
+  - vehicle/**
+  - verification/**
+  - orchestration/**
+  - scripts/**
+  - .github/**
+  - state/**
+  - "**/src/**"
+required_verification:
+  - id: docs-present
+    kind: lint
+    command: "python3 -c \"from pathlib import Path; files=['SPECS/SPEC-022-ios-port-foundation.md','DECISIONS/ADR-018-ios-monorepo-and-kmp.md','DECISIONS/README.md','ios/README.md','docs/IOS_PORT_PLAN.md']; missing=[p for p in files if not Path(p).is_file()]; assert not missing, missing\""
+acceptance_criteria:
+  - "A SPEC states the iPhone target, staged feature scope, observable acceptance criteria, failure behavior, and privacy constraints without treating Android evidence as iOS evidence"
+  - "An ADR records a same-repository decision and explicitly preserves the current Android repository root layout"
+  - "The plan separates native iPhone work from CarPlay work and identifies entitlement approval as an external dependency"
+  - "The iOS directory entry point clearly says there is no runnable iOS app yet"
+  - "No Android runtime, module source, build configuration, or capability registry changes are included"
+  - "All newly authored relative Markdown links resolve to repository paths"
