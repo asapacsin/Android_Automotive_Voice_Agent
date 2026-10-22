@@ -106,3 +106,26 @@ entries:
       Linux runners. reactivecircus/android-emulator-runner runs that image on ubuntu-latest.
       Cursor and Claude cloud sessions do not provide a usable nested KVM.
     suppresses_required_behavior: false
+
+  - id: DB-IOS-PORT-001
+    problem_class: cross-platform iOS port architecture and native audio/navigation lifecycle
+    triggers:
+      new_subsystem: true
+      async_lifecycle: true
+      audio_media: true
+      networking: true
+      nonobvious_sdk: true
+      declared_uncertain: true
+    status: PASS
+    selected_basis: platform_sdk
+    selected_pattern: >-
+      Keep the existing Android root in one repository; add a native Swift iOS target, and share only
+      contract/policy modules that pass a Kotlin Multiplatform dependency audit. Treat CarPlay as a
+      separate entitlement-gated surface and verify runtime behavior on real iOS devices.
+    evidence: >-
+      Official Kotlin Multiplatform documentation supports local integration of shared code into an iOS
+      app within a monorepo. Apple documents CarPlay entitlements as a reviewed approval process and
+      documents voice-based conversation separately. This repository has Kotlin/JVM modules and native
+      Android adapters but no Swift/KMP project; this clears architecture selection only, not runtime
+      implementation or platform behavior.
+    suppresses_required_behavior: false
