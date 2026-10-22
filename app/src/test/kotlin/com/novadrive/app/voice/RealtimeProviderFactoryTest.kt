@@ -95,13 +95,15 @@ class RealtimeProviderFactoryTest {
     fun qwenIsReadOnlyForTheQwenPreferenceAndNeverFallsBack() {
         VoiceProviderPreference.entries.forEach { pref ->
             val choice = VoiceProviderChoice.resolve(GeminiAppSettings(provider = pref), keyPresent = true)
-            assertEquals(VoiceProviderId.QWEN, choice)
+            assertEquals(if (VoiceProviderChoice.QWEN_FROZEN) VoiceProviderId.GEMINI_LIVE else VoiceProviderId.QWEN, choice)
+            // The isolation below is the Qwen path's, frozen or not.
+            val qwenChoice = VoiceProviderId.QWEN
             var geminiTouched = false
             var baiduTouched = false
             var qwenTouched = false
             runCatching {
                 sessionConfigFor(
-                    choice,
+                    qwenChoice,
                     gemini = { geminiTouched = true; error("gemini") },
                     baidu = { baiduTouched = true; error("baidu") },
                     qwen = { qwenTouched = true; error("qwen") },
@@ -112,8 +114,7 @@ class RealtimeProviderFactoryTest {
             assertTrue(qwenTouched, "Qwen must run for pref=$pref")
         }
 
-        val choice = VoiceProviderChoice.resolve(GeminiAppSettings(provider = VoiceProviderPreference.GEMINI), keyPresent = false)
-        assertEquals(VoiceProviderId.QWEN, choice)
+        val choice = VoiceProviderId.QWEN // the Qwen start codes, also while Qwen is frozen
         val ok = QwenAppSettings(consentAccepted = true, workspaceId = "ws-test")
         listOf(
             Triple(ok, "", "QWEN_API_KEY_MISSING"),

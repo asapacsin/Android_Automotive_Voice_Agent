@@ -150,8 +150,16 @@ object GeminiSettingsValidator {
  * key, workspace or consent fails the start with its code and never opens Gemini or Baidu.
  */
 object VoiceProviderChoice {
+    /**
+     * Qwen-Omni is frozen (owner, 2026-10-22: "qwen would frozen until i later say reactive"): the
+     * session is Gemini Live. Qwen's code, settings and key stay as they are; set this to false to
+     * reactivate it.
+     */
+    const val QWEN_FROZEN = true
+
     @Suppress("UNUSED_PARAMETER")
-    fun resolve(settings: GeminiAppSettings, keyPresent: Boolean): VoiceProviderId = VoiceProviderId.QWEN
+    fun resolve(settings: GeminiAppSettings, keyPresent: Boolean): VoiceProviderId =
+        if (QWEN_FROZEN) VoiceProviderId.GEMINI_LIVE else VoiceProviderId.QWEN
 
     /**
      * The session's provider: [resolve], except that a debuggable app with the in-memory

@@ -8,7 +8,8 @@ class DeveloperSettingsStatusTest {
     @Test
     fun readySessionShowsCheckmark() {
         val lines = DeveloperSettingsStatus.lines(null, amapKey = true, wakeAppId = true, visionKey = true)
-        assertEquals("语音会话：通义千问 Omni · Maia  ✓ 就绪", lines[0])
+        val label = if (VoiceProviderChoice.QWEN_FROZEN) DeveloperSettingsStatus.GEMINI_SESSION_LABEL else DeveloperSettingsStatus.SESSION_LABEL
+        assertEquals("$label  ✓ 就绪", lines[0])
         assertEquals(listOf("高德 Web Key  ✓", "唤醒词 APPID  ✓", "看图 Key  ✓"), lines.drop(1))
     }
 

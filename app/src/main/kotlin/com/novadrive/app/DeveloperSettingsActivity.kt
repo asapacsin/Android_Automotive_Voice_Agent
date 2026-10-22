@@ -60,7 +60,8 @@ class DeveloperSettingsActivity : Activity() {
                 text = "开发者设置 / Developer settings"; textSize = 22f; setTypeface(typeface, Typeface.BOLD)
             })
             addView(statusCard())
-            addView(qwenCard())
+            // Qwen is frozen: its card is hidden, not deleted (VoiceProviderChoice.QWEN_FROZEN).
+            addView(if (VoiceProviderChoice.QWEN_FROZEN) geminiCard() else qwenCard())
             addView(personaCard())
             addView(amapCard())
             addView(wakeCard())
@@ -96,13 +97,42 @@ class DeveloperSettingsActivity : Activity() {
         if (!::statusLines.isInitialized) return
         statusLines.text = DeveloperSettingsStatus.lines(
             qwenProblem = QwenSettingsRepository(this).configProblem(),
+            geminiProblem = GeminiSettingsRepository(this).configProblem(),
             amapKey = AmapSettingsRepository(this).isConfigured(),
             wakeAppId = WakeWordSettings.from(this).loadCredentials().isComplete(),
             visionKey = VisionSettings.from(this).hasDedicatedKey(),
         ).joinToString("\n")
     }
 
-    // ---- 1. Qwen-Omni ----
+    // ---- 1. Gemini Live (the session while Qwen is frozen) ----
+
+    private fun geminiCard(): View {
+        val gemini = GeminiSettingsRepository(this)
+        val saved = gemini.loadSettings()
+        val consent = CheckBox(this).apply { text = "我已阅读并同意 / I accept"; isChecked = saved.consentAccepted }
+        fun hint() = if (gemini.keyPresent()) "Gemini API Key（已配置；留空保留）" else "Gemini API Key"
+        val key = secretField(hint())
+        val model = EditText(this).apply { setText(saved.model); hint = com.novadrive.ingress.realtime.VoiceCatalog.GEMINI_LIVE_DEFAULT }
+        val save = button("保存 / Save") {
+            runCatching {
+                val settings = gemini.loadSettings().copy(
+                    consentAccepted = consent.isChecked,
+                    model = model.text.toString().trim().ifBlank { com.novadrive.ingress.realtime.VoiceCatalog.GEMINI_LIVE_DEFAULT },
+                )
+                gemini.save(settings, update(key))
+                key.text.clear(); key.hint = hint()
+                "GEMINI_SETTINGS_SAVED\nkeyPresent=${gemini.keyPresent()}"
+            }.fold(onSuccess = { show(it) }, onFailure = { show(it.message ?: "GEMINI_SETTINGS_INVALID") })
+            refreshStatus()
+        }
+        val clear = button("清除 Key / Clear key") { gemini.clearKey(); key.hint = hint(); refreshStatus(); show("GEMINI_KEY_CLEARED") }
+        return card(
+            "语音服务 · Gemini Live",
+            label(GeminiAppSettings.CONSENT_NOTICE), consent, label("API Key"), key, label("模型 / Model"), model, save, clear,
+        )
+    }
+
+    // ---- 1b. Qwen-Omni (frozen; shown again when VoiceProviderChoice.QWEN_FROZEN is false) ----
 
     private fun qwenCard(): View {
         val qwen = QwenSettingsRepository(this)
@@ -260,11 +290,11 @@ class DeveloperSettingsActivity : Activity() {
         }
         val clear = button("清除 Key / Clear key") {
             vision.clearDedicatedKey(); key.hint = hint(); refreshStatus()
-            show("VISION_KEY_CLEARED\nThe Baidu voice credential will be tried instead.")
+            show("VISION_KEY_CLEARED")
         }
         return card(
             "摄像头看图 · Camera vision",
-            label("打开相机时看一次、之后你问画面问题时再看；图片只在这两种情况下发送到百度千帆视觉模型。未填专用 Key 时尝试已保存的百度语音凭据。"),
+            label("打开相机时看一次、之后你问画面问题时再看；图片只在这两种情况下发送到千帆视觉模型。"),
             key, label("视觉模型 / Model"), model, save, clear,
         )
     }

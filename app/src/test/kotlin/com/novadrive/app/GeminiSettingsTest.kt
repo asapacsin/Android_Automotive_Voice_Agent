@@ -43,15 +43,18 @@ class GeminiSettingsTest {
         assertNull(GeminiSettingsValidator.validateSettings(valid.copy(consentAccepted = false)))
     }
 
+    /** The session provider: Gemini Live while Qwen is frozen (owner, 2026-10-22), else Qwen. */
+    private val SESSION = if (VoiceProviderChoice.QWEN_FROZEN) VoiceProviderId.GEMINI_LIVE else VoiceProviderId.QWEN
+
     @Test
     fun resolverAlwaysSelectsQwenRegardlessOfStoredPreference() {
         for (pref in VoiceProviderPreference.entries) for (consent in listOf(false, true)) for (key in listOf(false, true)) {
             assertEquals(
-                VoiceProviderId.QWEN,
+                SESSION,
                 VoiceProviderChoice.resolve(GeminiAppSettings(provider = pref, consentAccepted = consent), key),
             ) { "pref=$pref consent=$consent key=$key" }
         }
-        assertEquals(VoiceProviderId.QWEN, VoiceProviderChoice.resolve(valid.copy(endpoint = "ws://x"), true))
+        assertEquals(SESSION, VoiceProviderChoice.resolve(valid.copy(endpoint = "ws://x"), true))
     }
 
     @Test
@@ -72,7 +75,8 @@ class GeminiSettingsTest {
         storedPreference: VoiceProviderPreference = VoiceProviderPreference.GEMINI,
     ): Pair<VoiceProviderId, String?> {
         val geminiStored = GeminiAppSettings(provider = storedPreference)
-        val choice = VoiceProviderChoice.resolve(geminiStored, qwenKey.isNotBlank())
+        @Suppress("UNUSED_VARIABLE") val stored = geminiStored
+        val choice = VoiceProviderId.QWEN // the Qwen start path itself, also while Qwen is frozen
         var baiduTouched = false
         var geminiTouched = false
         var qwenTouched = false
@@ -141,14 +145,14 @@ class GeminiSettingsTest {
     fun releaseAppIgnoresTheDebugOverride() {
         for (pref in VoiceProviderPreference.entries) {
             val s = GeminiAppSettings(provider = pref, consentAccepted = true)
-            assertEquals(VoiceProviderId.QWEN, VoiceProviderChoice.resolveForSession(s, true, debuggable = false, geminiOverride = true))
+            assertEquals(SESSION, VoiceProviderChoice.resolveForSession(s, true, debuggable = false, geminiOverride = true))
         }
     }
 
     @Test
     fun debugAppWithoutOverrideIsQwenAsToday() {
         val s = GeminiAppSettings(provider = VoiceProviderPreference.GEMINI, consentAccepted = true)
-        assertEquals(VoiceProviderId.QWEN, VoiceProviderChoice.resolveForSession(s, true, debuggable = true, geminiOverride = false))
+        assertEquals(SESSION, VoiceProviderChoice.resolveForSession(s, true, debuggable = true, geminiOverride = false))
         assertEquals(VoiceProviderChoice.resolve(s, true), VoiceProviderChoice.resolveForSession(s, true, true, false))
     }
 
@@ -225,7 +229,7 @@ class GeminiSettingsTest {
             val s = valid.copy(model = model)
             assertNull(GeminiSettingsValidator.validateSettings(s))
             assertEquals(model, s.copy(voice = "Puck").model)
-            assertEquals(VoiceProviderId.QWEN, VoiceProviderChoice.resolve(s, keyPresent = true))
+            assertEquals(SESSION, VoiceProviderChoice.resolve(s, keyPresent = true))
         }
     }
 
