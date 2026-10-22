@@ -45,3 +45,9 @@ app/src/main/res/raw/*.mp3
 !state/reviews.log
 # Contract approvals are evidence too (scripts/task_contract.py).
 !state/contracts/approvals.log
+
+# Generated demo videos are local/CI artifacts, not source files.
+# Previously committed evidence clips remain tracked until individually reviewed.
+demo-videos/*.mp4
+demo-videos/*.webm
+demo-videos/*.mov
