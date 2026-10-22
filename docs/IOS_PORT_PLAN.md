@@ -18,6 +18,21 @@ Create two inventories before implementing the runtime:
 1. **Kotlin portability inventory.** For contracts, ingress, safety, verification, feedback, and orchestration, record source imports, dependency graph, serialization, threading/coroutines, filesystem/crypto APIs, and JVM-only assumptions. Classify each unit as KMP candidate, Swift reimplementation, or platform adapter. Do not enable KMP plugins until the inventory and a minimal compile/test pilot support it.
 2. **Capability parity inventory.** Map each Android capability to an iOS adapter, an iOS-only implementation, unsupported behavior, or an external dependency. Include voice session, navigation candidate selection/start/stop, arrival, saved places, live information, media, contacts/calling, speaking style, wake word, background audio, and simulated vehicle controls. Keep Android and iOS verification evidence separate.
 
+### Preliminary source scan (2026-10-22; not a KMP build)
+
+A read-only import/dependency scan of the existing production source suggests a small KMP pilot is plausible, but a wholesale conversion is not:
+
+- **contracts**: the nine production Kotlin files scanned contain no explicit JVM or Android imports. Its Gradle file still applies the Kotlin/JVM plugin and configures a Java 17 toolchain, so the source scan is encouraging but does not prove a KMP build.
+- **safety** and **feedback**: the inspected production files use the contracts module and Kotlin standard-library operations without explicit Android/JVM imports. They are plausible follow-on candidates after the contracts pilot.
+- **verification**: the verifier itself is platform-neutral in its imports, but the module depends on vehicle types. Do not mark it portable until the vehicle module's blocking bridge is separated.
+- **vehicle**: the interfaces use suspend functions and StateFlow, which are plausible common-code seams, but VehiclePort.kt imports runBlocking. That JVM blocking bridge must be split from any common source set or reimplemented.
+- **ingress**: the runtime is not portable as-is. VoiceSessionController.kt imports java.util.Base64, java.util.concurrent.atomic.AtomicBoolean/AtomicInteger, and ContinuationInterceptor; PlaybackEpochEngine.kt imports java.io.ByteArrayOutputStream and java.util.ArrayDeque. Fake/mock providers also use runBlocking. Coroutines/Flow themselves are not the main blocker; JVM-specific APIs and source-set placement are.
+- **orchestration**: its main file has no explicit JVM/Android imports, but it depends on ingress and vehicle. It should not be moved to common source until those dependencies are split and the dependency graph compiles for iOS.
+
+Relevant build declarations: [contracts](../contracts/build.gradle.kts), [safety](../safety/build.gradle.kts), [feedback](../feedback/build.gradle.kts), [verification](../verification/build.gradle.kts), [vehicle](../vehicle/build.gradle.kts), [ingress](../ingress/build.gradle.kts), and [orchestration](../orchestration/build.gradle.kts). All currently use Kotlin/JVM rather than Kotlin Multiplatform.
+
+**Recommended pilot:** convert only contracts to a minimal KMP target and run its existing contract tests plus an iOS-target compile. If that succeeds, evaluate safety and feedback next. Keep ingress, vehicle, and orchestration out of common source until their JVM-only seams have explicit replacements. This is a static-source conclusion, not proof of compilation or runtime behavior.
+
 Exit criteria:
 - Every capability has an explicit iOS status and failure behavior.
 - Every proposed shared module has evidence that its dependencies can target iOS.
