@@ -52,6 +52,12 @@
             "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/agent-routing/agent_routing_cli.py\" stop-hook",
             "timeout": 600,
             "statusMessage": "agent-routing: checking tests and the review gate for routed changes..."
+          },
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/ai-native/hooks/ai-native-stop.py\"",
+            "timeout": 360,
+            "statusMessage": "ai-native: end-state verification (only when AI_NATIVE_STOP_ENABLED=1)..."
           }
         ]
       }
@@ -93,6 +99,16 @@
             "type": "command",
             "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-contract-writes.py\"",
             "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/ai-native/scripts/pre_tool_guard.py\"",
+            "timeout": 10
           }
         ]
       }

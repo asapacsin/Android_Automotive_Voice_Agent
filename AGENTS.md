@@ -365,3 +365,11 @@ does not change architecture ownership, invariants, or who may certify work. Age
   once before stopping. The reviewer returns causes, next steps and a stop condition; continue by that
   plan. If there is no reviewer, no key or an error it prints "PASS: no plan" and exits 0, so it never
   blocks. It is advice, not a verdict: verify its steps with evidence before relying on them.
+- **External control plane** (owner, 2026-10-22). `tools/ai-native/` is copied from the owner's
+  ai-native-engineering repo: `control_plane.py` is the one deterministic decision engine for
+  retry/stop, frontier continuation, human handoff and merge eligibility; `ai_native.py cycle`
+  runs executor -> gates -> independent reviewer against a task contract (Android contract:
+  `tools/ai-native/adapters/android.json`). Its Stop hook and PreToolUse guard are registered but
+  off unless `AI_NATIVE_STOP_ENABLED=1` / `AI_NATIVE_GUARD_ENABLED=1` and `AI_NATIVE_CONTRACT_PATH`
+  are set. Run its tests from `tools/ai-native` (`python3 -m unittest discover -s tests`); 3 tests
+  fail there exactly as in the source repo.
