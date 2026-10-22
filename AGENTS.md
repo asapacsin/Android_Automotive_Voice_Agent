@@ -373,3 +373,8 @@ does not change architecture ownership, invariants, or who may certify work. Age
   off unless `AI_NATIVE_STOP_ENABLED=1` / `AI_NATIVE_GUARD_ENABLED=1` and `AI_NATIVE_CONTRACT_PATH`
   are set. Run its tests from `tools/ai-native` (`python3 -m unittest discover -s tests`); 3 tests
   fail there exactly as in the source repo.
+  Enabled 2026-10-22 in `.claude/settings.json`: the Stop hook runs one `ai_native.py cycle` per stop
+  with `contracts/session-default.json` (whitespace gate + one review of the dirty tree, or the last
+  commit, by the routed reviewer through `scripts/routing_reviewer.py`). REWORK blocks the stop once;
+  a missing or failing reviewer is NOT_VERIFIED, never PASS. Use a task contract with real gates
+  (`adapters/android.json`) for anything that claims tests or device proof.

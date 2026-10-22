@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "task_id": "session-default",
+  "goal": "The latest change in Android_Automotive_Voice_Agent (the dirty tree, or the last commit when clean) is correct and in scope",
+  "acceptance": "Diff is whitespace-clean; the routed independent reviewer finds no defect. Device, emulator, audio and navigation claims need their own CI evidence; this contract proves only static review.",
+  "boundaries": ["Preserve single active realtime voice provider", "Never resurrect deprecated fallback paths", "Compile and JVM tests cannot substitute for emulator, device, or live service tests", "No secrets in the diff"],
+  "budgets": {"max_attempts": 1, "max_total_seconds": 330},
+  "gates": [
+    {"id": "diff-check", "level": "static", "command": ["git", "diff", "--check", "HEAD~1"], "timeout_seconds": 30}
+  ]
+}

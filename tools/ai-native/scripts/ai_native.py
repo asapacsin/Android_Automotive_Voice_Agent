@@ -220,7 +220,7 @@ def attempt_cycle(repo: Path, contract: dict, attempt: int, executor: list[str] 
             outcome = "BLOCKED" if any(g["status"] == "BLOCKED" for g in req_failures) else "REWORK"
             response["findings"].append("Reviewer PASS rejected: required gates lack passing evidence")
         response.update({"verdict": outcome, "reviewer_verdict": reviewer_verdict,
-                         "attempt": attempt, "snapshot": snapshot,
+                         "reviewer_process": rv, "attempt": attempt, "snapshot": snapshot,
                          "gate_source_fingerprint": pre_gate_snapshot["fingerprint"],
                          "failed_required_gates": [g["id"] for g in req_failures]})
         return record(folder, response)

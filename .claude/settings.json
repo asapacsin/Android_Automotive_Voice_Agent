@@ -113,5 +113,10 @@
         ]
       }
     ]
+  },
+  "env": {
+    "AI_NATIVE_STOP_ENABLED": "1",
+    "AI_NATIVE_CONTRACT_PATH": "tools/ai-native/contracts/session-default.json",
+    "AI_NATIVE_REVIEWER_CMD": "python3 tools/ai-native/scripts/routing_reviewer.py"
   }
 }
