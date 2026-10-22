@@ -147,6 +147,9 @@ object ContextResolver {
         // No 高/低 in the words: every referent is a candidate, the window included.
         val candidates = if (wordDirection != null) NEUTRAL_CANDIDATES else Dimension.entries.toSet()
         val referents = context.validReferents().filter { it.dimension in candidates }
+        // A direction only the call supplies is no reason to ask when nothing was adjusted: 「再凉一点」
+        // heard as 「再量一点」 with no history is an ordinary request (run 319 asked 风量/车窗/座椅 here).
+        if (wordDirection == null && referents.isEmpty()) return Resolution.NotContextual
         return when (referents.size) {
             1 -> {
                 val dimension = referents.first().dimension

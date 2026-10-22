@@ -55,6 +55,14 @@ class ToolCallGuardBodyReferentTest {
     }
 
     @Test
+    fun `a direction-less line with nothing adjusted yet passes`() {
+        val context = DriverContext()
+        context.onDriverUtterance("再量一点。", 2) // 「再凉一点」 as heard in run 319, before any change
+        val temp = DomainVoiceEvent.ToolCall("c6", "control_climate", mapOf("action" to ClimateToolActions.ADJUST_TEMPERATURE, "value" to "-1"))
+        assertNull(ToolCallGuards.ambiguousReferent(temp, context))
+    }
+
+    @Test
     fun `a direction-less line with one window referent passes`() {
         val context = DriverContext()
         context.onBodyResult("control_window", "adjust", 20.0, """{"ok":true,"tool":"control_window"}""", 1)
