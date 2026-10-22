@@ -39,3 +39,5 @@ EVID-ATTEMPT 3ef5b0a64e4285822984199ea66c77b5c558b38966eef1f94587a9303b13e695 AP
 SYSIMG-RETRY 6d889bc0ac66930407a3c70fe36d912e3e0bd470197b7d4c18bea53b9b621e6b APPROVED 2026-10-20 architect recurring corrupt system image download, durable fix
 SYSIMG-WORKER 3d88bd8673cb6d0c6ed891aac689f751fdae78f798b32d287cf5e69219452c6e APPROVED 2026-10-20 architect SYSIMG-RETRY follow-up for test-worker
 OVERSPEED-XSM d79097de94813f53f211883f58c84c80750b1948ee245e3836465ec130e04b50 APPROVED 2026-10-20 architect overspeed evidence on a route with posted camera limits
+IOS-PORT-001 96d152209108d0d1f0c97fb2c0981f524f12f9958a3597721e878d2fbcb84d4c APPROVED 2026-10-22 architect same-repo native iOS port foundation scoped
+IOS-PORT-001 4bfba01ceb91347ebeb12b3ee982faa73a27e7b0d59fe44a612ba9933128c64b APPROVED 2026-10-22 architect same-repo iOS port contract with relative-link verification
