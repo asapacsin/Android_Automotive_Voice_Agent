@@ -47,4 +47,4 @@ Controller reconciles every 1.5 s on the main thread. While idle the wake detect
 Never two concurrent captures. Wake must work only in the foreground on iOS unless background audio is justified (see ios-feasibility).
 
 ## iOS notes (PROPOSED unless labelled)
-Options: iFlytek iOS SDK (availability UNKNOWN, OQ-IOS-1); Picovoice Porcupine custom keyword (PROPOSED); `SFSpeechRecognizer` keyword spotting is not suitable for always-on (on-device limits, UNKNOWN). Background always-listening on iPhone is restricted; plan for a foreground-only wake word plus a push-to-talk button, CarPlay voice button as optional.
+iFlytek has an iOS wake SDK (`IFlyVoiceWakeuper`, `.jet` resource, threshold `0:1450`), bound to the app id and in-app only (VERIFIED, OQ-IOS-1); the same `.jet` needs the iOS SDK for the same app id (OWNER). Fallback: Picovoice Porcupine custom keyword (PROPOSED). `SFSpeechRecognizer` is not meant for always-on keyword spotting (PROPOSED). Background always-listening on iPhone is restricted; plan for a foreground-only wake word plus a push-to-talk button, CarPlay voice button as optional.

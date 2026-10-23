@@ -28,4 +28,4 @@
 NS) via `AVAudioEngine` input node `setVoiceProcessingEnabled(true)`; resample hardware rate to 16 kHz
 with `AVAudioConverter`; play 24 kHz PCM through `AVAudioPlayerNode` on the same engine so the
 voice-processing unit sees the render reference. Whether Apple voice processing alone is good enough
-(vs. porting WebRTC AEC3) is **UNKNOWN** and must be measured on a device (OQ-IOS-3).
+(vs. porting WebRTC AEC3) is **DEVICE_SPIKE**: the API is documented, its quality is not; measure on an iPhone (OQ-IOS-3).

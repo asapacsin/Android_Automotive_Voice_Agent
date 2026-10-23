@@ -44,4 +44,4 @@ One prompt at a time, FIFO; deadline 1200 ms from enqueue; bracket 300 ms/char m
 3000 ms deadline is only a debug override (UNVERIFIED as default).
 
 ## iOS notes (PROPOSED unless labelled)
-Depends on whether the Amap iOS Navi SDK exposes guidance text and lets the app mute its built-in voice (UNKNOWN, OQ-IOS-2).
+Amap iOS exposes the guidance text in `driveManager:playNaviSoundString:soundStringType:` with `driveManagerIsNaviSoundPlaying:`, and its built-in voice is off by default (`isUseInternalTTS = NO`), so the relay ports directly (VERIFIED, OQ-IOS-2).

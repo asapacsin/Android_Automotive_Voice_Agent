@@ -73,6 +73,7 @@ class LoopGuardTest(unittest.TestCase):
                    ARCH_LOG=self.arch_log, ARCH_MODE=self.mode, NOVA_LOOP_BLOCKERS_LOG=self.blockers_log)
         env.pop("NOVA_LOOP_GUARD", None)
         env["NOVA_LOOP_BLOCKERS"] = self.blockers  # replaces the delegation/git probes
+        env["NOVA_LOOP_OBJECTIVE"] = getattr(self, "objective_path", os.path.join(self.tmp, "no-objective.json"))
         env.update(extra or {})
         p = subprocess.run([sys.executable, GUARD], input=json.dumps(event or stop_event()),
                            capture_output=True, text=True, env=env, timeout=60)
@@ -229,6 +230,21 @@ class LoopGuardTest(unittest.TestCase):
 
     def test_no_autonomous_work_allows_stop(self):
         self.set_frontier(frontier(()))
+        self.assertEqual(self.run_guard(), {})
+
+    def set_objective(self, passes):
+        self.objective_path = os.path.join(self.tmp, "objective.json")
+        with open(self.objective_path, "w") as f:
+            json.dump({"objective": "finish the iOS spec", "done_check": "exit %d" % (0 if passes else 1)}, f)
+
+    def test_objective_replaces_the_frontier(self):
+        self.set_objective(passes=False)
+        r = self.run_guard()
+        self.assertIn("Objective not done", r["reason"])
+        self.assertNotIn("AFFORDANCE-DEVICE-001", r["reason"])
+
+    def test_finished_objective_allows_stop_despite_frontier(self):
+        self.set_objective(passes=True)
         self.assertEqual(self.run_guard(), {})
 
     def test_disabled_in_child_sessions(self):

@@ -275,3 +275,6 @@ matters.
 - Model hierarchy: all four agents and the session on `claude-opus-5-5` (executor low, planner high,
   reviewer high, decider xhigh); ai-native Stop review (non-Opus routed reviewer) and the agent-routing
   Stop hook unregistered.
+
+- 2026-10-23: `state/objective.json` narrows the loop guard to the owner's objective (iOS transfer spec,
+  done check `scripts/ios_spec_check.py`); the discover_work frontier is not pushed while it exists.

@@ -181,6 +181,26 @@ def frontier():
     return json.loads(out)
 
 
+def objective():
+    """The owner's current objective (state/objective.json), if one narrows the run."""
+    path = os.environ.get("NOVA_LOOP_OBJECTIVE") or os.path.join(ROOT, "state", "objective.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
+def objective_blockers(obj):
+    """While an objective is set, only its done_check decides whether work remains (owner 2026-10-23)."""
+    p = subprocess.run(obj["done_check"], shell=True, cwd=ROOT, capture_output=True, text=True, timeout=120)
+    if p.returncode == 0:
+        return []
+    return [blocker("objective", "Objective not done: %s. %s" % (obj.get("objective"), p.stdout.strip()[-1500:]),
+                    task="objective:" + obj.get("objective", ""),
+                    remedy="Fix what the done check lists; the objective replaces the discover_work frontier.")]
+
+
 def frontier_blockers(front, blocked):
     """The first few frontier candidates that are not BLOCKED: independent work continues past a blocked task."""
     stop = (front or {}).get("stop") or {}
@@ -374,10 +394,12 @@ def main():
         blocked = {fp for fp, e in sess.get("fingerprints", {}).items()
                    if e["status"] in ("BLOCKED", "ESCALATION_REQUIRED")}
         blockers = probe_blockers()
+        obj = objective()
         try:
-            blockers += frontier_blockers(frontier(), blocked)
+            blockers += objective_blockers(obj) if obj else frontier_blockers(frontier(), blocked)
         except Exception:
             pass
+        sess["objective"] = obj.get("objective") if obj else None
         sess["blocked_dependencies"] = sorted(blocked)
         reason, msg = decide(event, sess, snap, blockers)
     except Exception as e:  # a broken guard must not wedge a session

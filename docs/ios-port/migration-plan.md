@@ -38,14 +38,14 @@ M1 acceptance: W1, W2, W3, W4 pass on a device; unit suites for F-02/F-04/F-06/F
 
 | M | Scope | Exit criteria |
 |---|---|---|
-| M0 | Spikes answering OQ-IOS-2, 3, 4, 5 (Amap iOS capabilities, voice processing AEC quality, background policy, Gemini protocol check) | Written answers in open-questions.md; go/no-go per subsystem |
+| M0 | Device spike for OQ-IOS-3 (voice-processing AEC quality on an iPhone) and an Amap iOS hello-route (confirm the route-select call). OQ-IOS-2, 4, 5 are answered from documentation (2026-10-23) | Spike results in open-questions.md; go/no-go per subsystem |
 | M1 | Vertical slice above | W1–W4 on device |
 | M2 | Full tools without navigation: comfort scenarios, ambiguity, persona/style, live weather, music (bundled) | F-10/F-12/F-18 (weather)/F-21 unit + device W6 |
 | M3 | Navigation core: search, pick, route, start, cancel, HUD on Amap iOS; guards while navigating | W8; F-15/F-16/F-17 unit + simulator drive |
 | M4 | Guidance relay + arbitration with navigation; overspeed | W5; F-14 device |
 | M5 | Wake word, listening lifecycle with sleep/deep-idle, background policy | F-01/F-23 device |
 | M6 | Phone, vision, named music (MusicKit if approved) | F-19/F-20/F-13 |
-| M7 (optional) | CarPlay navigation app | entitlement granted; CarPlay simulator test |
+| M7 (optional) | CarPlay app in ONE category: navigation or voice-based conversational (OQ-IOS-8, owner) | entitlement granted; CarPlay Simulator test |
 
 ## Specification drift control
 

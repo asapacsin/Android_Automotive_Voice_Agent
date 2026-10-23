@@ -1,0 +1,7 @@
+{
+  "objective": "Finish the iOS transfer spec (docs/ios-port) only",
+  "set_by": "owner",
+  "set_on": "2026-10-23",
+  "done_check": "python3 scripts/ios_spec_check.py",
+  "scope_note": "While this file exists the loop guard does not push discover_work items; only the done_check decides whether to continue. Delete this file to return to the full work frontier."
+}

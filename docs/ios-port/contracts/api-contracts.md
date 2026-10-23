@@ -1,7 +1,7 @@
 # Contract: external APIs (v1, 2026-10-22)
 
-Only the fields the app actually uses. Verify against the provider's current docs before coding
-(OQ-IOS-5); these were read from Android code, not from vendor documentation.
+Only the fields the app actually uses, read from Android code. The Gemini Live part was checked against
+Google's docs on 2026-10-23 and is current (OQ-IOS-5); production should use ephemeral tokens.
 
 ## Gemini Live (ACTIVE) — `A/voice/GeminiLiveProtocol.kt`, `GeminiLiveClient.kt`
 
@@ -47,7 +47,7 @@ NotConfigured, AuthFailed, Failed.
 ## iFlytek MSC wake word (IMPLEMENTED, Android SDK) — `A/wake/IflytekWakeWordDetector.kt`
 
 Offline model `ivw/wakeword.jet`, threshold `0:1450`, app-fed audio. App id stored as a secret. iOS SDK
-availability is UNKNOWN (OQ-IOS-1).
+exists (`iflyMSC.framework`), app-id bound, in-app wake only (OQ-IOS-1, VERIFIED 2026-10-23).
 
 ## Dormant providers (do not port now)
 

@@ -46,4 +46,4 @@ See contracts.
 `PhaseOneNavigationController` and `NavigationAutoPick` are not wired in main (DEAD); do not port.
 
 ## iOS notes (PROPOSED unless labelled)
-Amap iOS Navi SDK (`AMapNaviDriveManager`, `AMapNaviDriveView`) — names PROPOSED, capabilities UNKNOWN until checked (OQ-IOS-2). Keep the controller as pure Swift over a `NaviEngine` protocol; the SDK lives only in the adapter (I-9).
+Amap iOS Navi SDK (`AMapNaviDriveManager`, `AMapNaviDriveView`) — multi-route calculation (`AMapNaviDrivingStrategyMultipleDefault`, `naviRoutes`), `startGPSNavi` / `startEmulatorNavi` VERIFIED in Amap docs; the route-select call name is confirmed in M3 (OQ-IOS-2). Keep the controller as pure Swift over a `NaviEngine` protocol; the SDK lives only in the adapter (I-9).

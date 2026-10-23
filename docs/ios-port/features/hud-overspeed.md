@@ -44,4 +44,4 @@ See contracts.
 None beyond the contracts.
 
 ## iOS notes (PROPOSED unless labelled)
-Depends on Amap iOS navigation info callbacks (UNKNOWN fields, OQ-IOS-2).
+Amap iOS gives `updateNaviInfo:` (road, remaining time/distance) and `updateCameraInfos:` (camera type, whether it limits speed, distance) (VERIFIED, OQ-IOS-2).

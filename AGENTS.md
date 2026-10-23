@@ -351,3 +351,7 @@ does not change architecture ownership, invariants, or who may certify work. Age
   stop as UNVERIFIED after 4 continuations without progress. Commits already published upstream that
   break the executor-merge rule are recorded, never looped on (only a history rewrite could clear
   them). Diagnose "blocked on git" with `python3 scripts/git_blocker.py` first (read-only).
+  When the owner narrows the run to one objective, `state/objective.json` names it and its
+  `done_check`; while that file exists the guard follows only the check, not the discover_work
+  frontier (delete the file to return to the full frontier). Current: the iOS transfer spec,
+  `python3 scripts/ios_spec_check.py` (owner 2026-10-23).

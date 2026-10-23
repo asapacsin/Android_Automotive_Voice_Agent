@@ -33,10 +33,11 @@ An implementing agent should load **one feature file plus the contracts it lists
 - Proof levels for Android behaviour: **JVM** (unit test), **EMU** (GitHub emulator, software
   rendering, Gemini free tier), **DEVICE** (Xiaomi phone, no SIM), **LIVE** (real cloud API),
   **HUMAN** (owner by ear/eye). Most voice and navigation behaviour is JVM + EMU only.
-- iOS claims are labelled **VERIFIED** (checked against an external source, cited), **PROPOSED**
-  (design judgement, not checked) or **UNKNOWN**. No iOS SDK, device or simulator was run while
-  writing this; no external documentation was fetched (see open-questions.md, OQ-IOS-*). Every iOS
-  claim in this folder is therefore PROPOSED or UNKNOWN unless a citation is given.
+- iOS claims are labelled **VERIFIED** (confirmed in vendor documentation read on 2026-10-23, source
+  cited in open-questions.md), **PROPOSED** (design judgement), **DEVICE_SPIKE** (only an iPhone run
+  can answer) or **OWNER** (a product or account decision). No iOS SDK, device or simulator has been
+  run yet, so VERIFIED never means "ran on an iPhone". `python3 scripts/ios_spec_check.py` checks
+  that no question is left OPEN and every VERIFIED claim has a source.
 
 ## Important facts an iOS agent must not miss
 
