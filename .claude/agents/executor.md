@@ -2,7 +2,7 @@
 name: executor
 description: Bounded implementation worker for Nova Drive. Dispatched only by the planner with a complete task packet (TASK_ID, BASE_STATE, OWNED_SCOPE, ACCEPTANCE_COMMANDS…). Implements exactly that packet in its assigned worktree, runs the acceptance commands, commits locally and returns a compact status block. Never plans, redesigns or delegates.
 tools: Read, Grep, Glob, Bash, Edit, Write
-model: claude-sonnet-5-5
+model: claude-opus-5-5
 effort: low
 hooks:
   PreToolUse:

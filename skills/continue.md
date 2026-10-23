@@ -63,12 +63,17 @@ call; executors were ~10-16%).
 - **One unit per context, not per turn.** Keep each unit's heavy reading in an executor or planner
   subagent (its own fresh context), so the main transcript stays small. After a unit's `/handoff` (and
   `task_contract.py handoff` for a contracted task), take the next candidate; do not end the turn to
-  ask whether to continue. Claude Code enforces this: the Stop hook `.claude/hooks/keep-going.py`
-  (owner 2026-10-20) refuses the stop while `discover_work.py` reports
-  `AUTONOMOUS_ACTION_AVAILABLE = YES` and names `NEXT_ACTION`; a last message that asks permission
-  for authorised work is told to take the documented default instead. It allows the stop after 20
-  consecutive refusals or when no autonomous action remains, fails open, and `NOVA_KEEP_GOING=0`
-  turns it off.
+  ask whether to continue. Claude Code enforces this with one Stop hook, `scripts/loop_guard.py`
+  (owner 2026-10-23; it replaced `keep-going.py` and the `delegation_check.py --stop-hook` entry,
+  which looped a session 20+ turns on commits only a history rewrite could clear). It refuses the
+  stop while the frontier has an unblocked item, but only on objective progress (HEAD, working-tree
+  diff, reviews.log): the same blocker twice without progress is escalated by the hook itself to
+  the `decider` (Opus 5.5 xhigh, `claude -p`), verified by its verdict and served model; DECIDED
+  comes back as the recovery to run through an executor, OWNER_DECISION_REQUIRED or a failed
+  dispatch is recorded BLOCKED in `harness/blockers.jsonl` and the next independent item follows.
+  At most 4 continuations without progress, then the stop is allowed as UNVERIFIED. State:
+  `.claude/state/loop-guard.json`; `NOVA_LOOP_GUARD=0` turns it off. "Blocked on git" is first
+  classified with `python3 scripts/git_blocker.py` (read-only), never assumed.
 - **State a time estimate whenever work starts (owner 2026-10-20).** Each time a unit, batch, CI
   run, review round or session starts, tell the owner in the same message how long it is expected to
   take (wall clock, a range, and what it waits on, e.g. "~20-25 min: builder ~15, verify+review ~8").
@@ -84,31 +89,15 @@ call; executors were ~10-16%).
   discover_work lists independent items → first scope the next items (read-only Explore agents in
   parallel, one per item) and dispatch executors on disjoint approved_paths. Read a CI run when it
   finishes, not at the check-in time; a check-in is only the fallback.
-- **Token budget per agent type (owner 2026-10-20, Claude Code per-subagent model slots).**
-  - Scouts (Explore): `model: haiku` for "find where X is", `model: sonnet` for "explain why X";
-    one tight question naming the files to read, never "search everything".
-  - Executors (owner 2026-10-21, after 95% of tokens ran on Opus): try in this order. (1) Aider +
-    Qwen (`scripts/offload_executor.py`) when the contract names the exact script/test/doc edit;
-    (2) Cohere north-mini-code (OpenRouter free; the only executor, no fallback) through `tools/agent-routing` for bounded edits with no vendor files (owner
-    2026-10-21: Gemini is not used to write code; it stays for the voice tests only); (3) the
-    `executor` agent, now Sonnet 5.5; (4) Opus (`model: opus` on the call) only for `RISK: HIGH`
-    packets or after one failed Sonnet round.
-  - Reviewer (Sonnet by default; pass `model: opus` for HIGH risk; Nemotron for MEDIUM once its key
-    works): only for branches touching `<module>/src/**`; script/doc-only branches are verified by
-    the planner and recorded WAIVED where reviews.log allows (contracted branches still need ELIGIBLE,
-    so contract script work only when a reviewer adds real value).
-  - CI waiting and log reading: a Haiku agent or a scheduled task, never main-session polling.
-  - Decider (Opus, effort xhigh): only for real design forks; paste the evidence numbers into the question
-    so it does not re-read whole documents.
-  - Aider offload (`scripts/offload_executor.py`, OpenRouter, ~$1 budget): for edits whose contract
-    names the exact change (was: one or two files only). Pilot 2026-10-20 (AIDER-WRAP, a 2-file
-    script with tests, qwen3-coder): 3 rounds, ~$0.09, ~13 min of Aider time, still failing (hanging
-    tests), and one stray edit outside its files; the Opus-low executor then did it in ~5 min. Never
-    for `<module>/src/**`, workflows or anything needing exploration; one failed round → hand the task
-    to the executor. Licensed vendor files never go to it (the wrapper refuses them).
-    First real offload COMPACT-CWD (2026-10-20): contract naming the exact change in one script plus
-    its test - 1 round, 41 s, ~$0.01, sonnet reviewer PASS. Run: `python3 scripts/offload_executor.py
-    state/contracts/<ID>.yaml --worktree <wt> --model qwen/qwen3-coder`; review with `model: sonnet`.
+- **Model hierarchy (owner 2026-10-23; replaces the 2026-10-20/21 token-budget routing).** Every
+  primary engineering role runs on Claude Opus 5.5, pinned in `.claude/agents/*.md` and
+  `.claude/settings.json`: executor `effort: low`, planner `high`, reviewer `high`, decider
+  (architect) `xhigh`. No Sonnet, Haiku, Cohere, Qwen/Aider, Gemini or OpenRouter model takes a
+  primary role, and there is no fallback model: if Opus is unavailable the work waits or is
+  recorded blocked. `tools/agent-routing`, `scripts/offload_executor.py` and the ai-native Stop
+  review stay in the tree for manual use but are not wired into a session. Scouts (Explore) are not
+  an engineering role; pass `model: opus` if one is used. Still: one tight question per scout, and
+  paste the evidence numbers into a decider question so it does not re-read whole documents.
 - **Parallel Gradle needs its own build dir (2026-10-20):** every worktree shares `~/nova-drive-build`
   unless `NOVA_BUILD_DIR` is set, so parallel executors overwrite each other's JUnit XML. Every
   executor packet and every planner `verify` sets `NOVA_BUILD_DIR=$HOME/nova-build/<TASK_ID>`; nobody

@@ -46,3 +46,4 @@ app/src/main/res/raw/*.mp3
 # Contract approvals are evidence too (scripts/task_contract.py).
 !state/contracts/approvals.log
 .ai-native/
+.claude/state/

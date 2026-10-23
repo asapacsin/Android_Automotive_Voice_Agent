@@ -2,7 +2,7 @@
 name: reviewer
 description: Independent read-only reviewer for Nova Drive. Invoked by the planner for meaningful production changes, behaviour/state-machine changes, integration of several workers, or when the user asks for review. Inspects the real diff, code, architecture and acceptance evidence itself, may run tests and builds, and returns PASS / REVISE / ARCHITECTURE_REVIEW_REQUIRED with required changes. Never edits source and never delegates.
 tools: Read, Grep, Glob, Bash
-model: claude-sonnet-5-5
+model: claude-opus-5-5
 effort: high
 ---
 

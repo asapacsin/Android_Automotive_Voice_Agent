@@ -265,3 +265,13 @@ placeholder rows, a `✅` prefix defeating the terminal-status match on four clo
 own note claiming D-4 was network-blocked when the simulation harness can verify it. All fixed;
 the last one was wrong in the direction that lets an agent stop, which is the direction that
 matters.
+
+## 2026-10-23 — one Stop hook, objective progress, automatic Opus xhigh escalation
+
+- `scripts/loop_guard.py` replaces `.claude/hooks/keep-going.py` and the `delegation_check.py --stop-hook`
+  entry (they looped a session 20+ turns: an unbounded block on commits only a history rewrite could
+  clear, and a 20-block chain with no progress or blocker fingerprint). Tests: `scripts/tests/test_loop_guard.py`.
+- `scripts/git_blocker.py`: read-only git blocker classification with non-destructive recoveries.
+- Model hierarchy: all four agents and the session on `claude-opus-5-5` (executor low, planner high,
+  reviewer high, decider xhigh); ai-native Stop review (non-Opus routed reviewer) and the agent-routing
+  Stop hook unregistered.

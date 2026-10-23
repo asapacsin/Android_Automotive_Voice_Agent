@@ -197,49 +197,17 @@ This section applies to Claude Code only; the Cursor and Codex sections above ar
 does not change architecture ownership, invariants, or who may certify work. Agent definitions:
 [`.claude/agents/`](.claude/agents/).
 
-- Start the session as `planner` (`claude --agent planner`; Sonnet 5.5 since 2026-10-21, Opus only for deciders and HIGH-risk review; order in `skills/continue.md` token budget). It reads this
+- **Model hierarchy (owner, 2026-10-23): Claude Opus 5.5 for every primary role, no fallback.**
+  planner `high`, executor `low`, reviewer `high`, decider/architect `xhigh`, pinned in
+  `.claude/agents/*.md` and `.claude/settings.json` (`model: claude-opus-5-5`, no `fallbackModel`).
+  No Sonnet, Haiku, Cohere, Qwen, Gemini or OpenRouter model takes a primary engineering role; this
+  supersedes the 2026-10-19..21 executor orders (Gemini Flash, OpenRouter free models, Cohere via
+  `tools/agent-routing`, Sonnet planner). Those tools stay in the tree for manual use only. If Opus
+  is unavailable, the work waits or is recorded blocked; it never runs on a weaker model.
+- Start the session as `planner` (`claude --agent planner`). It reads this
   file and the documents under "Where things are", builds a dependency DAG, and runs waves.
 - `executor` (Opus 5.5, low effort) implements bounded task packets in its own worktree. It cannot
   spawn agents and must return BLOCKED rather than guess or redesign.
-  **Superseded 2026-10-21 (see External executor/reviewer routing below):** the Gemini executor order is no longer used.
-  **Owner preference (2026-10-19):** when available, run executor packets on **Gemini 3.8 Flash**
-  instead of a Claude executor, to keep that work off the Claude plan. If 3.8 Flash is overloaded
-  (HTTP 503/502), fall back to **Gemini 3.6 Flash** (owner, 2026-10-19); this replaces token-report TC-4. "Available" means a Gemini API
-  key reaches the session (an environment secret, never pasted in chat) *and* a tool-capable agent
-  runner exists for it. Status 2026-10-19: the key reaches generativelanguage.googleapis.com as a network
-  secret (model list HTTP 200; 3.6 Flash answers, 3.8 Flash was overloaded). Gemini CLI 0.64.0 answers
-  headless (`GEMINI_CLI_TRUST_WORKSPACE=true GEMINI_API_KEY=injected-by-proxy gemini -m <model> -p ...`;
-  the proxy supplies the real key, the placeholder is never a secret). Not installed by the setup
-  script. The owner allowed unattended `--yolo` runs in `.claude/settings.json` (2026-10-19). **Limit
-  found 2026-10-19:** the key is on the free tier, 20 requests per model per day, and one agent task
-  spends that in a single run (P67-LOG: 429 `generate_content_free_tier_requests` on both 3.8 and 3.6
-  Flash before the task finished). So Gemini executors only fit tiny packets on a fresh daily quota;
-  otherwise the Claude executor is used. **When a Gemini executor call fails** (429 quota, 502/503,
-  or the CLI errors out mid-task), dispatch the same packet to the `executor` agent, which runs
-  **Opus 5.5 at low effort** (`.claude/agents/executor.md`); don't retry Gemini that day (owner,
-  2026-10-20). A paid Gemini key would lift this.
-  **OpenRouter free executors (owner, 2026-10-20):** `nvidia/nemotron-3-ultra-550b-a55b:free`,
-  `poolside/laguna-s-2.1:free`, `cohere/north-mini-code:free`, `nvidia/nemotron-3.5-lightning:free`
-  via `https://openrouter.ai/api/v1/chat/completions` with the owner's OpenRouter network secret for
-  `openrouter.ai` (never pasted in chat). Status 2026-10-20: the secret did not reach the session that
-  recorded this (401 Missing Authentication header; a new session picks up added secrets) - test it first.
-  These are chat APIs, not agent runners: a packet needs a tool-capable runner around them before they
-  can edit a worktree. Order: Gemini, then these, then Opus 5.5 low. The contract gate applies unchanged. The contract gate
-  (docs/AGENT_CONTRACT_WORKFLOW.md) applies to it unchanged: scope, verify and reviewer PASS are
-  checked from git, never taken from its report. Respect the vendor-file rule: the licensed vendor
-  files must not be sent to it.
-- **External executor/reviewer routing (owner, 2026-10-20):** the tool-capable runner those chat
-  APIs lacked is [`tools/agent-routing/`](tools/agent-routing/README.md) (portable, stdlib only).
-  Executor here: `cohere` = `cohere/north-mini-code:free` (OpenRouter), the only executor, no fallback;
-  reviewer: `nvidia_or` = `nvidia/nemotron-3-ultra-550b-a55b:free` (OpenRouter; the direct NVIDIA NIM provider
-  `nvidia` needs a key and is unused). **Owner 2026-10-21:** Gemini no longer writes code and Poolside is
-  dropped; this supersedes the "Gemini first" executor order above. One executor per project in
-  `.agent-routing/project.json`; a deterministic LOW/MEDIUM/HIGH policy decides when
-  the Nemotron review is required, and the `agent_routing_cli.py stop-hook` Stop hook blocks completion
-  of a routed change until tests pass and a structured review PASS matches the current diff (bounded:
-  after 3 blocks it allows the stop as UNVERIFIED, never PASS). In this repository the gate only covers
-  changes made through `execute` sessions, so the contract workflow above is unchanged; licensed vendor
-  paths are in `never_send`. Usage: `python3 tools/agent-routing/agent_routing_cli.py route|execute|review|gate|doctor`.
 - `reviewer` (Opus 5.5, high effort, read-only) is used selectively; its policy is
   [`agent/REVIEWER.md`](agent/REVIEWER.md). Verdicts: PASS / REVISE / ARCHITECTURE_REVIEW_REQUIRED.
 - At most 4 concurrent executors. Writers get worktrees the planner creates from the exact feature
@@ -257,7 +225,7 @@ does not change architecture ownership, invariants, or who may certify work. Age
   Planner keeps docs, state, scripts/tools and integration.
   Review comes after the executor finishes and before its merge: `git merge exec/*` is refused until
   `state/reviews.log` has PASS (the `reviewer`) or WAIVED (with a reason) for the branch tip; the Stop hook
-  (`delegation_check.py --stop-hook`) backs it up after the merge.
+  (`scripts/delegation_check.py`, run by CI and `harness_check.py`) backs it up after the merge.
 - **Keep executing; the owner only chooses** (owner, 2026-10-16). Keep working without waiting for
   a go-ahead: everything you can do yourself is your task. Bring the owner only a real choice: give
   two or more distinct options, each with its consequence and its time cost, plus your
@@ -373,8 +341,13 @@ does not change architecture ownership, invariants, or who may certify work. Age
   off unless `AI_NATIVE_STOP_ENABLED=1` / `AI_NATIVE_GUARD_ENABLED=1` and `AI_NATIVE_CONTRACT_PATH`
   are set. Run its tests from `tools/ai-native` (`python3 -m unittest discover -s tests`); 3 tests
   fail there exactly as in the source repo.
-  Enabled 2026-10-22 in `.claude/settings.json`: the Stop hook runs one `ai_native.py cycle` per stop
-  with `contracts/session-default.json` (whitespace gate + one review of the dirty tree, or the last
-  commit, by the routed reviewer through `scripts/routing_reviewer.py`). REWORK blocks the stop once;
-  a missing or failing reviewer is NOT_VERIFIED, never PASS. Use a task contract with real gates
-  (`adapters/android.json`) for anything that claims tests or device proof.
+  Its Stop review is off since 2026-10-23 (`AI_NATIVE_STOP_ENABLED=0`): it reviewed with a non-Opus
+  routed model, which the model hierarchy above rules out. Run `ai_native.py cycle` by hand with a
+  task contract (`adapters/android.json`) when a contracted change needs it.
+- **One Stop hook decides continuation** (owner, 2026-10-23): `scripts/loop_guard.py`. It continues
+  only on objective progress, escalates the same blocker seen twice without progress to the `decider`
+  (Opus 5.5 xhigh) by dispatching it itself and verifying the verdict and the serving model, records
+  what cannot be resolved in `harness/blockers.jsonl` and moves to independent work, and allows the
+  stop as UNVERIFIED after 4 continuations without progress. Commits already published upstream that
+  break the executor-merge rule are recorded, never looped on (only a history rewrite could clear
+  them). Diagnose "blocked on git" with `python3 scripts/git_blocker.py` first (read-only).
