@@ -97,6 +97,11 @@ class LoopGuardTest(unittest.TestCase):
             self.assertIn("AFFORDANCE-DEVICE-001", r["reason"])
         self.assertEqual(self.arch_calls(), [])
 
+    def test_stale_bind_remedy_is_remeasure_not_executor(self):
+        r = self.run_guard()
+        self.assertIn("re-measure on CI", r["reason"])
+        self.assertNotIn("executor packet", r["reason"])
+
     def test_one_failure_does_not_escalate(self):
         r = self.run_guard()
         self.assertEqual(r["decision"], "block")

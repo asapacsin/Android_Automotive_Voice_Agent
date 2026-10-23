@@ -190,8 +190,12 @@ def frontier_blockers(front, blocked):
     for c in (front.get("candidates") or []):
         if c.get("blocked_by"):
             continue
-        b = blocker("frontier", "%s: %s" % (c.get("item"), c.get("summary", "")), task=c.get("item"),
-                    remedy="Follow skills/continue.md: executor packet, verify, hand off.")
+        summary = c.get("summary", "") or ""
+        remedy = ("Stale evidence, nothing to implement: re-measure on CI with a manual workflow dispatch on the "
+                  "working branch (docs/CI.md), then test_matrix --bind on PASS or set FAIL; take independent "
+                  "work while it runs." if summary.startswith("STALE_BIND")
+                  else "Follow skills/continue.md: executor packet, verify, hand off.")
+        b = blocker("frontier", "%s: %s" % (c.get("item"), summary), task=c.get("item"), remedy=remedy)
         if b["fp"] not in blocked:
             out.append(b)
         if len(out) >= 5:
