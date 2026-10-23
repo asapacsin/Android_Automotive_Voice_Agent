@@ -314,6 +314,14 @@ def decide(event, sess, snap, blockers):
                 continue
             return block(sess, "%s (attempt %d of 2, deterministic). Remedy: %s"
                          % (b["text"][:1500], e["count"], b.get("remedy"))), _join(notes)
+        prior = e.get("escalation") or {}
+        if prior.get("invoked") and prior.get("verdict") == "DECIDED":
+            # already decided for this blocker: re-issue the stored verdict, never re-dispatch (unchanged blocker)
+            e["status"] = "PLANNER_RECOVERY"
+            e["recovery_snapshot"] = snap
+            return block(sess, "Blocker %s repeats; the decider already decided it (%s). Apply that stored "
+                         "verdict (.claude/state/escalations/), do not re-ask:\n%s"
+                         % (b["fp"], prior.get("at"), prior.get("detail", ""))), _join(notes)
         if sess.get("escalations_without_progress", 0) >= MAX_ESCALATIONS:
             notes.append("Escalation budget without progress used; %s left at ESCALATION_REQUIRED" % b["fp"])
             e["status"] = "ESCALATION_REQUIRED"

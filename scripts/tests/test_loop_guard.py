@@ -158,6 +158,15 @@ class LoopGuardTest(unittest.TestCase):
         prompts = [c["prompt"] for c in self.arch_calls()]
         self.assertEqual(sum("AFFORDANCE-DEVICE-001" in p for p in prompts), 1)
 
+    def test_decided_blocker_is_not_re_escalated_after_unrelated_progress(self):
+        self.run_guard()
+        self.run_guard(stop_event(active=True))  # escalated, DECIDED
+        self.snap = "s1"  # progress elsewhere resets the counter
+        self.run_guard(stop_event(active=True))  # attempt 1 again
+        r = self.run_guard(stop_event(active=True))  # repeats without progress
+        self.assertEqual(len(self.arch_calls()), 1)
+        self.assertIn("already decided", r["reason"])
+
     def test_owner_decision_marks_blocked_and_records_it(self):
         self.mode = "owner"
         self.run_guard()
