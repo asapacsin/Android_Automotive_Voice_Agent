@@ -216,6 +216,26 @@ class LoopGuardTest(unittest.TestCase):
         self.assertEqual(p.stdout.strip(), "")
 
 
+class SnapshotTest(unittest.TestCase):
+    def test_guard_own_record_is_not_progress(self):
+        import loop_guard
+        env_backup = os.environ.pop("NOVA_LOOP_SNAPSHOT", None)
+        path = os.path.join(ROOT, "harness", "blockers.jsonl")
+        original = open(path, "rb").read() if os.path.exists(path) else None
+        try:
+            before = loop_guard.snapshot()
+            with open(path, "a") as f:
+                f.write("{}\n")
+            self.assertEqual(before, loop_guard.snapshot())
+        finally:
+            if original is None:
+                os.remove(path)
+            else:
+                open(path, "wb").write(original)
+            if env_backup is not None:
+                os.environ["NOVA_LOOP_SNAPSHOT"] = env_backup
+
+
 class GitBlockerTest(unittest.TestCase):
     def sh(self, repo, *args):
         return subprocess.run(["git", *args], cwd=repo, capture_output=True, text=True,

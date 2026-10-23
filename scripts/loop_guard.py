@@ -98,8 +98,9 @@ def snapshot():
         return fixed
     h = hashlib.sha1()
     h.update(git("rev-parse", "HEAD").encode())
-    h.update(git("status", "--porcelain=v1").encode())
-    h.update(git("diff", "HEAD").encode())
+    own = ":(exclude)harness/blockers.jsonl"  # the guard's own record is not the agent's progress
+    h.update(git("status", "--porcelain=v1", "--", ".", own).encode())
+    h.update(git("diff", "HEAD", "--", ".", own).encode())
     try:
         with open(os.path.join(ROOT, "state", "reviews.log"), "rb") as f:
             h.update(f.read())
