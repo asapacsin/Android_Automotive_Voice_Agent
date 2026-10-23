@@ -195,7 +195,8 @@ def frontier_blockers(front, blocked):
                   "working branch (docs/CI.md), then test_matrix --bind on PASS or set FAIL; take independent "
                   "work while it runs." if summary.startswith("STALE_BIND")
                   else "Follow skills/continue.md: executor packet, verify, hand off.")
-        b = blocker("frontier", "%s: %s" % (c.get("item"), summary), task=c.get("item"), remedy=remedy)
+        b = blocker("frontier", "%s: %s" % (c.get("item"), summary), task=c.get("item"), remedy=remedy,
+                    deterministic=summary.startswith("STALE_BIND"))  # known remedy (decider 2026-10-23)
         if b["fp"] not in blocked:
             out.append(b)
         if len(out) >= 5:

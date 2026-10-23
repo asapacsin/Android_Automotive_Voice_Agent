@@ -35,7 +35,7 @@ print(json.dumps({"type": "result", "is_error": False, "result": text, "modelUsa
 def frontier(items=("AFFORDANCE-DEVICE-001", "APPS-001")):
     return {"stop": {"AUTONOMOUS_ACTION_AVAILABLE": "YES" if items else "NO", "NEXT_ACTION": "x",
                      "actionable_count": len(items)},
-            "candidates": [{"item": i, "summary": "STALE_BIND: s", "blocked_by": None} for i in items]}
+            "candidates": [{"item": i, "summary": "FAIL: s", "blocked_by": None} for i in items]}
 
 
 def stop_event(sid="s1", active=False, msg="Done."):
@@ -97,8 +97,15 @@ class LoopGuardTest(unittest.TestCase):
             self.assertIn("AFFORDANCE-DEVICE-001", r["reason"])
         self.assertEqual(self.arch_calls(), [])
 
-    def test_stale_bind_remedy_is_remeasure_not_executor(self):
-        r = self.run_guard()
+    def test_stale_bind_remedy_is_remeasure_not_executor_and_never_escalates(self):
+        data = frontier()
+        for c in data["candidates"]:
+            c["summary"] = "STALE_BIND: s"
+        self.set_frontier(data)
+        for i in range(4):
+            last = self.run_guard(stop_event(active=i > 0))
+        self.assertEqual(self.arch_calls(), [])
+        r = self.run_guard(stop_event(sid="s2"))
         self.assertIn("re-measure on CI", r["reason"])
         self.assertNotIn("executor packet", r["reason"])
 
